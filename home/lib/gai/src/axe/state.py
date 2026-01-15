@@ -273,6 +273,36 @@ def read_errors() -> list[dict]:
     return errors
 
 
+# --- Output Log ---
+
+
+# Path to the output log file with ANSI codes
+AXE_OUTPUT_LOG = AXE_STATE_DIR / "logs" / "output.log"
+
+
+def read_output_log_tail(lines: int = 1000) -> str:
+    """Read the last N lines of the axe output log.
+
+    Args:
+        lines: Number of lines to read from the end (default: 1000).
+
+    Returns:
+        String containing the last N lines with ANSI codes preserved.
+    """
+    from collections import deque
+
+    if not AXE_OUTPUT_LOG.exists():
+        return ""
+
+    try:
+        with open(AXE_OUTPUT_LOG) as f:
+            # Use deque with maxlen for memory-efficient tailing
+            last_lines = deque(f, maxlen=lines)
+        return "".join(last_lines)
+    except OSError:
+        return ""
+
+
 # --- Utility ---
 
 

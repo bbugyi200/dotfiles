@@ -69,8 +69,10 @@ class NavigationMixin:
         """Scroll the detail panel down by half a page (vim Ctrl+D style)."""
         if self.current_tab == "changespecs":
             scroll_container = self.query_one("#detail-scroll", VerticalScroll)  # type: ignore[attr-defined]
-        else:
+        elif self.current_tab == "agents":
             scroll_container = self.query_one("#agent-diff-scroll", VerticalScroll)  # type: ignore[attr-defined]
+        else:  # axe
+            scroll_container = self.query_one("#axe-output-scroll", VerticalScroll)  # type: ignore[attr-defined]
         height = scroll_container.scrollable_content_region.height
         scroll_container.scroll_relative(y=height // 2, animate=False)
 
@@ -78,26 +80,48 @@ class NavigationMixin:
         """Scroll the detail panel up by half a page (vim Ctrl+U style)."""
         if self.current_tab == "changespecs":
             scroll_container = self.query_one("#detail-scroll", VerticalScroll)  # type: ignore[attr-defined]
-        else:
+        elif self.current_tab == "agents":
             scroll_container = self.query_one("#agent-diff-scroll", VerticalScroll)  # type: ignore[attr-defined]
+        else:  # axe
+            scroll_container = self.query_one("#axe-output-scroll", VerticalScroll)  # type: ignore[attr-defined]
         height = scroll_container.scrollable_content_region.height
         scroll_container.scroll_relative(y=-(height // 2), animate=False)
 
     def action_scroll_prompt_down(self) -> None:
-        """Scroll the agent prompt panel down by half a page (Agents tab only)."""
-        if self.current_tab != "agents":
-            return
-        scroll_container = self.query_one("#agent-prompt-scroll", VerticalScroll)  # type: ignore[attr-defined]
-        height = scroll_container.scrollable_content_region.height
-        scroll_container.scroll_relative(y=height // 2, animate=False)
+        """Scroll prompt panel (Agents) or full page (Axe)."""
+        if self.current_tab == "agents":
+            scroll_container = self.query_one("#agent-prompt-scroll", VerticalScroll)  # type: ignore[attr-defined]
+            height = scroll_container.scrollable_content_region.height
+            scroll_container.scroll_relative(y=height // 2, animate=False)
+        elif self.current_tab == "axe":
+            scroll_container = self.query_one("#axe-output-scroll", VerticalScroll)  # type: ignore[attr-defined]
+            height = scroll_container.scrollable_content_region.height
+            scroll_container.scroll_relative(y=height, animate=False)  # Full page
 
     def action_scroll_prompt_up(self) -> None:
-        """Scroll the agent prompt panel up by half a page (Agents tab only)."""
-        if self.current_tab != "agents":
+        """Scroll prompt panel (Agents) or full page (Axe)."""
+        if self.current_tab == "agents":
+            scroll_container = self.query_one("#agent-prompt-scroll", VerticalScroll)  # type: ignore[attr-defined]
+            height = scroll_container.scrollable_content_region.height
+            scroll_container.scroll_relative(y=-(height // 2), animate=False)
+        elif self.current_tab == "axe":
+            scroll_container = self.query_one("#axe-output-scroll", VerticalScroll)  # type: ignore[attr-defined]
+            height = scroll_container.scrollable_content_region.height
+            scroll_container.scroll_relative(y=-height, animate=False)  # Full page
+
+    def action_scroll_to_top(self) -> None:
+        """Scroll to the top of the current scrollable area (Axe tab)."""
+        if self.current_tab != "axe":
             return
-        scroll_container = self.query_one("#agent-prompt-scroll", VerticalScroll)  # type: ignore[attr-defined]
-        height = scroll_container.scrollable_content_region.height
-        scroll_container.scroll_relative(y=-(height // 2), animate=False)
+        scroll_container = self.query_one("#axe-output-scroll", VerticalScroll)  # type: ignore[attr-defined]
+        scroll_container.scroll_home(animate=False)
+
+    def action_scroll_to_bottom(self) -> None:
+        """Scroll to the bottom of the current scrollable area (Axe tab)."""
+        if self.current_tab != "axe":
+            return
+        scroll_container = self.query_one("#axe-output-scroll", VerticalScroll)  # type: ignore[attr-defined]
+        scroll_container.scroll_end(animate=False)
 
     # --- Tab Switching Actions ---
 

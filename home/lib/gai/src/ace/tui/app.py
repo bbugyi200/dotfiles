@@ -122,6 +122,9 @@ class AceApp(
         Binding("l", "toggle_layout", "Layout", show=False),
         # Copy to clipboard (all tabs)
         Binding("percent_sign", "copy_tab_content", "Copy", show=False),
+        # Scroll to top/bottom (Axe tab)
+        Binding("g", "scroll_to_top", "Top", show=False),
+        Binding("shift+g", "scroll_to_bottom", "Bottom", show=False),
     ]
 
     # Reactive properties
@@ -180,7 +183,7 @@ class AceApp(
         # Axe state
         self._axe_status: AxeStatus | None = None
         self._axe_metrics: AxeMetrics | None = None
-        self._axe_errors: list[dict] = []
+        self._axe_output: str = ""
 
         # Set global model size override in environment if specified
         if model_size_override:

@@ -10,7 +10,7 @@ from axe.process import (
     start_axe_daemon,
     stop_axe_daemon,
 )
-from axe.state import AxeMetrics, AxeStatus, read_errors, read_metrics
+from axe.state import AxeMetrics, AxeStatus, read_metrics, read_output_log_tail
 
 if TYPE_CHECKING:
     from ...changespec import ChangeSpec
@@ -31,7 +31,7 @@ class AxeMixin:
     _countdown_remaining: int
     _axe_status: AxeStatus | None
     _axe_metrics: AxeMetrics | None
-    _axe_errors: list[dict]
+    _axe_output: str
 
     def action_toggle_axe(self) -> None:
         """Toggle the axe daemon on or off."""
@@ -83,11 +83,12 @@ class AxeMixin:
             else:
                 self._axe_status = None
             self._axe_metrics = read_metrics()
-            self._axe_errors = read_errors()
         else:
             self._axe_status = None
             self._axe_metrics = None
-            self._axe_errors = []
+
+        # Load output log (always, for display even when stopped)
+        self._axe_output = read_output_log_tail(1000)
 
         # Update display if on axe tab
         if self.current_tab == "axe":
@@ -107,11 +108,17 @@ class AxeMixin:
 
             axe_info.update_status(self.axe_running)
             axe_info.update_countdown(self._countdown_remaining, self.refresh_interval)
+
+            # Get full cycles from metrics if available
+            full_cycles = 0
+            if self._axe_metrics:
+                full_cycles = self._axe_metrics.full_cycles_run
+
             axe_dashboard.update_display(
                 is_running=self.axe_running,
                 status=self._axe_status,
-                metrics=self._axe_metrics,
-                errors=self._axe_errors,
+                output=self._axe_output,
+                full_cycles=full_cycles,
             )
             footer.set_axe_running(self.axe_running)
             footer.update_axe_bindings()

@@ -641,19 +641,23 @@ BugInputModal Button {
 #axe-dashboard {
     width: 100%;
     height: 1fr;
-    padding: 1 2;
-    overflow-y: auto;
 }
 
-/* Dashboard section styling */
-.axe-section {
-    margin-bottom: 1;
-    padding: 1;
-}
-
-#axe-errors-scroll {
+#axe-status-section {
     height: auto;
-    max-height: 12;
+    max-height: 1;
+    padding: 0 1;
+    background: $surface;
+}
+
+#axe-output-scroll {
+    height: 1fr;
     overflow-y: auto;
-    border: solid $secondary;
+    scrollbar-gutter: stable;
+    border-top: solid $secondary;
+    padding: 1 2;
+}
+
+#axe-output-section {
+    height: auto;
 }

@@ -57,6 +57,7 @@ from running_field import get_workspace_directory
 
 from .runner_pool import RunnerPool
 from .state import (
+    AXE_STATE_DIR,
     AxeMetrics,
     AxeStatus,
     CycleResult,
@@ -111,9 +112,13 @@ class AxeScheduler:
         if query:
             self.parsed_query = parse_query(query)
 
-        self.console = Console()
+        # Use record=True and force_terminal=True to capture styled output
+        self.console = Console(record=True, force_terminal=True)
         self.scheduler = schedule.Scheduler()
         self.runner_pool = RunnerPool(max_runners)
+
+        # Output log file for TUI display
+        self._log_file_path = AXE_STATE_DIR / "logs" / "output.log"
 
         self._start_time = datetime.now(EASTERN_TZ)
         self._last_full_cycle: datetime | None = None
@@ -138,6 +143,22 @@ class AxeScheduler:
             self.console.print(f"[{style}]{full_message}[/{style}]")
         else:
             self.console.print(full_message)
+
+        # Flush recorded output to log file
+        self._flush_log_to_file()
+
+    def _flush_log_to_file(self) -> None:
+        """Append recorded console output to log file with ANSI codes."""
+        text = self.console.export_text(styles=True, clear=True)
+        if not text.strip():
+            return
+
+        # Ensure log directory exists
+        self._log_file_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Append to log file
+        with open(self._log_file_path, "a") as f:
+            f.write(text)
 
     def _get_all_changespecs(self) -> list[ChangeSpec]:
         """Get all changespecs (unfiltered)."""
