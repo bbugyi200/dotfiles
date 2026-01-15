@@ -53,59 +53,6 @@ class _AxeStatusSection(Static):
             text.append(f"{started_display}\n", style="#5FD7FF")
         else:
             text.append("\n")
-            text.append("Initializing...\n", style="dim italic")
-
-        self.update(text)
-
-
-class _AxeConfigSection(Static):
-    """Section showing axe configuration."""
-
-    def update_display(self, status: AxeStatus | None) -> None:
-        """Update the configuration section.
-
-        Args:
-            status: Current axe status, or None if not available.
-        """
-        text = Text()
-        text.append("CONFIGURATION\n", style="bold #D7AF5F underline")
-        text.append("\n")
-
-        if not status:
-            text.append("No configuration data available.\n", style="dim italic")
-            self.update(text)
-            return
-
-        # Row 1: Intervals
-        text.append("Full Check Interval:  ", style="bold #87D7FF")
-        text.append(f"{status.full_check_interval}s", style="#00D7AF")
-        text.append("      ", style="")
-        text.append("Hook Interval: ", style="bold #87D7FF")
-        text.append(f"{status.hook_interval}s\n", style="#00D7AF")
-
-        # Row 2: Runners and timeout
-        text.append("Max Runners:          ", style="bold #87D7FF")
-        text.append(f"{status.max_runners}", style="#00D7AF")
-        text.append("         ", style="")
-        text.append("Zombie Timeout: ", style="bold #87D7FF")
-        text.append(f"{status.zombie_timeout}s\n", style="#00D7AF")
-
-        # Row 3: Current runners and changespecs
-        text.append("Current Runners:      ", style="bold #87D7FF")
-        text.append(f"{status.current_runners}", style="#FF87D7 bold")
-        text.append("         ", style="")
-        text.append("Changespecs: ", style="bold #87D7FF")
-        text.append(f"{status.filtered_changespecs}", style="#00D7AF")
-        text.append("/", style="dim")
-        text.append(f"{status.total_changespecs}\n", style="#00D7AF")
-
-        # Row 4: Query
-        if status.query:
-            text.append("Query:                ", style="bold #87D7FF")
-            query_display = (
-                status.query if len(status.query) <= 50 else status.query[:47] + "..."
-            )
-            text.append(f'"{query_display}"\n', style="#AF87D7")
 
         self.update(text)
 
@@ -217,7 +164,6 @@ class AxeDashboard(Static):
     def compose(self) -> ComposeResult:
         """Compose the dashboard sections."""
         yield _AxeStatusSection(id="axe-status-section", classes="axe-section")
-        yield _AxeConfigSection(id="axe-config-section", classes="axe-section")
         yield _AxeMetricsSection(id="axe-metrics-section", classes="axe-section")
         with VerticalScroll(id="axe-errors-scroll"):
             yield _AxeErrorsSection(id="axe-errors-section", classes="axe-section")
@@ -238,12 +184,10 @@ class AxeDashboard(Static):
             errors: List of recent error dictionaries.
         """
         status_section = self.query_one("#axe-status-section", _AxeStatusSection)
-        config_section = self.query_one("#axe-config-section", _AxeConfigSection)
         metrics_section = self.query_one("#axe-metrics-section", _AxeMetricsSection)
         errors_section = self.query_one("#axe-errors-section", _AxeErrorsSection)
 
         status_section.update_display(status, is_running)
-        config_section.update_display(status)
         metrics_section.update_display(metrics)
         errors_section.update_display(errors)
 

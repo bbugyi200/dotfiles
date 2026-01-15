@@ -67,9 +67,9 @@ class TabBar(Static):
         # Axe tab
         axe_start = len(text.plain)
         if self._current_tab == "axe":
-            text.append(" Axe ", style="bold reverse #FF5F5F")
+            text.append(" AXE ", style="bold reverse #FF5F5F")
         else:
-            text.append(" Axe ", style="dim")
+            text.append(" AXE ", style="dim")
         axe_end = len(text.plain)
         self._axe_tab_range = (axe_start, axe_end)
 
