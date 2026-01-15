@@ -81,6 +81,28 @@ def is_running_process_suffix(suffix: str | None) -> bool:
     return suffix.isdigit() and len(suffix) >= 1
 
 
+def is_plain_suffix(suffix: str | None) -> bool:
+    """Check if a suffix is a plain suffix (commit reference, not error/running).
+
+    Plain suffixes are commit references like "7d" or "3a" that indicate
+    which commit addressed the comments. These are safe to remove when
+    the comments have been resolved.
+
+    Args:
+        suffix: The suffix value.
+
+    Returns:
+        True if the suffix is plain (not error, not running agent/process).
+    """
+    if suffix is None:
+        return False
+    return (
+        not is_error_suffix(suffix)
+        and not is_running_agent_suffix(suffix)
+        and not is_running_process_suffix(suffix)
+    )
+
+
 # Valid suffix_type values for HookStatusLine, CommitEntry, CommentEntry:
 # - "error": Displayed with "!: " prefix (red color)
 # - "running_agent": Displayed with "@: " prefix (agent is actively working)

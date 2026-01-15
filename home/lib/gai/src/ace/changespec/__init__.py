@@ -21,6 +21,7 @@ from .models import (
     get_base_status,
     has_ready_to_mail_suffix,
     is_error_suffix,
+    is_plain_suffix,
     is_running_agent_suffix,
     is_running_process_suffix,
     parse_commit_entry_id,
@@ -58,6 +59,7 @@ __all__ = [
     # Functions
     "extract_pid_from_agent_suffix",
     "is_error_suffix",
+    "is_plain_suffix",
     "is_running_agent_suffix",
     "is_running_process_suffix",
     "has_ready_to_mail_suffix",

@@ -16,7 +16,7 @@ from typing import Literal
 from gai_utils import generate_timestamp
 from status_state_machine import transition_changespec_status
 
-from ..changespec import ChangeSpec, CommentEntry
+from ..changespec import ChangeSpec, CommentEntry, is_plain_suffix
 from ..cl_status import is_parent_submitted
 from ..comments import (
     generate_comments_timestamp,
@@ -473,10 +473,12 @@ def _handle_reviewer_comments_completion(
             )
             updates.append("Added [reviewer] comment entry")
     else:
-        # No comments - clear the [reviewer] entry if it exists and has no suffix
-        if (
-            existing_reviewer_entry is not None
-            and existing_reviewer_entry.suffix is None
+        # No comments - clear the [reviewer] entry if it exists and:
+        # - has no suffix, OR
+        # - has a plain suffix (commit reference like "7d")
+        if existing_reviewer_entry is not None and (
+            existing_reviewer_entry.suffix is None
+            or is_plain_suffix(existing_reviewer_entry.suffix)
         ):
             remove_comment_entry(
                 changespec.file_path,
