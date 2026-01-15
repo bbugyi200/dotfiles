@@ -1,7 +1,7 @@
 """Axe scheduler package for gai.
 
-This package provides schedule-based ChangeSpec monitoring as an alternative
-to the traditional gai loop command.
+This package provides schedule-based ChangeSpec monitoring for automatically
+running hooks, managing workflows, and checking CL status.
 """
 
 from .core import AxeScheduler

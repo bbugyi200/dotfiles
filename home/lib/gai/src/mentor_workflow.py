@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import NoReturn
 
 from ace.changespec import find_all_changespecs
-from ace.loop.mentor_runner import get_mentor_chat_path
+from ace.scheduler.mentor_runner import get_mentor_chat_path
 from change_actions import execute_change_action, prompt_for_change_action
 from gai_utils import generate_timestamp
 from gemini_wrapper import invoke_agent

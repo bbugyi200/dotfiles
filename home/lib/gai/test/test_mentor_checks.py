@@ -10,7 +10,7 @@ from ace.changespec import (
     MentorEntry,
     MentorStatusLine,
 )
-from ace.loop.mentor_checks import (
+from ace.scheduler.mentor_checks import (
     _all_non_skip_hooks_ready,
     _extract_changed_files_from_diff,
     _get_commits_since_last_mentors,
@@ -472,7 +472,7 @@ def test_get_commits_since_last_mentors_no_commits() -> None:
 
 def test_get_profiles_registered_for_entry_no_mentors() -> None:
     """Test with no MENTORS returns empty set."""
-    from ace.loop.mentor_checks import _get_profiles_registered_for_entry
+    from ace.scheduler.mentor_checks import _get_profiles_registered_for_entry
 
     cs = _make_changespec(mentors=None)
     result = _get_profiles_registered_for_entry(cs, "1")
@@ -481,7 +481,7 @@ def test_get_profiles_registered_for_entry_no_mentors() -> None:
 
 def test_get_profiles_registered_for_entry_matching_entry() -> None:
     """Test returns profiles for matching entry_id."""
-    from ace.loop.mentor_checks import _get_profiles_registered_for_entry
+    from ace.scheduler.mentor_checks import _get_profiles_registered_for_entry
 
     cs = _make_changespec(
         mentors=[
@@ -494,7 +494,7 @@ def test_get_profiles_registered_for_entry_matching_entry() -> None:
 
 def test_get_profiles_registered_for_entry_different_entry() -> None:
     """Test returns empty set for non-matching entry_id."""
-    from ace.loop.mentor_checks import _get_profiles_registered_for_entry
+    from ace.scheduler.mentor_checks import _get_profiles_registered_for_entry
 
     cs = _make_changespec(
         mentors=[
@@ -519,7 +519,7 @@ def test_get_matching_profiles_for_entry_excludes_old_mentored_commits(
     """
     from unittest.mock import MagicMock
 
-    from ace.loop.mentor_checks import _get_matching_profiles_for_entry
+    from ace.scheduler.mentor_checks import _get_matching_profiles_for_entry
 
     # Create a mock profile that matches "[mentor:complete]" in amend note
     mock_profile = MagicMock()
@@ -531,7 +531,7 @@ def test_get_matching_profiles_for_entry_excludes_old_mentored_commits(
 
     # Mock get_all_mentor_profiles to return our test profile
     monkeypatch.setattr(
-        "ace.loop.mentor_checks.get_all_mentor_profiles", lambda: [mock_profile]
+        "ace.scheduler.mentor_checks.get_all_mentor_profiles", lambda: [mock_profile]
     )
 
     # Scenario: commits 3, 4, 5 exist, MENTORS entry for 3 exists
@@ -567,7 +567,7 @@ def test_get_matching_profiles_for_entry_includes_latest_with_partial_coverage(
     """
     from unittest.mock import MagicMock
 
-    from ace.loop.mentor_checks import _get_matching_profiles_for_entry
+    from ace.scheduler.mentor_checks import _get_matching_profiles_for_entry
 
     # Create two mock profiles
     mock_profile_code = MagicMock()
@@ -589,7 +589,7 @@ def test_get_matching_profiles_for_entry_includes_latest_with_partial_coverage(
     mock_profile_feature.amend_note_regexes = [r"Initial Commit"]
 
     monkeypatch.setattr(
-        "ace.loop.mentor_checks.get_all_mentor_profiles",
+        "ace.scheduler.mentor_checks.get_all_mentor_profiles",
         lambda: [mock_profile_code, mock_profile_feature],
     )
 

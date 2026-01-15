@@ -123,7 +123,7 @@ def _clear_hook_status_lines_for_last_history(
     """Clear hook status lines for the last HISTORY entry so hooks will rerun.
 
     This removes the status line for the last HISTORY entry from every hook,
-    allowing gai loop to rerun all hooks after a restore.
+    allowing gai axe to rerun all hooks after a restore.
 
     Args:
         changespec: The ChangeSpec being restored
@@ -185,7 +185,7 @@ def _clear_hook_status_lines_for_last_history(
     if console and hooks_cleared > 0:
         console.print(
             f"[green]Cleared status for {hooks_cleared} hook(s) - "
-            f"will be rerun by gai loop[/green]"
+            f"will be rerun by gai axe[/green]"
         )
 
     return (True, None)

@@ -507,7 +507,7 @@ class AgentWorkflowMixin:
                     os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
                 )
             ),
-            "loop_run_agent_runner.py",
+            "axe_run_agent_runner.py",
         )
 
         # Start background process first to get actual PID

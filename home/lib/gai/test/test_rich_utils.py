@@ -3,7 +3,6 @@
 import time
 
 from rich_utils import (
-    format_countdown,
     gemini_timer,
     print_artifact_created,
     print_decision_counts,
@@ -116,38 +115,6 @@ def test_gemini_timer_long_duration() -> None:
     with patch("time.perf_counter", side_effect=[0, 3665]):  # 1 hour, 1 min, 5 sec
         with gemini_timer("Long operation"):
             pass  # Timer will calculate elapsed time from the mocked values
-
-
-# Tests for format_countdown
-def test_format_countdown_basic() -> None:
-    """Test format_countdown with basic values."""
-    result = format_countdown(65, "Next check in")
-    assert "1:05" in result
-    assert "Next check in" in result
-
-
-def test_format_countdown_seconds_only() -> None:
-    """Test format_countdown with less than a minute."""
-    result = format_countdown(45, "Wait")
-    assert "0:45" in result
-
-
-def test_format_countdown_zero() -> None:
-    """Test format_countdown with zero seconds."""
-    result = format_countdown(0, "Now")
-    assert "0:00" in result
-
-
-def test_format_countdown_minutes() -> None:
-    """Test format_countdown with multiple minutes."""
-    result = format_countdown(125, "Countdown")
-    assert "2:05" in result
-
-
-def test_format_countdown_custom_message() -> None:
-    """Test format_countdown with custom message."""
-    result = format_countdown(30, "Custom message here")
-    assert "Custom message here" in result
 
 
 # Additional edge case tests

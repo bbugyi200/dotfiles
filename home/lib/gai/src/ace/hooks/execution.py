@@ -282,7 +282,7 @@ def merge_hook_updates(
 
     Acquires a lock and re-reads hooks from disk before writing to avoid
     overwriting hooks added by concurrent processes (e.g., gai commit adding
-    test hooks while gai loop is updating hook statuses).
+    test hooks while gai axe is updating hook statuses).
 
     Args:
         project_file: Path to the ProjectSpec file.

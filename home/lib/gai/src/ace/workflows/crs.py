@@ -206,7 +206,7 @@ def run_crs_workflow(
                 )
             return False
 
-        # Set suffix on success - gai loop will remove entry when no more comments
+        # Set suffix on success - gai axe will remove entry when no more comments
         if changespec.comments:
             set_comment_suffix(
                 changespec.file_path,

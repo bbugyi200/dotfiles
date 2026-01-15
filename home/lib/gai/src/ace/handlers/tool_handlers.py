@@ -290,7 +290,7 @@ def handle_edit_hooks(
     else:
         # Handle as new hook command
         # Don't pass existing_hooks - let it re-read from disk to avoid
-        # overwriting changes made by gai loop
+        # overwriting changes made by gai axe
         success = add_hook_to_changespec(
             changespec.file_path,
             changespec.name,

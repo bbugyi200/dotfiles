@@ -3,7 +3,7 @@
 from unittest.mock import MagicMock, patch
 
 from ace.changespec import ChangeSpec, CommentEntry, HookEntry, HookStatusLine
-from ace.loop.hook_checks import (
+from ace.scheduler.hook_checks import (
     _wait_for_completion_marker,
     check_hooks,
 )
@@ -133,9 +133,10 @@ def test_wait_for_completion_marker_finds_on_first_retry() -> None:
 
     with (
         patch(
-            "ace.loop.hook_checks.check_hook_completion", return_value=completed_hook
+            "ace.scheduler.hook_checks.check_hook_completion",
+            return_value=completed_hook,
         ) as mock_check,
-        patch("ace.loop.hook_checks.time.sleep") as mock_sleep,
+        patch("ace.scheduler.hook_checks.time.sleep") as mock_sleep,
     ):
         result = _wait_for_completion_marker(cs, hook, max_retries=3, retry_delay=0.1)
 
@@ -158,10 +159,10 @@ def test_wait_for_completion_marker_finds_on_second_retry() -> None:
     # First call returns None, second call returns completed hook
     with (
         patch(
-            "ace.loop.hook_checks.check_hook_completion",
+            "ace.scheduler.hook_checks.check_hook_completion",
             side_effect=[None, completed_hook],
         ) as mock_check,
-        patch("ace.loop.hook_checks.time.sleep") as mock_sleep,
+        patch("ace.scheduler.hook_checks.time.sleep") as mock_sleep,
     ):
         result = _wait_for_completion_marker(cs, hook, max_retries=3, retry_delay=0.1)
 
@@ -179,9 +180,9 @@ def test_wait_for_completion_marker_returns_none_after_all_retries() -> None:
 
     with (
         patch(
-            "ace.loop.hook_checks.check_hook_completion", return_value=None
+            "ace.scheduler.hook_checks.check_hook_completion", return_value=None
         ) as mock_check,
-        patch("ace.loop.hook_checks.time.sleep") as mock_sleep,
+        patch("ace.scheduler.hook_checks.time.sleep") as mock_sleep,
     ):
         result = _wait_for_completion_marker(cs, hook, max_retries=3, retry_delay=0.2)
 
@@ -214,10 +215,11 @@ def test_check_hooks_logs_warning_on_merge_failure() -> None:
 
     with (
         patch(
-            "ace.loop.hook_checks.check_hook_completion", return_value=completed_hook
+            "ace.scheduler.hook_checks.check_hook_completion",
+            return_value=completed_hook,
         ),
-        patch("ace.loop.hook_checks.is_process_running", return_value=True),
-        patch("ace.loop.hook_checks.merge_hook_updates", return_value=False),
+        patch("ace.scheduler.hook_checks.is_process_running", return_value=True),
+        patch("ace.scheduler.hook_checks.merge_hook_updates", return_value=False),
     ):
         updates, hooks_started = check_hooks(cs, log)
 

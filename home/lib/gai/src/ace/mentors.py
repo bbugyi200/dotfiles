@@ -507,7 +507,7 @@ def clear_mentor_wip_flags(project_file: str, changespec_name: str) -> bool:
     """
     from mentor_config import get_all_mentor_profiles
 
-    from ace.loop.mentor_checks import profile_matches_any_commit
+    from ace.scheduler.mentor_checks import profile_matches_any_commit
 
     try:
         changespecs = parse_project_file(project_file)

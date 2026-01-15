@@ -346,7 +346,7 @@ def add_ready_to_mail_suffix(project_file: str, changespec_name: str) -> bool:
             return False
 
         # Only add suffix if base status is "Drafted" (prevents race condition
-        # where gai loop has stale changespec but file status is already "Mailed")
+        # where gai axe has stale changespec but file status is already "Mailed")
         if get_base_status(current_status) != "Drafted":
             return False
 

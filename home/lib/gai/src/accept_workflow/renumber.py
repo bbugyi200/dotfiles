@@ -25,7 +25,7 @@ def _build_entry_id_mapping(
     When multiple proposals are accepted, only the first proposal's hook status
     lines are promoted to the new entry ID. Other accepted proposals have their
     hook status lines "archived" by appending the new entry ID (e.g., "1a-3").
-    This ensures gai loop will run hooks for the new merged commits.
+    This ensures gai axe will run hooks for the new merged commits.
 
     Args:
         entries: Original entries.
@@ -80,7 +80,7 @@ def _update_hooks_with_id_mapping(
 
     For the first accepted proposal, status lines are promoted to the new entry ID.
     For other accepted proposals, status lines are archived by appending the new
-    entry ID (e.g., "(1a)" becomes "(1a-3)"). This ensures gai loop will run hooks
+    entry ID (e.g., "(1a)" becomes "(1a-3)"). This ensures gai axe will run hooks
     for the new merged commits since no status line exists for those entry IDs.
 
     Args:

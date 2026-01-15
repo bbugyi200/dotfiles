@@ -571,7 +571,7 @@ def rerun_delete_hooks_by_command(
     """Rerun/delete hooks by command string, reading fresh state from disk.
 
     This function reads fresh hooks from disk to avoid overwriting concurrent
-    changes made by other processes (e.g., gai loop updating hook statuses).
+    changes made by other processes (e.g., gai axe updating hook statuses).
 
     Args:
         project_file: Path to the project file.

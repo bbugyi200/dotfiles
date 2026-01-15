@@ -1,8 +1,8 @@
 """Core AxeScheduler class for schedule-based ChangeSpec monitoring.
 
 This module provides the main scheduler that uses the `schedule` library
-to run checks at different intervals, replacing the nested loop structure
-of gai loop.
+to run checks at different intervals for automatic hook execution, CL status
+updates, and workflow management.
 """
 
 import os
@@ -26,7 +26,8 @@ from ace.changespec import (
 from ace.cl_status import is_parent_submitted
 from ace.comments import is_timestamp_suffix
 from ace.constants import DEFAULT_ZOMBIE_TIMEOUT_SECONDS
-from ace.loop.checks_runner import (
+from ace.query import QueryExpr, evaluate_query, parse_query
+from ace.scheduler.checks_runner import (
     CHECK_TYPE_AUTHOR_COMMENTS,
     CHECK_TYPE_CL_SUBMITTED,
     CHECK_TYPE_REVIEWER_COMMENTS,
@@ -36,21 +37,20 @@ from ace.loop.checks_runner import (
     start_cl_submitted_check,
     start_reviewer_comments_check,
 )
-from ace.loop.comments_handler import check_comment_zombies
-from ace.loop.core import cleanup_orphaned_workspace_claims
-from ace.loop.hook_checks import check_hooks
-from ace.loop.mentor_checks import check_mentors
-from ace.loop.suffix_transforms import (
+from ace.scheduler.comments_handler import check_comment_zombies
+from ace.scheduler.hook_checks import check_hooks
+from ace.scheduler.mentor_checks import check_mentors
+from ace.scheduler.orphan_cleanup import cleanup_orphaned_workspace_claims
+from ace.scheduler.suffix_transforms import (
     acknowledge_terminal_status_markers,
     check_ready_to_mail,
     strip_old_entry_error_markers,
     transform_old_proposal_suffixes,
 )
-from ace.loop.workflows_runner import (
+from ace.scheduler.workflows_runner import (
     check_and_complete_workflows,
     start_stale_workflows,
 )
-from ace.query import QueryExpr, evaluate_query, parse_query
 from ace.sync_cache import should_check, update_last_checked
 from gai_utils import EASTERN_TZ
 from running_field import get_workspace_directory

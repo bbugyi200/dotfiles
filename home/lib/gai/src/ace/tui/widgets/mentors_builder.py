@@ -4,7 +4,7 @@ from rich.text import Text
 
 from ...changespec import ChangeSpec
 from ...hooks import format_timestamp_display
-from ...loop.mentor_runner import get_mentor_chat_path
+from ...scheduler.mentor_runner import get_mentor_chat_path
 from .hint_tracker import HintTracker
 from .suffix_formatting import append_suffix_to_text
 

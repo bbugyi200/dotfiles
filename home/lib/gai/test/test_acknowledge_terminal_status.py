@@ -9,7 +9,7 @@ from ace.changespec import (
     HookEntry,
     HookStatusLine,
 )
-from ace.loop.suffix_transforms import acknowledge_terminal_status_markers
+from ace.scheduler.suffix_transforms import acknowledge_terminal_status_markers
 
 
 def test_acknowledge_terminal_status_markers_skips_non_terminal() -> None:
@@ -89,7 +89,7 @@ def test_acknowledge_terminal_status_markers_processes_submitted() -> None:
     )
 
     with patch(
-        "ace.loop.suffix_transforms.update_commit_entry_suffix", return_value=True
+        "ace.scheduler.suffix_transforms.update_commit_entry_suffix", return_value=True
     ):
         result = acknowledge_terminal_status_markers(cs)
 
@@ -120,7 +120,7 @@ def test_acknowledge_terminal_status_markers_processes_reverted() -> None:
     )
 
     with patch(
-        "ace.loop.suffix_transforms.update_commit_entry_suffix", return_value=True
+        "ace.scheduler.suffix_transforms.update_commit_entry_suffix", return_value=True
     ):
         result = acknowledge_terminal_status_markers(cs)
 
@@ -183,7 +183,7 @@ def test_acknowledge_terminal_status_markers_processes_hooks() -> None:
     )
 
     with patch(
-        "ace.loop.suffix_transforms.update_changespec_hooks_field",
+        "ace.scheduler.suffix_transforms.update_changespec_hooks_field",
         return_value=True,
     ):
         result = acknowledge_terminal_status_markers(cs)
@@ -213,7 +213,9 @@ def test_acknowledge_terminal_status_markers_processes_comments() -> None:
         comments=[comment],
     )
 
-    with patch("ace.loop.suffix_transforms.clear_comment_suffix", return_value=True):
+    with patch(
+        "ace.scheduler.suffix_transforms.clear_comment_suffix", return_value=True
+    ):
         result = acknowledge_terminal_status_markers(cs)
 
     assert len(result) == 1
@@ -243,7 +245,7 @@ def test_acknowledge_terminal_status_markers_processes_history_running_agent() -
     )
 
     with patch(
-        "ace.loop.suffix_transforms.update_commit_entry_suffix", return_value=True
+        "ace.scheduler.suffix_transforms.update_commit_entry_suffix", return_value=True
     ):
         result = acknowledge_terminal_status_markers(cs)
 
@@ -279,7 +281,7 @@ def test_acknowledge_terminal_status_markers_processes_hooks_running_agent() -> 
     )
 
     with patch(
-        "ace.loop.suffix_transforms.update_changespec_hooks_field",
+        "ace.scheduler.suffix_transforms.update_changespec_hooks_field",
         return_value=True,
     ):
         result = acknowledge_terminal_status_markers(cs)
@@ -319,7 +321,7 @@ def test_acknowledge_terminal_status_markers_processes_hooks_empty_running_agent
     )
 
     with patch(
-        "ace.loop.suffix_transforms.update_changespec_hooks_field",
+        "ace.scheduler.suffix_transforms.update_changespec_hooks_field",
         return_value=True,
     ):
         result = acknowledge_terminal_status_markers(cs)
@@ -350,7 +352,9 @@ def test_acknowledge_terminal_status_markers_processes_comments_running_agent() 
         comments=[comment],
     )
 
-    with patch("ace.loop.suffix_transforms.clear_comment_suffix", return_value=True):
+    with patch(
+        "ace.scheduler.suffix_transforms.clear_comment_suffix", return_value=True
+    ):
         result = acknowledge_terminal_status_markers(cs)
 
     assert len(result) == 1

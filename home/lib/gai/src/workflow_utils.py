@@ -211,7 +211,7 @@ def add_test_hooks_if_available(
     target_list = test_targets.split()
 
     # Don't pass existing_hooks - let add_test_target_hooks_to_changespec read
-    # fresh state inside the lock to avoid race conditions with gai loop
+    # fresh state inside the lock to avoid race conditions with gai axe
     if add_test_target_hooks_to_changespec(project_file, cl_name, target_list):
         if verbose:
             print_status(f"Added {len(target_list)} test target hook(s).", "success")

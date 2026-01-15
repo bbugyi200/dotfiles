@@ -195,53 +195,6 @@ def create_parser() -> argparse.ArgumentParser:
         help="End timestamp for duration calculation (YYmmdd_HHMMSS format).",
     )
 
-    # --- loop ---
-    loop_parser = top_level_subparsers.add_parser(
-        "loop",
-        help="Continuously loop through all ChangeSpecs for status updates",
-    )
-    # Options for 'loop' (keep sorted alphabetically by long option name)
-    loop_parser.add_argument(
-        "--hook-interval",
-        type=int,
-        default=1,
-        help="Hook check interval in seconds (default: 1)",
-    )
-    loop_parser.add_argument(
-        "-i",
-        "--interval",
-        type=int,
-        default=300,
-        help="Polling interval in seconds (default: 300 = 5 minutes)",
-    )
-    loop_parser.add_argument(
-        "-r",
-        "--max-runners",
-        type=int,
-        default=4,
-        help="Maximum concurrent runners (hooks, agents, mentors) across all ChangeSpecs (default: 4)",
-    )
-    loop_parser.add_argument(
-        "-q",
-        "--query",
-        default="",
-        help="Query string for filtering ChangeSpecs (empty = all ChangeSpecs). "
-        "Examples: '\"feature\" AND %%d', '+myproject', '!!! OR @@@'",
-    )
-    loop_parser.add_argument(
-        "-v",
-        "--verbose",
-        action="store_true",
-        help="Show skipped ChangeSpecs in output",
-    )
-    loop_parser.add_argument(
-        "--zombie-timeout",
-        type=int,
-        default=7200,
-        help="Zombie detection timeout in seconds (default: 7200 = 2 hours). "
-        "Hooks and CRS workflows running longer than this are marked as ZOMBIE.",
-    )
-
     # --- restore ---
     restore_parser = top_level_subparsers.add_parser(
         "restore",

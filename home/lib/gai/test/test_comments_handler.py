@@ -4,7 +4,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 from ace.changespec import CommentEntry
-from ace.loop.comments_handler import check_comment_zombies
+from ace.scheduler.comments_handler import check_comment_zombies
 
 
 # Tests for check_comment_zombies
@@ -22,8 +22,8 @@ def test_check_comment_zombies_empty_comments(make_changespec: Any) -> None:
     assert result == []
 
 
-@patch("ace.loop.comments_handler.set_comment_suffix")
-@patch("ace.loop.comments_handler.is_comments_suffix_stale")
+@patch("ace.scheduler.comments_handler.set_comment_suffix")
+@patch("ace.scheduler.comments_handler.is_comments_suffix_stale")
 def test_check_comment_zombies_no_stale(
     mock_is_stale: MagicMock, mock_set_suffix: MagicMock, make_changespec: Any
 ) -> None:
@@ -46,8 +46,8 @@ def test_check_comment_zombies_no_stale(
     mock_set_suffix.assert_not_called()
 
 
-@patch("ace.loop.comments_handler.set_comment_suffix")
-@patch("ace.loop.comments_handler.is_comments_suffix_stale")
+@patch("ace.scheduler.comments_handler.set_comment_suffix")
+@patch("ace.scheduler.comments_handler.is_comments_suffix_stale")
 def test_check_comment_zombies_one_stale(
     mock_is_stale: MagicMock, mock_set_suffix: MagicMock, make_changespec: Any
 ) -> None:
@@ -77,8 +77,8 @@ def test_check_comment_zombies_one_stale(
     )
 
 
-@patch("ace.loop.comments_handler.set_comment_suffix")
-@patch("ace.loop.comments_handler.is_comments_suffix_stale")
+@patch("ace.scheduler.comments_handler.set_comment_suffix")
+@patch("ace.scheduler.comments_handler.is_comments_suffix_stale")
 def test_check_comment_zombies_multiple_mixed(
     mock_is_stale: MagicMock, mock_set_suffix: MagicMock, make_changespec: Any
 ) -> None:
@@ -103,8 +103,8 @@ def test_check_comment_zombies_multiple_mixed(
     mock_set_suffix.assert_called_once()
 
 
-@patch("ace.loop.comments_handler.set_comment_suffix")
-@patch("ace.loop.comments_handler.is_comments_suffix_stale")
+@patch("ace.scheduler.comments_handler.set_comment_suffix")
+@patch("ace.scheduler.comments_handler.is_comments_suffix_stale")
 def test_check_comment_zombies_all_stale(
     mock_is_stale: MagicMock, mock_set_suffix: MagicMock, make_changespec: Any
 ) -> None:
@@ -127,8 +127,8 @@ def test_check_comment_zombies_all_stale(
     assert mock_set_suffix.call_count == 2
 
 
-@patch("ace.loop.comments_handler.set_comment_suffix")
-@patch("ace.loop.comments_handler.is_comments_suffix_stale")
+@patch("ace.scheduler.comments_handler.set_comment_suffix")
+@patch("ace.scheduler.comments_handler.is_comments_suffix_stale")
 def test_check_comment_zombies_custom_timeout(
     mock_is_stale: MagicMock, mock_set_suffix: MagicMock, make_changespec: Any
 ) -> None:
