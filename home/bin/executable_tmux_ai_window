@@ -1,15 +1,14 @@
 #!/bin/bash
 
-current_window=$(tmux display-message -p '#W')
+# Get all window names in the current session
+existing_windows=$(tmux list-windows -F '#W')
 
-# Check if current window is an ai variant (ai, ai2, ai3, etc.)
-if [[ ! "$current_window" =~ ^ai[0-9]*$ ]]; then
+# Check if any window is an ai variant (ai, ai2, ai3, etc.)
+if ! echo "$existing_windows" | grep -qE "^ai[0-9]*$"; then
+    # No ai windows exist, create 'ai'
     tmux new-window -n ai "claude --dangerously-skip-permissions"
 else
-    # Get all window names and find next available ai number
-    existing_windows=$(tmux list-windows -F '#W')
-
-    # Start checking from 2 (ai, ai2, ai3, ...)
+    # At least one ai window exists, find next available number
     n=2
     while echo "$existing_windows" | grep -q "^ai${n}$"; do
         ((n++))
