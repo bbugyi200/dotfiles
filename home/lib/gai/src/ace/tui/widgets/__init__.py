@@ -11,7 +11,6 @@ from .changespec_list import ChangeSpecList
 from .hint_input_bar import HintInputBar
 from .keybinding_footer import KeybindingFooter
 from .prompt_input_bar import PromptInputBar
-from .saved_queries_panel import SavedQueriesPanel
 from .tab_bar import TabBar
 
 __all__ = [
@@ -26,7 +25,6 @@ __all__ = [
     "HintInputBar",
     "KeybindingFooter",
     "PromptInputBar",
-    "SavedQueriesPanel",
     "SearchQueryPanel",
     "TabBar",
 ]

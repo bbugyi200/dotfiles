@@ -459,7 +459,6 @@ class BaseActionsMixin:
                     if slot_specified:
                         if delete_query(slot_specified):
                             self.notify(f"Deleted query from slot {slot_specified}")  # type: ignore[attr-defined]
-                            self._refresh_saved_queries_panel()  # type: ignore[attr-defined]
                         else:
                             self.notify("Failed to delete query", severity="error")  # type: ignore[attr-defined]
                     else:
@@ -486,7 +485,6 @@ class BaseActionsMixin:
 
                 if save_query(slot, canonical):
                     self.notify(f"Saved to slot {slot}: {canonical}")  # type: ignore[attr-defined]
-                    self._refresh_saved_queries_panel()  # type: ignore[attr-defined]
                 else:
                     self.notify("Failed to save query", severity="error")  # type: ignore[attr-defined]
             else:

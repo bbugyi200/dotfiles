@@ -40,7 +40,6 @@ from .widgets import (
     ChangeSpecInfoPanel,
     ChangeSpecList,
     KeybindingFooter,
-    SavedQueriesPanel,
     SearchQueryPanel,
     TabBar,
 )
@@ -125,6 +124,8 @@ class AceApp(
         # Scroll to top/bottom (Axe tab)
         Binding("g", "scroll_to_top", "Top", show=False),
         Binding("shift+g", "scroll_to_bottom", "Bottom", show=False),
+        # Help
+        Binding("question_mark", "show_help", "Help", show=False),
     ]
 
     # Reactive properties
@@ -211,7 +212,6 @@ class AceApp(
                     yield ChangeSpecInfoPanel(id="info-panel")
                     yield ChangeSpecList(id="list-panel")
                 with Vertical(id="detail-container"):
-                    yield SavedQueriesPanel(id="saved-queries-panel")
                     yield SearchQueryPanel(id="search-query-panel")
                     with VerticalScroll(id="detail-scroll"):
                         yield ChangeSpecDetail(id="detail-panel")
@@ -235,9 +235,6 @@ class AceApp(
         # Load initial changespecs and save as last query
         self._load_changespecs()
         self._save_current_query()
-
-        # Initialize saved queries panel
-        self._refresh_saved_queries_panel()
 
         # Initialize axe status
         self._load_axe_status()

@@ -79,13 +79,6 @@ class ChangeSpecMixin:
         self.current_idx = new_idx
         self._refresh_display()
 
-    def _refresh_saved_queries_panel(self) -> None:
-        """Refresh the saved queries panel."""
-        from ..widgets import SavedQueriesPanel
-
-        panel = self.query_one("#saved-queries-panel", SavedQueriesPanel)  # type: ignore[attr-defined]
-        panel.refresh_queries(self.canonical_query_string)  # type: ignore[attr-defined]
-
     def _save_current_query(self) -> None:
         """Save the current query as the last used query."""
         from ...saved_queries import save_last_query
@@ -173,7 +166,6 @@ class ChangeSpecMixin:
 
         list_widget.update_list(self.changespecs, self.current_idx)
         search_panel.update_query(self.canonical_query_string)  # type: ignore[attr-defined]
-        self._refresh_saved_queries_panel()
 
         if self.changespecs:
             changespec = self.changespecs[self.current_idx]

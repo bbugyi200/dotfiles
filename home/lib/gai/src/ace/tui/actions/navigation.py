@@ -198,3 +198,16 @@ class NavigationMixin:
         else:
             # Invalid key - cancel fold mode
             return True
+
+    # --- Help Action ---
+
+    def action_show_help(self) -> None:
+        """Show the help modal with all keybindings."""
+        from ..modals import HelpModal
+
+        self.push_screen(  # type: ignore[attr-defined]
+            HelpModal(
+                current_tab=self.current_tab,
+                active_query=self.canonical_query_string,  # type: ignore[attr-defined]
+            )
+        )

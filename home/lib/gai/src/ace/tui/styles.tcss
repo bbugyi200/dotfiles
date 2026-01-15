@@ -49,13 +49,6 @@
     height: 100%;
 }
 
-#saved-queries-panel {
-    height: auto;
-    max-height: 3;
-    border: solid $secondary;
-    padding: 0 1;
-}
-
 #search-query-panel {
     height: auto;
     max-height: 3;
@@ -660,4 +653,44 @@ BugInputModal Button {
 
 #axe-output-section {
     height: auto;
+}
+
+/* ===== Help Modal Styling ===== */
+
+HelpModal {
+    align: center middle;
+}
+
+HelpModal > Container {
+    width: 70;
+    height: auto;
+    max-height: 85%;
+    border: double $primary;
+    background: $surface;
+    padding: 1 2;
+}
+
+HelpModal #help-title {
+    text-align: center;
+    height: auto;
+    margin-bottom: 1;
+}
+
+HelpModal #help-content-scroll {
+    height: auto;
+    max-height: 100%;
+    scrollbar-gutter: stable;
+}
+
+HelpModal #help-content {
+    height: auto;
+}
+
+HelpModal #help-footer {
+    text-align: center;
+    color: $text-muted;
+    height: auto;
+    margin-top: 1;
+    border-top: solid $secondary;
+    padding-top: 1;
 }
