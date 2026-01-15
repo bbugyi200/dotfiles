@@ -40,6 +40,12 @@ class AxeMixin:
         else:
             self._start_axe()
 
+    def action_stop_axe_and_quit(self) -> None:
+        """Stop the axe daemon and quit the application."""
+        if self.axe_running:
+            self._stop_axe()
+        self.exit()  # type: ignore[attr-defined]
+
     def _start_axe(self) -> None:
         """Start the axe daemon."""
         try:

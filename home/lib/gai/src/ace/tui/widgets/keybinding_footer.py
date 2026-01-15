@@ -97,6 +97,7 @@ class KeybindingFooter(Static):
         # Start/stop axe
         if self._axe_running:
             bindings.append(("X", "stop axe"))
+            bindings.append(("Q", "stop & quit"))
         else:
             bindings.append(("X", "start axe"))
 
@@ -159,6 +160,7 @@ class KeybindingFooter(Static):
         # Start/stop axe (global)
         if self._axe_running:
             bindings.append(("X", "stop axe"))
+            bindings.append(("Q", "stop & quit"))
         else:
             bindings.append(("X", "start axe"))
 
@@ -265,6 +267,7 @@ class KeybindingFooter(Static):
         # Start/stop axe (global)
         if self._axe_running:
             bindings.append(("X", "stop axe"))
+            bindings.append(("Q", "stop & quit"))
         else:
             bindings.append(("X", "start axe"))
 

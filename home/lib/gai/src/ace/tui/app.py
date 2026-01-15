@@ -115,6 +115,7 @@ class AceApp(
         Binding("shift+tab", "prev_tab", "Prev Tab", show=False, priority=True),
         # Axe control (global)
         Binding("X", "toggle_axe", "Start/Stop Axe", show=False),
+        Binding("Q", "stop_axe_and_quit", "Stop & Quit", show=False),
         # Agent actions (Agents tab only)
         Binding("space", "start_custom_agent", "Run Agent", show=False),
         Binding("x", "kill_agent", "Kill", show=False),
