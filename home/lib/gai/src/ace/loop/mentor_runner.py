@@ -86,6 +86,18 @@ def _start_single_mentor(
     project_basename = changespec.project_basename
     timestamp = generate_timestamp()
 
+    # EARLY REGISTRATION: Mark as STARTING before expensive workspace operations
+    # This prevents other loop cycles from starting the same mentor (race condition fix)
+    set_mentor_status(
+        changespec.file_path,
+        changespec.name,
+        entry_id,
+        profile.profile_name,
+        mentor_name,
+        status="STARTING",
+        timestamp=timestamp,
+    )
+
     # Get workspace info (don't claim yet - need subprocess PID first)
     workspace_num = get_first_available_loop_workspace(changespec.file_path)
     workflow_name = f"loop(mentor)-{mentor_name}-{timestamp}"
@@ -95,6 +107,17 @@ def _start_single_mentor(
             workspace_num, project_basename
         )
     except RuntimeError as e:
+        set_mentor_status(
+            changespec.file_path,
+            changespec.name,
+            entry_id,
+            profile.profile_name,
+            mentor_name,
+            status="FAILED",
+            timestamp=timestamp,
+            suffix="workspace_dir_error",
+            suffix_type="error",
+        )
         log(
             f"[WS#{workspace_num}] Warning: Failed to get workspace directory: {e}",
             "yellow",
@@ -102,6 +125,17 @@ def _start_single_mentor(
         return None
 
     if not os.path.isdir(workspace_dir):
+        set_mentor_status(
+            changespec.file_path,
+            changespec.name,
+            entry_id,
+            profile.profile_name,
+            mentor_name,
+            status="FAILED",
+            timestamp=timestamp,
+            suffix="workspace_not_found",
+            suffix_type="error",
+        )
         log(
             f"[WS#{workspace_num}] Warning: Workspace directory not found: {workspace_dir}",
             "yellow",
@@ -131,6 +165,17 @@ def _start_single_mentor(
             error_output = (
                 result.stderr.strip() or result.stdout.strip() or "no error output"
             )
+            set_mentor_status(
+                changespec.file_path,
+                changespec.name,
+                entry_id,
+                profile.profile_name,
+                mentor_name,
+                status="FAILED",
+                timestamp=timestamp,
+                suffix="bb_hg_update_failed",
+                suffix_type="error",
+            )
             log(
                 f"[WS#{workspace_num}] Warning: bb_hg_update failed for "
                 f"{changespec.name}: {error_output}",
@@ -138,6 +183,17 @@ def _start_single_mentor(
             )
             return None
     except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+        set_mentor_status(
+            changespec.file_path,
+            changespec.name,
+            entry_id,
+            profile.profile_name,
+            mentor_name,
+            status="FAILED",
+            timestamp=timestamp,
+            suffix="bb_hg_update_error",
+            suffix_type="error",
+        )
         log(
             f"[WS#{workspace_num}] Warning: bb_hg_update error for "
             f"{changespec.name}: {e}",
@@ -180,6 +236,17 @@ def _start_single_mentor(
             )
             pid = proc.pid
     except Exception as e:
+        set_mentor_status(
+            changespec.file_path,
+            changespec.name,
+            entry_id,
+            profile.profile_name,
+            mentor_name,
+            status="FAILED",
+            timestamp=timestamp,
+            suffix="subprocess_start_failed",
+            suffix_type="error",
+        )
         log(
             f"[WS#{workspace_num}] Warning: Failed to start mentor subprocess: {e}",
             "yellow",
@@ -194,6 +261,17 @@ def _start_single_mentor(
         pid,
         changespec.name,
     ):
+        set_mentor_status(
+            changespec.file_path,
+            changespec.name,
+            entry_id,
+            profile.profile_name,
+            mentor_name,
+            status="FAILED",
+            timestamp=timestamp,
+            suffix="workspace_claim_failed",
+            suffix_type="error",
+        )
         log(
             f"[WS#{workspace_num}] Warning: Failed to claim workspace for mentor "
             f"{mentor_name} on {changespec.name}, terminating subprocess",
