@@ -57,7 +57,7 @@ lint-python-lite: $(VENV_DIR) ## Run core Python linters (fast).
 .PHONY: lint-python
 lint-python: lint-python-lite ## Run all Python linters on dotfiles.
 	@printf "\n---------- Checking Python file line limits... ----------\n"
-	./home/bin/executable_pylimit home/lib 1000 875 750
+	./home/bin/executable_pylimit home/lib 1000 850 700
 	@printf "\n---------- Checking for unused Python definitions... ----------\n"
 	$(VENV_PYTHON) home/bin/executable_pyvision home/lib/gai/src
 	$(VENV_PYTHON) home/bin/executable_pyvision home/lib/xfile
