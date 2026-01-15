@@ -1,4 +1,4 @@
-"""Workflow starting/launching logic for the loop command."""
+"""Workflow starting/launching logic for the axe scheduler."""
 
 import os
 import subprocess
@@ -200,7 +200,7 @@ def _start_crs_workflow(
         os.path.dirname(
             os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         ),
-        "loop_crs_runner.py",
+        "axe_crs_runner.py",
     )
 
     # Start the background process first to get actual PID
@@ -382,7 +382,7 @@ def start_fix_hook_workflow(
         os.path.dirname(
             os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         ),
-        "loop_fix_hook_runner.py",
+        "axe_fix_hook_runner.py",
     )
 
     # Start the background process first to get actual PID
@@ -509,7 +509,7 @@ def _start_summarize_hook_workflow(
         os.path.dirname(
             os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         ),
-        "loop_summarize_hook_runner.py",
+        "axe_summarize_hook_runner.py",
     )
 
     try:

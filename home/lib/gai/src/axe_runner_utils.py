@@ -1,4 +1,4 @@
-"""Shared utilities for loop runner scripts."""
+"""Shared utilities for axe runner scripts."""
 
 import subprocess
 from collections.abc import Callable
@@ -86,7 +86,7 @@ def create_proposal_from_changes(
     return None, 1
 
 
-def finalize_loop_runner(
+def finalize_axe_runner(
     project_file: str,
     changespec_name: str,
     workspace_num: int,
@@ -95,7 +95,7 @@ def finalize_loop_runner(
     exit_code: int,
     update_suffix_fn: Callable[[ChangeSpec, str, str | None, int], None],
 ) -> None:
-    """Common finalization logic for loop runners.
+    """Common finalization logic for axe runners.
 
     Args:
         project_file: Path to the project file.

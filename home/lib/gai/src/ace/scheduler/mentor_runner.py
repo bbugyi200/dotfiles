@@ -1,4 +1,4 @@
-"""Mentor starting and workspace management for the loop workflow."""
+"""Mentor starting and workspace management for the axe scheduler."""
 
 import os
 import subprocess
@@ -207,7 +207,7 @@ def _start_single_mentor(
     # Build the runner script path (use abspath to handle relative __file__)
     runner_script = os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-        "loop_mentor_runner.py",
+        "axe_mentor_runner.py",
     )
 
     # Start the background process first to get actual PID

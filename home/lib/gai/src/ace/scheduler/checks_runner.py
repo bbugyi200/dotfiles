@@ -1,4 +1,4 @@
-"""Background periodic checks for the loop workflow (is_cl_submitted, critique_comments).
+"""Background periodic checks for the axe scheduler (is_cl_submitted, critique_comments).
 
 This module provides non-blocking execution of CL status and comment checks,
 following the same pattern as hooks (subprocess.Popen + file-based polling).

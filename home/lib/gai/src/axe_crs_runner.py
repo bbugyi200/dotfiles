@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Standalone CRS workflow runner for gai loop background execution.
+"""Standalone CRS workflow runner for gai axe background execution.
 
 This script runs the CRS workflow in the background and writes completion
-markers to the output file for the loop to detect when finished.
+markers to the output file for the axe scheduler to detect when finished.
 
 Usage:
-    python3 loop_crs_runner.py <changespec_name> <project_file> <comments_file> \
+    python3 axe_crs_runner.py <changespec_name> <project_file> <comments_file> \
         <reviewer_type> <workspace_dir> <output_file> <workspace_num> <workflow_name> \
         <timestamp>
 
@@ -22,12 +22,12 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ace.changespec import ChangeSpec
 from ace.comments import set_comment_suffix
+from axe_runner_utils import (
+    create_proposal_from_changes,
+    finalize_axe_runner,
+)
 from crs_workflow import CrsWorkflow
 from gai_utils import shorten_path
-from loop_runner_utils import (
-    create_proposal_from_changes,
-    finalize_loop_runner,
-)
 
 
 def _update_comment_suffix(
@@ -154,7 +154,7 @@ def main() -> int:
 
     finally:
         # Finalize: update suffix, release workspace, write completion marker
-        finalize_loop_runner(
+        finalize_axe_runner(
             project_file=project_file,
             changespec_name=changespec_name,
             workspace_num=workspace_num,

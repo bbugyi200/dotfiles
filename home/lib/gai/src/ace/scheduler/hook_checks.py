@@ -1,4 +1,4 @@
-"""Hook checking logic for the loop workflow.
+"""Hook checking logic for the axe scheduler.
 
 This module handles determining when hooks need checking and processing
 hook completion/zombie detection.

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Standalone fix-hook workflow runner for gai loop background execution.
+"""Standalone fix-hook workflow runner for gai axe background execution.
 
 This script runs the fix-hook workflow in the background and writes completion
-markers to the output file for the loop to detect when finished.
+markers to the output file for the axe scheduler to detect when finished.
 
 Usage:
-    python3 loop_fix_hook_runner.py <changespec_name> <project_file> <hook_command> \
+    python3 axe_fix_hook_runner.py <changespec_name> <project_file> <hook_command> \
         <hook_output_path> <workspace_dir> <output_file> <workspace_num> \
         <workflow_name> <last_history_id> <timestamp>
 
@@ -23,12 +23,12 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ace.changespec import ChangeSpec
 from ace.hooks import contract_test_target_command, set_hook_suffix
+from axe_runner_utils import (
+    create_proposal_from_changes,
+    finalize_axe_runner,
+)
 from gai_utils import shorten_path, strip_hook_prefix
 from gemini_wrapper import invoke_agent
-from loop_runner_utils import (
-    create_proposal_from_changes,
-    finalize_loop_runner,
-)
 
 
 def _update_hook_suffix(
@@ -213,7 +213,7 @@ def main() -> int:
 
     finally:
         # Finalize: update suffix, release workspace, write completion marker
-        finalize_loop_runner(
+        finalize_axe_runner(
             project_file=project_file,
             changespec_name=changespec_name,
             workspace_num=workspace_num,

@@ -1,4 +1,4 @@
-"""Comment zombie detection for the loop workflow.
+"""Comment zombie detection for the axe scheduler.
 
 This module handles detecting stale comment entries (ZOMBIE marking).
 """

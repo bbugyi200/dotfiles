@@ -1,4 +1,4 @@
-"""Suffix transformation logic for the loop workflow.
+"""Suffix transformation logic for the axe scheduler.
 
 This module handles:
 - Transforming old proposal suffixes (error -> removed)

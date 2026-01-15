@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Background mentor runner for gai loop.
+"""Background mentor runner for gai axe.
 
-This script is launched by the loop workflow to run mentors in the background.
+This script is launched by the axe scheduler to run mentors in the background.
 It handles workspace cleanup and status updates upon completion.
 """
 

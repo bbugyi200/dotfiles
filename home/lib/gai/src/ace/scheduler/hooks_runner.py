@@ -1,4 +1,4 @@
-"""Hook starting and workspace management for the loop workflow."""
+"""Hook starting and workspace management for the axe scheduler."""
 
 import os
 import subprocess

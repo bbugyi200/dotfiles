@@ -1,4 +1,4 @@
-"""Workflow completion handling logic for the loop command."""
+"""Workflow completion handling logic for the axe scheduler."""
 
 import subprocess
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Standalone summarize-hook workflow runner for gai loop background execution.
+"""Standalone summarize-hook workflow runner for gai axe background execution.
 
 This script runs the summarize workflow in the background and writes the summary
 suffix back to the hook status line. Unlike fix-hook, this workflow does NOT
@@ -7,7 +7,7 @@ require a workspace since it only reads the hook output file and calls the
 summarize agent.
 
 Usage:
-    python3 loop_summarize_hook_runner.py <changespec_name> <project_file> \
+    python3 axe_summarize_hook_runner.py <changespec_name> <project_file> \
         <hook_command> <hook_output_path> <output_file> <entry_id> <timestamp>
 
 Output file will contain:
@@ -25,7 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ace.hooks import set_hook_suffix
 from summarize_utils import get_file_summary
 
-# Workflow completion marker (same pattern as other loop runners)
+# Workflow completion marker (same pattern as other axe runners)
 WORKFLOW_COMPLETE_MARKER = "===WORKFLOW_COMPLETE=== PROPOSAL_ID: "
 
 

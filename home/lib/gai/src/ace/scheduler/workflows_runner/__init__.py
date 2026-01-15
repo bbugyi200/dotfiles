@@ -1,7 +1,7 @@
-"""Workflow background execution for the loop command (crs and fix-hook).
+"""Workflow background execution for the axe scheduler (crs and fix-hook).
 
 This package provides functionality to start, monitor, and complete
-background workflows for the loop command.
+background workflows for the axe scheduler.
 """
 
 from .completer import check_and_complete_workflows

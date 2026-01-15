@@ -1,4 +1,4 @@
-"""Workflow completion detection logic for the loop command."""
+"""Workflow completion detection logic for the axe scheduler."""
 
 import os
 import re

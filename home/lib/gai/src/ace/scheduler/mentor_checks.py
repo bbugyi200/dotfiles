@@ -1,4 +1,4 @@
-"""Mentor workflow checking logic for the loop command."""
+"""Mentor workflow checking logic for the axe scheduler."""
 
 import fnmatch
 import os
