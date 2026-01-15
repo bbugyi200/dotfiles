@@ -72,7 +72,7 @@ class KeybindingFooter(Horizontal):
         """
         text = Text()
         if self._axe_starting:
-            text.append(" STARTING ", style="bold black on yellow")
+            text.append(" STARTING ", style="bold black on rgb(255,255,0)")
         elif self._axe_stopping:
             text.append(" STOPPING ", style="bold black on rgb(255,165,0)")
         elif self._axe_running:
