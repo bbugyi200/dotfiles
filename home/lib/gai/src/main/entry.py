@@ -235,6 +235,24 @@ def main() -> NoReturn:
         app.run()
         sys.exit(0)
 
+    # --- axe ---
+    if args.command == "axe":
+        from axe import AxeScheduler
+
+        try:
+            scheduler = AxeScheduler(
+                full_check_interval=args.full_check_interval,
+                hook_interval=args.hook_interval,
+                zombie_timeout_seconds=args.zombie_timeout,
+                max_runners=args.max_runners,
+                query=args.query,
+            )
+        except QueryParseError as e:
+            print(f"Error: Invalid query: {e}")
+            sys.exit(1)
+        success = scheduler.run()
+        sys.exit(0 if success else 1)
+
     # --- xprompt ---
     if args.command == "xprompt":
         from gemini_wrapper import (

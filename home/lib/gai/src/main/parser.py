@@ -49,6 +49,46 @@ def create_parser() -> argparse.ArgumentParser:
         help="Auto-refresh interval in seconds (default: 10, 0 to disable)",
     )
 
+    # --- axe ---
+    axe_parser = top_level_subparsers.add_parser(
+        "axe",
+        help="Schedule-based daemon for continuous ChangeSpec status updates",
+    )
+    # Options for 'axe' (keep sorted alphabetically by long option name)
+    axe_parser.add_argument(
+        "--full-check-interval",
+        type=int,
+        default=300,
+        help="Full check interval in seconds (default: 300 = 5 minutes)",
+    )
+    axe_parser.add_argument(
+        "--hook-interval",
+        type=int,
+        default=1,
+        help="Hook check interval in seconds (default: 1)",
+    )
+    axe_parser.add_argument(
+        "-r",
+        "--max-runners",
+        type=int,
+        default=5,
+        help="Maximum concurrent runners (hooks, agents, mentors) globally (default: 5)",
+    )
+    axe_parser.add_argument(
+        "-q",
+        "--query",
+        default="",
+        help="Query string for filtering ChangeSpecs (empty = all ChangeSpecs). "
+        "Examples: '\"feature\" AND %%d', '+myproject', '!!! OR @@@'",
+    )
+    axe_parser.add_argument(
+        "--zombie-timeout",
+        type=int,
+        default=7200,
+        help="Zombie detection timeout in seconds (default: 7200 = 2 hours). "
+        "Hooks and CRS workflows running longer than this are marked as ZOMBIE.",
+    )
+
     # --- amend ---
     amend_parser = top_level_subparsers.add_parser(
         "amend",

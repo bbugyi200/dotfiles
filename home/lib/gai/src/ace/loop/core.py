@@ -62,7 +62,7 @@ from .workflows_runner import (
 )
 
 
-def _cleanup_orphaned_workspace_claims(
+def cleanup_orphaned_workspace_claims(
     all_changespecs: list[ChangeSpec],
     log_fn: Callable[[str, str | None], None] | None = None,
 ) -> int:
@@ -436,7 +436,7 @@ class LoopWorkflow:
         all_changespecs = find_all_changespecs()
 
         # Clean up orphaned workspace claims for reverted CLs with dead PIDs
-        _cleanup_orphaned_workspace_claims(all_changespecs, self._log)
+        cleanup_orphaned_workspace_claims(all_changespecs, self._log)
 
         update_count = 0
 
