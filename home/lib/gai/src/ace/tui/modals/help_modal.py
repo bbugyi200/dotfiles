@@ -220,16 +220,16 @@ class HelpModal(ModalScreen[None]):
         """Build the main content with keybinding sections."""
         text = Text()
 
+        # Add saved queries and history sections at the top for CLs tab
+        if self._current_tab == "changespecs":
+            self._add_saved_queries_section(text)
+            self._add_query_history_section(text)
+
         # Get bindings for current tab
         bindings = self._get_bindings_for_tab()
 
         for section_name, section_bindings in bindings:
             self._add_section(text, section_name, section_bindings)
-
-        # Add saved queries and history sections for CLs tab
-        if self._current_tab == "changespecs":
-            self._add_saved_queries_section(text)
-            self._add_query_history_section(text)
 
         return text
 
