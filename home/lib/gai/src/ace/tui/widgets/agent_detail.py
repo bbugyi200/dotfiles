@@ -567,13 +567,20 @@ class AgentDetail(Static):
         diff_scroll = self.query_one("#agent-diff-scroll", VerticalScroll)
 
         if message.has_diff:
-            # Show diff panel with 30/70 split
+            # Show diff panel
             diff_scroll.remove_class("hidden")
             prompt_scroll.remove_class("expanded")
+            # Restore layout preference if swapped
+            if self._layout_swapped:
+                prompt_scroll.add_class("layout-priority")
+                diff_scroll.add_class("layout-secondary")
         else:
-            # Hide diff panel and expand prompt
+            # Hide diff panel and expand prompt to full height
             diff_scroll.add_class("hidden")
             prompt_scroll.add_class("expanded")
+            # Remove layout classes so expanded (100%) takes effect
+            prompt_scroll.remove_class("layout-priority")
+            diff_scroll.remove_class("layout-secondary")
 
     def toggle_layout(self) -> None:
         """Toggle between default (30/70) and swapped (70/30) layout."""
