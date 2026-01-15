@@ -125,6 +125,9 @@ class AceApp(
         Binding("G", "scroll_to_bottom", "Bottom", show=False),
         # Help
         Binding("question_mark", "show_help", "Help", show=False),
+        # Query history navigation
+        Binding("circumflex_accent", "prev_query", "Prev Query", show=False),
+        Binding("underscore", "next_query", "Next Query", show=False),
     ]
 
     # Reactive properties
@@ -185,6 +188,11 @@ class AceApp(
         self._axe_metrics: AxeMetrics | None = None
         self._axe_output: str = ""
         self._axe_pinned_to_bottom: bool = False
+
+        # Query history stacks for prev/next navigation
+        from ..query_history import load_query_history
+
+        self._query_history = load_query_history()
 
         # Set global model size override in environment if specified
         if model_size_override:

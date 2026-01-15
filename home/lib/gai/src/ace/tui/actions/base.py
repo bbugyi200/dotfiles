@@ -543,11 +543,17 @@ class BaseActionsMixin:
                     self.notify("Failed to save query", severity="error")  # type: ignore[attr-defined]
             else:
                 # Normal query update (existing logic)
+                from ...query_history import push_to_prev_stack, save_query_history
+
                 try:
                     new_parsed = parse_query(new_query)
                     new_canonical = to_canonical_string(new_parsed)
                     # Only update if the canonical form changed
                     if new_canonical != current_canonical:
+                        # Push current query to prev stack before changing
+                        push_to_prev_stack(current_canonical, self._query_history)  # type: ignore[attr-defined]
+                        save_query_history(self._query_history)  # type: ignore[attr-defined]
+
                         self.query_string = new_query
                         self.parsed_query = new_parsed
                         self._load_changespecs()  # type: ignore[attr-defined]

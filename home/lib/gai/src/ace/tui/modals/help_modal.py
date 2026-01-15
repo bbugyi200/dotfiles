@@ -8,6 +8,7 @@ from textual.containers import Container, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Static
 
+from ...query_history import load_query_history
 from ...saved_queries import KEY_ORDER, load_saved_queries
 from ..widgets.changespec_detail import build_query_text
 
@@ -61,6 +62,8 @@ _CLS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
         [
             ("/", "Edit search query"),
             ("0-9", "Load saved query"),
+            ("^", "Previous query"),
+            ("_", "Next query"),
         ],
     ),
     (
@@ -221,9 +224,10 @@ class HelpModal(ModalScreen[None]):
         for section_name, section_bindings in bindings:
             self._add_section(text, section_name, section_bindings)
 
-        # Add saved queries section for CLs tab
+        # Add saved queries and history sections for CLs tab
         if self._current_tab == "changespecs":
             self._add_saved_queries_section(text)
+            self._add_query_history_section(text)
 
         return text
 
@@ -345,6 +349,100 @@ class HelpModal(ModalScreen[None]):
         text.append("  \u2514", style="dim #FFD700")
         text.append("\u2500" * 54, style="dim #FFD700")
         text.append("\u2518", style="dim #FFD700")
+        text.append("\n")
+
+    def _add_query_history_section(self, text: Text) -> None:
+        """Add the query history stacks section (CLs tab only).
+
+        Shows last 5 entries from each stack with visual indicators.
+
+        Args:
+            text: The Text object to append to.
+        """
+        stacks = load_query_history()
+
+        # Section header - use dark cyan color (different from saved queries gold)
+        text.append("\n")
+        text.append("  \u250c\u2500 ", style="dim #00CED1")
+        text.append("Query History", style="bold #00CED1")
+        text.append(" ", style="")
+        remaining = 50 - len("Query History")
+        text.append("\u2500" * remaining + "\u2510", style="dim #00CED1")
+        text.append("\n")
+
+        # Show last 5 from prev stack (most recent first = reversed)
+        prev_display = list(reversed(stacks.prev[-5:]))
+        next_display = list(reversed(stacks.next[-5:]))
+
+        if not prev_display and not next_display:
+            text.append("  \u2502  ", style="dim #00CED1")
+            text.append("No query history", style="dim italic")
+            text.append(" " * 37, style="")
+            text.append(" \u2502", style="dim #00CED1")
+            text.append("\n")
+        else:
+            # Prev stack section
+            if prev_display:
+                text.append("  \u2502  ", style="dim #00CED1")
+                text.append("\u25c0 Previous (^)", style="bold #87D7FF")
+                text.append(" " * 39, style="")
+                text.append(" \u2502", style="dim #00CED1")
+                text.append("\n")
+
+                for i, query in enumerate(prev_display):
+                    self._add_history_entry(text, query, i + 1, "#00CED1")
+
+            # Next stack section
+            if next_display:
+                text.append("  \u2502  ", style="dim #00CED1")
+                text.append("\u25b6 Next (_)", style="bold #87D7FF")
+                text.append(" " * 44, style="")
+                text.append(" \u2502", style="dim #00CED1")
+                text.append("\n")
+
+                for i, query in enumerate(next_display):
+                    self._add_history_entry(text, query, i + 1, "#00CED1")
+
+        # Section footer
+        text.append("  \u2514", style="dim #00CED1")
+        text.append("\u2500" * 54, style="dim #00CED1")
+        text.append("\u2518", style="dim #00CED1")
+        text.append("\n")
+
+    def _add_history_entry(
+        self,
+        text: Text,
+        query: str,
+        position: int,
+        border_color: str,
+    ) -> None:
+        """Add a single history entry line.
+
+        Args:
+            text: The Text object to append to.
+            query: The query string.
+            position: 1-based position in the list (for display).
+            border_color: Color for the border characters.
+        """
+        text.append("  \u2502    ", style=f"dim {border_color}")
+
+        # Position indicator (dimmed)
+        text.append(f"{position}. ", style="dim")
+
+        # Query with syntax highlighting (truncated if needed)
+        max_query_len = 45
+        if len(query) > max_query_len:
+            display_query = query[: max_query_len - 3] + "..."
+        else:
+            display_query = query
+
+        text.append_text(build_query_text(display_query))
+
+        # Padding and right border
+        padding = max_query_len - len(display_query) + 1
+        if padding > 0:
+            text.append(" " * padding, style="")
+        text.append(" \u2502", style=f"dim {border_color}")
         text.append("\n")
 
     def action_close(self) -> None:

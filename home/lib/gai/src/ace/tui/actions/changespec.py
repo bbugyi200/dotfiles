@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Literal
 if TYPE_CHECKING:
     from ...changespec import ChangeSpec
     from ...query.types import QueryExpr
+    from ...query_history import QueryHistoryStacks
 
 # Type alias for tab names
 TabName = Literal["changespecs", "agents", "axe"]
@@ -30,6 +31,7 @@ class ChangeSpecMixin:
     _hint_mappings: dict[int, str]
     _hook_hint_to_idx: dict[int, int]
     _hint_to_entry_id: dict[int, str]
+    _query_history: QueryHistoryStacks
 
     def _load_changespecs(self) -> None:
         """Load and filter changespecs from disk."""
@@ -91,7 +93,8 @@ class ChangeSpecMixin:
         Args:
             slot: The slot number ("0"-"9").
         """
-        from ...query import parse_query
+        from ...query import parse_query, to_canonical_string
+        from ...query_history import push_to_prev_stack, save_query_history
         from ...saved_queries import load_saved_queries
 
         queries = load_saved_queries()
@@ -101,7 +104,16 @@ class ChangeSpecMixin:
 
         query = queries[slot]
         try:
-            self.parsed_query = parse_query(query)
+            new_parsed = parse_query(query)
+            new_canonical = to_canonical_string(new_parsed)
+
+            # Only push to history if query actually changes
+            current_canonical = self.canonical_query_string  # type: ignore[attr-defined]
+            if new_canonical != current_canonical:
+                push_to_prev_stack(current_canonical, self._query_history)
+                save_query_history(self._query_history)
+
+            self.parsed_query = new_parsed
             self.query_string = query
             self._load_changespecs()
             self._save_current_query()
@@ -149,6 +161,54 @@ class ChangeSpecMixin:
     def action_load_saved_query_0(self) -> None:
         """Load saved query from slot 0."""
         self._load_saved_query("0")
+
+    # --- Query History Navigation Actions ---
+
+    def action_prev_query(self) -> None:
+        """Navigate to previous query in history (^ key)."""
+        from ...query import parse_query
+        from ...query_history import navigate_prev, save_query_history
+
+        if self.current_tab != "changespecs":
+            return
+
+        current_canonical = self.canonical_query_string  # type: ignore[attr-defined]
+        prev_query = navigate_prev(current_canonical, self._query_history)
+        if prev_query is None:
+            self.notify("No previous query", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        try:
+            self.parsed_query = parse_query(prev_query)
+            self.query_string = prev_query
+            self._load_changespecs()
+            self._save_current_query()
+            save_query_history(self._query_history)
+        except Exception as e:
+            self.notify(f"Error loading query: {e}", severity="error")  # type: ignore[attr-defined]
+
+    def action_next_query(self) -> None:
+        """Navigate to next query in history (_ key)."""
+        from ...query import parse_query
+        from ...query_history import navigate_next, save_query_history
+
+        if self.current_tab != "changespecs":
+            return
+
+        current_canonical = self.canonical_query_string  # type: ignore[attr-defined]
+        next_query = navigate_next(current_canonical, self._query_history)
+        if next_query is None:
+            self.notify("No next query", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        try:
+            self.parsed_query = parse_query(next_query)
+            self.query_string = next_query
+            self._load_changespecs()
+            self._save_current_query()
+            save_query_history(self._query_history)
+        except Exception as e:
+            self.notify(f"Error loading query: {e}", severity="error")  # type: ignore[attr-defined]
 
     def _refresh_display(self) -> None:
         """Refresh the display with current state."""
