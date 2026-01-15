@@ -24,6 +24,7 @@ from .actions import (
     AxeMixin,
     BaseActionsMixin,
     ChangeSpecMixin,
+    ClipboardMixin,
     EventHandlersMixin,
     HintActionsMixin,
     NavigationMixin,
@@ -62,6 +63,7 @@ class AceApp(
     AgentsMixin,
     AxeMixin,
     ChangeSpecMixin,
+    ClipboardMixin,
     EventHandlersMixin,
     NavigationMixin,
     BaseActionsMixin,
@@ -117,6 +119,8 @@ class AceApp(
         Binding("space", "start_custom_agent", "Run Agent", show=False),
         Binding("x", "kill_agent", "Kill", show=False),
         Binding("l", "toggle_layout", "Layout", show=False),
+        # Copy to clipboard (all tabs)
+        Binding("percent", "copy_tab_content", "Copy", show=False),
     ]
 
     # Reactive properties

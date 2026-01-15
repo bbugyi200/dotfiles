@@ -5,6 +5,7 @@ from .agents import AgentsMixin
 from .axe import AxeMixin
 from .base import BaseActionsMixin
 from .changespec import ChangeSpecMixin
+from .clipboard import ClipboardMixin
 from .event_handlers import EventHandlersMixin
 from .hints import HintActionsMixin
 from .navigation import NavigationMixin
@@ -15,6 +16,7 @@ __all__ = [
     "AxeMixin",
     "BaseActionsMixin",
     "ChangeSpecMixin",
+    "ClipboardMixin",
     "EventHandlersMixin",
     "HintActionsMixin",
     "NavigationMixin",

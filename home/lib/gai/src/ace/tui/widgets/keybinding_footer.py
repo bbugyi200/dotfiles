@@ -100,6 +100,9 @@ class KeybindingFooter(Static):
         else:
             bindings.append(("X", "start axe"))
 
+        # Copy axe artifacts
+        bindings.append(("%", "copy"))
+
         # Refresh
         bindings.append(("y", "refresh"))
 
@@ -140,6 +143,9 @@ class KeybindingFooter(Static):
             if agent.status in ("NO CHANGES", "NEW CL", "NEW PROPOSAL"):
                 bindings.append(("x", "dismiss"))
                 bindings.append(("@", "edit chat"))
+                # Copy chat (only for completed agents with chat available)
+                if agent.response_path:
+                    bindings.append(("%", "copy chat"))
             else:
                 bindings.append(("x", "kill"))
 
@@ -252,6 +258,9 @@ class KeybindingFooter(Static):
 
         # Edit spec
         bindings.append(("@", "edit spec"))
+
+        # Copy ChangeSpec
+        bindings.append(("%", "copy"))
 
         # Start/stop axe (global)
         if self._axe_running:
