@@ -280,7 +280,7 @@ class HelpModal(ModalScreen[None]):
 
         # Section footer
         text.append("  \u2514", style="dim #87D7FF")
-        text.append("\u2500" * 54, style="dim #87D7FF")
+        text.append("\u2500" * 53, style="dim #87D7FF")
         text.append("\u2518", style="dim #87D7FF")
         text.append("\n")
 
@@ -304,7 +304,7 @@ class HelpModal(ModalScreen[None]):
         if not queries:
             text.append("  \u2502  ", style="dim #FFD700")
             text.append("No saved queries", style="dim italic")
-            text.append(" " * 38, style="")
+            text.append(" " * 34, style="")
             text.append(" \u2502", style="dim #FFD700")
             text.append("\n")
         else:
@@ -333,12 +333,12 @@ class HelpModal(ModalScreen[None]):
 
                     # Active indicator
                     if is_active:
-                        padding = max_query_len - len(display_query) - 8
+                        padding = max_query_len - len(display_query) - 6
                         if padding > 0:
                             text.append(" " * padding, style="")
                         text.append(" \u25cf active", style="bold #00FF00")
                     else:
-                        padding = max_query_len - len(display_query) + 1
+                        padding = max_query_len - len(display_query) + 3
                         if padding > 0:
                             text.append(" " * padding, style="")
 
@@ -347,7 +347,7 @@ class HelpModal(ModalScreen[None]):
 
         # Section footer
         text.append("  \u2514", style="dim #FFD700")
-        text.append("\u2500" * 54, style="dim #FFD700")
+        text.append("\u2500" * 53, style="dim #FFD700")
         text.append("\u2518", style="dim #FFD700")
         text.append("\n")
 
@@ -377,7 +377,7 @@ class HelpModal(ModalScreen[None]):
         if not prev_display and not next_display:
             text.append("  \u2502  ", style="dim #00CED1")
             text.append("No query history", style="dim italic")
-            text.append(" " * 37, style="")
+            text.append(" " * 33, style="")
             text.append(" \u2502", style="dim #00CED1")
             text.append("\n")
         else:
@@ -385,7 +385,7 @@ class HelpModal(ModalScreen[None]):
             if prev_display:
                 text.append("  \u2502  ", style="dim #00CED1")
                 text.append("\u25c0 Previous (^)", style="bold #87D7FF")
-                text.append(" " * 39, style="")
+                text.append(" " * 35, style="")
                 text.append(" \u2502", style="dim #00CED1")
                 text.append("\n")
 
@@ -396,7 +396,7 @@ class HelpModal(ModalScreen[None]):
             if next_display:
                 text.append("  \u2502  ", style="dim #00CED1")
                 text.append("\u25b6 Next (_)", style="bold #87D7FF")
-                text.append(" " * 44, style="")
+                text.append(" " * 40, style="")
                 text.append(" \u2502", style="dim #00CED1")
                 text.append("\n")
 
@@ -405,7 +405,7 @@ class HelpModal(ModalScreen[None]):
 
         # Section footer
         text.append("  \u2514", style="dim #00CED1")
-        text.append("\u2500" * 54, style="dim #00CED1")
+        text.append("\u2500" * 53, style="dim #00CED1")
         text.append("\u2518", style="dim #00CED1")
         text.append("\n")
 
@@ -439,7 +439,7 @@ class HelpModal(ModalScreen[None]):
         text.append_text(build_query_text(display_query))
 
         # Padding and right border
-        padding = max_query_len - len(display_query) + 1
+        padding = max_query_len - len(display_query) - 3
         if padding > 0:
             text.append(" " * padding, style="")
         text.append(" \u2502", style=f"dim {border_color}")
