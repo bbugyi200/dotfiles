@@ -40,6 +40,7 @@ class AxeInfoPanel(Static):
         """Refresh the displayed text."""
         text = Text()
         if self._interval > 0:
-            text.append("Auto-refresh in ", style="dim")
+            text.append("(auto-refresh in ", style="dim")
             text.append(f"{self._countdown}s", style="bold #FFD700")
+            text.append(")", style="dim")
         self.update(text)
