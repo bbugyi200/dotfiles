@@ -49,11 +49,13 @@ class AxeMixin:
     def _start_axe(self) -> None:
         """Start the axe daemon."""
         try:
+            self._set_axe_starting(True)
             start_axe_daemon()
             self.notify("Starting axe scheduler...")  # type: ignore[attr-defined]
             # Give it a moment to initialize, then refresh
             self._load_axe_status()
         except Exception as e:
+            self._set_axe_starting(False)
             self.notify(f"Failed to start axe: {e}", severity="error")  # type: ignore[attr-defined]
 
     def _stop_axe(self) -> None:
@@ -71,6 +73,10 @@ class AxeMixin:
         """Load axe status from disk and update display."""
         # Check if axe is running
         self.axe_running = is_axe_running()
+
+        # Clear starting state once confirmed running
+        if self.axe_running:
+            self._set_axe_starting(False)
 
         # Load status data
         if self.axe_running:
@@ -144,5 +150,19 @@ class AxeMixin:
         try:
             footer = self.query_one("#keybinding-footer", KeybindingFooter)  # type: ignore[attr-defined]
             footer.set_axe_running(self.axe_running)
+        except Exception:
+            pass
+
+    def _set_axe_starting(self, starting: bool) -> None:
+        """Set axe starting state and update footer.
+
+        Args:
+            starting: Whether axe is currently starting up.
+        """
+        from ..widgets import KeybindingFooter
+
+        try:
+            footer = self.query_one("#keybinding-footer", KeybindingFooter)  # type: ignore[attr-defined]
+            footer.set_axe_starting(starting)
         except Exception:
             pass

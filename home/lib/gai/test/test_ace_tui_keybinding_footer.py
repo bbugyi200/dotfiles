@@ -8,6 +8,7 @@ from ace.changespec import (
     get_base_status,
     has_ready_to_mail_suffix,
 )
+from ace.tui.models.agent import Agent, AgentType
 from ace.tui.widgets import KeybindingFooter
 
 
@@ -233,15 +234,15 @@ def test_keybinding_footer_navigation_in_middle() -> None:
     assert "k" in binding_keys
 
 
-def test_keybinding_footer_always_has_quit() -> None:
-    """Test 'q' (quit) binding is always visible."""
+def test_keybinding_footer_quit_hidden() -> None:
+    """Test 'q' (quit) binding is hidden from footer (only in help popup)."""
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Drafted")
 
     bindings = footer._compute_available_bindings(changespec, 0, 1)
     binding_keys = [b[0] for b in bindings]
 
-    assert "q" in binding_keys
+    assert "q" not in binding_keys
 
 
 def test_keybinding_footer_always_has_status() -> None:
@@ -255,15 +256,15 @@ def test_keybinding_footer_always_has_status() -> None:
     assert "s" in binding_keys
 
 
-def test_keybinding_footer_always_has_refresh() -> None:
-    """Test 'y' (refresh) binding is always visible."""
+def test_keybinding_footer_refresh_hidden() -> None:
+    """Test 'y' (refresh) binding is hidden from footer (only in help popup)."""
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Drafted")
 
     bindings = footer._compute_available_bindings(changespec, 0, 1)
     binding_keys = [b[0] for b in bindings]
 
-    assert "y" in binding_keys
+    assert "y" not in binding_keys
 
 
 def test_keybinding_footer_always_has_view() -> None:
@@ -367,3 +368,349 @@ def test_has_ready_to_mail_suffix_false() -> None:
 def test_has_ready_to_mail_suffix_mailed_true() -> None:
     """Test has_ready_to_mail_suffix returns True for Mailed with suffix."""
     assert has_ready_to_mail_suffix("Mailed - (!: READY TO MAIL)") is True
+
+
+# --- Axe Status Indicator Tests ---
+
+
+def test_keybinding_footer_status_indicator_stopped() -> None:
+    """Test status indicator shows STOPPED when axe not running."""
+    footer = KeybindingFooter()
+    footer._axe_running = False
+    footer._axe_starting = False
+
+    text = footer._format_bindings([])
+    text_str = str(text)
+
+    assert "STOPPED" in text_str
+
+
+def test_keybinding_footer_status_indicator_running() -> None:
+    """Test status indicator shows RUNNING when axe is running."""
+    footer = KeybindingFooter()
+    footer._axe_running = True
+    footer._axe_starting = False
+
+    text = footer._format_bindings([])
+    text_str = str(text)
+
+    assert "RUNNING" in text_str
+
+
+def test_keybinding_footer_status_indicator_starting() -> None:
+    """Test status indicator shows STARTING when axe is starting."""
+    footer = KeybindingFooter()
+    footer._axe_running = False
+    footer._axe_starting = True
+
+    text = footer._format_bindings([])
+    text_str = str(text)
+
+    assert "STARTING" in text_str
+
+
+def test_keybinding_footer_set_axe_running() -> None:
+    """Test set_axe_running updates the state."""
+    footer = KeybindingFooter()
+    assert footer._axe_running is False
+
+    footer.set_axe_running(True)
+    assert footer._axe_running is True
+
+    footer.set_axe_running(False)
+    assert footer._axe_running is False
+
+
+def test_keybinding_footer_set_axe_starting() -> None:
+    """Test set_axe_starting updates the state."""
+    footer = KeybindingFooter()
+    assert footer._axe_starting is False
+
+    footer.set_axe_starting(True)
+    assert footer._axe_starting is True
+
+    footer.set_axe_starting(False)
+    assert footer._axe_starting is False
+
+
+def test_keybinding_footer_axe_bindings_only_copy() -> None:
+    """Test that AXE tab only shows copy binding."""
+    footer = KeybindingFooter()
+
+    bindings = footer._compute_axe_bindings()
+
+    assert len(bindings) == 1
+    assert bindings[0] == ("%", "copy")
+
+
+# --- Agent Bindings Tests ---
+
+
+def _make_agent(
+    status: str = "RUNNING",
+    response_path: str | None = None,
+) -> Agent:
+    """Create a test Agent for binding tests."""
+    return Agent(
+        agent_type=AgentType.RUNNING,
+        cl_name="test_feature",
+        project_file="/tmp/test.gp",
+        status=status,
+        start_time=None,
+        response_path=response_path,
+    )
+
+
+def test_keybinding_footer_agent_bindings_none_agent() -> None:
+    """Test agent bindings when no agent selected."""
+    footer = KeybindingFooter()
+
+    bindings = footer._compute_agent_bindings(None, 0, 0)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "<space>" in binding_keys
+    assert "x" not in binding_keys  # Kill/dismiss only when agent selected
+
+
+def test_keybinding_footer_agent_bindings_running_agent() -> None:
+    """Test agent bindings for a running agent."""
+    footer = KeybindingFooter()
+    agent = _make_agent(status="RUNNING")
+
+    bindings = footer._compute_agent_bindings(agent, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "x" in binding_keys  # Kill is available
+    assert "<space>" in binding_keys
+
+
+def test_keybinding_footer_agent_bindings_completed_agent_with_chat() -> None:
+    """Test agent bindings for completed agent with chat file."""
+    footer = KeybindingFooter()
+    agent = _make_agent(status="NO CHANGES", response_path="/tmp/chat.md")
+
+    bindings = footer._compute_agent_bindings(agent, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "x" in binding_keys  # Dismiss is available
+    assert "@" in binding_keys  # Edit chat is available
+    assert "%" in binding_keys  # Copy chat is available
+
+
+def test_keybinding_footer_agent_bindings_diff_visible() -> None:
+    """Test agent bindings when diff panel is visible."""
+    footer = KeybindingFooter()
+    agent = _make_agent(status="RUNNING")
+
+    bindings = footer._compute_agent_bindings(agent, 0, 1, diff_visible=True)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "l" in binding_keys  # Layout toggle is available
+
+
+def test_keybinding_footer_agent_bindings_navigation_middle() -> None:
+    """Test agent bindings navigation in the middle of list."""
+    footer = KeybindingFooter()
+
+    bindings = footer._compute_agent_bindings(None, 1, 3)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "j" in binding_keys  # Next
+    assert "k" in binding_keys  # Prev
+
+
+# --- Rebase and Workflow Bindings Tests ---
+
+
+def test_keybinding_footer_rebase_visible_wip() -> None:
+    """Test 'b' (rebase) binding is visible for WIP status."""
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="WIP")
+
+    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "b" in binding_keys
+
+
+def test_keybinding_footer_rebase_visible_drafted() -> None:
+    """Test 'b' (rebase) binding is visible for Drafted status."""
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Drafted")
+
+    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "b" in binding_keys
+
+
+def test_keybinding_footer_rebase_visible_mailed() -> None:
+    """Test 'b' (rebase) binding is visible for Mailed status."""
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Mailed")
+
+    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "b" in binding_keys
+
+
+def test_keybinding_footer_rebase_hidden_submitted() -> None:
+    """Test 'b' (rebase) binding is hidden for Submitted status."""
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Submitted")
+
+    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "b" not in binding_keys
+
+
+def test_keybinding_footer_append_status_indicator_stopped() -> None:
+    """Test _append_status_indicator adds STOPPED status."""
+    from rich.text import Text
+
+    footer = KeybindingFooter()
+    footer._axe_running = False
+    footer._axe_starting = False
+
+    text = Text()
+    footer._append_status_indicator(text)
+
+    assert "STOPPED" in str(text)
+
+
+def test_keybinding_footer_append_status_indicator_running() -> None:
+    """Test _append_status_indicator adds RUNNING status."""
+    from rich.text import Text
+
+    footer = KeybindingFooter()
+    footer._axe_running = True
+    footer._axe_starting = False
+
+    text = Text()
+    footer._append_status_indicator(text)
+
+    assert "RUNNING" in str(text)
+
+
+def test_keybinding_footer_append_status_indicator_starting() -> None:
+    """Test _append_status_indicator adds STARTING status."""
+    from rich.text import Text
+
+    footer = KeybindingFooter()
+    footer._axe_running = False
+    footer._axe_starting = True
+
+    text = Text()
+    footer._append_status_indicator(text)
+
+    assert "STARTING" in str(text)
+
+
+def test_keybinding_footer_workflow_binding_single() -> None:
+    """Test 'r' (run) binding shows workflow name when one workflow available."""
+    footer = KeybindingFooter()
+    # Create a changespec with a fix-hook comment to trigger workflow
+    comment = CommentEntry(
+        reviewer="fix-hook",
+        file_path="test.py",
+    )
+    changespec = _make_changespec(status="Drafted", comments=[comment])
+
+    # Mock the get_available_workflows to return one workflow
+    from unittest.mock import patch
+
+    with patch("ace.tui.widgets.keybinding_footer.get_available_workflows") as mock:
+        mock.return_value = ["fix"]
+        bindings = footer._compute_available_bindings(changespec, 0, 1)
+
+    binding_dict = dict(bindings)
+    assert "r" in binding_dict
+    assert "fix" in binding_dict["r"]
+
+
+def test_keybinding_footer_workflow_binding_multiple() -> None:
+    """Test 'r' (run) binding shows count when multiple workflows available."""
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Drafted")
+
+    from unittest.mock import patch
+
+    with patch("ace.tui.widgets.keybinding_footer.get_available_workflows") as mock:
+        mock.return_value = ["fix", "crs"]
+        bindings = footer._compute_available_bindings(changespec, 0, 1)
+
+    binding_dict = dict(bindings)
+    assert "r" in binding_dict
+    assert "2 workflows" in binding_dict["r"]
+
+
+def test_keybinding_footer_workflow_binding_none() -> None:
+    """Test 'r' (run) binding is hidden when no workflows available."""
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Drafted")
+
+    from unittest.mock import patch
+
+    with patch("ace.tui.widgets.keybinding_footer.get_available_workflows") as mock:
+        mock.return_value = []
+        bindings = footer._compute_available_bindings(changespec, 0, 1)
+
+    binding_keys = [b[0] for b in bindings]
+    assert "r" not in binding_keys
+
+
+def test_keybinding_footer_edit_spec_always_visible() -> None:
+    """Test '@' (edit spec) binding is always visible."""
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Drafted")
+
+    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "@" in binding_keys
+
+
+def test_keybinding_footer_copy_always_visible() -> None:
+    """Test '%' (copy) binding is always visible."""
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Drafted")
+
+    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "%" in binding_keys
+
+
+def test_keybinding_footer_fold_always_visible() -> None:
+    """Test 'z' (fold) binding is always visible."""
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Drafted")
+
+    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "z" in binding_keys
+
+
+def test_keybinding_footer_ready_visible_drafted_no_suffix() -> None:
+    """Test '!' (ready) binding is visible for Drafted without READY TO MAIL suffix."""
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Drafted")
+
+    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "!" in binding_keys
+
+
+def test_keybinding_footer_ready_hidden_with_suffix() -> None:
+    """Test '!' (ready) binding is hidden when already has READY TO MAIL suffix."""
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Drafted - (!: READY TO MAIL)")
+
+    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "!" not in binding_keys

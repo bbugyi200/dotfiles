@@ -19,6 +19,7 @@ class KeybindingFooter(Static):
         """Initialize the footer widget."""
         super().__init__(**kwargs)
         self._axe_running: bool = False
+        self._axe_starting: bool = False
 
     def set_axe_running(self, running: bool) -> None:
         """Update the axe running state for binding labels.
@@ -27,6 +28,14 @@ class KeybindingFooter(Static):
             running: Whether axe daemon is currently running.
         """
         self._axe_running = running
+
+    def set_axe_starting(self, starting: bool) -> None:
+        """Update the axe starting state.
+
+        Args:
+            starting: Whether axe daemon is currently starting.
+        """
+        self._axe_starting = starting
 
     def update_bindings(
         self,
@@ -48,14 +57,11 @@ class KeybindingFooter(Static):
     def show_empty(self) -> None:
         """Show empty state bindings."""
         text = Text()
-        text.append(" q", style="bold #00D7AF")
-        text.append(" quit", style="dim")
-        text.append("  ")
         text.append("/", style="bold #00D7AF")
         text.append(" edit query", style="dim")
+        # Add status indicator
         text.append("  ")
-        text.append("y", style="bold #00D7AF")
-        text.append(" refresh", style="dim")
+        self._append_status_indicator(text)
         self.update(text)
 
     def update_agent_bindings(
@@ -90,10 +96,10 @@ class KeybindingFooter(Static):
         """Compute available bindings for Axe tab.
 
         Returns:
-            List of (key, label) tuples - empty for AXE tab (use help popup).
+            List of (key, label) tuples.
         """
-        # All AXE bindings hidden from footer, available in help popup (?)
-        return []
+        # Only show copy in AXE tab footer
+        return [("%", "copy")]
 
     def _compute_agent_bindings(
         self,
@@ -139,19 +145,6 @@ class KeybindingFooter(Static):
 
         # Run custom agent
         bindings.append(("<space>", "run agent"))
-
-        # Start/stop axe (global)
-        if self._axe_running:
-            bindings.append(("X", "stop axe"))
-            bindings.append(("Q", "stop & quit"))
-        else:
-            bindings.append(("X", "start axe"))
-
-        # Refresh
-        bindings.append(("y", "refresh"))
-
-        # Quit
-        bindings.append(("q", "quit"))
 
         return bindings
 
@@ -216,9 +209,6 @@ class KeybindingFooter(Static):
         # Fold toggle
         bindings.append(("z", "fold (c,h,m,z)"))
 
-        # Quit
-        bindings.append(("q", "quit"))
-
         # Run workflows
         workflows = get_available_workflows(changespec)
         if len(workflows) == 1:
@@ -235,9 +225,6 @@ class KeybindingFooter(Static):
         # View files
         bindings.append(("v", "view"))
 
-        # Refresh
-        bindings.append(("y", "refresh"))
-
         # Edit query
         bindings.append(("/", "edit query"))
 
@@ -246,13 +233,6 @@ class KeybindingFooter(Static):
 
         # Copy ChangeSpec
         bindings.append(("%", "copy"))
-
-        # Start/stop axe (global)
-        if self._axe_running:
-            bindings.append(("X", "stop axe"))
-            bindings.append(("Q", "stop & quit"))
-        else:
-            bindings.append(("X", "start axe"))
 
         return bindings
 
@@ -289,4 +269,21 @@ class KeybindingFooter(Static):
             # Label in dim
             text.append(label, style="dim")
 
+        # Add status indicator at the end
+        text.append("  ")
+        self._append_status_indicator(text)
+
         return text
+
+    def _append_status_indicator(self, text: Text) -> None:
+        """Append axe status indicator to text.
+
+        Args:
+            text: Text object to append to.
+        """
+        if self._axe_starting:
+            text.append(" STARTING ", style="bold black on yellow")
+        elif self._axe_running:
+            text.append(" RUNNING ", style="bold black on green")
+        else:
+            text.append(" STOPPED ", style="bold white on red")
