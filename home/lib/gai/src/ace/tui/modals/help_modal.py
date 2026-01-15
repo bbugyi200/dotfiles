@@ -416,7 +416,7 @@ class HelpModal(ModalScreen[None]):
                 # Stack header with count
                 count_str = f"\u27e8{len(prev_display)}/{prev_total}\u27e9"
                 header_text = "\u25c0 PREVIOUS (^)"
-                header_padding = 49 - len(header_text) - len(count_str)
+                header_padding = 50 - len(header_text) - len(count_str)
                 text.append("  \u2502  ", style="dim #FFD700")
                 text.append(header_text, style="bold #87D7FF")
                 text.append(" " * header_padding, style="")
@@ -426,7 +426,7 @@ class HelpModal(ModalScreen[None]):
 
                 # Dashed separator
                 text.append("  \u2502  ", style="dim #FFD700")
-                text.append("\u2504" * 49, style="dim #87D7FF")
+                text.append("\u2504" * 50, style="dim #87D7FF")
                 text.append(" \u2502", style="dim #FFD700")
                 text.append("\n")
 
@@ -449,7 +449,7 @@ class HelpModal(ModalScreen[None]):
                 # Stack header with count
                 count_str = f"\u27e8{len(next_display)}/{next_total}\u27e9"
                 header_text = "\u25b6 NEXT (_)"
-                header_padding = 49 - len(header_text) - len(count_str)
+                header_padding = 50 - len(header_text) - len(count_str)
                 text.append("  \u2502  ", style="dim #FFD700")
                 text.append(header_text, style="bold #87D7FF")
                 text.append(" " * header_padding, style="")
@@ -459,7 +459,7 @@ class HelpModal(ModalScreen[None]):
 
                 # Dashed separator
                 text.append("  \u2502  ", style="dim #FFD700")
-                text.append("\u2504" * 49, style="dim #87D7FF")
+                text.append("\u2504" * 50, style="dim #87D7FF")
                 text.append(" \u2502", style="dim #FFD700")
                 text.append("\n")
 
@@ -507,7 +507,7 @@ class HelpModal(ModalScreen[None]):
         # Shorter max length for first entry to accommodate nav hint
         nav_hint = f" \u2190 {nav_key}" if is_first else ""
         nav_hint_len = len(nav_hint)
-        max_query_len = 45 - nav_hint_len
+        max_query_len = 48 - nav_hint_len
 
         if len(query) > max_query_len:
             display_query = query[: max_query_len - 3] + "..."
@@ -528,7 +528,7 @@ class HelpModal(ModalScreen[None]):
             text.append(nav_hint, style="italic #888888")
 
         # Padding and right border
-        padding = 45 - len(display_query) - nav_hint_len
+        padding = 48 - len(display_query) - nav_hint_len
         if padding > 0:
             text.append(" " * padding, style="")
         text.append(" \u2502", style=f"dim {border_color}")
