@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from ..models import Agent
 
 # Type alias for tab names
-TabName = Literal["changespecs", "agents"]
+TabName = Literal["changespecs", "agents", "axe"]
 
 
 class EventHandlersMixin:
@@ -31,14 +31,18 @@ class EventHandlersMixin:
     _countdown_remaining: int
     _fold_mode_active: bool
     _agents: list[Agent]
+    _changespecs_last_idx: int
+    _agents_last_idx: int
 
     def _on_auto_refresh(self) -> None:
         """Auto-refresh handler called by timer."""
         self._countdown_remaining = self.refresh_interval
         if self.current_tab == "changespecs":
             self._reload_and_reposition()  # type: ignore[attr-defined]
-        else:
+        elif self.current_tab == "agents":
             self._load_agents()  # type: ignore[attr-defined]
+        else:  # axe
+            self._load_axe_status()  # type: ignore[attr-defined]
 
     def _on_countdown_tick(self) -> None:
         """Countdown tick handler called every second."""
@@ -47,8 +51,10 @@ class EventHandlersMixin:
             self._countdown_remaining = self.refresh_interval
         if self.current_tab == "changespecs":
             self._update_info_panel()  # type: ignore[attr-defined]
-        else:
+        elif self.current_tab == "agents":
             self._update_agents_info_panel()  # type: ignore[attr-defined]
+        else:  # axe
+            self._update_axe_info_panel()  # type: ignore[attr-defined]
 
     def on_key(self, event: events.Key) -> None:
         """Handle key events, including fold sub-keys."""
@@ -76,7 +82,16 @@ class EventHandlersMixin:
     def on_tab_bar_tab_clicked(self, event: TabBar.TabClicked) -> None:
         """Handle tab clicks from the tab bar."""
         if event.tab != self.current_tab:
-            self.action_toggle_tab()  # type: ignore[attr-defined]
+            # Save current position before switching
+            self._save_current_tab_position()  # type: ignore[attr-defined]
+            # Set appropriate index for target tab
+            if event.tab == "changespecs":
+                self.current_idx = self._changespecs_last_idx  # type: ignore[attr-defined]
+            elif event.tab == "agents":
+                self.current_idx = self._agents_last_idx  # type: ignore[attr-defined]
+            else:  # axe
+                self.current_idx = 0  # Axe has no list
+            self.current_tab = event.tab  # type: ignore[assignment]
 
     def on_change_spec_list_width_changed(
         self, event: ChangeSpecList.WidthChanged

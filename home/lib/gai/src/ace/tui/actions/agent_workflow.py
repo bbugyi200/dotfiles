@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from ..models import Agent
 
 # Type alias for tab names
-TabName = Literal["changespecs", "agents"]
+TabName = Literal["changespecs", "agents", "axe"]
 
 
 @dataclass

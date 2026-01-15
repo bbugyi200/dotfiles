@@ -3,6 +3,8 @@
 from .agent_detail import AgentDetail
 from .agent_info_panel import AgentInfoPanel
 from .agent_list import AgentList
+from .axe_dashboard import AxeDashboard
+from .axe_info_panel import AxeInfoPanel
 from .changespec_detail import ChangeSpecDetail, SearchQueryPanel
 from .changespec_info_panel import ChangeSpecInfoPanel
 from .changespec_list import ChangeSpecList
@@ -16,6 +18,8 @@ __all__ = [
     "AgentDetail",
     "AgentInfoPanel",
     "AgentList",
+    "AxeDashboard",
+    "AxeInfoPanel",
     "ChangeSpecDetail",
     "ChangeSpecInfoPanel",
     "ChangeSpecList",

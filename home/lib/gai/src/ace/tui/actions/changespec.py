@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from ...query.types import QueryExpr
 
 # Type alias for tab names
-TabName = Literal["changespecs", "agents"]
+TabName = Literal["changespecs", "agents", "axe"]
 
 
 class ChangeSpecMixin:

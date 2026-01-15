@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from ..models import Agent
 
 # Type alias for tab names
-TabName = Literal["changespecs", "agents"]
+TabName = Literal["changespecs", "agents", "axe"]
 
 
 class NavigationMixin:
@@ -101,20 +101,39 @@ class NavigationMixin:
 
     # --- Tab Switching Actions ---
 
-    def action_toggle_tab(self) -> None:
-        """Toggle between ChangeSpecs and Agents tabs."""
+    def action_next_tab(self) -> None:
+        """Switch to the next tab (cycling: CLs -> Agents -> Axe -> CLs)."""
+        self._save_current_tab_position()
         if self.current_tab == "changespecs":
-            # Save current position before switching
-            self._changespecs_last_idx = self.current_idx
-            # Set index BEFORE tab to avoid stale index in watcher
             self.current_idx = self._agents_last_idx
             self.current_tab = "agents"  # type: ignore[assignment]
-        else:
-            # Save current position before switching
-            self._agents_last_idx = self.current_idx
-            # Set index BEFORE tab to avoid stale index in watcher
+        elif self.current_tab == "agents":
+            self.current_idx = 0  # Axe has no list
+            self.current_tab = "axe"  # type: ignore[assignment]
+        else:  # axe
             self.current_idx = self._changespecs_last_idx
             self.current_tab = "changespecs"  # type: ignore[assignment]
+
+    def action_prev_tab(self) -> None:
+        """Switch to the previous tab (cycling: CLs <- Agents <- Axe <- CLs)."""
+        self._save_current_tab_position()
+        if self.current_tab == "changespecs":
+            self.current_idx = 0  # Axe has no list
+            self.current_tab = "axe"  # type: ignore[assignment]
+        elif self.current_tab == "agents":
+            self.current_idx = self._changespecs_last_idx
+            self.current_tab = "changespecs"  # type: ignore[assignment]
+        else:  # axe
+            self.current_idx = self._agents_last_idx
+            self.current_tab = "agents"  # type: ignore[assignment]
+
+    def _save_current_tab_position(self) -> None:
+        """Save the current position before switching tabs."""
+        if self.current_tab == "changespecs":
+            self._changespecs_last_idx = self.current_idx
+        elif self.current_tab == "agents":
+            self._agents_last_idx = self.current_idx
+        # Axe tab has no position to save
 
     # --- Fold Mode Actions ---
 

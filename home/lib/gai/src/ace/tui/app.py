@@ -13,12 +13,15 @@ from textual.widgets import Footer, Header
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
+from axe.state import AxeMetrics, AxeStatus
+
 from ..changespec import ChangeSpec
 from ..query import parse_query, to_canonical_string
 from ..query.types import QueryExpr
 from .actions import (
     AgentsMixin,
     AgentWorkflowMixin,
+    AxeMixin,
     BaseActionsMixin,
     ChangeSpecMixin,
     EventHandlersMixin,
@@ -30,6 +33,8 @@ from .widgets import (
     AgentDetail,
     AgentInfoPanel,
     AgentList,
+    AxeDashboard,
+    AxeInfoPanel,
     ChangeSpecDetail,
     ChangeSpecInfoPanel,
     ChangeSpecList,
@@ -40,7 +45,7 @@ from .widgets import (
 )
 
 # Type alias for tab names
-TabName = Literal["changespecs", "agents"]
+TabName = Literal["changespecs", "agents", "axe"]
 
 # Width bounds for dynamic list panel sizing (in terminal cells)
 # MIN must fit: "ChangeSpec: X/Y   (auto-refresh in Ns)" + padding/border
@@ -55,6 +60,7 @@ _MAX_AGENT_LIST_WIDTH = 70
 class AceApp(
     AgentWorkflowMixin,
     AgentsMixin,
+    AxeMixin,
     ChangeSpecMixin,
     EventHandlersMixin,
     NavigationMixin,
@@ -103,7 +109,10 @@ class AceApp(
         Binding("9", "load_saved_query_9", "Load Q9", show=False),
         Binding("0", "load_saved_query_0", "Load Q0", show=False),
         # Tab switching
-        Binding("tab", "toggle_tab", "Tab", show=False, priority=True),
+        Binding("tab", "next_tab", "Next Tab", show=False, priority=True),
+        Binding("shift+tab", "prev_tab", "Prev Tab", show=False, priority=True),
+        # Axe control (global)
+        Binding("X", "toggle_axe", "Start/Stop Axe", show=False),
         # Agent actions (Agents tab only)
         Binding("space", "start_custom_agent", "Run Agent", show=False),
         Binding("x", "kill_agent", "Kill", show=False),
@@ -117,6 +126,7 @@ class AceApp(
     commits_collapsed: reactive[bool] = reactive(True, recompose=False)
     mentors_collapsed: reactive[bool] = reactive(True, recompose=False)
     current_tab: reactive[TabName] = reactive("changespecs", recompose=False)
+    axe_running: reactive[bool] = reactive(False, recompose=False)
 
     def __init__(
         self,
@@ -162,6 +172,11 @@ class AceApp(
         self._agents_last_idx: int = 0
         self._agents: list[Agent] = []
 
+        # Axe state
+        self._axe_status: AxeStatus | None = None
+        self._axe_metrics: AxeMetrics | None = None
+        self._axe_errors: list[dict] = []
+
         # Set global model size override in environment if specified
         if model_size_override:
             os.environ["GAI_MODEL_SIZE_OVERRIDE"] = model_size_override
@@ -199,6 +214,11 @@ class AceApp(
                     yield AgentList(id="agent-list-panel")
                 with Vertical(id="agent-detail-container"):
                     yield AgentDetail(id="agent-detail-panel")
+            # Axe Tab (hidden by default)
+            with Horizontal(id="axe-view", classes="hidden"):
+                with Vertical(id="axe-container"):
+                    yield AxeInfoPanel(id="axe-info-panel")
+                    yield AxeDashboard(id="axe-dashboard")
         yield KeybindingFooter(id="keybinding-footer")
         yield Footer()
 
@@ -210,6 +230,9 @@ class AceApp(
 
         # Initialize saved queries panel
         self._refresh_saved_queries_panel()
+
+        # Initialize axe status
+        self._load_axe_status()
 
         # Set up auto-refresh timer if enabled
         if self.refresh_interval > 0:
@@ -240,13 +263,22 @@ class AceApp(
 
         changespecs_view = self.query_one("#changespecs-view")
         agents_view = self.query_one("#agents-view")
+        axe_view = self.query_one("#axe-view")
 
         if new_tab == "changespecs":
             changespecs_view.remove_class("hidden")
             agents_view.add_class("hidden")
+            axe_view.add_class("hidden")
             self._refresh_display()
-        else:
+        elif new_tab == "agents":
             changespecs_view.add_class("hidden")
             agents_view.remove_class("hidden")
+            axe_view.add_class("hidden")
             # Load agents on first access or refresh
             self._load_agents()
+        else:  # axe
+            changespecs_view.add_class("hidden")
+            agents_view.add_class("hidden")
+            axe_view.remove_class("hidden")
+            # Load axe status
+            self._load_axe_status()

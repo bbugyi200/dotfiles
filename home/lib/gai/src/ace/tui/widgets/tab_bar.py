@@ -7,7 +7,7 @@ from textual.events import Click
 from textual.message import Message
 from textual.widgets import Static
 
-TabName = Literal["changespecs", "agents"]
+TabName = Literal["changespecs", "agents", "axe"]
 
 
 class TabBar(Static):
@@ -25,6 +25,7 @@ class TabBar(Static):
         # Store positions for click detection
         self._cl_tab_range: tuple[int, int] = (0, 0)
         self._agents_tab_range: tuple[int, int] = (0, 0)
+        self._axe_tab_range: tuple[int, int] = (0, 0)
         # Initialize with content so tabline shows immediately
         super().__init__(self._build_content(), **kwargs)
 
@@ -61,6 +62,17 @@ class TabBar(Static):
         agents_end = len(text.plain)
         self._agents_tab_range = (agents_start, agents_end)
 
+        text.append(" | ", style="dim #808080")
+
+        # Axe tab
+        axe_start = len(text.plain)
+        if self._current_tab == "axe":
+            text.append(" Axe ", style="bold reverse #FF5F5F")
+        else:
+            text.append(" Axe ", style="dim")
+        axe_end = len(text.plain)
+        self._axe_tab_range = (axe_start, axe_end)
+
         return text
 
     def _refresh_content(self) -> None:
@@ -80,3 +92,6 @@ class TabBar(Static):
         elif self._agents_tab_range[0] <= x < self._agents_tab_range[1]:
             if self._current_tab != "agents":
                 self.post_message(self.TabClicked("agents"))
+        elif self._axe_tab_range[0] <= x < self._axe_tab_range[1]:
+            if self._current_tab != "axe":
+                self.post_message(self.TabClicked("axe"))

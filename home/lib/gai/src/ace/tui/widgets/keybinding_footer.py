@@ -18,6 +18,15 @@ class KeybindingFooter(Static):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the footer widget."""
         super().__init__(**kwargs)
+        self._axe_running: bool = False
+
+    def set_axe_running(self, running: bool) -> None:
+        """Update the axe running state for binding labels.
+
+        Args:
+            running: Whether axe daemon is currently running.
+        """
+        self._axe_running = running
 
     def update_bindings(
         self,
@@ -71,6 +80,34 @@ class KeybindingFooter(Static):
         text = self._format_bindings(bindings)
         self.update(text)
 
+    def update_axe_bindings(self) -> None:
+        """Update bindings for Axe tab context."""
+        bindings = self._compute_axe_bindings()
+        text = self._format_bindings(bindings)
+        self.update(text)
+
+    def _compute_axe_bindings(self) -> list[tuple[str, str]]:
+        """Compute available bindings for Axe tab.
+
+        Returns:
+            List of (key, label) tuples
+        """
+        bindings: list[tuple[str, str]] = []
+
+        # Start/stop axe
+        if self._axe_running:
+            bindings.append(("X", "stop axe"))
+        else:
+            bindings.append(("X", "start axe"))
+
+        # Refresh
+        bindings.append(("y", "refresh"))
+
+        # Quit
+        bindings.append(("q", "quit"))
+
+        return bindings
+
     def _compute_agent_bindings(
         self,
         agent: "Agent | None",
@@ -112,6 +149,12 @@ class KeybindingFooter(Static):
 
         # Run custom agent
         bindings.append(("<space>", "run agent"))
+
+        # Start/stop axe (global)
+        if self._axe_running:
+            bindings.append(("X", "stop axe"))
+        else:
+            bindings.append(("X", "start axe"))
 
         # Refresh
         bindings.append(("y", "refresh"))
@@ -209,6 +252,12 @@ class KeybindingFooter(Static):
 
         # Edit spec
         bindings.append(("@", "edit spec"))
+
+        # Start/stop axe (global)
+        if self._axe_running:
+            bindings.append(("X", "stop axe"))
+        else:
+            bindings.append(("X", "start axe"))
 
         return bindings
 

@@ -164,7 +164,7 @@ def test_tab_bar_update_tab_to_changespecs() -> None:
 
 
 async def test_tab_bar_integration_tab_key() -> None:
-    """Test that pressing TAB key switches between tabs and updates tab bar."""
+    """Test that pressing TAB key cycles through all tabs."""
     mock_changespecs = [_make_changespec()]
     with patch("ace.changespec.find_all_changespecs", return_value=mock_changespecs):
         app = AceApp()
@@ -179,7 +179,12 @@ async def test_tab_bar_integration_tab_key() -> None:
             assert app.current_tab == "agents"
             assert tab_bar._current_tab == "agents"
 
-            # Press TAB to switch back to changespecs
+            # Press TAB to switch to axe
+            await pilot.press("tab")
+            assert app.current_tab == "axe"
+            assert tab_bar._current_tab == "axe"
+
+            # Press TAB to cycle back to changespecs
             await pilot.press("tab")
             assert app.current_tab == "changespecs"
             assert tab_bar._current_tab == "changespecs"

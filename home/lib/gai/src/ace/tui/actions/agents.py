@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from ..models.agent import AgentType
 
 # Type alias for tab names
-TabName = Literal["changespecs", "agents"]
+TabName = Literal["changespecs", "agents", "axe"]
 
 
 class AgentsMixin:
