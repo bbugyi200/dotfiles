@@ -388,13 +388,13 @@ class HelpModal(ModalScreen[None]):
         """
         stacks = load_query_history()
 
-        # Section header - use dark cyan color (different from saved queries gold)
+        # Section header
         text.append("\n")
-        text.append("  \u250c\u2500 ", style="dim #00CED1")
-        text.append("Query History", style="bold #00CED1")
+        text.append("  \u250c\u2500 ", style="dim #FFD700")
+        text.append("Query History", style="bold #FFD700")
         text.append(" ", style="")
         remaining = 50 - len("Query History")
-        text.append("\u2500" * remaining + "\u2510", style="dim #00CED1")
+        text.append("\u2500" * remaining + "\u2510", style="dim #FFD700")
         text.append("\n")
 
         # Show last 5 from prev stack (most recent first = reversed)
@@ -402,38 +402,38 @@ class HelpModal(ModalScreen[None]):
         next_display = list(reversed(stacks.next[-5:]))
 
         if not prev_display and not next_display:
-            text.append("  \u2502  ", style="dim #00CED1")
+            text.append("  \u2502  ", style="dim #FFD700")
             text.append("No query history", style="dim italic")
             text.append(" " * 34, style="")
-            text.append(" \u2502", style="dim #00CED1")
+            text.append(" \u2502", style="dim #FFD700")
             text.append("\n")
         else:
             # Prev stack section
             if prev_display:
-                text.append("  \u2502  ", style="dim #00CED1")
+                text.append("  \u2502  ", style="dim #FFD700")
                 text.append("\u25c0 Previous (^)", style="bold #87D7FF")
                 text.append(" " * 36, style="")
-                text.append(" \u2502", style="dim #00CED1")
+                text.append(" \u2502", style="dim #FFD700")
                 text.append("\n")
 
                 for i, query in enumerate(prev_display):
-                    self._add_history_entry(text, query, i + 1, "#00CED1")
+                    self._add_history_entry(text, query, i + 1, "#FFD700")
 
             # Next stack section
             if next_display:
-                text.append("  \u2502  ", style="dim #00CED1")
+                text.append("  \u2502  ", style="dim #FFD700")
                 text.append("\u25b6 Next (_)", style="bold #87D7FF")
                 text.append(" " * 40, style="")
-                text.append(" \u2502", style="dim #00CED1")
+                text.append(" \u2502", style="dim #FFD700")
                 text.append("\n")
 
                 for i, query in enumerate(next_display):
-                    self._add_history_entry(text, query, i + 1, "#00CED1")
+                    self._add_history_entry(text, query, i + 1, "#FFD700")
 
         # Section footer
-        text.append("  \u2514", style="dim #00CED1")
-        text.append("\u2500" * 53, style="dim #00CED1")
-        text.append("\u2518", style="dim #00CED1")
+        text.append("  \u2514", style="dim #FFD700")
+        text.append("\u2500" * 53, style="dim #FFD700")
+        text.append("\u2518", style="dim #FFD700")
         text.append("\n")
 
     def _add_history_entry(
