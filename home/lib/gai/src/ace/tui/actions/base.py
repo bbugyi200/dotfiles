@@ -379,24 +379,43 @@ class BaseActionsMixin:
         self,
         changespec: ChangeSpec,
         entries: list[tuple[str, str | None]],
+        mark_ready_to_mail: bool = False,
     ) -> None:
-        """Run the accept workflow with parsed entries."""
+        """Run the accept workflow with parsed entries.
+
+        Args:
+            changespec: The ChangeSpec to accept proposals for.
+            entries: List of (proposal_id, msg) tuples.
+            mark_ready_to_mail: If True, also reject remaining proposals and add
+                READY TO MAIL suffix to STATUS, all in the same atomic write.
+        """
         from accept_workflow import AcceptWorkflow
 
         def run_handler() -> None:
             # Build display message
             if len(entries) == 1:
                 proposal_id, _ = entries[0]
-                self.notify(f"Accepting proposal {proposal_id}...")  # type: ignore[attr-defined]
+                if mark_ready_to_mail:
+                    msg = (
+                        f"Accepting proposal {proposal_id} and marking ready to mail..."
+                    )
+                else:
+                    msg = f"Accepting proposal {proposal_id}..."
+                self.notify(msg)  # type: ignore[attr-defined]
             else:
                 ids = ", ".join(e[0] for e in entries)
-                self.notify(f"Accepting proposals {ids}...")  # type: ignore[attr-defined]
+                if mark_ready_to_mail:
+                    msg = f"Accepting proposals {ids} and marking ready to mail..."
+                else:
+                    msg = f"Accepting proposals {ids}..."
+                self.notify(msg)  # type: ignore[attr-defined]
 
             # Run accept workflow
             accept_workflow = AcceptWorkflow(
                 proposals=entries,
                 cl_name=changespec.name,
                 project_file=changespec.file_path,
+                mark_ready_to_mail=mark_ready_to_mail,
             )
             accept_workflow.run()
 

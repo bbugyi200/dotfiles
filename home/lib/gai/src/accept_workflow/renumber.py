@@ -284,6 +284,122 @@ def _update_comments_with_id_mapping(
     return updated_lines
 
 
+def _reject_remaining_proposals_unlocked(
+    lines: list[str],
+    cl_name: str,
+) -> list[str]:
+    """Reject remaining proposals by changing (!: NEW PROPOSAL) to (~!: NEW PROPOSAL).
+
+    This is an unlocked version that operates on in-memory lines.
+    Must be called while holding the changespec lock.
+
+    Args:
+        lines: All lines from the project file.
+        cl_name: The CL name.
+
+    Returns:
+        Updated lines with remaining proposals rejected.
+    """
+    updated_lines: list[str] = []
+    in_target_changespec = False
+    in_commits = False
+
+    for line in lines:
+        if line.startswith("NAME: "):
+            current_name = line[6:].strip()
+            in_target_changespec = current_name == cl_name
+            in_commits = False
+            updated_lines.append(line)
+        elif in_target_changespec:
+            if line.startswith("COMMITS:"):
+                in_commits = True
+                updated_lines.append(line)
+            elif line.startswith(
+                (
+                    "NAME:",
+                    "DESCRIPTION:",
+                    "PARENT:",
+                    "CL:",
+                    "STATUS:",
+                    "TEST TARGETS:",
+                    "KICKSTART:",
+                    "HOOKS:",
+                    "COMMENTS:",
+                    "MENTORS:",
+                )
+            ):
+                in_commits = False
+                if line.startswith("NAME:"):
+                    in_target_changespec = False
+                updated_lines.append(line)
+            elif in_commits:
+                stripped = line.strip()
+                # Match: (Na) Note text - (!: NEW PROPOSAL)
+                entry_match = re.match(
+                    r"^\((\d+[a-z])\)\s+(.+?)\s+-\s+\(!:\s*NEW PROPOSAL\)$",
+                    stripped,
+                )
+                if entry_match:
+                    matched_id = entry_match.group(1)
+                    note_text = entry_match.group(2)
+                    # Preserve leading whitespace
+                    leading_ws = line[: len(line) - len(line.lstrip())]
+                    # Change (!: NEW PROPOSAL) to (~!: NEW PROPOSAL)
+                    new_line = (
+                        f"{leading_ws}({matched_id}) {note_text} - (~!: NEW PROPOSAL)\n"
+                    )
+                    updated_lines.append(new_line)
+                else:
+                    updated_lines.append(line)
+            else:
+                updated_lines.append(line)
+        else:
+            updated_lines.append(line)
+
+    return updated_lines
+
+
+def _add_ready_to_mail_suffix_unlocked(
+    lines: list[str],
+    cl_name: str,
+) -> list[str]:
+    """Add the READY TO MAIL suffix to a ChangeSpec's STATUS line.
+
+    This is an unlocked version that operates on in-memory lines.
+    Must be called while holding the changespec lock.
+
+    Args:
+        lines: All lines from the project file.
+        cl_name: The CL name.
+
+    Returns:
+        Updated lines with READY TO MAIL suffix added to STATUS.
+    """
+    ready_to_mail_suffix = " - (!: READY TO MAIL)"
+    updated_lines: list[str] = []
+    in_target_changespec = False
+
+    for line in lines:
+        if line.startswith("NAME: "):
+            current_name = line[6:].strip()
+            in_target_changespec = current_name == cl_name
+            updated_lines.append(line)
+        elif in_target_changespec and line.startswith("STATUS:"):
+            # Get current status value
+            current_status = line.split(":", 1)[1].strip()
+            # Only add suffix if not already present
+            if "(!: READY TO MAIL)" not in current_status:
+                new_status = current_status + ready_to_mail_suffix
+                updated_lines.append(f"STATUS: {new_status}\n")
+            else:
+                updated_lines.append(line)
+            in_target_changespec = False  # Done updating this ChangeSpec
+        else:
+            updated_lines.append(line)
+
+    return updated_lines
+
+
 def _sort_hook_status_lines(lines: list[str], cl_name: str) -> list[str]:
     """Sort hook status lines by entry ID within each hook.
 
@@ -360,6 +476,7 @@ def renumber_commit_entries(
     cl_name: str,
     accepted_proposals: list[tuple[int, str]],
     extra_msgs: list[str | None] | None = None,
+    mark_ready_to_mail: bool = False,
 ) -> bool:
     """Renumber commit entries after accepting proposals.
 
@@ -375,6 +492,8 @@ def renumber_commit_entries(
             in the order they should become regular entries.
         extra_msgs: Optional list of messages to append to each accepted entry's note.
             Must be same length as accepted_proposals if provided.
+        mark_ready_to_mail: If True, also reject remaining proposals and add
+            READY TO MAIL suffix to STATUS, all in the same atomic write.
 
     Returns:
         True if successful, False otherwise.
@@ -552,11 +671,20 @@ def renumber_commit_entries(
             # Sort hook status lines by entry ID
             new_lines = _sort_hook_status_lines(new_lines, cl_name)
 
+            # If mark_ready_to_mail is True, also reject remaining proposals
+            # and add READY TO MAIL suffix (all in this same atomic write)
+            if mark_ready_to_mail:
+                new_lines = _reject_remaining_proposals_unlocked(new_lines, cl_name)
+                new_lines = _add_ready_to_mail_suffix_unlocked(new_lines, cl_name)
+
             # Write atomically
+            commit_msg = f"Renumber commit entries for {cl_name}"
+            if mark_ready_to_mail:
+                commit_msg += " and mark ready to mail"
             write_changespec_atomic(
                 project_file,
                 "".join(new_lines),
-                f"Renumber commit entries for {cl_name}",
+                commit_msg,
             )
             return True
     except Exception:

@@ -70,6 +70,7 @@ class AcceptWorkflow(BaseWorkflow):
         proposals: list[tuple[str, str | None]],
         cl_name: str | None = None,
         project_file: str | None = None,
+        mark_ready_to_mail: bool = False,
     ) -> None:
         """Initialize the accept workflow.
 
@@ -79,10 +80,14 @@ class AcceptWorkflow(BaseWorkflow):
             cl_name: Optional CL name. Defaults to current branch name.
             project_file: Optional path to project file. If not provided,
                 will try to infer from workspace_name command.
+            mark_ready_to_mail: If True, also reject remaining proposals and add
+                READY TO MAIL suffix to STATUS, all in the same atomic write
+                with the commit entry renumbering.
         """
         self._proposals = proposals
         self._cl_name = cl_name
         self._project_file = project_file
+        self._mark_ready_to_mail = mark_ready_to_mail
 
     @property
     def name(self) -> str:
@@ -350,11 +355,29 @@ class AcceptWorkflow(BaseWorkflow):
                 extra_msgs.append(msg)
 
             # Renumber commit entries once for all accepted proposals
-            print_status("Renumbering COMMITS entries...", "progress")
+            # If mark_ready_to_mail is True, this also rejects remaining proposals
+            # and adds READY TO MAIL suffix in the same atomic write
+            if self._mark_ready_to_mail:
+                print_status(
+                    "Renumbering COMMITS entries and marking ready to mail...",
+                    "progress",
+                )
+            else:
+                print_status("Renumbering COMMITS entries...", "progress")
             if renumber_commit_entries(
-                project_file, cl_name, accepted_proposals, extra_msgs
+                project_file,
+                cl_name,
+                accepted_proposals,
+                extra_msgs,
+                mark_ready_to_mail=self._mark_ready_to_mail,
             ):
-                print_status("COMMITS entries renumbered successfully.", "success")
+                if self._mark_ready_to_mail:
+                    print_status(
+                        "COMMITS entries renumbered and marked ready to mail.",
+                        "success",
+                    )
+                else:
+                    print_status("COMMITS entries renumbered successfully.", "success")
             else:
                 print_status("Failed to renumber COMMITS entries.", "warning")
 

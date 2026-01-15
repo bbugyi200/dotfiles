@@ -431,3 +431,124 @@ def test_renumber_commit_entries_multi_accept_archives_hooks() -> None:
         assert not lines_with_3, f"Unexpected (3) status: {lines_with_3}"
     finally:
         os.unlink(temp_path)
+
+
+def test_renumber_commit_entries_mark_ready_to_mail() -> None:
+    """Test renumbering with mark_ready_to_mail flag adds suffix and rejects proposals."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write("NAME: test_cl\n")
+        f.write("STATUS: Drafted\n")
+        f.write("COMMITS:\n")
+        f.write("  (1) First commit\n")
+        f.write("  (1a) First proposal - (!: NEW PROPOSAL)\n")
+        f.write("  (1b) Second proposal - (!: NEW PROPOSAL)\n")
+        temp_path = f.name
+
+    try:
+        # Accept 1a and mark ready to mail
+        result = renumber_commit_entries(
+            temp_path, "test_cl", [(1, "a")], mark_ready_to_mail=True
+        )
+        assert result is True
+
+        with open(temp_path) as f:
+            content = f.read()
+
+        # (1a) became (2) without proposal suffix
+        assert "(2) First proposal\n" in content or "(2) First proposal" in content
+        # (1b) stays as (1b) but rejected ((!: NEW PROPOSAL) -> (~!: NEW PROPOSAL))
+        assert "(1b) Second proposal - (~!: NEW PROPOSAL)" in content
+        # READY TO MAIL suffix added to STATUS line
+        assert "STATUS: Drafted - (!: READY TO MAIL)" in content
+    finally:
+        os.unlink(temp_path)
+
+
+def test_renumber_commit_entries_mark_ready_to_mail_no_remaining_proposals() -> None:
+    """Test mark_ready_to_mail when all proposals are accepted."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write("NAME: test_cl\n")
+        f.write("STATUS: Drafted\n")
+        f.write("COMMITS:\n")
+        f.write("  (1) First commit\n")
+        f.write("  (1a) Only proposal - (!: NEW PROPOSAL)\n")
+        temp_path = f.name
+
+    try:
+        result = renumber_commit_entries(
+            temp_path, "test_cl", [(1, "a")], mark_ready_to_mail=True
+        )
+        assert result is True
+
+        with open(temp_path) as f:
+            content = f.read()
+
+        # (1a) became (2) without proposal suffix
+        assert "(2) Only proposal" in content
+        # No remaining proposals to reject
+        assert "(~!: NEW PROPOSAL)" not in content
+        # READY TO MAIL suffix added to STATUS line
+        assert "STATUS: Drafted - (!: READY TO MAIL)" in content
+    finally:
+        os.unlink(temp_path)
+
+
+def test_renumber_commit_entries_mark_ready_to_mail_idempotent() -> None:
+    """Test mark_ready_to_mail doesn't duplicate suffix if already present."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write("NAME: test_cl\n")
+        f.write("STATUS: Drafted - (!: READY TO MAIL)\n")
+        f.write("COMMITS:\n")
+        f.write("  (1) First commit\n")
+        f.write("  (1a) Only proposal - (!: NEW PROPOSAL)\n")
+        temp_path = f.name
+
+    try:
+        result = renumber_commit_entries(
+            temp_path, "test_cl", [(1, "a")], mark_ready_to_mail=True
+        )
+        assert result is True
+
+        with open(temp_path) as f:
+            content = f.read()
+
+        # Should still have exactly one READY TO MAIL suffix
+        assert content.count("(!: READY TO MAIL)") == 1
+        # Check it's formatted correctly
+        assert "STATUS: Drafted - (!: READY TO MAIL)" in content
+    finally:
+        os.unlink(temp_path)
+
+
+def test_renumber_commit_entries_mark_ready_to_mail_with_extra_msgs() -> None:
+    """Test mark_ready_to_mail works correctly with extra_msgs."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write("NAME: test_cl\n")
+        f.write("STATUS: Drafted\n")
+        f.write("COMMITS:\n")
+        f.write("  (1) First commit\n")
+        f.write("  (1a) Proposal A - (!: NEW PROPOSAL)\n")
+        f.write("  (1b) Proposal B - (!: NEW PROPOSAL)\n")
+        temp_path = f.name
+
+    try:
+        result = renumber_commit_entries(
+            temp_path,
+            "test_cl",
+            [(1, "a")],
+            extra_msgs=["Added the foobar"],
+            mark_ready_to_mail=True,
+        )
+        assert result is True
+
+        with open(temp_path) as f:
+            content = f.read()
+
+        # (1a) became (2) with message appended
+        assert "(2) Proposal A - Added the foobar" in content
+        # (1b) stays as (1b) but rejected
+        assert "(1b) Proposal B - (~!: NEW PROPOSAL)" in content
+        # READY TO MAIL suffix added
+        assert "STATUS: Drafted - (!: READY TO MAIL)" in content
+    finally:
+        os.unlink(temp_path)

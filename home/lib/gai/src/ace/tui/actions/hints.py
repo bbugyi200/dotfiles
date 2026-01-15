@@ -434,14 +434,38 @@ class HintActionsMixin:
                 self._reload_and_reposition()  # type: ignore[attr-defined]
 
     def _process_accept_input(self, user_input: str) -> None:
-        """Process accept proposal input."""
+        """Process accept proposal input.
+
+        Supports the @ suffix for triggering mail after accept:
+        - "a b c@" - accept proposals a, b, c and then mail the CL
+        - "@" alone - just mark as ready to mail (same as the "!" action)
+        """
         if not user_input:
             return
 
         changespec = self.changespecs[self.current_idx]
 
+        # Special case: "@" alone means just mark as ready to mail
+        if user_input.strip() == "@":
+            self.action_mark_ready_to_mail()  # type: ignore[attr-defined]
+            return
+
         # Split input into args
         args = user_input.split()
+
+        # Check if the last argument ends with "@" (trigger mail after accept)
+        should_mail = False
+        if args and args[-1].endswith("@"):
+            should_mail = True
+            # Strip the "@" suffix from the last argument
+            args[-1] = args[-1][:-1]
+            # If the last arg is now empty (it was just "@"), remove it
+            if not args[-1]:
+                args.pop()
+            # If no args left after removing "@", that's an error
+            if not args:
+                self.notify("Invalid format", severity="warning")  # type: ignore[attr-defined]
+                return
 
         # Try to expand shorthand and parse
         expanded = expand_shorthand_proposals(args, self._accept_last_base)
@@ -460,5 +484,24 @@ class HintActionsMixin:
             self.notify("Invalid proposal format", severity="warning")  # type: ignore[attr-defined]
             return
 
-        # Run the accept workflow
-        self._run_accept_workflow(changespec, entries)  # type: ignore[attr-defined]
+        # Run the accept workflow (with mark_ready_to_mail flag if @ suffix was used)
+        self._run_accept_workflow(  # type: ignore[attr-defined]
+            changespec, entries, mark_ready_to_mail=should_mail
+        )
+
+        # If should_mail is True, the workflow already marked as ready to mail.
+        # Now trigger the mail flow.
+        if should_mail:
+            self._trigger_mail_after_accept()  # type: ignore[attr-defined]
+
+    def _trigger_mail_after_accept(self) -> None:
+        """Trigger the mail flow after a successful accept with @ suffix.
+
+        This reloads the changespec (which now has READY TO MAIL suffix)
+        and triggers the mail action.
+        """
+        # Reload to get updated changespec with READY TO MAIL suffix
+        self._reload_and_reposition()  # type: ignore[attr-defined]
+
+        # Now call the mail action (same as pressing 'm')
+        self.action_mail()  # type: ignore[attr-defined]
