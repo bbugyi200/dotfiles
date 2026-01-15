@@ -398,8 +398,11 @@ class HelpModal(ModalScreen[None]):
         text.append("\n")
 
         # Show last 5 from prev stack (most recent first = reversed)
-        prev_display = list(reversed(stacks.prev[-5:]))
-        next_display = list(reversed(stacks.next[-5:]))
+        max_display = 5
+        prev_display = list(reversed(stacks.prev[-max_display:]))
+        next_display = list(reversed(stacks.next[-max_display:]))
+        prev_total = len(stacks.prev)
+        next_total = len(stacks.next)
 
         if not prev_display and not next_display:
             text.append("  \u2502  ", style="dim #FFD700")
@@ -410,25 +413,62 @@ class HelpModal(ModalScreen[None]):
         else:
             # Prev stack section
             if prev_display:
+                # Stack header with count
+                count_str = f"\u27e8{len(prev_display)}/{prev_total}\u27e9"
+                header_text = "\u25c0 PREVIOUS (^)"
+                header_padding = 49 - len(header_text) - len(count_str)
                 text.append("  \u2502  ", style="dim #FFD700")
-                text.append("\u25c0 Previous (^)", style="bold #87D7FF")
-                text.append(" " * 36, style="")
+                text.append(header_text, style="bold #87D7FF")
+                text.append(" " * header_padding, style="")
+                text.append(count_str, style="dim #87D7FF")
+                text.append(" \u2502", style="dim #FFD700")
+                text.append("\n")
+
+                # Dashed separator
+                text.append("  \u2502  ", style="dim #FFD700")
+                text.append("\u2504" * 49, style="dim #87D7FF")
                 text.append(" \u2502", style="dim #FFD700")
                 text.append("\n")
 
                 for i, query in enumerate(prev_display):
-                    self._add_history_entry(text, query, i + 1, "#FFD700")
+                    is_first = i == 0
+                    dim_level = 0 if i < 2 else (1 if i < 4 else 2)
+                    self._add_history_entry(
+                        text, query, is_first, "^", dim_level, "#FFD700"
+                    )
+
+                # Spacing after prev section if next section follows
+                if next_display:
+                    text.append("  \u2502", style="dim #FFD700")
+                    text.append(" " * 52, style="")
+                    text.append(" \u2502", style="dim #FFD700")
+                    text.append("\n")
 
             # Next stack section
             if next_display:
+                # Stack header with count
+                count_str = f"\u27e8{len(next_display)}/{next_total}\u27e9"
+                header_text = "\u25b6 NEXT (_)"
+                header_padding = 49 - len(header_text) - len(count_str)
                 text.append("  \u2502  ", style="dim #FFD700")
-                text.append("\u25b6 Next (_)", style="bold #87D7FF")
-                text.append(" " * 40, style="")
+                text.append(header_text, style="bold #87D7FF")
+                text.append(" " * header_padding, style="")
+                text.append(count_str, style="dim #87D7FF")
+                text.append(" \u2502", style="dim #FFD700")
+                text.append("\n")
+
+                # Dashed separator
+                text.append("  \u2502  ", style="dim #FFD700")
+                text.append("\u2504" * 49, style="dim #87D7FF")
                 text.append(" \u2502", style="dim #FFD700")
                 text.append("\n")
 
                 for i, query in enumerate(next_display):
-                    self._add_history_entry(text, query, i + 1, "#FFD700")
+                    is_first = i == 0
+                    dim_level = 0 if i < 2 else (1 if i < 4 else 2)
+                    self._add_history_entry(
+                        text, query, is_first, "_", dim_level, "#FFD700"
+                    )
 
         # Section footer
         text.append("  \u2514", style="dim #FFD700")
@@ -440,7 +480,9 @@ class HelpModal(ModalScreen[None]):
         self,
         text: Text,
         query: str,
-        position: int,
+        is_first: bool,
+        nav_key: str,
+        dim_level: int,
         border_color: str,
     ) -> None:
         """Add a single history entry line.
@@ -448,25 +490,45 @@ class HelpModal(ModalScreen[None]):
         Args:
             text: The Text object to append to.
             query: The query string.
-            position: 1-based position in the list (for display).
+            is_first: Whether this is the first (most recent) entry in the stack.
+            nav_key: The navigation key hint ("^" or "_").
+            dim_level: Dimming level (0=bright, 1=slightly dim, 2=dim).
             border_color: Color for the border characters.
         """
-        text.append("  \u2502    ", style=f"dim {border_color}")
+        text.append("  \u2502  ", style=f"dim {border_color}")
 
-        # Position indicator (dimmed)
-        text.append(f"{position}. ", style="dim")
+        # First entry indicator
+        if is_first:
+            text.append("\u25b8 ", style="bold #00FF00")
+        else:
+            text.append("  ", style="")
 
         # Query with syntax highlighting (truncated if needed)
-        max_query_len = 45
+        # Shorter max length for first entry to accommodate nav hint
+        nav_hint = f" \u2190 {nav_key}" if is_first else ""
+        nav_hint_len = len(nav_hint)
+        max_query_len = 45 - nav_hint_len
+
         if len(query) > max_query_len:
             display_query = query[: max_query_len - 3] + "..."
         else:
             display_query = query
 
-        text.append_text(build_query_text(display_query))
+        # Apply dimming based on level
+        if dim_level <= 1:
+            # Full syntax highlighting for recent entries
+            query_text = build_query_text(display_query)
+            text.append_text(query_text)
+        else:
+            # Dim plain text for oldest entries
+            text.append(display_query, style="dim #888888")
+
+        # Nav hint for first entry
+        if is_first:
+            text.append(nav_hint, style="italic #888888")
 
         # Padding and right border
-        padding = max_query_len - len(display_query)
+        padding = 45 - len(display_query) - nav_hint_len
         if padding > 0:
             text.append(" " * padding, style="")
         text.append(" \u2502", style=f"dim {border_color}")
