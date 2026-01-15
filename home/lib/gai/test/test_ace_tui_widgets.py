@@ -5,7 +5,7 @@ from unittest.mock import patch
 from ace.changespec import ChangeSpec, CommentEntry, CommitEntry, HookEntry
 from ace.tui import AceApp
 from ace.tui.widgets import TabBar
-from ace.tui.widgets.section_builders import _should_show_commits_drawers
+from ace.tui.widgets.commits_builder import _should_show_commits_drawers
 
 
 def _make_changespec(
