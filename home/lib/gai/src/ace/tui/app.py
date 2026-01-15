@@ -28,6 +28,7 @@ from .actions import (
     EventHandlersMixin,
     HintActionsMixin,
     NavigationMixin,
+    ProposalRebaseMixin,
 )
 from .models import Agent
 from .widgets import (
@@ -66,6 +67,7 @@ class AceApp(
     ClipboardMixin,
     EventHandlersMixin,
     NavigationMixin,
+    ProposalRebaseMixin,
     BaseActionsMixin,
     HintActionsMixin,
     App[None],

@@ -9,6 +9,7 @@ from .clipboard import ClipboardMixin
 from .event_handlers import EventHandlersMixin
 from .hints import HintActionsMixin
 from .navigation import NavigationMixin
+from .proposal_rebase import ProposalRebaseMixin
 
 __all__ = [
     "AgentsMixin",
@@ -20,4 +21,5 @@ __all__ = [
     "EventHandlersMixin",
     "HintActionsMixin",
     "NavigationMixin",
+    "ProposalRebaseMixin",
 ]
