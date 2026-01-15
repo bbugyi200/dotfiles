@@ -266,6 +266,14 @@ def _get_matching_profiles_for_entry(
     """
     result: list[tuple[str, MentorProfileConfig]] = []
 
+    # DEBUG START
+    if changespec.name == "ilar_merge_mintegral_s2":
+        print(
+            f"DEBUG [{changespec.name}]: commits="
+            f"{[(c.display_number, c.note) for c in (changespec.commits or [])]}"
+        )
+    # DEBUG END
+
     if not changespec.commits:
         return result
 
@@ -281,6 +289,13 @@ def _get_matching_profiles_for_entry(
 
     # Get all commits to check for profile matching
     commits_to_check = _get_commits_since_last_mentors(changespec)
+    # DEBUG START
+    if changespec.name == "ilar_merge_mintegral_s2":
+        print(
+            f"DEBUG [{changespec.name}]: commits_to_check="
+            f"{[(c.display_number, c.note) for c in commits_to_check]}"
+        )
+    # DEBUG END
     if not commits_to_check:
         return result
 
@@ -313,6 +328,17 @@ def _get_matching_profiles_for_entry(
         # (they would be filtered out when writing anyway)
         if is_wip_status and not profile_has_wip_mentors(profile.profile_name):
             continue
+        # DEBUG START
+        if (
+            changespec.name == "ilar_merge_mintegral_s2"
+            and profile.profile_name == "feature"
+        ):
+            print(f"DEBUG [{changespec.name}]: checking feature profile")
+            for c in commits_to_check:
+                print(f"  commit {c.display_number}: note='{c.note}', diff='{c.diff}'")
+            match_result = profile_matches_any_commit(profile, commits_to_check)
+            print(f"  match_result={match_result}")
+        # DEBUG END
         # Check if profile matches any commit
         if profile_matches_any_commit(profile, commits_to_check):
             result.append((latest_entry_id, profile))
