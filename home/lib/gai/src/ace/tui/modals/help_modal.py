@@ -452,11 +452,13 @@ class HelpModal(ModalScreen[None]):
         self.dismiss(None)
 
     def action_scroll_down(self) -> None:
-        """Scroll the help content down."""
+        """Scroll the help content down by half a page."""
         scroll = self.query_one("#help-content-scroll", VerticalScroll)
-        scroll.scroll_page_down()
+        height = scroll.scrollable_content_region.height
+        scroll.scroll_relative(y=height // 2, animate=False)
 
     def action_scroll_up(self) -> None:
-        """Scroll the help content up."""
+        """Scroll the help content up by half a page."""
         scroll = self.query_one("#help-content-scroll", VerticalScroll)
-        scroll.scroll_page_up()
+        height = scroll.scrollable_content_region.height
+        scroll.scroll_relative(y=-(height // 2), animate=False)

@@ -671,8 +671,7 @@ HelpModal {
 
 HelpModal > Container {
     width: 70;
-    height: auto;
-    max-height: 85%;
+    height: 85%;
     border: double $primary;
     background: $surface;
     padding: 1 2;
@@ -685,8 +684,7 @@ HelpModal #help-title {
 }
 
 HelpModal #help-content-scroll {
-    height: auto;
-    max-height: 100%;
+    height: 1fr;
     scrollbar-gutter: stable;
 }
 
