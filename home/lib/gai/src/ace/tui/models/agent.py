@@ -94,6 +94,11 @@ class Agent:
         else:
             return f"{seconds}s"
 
+    @property
+    def identity(self) -> tuple["AgentType", str, str | None]:
+        """Unique identifier for this agent instance."""
+        return (self.agent_type, self.cl_name, self.raw_suffix)
+
     def get_artifacts_dir(self) -> str | None:
         """Get the artifacts directory path for this agent.
 

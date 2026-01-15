@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Literal
 if TYPE_CHECKING:
     from ...changespec import ChangeSpec
     from ..models import Agent
+    from ..models.agent import AgentType
 
 # Type alias for tab names
 TabName = Literal["changespecs", "agents"]
@@ -281,14 +282,32 @@ class AgentsMixin:
         """Load agents from all sources."""
         from ..models import load_all_agents
 
+        # Capture current selection identity before reload
+        selected_identity: tuple[AgentType, str, str | None] | None = None
+        if self._agents and 0 <= self.current_idx < len(self._agents):
+            selected_identity = self._agents[self.current_idx].identity
+
+        # Load fresh agent list
         self._agents = load_all_agents()
 
-        # Clamp current_idx to bounds (preserves position on refresh)
-        if self._agents:
-            if self.current_idx >= len(self._agents):
-                self.current_idx = len(self._agents) - 1
+        # Try to restore selection by identity
+        if selected_identity is not None:
+            for idx, agent in enumerate(self._agents):
+                if agent.identity == selected_identity:
+                    self.current_idx = idx
+                    break
+            else:
+                # Agent no longer in list - clamp to bounds
+                if self._agents:
+                    self.current_idx = min(self.current_idx, len(self._agents) - 1)
+                else:
+                    self.current_idx = 0
         else:
-            self.current_idx = 0
+            # No previous selection - clamp to bounds
+            if self._agents:
+                self.current_idx = min(self.current_idx, len(self._agents) - 1)
+            else:
+                self.current_idx = 0
 
         self._refresh_agents_display()
 
