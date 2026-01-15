@@ -28,6 +28,7 @@ class NavigationMixin:
     _fold_mode_active: bool
     _changespecs_last_idx: int
     _agents_last_idx: int
+    _axe_pinned_to_bottom: bool
 
     # --- Navigation Actions ---
 
@@ -72,6 +73,7 @@ class NavigationMixin:
         elif self.current_tab == "agents":
             scroll_container = self.query_one("#agent-diff-scroll", VerticalScroll)  # type: ignore[attr-defined]
         else:  # axe
+            self._axe_pinned_to_bottom = False
             scroll_container = self.query_one("#axe-output-scroll", VerticalScroll)  # type: ignore[attr-defined]
         height = scroll_container.scrollable_content_region.height
         scroll_container.scroll_relative(y=height // 2, animate=False)
@@ -83,6 +85,7 @@ class NavigationMixin:
         elif self.current_tab == "agents":
             scroll_container = self.query_one("#agent-diff-scroll", VerticalScroll)  # type: ignore[attr-defined]
         else:  # axe
+            self._axe_pinned_to_bottom = False
             scroll_container = self.query_one("#axe-output-scroll", VerticalScroll)  # type: ignore[attr-defined]
         height = scroll_container.scrollable_content_region.height
         scroll_container.scroll_relative(y=-(height // 2), animate=False)
@@ -94,6 +97,7 @@ class NavigationMixin:
             height = scroll_container.scrollable_content_region.height
             scroll_container.scroll_relative(y=height // 2, animate=False)
         elif self.current_tab == "axe":
+            self._axe_pinned_to_bottom = False
             scroll_container = self.query_one("#axe-output-scroll", VerticalScroll)  # type: ignore[attr-defined]
             height = scroll_container.scrollable_content_region.height
             scroll_container.scroll_relative(y=height, animate=False)  # Full page
@@ -105,6 +109,7 @@ class NavigationMixin:
             height = scroll_container.scrollable_content_region.height
             scroll_container.scroll_relative(y=-(height // 2), animate=False)
         elif self.current_tab == "axe":
+            self._axe_pinned_to_bottom = False
             scroll_container = self.query_one("#axe-output-scroll", VerticalScroll)  # type: ignore[attr-defined]
             height = scroll_container.scrollable_content_region.height
             scroll_container.scroll_relative(y=-height, animate=False)  # Full page
@@ -113,13 +118,18 @@ class NavigationMixin:
         """Scroll to the top of the current scrollable area (Axe tab)."""
         if self.current_tab != "axe":
             return
+        self._axe_pinned_to_bottom = False
         scroll_container = self.query_one("#axe-output-scroll", VerticalScroll)  # type: ignore[attr-defined]
         scroll_container.scroll_home(animate=False)
 
     def action_scroll_to_bottom(self) -> None:
-        """Scroll to the bottom of the current scrollable area (Axe tab)."""
+        """Scroll to the bottom of the current scrollable area (Axe tab).
+
+        Also pins the scroll to bottom so auto-refresh keeps showing latest output.
+        """
         if self.current_tab != "axe":
             return
+        self._axe_pinned_to_bottom = True
         scroll_container = self.query_one("#axe-output-scroll", VerticalScroll)  # type: ignore[attr-defined]
         scroll_container.scroll_end(animate=False)
 

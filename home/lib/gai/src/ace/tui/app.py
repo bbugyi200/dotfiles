@@ -122,7 +122,7 @@ class AceApp(
         Binding("percent_sign", "copy_tab_content", "Copy", show=False),
         # Scroll to top/bottom (Axe tab)
         Binding("g", "scroll_to_top", "Top", show=False),
-        Binding("shift+g", "scroll_to_bottom", "Bottom", show=False),
+        Binding("G", "scroll_to_bottom", "Bottom", show=False),
         # Help
         Binding("question_mark", "show_help", "Help", show=False),
     ]
@@ -184,6 +184,7 @@ class AceApp(
         self._axe_status: AxeStatus | None = None
         self._axe_metrics: AxeMetrics | None = None
         self._axe_output: str = ""
+        self._axe_pinned_to_bottom: bool = False
 
         # Set global model size override in environment if specified
         if model_size_override:

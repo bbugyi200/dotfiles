@@ -32,6 +32,7 @@ class AxeMixin:
     _axe_status: AxeStatus | None
     _axe_metrics: AxeMetrics | None
     _axe_output: str
+    _axe_pinned_to_bottom: bool
 
     def action_toggle_axe(self) -> None:
         """Toggle the axe daemon on or off."""
@@ -106,6 +107,8 @@ class AxeMixin:
 
     def _refresh_axe_display(self) -> None:
         """Refresh the axe dashboard display."""
+        from textual.containers import VerticalScroll
+
         from ..widgets import AxeDashboard, AxeInfoPanel, KeybindingFooter
 
         try:
@@ -129,6 +132,11 @@ class AxeMixin:
             )
             footer.set_axe_running(self.axe_running)
             footer.update_axe_bindings()
+
+            # Auto-scroll to bottom if pinned
+            if self._axe_pinned_to_bottom:
+                scroll_container = self.query_one("#axe-output-scroll", VerticalScroll)  # type: ignore[attr-defined]
+                scroll_container.scroll_end(animate=False)
         except Exception:
             # Widget not found, possibly not on axe tab
             pass
