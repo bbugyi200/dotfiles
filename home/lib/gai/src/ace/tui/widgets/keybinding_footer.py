@@ -57,11 +57,12 @@ class KeybindingFooter(Static):
     def show_empty(self) -> None:
         """Show empty state bindings."""
         text = Text()
+        # Status indicator first (bottom left)
+        self._append_status_indicator(text)
+        text.append("  ")
+        # Then the edit query binding
         text.append("/", style="bold #00D7AF")
         text.append(" edit query", style="dim")
-        # Add status indicator
-        text.append("  ")
-        self._append_status_indicator(text)
         self.update(text)
 
     def update_agent_bindings(
@@ -247,6 +248,10 @@ class KeybindingFooter(Static):
         """
         text = Text()
 
+        # Add status indicator at the START (bottom left)
+        self._append_status_indicator(text)
+        text.append("  ")
+
         # Sort bindings alphabetically (case-insensitive, lowercase before uppercase)
         # Put <space> first
         sorted_bindings = sorted(
@@ -268,10 +273,6 @@ class KeybindingFooter(Static):
             text.append(" ", style="")
             # Label in dim
             text.append(label, style="dim")
-
-        # Add status indicator at the end
-        text.append("  ")
-        self._append_status_indicator(text)
 
         return text
 
