@@ -120,7 +120,7 @@ class AceApp(
         Binding("x", "kill_agent", "Kill", show=False),
         Binding("l", "toggle_layout", "Layout", show=False),
         # Copy to clipboard (all tabs)
-        Binding("percent", "copy_tab_content", "Copy", show=False),
+        Binding("percent_sign", "copy_tab_content", "Copy", show=False),
     ]
 
     # Reactive properties
