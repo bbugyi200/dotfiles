@@ -222,7 +222,8 @@ def _apply_mentors_update(
                 while updated_lines and updated_lines[-1].strip() == "":
                     updated_lines.pop()
                 updated_lines.extend(_format_mentors_field(mentors))
-                # Add one blank line before next changespec
+                # Add two blank lines before next changespec (codebase convention)
+                updated_lines.append("\n")
                 updated_lines.append("\n")
                 found_mentors = True
 
