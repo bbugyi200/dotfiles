@@ -10,7 +10,7 @@ from textual.widgets import Static
 
 
 class _AxeStatusSection(Static):
-    """Compact status bar showing running status, PID, uptime, and cycles."""
+    """Compact status bar showing PID, uptime, and cycles."""
 
     def update_display(
         self, status: AxeStatus | None, is_running: bool, full_cycles: int
@@ -24,16 +24,8 @@ class _AxeStatusSection(Static):
         """
         text = Text()
 
-        # Status
-        text.append("Status: ", style="bold #87D7FF")
-        if is_running:
-            text.append("RUNNING", style="bold #00D787")
-        else:
-            text.append("STOPPED", style="bold #FF5F5F")
-
         if status and is_running:
             # PID
-            text.append("  │  ", style="dim")
             text.append("PID: ", style="bold #87D7FF")
             text.append(f"{status.pid}", style="#FF87D7 bold")
 

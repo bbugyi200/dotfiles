@@ -51,8 +51,6 @@ class AxeMixin:
         try:
             self._set_axe_starting(True)
             start_axe_daemon()
-            self.notify("Starting axe scheduler...")  # type: ignore[attr-defined]
-            # Give it a moment to initialize, then refresh
             self._load_axe_status()
         except Exception as e:
             self._set_axe_starting(False)
@@ -62,10 +60,7 @@ class AxeMixin:
         """Stop the axe daemon."""
         try:
             self._set_axe_stopping(True)
-            if stop_axe_daemon():
-                self.notify("Stopping axe scheduler...")  # type: ignore[attr-defined]
-            else:
-                self.notify("Axe scheduler not running", severity="warning")  # type: ignore[attr-defined]
+            stop_axe_daemon()
             self._load_axe_status()
         except Exception as e:
             self._set_axe_stopping(False)
