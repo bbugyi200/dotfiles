@@ -377,7 +377,7 @@ class HelpModal(ModalScreen[None]):
         if not prev_display and not next_display:
             text.append("  \u2502  ", style="dim #00CED1")
             text.append("No query history", style="dim italic")
-            text.append(" " * 33, style="")
+            text.append(" " * 34, style="")
             text.append(" \u2502", style="dim #00CED1")
             text.append("\n")
         else:
@@ -385,7 +385,7 @@ class HelpModal(ModalScreen[None]):
             if prev_display:
                 text.append("  \u2502  ", style="dim #00CED1")
                 text.append("\u25c0 Previous (^)", style="bold #87D7FF")
-                text.append(" " * 35, style="")
+                text.append(" " * 36, style="")
                 text.append(" \u2502", style="dim #00CED1")
                 text.append("\n")
 
@@ -439,7 +439,7 @@ class HelpModal(ModalScreen[None]):
         text.append_text(build_query_text(display_query))
 
         # Padding and right border
-        padding = max_query_len - len(display_query) - 3
+        padding = max_query_len - len(display_query)
         if padding > 0:
             text.append(" " * padding, style="")
         text.append(" \u2502", style=f"dim {border_color}")
