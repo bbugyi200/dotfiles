@@ -4,6 +4,7 @@ import os
 import re
 import subprocess
 import sys
+from dataclasses import dataclass
 
 from rich.console import Console
 
@@ -16,6 +17,19 @@ from status_state_machine import (
 )
 
 from .changespec import ChangeSpec, find_all_changespecs
+
+
+@dataclass
+class MailPrepResult:
+    """Result of mail preparation (before actual mailing).
+
+    Attributes:
+        should_mail: True if the user confirmed they want to mail the CL.
+        target_dir: The workspace directory for the CL.
+    """
+
+    should_mail: bool
+    target_dir: str
 
 
 def _has_valid_parent(changespec: ChangeSpec) -> tuple[bool, ChangeSpec | None]:
@@ -241,22 +255,26 @@ Startblock:
         return "\n".join(result_lines)
 
 
-def handle_mail(changespec: ChangeSpec, console: Console) -> bool:
-    """Handle mailing a CL with startblock configuration.
+def prepare_mail(changespec: ChangeSpec, console: Console) -> MailPrepResult | None:
+    """Prepare for mailing a CL with startblock configuration.
+
+    This performs all the prep work (reviewer prompts, description modification,
+    clipboard copy, nvim editing) but does NOT run hg mail or update the project file.
 
     Args:
-        changespec: The ChangeSpec to mail
+        changespec: The ChangeSpec to prepare for mailing
         console: Rich console for output
 
     Returns:
-        True if mailing succeeded, False otherwise
+        MailPrepResult if successful (with should_mail indicating user's choice),
+        None if the operation was aborted or failed.
     """
     # Get target directory
     try:
         target_dir = get_workspace_directory(changespec.project_basename)
     except RuntimeError as e:
         console.print(f"[red]Error: {e}[/red]")
-        return False
+        return None
 
     # Prompt for reviewers (optional)
     console.print(
@@ -267,14 +285,14 @@ def handle_mail(changespec: ChangeSpec, console: Console) -> bool:
         reviewers_input = input().strip()
     except (EOFError, KeyboardInterrupt):
         console.print("\n[yellow]Aborted[/yellow]")
-        return False
+        return None
 
     reviewers = reviewers_input.split()
     if reviewers and len(reviewers) not in [1, 2]:
         console.print(
             "[red]Error: Must provide exactly 1 or 2 reviewers (space-separated)[/red]"
         )
-        return False
+        return None
 
     # Only modify description and reword if reviewers were provided
     if reviewers:
@@ -282,7 +300,7 @@ def handle_mail(changespec: ChangeSpec, console: Console) -> bool:
         console.print("[cyan]Getting CL description...[/cyan]")
         success, description = _get_cl_description(target_dir, console)
         if not success or not description:
-            return False
+            return None
 
         # Check if parent is valid
         has_valid_parent_flag, parent_cs = _has_valid_parent(changespec)
@@ -321,14 +339,14 @@ def handle_mail(changespec: ChangeSpec, console: Console) -> bool:
                         capture_output=True,
                         text=True,
                     )
-                    return False
+                    return None
 
             except subprocess.CalledProcessError as e:
                 console.print(
                     f"[red]Error updating to parent branch "
                     f"(exit code {e.returncode}, cwd: {target_dir})[/red]"
                 )
-                return False
+                return None
             finally:
                 # Always try to restore current branch
                 try:
@@ -417,13 +435,29 @@ def handle_mail(changespec: ChangeSpec, console: Console) -> bool:
         mail_response = input().strip().lower()
     except (EOFError, KeyboardInterrupt):
         console.print("\n[yellow]Aborted[/yellow]")
-        return False
+        return None
 
-    if mail_response not in ["y", "yes"]:
-        console.print("[yellow]Skipping mail step[/yellow]")
-        return False
+    should_mail = mail_response in ["y", "yes"]
+    if not should_mail:
+        console.print("[yellow]User declined to mail[/yellow]")
 
-    # Mail the CL
+    return MailPrepResult(should_mail=should_mail, target_dir=target_dir)
+
+
+def execute_mail(changespec: ChangeSpec, target_dir: str, console: Console) -> bool:
+    """Execute the hg mail command to mail the CL.
+
+    This does NOT update the project file - the caller is responsible for
+    updating the status appropriately.
+
+    Args:
+        changespec: The ChangeSpec to mail
+        target_dir: The workspace directory for the CL
+        console: Rich console for output
+
+    Returns:
+        True if mailing succeeded, False otherwise
+    """
     console.print(f"[cyan]Mailing CL with: hg mail -r {changespec.name}[/cyan]")
     try:
         subprocess.run(
@@ -440,6 +474,34 @@ def handle_mail(changespec: ChangeSpec, console: Console) -> bool:
         return False
 
     console.print("[green]CL mailed successfully![/green]")
+    return True
+
+
+def handle_mail(changespec: ChangeSpec, console: Console) -> bool:
+    """Handle mailing a CL with startblock configuration.
+
+    This is the main entry point for the "m" (mail) action. It performs
+    mail prep, executes the mail command, and updates the project file.
+
+    Args:
+        changespec: The ChangeSpec to mail
+        console: Rich console for output
+
+    Returns:
+        True if mailing succeeded, False otherwise
+    """
+    # Run mail prep
+    prep_result = prepare_mail(changespec, console)
+    if prep_result is None:
+        return False
+
+    if not prep_result.should_mail:
+        return False
+
+    # Execute the mail command
+    success = execute_mail(changespec, prep_result.target_dir, console)
+    if not success:
+        return False
 
     # Remove READY TO MAIL suffix if present before transitioning
     remove_ready_to_mail_suffix(changespec.file_path, changespec.name)
@@ -459,6 +521,7 @@ def handle_mail(changespec: ChangeSpec, console: Console) -> bool:
         return True
     else:
         console.print(
-            f"[yellow]Warning: CL was mailed but status update failed: {status_error if status_error else 'Unknown error'}[/yellow]"
+            f"[yellow]Warning: CL was mailed but status update failed: "
+            f"{status_error if status_error else 'Unknown error'}[/yellow]"
         )
         return True  # Still return True since mailing succeeded

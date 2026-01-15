@@ -438,16 +438,17 @@ class HintActionsMixin:
 
         Supports the @ suffix for triggering mail after accept:
         - "a b c@" - accept proposals a, b, c and then mail the CL
-        - "@" alone - just mark as ready to mail (same as the "!" action)
+        - "@" alone - run full mail flow (mail prep first, then mark ready, then mail)
         """
         if not user_input:
             return
 
         changespec = self.changespecs[self.current_idx]
 
-        # Special case: "@" alone means just mark as ready to mail
+        # Special case: "@" alone means run full mail flow
+        # (mail prep first, then mark ready to mail, then execute mail)
         if user_input.strip() == "@":
-            self.action_mark_ready_to_mail()  # type: ignore[attr-defined]
+            self._handle_at_alone_mail_flow(changespec)
             return
 
         # Split input into args
@@ -505,3 +506,75 @@ class HintActionsMixin:
 
         # Now call the mail action (same as pressing 'm')
         self.action_mail()  # type: ignore[attr-defined]
+
+    def _handle_at_alone_mail_flow(self, changespec: ChangeSpec) -> None:
+        """Handle the full mail flow when "@" alone is input.
+
+        This runs the mail operations in a specific order:
+        1. Run mail prep FIRST (reviewer prompts, description modification, nvim)
+        2. Ask user if they want to mail
+        3. Run mark_ready_to_mail operations (kill processes, reject proposals)
+        4. Set status atomically (to "Mailed" if user confirmed, or READY TO MAIL if not)
+        5. Execute hg mail if user confirmed
+
+        Args:
+            changespec: The ChangeSpec to process
+        """
+        from rich.console import Console
+
+        from ...changespec import get_base_status, has_ready_to_mail_suffix
+        from ...mail_ops import MailPrepResult, execute_mail, prepare_mail
+
+        # Validate: must be Drafted without READY TO MAIL suffix
+        base_status = get_base_status(changespec.status)
+        if base_status != "Drafted":
+            self.notify("Must be Drafted status", severity="warning")  # type: ignore[attr-defined]
+            return
+        if has_ready_to_mail_suffix(changespec.status):
+            self.notify("Already marked as ready to mail", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        # STEP 1: Run mail prep FIRST (prompts for reviewers, modifies description, opens nvim)
+        prep_result: MailPrepResult | None = None
+
+        def run_mail_prep() -> MailPrepResult | None:
+            console = Console()
+            return prepare_mail(changespec, console)
+
+        with self.suspend():  # type: ignore[attr-defined]
+            prep_result = run_mail_prep()
+
+        if prep_result is None:
+            # User aborted or error occurred
+            self._reload_and_reposition()  # type: ignore[attr-defined]
+            return
+
+        # STEP 2: Mark ready to mail with appropriate final status
+        # If user said "yes" to mail, set status directly to "Mailed"
+        # If user said "no", just add READY TO MAIL suffix
+        final_status = "Mailed" if prep_result.should_mail else None
+        success = self._mark_ready_to_mail_atomic(changespec, final_status)  # type: ignore[attr-defined]
+
+        if not success:
+            self.notify("Failed to mark as ready to mail", severity="error")  # type: ignore[attr-defined]
+            self._reload_and_reposition()  # type: ignore[attr-defined]
+            return
+
+        # STEP 3: Execute mail if user confirmed
+        if prep_result.should_mail:
+
+            def run_mail() -> bool:
+                console = Console()
+                return execute_mail(changespec, prep_result.target_dir, console)
+
+            with self.suspend():  # type: ignore[attr-defined]
+                mail_success = run_mail()
+
+            if mail_success:
+                self.notify("CL mailed successfully")  # type: ignore[attr-defined]
+            else:
+                self.notify("Failed to mail CL", severity="error")  # type: ignore[attr-defined]
+        else:
+            self.notify("Marked as ready to mail")  # type: ignore[attr-defined]
+
+        self._reload_and_reposition()  # type: ignore[attr-defined]

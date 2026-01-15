@@ -4,6 +4,122 @@ import re
 
 from ace.changespec import changespec_lock, write_changespec_atomic
 
+# Ready to mail suffix constant
+_READY_TO_MAIL_SUFFIX = " - (!: READY TO MAIL)"
+
+
+def reject_proposals_and_set_status_atomic(
+    project_file: str,
+    cl_name: str,
+    final_status: str,
+) -> bool:
+    """Reject all new proposals and set STATUS in a single atomic write.
+
+    This combines reject_all_new_proposals and status transition into one
+    atomic operation. Use this when you want to:
+    - Reject all new proposals
+    - Set status to "Mailed" or add READY TO MAIL suffix
+    All in one lock acquisition and file write.
+
+    Args:
+        project_file: Path to the project file.
+        cl_name: The CL name to update.
+        final_status: The final status to set. Should be either:
+            - "Mailed" to set status directly to Mailed
+            - None or empty to add READY TO MAIL suffix to current status
+
+    Returns:
+        True if successful, False otherwise.
+    """
+    try:
+        with changespec_lock(project_file):
+            with open(project_file, encoding="utf-8") as f:
+                lines = f.readlines()
+
+            # Track state while parsing
+            in_target_changespec = False
+            in_commits = False
+            rejected_count = 0
+            status_line_idx: int | None = None
+            current_status: str | None = None
+
+            for i, line in enumerate(lines):
+                if line.startswith("NAME: "):
+                    current_name = line[6:].strip()
+                    in_target_changespec = current_name == cl_name
+                    in_commits = False
+                elif in_target_changespec:
+                    if line.startswith("STATUS:"):
+                        # Capture the status line index and current value
+                        status_line_idx = i
+                        current_status = line[7:].strip()
+                        in_commits = False
+                    elif line.startswith("COMMITS:"):
+                        in_commits = True
+                    elif line.startswith(
+                        (
+                            "NAME:",
+                            "DESCRIPTION:",
+                            "PARENT:",
+                            "CL:",
+                            "TEST TARGETS:",
+                            "KICKSTART:",
+                            "HOOKS:",
+                            "COMMENTS:",
+                            "MENTORS:",
+                        )
+                    ):
+                        in_commits = False
+                        if line.startswith("NAME:"):
+                            in_target_changespec = False
+                    elif in_commits:
+                        stripped = line.strip()
+                        # Match: (Na) Note text - (!: NEW PROPOSAL)
+                        entry_match = re.match(
+                            r"^\((\d+[a-z])\)\s+(.+?)\s+-\s+\(!:\s*NEW PROPOSAL\)$",
+                            stripped,
+                        )
+                        if entry_match:
+                            matched_id = entry_match.group(1)
+                            note_text = entry_match.group(2)
+                            # Preserve leading whitespace
+                            leading_ws = line[: len(line) - len(line.lstrip())]
+                            # Change (!: NEW PROPOSAL) to (~!: NEW PROPOSAL)
+                            new_line = (
+                                f"{leading_ws}({matched_id}) {note_text} - "
+                                f"(~!: NEW PROPOSAL)\n"
+                            )
+                            lines[i] = new_line
+                            rejected_count += 1
+
+            # Must have found the status line
+            if status_line_idx is None or current_status is None:
+                return False
+
+            # Update the status line based on final_status
+            if final_status == "Mailed":
+                # Set status directly to "Mailed"
+                new_status = "Mailed"
+            else:
+                # Add READY TO MAIL suffix if not already present
+                if "(!: READY TO MAIL)" in current_status:
+                    new_status = current_status  # Already has suffix
+                else:
+                    new_status = current_status + _READY_TO_MAIL_SUFFIX
+
+            lines[status_line_idx] = f"STATUS: {new_status}\n"
+
+            # Write atomically
+            write_changespec_atomic(
+                project_file,
+                "".join(lines),
+                f"Reject {rejected_count} proposal(s) and set status to "
+                f"'{new_status}' for {cl_name}",
+            )
+            return True
+    except Exception:
+        return False
+
 
 def reject_all_new_proposals(
     project_file: str,

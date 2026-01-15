@@ -1,6 +1,20 @@
 """Tests for mail_ops module."""
 
-from ace.mail_ops import _modify_description_for_mailing
+from ace.mail_ops import MailPrepResult, _modify_description_for_mailing
+
+
+def test_mail_prep_result_should_mail_true() -> None:
+    """Test MailPrepResult dataclass with should_mail=True."""
+    result = MailPrepResult(should_mail=True, target_dir="/path/to/workspace")
+    assert result.should_mail is True
+    assert result.target_dir == "/path/to/workspace"
+
+
+def test_mail_prep_result_should_mail_false() -> None:
+    """Test MailPrepResult dataclass with should_mail=False."""
+    result = MailPrepResult(should_mail=False, target_dir="/other/path")
+    assert result.should_mail is False
+    assert result.target_dir == "/other/path"
 
 
 def test_modify_description_one_reviewer_no_parent() -> None:

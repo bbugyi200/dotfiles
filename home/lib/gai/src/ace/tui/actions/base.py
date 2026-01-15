@@ -335,6 +335,83 @@ class BaseActionsMixin:
 
         self._reload_and_reposition()  # type: ignore[attr-defined]
 
+    def _mark_ready_to_mail_atomic(
+        self,
+        changespec: ChangeSpec,
+        final_status: str | None = None,
+    ) -> bool:
+        """Mark as ready to mail with atomic proposal rejection and status update.
+
+        This is similar to action_mark_ready_to_mail() but:
+        - Takes a changespec parameter (doesn't use current selection)
+        - Combines proposal rejection and status update atomically
+        - Allows specifying final status ("Mailed" or None for READY TO MAIL suffix)
+        - Does NOT call _reload_and_reposition() - caller must do that
+
+        Args:
+            changespec: The ChangeSpec to mark as ready to mail
+            final_status: If "Mailed", set status directly to Mailed.
+                          If None, add READY TO MAIL suffix to current status.
+
+        Returns:
+            True if successful, False otherwise.
+        """
+        from commit_utils import reject_proposals_and_set_status_atomic
+
+        from ...comments import update_changespec_comments_field
+        from ...comments.operations import mark_comment_agents_as_killed
+        from ...hooks import (
+            kill_running_agent_processes,
+            kill_running_hook_processes_except_dollar,
+            mark_hook_agents_as_killed,
+            mark_hooks_as_killed,
+            update_changespec_hooks_field,
+        )
+
+        # 1. Kill all running agents (hooks and comments)
+        killed_hook_agents, killed_comment_agents = kill_running_agent_processes(
+            changespec
+        )
+
+        # Update hooks to mark agents as killed and persist
+        if killed_hook_agents and changespec.hooks:
+            updated_hooks = mark_hook_agents_as_killed(
+                changespec.hooks, killed_hook_agents
+            )
+            update_changespec_hooks_field(
+                changespec.file_path, changespec.name, updated_hooks
+            )
+
+        # Update comments to mark agents as killed and persist
+        if killed_comment_agents and changespec.comments:
+            updated_comments = mark_comment_agents_as_killed(
+                changespec.comments, killed_comment_agents
+            )
+            update_changespec_comments_field(
+                changespec.file_path, changespec.name, updated_comments
+            )
+
+        # 2. Kill running hooks except $-prefixed ones
+        killed_hooks = kill_running_hook_processes_except_dollar(changespec)
+
+        # Update hooks to mark as killed and persist
+        if killed_hooks and changespec.hooks:
+            updated_hooks = mark_hooks_as_killed(
+                changespec.hooks, killed_hooks, "Manually marked ready to mail"
+            )
+            update_changespec_hooks_field(
+                changespec.file_path, changespec.name, updated_hooks
+            )
+
+        # 3 & 4. Atomically reject proposals and set status
+        success = reject_proposals_and_set_status_atomic(
+            changespec.file_path,
+            changespec.name,
+            final_status if final_status else "",
+        )
+
+        return success
+
     def action_accept_proposal(self) -> None:
         """Accept a proposal for the current ChangeSpec."""
         if not self.changespecs:
