@@ -3,6 +3,8 @@
 from typing import TYPE_CHECKING, Any
 
 from rich.text import Text
+from textual.app import ComposeResult
+from textual.containers import Horizontal
 from textual.widgets import Static
 
 from ...changespec import ChangeSpec, has_ready_to_mail_suffix
@@ -12,14 +14,19 @@ if TYPE_CHECKING:
     from ..models.agent import Agent
 
 
-class KeybindingFooter(Static):
-    """Footer showing available keybindings."""
+class KeybindingFooter(Horizontal):
+    """Footer showing available keybindings with status indicator on the right."""
 
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the footer widget."""
         super().__init__(**kwargs)
         self._axe_running: bool = False
         self._axe_starting: bool = False
+
+    def compose(self) -> ComposeResult:
+        """Compose the footer with bindings on left and status on right."""
+        yield Static(id="keybinding-content")
+        yield Static(id="keybinding-status")
 
     def set_axe_running(self, running: bool) -> None:
         """Update the axe running state for binding labels.
@@ -28,6 +35,7 @@ class KeybindingFooter(Static):
             running: Whether axe daemon is currently running.
         """
         self._axe_running = running
+        self._update_status()
 
     def set_axe_starting(self, starting: bool) -> None:
         """Update the axe starting state.
@@ -36,6 +44,44 @@ class KeybindingFooter(Static):
             starting: Whether axe daemon is currently starting.
         """
         self._axe_starting = starting
+        self._update_status()
+
+    def _update_status(self) -> None:
+        """Update the status indicator widget."""
+        try:
+            status = self.query_one("#keybinding-status", Static)
+            status.update(self._get_status_text())
+        except Exception:
+            pass
+
+    def _get_status_text(self) -> Text:
+        """Get styled status indicator text.
+
+        Returns:
+            Formatted Text object for the status indicator.
+        """
+        text = Text()
+        if self._axe_starting:
+            text.append(" STARTING ", style="bold black on yellow")
+        elif self._axe_running:
+            text.append(" RUNNING ", style="bold black on green")
+        else:
+            text.append(" STOPPED ", style="bold white on red")
+        return text
+
+    def _update_display(self, bindings_text: Text) -> None:
+        """Update both the bindings content and status indicator.
+
+        Args:
+            bindings_text: Formatted text for the keybindings.
+        """
+        try:
+            content = self.query_one("#keybinding-content", Static)
+            status = self.query_one("#keybinding-status", Static)
+            content.update(bindings_text)
+            status.update(self._get_status_text())
+        except Exception:
+            pass
 
     def update_bindings(
         self,
@@ -52,18 +98,14 @@ class KeybindingFooter(Static):
         """
         bindings = self._compute_available_bindings(changespec, current_idx, total)
         text = self._format_bindings(bindings)
-        self.update(text)
+        self._update_display(text)
 
     def show_empty(self) -> None:
         """Show empty state bindings."""
         text = Text()
-        # Status indicator first (bottom left)
-        self._append_status_indicator(text)
-        text.append("  ")
-        # Then the edit query binding
         text.append("/", style="bold #00D7AF")
         text.append(" edit query", style="dim")
-        self.update(text)
+        self._update_display(text)
 
     def update_agent_bindings(
         self,
@@ -85,13 +127,13 @@ class KeybindingFooter(Static):
             agent, current_idx, total, diff_visible=diff_visible
         )
         text = self._format_bindings(bindings)
-        self.update(text)
+        self._update_display(text)
 
     def update_axe_bindings(self) -> None:
         """Update bindings for Axe tab context."""
         bindings = self._compute_axe_bindings()
         text = self._format_bindings(bindings)
-        self.update(text)
+        self._update_display(text)
 
     def _compute_axe_bindings(self) -> list[tuple[str, str]]:
         """Compute available bindings for Axe tab.
@@ -248,10 +290,6 @@ class KeybindingFooter(Static):
         """
         text = Text()
 
-        # Add status indicator at the START (bottom left)
-        self._append_status_indicator(text)
-        text.append("  ")
-
         # Sort bindings alphabetically (case-insensitive, lowercase before uppercase)
         # Put <space> first
         sorted_bindings = sorted(
@@ -275,16 +313,3 @@ class KeybindingFooter(Static):
             text.append(label, style="dim")
 
         return text
-
-    def _append_status_indicator(self, text: Text) -> None:
-        """Append axe status indicator to text.
-
-        Args:
-            text: Text object to append to.
-        """
-        if self._axe_starting:
-            text.append(" STARTING ", style="bold black on yellow")
-        elif self._axe_running:
-            text.append(" RUNNING ", style="bold black on green")
-        else:
-            text.append(" STOPPED ", style="bold white on red")

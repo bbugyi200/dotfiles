@@ -76,6 +76,14 @@
     padding: 0 1;
 }
 
+#keybinding-content {
+    width: 1fr;
+}
+
+#keybinding-status {
+    width: auto;
+}
+
 /* List panel styling */
 ChangeSpecList {
     scrollbar-gutter: stable;

@@ -379,7 +379,7 @@ def test_keybinding_footer_status_indicator_stopped() -> None:
     footer._axe_running = False
     footer._axe_starting = False
 
-    text = footer._format_bindings([])
+    text = footer._get_status_text()
     text_str = str(text)
 
     assert "STOPPED" in text_str
@@ -391,7 +391,7 @@ def test_keybinding_footer_status_indicator_running() -> None:
     footer._axe_running = True
     footer._axe_starting = False
 
-    text = footer._format_bindings([])
+    text = footer._get_status_text()
     text_str = str(text)
 
     assert "RUNNING" in text_str
@@ -403,7 +403,7 @@ def test_keybinding_footer_status_indicator_starting() -> None:
     footer._axe_running = False
     footer._axe_starting = True
 
-    text = footer._format_bindings([])
+    text = footer._get_status_text()
     text_str = str(text)
 
     assert "STARTING" in text_str
@@ -566,44 +566,35 @@ def test_keybinding_footer_rebase_hidden_submitted() -> None:
     assert "b" not in binding_keys
 
 
-def test_keybinding_footer_append_status_indicator_stopped() -> None:
-    """Test _append_status_indicator adds STOPPED status."""
-    from rich.text import Text
-
+def test_keybinding_footer_get_status_text_stopped() -> None:
+    """Test _get_status_text returns STOPPED status."""
     footer = KeybindingFooter()
     footer._axe_running = False
     footer._axe_starting = False
 
-    text = Text()
-    footer._append_status_indicator(text)
+    text = footer._get_status_text()
 
     assert "STOPPED" in str(text)
 
 
-def test_keybinding_footer_append_status_indicator_running() -> None:
-    """Test _append_status_indicator adds RUNNING status."""
-    from rich.text import Text
-
+def test_keybinding_footer_get_status_text_running() -> None:
+    """Test _get_status_text returns RUNNING status."""
     footer = KeybindingFooter()
     footer._axe_running = True
     footer._axe_starting = False
 
-    text = Text()
-    footer._append_status_indicator(text)
+    text = footer._get_status_text()
 
     assert "RUNNING" in str(text)
 
 
-def test_keybinding_footer_append_status_indicator_starting() -> None:
-    """Test _append_status_indicator adds STARTING status."""
-    from rich.text import Text
-
+def test_keybinding_footer_get_status_text_starting() -> None:
+    """Test _get_status_text returns STARTING status."""
     footer = KeybindingFooter()
     footer._axe_running = False
     footer._axe_starting = True
 
-    text = Text()
-    footer._append_status_indicator(text)
+    text = footer._get_status_text()
 
     assert "STARTING" in str(text)
 
