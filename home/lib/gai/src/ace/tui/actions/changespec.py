@@ -32,12 +32,16 @@ class ChangeSpecMixin:
     _hook_hint_to_idx: dict[int, int]
     _hint_to_entry_id: dict[int, str]
     _query_history: QueryHistoryStacks
+    _all_changespecs: list[ChangeSpec]
+    _ancestor_keys: dict[str, str]
+    _children_keys: dict[str, str]
 
     def _load_changespecs(self) -> None:
         """Load and filter changespecs from disk."""
         from ...changespec import find_all_changespecs
 
         all_changespecs = find_all_changespecs()
+        self._all_changespecs = all_changespecs  # Cache for ancestry lookup
         self.changespecs = self._filter_changespecs(all_changespecs)
 
         # Ensure current_idx is within bounds
@@ -213,6 +217,7 @@ class ChangeSpecMixin:
     def _refresh_display(self) -> None:
         """Refresh the display with current state."""
         from ..widgets import (
+            AncestorsChildrenPanel,
             ChangeSpecDetail,
             ChangeSpecList,
             KeybindingFooter,
@@ -223,6 +228,9 @@ class ChangeSpecMixin:
         detail_widget = self.query_one("#detail-panel", ChangeSpecDetail)  # type: ignore[attr-defined]
         search_panel = self.query_one("#search-query-panel", SearchQueryPanel)  # type: ignore[attr-defined]
         footer_widget = self.query_one("#keybinding-footer", KeybindingFooter)  # type: ignore[attr-defined]
+        ancestors_panel = self.query_one(  # type: ignore[attr-defined]
+            "#ancestors-children-panel", AncestorsChildrenPanel
+        )
 
         list_widget.update_list(self.changespecs, self.current_idx)
         search_panel.update_query(self.canonical_query_string)  # type: ignore[attr-defined]
@@ -258,9 +266,16 @@ class ChangeSpecMixin:
                 self.current_idx,
                 len(self.changespecs),
             )
+            # Update ancestors/children panel
+            self._ancestor_keys, self._children_keys = (
+                ancestors_panel.update_relationships(changespec, self._all_changespecs)
+            )
         else:
             detail_widget.show_empty(self.canonical_query_string)  # type: ignore[attr-defined]
             footer_widget.show_empty()
+            ancestors_panel.clear()
+            self._ancestor_keys = {}
+            self._children_keys = {}
 
         self._update_info_panel()
 

@@ -34,6 +34,7 @@ from .widgets import (
     AgentDetail,
     AgentInfoPanel,
     AgentList,
+    AncestorsChildrenPanel,
     AxeDashboard,
     AxeInfoPanel,
     ChangeSpecDetail,
@@ -128,6 +129,9 @@ class AceApp(
         # Query history navigation
         Binding("circumflex_accent", "prev_query", "Prev Query", show=False),
         Binding("underscore", "next_query", "Next Query", show=False),
+        # Ancestor/child navigation
+        Binding("less_than", "start_ancestor_mode", "Ancestor", show=False),
+        Binding("greater_than", "start_child_mode", "Child", show=False),
     ]
 
     # Reactive properties
@@ -178,6 +182,13 @@ class AceApp(
         # Fold mode state (for z key sub-command)
         self._fold_mode_active: bool = False
 
+        # Ancestor/child navigation state
+        self._ancestor_mode_active: bool = False
+        self._child_mode_active: bool = False
+        self._ancestor_keys: dict[str, str] = {}  # name -> keymap
+        self._children_keys: dict[str, str] = {}  # name -> keymap
+        self._all_changespecs: list[ChangeSpec] = []  # Cache for ancestry lookup
+
         # Tab state - track position in each tab
         self._changespecs_last_idx: int = 0
         self._agents_last_idx: int = 0
@@ -219,6 +230,7 @@ class AceApp(
                 with Vertical(id="list-container"):
                     yield ChangeSpecInfoPanel(id="info-panel")
                     yield ChangeSpecList(id="list-panel")
+                    yield AncestorsChildrenPanel(id="ancestors-children-panel")
                 with Vertical(id="detail-container"):
                     yield SearchQueryPanel(id="search-query-panel")
                     with VerticalScroll(id="detail-scroll"):

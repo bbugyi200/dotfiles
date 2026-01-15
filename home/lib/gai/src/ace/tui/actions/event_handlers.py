@@ -33,6 +33,8 @@ class EventHandlersMixin:
     _agents: list[Agent]
     _changespecs_last_idx: int
     _agents_last_idx: int
+    _ancestor_mode_active: bool
+    _child_mode_active: bool
 
     def _on_auto_refresh(self) -> None:
         """Auto-refresh handler called by timer."""
@@ -61,9 +63,13 @@ class EventHandlersMixin:
             self._update_axe_info_panel()  # type: ignore[attr-defined]
 
     def on_key(self, event: events.Key) -> None:
-        """Handle key events, including fold sub-keys."""
+        """Handle key events, including fold and ancestry sub-keys."""
         if self._fold_mode_active:
             if self._handle_fold_key(event.key):  # type: ignore[attr-defined]
+                event.prevent_default()
+                event.stop()
+        elif self._ancestor_mode_active or self._child_mode_active:
+            if self._handle_ancestry_key(event.key):  # type: ignore[attr-defined]
                 event.prevent_default()
                 event.stop()
 

@@ -44,6 +44,15 @@
     padding: 0 1;
 }
 
+/* Ancestors/Children Panel */
+#ancestors-children-panel {
+    height: auto;
+    max-height: 12;
+    padding: 0 1;
+    border-top: solid $secondary;
+    background: $surface;
+}
+
 #detail-container {
     width: 1fr;  /* Takes remaining space */
     height: 100%;
