@@ -227,29 +227,6 @@ class BaseActionsMixin:
 
         self._reload_and_reposition()  # type: ignore[attr-defined]
 
-    def action_findreviewers(self) -> None:
-        """Find reviewers for the current ChangeSpec."""
-        from ...changespec import has_ready_to_mail_suffix
-
-        if not self.changespecs:
-            return
-
-        changespec = self.changespecs[self.current_idx]
-
-        if not has_ready_to_mail_suffix(changespec.status):
-            self.notify("ChangeSpec is not ready to mail", severity="warning")  # type: ignore[attr-defined]
-            return
-
-        from ...handlers import handle_findreviewers
-        from .._workflow_context import WorkflowContext
-
-        def run_handler() -> None:
-            ctx = WorkflowContext()
-            handle_findreviewers(ctx, changespec)  # type: ignore[arg-type]
-
-        with self.suspend():  # type: ignore[attr-defined]
-            run_handler()
-
     def action_mark_ready_to_mail(self) -> None:
         """Mark the current ChangeSpec as ready to mail.
 

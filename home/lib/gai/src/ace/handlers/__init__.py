@@ -2,7 +2,6 @@
 
 from .tool_handlers import (
     handle_edit_hooks,
-    handle_findreviewers,
     handle_mail,
     handle_reword,
     handle_show_diff,
@@ -21,7 +20,6 @@ __all__ = [
     # Tool handlers
     "handle_show_diff",
     "handle_edit_hooks",
-    "handle_findreviewers",
     "handle_mail",
     "handle_reword",
 ]

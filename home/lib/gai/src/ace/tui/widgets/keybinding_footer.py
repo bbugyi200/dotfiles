@@ -249,9 +249,8 @@ class KeybindingFooter(Horizontal):
         if base_status == "Drafted" and not has_ready_to_mail_suffix(changespec.status):
             bindings.append(("!", "ready"))
 
-        # Find reviewers and mail (only if READY TO MAIL)
+        # Mail (only if READY TO MAIL)
         if has_ready_to_mail_suffix(changespec.status):
-            bindings.append(("f", "findreviewers"))
             bindings.append(("m", "mail"))
 
         # Rebase (only if status is WIP, Drafted, or Mailed)

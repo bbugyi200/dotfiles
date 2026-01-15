@@ -127,6 +127,59 @@ def _get_branch_number(target_dir: str, console: Console) -> tuple[bool, str | N
         return False, None
 
 
+def _run_findreviewers(target_dir: str, console: Console) -> bool:
+    """Run p4 findreviewers command and display output.
+
+    Args:
+        target_dir: Directory to run commands in
+        console: Rich console for output
+
+    Returns:
+        True if successful, False if an error occurred
+    """
+    # Get the CL number using branch_number command
+    success, cl_number = _get_branch_number(target_dir, console)
+    if not success or not cl_number:
+        return False
+
+    # Run p4 findreviewers command
+    console.print("[cyan]Running p4 findreviewers...[/cyan]\n")
+    try:
+        result = subprocess.run(
+            ["p4", "findreviewers", "-c", cl_number],
+            cwd=target_dir,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        # Display the output
+        if result.stdout:
+            console.print(result.stdout)
+        else:
+            console.print("[yellow]No output from p4 findreviewers[/yellow]")
+
+        # Wait for user to press enter before returning
+        console.print("\n[dim]Press enter to continue...[/dim]", end="")
+        input()
+        return True
+
+    except subprocess.CalledProcessError as e:
+        error_msg = f"p4 findreviewers failed (exit code {e.returncode})"
+        if e.stderr:
+            error_msg += f": {e.stderr.strip()}"
+        elif e.stdout:
+            error_msg += f": {e.stdout.strip()}"
+        console.print(f"[red]{error_msg}[/red]")
+        return False
+    except FileNotFoundError:
+        console.print("[red]p4 command not found[/red]")
+        return False
+    except Exception as e:
+        console.print(f"[red]Unexpected error running findreviewers: {str(e)}[/red]")
+        return False
+
+
 def _modify_description_for_mailing(
     description: str,
     reviewers: list[str],
@@ -276,23 +329,32 @@ def prepare_mail(changespec: ChangeSpec, console: Console) -> MailPrepResult | N
         console.print(f"[red]Error: {e}[/red]")
         return None
 
-    # Prompt for reviewers (optional)
-    console.print(
-        "\n[cyan]Enter reviewers (1 or 2, space-separated, or Enter to skip):[/cyan] ",
-        end="",
-    )
-    try:
-        reviewers_input = input().strip()
-    except (EOFError, KeyboardInterrupt):
-        console.print("\n[yellow]Aborted[/yellow]")
-        return None
-
-    reviewers = reviewers_input.split()
-    if reviewers and len(reviewers) not in [1, 2]:
+    # Prompt for reviewers (optional) - loop to handle @ input for findreviewers
+    while True:
         console.print(
-            "[red]Error: Must provide exactly 1 or 2 reviewers (space-separated)[/red]"
+            "\n[cyan]Enter reviewers (1 or 2, space-separated, @ for findreviewers, "
+            "or Enter to skip):[/cyan] ",
+            end="",
         )
-        return None
+        try:
+            reviewers_input = input().strip()
+        except (EOFError, KeyboardInterrupt):
+            console.print("\n[yellow]Aborted[/yellow]")
+            return None
+
+        # Check for @ input - run findreviewers and reprompt
+        if reviewers_input == "@":
+            _run_findreviewers(target_dir, console)
+            continue  # Loop back to prompt for reviewers again
+
+        reviewers = reviewers_input.split()
+        if reviewers and len(reviewers) not in [1, 2]:
+            console.print(
+                "[red]Error: Must provide exactly 1 or 2 reviewers (space-separated)[/red]"
+            )
+            return None
+
+        break  # Valid input, exit loop
 
     # Only modify description and reword if reviewers were provided
     if reviewers:
