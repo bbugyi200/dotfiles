@@ -217,7 +217,13 @@ def _apply_mentors_update(
 
             # If we were in target and didn't find MENTORS, insert before NAME
             if was_in_target and not found_mentors and mentors:
+                # Remove trailing blank lines before inserting MENTORS
+                # (parser treats 2+ blank lines as end of changespec)
+                while updated_lines and updated_lines[-1].strip() == "":
+                    updated_lines.pop()
                 updated_lines.extend(_format_mentors_field(mentors))
+                # Add one blank line before next changespec
+                updated_lines.append("\n")
                 found_mentors = True
 
             updated_lines.append(line)
