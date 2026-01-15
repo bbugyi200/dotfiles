@@ -5,9 +5,9 @@ the gai axe daemon process.
 """
 
 import os
+import shutil
 import signal
 import subprocess
-import sys
 
 from ace.hooks.processes import is_process_running
 
@@ -60,11 +60,14 @@ def start_axe_daemon(
     if is_axe_running():
         return None
 
+    # Find gai executable on PATH
+    gai_cmd = shutil.which("gai")
+    if gai_cmd is None:
+        return None
+
     # Build command
     cmd = [
-        sys.executable,
-        "-m",
-        "gai",
+        gai_cmd,
         "axe",
         "--full-check-interval",
         str(full_check_interval),
