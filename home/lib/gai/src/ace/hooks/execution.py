@@ -1,5 +1,6 @@
 """Hook execution - file updates and background execution."""
 
+import logging
 import os
 import subprocess
 import tempfile
@@ -15,6 +16,7 @@ from ..changespec import (
     ChangeSpec,
     HookEntry,
     HookStatusLine,
+    LockTimeoutError,
     changespec_lock,
     is_error_suffix,
     is_running_agent_suffix,
@@ -315,7 +317,15 @@ def merge_hook_updates(
             write_hooks_unlocked(project_file, changespec_name, merged_hooks)
             return True
 
-    except Exception:
+    except LockTimeoutError:
+        # Log lock timeout specifically - this is likely due to contention
+        logging.warning(
+            f"Lock timeout updating hooks for {changespec_name} in {project_file}"
+        )
+        return False
+    except Exception as e:
+        # Log unexpected errors
+        logging.error(f"Failed to update hooks for {changespec_name}: {e}")
         return False
 
 

@@ -220,6 +220,12 @@ def check_hooks(
                         age_seconds = get_hook_file_age_seconds_from_timestamp(
                             pending_timestamp
                         )
+                        # Diagnostic logging to help debug PENDING_DEAD resolution
+                        log(
+                            f"PENDING_DEAD check: ts={pending_timestamp}, "
+                            f"age={age_seconds}s, timeout={_PENDING_DEAD_TIMEOUT_SECONDS}s",
+                            "dim",
+                        )
                         if age_seconds is not None and age_seconds >= (
                             _PENDING_DEAD_TIMEOUT_SECONDS
                         ):
@@ -489,11 +495,17 @@ def check_hooks(
     # Use merge_hook_updates to preserve hooks added by other processes
     # (e.g., gai commit adding test hooks while we're updating statuses)
     if modified_hooks:
-        merge_hook_updates(
+        success = merge_hook_updates(
             changespec.file_path,
             changespec.name,
             modified_hooks,
         )
+        if not success:
+            # Log that update failed - will be retried next cycle
+            log(
+                f"Warning: Hook update failed for {changespec.name}, will retry",
+                "dim",
+            )
 
     # Release workspaces for entries whose hooks have all completed
     # This allows early release of older entry workspaces while newer entries

@@ -191,3 +191,38 @@ def test_wait_for_completion_marker_returns_none_after_all_retries() -> None:
     assert mock_sleep.call_count == 3
     # Verify correct delay was used
     mock_sleep.assert_called_with(0.2)
+
+
+def test_check_hooks_logs_warning_on_merge_failure() -> None:
+    """Test that check_hooks logs a warning when merge_hook_updates fails."""
+    # Create a changespec with a RUNNING hook that has completed
+    status_line = HookStatusLine(
+        commit_entry_num="1",
+        timestamp="240101120000",
+        status="RUNNING",
+        duration=None,
+        suffix="12345",  # PID
+    )
+    hook = HookEntry(command="test_cmd", status_lines=[status_line])
+    cs = _make_changespec(hooks=[hook])
+    log = MagicMock()
+
+    # Create a completed hook to return from check_hook_completion
+    completed_hook = _make_hook(
+        command="test_cmd", status="PASSED", timestamp="240101120000"
+    )
+
+    with (
+        patch(
+            "ace.loop.hook_checks.check_hook_completion", return_value=completed_hook
+        ),
+        patch("ace.loop.hook_checks.is_process_running", return_value=True),
+        patch("ace.loop.hook_checks.merge_hook_updates", return_value=False),
+    ):
+        updates, hooks_started = check_hooks(cs, log)
+
+    # Verify that the warning was logged
+    log.assert_any_call(
+        "Warning: Hook update failed for test_cs, will retry",
+        "dim",
+    )
