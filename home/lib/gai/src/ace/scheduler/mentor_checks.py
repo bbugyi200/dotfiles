@@ -272,6 +272,7 @@ def _get_matching_profiles_for_entry(
             f"DEBUG [{changespec.name}]: commits="
             f"{[(c.display_number, c.note) for c in (changespec.commits or [])]}"
         )
+        print(f"DEBUG [{changespec.name}]: changespec.mentors={changespec.mentors}")
     # DEBUG END
 
     if not changespec.commits:
