@@ -37,12 +37,16 @@ class EventHandlersMixin:
     def _on_auto_refresh(self) -> None:
         """Auto-refresh handler called by timer."""
         self._countdown_remaining = self.refresh_interval
+
+        # Always poll axe status regardless of tab (for STARTING/STOPPING states)
+        self._load_axe_status()  # type: ignore[attr-defined]
+
+        # Tab-specific refreshes
         if self.current_tab == "changespecs":
             self._reload_and_reposition()  # type: ignore[attr-defined]
         elif self.current_tab == "agents":
             self._load_agents()  # type: ignore[attr-defined]
-        else:  # axe
-            self._load_axe_status()  # type: ignore[attr-defined]
+        # No else needed - axe display already refreshed by _load_axe_status()
 
     def _on_countdown_tick(self) -> None:
         """Countdown tick handler called every second."""

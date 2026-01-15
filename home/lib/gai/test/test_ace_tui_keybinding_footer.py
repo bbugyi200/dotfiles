@@ -378,6 +378,7 @@ def test_keybinding_footer_status_indicator_stopped() -> None:
     footer = KeybindingFooter()
     footer._axe_running = False
     footer._axe_starting = False
+    footer._axe_stopping = False
 
     text = footer._get_status_text()
     text_str = str(text)
@@ -390,6 +391,7 @@ def test_keybinding_footer_status_indicator_running() -> None:
     footer = KeybindingFooter()
     footer._axe_running = True
     footer._axe_starting = False
+    footer._axe_stopping = False
 
     text = footer._get_status_text()
     text_str = str(text)
@@ -402,6 +404,7 @@ def test_keybinding_footer_status_indicator_starting() -> None:
     footer = KeybindingFooter()
     footer._axe_running = False
     footer._axe_starting = True
+    footer._axe_stopping = False
 
     text = footer._get_status_text()
     text_str = str(text)
@@ -431,6 +434,31 @@ def test_keybinding_footer_set_axe_starting() -> None:
 
     footer.set_axe_starting(False)
     assert footer._axe_starting is False
+
+
+def test_keybinding_footer_status_indicator_stopping() -> None:
+    """Test status indicator shows STOPPING when axe is stopping."""
+    footer = KeybindingFooter()
+    footer._axe_running = False
+    footer._axe_starting = False
+    footer._axe_stopping = True
+
+    text = footer._get_status_text()
+    text_str = str(text)
+
+    assert "STOPPING" in text_str
+
+
+def test_keybinding_footer_set_axe_stopping() -> None:
+    """Test set_axe_stopping updates the state."""
+    footer = KeybindingFooter()
+    assert footer._axe_stopping is False
+
+    footer.set_axe_stopping(True)
+    assert footer._axe_stopping is True
+
+    footer.set_axe_stopping(False)
+    assert footer._axe_stopping is False
 
 
 def test_keybinding_footer_axe_bindings_only_copy() -> None:

@@ -22,6 +22,7 @@ class KeybindingFooter(Horizontal):
         super().__init__(**kwargs)
         self._axe_running: bool = False
         self._axe_starting: bool = False
+        self._axe_stopping: bool = False
 
     def compose(self) -> ComposeResult:
         """Compose the footer with bindings on left and status on right."""
@@ -46,6 +47,15 @@ class KeybindingFooter(Horizontal):
         self._axe_starting = starting
         self._update_status()
 
+    def set_axe_stopping(self, stopping: bool) -> None:
+        """Update the axe stopping state.
+
+        Args:
+            stopping: Whether axe daemon is currently stopping.
+        """
+        self._axe_stopping = stopping
+        self._update_status()
+
     def _update_status(self) -> None:
         """Update the status indicator widget."""
         try:
@@ -63,6 +73,8 @@ class KeybindingFooter(Horizontal):
         text = Text()
         if self._axe_starting:
             text.append(" STARTING ", style="bold black on yellow")
+        elif self._axe_stopping:
+            text.append(" STOPPING ", style="bold black on rgb(255,165,0)")
         elif self._axe_running:
             text.append(" RUNNING ", style="bold black on green")
         else:

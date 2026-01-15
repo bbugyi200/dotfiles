@@ -61,12 +61,14 @@ class AxeMixin:
     def _stop_axe(self) -> None:
         """Stop the axe daemon."""
         try:
+            self._set_axe_stopping(True)
             if stop_axe_daemon():
-                self.notify("Axe scheduler stopped")  # type: ignore[attr-defined]
+                self.notify("Stopping axe scheduler...")  # type: ignore[attr-defined]
             else:
                 self.notify("Axe scheduler not running", severity="warning")  # type: ignore[attr-defined]
             self._load_axe_status()
         except Exception as e:
+            self._set_axe_stopping(False)
             self.notify(f"Failed to stop axe: {e}", severity="error")  # type: ignore[attr-defined]
 
     def _load_axe_status(self) -> None:
@@ -77,6 +79,10 @@ class AxeMixin:
         # Clear starting state once confirmed running
         if self.axe_running:
             self._set_axe_starting(False)
+
+        # Clear stopping state once confirmed stopped
+        if not self.axe_running:
+            self._set_axe_stopping(False)
 
         # Load status data
         if self.axe_running:
@@ -164,5 +170,19 @@ class AxeMixin:
         try:
             footer = self.query_one("#keybinding-footer", KeybindingFooter)  # type: ignore[attr-defined]
             footer.set_axe_starting(starting)
+        except Exception:
+            pass
+
+    def _set_axe_stopping(self, stopping: bool) -> None:
+        """Set axe stopping state and update footer.
+
+        Args:
+            stopping: Whether axe is currently stopping.
+        """
+        from ..widgets import KeybindingFooter
+
+        try:
+            footer = self.query_one("#keybinding-footer", KeybindingFooter)  # type: ignore[attr-defined]
+            footer.set_axe_stopping(stopping)
         except Exception:
             pass
