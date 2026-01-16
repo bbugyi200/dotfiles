@@ -137,11 +137,12 @@ def test_keybinding_footer_set_axe_stopping() -> None:
     assert footer._axe_stopping is False
 
 
-def test_keybinding_footer_axe_bindings_only_copy() -> None:
-    """Test that AXE tab only shows copy binding."""
+def test_keybinding_footer_axe_bindings() -> None:
+    """Test that AXE tab shows clear and copy bindings."""
     footer = KeybindingFooter()
 
     bindings = footer._compute_axe_bindings()
 
-    assert len(bindings) == 1
-    assert bindings[0] == ("%", "copy")
+    assert len(bindings) == 2
+    assert bindings[0] == ("x", "clear")
+    assert bindings[1] == ("%", "copy")

@@ -27,7 +27,10 @@ class AgentsMixin:
     _agents: list[Agent]
 
     def action_kill_agent(self) -> None:
-        """Kill or dismiss the currently selected agent."""
+        """Kill or dismiss agent, or clear AXE output depending on tab."""
+        if self.current_tab == "axe":
+            self.action_clear_axe_output()  # type: ignore[attr-defined]
+            return
         if self.current_tab != "agents":
             return
 

@@ -153,8 +153,7 @@ class KeybindingFooter(Horizontal):
         Returns:
             List of (key, label) tuples.
         """
-        # Only show copy in AXE tab footer
-        return [("%", "copy")]
+        return [("x", "clear"), ("%", "copy")]
 
     def _compute_agent_bindings(
         self,

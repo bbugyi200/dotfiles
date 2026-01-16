@@ -10,7 +10,13 @@ from axe.process import (
     start_axe_daemon,
     stop_axe_daemon,
 )
-from axe.state import AxeMetrics, AxeStatus, read_metrics, read_output_log_tail
+from axe.state import (
+    AxeMetrics,
+    AxeStatus,
+    clear_output_log,
+    read_metrics,
+    read_output_log_tail,
+)
 
 if TYPE_CHECKING:
     from ...changespec import ChangeSpec
@@ -46,6 +52,16 @@ class AxeMixin:
         if self.axe_running:
             self._stop_axe()
         self.exit()  # type: ignore[attr-defined]
+
+    def action_clear_axe_output(self) -> None:
+        """Clear the axe output log."""
+        if self.current_tab != "axe":
+            return
+
+        clear_output_log()
+        self._axe_output = ""
+        self._refresh_axe_display()
+        self.notify("Output cleared")  # type: ignore[attr-defined]
 
     def _start_axe(self) -> None:
         """Start the axe daemon."""
