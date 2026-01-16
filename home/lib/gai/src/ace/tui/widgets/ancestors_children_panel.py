@@ -121,7 +121,10 @@ class AncestorsChildrenPanel(Static):
         """Recursively build subtree with keymaps.
 
         Key assignment pattern (alternating numbers 2-9 and letters a-z):
-        - Depth 0 (direct children): >>, >2, >3, ... >9
+        - Depth 0 (direct children):
+          - Single leaf child: >
+          - First child (leaf or not): >> (no dot suffix)
+          - Other children: >2, >3, ... >9 (with . for non-leaf)
         - Depth 1 (grandchildren): >a, >b, ... or >2a, >2b, ...
         - Depth 2: >a2, >a3, ... or >2a2, >2a3, ...
         - etc.
@@ -131,6 +134,23 @@ class AncestorsChildrenPanel(Static):
 
         nodes: list[_ChildNode] = []
         use_letters = (depth % 2) == 1  # Odd depths use letters
+
+        # Special case: single leaf child at depth 0 gets ">"
+        if depth == 0 and len(child_names) == 1:
+            name = child_names[0]
+            grandchildren_names = children_map.get(name.lower(), [])
+            is_leaf = len(grandchildren_names) == 0
+            if is_leaf:
+                # Single leaf child: use ">"
+                return [
+                    _ChildNode(
+                        name=name,
+                        key=">",
+                        is_leaf=True,
+                        depth=0,
+                        children=[],
+                    )
+                ]
 
         for i, name in enumerate(child_names):
             # Determine the key suffix for this child
@@ -150,9 +170,7 @@ class AncestorsChildrenPanel(Static):
                     continue  # Skip if too many
             else:
                 # Use numbers 2-9
-                if i == 0:
-                    key_suffix = "2"
-                elif i < 8:  # 2-9 (indices 0-7)
+                if i < 8:  # 2-9 (indices 0-7)
                     key_suffix = str(i + 2)
                 else:
                     continue  # Skip if too many
@@ -161,16 +179,25 @@ class AncestorsChildrenPanel(Static):
             grandchildren_names = children_map.get(name.lower(), [])
             is_leaf = len(grandchildren_names) == 0
 
-            # Build key: prefix + suffix, add "." for non-leaf
+            # Build key: prefix + suffix
             base_key = prefix + key_suffix
-            display_key = base_key if is_leaf else base_key + "."
 
-            # Recursively build children (pass base_key without ".")
+            # Determine display key and recursion prefix
+            if depth == 0 and i == 0:
+                # First direct child: always ">>" (no dot), children use ">" prefix
+                display_key = ">>"
+                recurse_prefix = ">"
+            else:
+                # Other nodes: add "." for non-leaf
+                display_key = base_key if is_leaf else base_key + "."
+                recurse_prefix = base_key
+
+            # Recursively build children
             children_nodes = self._build_subtree(
                 grandchildren_names,
                 children_map,
                 depth + 1,
-                base_key,
+                recurse_prefix,
             )
 
             nodes.append(
