@@ -23,7 +23,7 @@ def test_keybinding_footer_agent_bindings_none_agent() -> None:
     """Test agent bindings when no agent selected."""
     footer = KeybindingFooter()
 
-    bindings = footer._compute_agent_bindings(None, 0, 0)
+    bindings = footer._compute_agent_bindings(None)
     binding_keys = [b[0] for b in bindings]
 
     assert "<space>" in binding_keys
@@ -35,7 +35,7 @@ def test_keybinding_footer_agent_bindings_running_agent() -> None:
     footer = KeybindingFooter()
     agent = _make_agent(status="RUNNING")
 
-    bindings = footer._compute_agent_bindings(agent, 0, 1)
+    bindings = footer._compute_agent_bindings(agent)
     binding_keys = [b[0] for b in bindings]
 
     assert "x" in binding_keys  # Kill is available
@@ -47,7 +47,7 @@ def test_keybinding_footer_agent_bindings_completed_agent_with_chat() -> None:
     footer = KeybindingFooter()
     agent = _make_agent(status="NO CHANGES", response_path="/tmp/chat.md")
 
-    bindings = footer._compute_agent_bindings(agent, 0, 1)
+    bindings = footer._compute_agent_bindings(agent)
     binding_keys = [b[0] for b in bindings]
 
     assert "x" in binding_keys  # Dismiss is available
@@ -60,18 +60,7 @@ def test_keybinding_footer_agent_bindings_diff_visible() -> None:
     footer = KeybindingFooter()
     agent = _make_agent(status="RUNNING")
 
-    bindings = footer._compute_agent_bindings(agent, 0, 1, diff_visible=True)
+    bindings = footer._compute_agent_bindings(agent, diff_visible=True)
     binding_keys = [b[0] for b in bindings]
 
     assert "l" in binding_keys  # Layout toggle is available
-
-
-def test_keybinding_footer_agent_bindings_navigation_middle() -> None:
-    """Test agent bindings navigation in the middle of list."""
-    footer = KeybindingFooter()
-
-    bindings = footer._compute_agent_bindings(None, 1, 3)
-    binding_keys = [b[0] for b in bindings]
-
-    assert "j" in binding_keys  # Next
-    assert "k" in binding_keys  # Prev

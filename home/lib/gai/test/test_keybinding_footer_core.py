@@ -38,7 +38,7 @@ def test_keybinding_footer_reword_visible_drafted_with_cl() -> None:
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Drafted", cl="123456")
 
-    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
     assert "w" in binding_keys
@@ -49,7 +49,7 @@ def test_keybinding_footer_reword_visible_mailed_with_cl() -> None:
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Mailed", cl="123456")
 
-    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
     assert "w" in binding_keys
@@ -60,7 +60,7 @@ def test_keybinding_footer_reword_hidden_submitted() -> None:
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Submitted", cl="123456")
 
-    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
     assert "w" not in binding_keys
@@ -71,7 +71,7 @@ def test_keybinding_footer_reword_hidden_no_cl() -> None:
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Drafted", cl=None)
 
-    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
     assert "w" not in binding_keys
@@ -82,7 +82,7 @@ def test_keybinding_footer_reword_visible_with_ready_to_mail_suffix() -> None:
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Drafted - (!: READY TO MAIL)", cl="123456")
 
-    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
     assert "w" in binding_keys
@@ -93,7 +93,7 @@ def test_keybinding_footer_reword_hidden_reverted() -> None:
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Reverted", cl="123456")
 
-    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
     assert "w" not in binding_keys
@@ -107,7 +107,7 @@ def test_keybinding_footer_diff_visible_with_cl() -> None:
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Drafted", cl="123456")
 
-    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
     assert "d" in binding_keys
@@ -118,7 +118,7 @@ def test_keybinding_footer_diff_hidden_without_cl() -> None:
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Drafted", cl=None)
 
-    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
     assert "d" not in binding_keys
@@ -132,7 +132,7 @@ def test_keybinding_footer_mail_visible_ready_to_mail() -> None:
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Drafted - (!: READY TO MAIL)", cl="123456")
 
-    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
     assert "m" in binding_keys
@@ -143,7 +143,7 @@ def test_keybinding_footer_mail_hidden_without_suffix() -> None:
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Drafted", cl="123456")
 
-    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
     assert "m" not in binding_keys
@@ -158,7 +158,7 @@ def test_keybinding_footer_accept_visible_with_proposals() -> None:
     commits = [CommitEntry(number=1, note="Test", proposal_letter="a")]
     changespec = _make_changespec(status="Drafted", commits=commits)
 
-    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
     assert "a" in binding_keys
@@ -170,52 +170,10 @@ def test_keybinding_footer_accept_hidden_without_proposals() -> None:
     commits = [CommitEntry(number=1, note="Test")]
     changespec = _make_changespec(status="Drafted", commits=commits)
 
-    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
     assert "a" not in binding_keys
-
-
-# --- Navigation Binding Tests ---
-
-
-def test_keybinding_footer_navigation_at_start() -> None:
-    """Test navigation bindings at start of list."""
-    footer = KeybindingFooter()
-    changespec = _make_changespec(status="Drafted")
-
-    # At start (idx=0) with 3 items - should have 'j' but not 'k'
-    bindings = footer._compute_available_bindings(changespec, 0, 3)
-    binding_keys = [b[0] for b in bindings]
-
-    assert "j" in binding_keys
-    assert "k" not in binding_keys
-
-
-def test_keybinding_footer_navigation_at_end() -> None:
-    """Test navigation bindings at end of list."""
-    footer = KeybindingFooter()
-    changespec = _make_changespec(status="Drafted")
-
-    # At end (idx=2) with 3 items - should have 'k' but not 'j'
-    bindings = footer._compute_available_bindings(changespec, 2, 3)
-    binding_keys = [b[0] for b in bindings]
-
-    assert "k" in binding_keys
-    assert "j" not in binding_keys
-
-
-def test_keybinding_footer_navigation_in_middle() -> None:
-    """Test navigation bindings in middle of list."""
-    footer = KeybindingFooter()
-    changespec = _make_changespec(status="Drafted")
-
-    # In middle (idx=1) with 3 items - should have both 'j' and 'k'
-    bindings = footer._compute_available_bindings(changespec, 1, 3)
-    binding_keys = [b[0] for b in bindings]
-
-    assert "j" in binding_keys
-    assert "k" in binding_keys
 
 
 # --- Format Bindings Tests ---
@@ -259,7 +217,7 @@ def test_keybinding_footer_quit_hidden() -> None:
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Drafted")
 
-    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
     assert "q" not in binding_keys
@@ -270,7 +228,7 @@ def test_keybinding_footer_always_has_status() -> None:
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Drafted")
 
-    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
     assert "s" in binding_keys
@@ -281,7 +239,7 @@ def test_keybinding_footer_refresh_hidden() -> None:
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Drafted")
 
-    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
     assert "y" not in binding_keys
@@ -292,7 +250,7 @@ def test_keybinding_footer_always_has_view() -> None:
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Drafted")
 
-    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
     assert "v" in binding_keys
@@ -303,7 +261,7 @@ def test_keybinding_footer_always_has_hooks() -> None:
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Drafted")
 
-    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
     assert "h" in binding_keys
@@ -314,7 +272,7 @@ def test_keybinding_footer_always_has_edit_query() -> None:
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Drafted")
 
-    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
     assert "/" in binding_keys
@@ -325,7 +283,7 @@ def test_keybinding_footer_always_has_run_agent() -> None:
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Drafted")
 
-    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
     assert "<space>" in binding_keys

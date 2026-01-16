@@ -40,7 +40,7 @@ def test_keybinding_footer_rebase_visible_wip() -> None:
     footer = KeybindingFooter()
     changespec = _make_changespec(status="WIP")
 
-    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
     assert "b" in binding_keys
@@ -51,7 +51,7 @@ def test_keybinding_footer_rebase_visible_drafted() -> None:
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Drafted")
 
-    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
     assert "b" in binding_keys
@@ -62,7 +62,7 @@ def test_keybinding_footer_rebase_visible_mailed() -> None:
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Mailed")
 
-    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
     assert "b" in binding_keys
@@ -73,7 +73,7 @@ def test_keybinding_footer_rebase_hidden_submitted() -> None:
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Submitted")
 
-    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
     assert "b" not in binding_keys
@@ -94,7 +94,7 @@ def test_keybinding_footer_workflow_binding_single() -> None:
 
     with patch("ace.tui.widgets.keybinding_footer.get_available_workflows") as mock:
         mock.return_value = ["fix"]
-        bindings = footer._compute_available_bindings(changespec, 0, 1)
+        bindings = footer._compute_available_bindings(changespec)
 
     binding_dict = dict(bindings)
     assert "r" in binding_dict
@@ -108,7 +108,7 @@ def test_keybinding_footer_workflow_binding_multiple() -> None:
 
     with patch("ace.tui.widgets.keybinding_footer.get_available_workflows") as mock:
         mock.return_value = ["fix", "crs"]
-        bindings = footer._compute_available_bindings(changespec, 0, 1)
+        bindings = footer._compute_available_bindings(changespec)
 
     binding_dict = dict(bindings)
     assert "r" in binding_dict
@@ -122,7 +122,7 @@ def test_keybinding_footer_workflow_binding_none() -> None:
 
     with patch("ace.tui.widgets.keybinding_footer.get_available_workflows") as mock:
         mock.return_value = []
-        bindings = footer._compute_available_bindings(changespec, 0, 1)
+        bindings = footer._compute_available_bindings(changespec)
 
     binding_keys = [b[0] for b in bindings]
     assert "r" not in binding_keys
@@ -136,7 +136,7 @@ def test_keybinding_footer_edit_spec_always_visible() -> None:
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Drafted")
 
-    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
     assert "@" in binding_keys
@@ -147,7 +147,7 @@ def test_keybinding_footer_copy_always_visible() -> None:
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Drafted")
 
-    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
     assert "%" in binding_keys
@@ -158,7 +158,7 @@ def test_keybinding_footer_fold_always_visible() -> None:
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Drafted")
 
-    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
     assert "z" in binding_keys
@@ -172,7 +172,7 @@ def test_keybinding_footer_ready_visible_drafted_no_suffix() -> None:
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Drafted")
 
-    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
     assert "!" in binding_keys
@@ -183,7 +183,7 @@ def test_keybinding_footer_ready_hidden_with_suffix() -> None:
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Drafted - (!: READY TO MAIL)")
 
-    bindings = footer._compute_available_bindings(changespec, 0, 1)
+    bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
     assert "!" not in binding_keys

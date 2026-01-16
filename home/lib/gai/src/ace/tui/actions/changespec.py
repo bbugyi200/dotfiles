@@ -261,11 +261,7 @@ class ChangeSpecMixin:
                     commits_collapsed=self.commits_collapsed,
                     mentors_collapsed=self.mentors_collapsed,
                 )
-            footer_widget.update_bindings(
-                changespec,
-                self.current_idx,
-                len(self.changespecs),
-            )
+            footer_widget.update_bindings(changespec)
             # Update ancestors/children panel
             self._ancestor_keys, self._children_keys = (
                 ancestors_panel.update_relationships(changespec, self._all_changespecs)

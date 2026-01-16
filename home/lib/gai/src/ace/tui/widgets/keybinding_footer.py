@@ -98,17 +98,13 @@ class KeybindingFooter(Horizontal):
     def update_bindings(
         self,
         changespec: ChangeSpec,
-        current_idx: int,
-        total: int,
     ) -> None:
         """Update bindings based on current context.
 
         Args:
             changespec: Current ChangeSpec
-            current_idx: Current index in the list
-            total: Total number of ChangeSpecs
         """
-        bindings = self._compute_available_bindings(changespec, current_idx, total)
+        bindings = self._compute_available_bindings(changespec)
         text = self._format_bindings(bindings)
         self._update_display(text)
 
@@ -122,8 +118,6 @@ class KeybindingFooter(Horizontal):
     def update_agent_bindings(
         self,
         agent: "Agent | None",
-        current_idx: int,
-        total: int,
         *,
         diff_visible: bool = False,
     ) -> None:
@@ -131,13 +125,9 @@ class KeybindingFooter(Horizontal):
 
         Args:
             agent: Current Agent or None if no agents
-            current_idx: Current index in the list
-            total: Total number of agents
             diff_visible: Whether the diff panel is currently visible
         """
-        bindings = self._compute_agent_bindings(
-            agent, current_idx, total, diff_visible=diff_visible
-        )
+        bindings = self._compute_agent_bindings(agent, diff_visible=diff_visible)
         text = self._format_bindings(bindings)
         self._update_display(text)
 
@@ -158,8 +148,6 @@ class KeybindingFooter(Horizontal):
     def _compute_agent_bindings(
         self,
         agent: "Agent | None",
-        current_idx: int,
-        total: int,
         *,
         diff_visible: bool = False,
     ) -> list[tuple[str, str]]:
@@ -167,20 +155,12 @@ class KeybindingFooter(Horizontal):
 
         Args:
             agent: Current Agent or None
-            current_idx: Current index in the list
-            total: Total number of agents
             diff_visible: Whether the diff panel is currently visible
 
         Returns:
             List of (key, label) tuples
         """
         bindings: list[tuple[str, str]] = []
-
-        # Navigation
-        if current_idx > 0:
-            bindings.append(("k", "prev"))
-        if current_idx < total - 1:
-            bindings.append(("j", "next"))
 
         # Kill/dismiss (only when agent selected)
         if agent is not None:
@@ -205,26 +185,16 @@ class KeybindingFooter(Horizontal):
     def _compute_available_bindings(
         self,
         changespec: ChangeSpec,
-        current_idx: int,
-        total: int,
     ) -> list[tuple[str, str]]:
         """Compute available bindings based on current context.
 
         Args:
             changespec: Current ChangeSpec
-            current_idx: Current index in the list
-            total: Total number of ChangeSpecs
 
         Returns:
             List of (key, label) tuples
         """
         bindings: list[tuple[str, str]] = []
-
-        # Navigation
-        if current_idx > 0:
-            bindings.append(("k", "prev"))
-        if current_idx < total - 1:
-            bindings.append(("j", "next"))
 
         # Accept proposal (only if proposed entries exist)
         if changespec.commits and any(e.is_proposed for e in changespec.commits):

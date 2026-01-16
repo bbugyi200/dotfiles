@@ -336,12 +336,7 @@ class AgentsMixin:
         # Query diff visibility for footer (must be done after update_display)
         diff_visible = agent_detail.is_diff_visible()
 
-        footer_widget.update_agent_bindings(
-            current_agent,
-            self.current_idx,
-            len(self._agents),
-            diff_visible=diff_visible,
-        )
+        footer_widget.update_agent_bindings(current_agent, diff_visible=diff_visible)
 
         self._update_agents_info_panel()
 
