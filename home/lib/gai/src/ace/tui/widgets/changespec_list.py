@@ -133,6 +133,7 @@ class ChangeSpecList(OptionList):
         """Initialize the ChangeSpec list."""
         super().__init__(**kwargs)
         self._changespecs: list[ChangeSpec] = []
+        self._programmatic_update: bool = False
 
     def update_list(self, changespecs: list[ChangeSpec], current_idx: int) -> None:
         """Update the list with new changespecs.
@@ -158,7 +159,9 @@ class ChangeSpecList(OptionList):
 
         # Highlight the current item
         if changespecs and 0 <= current_idx < len(changespecs):
+            self._programmatic_update = True
             self.highlighted = current_idx
+            self._programmatic_update = False
 
     def _format_changespec_option(
         self, changespec: ChangeSpec, is_selected: bool
@@ -192,6 +195,8 @@ class ChangeSpecList(OptionList):
         self, event: OptionList.OptionHighlighted
     ) -> None:
         """Handle option highlight (keyboard navigation)."""
+        if self._programmatic_update:
+            return  # Skip events from programmatic updates
         if event.option_index is not None:
             self.post_message(self.SelectionChanged(event.option_index))
 
