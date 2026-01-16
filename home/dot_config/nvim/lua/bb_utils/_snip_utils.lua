@@ -230,18 +230,6 @@ function M.get_markdown_snippets()
 					.. " failures (if any), and repeat until the command is successful."
 			),
 		}),
-		-- SNIPPET: ut
-		s({ trig = "ut", desc = "ultrathink: " }, { t("ultrathink: ") }),
-		-- SNIPPET: uth
-		s(
-			{ trig = "uth", desc = "ultrathink: Can you help me...?" },
-			{ t("ultrathink: Can you help me "), i(1), t("?") }
-		),
-		-- SNIPPET: uthh
-		s(
-			{ trig = "uthh", desc = "ultrathink: Great! Can you now help me...?" },
-			{ t("ultrathink: Great! Can you now help me "), i(1), t("?") }
-		),
 	}
 end
 
