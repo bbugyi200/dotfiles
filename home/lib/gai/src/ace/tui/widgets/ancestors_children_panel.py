@@ -230,7 +230,7 @@ class AncestorsChildrenPanel(Static):
     def _assign_ancestor_keys(self, names: list[str]) -> dict[str, str]:
         """Assign keybindings to ancestors.
 
-        Pattern: "<" (single), "<<" (first), "<2", "<3", etc.
+        Pattern: "<" (single), "<<" (first), "<a", "<b", etc.
         """
         if not names:
             return {}
@@ -242,11 +242,11 @@ class AncestorsChildrenPanel(Static):
         else:
             # First item gets double prefix
             result[names[0]] = "<<"
-            # Remaining get number suffixes (2-9)
+            # Remaining get letter suffixes (a-z)
             for i, name in enumerate(names[1:], start=0):
-                if i < 8:  # 2-9
-                    digit = str(i + 2)
-                    result[name] = f"<{digit}"
+                if i < 26:  # a-z
+                    letter = chr(ord("a") + i)
+                    result[name] = f"<{letter}"
 
         return result
 
