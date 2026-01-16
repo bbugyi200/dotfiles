@@ -11,6 +11,19 @@ from textual.widgets import Static
 from ...changespec import ChangeSpec
 
 
+def _get_simple_status_indicator(status: str) -> tuple[str, str]:
+    """Get a simple status indicator character and color."""
+    if status.startswith("Drafted"):
+        return "D", "#87D700"
+    elif status.startswith("Mailed"):
+        return "M", "#00D787"
+    elif status.startswith("Submitted"):
+        return "S", "#00AF00"
+    elif status.startswith("Reverted"):
+        return "X", "#808080"
+    return "", "#FFD700"  # WIP - no indicator
+
+
 @dataclass
 class _ChildNode:
     """A node in the descendant tree."""
@@ -19,6 +32,7 @@ class _ChildNode:
     key: str  # e.g., ">2a" or ">2a." for non-leaf
     is_leaf: bool
     depth: int
+    status: str
     children: list[_ChildNode] = field(default_factory=list)
 
 
@@ -28,6 +42,7 @@ class AncestorsChildrenPanel(Static):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._ancestors: list[str] = []  # Ordered: parent, grandparent, etc.
+        self._ancestor_statuses: dict[str, str] = {}  # name -> status
         self._descendant_tree: list[_ChildNode] = []  # Tree of all descendants
         self._ancestor_keys: dict[str, str] = {}  # name -> key hint
         self._children_keys: dict[str, str] = {}  # key -> name (for navigation)
@@ -71,6 +86,7 @@ class AncestorsChildrenPanel(Static):
         """Find all ancestors recursively (parent, grandparent, etc.)."""
         name_map = {cs.name.lower(): cs for cs in all_changespecs}
         ancestors: list[str] = []
+        self._ancestor_statuses = {}
         visited: set[str] = set()
 
         current = changespec
@@ -84,10 +100,12 @@ class AncestorsChildrenPanel(Static):
             if parent_lower in name_map:
                 parent_cs = name_map[parent_lower]
                 ancestors.append(parent_cs.name)  # Use actual case
+                self._ancestor_statuses[parent_cs.name] = parent_cs.status
                 current = parent_cs
             else:
                 # Parent not found in list (might be filtered out)
                 ancestors.append(parent_name)
+                self._ancestor_statuses[parent_name] = "WIP"
                 break
 
         return ancestors
@@ -100,7 +118,9 @@ class AncestorsChildrenPanel(Static):
         """Build tree of all descendants with assigned keymaps."""
         # Build lookup for finding children
         children_map: dict[str, list[str]] = {}
+        status_map: dict[str, str] = {}
         for cs in all_changespecs:
+            status_map[cs.name.lower()] = cs.status
             if cs.parent:
                 parent_lower = cs.parent.lower()
                 if parent_lower not in children_map:
@@ -109,12 +129,15 @@ class AncestorsChildrenPanel(Static):
 
         # Build tree recursively
         direct_children = children_map.get(parent_name.lower(), [])
-        return self._build_subtree(direct_children, children_map, depth=0, prefix=">")
+        return self._build_subtree(
+            direct_children, children_map, status_map, depth=0, prefix=">"
+        )
 
     def _build_subtree(
         self,
         child_names: list[str],
         children_map: dict[str, list[str]],
+        status_map: dict[str, str],
         depth: int,
         prefix: str,
     ) -> list[_ChildNode]:
@@ -148,6 +171,7 @@ class AncestorsChildrenPanel(Static):
                         key=">",
                         is_leaf=True,
                         depth=0,
+                        status=status_map.get(name.lower(), "WIP"),
                         children=[],
                     )
                 ]
@@ -196,6 +220,7 @@ class AncestorsChildrenPanel(Static):
             children_nodes = self._build_subtree(
                 grandchildren_names,
                 children_map,
+                status_map,
                 depth + 1,
                 recurse_prefix,
             )
@@ -206,6 +231,7 @@ class AncestorsChildrenPanel(Static):
                     key=display_key,
                     is_leaf=is_leaf,
                     depth=depth,
+                    status=status_map.get(name.lower(), "WIP"),
                     children=children_nodes,
                 )
             )
@@ -267,6 +293,10 @@ class AncestorsChildrenPanel(Static):
                 text.append("\n")
                 text.append(f"  [{key}] ", style="bold #FFAF00")
                 text.append(name, style="#00D7AF")
+                status = self._ancestor_statuses.get(name, "WIP")
+                indicator, color = _get_simple_status_indicator(status)
+                if indicator:
+                    text.append(f" {indicator}", style=f"bold {color}")
 
         # CHILDREN section (tree view)
         if self._descendant_tree:
@@ -283,12 +313,16 @@ class AncestorsChildrenPanel(Static):
             text.append("\n")
             text.append(f"  [{node.key}] ", style="bold #FFAF00")
             text.append(node.name, style="#00D7AF")
+            indicator, color = _get_simple_status_indicator(node.status)
+            if indicator:
+                text.append(f" {indicator}", style=f"bold {color}")
             # Recursively render children
             self._render_tree(node.children, text)
 
     def clear(self) -> None:
         """Clear the panel."""
         self._ancestors = []
+        self._ancestor_statuses = {}
         self._descendant_tree = []
         self._ancestor_keys = {}
         self._children_keys = {}
