@@ -41,6 +41,7 @@ from ace.scheduler.comments_handler import check_comment_zombies
 from ace.scheduler.hook_checks import check_hooks
 from ace.scheduler.mentor_checks import check_mentors
 from ace.scheduler.orphan_cleanup import cleanup_orphaned_workspace_claims
+from ace.scheduler.stale_running_cleanup import cleanup_stale_running_entries
 from ace.scheduler.suffix_transforms import (
     acknowledge_terminal_status_markers,
     check_ready_to_mail,
@@ -222,6 +223,11 @@ class AxeScheduler:
         self.scheduler.every(self.hook_interval).seconds.do(
             self._safe_run_job, self._run_orphan_cleanup, "orphan_cleanup"
         ).tag("hook_cycle", "orphan_cleanup")
+
+        # Stale RUNNING entry cleanup (every full_check_interval)
+        self.scheduler.every(self.full_check_interval).seconds.do(
+            self._safe_run_job, self._run_stale_running_cleanup, "stale_running_cleanup"
+        ).tag("full_cycle", "stale_running_cleanup")
 
         # Status update job (every 5s)
         self.scheduler.every(5).seconds.do(
@@ -549,6 +555,13 @@ class AxeScheduler:
         all_changespecs = self._get_all_changespecs()
         released = cleanup_orphaned_workspace_claims(all_changespecs, self._log)
         if released > 0:
+            self._metrics.total_updates += released
+
+    def _run_stale_running_cleanup(self) -> None:
+        """Clean up stale RUNNING entries for dead processes."""
+        released = cleanup_stale_running_entries(self._log)
+        if released > 0:
+            self._metrics.stale_running_cleaned += released
             self._metrics.total_updates += released
 
     def _update_status_file(self) -> None:

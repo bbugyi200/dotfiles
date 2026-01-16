@@ -64,6 +64,7 @@ class AxeMetrics:
     workflows_started: int = 0
     workflows_completed: int = 0
     zombies_detected: int = 0
+    stale_running_cleaned: int = 0
     errors_encountered: int = 0
 
 
