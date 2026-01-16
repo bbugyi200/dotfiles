@@ -278,11 +278,10 @@ class AncestorsChildrenPanel(Static):
         self.update(text)
 
     def _render_tree(self, nodes: list[_ChildNode], text: Text) -> None:
-        """Render descendant tree with indentation."""
+        """Render descendant tree as flat list (no indentation)."""
         for node in nodes:
-            indent = "  " * (node.depth + 1)  # Base indent + depth
             text.append("\n")
-            text.append(f"{indent}[{node.key}] ", style="bold #FFAF00")
+            text.append(f"  [{node.key}] ", style="bold #FFAF00")
             text.append(node.name, style="#00D7AF")
             # Recursively render children
             self._render_tree(node.children, text)

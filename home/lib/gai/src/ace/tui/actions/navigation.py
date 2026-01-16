@@ -359,16 +359,21 @@ class NavigationMixin:
     def _is_valid_next_child_key(self, key: str) -> bool:
         """Check if key is valid as the next character in child key sequence.
 
-        Pattern alternates: numbers (2-9) at even depths, letters (a-z) at odd.
-        - Empty buffer or ends with letter: expect digit 2-9
-        - Ends with digit: expect letter a-z
+        Pattern:
+        - Empty buffer: accept letter (a-z for >a, >b) OR digit (2-9 for >2, >3)
+        - After letter: expect digit 2-9
+        - After digit: expect letter a-z
         """
         if len(key) != 1:
             return False
 
         if not self._child_key_buffer:
-            # First character must be digit 2-9
-            return key.isdigit() and "2" <= key <= "9"
+            # First character can be letter (for >a, >b) or digit (for >2, >3)
+            if key.isalpha() and key.islower():
+                return True
+            if key.isdigit() and "2" <= key <= "9":
+                return True
+            return False
 
         last_char = self._child_key_buffer[-1]
         if last_char.isdigit():
