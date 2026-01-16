@@ -278,7 +278,7 @@ class NavigationMixin:
         """Process key in ancestor mode."""
         self._ancestor_mode_active = False
 
-        if key in ("less_than", "<"):
+        if key in ("less_than_sign", "<"):
             # << - go to first ancestor (parent)
             if self._ancestor_keys:
                 target = list(self._ancestor_keys.keys())[0]
@@ -302,7 +302,7 @@ class NavigationMixin:
         - Buffer matches a leaf node key: navigate to that node
         - Invalid key: cancel mode
         """
-        if key in ("greater_than", ">"):
+        if key in ("greater_than_sign", ">"):
             # >> - go to first child
             target_key = ">>"
             if target_key in self._children_keys:
