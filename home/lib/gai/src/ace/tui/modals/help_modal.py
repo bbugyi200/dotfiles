@@ -97,9 +97,9 @@ _AGENTS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
         "Agent Actions",
         [
             ("<space>", "Run custom agent"),
-            ("x", "Kill running / dismiss completed agent"),
+            ("x", "Kill / dismiss agent"),
             ("@", "Edit chat in editor"),
-            ("l", "Toggle diff/prompt layout priority"),
+            ("l", "Toggle diff/prompt layout"),
         ],
     ),
     (
