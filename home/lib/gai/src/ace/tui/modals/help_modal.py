@@ -66,13 +66,6 @@ _CLS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
         ],
     ),
     (
-        "Ancestry Navigation",
-        [
-            ("< / >", "Navigate to parent / child"),
-            ("<< / >>", "Navigate to first parent / child"),
-        ],
-    ),
-    (
         "Axe Control",
         [
             ("X", "Start / stop axe daemon"),
