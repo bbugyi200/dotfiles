@@ -94,8 +94,8 @@ class AncestorsChildrenPanel(Static):
     ) -> dict[str, str]:
         """Assign keybindings to a list of names.
 
-        For ancestors: "<" (single), "<<" (first), "<a", "<b", etc.
-        For children: ">" (single), ">>" (first), ">a", ">b", etc.
+        For ancestors: "<" (single), "<<" (first), "<2", "<3", etc.
+        For children: ">" (single), ">>" (first), ">2", ">3", etc.
         """
         if not names:
             return {}
@@ -108,11 +108,11 @@ class AncestorsChildrenPanel(Static):
         else:
             # First item gets double prefix
             result[names[0]] = prefix * 2
-            # Remaining get letter suffixes
+            # Remaining get number suffixes (2-9)
             for i, name in enumerate(names[1:], start=0):
-                if i < 26:  # a-z
-                    letter = chr(ord("a") + i)
-                    result[name] = f"{prefix}{letter}"
+                if i < 8:  # 2-9
+                    digit = str(i + 2)
+                    result[name] = f"{prefix}{digit}"
 
         return result
 

@@ -279,8 +279,8 @@ class NavigationMixin:
                 target = list(self._ancestor_keys.keys())[0]
                 self._navigate_to_changespec(target, is_ancestor=True)
             return True
-        elif len(key) == 1 and key.isalpha() and key.islower():
-            # <a, <b, etc. - find matching ancestor
+        elif len(key) == 1 and key.isdigit() and "2" <= key <= "9":
+            # <2, <3, etc. - find matching ancestor
             expected_key = f"<{key}"
             for name, keybind in self._ancestor_keys.items():
                 if keybind == expected_key:
@@ -298,8 +298,8 @@ class NavigationMixin:
                 target = list(self._children_keys.keys())[0]
                 self._navigate_to_changespec(target, is_ancestor=False)
             return True
-        elif len(key) == 1 and key.isalpha() and key.islower():
-            # >a, >b, etc. - find matching child
+        elif len(key) == 1 and key.isdigit() and "2" <= key <= "9":
+            # >2, >3, etc. - find matching child
             expected_key = f">{key}"
             for name, keybind in self._children_keys.items():
                 if keybind == expected_key:
