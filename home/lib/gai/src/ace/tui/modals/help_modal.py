@@ -343,9 +343,6 @@ class HelpModal(ModalScreen[None]):
                     )
 
                     text.append("  \u2502  ", style="dim #FFD700")
-                    # Bullet: green if active, white otherwise
-                    bullet_style = "bold #00FF00" if is_active else "white"
-                    text.append("\u25b8 ", style=bullet_style)
 
                     # Slot number with styling
                     slot_style = "bold #00FF00" if is_active else "#228B22"
@@ -353,7 +350,7 @@ class HelpModal(ModalScreen[None]):
                     text.append("  ", style="")
 
                     # Query with syntax highlighting (truncated if needed)
-                    max_query_len = 40  # Reduced from 42 to account for bullet
+                    max_query_len = 42
                     if len(query) > max_query_len:
                         display_query = query[: max_query_len - 3] + "..."
                     else:
