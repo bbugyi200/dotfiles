@@ -51,10 +51,12 @@ def test_push_to_prev_clears_next() -> None:
 
 
 def test_push_to_prev_no_duplicates() -> None:
-    """Test that pushing same query doesn't duplicate."""
-    stacks = QueryHistoryStacks(prev=["current"], next=[])
+    """Test that pushing query removes existing duplicate anywhere in stack."""
+    # Test non-consecutive duplicate - query exists earlier in stack
+    stacks = QueryHistoryStacks(prev=["old", "current", "other"], next=[])
     push_to_prev_stack("current", stacks)
-    assert stacks.prev == ["current"]  # Not duplicated
+    # "current" removed from middle and added to end
+    assert stacks.prev == ["old", "other", "current"]
 
 
 def test_push_to_prev_allows_different() -> None:
@@ -99,6 +101,16 @@ def test_navigate_prev_single_item() -> None:
     assert stacks.next == ["current"]
 
 
+def test_navigate_prev_removes_duplicate_from_next() -> None:
+    """Test that navigate_prev removes duplicate from next stack."""
+    stacks = QueryHistoryStacks(prev=["old"], next=["future", "current", "other"])
+    result = navigate_prev("current", stacks)
+    assert result == "old"
+    assert stacks.prev == []
+    # "current" removed from middle of next stack and moved to end
+    assert stacks.next == ["future", "other", "current"]
+
+
 def test_navigate_next_empty() -> None:
     """Test navigating next when stack is empty."""
     stacks = QueryHistoryStacks(prev=[], next=[])
@@ -123,6 +135,16 @@ def test_navigate_next_single_item() -> None:
     result = navigate_next("current", stacks)
     assert result == "only"
     assert stacks.prev == ["current"]
+    assert stacks.next == []
+
+
+def test_navigate_next_removes_duplicate_from_prev() -> None:
+    """Test that navigate_next removes duplicate from prev stack."""
+    stacks = QueryHistoryStacks(prev=["old", "current", "other"], next=["future"])
+    result = navigate_next("current", stacks)
+    assert result == "future"
+    # "current" removed from middle of prev stack and moved to end
+    assert stacks.prev == ["old", "other", "current"]
     assert stacks.next == []
 
 

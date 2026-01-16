@@ -60,6 +60,13 @@ def save_query_history(stacks: QueryHistoryStacks) -> bool:
         return False
 
 
+def _remove_and_append(stack: list[str], query: str) -> None:
+    """Remove query from stack if present, then append to end."""
+    if query in stack:
+        stack.remove(query)  # Removes first occurrence
+    stack.append(query)
+
+
 def push_to_prev_stack(current_query: str, stacks: QueryHistoryStacks) -> None:
     """Push current query to prev stack and clear next stack.
 
@@ -69,12 +76,10 @@ def push_to_prev_stack(current_query: str, stacks: QueryHistoryStacks) -> None:
         current_query: The query being replaced (to push to prev).
         stacks: The stacks to modify (in-place).
     """
-    # Don't push duplicates (if navigating back to same query)
-    if not stacks.prev or stacks.prev[-1] != current_query:
-        stacks.prev.append(current_query)
-        # Enforce max size
-        if len(stacks.prev) > MAX_STACK_SIZE:
-            stacks.prev = stacks.prev[-MAX_STACK_SIZE:]
+    _remove_and_append(stacks.prev, current_query)
+    # Enforce max size
+    if len(stacks.prev) > MAX_STACK_SIZE:
+        stacks.prev = stacks.prev[-MAX_STACK_SIZE:]
     # Clear next stack on new navigation
     stacks.next.clear()
 
@@ -92,8 +97,8 @@ def navigate_prev(current_query: str, stacks: QueryHistoryStacks) -> str | None:
     if not stacks.prev:
         return None
 
-    # Push current to next stack
-    stacks.next.append(current_query)
+    # Push current to next stack (removing old duplicate if any)
+    _remove_and_append(stacks.next, current_query)
 
     # Pop from prev stack
     return stacks.prev.pop()
@@ -112,8 +117,8 @@ def navigate_next(current_query: str, stacks: QueryHistoryStacks) -> str | None:
     if not stacks.next:
         return None
 
-    # Push current to prev stack
-    stacks.prev.append(current_query)
+    # Push current to prev stack (removing old duplicate if any)
+    _remove_and_append(stacks.prev, current_query)
 
     # Pop from next stack
     return stacks.next.pop()
