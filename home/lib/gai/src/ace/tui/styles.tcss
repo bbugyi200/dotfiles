@@ -49,7 +49,7 @@
     height: auto;
     max-height: 12;
     padding: 0 1 1 1;
-    border: solid #FFAF00;
+    border: solid $secondary;
     background: $surface;
 }
 
