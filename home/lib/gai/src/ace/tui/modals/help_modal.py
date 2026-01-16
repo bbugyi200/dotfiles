@@ -345,7 +345,7 @@ class HelpModal(ModalScreen[None]):
                     text.append("  \u2502  ", style="dim #FFD700")
 
                     # Slot number with styling
-                    slot_style = "bold #00FF00" if is_active else "#228B22"
+                    slot_style = "bold #00FF00" if is_active else "#3CB371"
                     text.append(f"[{slot}]", style=slot_style)
                     text.append("  ", style="")
 
@@ -499,7 +499,7 @@ class HelpModal(ModalScreen[None]):
 
         # Indicator (keymap for first entry, bullet for others)
         if is_first:
-            text.append(f"[{nav_key}] ", style="#228B22")
+            text.append(f"[{nav_key}] ", style="#3CB371")
         else:
             text.append("\u25b8 ", style="white")
 
