@@ -38,12 +38,12 @@ def _extract_timestamp_str_from_suffix(suffix: str | None) -> str | None:
 
 
 def _extract_timestamp_from_workflow(workflow: str | None) -> str | None:
-    """Extract timestamp from loop workflow names.
+    """Extract timestamp from axe workflow names.
 
     Examples:
-        - "loop(mentor)-complete-260112_134051" -> "260112_134051"
-        - "loop(fix-hook)-260112_134051" -> "260112_134051"
-        - "loop(crs)-critique" -> None (no timestamp)
+        - "axe(mentor)-complete-260112_134051" -> "260112_134051"
+        - "axe(fix-hook)-260112_134051" -> "260112_134051"
+        - "axe(crs)-critique" -> None (no timestamp)
         - "ace(run)-260112_134051" -> "260112_134051"
 
     Args:
@@ -146,8 +146,8 @@ def _load_agents_from_running_field(
         claims = get_claimed_workspaces(project_file)
         for claim in claims:
             # Skip hook processes - they're not agents
-            # Hook processes have workflow like "loop(hooks)-1" or "loop(hooks)-1a"
-            if claim.workflow and claim.workflow.startswith("loop(hooks)"):
+            # Hook processes have workflow like "axe(hooks)-1" or "axe(hooks)-1a"
+            if claim.workflow and claim.workflow.startswith("axe(hooks)"):
                 continue
 
             agents.append(
@@ -444,12 +444,12 @@ def load_all_agents() -> list[Agent]:
     for agent in agents:
         if agent.agent_type == AgentType.RUNNING:
             workflow = agent.workflow or ""
-            # Check if this is a loop agent workflow
-            is_loop_agent = any(
+            # Check if this is an axe agent workflow
+            is_axe_agent = any(
                 workflow.startswith(prefix)
-                for prefix in ["loop(mentor)", "loop(fix-hook)", "loop(crs)"]
+                for prefix in ["axe(mentor)", "axe(fix-hook)", "axe(crs)"]
             )
-            if is_loop_agent:
+            if is_axe_agent:
                 ts = _extract_timestamp_from_workflow(workflow)
                 if ts:
                     key = (agent.cl_name, ts)

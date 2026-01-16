@@ -63,7 +63,7 @@ def handle_reword(self: "WorkflowContext", changespec: ChangeSpec) -> None:
     """
     from running_field import (
         claim_workspace,
-        get_first_available_loop_workspace,
+        get_first_available_axe_workspace,
         get_workspace_directory_for_num,
         release_workspace,
     )
@@ -84,7 +84,7 @@ def handle_reword(self: "WorkflowContext", changespec: ChangeSpec) -> None:
         return
 
     # Claim a workspace in the 100-199 range
-    workspace_num = get_first_available_loop_workspace(changespec.file_path)
+    workspace_num = get_first_available_axe_workspace(changespec.file_path)
 
     if not claim_workspace(
         changespec.file_path, workspace_num, "reword", os.getpid(), changespec.name

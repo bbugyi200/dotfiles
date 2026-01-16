@@ -139,7 +139,7 @@ def check_and_complete_workflows(
         completed, proposal_id, exit_code = check_workflow_completion(output_path)
 
         if completed:
-            workflow_name = f"loop(crs)-{reviewer}"
+            workflow_name = f"axe(crs)-{reviewer}"
 
             if proposal_id and exit_code == 0:
                 # Find and release the workspace
@@ -218,7 +218,7 @@ def check_and_complete_workflows(
         completed, proposal_id, exit_code = check_workflow_completion(output_path)
 
         if completed:
-            workflow_name = f"loop(fix-hook)-{timestamp}"
+            workflow_name = f"axe(fix-hook)-{timestamp}"
 
             if proposal_id and exit_code == 0:
                 # Re-read ChangeSpec to get current state

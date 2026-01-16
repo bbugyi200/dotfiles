@@ -1,4 +1,4 @@
-"""Tests for ace/loop/comments_handler.py - comment zombie detection."""
+"""Tests for ace/scheduler/comments_handler.py - comment zombie detection."""
 
 from typing import Any
 from unittest.mock import MagicMock, patch

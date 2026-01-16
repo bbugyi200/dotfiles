@@ -10,7 +10,7 @@ from gai_utils import ensure_gai_directory, get_gai_directory, make_safe_filenam
 from mentor_config import MentorProfileConfig
 from running_field import (
     claim_workspace,
-    get_first_available_loop_workspace,
+    get_first_available_axe_workspace,
     get_workspace_directory_for_num,
 )
 from status_state_machine import remove_workspace_suffix
@@ -99,8 +99,8 @@ def _start_single_mentor(
     )
 
     # Get workspace info (don't claim yet - need subprocess PID first)
-    workspace_num = get_first_available_loop_workspace(changespec.file_path)
-    workflow_name = f"loop(mentor)-{mentor_name}-{timestamp}"
+    workspace_num = get_first_available_axe_workspace(changespec.file_path)
+    workflow_name = f"axe(mentor)-{mentor_name}-{timestamp}"
 
     try:
         workspace_dir, _ = get_workspace_directory_for_num(

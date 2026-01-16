@@ -9,7 +9,7 @@ from commit_utils import apply_diff_to_workspace, clean_workspace, run_bb_hg_cle
 from running_field import (
     claim_workspace,
     get_claimed_workspaces,
-    get_first_available_loop_workspace,
+    get_first_available_axe_workspace,
     get_workspace_directory_for_num,
     release_workspace,
 )
@@ -36,7 +36,7 @@ def _get_proposal_workspace(
     Args:
         project_file: Path to the project file.
         cl_name: Name of the ChangeSpec.
-        proposal_workflow: The workflow name (e.g., "loop(hooks)-2a").
+        proposal_workflow: The workflow name (e.g., "axe(hooks)-2a").
 
     Returns:
         The workspace number if found, None otherwise.
@@ -50,9 +50,9 @@ def _get_proposal_workspace(
 def release_entry_workspaces(
     changespec: ChangeSpec, log: LogCallback | None = None
 ) -> None:
-    """Release entry-specific workspaces (loop(hooks)-<id>) for this ChangeSpec.
+    """Release entry-specific workspaces (axe(hooks)-<id>) for this ChangeSpec.
 
-    For proposal entries (e.g., loop(hooks)-3a), also cleans the workspace
+    For proposal entries (e.g., axe(hooks)-3a), also cleans the workspace
     to remove uncommitted changes from `hg import --no-commit`.
 
     Args:
@@ -61,10 +61,10 @@ def release_entry_workspaces(
     """
     for claim in get_claimed_workspaces(changespec.file_path):
         if claim.cl_name == changespec.name and claim.workflow.startswith(
-            "loop(hooks)-"
+            "axe(hooks)-"
         ):
             # Extract entry_id from workflow name (e.g., "3" or "3a")
-            entry_id = claim.workflow[len("loop(hooks)-") :]
+            entry_id = claim.workflow[len("axe(hooks)-") :]
             # Check if this is a proposal (entry_id contains a letter like "3a")
             is_proposal = any(c.isalpha() for c in entry_id)
 
@@ -99,7 +99,7 @@ def release_entry_workspace(
         entry_id: The history entry ID (e.g., "1", "1a", "2").
         log: Optional logging callback.
     """
-    workflow = f"loop(hooks)-{entry_id}"
+    workflow = f"axe(hooks)-{entry_id}"
 
     for claim in get_claimed_workspaces(changespec.file_path):
         if claim.cl_name == changespec.name and claim.workflow == workflow:
@@ -244,8 +244,8 @@ def _start_stale_hooks_for_proposal(
         )
         return updates, started_hooks, limited_count
 
-    # Build proposal-specific workflow name (e.g., "loop(hooks)-3a")
-    proposal_workflow = f"loop(hooks)-{entry_id}"
+    # Build proposal-specific workflow name (e.g., "axe(hooks)-3a")
+    proposal_workflow = f"axe(hooks)-{entry_id}"
 
     # Check if we already have a workspace claimed for this proposal
     existing_workspace = _get_proposal_workspace(
@@ -257,7 +257,7 @@ def _start_stale_hooks_for_proposal(
         newly_claimed = False
     else:
         # Claim a single workspace for ALL hooks of this proposal
-        workspace_num = get_first_available_loop_workspace(changespec.file_path)
+        workspace_num = get_first_available_axe_workspace(changespec.file_path)
         newly_claimed = True
 
         if not claim_workspace(
@@ -467,8 +467,8 @@ def _start_stale_hooks_shared_workspace(
     if not changespec.hooks:
         return updates, started_hooks, limited_count
 
-    # Build entry-specific workflow name (e.g., "loop(hooks)-3")
-    entry_workflow = f"loop(hooks)-{entry_id}"
+    # Build entry-specific workflow name (e.g., "axe(hooks)-3")
+    entry_workflow = f"axe(hooks)-{entry_id}"
 
     # Check if we already have a workspace claimed for this SAME entry
     existing_workspace = _get_proposal_workspace(
@@ -481,7 +481,7 @@ def _start_stale_hooks_shared_workspace(
         newly_claimed = False
     else:
         # Claim a new workspace >= 100
-        workspace_num = get_first_available_loop_workspace(changespec.file_path)
+        workspace_num = get_first_available_axe_workspace(changespec.file_path)
         newly_claimed = True
 
         if not claim_workspace(

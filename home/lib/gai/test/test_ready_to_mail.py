@@ -13,7 +13,7 @@ def _make_changespec(
     hooks: list[HookEntry] | None = None,
     comments: list[CommentEntry] | None = None,
 ) -> ChangeSpec:
-    """Create a ChangeSpec for loop workflow testing."""
+    """Create a ChangeSpec for axe workflow testing."""
     return ChangeSpec(
         name=name,
         description="Test description",

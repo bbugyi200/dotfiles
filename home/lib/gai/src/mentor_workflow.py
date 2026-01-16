@@ -105,9 +105,9 @@ class MentorWorkflow(BaseWorkflow):
             profile_name: Name of the profile containing the mentor.
             mentor_name: Name of the mentor to use.
             cl_name: CL name to work on (defaults to current branch name).
-            workspace_num: Pre-claimed workspace number (for loop context).
-            workflow_name: Pre-claimed workflow name (for loop context).
-            workspace_dir: Pre-configured workspace directory (for loop context).
+            workspace_num: Pre-claimed workspace number (for axe context).
+            workflow_name: Pre-claimed workflow name (for axe context).
+            workspace_dir: Pre-configured workspace directory (for axe context).
             timestamp: Timestamp for chat file naming (YYmmdd_HHMMSS format).
         """
         self.profile_name = profile_name

@@ -9,7 +9,7 @@ from commit_utils import run_bb_hg_clean
 from gai_utils import ensure_gai_directory, make_safe_filename
 from running_field import (
     claim_workspace,
-    get_first_available_loop_workspace,
+    get_first_available_axe_workspace,
     get_workspace_directory_for_num,
 )
 
@@ -130,8 +130,8 @@ def _start_crs_workflow(
     timestamp = generate_timestamp()
 
     # Get workspace info (don't claim yet - need subprocess PID first)
-    workspace_num = get_first_available_loop_workspace(changespec.file_path)
-    workflow_name = f"loop(crs)-{comment_entry.reviewer}-{timestamp}"
+    workspace_num = get_first_available_axe_workspace(changespec.file_path)
+    workflow_name = f"axe(crs)-{comment_entry.reviewer}-{timestamp}"
 
     try:
         workspace_dir, _ = get_workspace_directory_for_num(
@@ -294,8 +294,8 @@ def start_fix_hook_workflow(
     timestamp = generate_timestamp()
 
     # Get workspace info (don't claim yet - need subprocess PID first)
-    workspace_num = get_first_available_loop_workspace(changespec.file_path)
-    workflow_name = f"loop(fix-hook)-{timestamp}"
+    workspace_num = get_first_available_axe_workspace(changespec.file_path)
+    workflow_name = f"axe(fix-hook)-{timestamp}"
 
     try:
         workspace_dir, _ = get_workspace_directory_for_num(

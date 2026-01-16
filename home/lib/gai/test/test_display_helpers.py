@@ -132,7 +132,7 @@ def test_format_running_claims_aligned_both_columns() -> None:
 
 
 def test_format_running_claims_aligned_three_digit_workspace() -> None:
-    """Test alignment with 3-digit workspace numbers (loop hooks)."""
+    """Test alignment with 3-digit workspace numbers (axe hooks)."""
     claims = [
         _MockWorkspaceClaim(1, 12345, "run", "feat"),
         _MockWorkspaceClaim(100, 67890, "run", "other"),

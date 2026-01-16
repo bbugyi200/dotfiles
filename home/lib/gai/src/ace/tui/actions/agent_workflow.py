@@ -197,7 +197,7 @@ class AgentWorkflowMixin:
         from commit_workflow.project_file_utils import create_project_file
         from gai_utils import generate_timestamp
         from running_field import (
-            get_first_available_loop_workspace,
+            get_first_available_axe_workspace,
             get_workspace_directory_for_num,
         )
 
@@ -221,7 +221,7 @@ class AgentWorkflowMixin:
                 return
 
         # Get workspace info (don't claim yet - need subprocess PID first)
-        workspace_num = get_first_available_loop_workspace(project_file)
+        workspace_num = get_first_available_axe_workspace(project_file)
         timestamp = generate_timestamp()
         workflow_name = f"ace(run)-{timestamp}"
         display_name = cl_name or project_name

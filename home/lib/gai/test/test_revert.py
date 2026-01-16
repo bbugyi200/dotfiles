@@ -313,7 +313,7 @@ def test_revert_changespec_releases_mentor_workspace() -> None:
                                         mock_claims.return_value = [
                                             _WorkspaceClaim(
                                                 workspace_num=100,
-                                                workflow="loop(mentor)-complete-260112_201552",
+                                                workflow="axe(mentor)-complete-260112_201552",
                                                 cl_name="test_feature",
                                                 pid=235059,
                                             )

@@ -47,13 +47,13 @@ def _extract_mentor_workflow_from_suffix(suffix: str) -> str | None:
         suffix: Mentor suffix in format "mentor_{name}-{PID}-{timestamp}"
 
     Returns:
-        Workflow name in format "loop(mentor)-{name}-{timestamp}" or None
+        Workflow name in format "axe(mentor)-{name}-{timestamp}" or None
     """
     match = re.match(r"^mentor_(.+)-\d+-(\d{6}_\d{6})$", suffix)
     if match:
         mentor_name = match.group(1)
         timestamp = match.group(2)
-        return f"loop(mentor)-{mentor_name}-{timestamp}"
+        return f"axe(mentor)-{mentor_name}-{timestamp}"
     return None
 
 

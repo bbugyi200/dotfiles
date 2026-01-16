@@ -27,7 +27,7 @@ from rich_utils import print_status
 from running_field import (
     claim_workspace,
     get_claimed_workspaces,
-    get_first_available_loop_workspace,
+    get_first_available_axe_workspace,
     get_workspace_directory_for_num,
     release_workspace,
 )
@@ -51,14 +51,14 @@ def _extract_mentor_workflow_from_suffix(suffix: str) -> str | None:
         suffix: Mentor suffix in format "mentor_{name}-{PID}-{timestamp}"
 
     Returns:
-        Workflow name in format "loop(mentor)-{name}-{timestamp}" or None
+        Workflow name in format "axe(mentor)-{name}-{timestamp}" or None
     """
     # Pattern: mentor_{name}-{PID}-{timestamp}
     match = re.match(r"^mentor_(.+)-\d+-(\d{6}_\d{6})$", suffix)
     if match:
         mentor_name = match.group(1)
         timestamp = match.group(2)
-        return f"loop(mentor)-{mentor_name}-{timestamp}"
+        return f"axe(mentor)-{mentor_name}-{timestamp}"
     return None
 
 
@@ -247,7 +247,7 @@ class AcceptWorkflow(BaseWorkflow):
             validated_proposals.append((base_num, letter, msg, entry))
 
         # Claim an available workspace
-        workspace_num = get_first_available_loop_workspace(project_file)
+        workspace_num = get_first_available_axe_workspace(project_file)
         workspace_dir, workspace_suffix = get_workspace_directory_for_num(
             workspace_num, project
         )
@@ -384,11 +384,11 @@ class AcceptWorkflow(BaseWorkflow):
             # Add any new test target hooks from changed_test_targets
             add_test_hooks_if_available(project_file, cl_name)
 
-            # Release loop(hooks)-* workspaces for accepted proposals
+            # Release axe(hooks)-* workspaces for accepted proposals
             # The proposals are now renumbered to regular entries, so the old
-            # loop(hooks)-<proposal_id> workspace claims are stale
+            # axe(hooks)-<proposal_id> workspace claims are stale
             for base_num, letter in accepted_proposals:
-                old_workflow = f"loop(hooks)-{base_num}{letter}"
+                old_workflow = f"axe(hooks)-{base_num}{letter}"
                 for claim in get_claimed_workspaces(project_file):
                     if claim.cl_name == cl_name and claim.workflow == old_workflow:
                         release_workspace(

@@ -258,11 +258,11 @@ def test_load_all_agents_with_crs_agents() -> None:
 
 
 def test_load_all_agents_filters_hook_processes() -> None:
-    """Test that RUNNING entries with loop(hooks) workflow are filtered out."""
-    # Mock a RUNNING claim with loop(hooks)-1 workflow (hook process, not agent)
+    """Test that RUNNING entries with axe(hooks) workflow are filtered out."""
+    # Mock a RUNNING claim with axe(hooks)-1 workflow (hook process, not agent)
     mock_claim = MagicMock()
     mock_claim.workspace_num = 100
-    mock_claim.workflow = "loop(hooks)-1"
+    mock_claim.workflow = "axe(hooks)-1"
     mock_claim.cl_name = "my_feature"
     mock_claim.pid = 12345
     mock_claim.artifacts_timestamp = None
@@ -283,12 +283,12 @@ def test_load_all_agents_filters_hook_processes() -> None:
         assert len(agents) == 0
 
 
-def test_load_all_agents_includes_loop_fix_hook() -> None:
-    """Test that RUNNING entries with loop(fix-hook) workflow are included."""
-    # Mock a RUNNING claim with loop(fix-hook)-timestamp workflow
+def test_load_all_agents_includes_axe_fix_hook() -> None:
+    """Test that RUNNING entries with axe(fix-hook) workflow are included."""
+    # Mock a RUNNING claim with axe(fix-hook)-timestamp workflow
     mock_claim = MagicMock()
     mock_claim.workspace_num = 100
-    mock_claim.workflow = "loop(fix-hook)-251230_151429"
+    mock_claim.workflow = "axe(fix-hook)-251230_151429"
     mock_claim.cl_name = "my_feature"
     mock_claim.pid = None  # No PID to skip process check
     mock_claim.artifacts_timestamp = "20251230151429"
@@ -308,23 +308,23 @@ def test_load_all_agents_includes_loop_fix_hook() -> None:
         # Agent workflow should be included
         assert len(agents) == 1
         assert agents[0].agent_type == AgentType.RUNNING
-        assert agents[0].workflow == "loop(fix-hook)-251230_151429"
+        assert agents[0].workflow == "axe(fix-hook)-251230_151429"
 
 
 def test_load_all_agents_deduplicates_by_timestamp() -> None:
     """Test that agents with same timestamp from different sources are deduplicated.
 
-    This is the real-world scenario: loop process (RUNNING) has a different PID than
+    This is the real-world scenario: axe process (RUNNING) has a different PID than
     the subprocess (ChangeSpec), but they share the same timestamp.
     """
     from ace.changespec import ChangeSpec, HookEntry, HookStatusLine
 
-    # Create RUNNING entry with loop process PID 11111 and timestamp in workflow
+    # Create RUNNING entry with axe process PID 11111 and timestamp in workflow
     mock_claim = MagicMock()
     mock_claim.workspace_num = 100
-    mock_claim.workflow = "loop(fix-hook)-251230_151429"  # Timestamp here
+    mock_claim.workflow = "axe(fix-hook)-251230_151429"  # Timestamp here
     mock_claim.cl_name = "my_feature"
-    mock_claim.pid = 11111  # Loop process PID
+    mock_claim.pid = 11111  # Axe process PID
     mock_claim.artifacts_timestamp = "20251230151429"
 
     # Create HOOKS entry with different subprocess PID 22222 but same timestamp
@@ -385,12 +385,12 @@ def test_load_all_agents_dedup_preserves_workspace_num() -> None:
     """
     from ace.changespec import ChangeSpec, HookEntry, HookStatusLine
 
-    # Create RUNNING entry with loop PID 11111 and workspace_num=5
+    # Create RUNNING entry with axe PID 11111 and workspace_num=5
     mock_claim = MagicMock()
     mock_claim.workspace_num = 5
-    mock_claim.workflow = "loop(fix-hook)-251230_151429"  # Timestamp here
+    mock_claim.workflow = "axe(fix-hook)-251230_151429"  # Timestamp here
     mock_claim.cl_name = "my_feature"
-    mock_claim.pid = 11111  # Loop process PID
+    mock_claim.pid = 11111  # Axe process PID
     mock_claim.artifacts_timestamp = "20251230151429"
 
     # Create HOOKS entry with different subprocess PID 22222, no workspace_num
@@ -446,12 +446,12 @@ def test_load_all_agents_dedup_mentor_by_timestamp() -> None:
     """Test deduplication of mentor agents by timestamp."""
     from ace.changespec import ChangeSpec, MentorEntry, MentorStatusLine
 
-    # Create RUNNING entry with loop(mentor) workflow and timestamp
+    # Create RUNNING entry with axe(mentor) workflow and timestamp
     mock_claim = MagicMock()
     mock_claim.workspace_num = 3
-    mock_claim.workflow = "loop(mentor)-complete-260112_134051"  # Timestamp here
+    mock_claim.workflow = "axe(mentor)-complete-260112_134051"  # Timestamp here
     mock_claim.cl_name = "foobar_boom"
-    mock_claim.pid = 1527683  # Loop process PID
+    mock_claim.pid = 1527683  # Axe process PID
     mock_claim.artifacts_timestamp = "20260112134051"
 
     # Create MENTORS entry with different subprocess PID but same timestamp

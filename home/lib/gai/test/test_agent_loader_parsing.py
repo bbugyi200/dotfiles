@@ -107,20 +107,20 @@ def test_extract_timestamp_str_from_suffix_invalid_format() -> None:
 
 
 def test_extract_timestamp_from_workflow_mentor() -> None:
-    """Test extracting timestamp from loop(mentor) workflow."""
-    result = _extract_timestamp_from_workflow("loop(mentor)-complete-260112_134051")
+    """Test extracting timestamp from axe(mentor) workflow."""
+    result = _extract_timestamp_from_workflow("axe(mentor)-complete-260112_134051")
     assert result == "260112_134051"
 
 
 def test_extract_timestamp_from_workflow_fix_hook() -> None:
-    """Test extracting timestamp from loop(fix-hook) workflow."""
-    result = _extract_timestamp_from_workflow("loop(fix-hook)-251230_151429")
+    """Test extracting timestamp from axe(fix-hook) workflow."""
+    result = _extract_timestamp_from_workflow("axe(fix-hook)-251230_151429")
     assert result == "251230_151429"
 
 
 def test_extract_timestamp_from_workflow_crs() -> None:
-    """Test extracting timestamp from loop(crs) workflow."""
-    result = _extract_timestamp_from_workflow("loop(crs)-critique-251230_151429")
+    """Test extracting timestamp from axe(crs) workflow."""
+    result = _extract_timestamp_from_workflow("axe(crs)-critique-251230_151429")
     assert result == "251230_151429"
 
 
@@ -144,5 +144,5 @@ def test_extract_timestamp_from_workflow_no_dash() -> None:
 
 def test_extract_timestamp_from_workflow_no_timestamp() -> None:
     """Test extracting timestamp from workflow without timestamp."""
-    result = _extract_timestamp_from_workflow("loop(crs)-critique")
+    result = _extract_timestamp_from_workflow("axe(crs)-critique")
     assert result is None

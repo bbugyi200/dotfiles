@@ -330,7 +330,7 @@ class ProposalRebaseMixin:
         from commit_utils import run_bb_hg_clean
         from running_field import (
             claim_workspace,
-            get_first_available_loop_workspace,
+            get_first_available_axe_workspace,
             get_workspace_directory_for_num,
             release_workspace,
         )
@@ -348,7 +348,7 @@ class ProposalRebaseMixin:
             nonlocal workspace_num
 
             # Get workspace info
-            workspace_num = get_first_available_loop_workspace(changespec.file_path)
+            workspace_num = get_first_available_axe_workspace(changespec.file_path)
             workflow_name = f"rebase-{changespec.name}"
 
             try:

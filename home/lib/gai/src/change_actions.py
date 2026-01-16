@@ -547,10 +547,10 @@ def execute_change_action(
         else:
             console.print("[yellow]Warning: Failed to update COMMITS.[/yellow]")
 
-        # Release any loop(hooks)-* workspaces for the old proposal ID
+        # Release any axe(hooks)-* workspaces for the old proposal ID
         # The proposal is now renumbered to a regular entry, so the old
-        # loop(hooks)-<proposal_id> workspace claim is stale
-        old_workflow = f"loop(hooks)-{proposal_id}"
+        # axe(hooks)-<proposal_id> workspace claim is stale
+        old_workflow = f"axe(hooks)-{proposal_id}"
         for claim in get_claimed_workspaces(resolved_project_file):
             if claim.cl_name == cl_name and claim.workflow == old_workflow:
                 release_workspace(

@@ -494,12 +494,12 @@ def get_first_available_workspace(project_file: str, max_workspaces: int = 99) -
     return 1
 
 
-def get_first_available_loop_workspace(
+def get_first_available_axe_workspace(
     project_file: str, min_workspace: int = 100, max_workspace: int = 199
 ) -> int:
-    """Find the first available (unclaimed) workspace number for loop hooks.
+    """Find the first available (unclaimed) workspace number for axe hooks.
 
-    Loop hooks use workspace numbers >= 100 to avoid conflicts with regular
+    Axe hooks use workspace numbers >= 100 to avoid conflicts with regular
     workflows that use workspaces 1-99.
 
     Args:
@@ -508,17 +508,17 @@ def get_first_available_loop_workspace(
         max_workspace: Maximum workspace number to consider (default: 199)
 
     Returns:
-        First available workspace number in the loop range (100-199)
+        First available workspace number in the axe range (100-199)
     """
     claims = get_claimed_workspaces(project_file)
     claimed_nums = {claim.workspace_num for claim in claims}
 
-    # Find first unclaimed workspace number in loop range
+    # Find first unclaimed workspace number in axe range
     for n in range(min_workspace, max_workspace + 1):
         if n not in claimed_nums:
             return n
 
-    # All loop workspaces claimed - return min_workspace as fallback
+    # All axe workspaces claimed - return min_workspace as fallback
     return min_workspace
 
 
