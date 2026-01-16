@@ -32,7 +32,6 @@ _CLS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
             ("a", "Accept proposal"),
             ("b", "Rebase CL onto parent"),
             ("d", "Show diff"),
-            ("f", "Find reviewers"),
             ("h", "Edit hooks"),
             ("m", "Mail CL"),
             ("s", "Change status"),
@@ -64,6 +63,13 @@ _CLS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
             ("0-9", "Load saved query"),
             ("^", "Previous query"),
             ("_", "Next query"),
+        ],
+    ),
+    (
+        "Ancestry Navigation",
+        [
+            ("< / >", "Navigate to parent / child"),
+            ("<< / >>", "Navigate to first parent / child"),
         ],
     ),
     (
@@ -138,6 +144,7 @@ _AXE_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
     (
         "Axe Control",
         [
+            ("x", "Clear output"),
             ("X", "Start / stop axe daemon"),
             ("Q", "Stop axe and quit"),
         ],
