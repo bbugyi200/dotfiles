@@ -136,10 +136,10 @@ class AncestorsChildrenPanel(Static):
                 text.append(f"  [{key}] ", style="bold #FFAF00")
                 text.append(name, style="#00D7AF")
 
-        # CHILDREN section (no blank line between sections)
+        # CHILDREN section
         if self._children:
             if self._ancestors:
-                text.append("\n")
+                text.append("\n\n")  # Blank line between sections
             text.append("CHILDREN", style="bold #87D7FF")
             for name in self._children:
                 key = self._children_keys.get(name, "")
