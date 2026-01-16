@@ -285,11 +285,6 @@ class ChangeSpecDetail(Static):
             for line in changespec.kickstart.split("\n"):
                 text.append(f"  {line}\n", style="#D7D7AF")
 
-        # PARENT field (only display if present)
-        if changespec.parent:
-            text.append("PARENT: ", style="bold #87D7FF")
-            text.append(f"{changespec.parent}\n", style="bold #00D7AF")
-
         # CL field (only display if present)
         if changespec.cl:
             text.append("CL: ", style="bold #87D7FF")
