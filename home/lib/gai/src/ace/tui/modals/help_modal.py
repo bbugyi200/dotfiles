@@ -497,17 +497,14 @@ class HelpModal(ModalScreen[None]):
         """
         text.append("  \u2502  ", style=f"dim {border_color}")
 
-        # Bullet indicator (green for first/has keymap, white for others)
+        # Indicator (keymap for first entry, bullet for others)
         if is_first:
-            text.append("\u25b8 ", style="bold #00FF00")
+            text.append(f"[{nav_key}] ", style="bold #00FF00")
         else:
             text.append("\u25b8 ", style="white")
 
         # Query with syntax highlighting (truncated if needed)
-        # Shorter max length for first entry to accommodate nav hint
-        nav_hint = f" \u2190 {nav_key}" if is_first else ""
-        nav_hint_len = len(nav_hint)
-        max_query_len = 48 - nav_hint_len
+        max_query_len = 48
 
         if len(query) > max_query_len:
             display_query = query[: max_query_len - 3] + "..."
@@ -523,12 +520,8 @@ class HelpModal(ModalScreen[None]):
             # Dim plain text for oldest entries
             text.append(display_query, style="dim #888888")
 
-        # Nav hint for first entry
-        if is_first:
-            text.append(nav_hint, style="italic #888888")
-
         # Padding and right border
-        padding = 48 - len(display_query) - nav_hint_len
+        padding = 48 - len(display_query)
         if padding > 0:
             text.append(" " * padding, style="")
         text.append(" \u2502", style=f"dim {border_color}")
