@@ -120,11 +120,9 @@ class AncestorsChildrenPanel(Static):
         """Refresh the panel content."""
         if not self._ancestors and not self._children:
             self.display = False
-            self._toggle_list_panel_border(has_content=False)
             return
 
         self.display = True
-        self._toggle_list_panel_border(has_content=True)
         text = Text()
 
         # ANCESTORS section
@@ -149,17 +147,6 @@ class AncestorsChildrenPanel(Static):
 
         self.update(text)
 
-    def _toggle_list_panel_border(self, has_content: bool) -> None:
-        """Toggle the list-panel bottom border based on panel content."""
-        try:
-            list_panel = self.app.query_one("#list-panel")
-            if has_content:
-                list_panel.add_class("has-ancestors-panel")
-            else:
-                list_panel.remove_class("has-ancestors-panel")
-        except Exception:
-            pass  # Panel may not exist yet during initialization
-
     def clear(self) -> None:
         """Clear the panel."""
         self._ancestors = []
@@ -167,4 +154,3 @@ class AncestorsChildrenPanel(Static):
         self._ancestor_keys = {}
         self._children_keys = {}
         self.display = False
-        self._toggle_list_panel_border(has_content=False)
