@@ -499,7 +499,7 @@ class HelpModal(ModalScreen[None]):
 
         # Indicator (keymap for first entry, bullet for others)
         if is_first:
-            text.append(f"[{nav_key}] ", style="bold #00FF00")
+            text.append(f"[{nav_key}] ", style="#228B22")
         else:
             text.append("\u25b8 ", style="white")
 
