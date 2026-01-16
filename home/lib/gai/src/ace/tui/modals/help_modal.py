@@ -343,7 +343,9 @@ class HelpModal(ModalScreen[None]):
                     )
 
                     text.append("  \u2502  ", style="dim #FFD700")
-                    text.append("\u25b8 ", style="bold #00FF00")  # Green bullet
+                    # Bullet: green if active, white otherwise
+                    bullet_style = "bold #00FF00" if is_active else "white"
+                    text.append("\u25b8 ", style=bullet_style)
 
                     # Slot number with styling
                     slot_style = "bold #00FF00" if is_active else "#228B22"
