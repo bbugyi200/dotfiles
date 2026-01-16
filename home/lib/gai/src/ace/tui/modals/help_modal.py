@@ -504,10 +504,11 @@ class HelpModal(ModalScreen[None]):
             text.append("\u25b8 ", style="white")
 
         # Query with syntax highlighting (truncated if needed)
-        max_query_len = 48
+        # First entries use [^]/[_] (4 chars) vs bullet (2 chars), so 2 less space
+        content_width = 46 if is_first else 48
 
-        if len(query) > max_query_len:
-            display_query = query[: max_query_len - 3] + "..."
+        if len(query) > content_width:
+            display_query = query[: content_width - 3] + "..."
         else:
             display_query = query
 
@@ -521,7 +522,7 @@ class HelpModal(ModalScreen[None]):
             text.append(display_query, style="dim #888888")
 
         # Padding and right border
-        padding = 48 - len(display_query)
+        padding = content_width - len(display_query)
         if padding > 0:
             text.append(" " * padding, style="")
         text.append(" \u2502", style=f"dim {border_color}")
