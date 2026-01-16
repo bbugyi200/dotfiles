@@ -1,5 +1,8 @@
 """Ancestors and Children panel widget for the ace TUI."""
 
+from __future__ import annotations
+
+from dataclasses import dataclass, field
 from typing import Any
 
 from rich.text import Text
@@ -8,22 +11,33 @@ from textual.widgets import Static
 from ...changespec import ChangeSpec
 
 
+@dataclass
+class _ChildNode:
+    """A node in the descendant tree."""
+
+    name: str
+    key: str  # e.g., ">2a" or ">2a." for non-leaf
+    is_leaf: bool
+    depth: int
+    children: list[_ChildNode] = field(default_factory=list)
+
+
 class AncestorsChildrenPanel(Static):
-    """Panel showing ancestors and direct children of the current ChangeSpec."""
+    """Panel showing ancestors and all descendants of the current ChangeSpec."""
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._ancestors: list[str] = []  # Ordered: parent, grandparent, etc.
-        self._children: list[str] = []  # Direct children only
+        self._descendant_tree: list[_ChildNode] = []  # Tree of all descendants
         self._ancestor_keys: dict[str, str] = {}  # name -> key hint
-        self._children_keys: dict[str, str] = {}  # name -> key hint
+        self._children_keys: dict[str, str] = {}  # key -> name (for navigation)
 
     def update_relationships(
         self,
         changespec: ChangeSpec,
         all_changespecs: list[ChangeSpec],
     ) -> tuple[dict[str, str], dict[str, str]]:
-        """Update with ancestors and children of current ChangeSpec.
+        """Update with ancestors and descendants of current ChangeSpec.
 
         Args:
             changespec: Currently selected ChangeSpec
@@ -31,16 +45,20 @@ class AncestorsChildrenPanel(Static):
 
         Returns:
             Tuple of (ancestor_keys, children_keys) mappings
+            - ancestor_keys: name -> key (e.g., {"parent": "<<"})
+            - children_keys: key -> name (e.g., {">>": "child1", ">2a": "grandchild"})
         """
         # Build ancestors (recursive parent traversal)
         self._ancestors = self._find_ancestors(changespec, all_changespecs)
 
-        # Build children (direct only)
-        self._children = self._find_children(changespec.name, all_changespecs)
+        # Build descendant tree (recursive child traversal)
+        self._descendant_tree = self._build_descendant_tree(
+            changespec.name, all_changespecs
+        )
 
         # Assign keybindings
-        self._ancestor_keys = self._assign_keys(self._ancestors, is_ancestor=True)
-        self._children_keys = self._assign_keys(self._children, is_ancestor=False)
+        self._ancestor_keys = self._assign_ancestor_keys(self._ancestors)
+        self._children_keys = self._build_children_keys_map(self._descendant_tree)
 
         self._refresh_content()
         return self._ancestor_keys, self._children_keys
@@ -74,51 +92,140 @@ class AncestorsChildrenPanel(Static):
 
         return ancestors
 
-    def _find_children(
+    def _build_descendant_tree(
         self,
-        name: str,
+        parent_name: str,
         all_changespecs: list[ChangeSpec],
-    ) -> list[str]:
-        """Find direct children (changespecs whose parent == name)."""
-        name_lower = name.lower()
-        return [
-            cs.name
-            for cs in all_changespecs
-            if cs.parent and cs.parent.lower() == name_lower
-        ]
+    ) -> list[_ChildNode]:
+        """Build tree of all descendants with assigned keymaps."""
+        # Build lookup for finding children
+        children_map: dict[str, list[str]] = {}
+        for cs in all_changespecs:
+            if cs.parent:
+                parent_lower = cs.parent.lower()
+                if parent_lower not in children_map:
+                    children_map[parent_lower] = []
+                children_map[parent_lower].append(cs.name)
 
-    def _assign_keys(
+        # Build tree recursively
+        direct_children = children_map.get(parent_name.lower(), [])
+        return self._build_subtree(direct_children, children_map, depth=0, prefix=">")
+
+    def _build_subtree(
         self,
-        names: list[str],
-        is_ancestor: bool,
-    ) -> dict[str, str]:
-        """Assign keybindings to a list of names.
+        child_names: list[str],
+        children_map: dict[str, list[str]],
+        depth: int,
+        prefix: str,
+    ) -> list[_ChildNode]:
+        """Recursively build subtree with keymaps.
 
-        For ancestors: "<" (single), "<<" (first), "<2", "<3", etc.
-        For children: ">" (single), ">>" (first), ">2", ">3", etc.
+        Key assignment pattern (alternating numbers 2-9 and letters a-z):
+        - Depth 0 (direct children): >>, >2, >3, ... >9
+        - Depth 1 (grandchildren): >a, >b, ... or >2a, >2b, ...
+        - Depth 2: >a2, >a3, ... or >2a2, >2a3, ...
+        - etc.
+        """
+        if not child_names:
+            return []
+
+        nodes: list[_ChildNode] = []
+        use_letters = (depth % 2) == 1  # Odd depths use letters
+
+        for i, name in enumerate(child_names):
+            # Determine the key suffix for this child
+            if depth == 0:
+                # Direct children: >>, >2, >3, ...
+                if i == 0:
+                    key_suffix = ">"  # Will become ">>"
+                elif i < 9:  # 2-9 (indices 1-8)
+                    key_suffix = str(i + 1)
+                else:
+                    continue  # Skip if too many direct children
+            elif use_letters:
+                # Use letters a-z
+                if i < 26:
+                    key_suffix = chr(ord("a") + i)
+                else:
+                    continue  # Skip if too many
+            else:
+                # Use numbers 2-9
+                if i == 0:
+                    key_suffix = "2"
+                elif i < 8:  # 2-9 (indices 0-7)
+                    key_suffix = str(i + 2)
+                else:
+                    continue  # Skip if too many
+
+            # Get grandchildren
+            grandchildren_names = children_map.get(name.lower(), [])
+            is_leaf = len(grandchildren_names) == 0
+
+            # Build key: prefix + suffix, add "." for non-leaf
+            base_key = prefix + key_suffix
+            display_key = base_key if is_leaf else base_key + "."
+
+            # Recursively build children (pass base_key without ".")
+            children_nodes = self._build_subtree(
+                grandchildren_names,
+                children_map,
+                depth + 1,
+                base_key,
+            )
+
+            nodes.append(
+                _ChildNode(
+                    name=name,
+                    key=display_key,
+                    is_leaf=is_leaf,
+                    depth=depth,
+                    children=children_nodes,
+                )
+            )
+
+        return nodes
+
+    def _build_children_keys_map(
+        self,
+        tree: list[_ChildNode],
+    ) -> dict[str, str]:
+        """Flatten tree into key -> name mapping for navigation."""
+        result: dict[str, str] = {}
+
+        def traverse(nodes: list[_ChildNode]) -> None:
+            for node in nodes:
+                result[node.key] = node.name
+                traverse(node.children)
+
+        traverse(tree)
+        return result
+
+    def _assign_ancestor_keys(self, names: list[str]) -> dict[str, str]:
+        """Assign keybindings to ancestors.
+
+        Pattern: "<" (single), "<<" (first), "<2", "<3", etc.
         """
         if not names:
             return {}
 
-        prefix = "<" if is_ancestor else ">"
         result: dict[str, str] = {}
 
         if len(names) == 1:
-            result[names[0]] = prefix
+            result[names[0]] = "<"
         else:
             # First item gets double prefix
-            result[names[0]] = prefix * 2
+            result[names[0]] = "<<"
             # Remaining get number suffixes (2-9)
             for i, name in enumerate(names[1:], start=0):
                 if i < 8:  # 2-9
                     digit = str(i + 2)
-                    result[name] = f"{prefix}{digit}"
+                    result[name] = f"<{digit}"
 
         return result
 
     def _refresh_content(self) -> None:
         """Refresh the panel content."""
-        if not self._ancestors and not self._children:
+        if not self._ancestors and not self._descendant_tree:
             self.display = False
             return
 
@@ -134,23 +241,29 @@ class AncestorsChildrenPanel(Static):
                 text.append(f"  [{key}] ", style="bold #FFAF00")
                 text.append(name, style="#00D7AF")
 
-        # CHILDREN section
-        if self._children:
+        # CHILDREN section (tree view)
+        if self._descendant_tree:
             if self._ancestors:
                 text.append("\n\n")  # Blank line between sections
             text.append("CHILDREN", style="bold #87D7FF")
-            for name in self._children:
-                key = self._children_keys.get(name, "")
-                text.append("\n")
-                text.append(f"  [{key}] ", style="bold #FFAF00")
-                text.append(name, style="#00D7AF")
+            self._render_tree(self._descendant_tree, text)
 
         self.update(text)
+
+    def _render_tree(self, nodes: list[_ChildNode], text: Text) -> None:
+        """Render descendant tree with indentation."""
+        for node in nodes:
+            indent = "  " * (node.depth + 1)  # Base indent + depth
+            text.append("\n")
+            text.append(f"{indent}[{node.key}] ", style="bold #FFAF00")
+            text.append(node.name, style="#00D7AF")
+            # Recursively render children
+            self._render_tree(node.children, text)
 
     def clear(self) -> None:
         """Clear the panel."""
         self._ancestors = []
-        self._children = []
+        self._descendant_tree = []
         self._ancestor_keys = {}
         self._children_keys = {}
         self.display = False

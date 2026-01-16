@@ -33,6 +33,7 @@ class NavigationMixin:
     _axe_pinned_to_bottom: bool
     _ancestor_mode_active: bool
     _child_mode_active: bool
+    _child_key_buffer: str
     _ancestor_keys: dict[str, str]
     _children_keys: dict[str, str]
     _all_changespecs: list[ChangeSpec]
@@ -251,11 +252,15 @@ class NavigationMixin:
         if self.current_tab != "changespecs" or not self.changespecs:
             return
 
-        # If only one child, navigate directly
-        if len(self._children_keys) == 1:
-            target = list(self._children_keys.keys())[0]
+        if not self._children_keys:
+            return
+
+        # If only one child with key ">" (single leaf child), navigate directly
+        if len(self._children_keys) == 1 and ">" in self._children_keys:
+            target = self._children_keys[">"]
             self._navigate_to_changespec(target, is_ancestor=False)
-        elif len(self._children_keys) > 1:
+        else:
+            self._child_key_buffer = ""
             self._child_mode_active = True
 
     def _handle_ancestry_key(self, key: str) -> bool:
@@ -289,23 +294,89 @@ class NavigationMixin:
         return True  # Consume the key regardless
 
     def _process_child_key(self, key: str) -> bool:
-        """Process key in child mode."""
-        self._child_mode_active = False
+        """Process key in child mode.
 
+        Handles multi-character sequences like >>, >2, >2a, >2a., etc.
+        The buffer accumulates characters until:
+        - "." is pressed: navigate to non-leaf node matching buffer
+        - Buffer matches a leaf node key: navigate to that node
+        - Invalid key: cancel mode
+        """
         if key in ("greater_than", ">"):
             # >> - go to first child
-            if self._children_keys:
-                target = list(self._children_keys.keys())[0]
-                self._navigate_to_changespec(target, is_ancestor=False)
+            target_key = ">>"
+            if target_key in self._children_keys:
+                self._navigate_to_changespec(
+                    self._children_keys[target_key], is_ancestor=False
+                )
+            self._child_key_buffer = ""
+            self._child_mode_active = False
             return True
-        elif len(key) == 1 and key.isdigit() and "2" <= key <= "9":
-            # >2, >3, etc. - find matching child
-            expected_key = f">{key}"
-            for name, keybind in self._children_keys.items():
-                if keybind == expected_key:
-                    self._navigate_to_changespec(name, is_ancestor=False)
-                    return True
-        return True  # Consume the key regardless
+
+        if key in ("period", "full_stop", "."):
+            # Navigate to non-leaf node
+            target_key = ">" + self._child_key_buffer + "."
+            if target_key in self._children_keys:
+                self._navigate_to_changespec(
+                    self._children_keys[target_key], is_ancestor=False
+                )
+            self._child_key_buffer = ""
+            self._child_mode_active = False
+            return True
+
+        # Validate and accumulate the key
+        if self._is_valid_next_child_key(key):
+            self._child_key_buffer += key
+
+            # Check if buffer matches a leaf node (no "." suffix)
+            target_key = ">" + self._child_key_buffer
+            if target_key in self._children_keys:
+                self._navigate_to_changespec(
+                    self._children_keys[target_key], is_ancestor=False
+                )
+                self._child_key_buffer = ""
+                self._child_mode_active = False
+                return True
+
+            # Check if buffer could be a prefix for any key
+            # If not, cancel the mode
+            has_potential_match = any(
+                k.startswith(target_key) for k in self._children_keys
+            )
+            if not has_potential_match:
+                self._child_key_buffer = ""
+                self._child_mode_active = False
+                return True
+
+            # Stay in mode, wait for more keys
+            return True
+
+        # Invalid key - cancel mode
+        self._child_key_buffer = ""
+        self._child_mode_active = False
+        return True
+
+    def _is_valid_next_child_key(self, key: str) -> bool:
+        """Check if key is valid as the next character in child key sequence.
+
+        Pattern alternates: numbers (2-9) at even depths, letters (a-z) at odd.
+        - Empty buffer or ends with letter: expect digit 2-9
+        - Ends with digit: expect letter a-z
+        """
+        if len(key) != 1:
+            return False
+
+        if not self._child_key_buffer:
+            # First character must be digit 2-9
+            return key.isdigit() and "2" <= key <= "9"
+
+        last_char = self._child_key_buffer[-1]
+        if last_char.isdigit():
+            # After digit, expect letter
+            return key.isalpha() and key.islower()
+        else:
+            # After letter, expect digit
+            return key.isdigit() and "2" <= key <= "9"
 
     def _navigate_to_changespec(self, target_name: str, is_ancestor: bool) -> None:
         """Navigate to a ChangeSpec by name.

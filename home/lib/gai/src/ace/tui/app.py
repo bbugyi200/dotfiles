@@ -187,8 +187,9 @@ class AceApp(
         # Ancestor/child navigation state
         self._ancestor_mode_active: bool = False
         self._child_mode_active: bool = False
+        self._child_key_buffer: str = ""  # Buffer for multi-key child sequences
         self._ancestor_keys: dict[str, str] = {}  # name -> keymap
-        self._children_keys: dict[str, str] = {}  # name -> keymap
+        self._children_keys: dict[str, str] = {}  # key -> name (for navigation)
         self._all_changespecs: list[ChangeSpec] = []  # Cache for ancestry lookup
 
         # Tab state - track position in each tab
