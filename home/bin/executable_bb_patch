@@ -1,0 +1,5 @@
+#!/bin/bash
+
+set -x
+hg import --no-commit "$@"
+set +x
