@@ -337,6 +337,56 @@ def _evaluate(
         raise TypeError(f"Unknown expression type: {type(expr)}")
 
 
+def query_explicitly_targets_reverted(
+    expr: QueryExpr,
+    all_changespecs: list[ChangeSpec] | None = None,
+) -> bool:
+    """Check if query explicitly references reverted ChangeSpecs.
+
+    This is used to determine whether to auto-disable the hide_reverted filter.
+    The query targets reverted if:
+    - It contains status:reverted (case-insensitive)
+    - It contains name:<reverted_spec_name> where the spec has Reverted status
+    - It contains ancestor:<reverted_spec_name> where the spec has Reverted status
+
+    Args:
+        expr: The parsed query expression.
+        all_changespecs: List of all ChangeSpecs for name/ancestor lookups.
+
+    Returns:
+        True if the query explicitly targets reverted ChangeSpecs.
+    """
+    # Build name -> status map for quick lookup
+    status_map: dict[str, str] = {}
+    if all_changespecs:
+        for cs in all_changespecs:
+            status_map[cs.name.lower()] = _get_base_status(cs.status)
+
+    def _check_expr(e: QueryExpr) -> bool:
+        """Recursively check if expression targets reverted."""
+        if isinstance(e, PropertyMatch):
+            if e.key == "status" and e.value.lower() == "reverted":
+                return True
+            if e.key in ("name", "ancestor"):
+                # Check if the referenced spec is reverted
+                ref_status = status_map.get(e.value.lower(), "")
+                if ref_status == "Reverted":
+                    return True
+            return False
+        elif isinstance(e, NotExpr):
+            # NOT expressions don't count as "targeting" reverted
+            return False
+        elif isinstance(e, AndExpr):
+            return any(_check_expr(op) for op in e.operands)
+        elif isinstance(e, OrExpr):
+            return any(_check_expr(op) for op in e.operands)
+        else:
+            # StringMatch doesn't target reverted specifically
+            return False
+
+    return _check_expr(expr)
+
+
 def evaluate_query(
     query: QueryExpr,
     changespec: ChangeSpec,

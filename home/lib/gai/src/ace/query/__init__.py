@@ -28,7 +28,7 @@ Precedence (tightest to loosest):
     Parentheses override precedence.
 """
 
-from .evaluator import evaluate_query
+from .evaluator import evaluate_query, query_explicitly_targets_reverted
 from .parser import QueryParseError, parse_query
 from .types import (
     AndExpr,
@@ -46,6 +46,7 @@ __all__ = [
     "QueryParseError",
     # Evaluator
     "evaluate_query",
+    "query_explicitly_targets_reverted",
     # Types
     "QueryExpr",
     "StringMatch",

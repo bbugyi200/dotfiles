@@ -98,13 +98,19 @@ class KeybindingFooter(Horizontal):
     def update_bindings(
         self,
         changespec: ChangeSpec,
+        hidden_reverted_count: int = 0,
+        hide_reverted: bool = True,
     ) -> None:
         """Update bindings based on current context.
 
         Args:
             changespec: Current ChangeSpec
+            hidden_reverted_count: Number of hidden reverted ChangeSpecs
+            hide_reverted: Whether reverted CLs are currently hidden
         """
-        bindings = self._compute_available_bindings(changespec)
+        bindings = self._compute_available_bindings(
+            changespec, hidden_reverted_count, hide_reverted
+        )
         text = self._format_bindings(bindings)
         self._update_display(text)
 
@@ -185,11 +191,15 @@ class KeybindingFooter(Horizontal):
     def _compute_available_bindings(
         self,
         changespec: ChangeSpec,
+        hidden_reverted_count: int = 0,
+        hide_reverted: bool = True,
     ) -> list[tuple[str, str]]:
         """Compute available bindings based on current context.
 
         Args:
             changespec: Current ChangeSpec
+            hidden_reverted_count: Number of hidden reverted ChangeSpecs
+            hide_reverted: Whether reverted CLs are currently hidden
 
         Returns:
             List of (key, label) tuples
@@ -260,6 +270,13 @@ class KeybindingFooter(Horizontal):
 
         # Copy ChangeSpec
         bindings.append(("%", "copy"))
+
+        # Show/hide reverted toggle (only show if there are reverted to hide/show)
+        if hidden_reverted_count > 0 or not hide_reverted:
+            if hide_reverted:
+                bindings.append((".", f"show ({hidden_reverted_count})"))
+            else:
+                bindings.append((".", "hide reverted"))
 
         return bindings
 

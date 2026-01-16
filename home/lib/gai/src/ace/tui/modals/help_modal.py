@@ -76,6 +76,7 @@ _CLS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
         "General",
         [
             ("Tab / Shift+Tab", "Switch tabs"),
+            (".", "Show/hide reverted CLs"),
             ("%", "Copy to clipboard"),
             ("y", "Refresh"),
             ("q", "Quit"),

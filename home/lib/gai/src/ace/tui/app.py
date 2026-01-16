@@ -135,6 +135,8 @@ class AceApp(
         # Ancestor/child navigation
         Binding("<", "start_ancestor_mode", "Ancestor", show=False),
         Binding(">", "start_child_mode", "Child", show=False),
+        # Hide/show reverted
+        Binding("full_stop", "toggle_hide_reverted", "Toggle Reverted", show=False),
     ]
 
     # Reactive properties
@@ -145,6 +147,7 @@ class AceApp(
     mentors_collapsed: reactive[bool] = reactive(True, recompose=False)
     current_tab: reactive[TabName] = reactive("changespecs", recompose=False)
     axe_running: reactive[bool] = reactive(False, recompose=False)
+    hide_reverted: reactive[bool] = reactive(True, recompose=False)
 
     def __init__(
         self,
@@ -192,6 +195,7 @@ class AceApp(
         self._ancestor_keys: dict[str, str] = {}  # name -> keymap
         self._children_keys: dict[str, str] = {}  # key -> name (for navigation)
         self._all_changespecs: list[ChangeSpec] = []  # Cache for ancestry lookup
+        self._hidden_reverted_count: int = 0  # Count of filtered reverted CLs
 
         # Tab state - track position in each tab
         self._changespecs_last_idx: int = 0

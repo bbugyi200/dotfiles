@@ -46,29 +46,37 @@ class AncestorsChildrenPanel(Static):
         self._descendant_tree: list[_ChildNode] = []  # Tree of all descendants
         self._ancestor_keys: dict[str, str] = {}  # name -> key hint
         self._children_keys: dict[str, str] = {}  # key -> name (for navigation)
+        self._hidden_reverted_count: int = 0  # Count of hidden reverted entries
 
     def update_relationships(
         self,
         changespec: ChangeSpec,
         all_changespecs: list[ChangeSpec],
+        hide_reverted: bool = False,
     ) -> tuple[dict[str, str], dict[str, str]]:
         """Update with ancestors and descendants of current ChangeSpec.
 
         Args:
             changespec: Currently selected ChangeSpec
             all_changespecs: All changespecs (for finding children)
+            hide_reverted: Whether to hide reverted ChangeSpecs from display
 
         Returns:
             Tuple of (ancestor_keys, children_keys) mappings
             - ancestor_keys: name -> key (e.g., {"parent": "<<"})
             - children_keys: key -> name (e.g., {">>": "child1", ">2a": "grandchild"})
         """
+        # Reset hidden count
+        self._hidden_reverted_count = 0
+
         # Build ancestors (recursive parent traversal)
-        self._ancestors = self._find_ancestors(changespec, all_changespecs)
+        self._ancestors = self._find_ancestors(
+            changespec, all_changespecs, hide_reverted
+        )
 
         # Build descendant tree (recursive child traversal)
         self._descendant_tree = self._build_descendant_tree(
-            changespec.name, all_changespecs
+            changespec.name, all_changespecs, hide_reverted
         )
 
         # Assign keybindings
@@ -78,12 +86,28 @@ class AncestorsChildrenPanel(Static):
         self._refresh_content()
         return self._ancestor_keys, self._children_keys
 
+    def get_hidden_reverted_count(self) -> int:
+        """Get the count of hidden reverted entries in this panel.
+
+        Returns:
+            Number of reverted ancestors/descendants that were hidden.
+        """
+        return self._hidden_reverted_count
+
     def _find_ancestors(
         self,
         changespec: ChangeSpec,
         all_changespecs: list[ChangeSpec],
+        hide_reverted: bool = False,
     ) -> list[str]:
-        """Find all ancestors recursively (parent, grandparent, etc.)."""
+        """Find all ancestors recursively (parent, grandparent, etc.).
+
+        Args:
+            changespec: The starting ChangeSpec
+            all_changespecs: All changespecs for lookup
+            hide_reverted: Whether to hide reverted ancestors from display
+                          (but continue traversal through them)
+        """
         name_map = {cs.name.lower(): cs for cs in all_changespecs}
         ancestors: list[str] = []
         self._ancestor_statuses = {}
@@ -99,6 +123,12 @@ class AncestorsChildrenPanel(Static):
 
             if parent_lower in name_map:
                 parent_cs = name_map[parent_lower]
+                # Check if we should hide this reverted ancestor
+                if hide_reverted and parent_cs.status.startswith("Reverted"):
+                    self._hidden_reverted_count += 1
+                    # Continue traversal but don't add to display list
+                    current = parent_cs
+                    continue
                 ancestors.append(parent_cs.name)  # Use actual case
                 self._ancestor_statuses[parent_cs.name] = parent_cs.status
                 current = parent_cs
@@ -114,8 +144,15 @@ class AncestorsChildrenPanel(Static):
         self,
         parent_name: str,
         all_changespecs: list[ChangeSpec],
+        hide_reverted: bool = False,
     ) -> list[_ChildNode]:
-        """Build tree of all descendants with assigned keymaps."""
+        """Build tree of all descendants with assigned keymaps.
+
+        Args:
+            parent_name: Name of the parent ChangeSpec
+            all_changespecs: All changespecs for lookup
+            hide_reverted: Whether to hide reverted descendants
+        """
         # Build lookup for finding children
         children_map: dict[str, list[str]] = {}
         status_map: dict[str, str] = {}
@@ -130,7 +167,12 @@ class AncestorsChildrenPanel(Static):
         # Build tree recursively
         direct_children = children_map.get(parent_name.lower(), [])
         return self._build_subtree(
-            direct_children, children_map, status_map, depth=0, prefix=">"
+            direct_children,
+            children_map,
+            status_map,
+            depth=0,
+            prefix=">",
+            hide_reverted=hide_reverted,
         )
 
     def _build_subtree(
@@ -140,6 +182,7 @@ class AncestorsChildrenPanel(Static):
         status_map: dict[str, str],
         depth: int,
         prefix: str,
+        hide_reverted: bool = False,
     ) -> list[_ChildNode]:
         """Recursively build subtree with keymaps.
 
@@ -151,7 +194,29 @@ class AncestorsChildrenPanel(Static):
         - Depth 1 (grandchildren): >a, >b, ... or >2a, >2b, ...
         - Depth 2: >a2, >a3, ... or >2a2, >2a3, ...
         - etc.
+
+        Args:
+            child_names: Names of children to process
+            children_map: Map of parent name -> list of child names
+            status_map: Map of name -> status
+            depth: Current depth in tree
+            prefix: Key prefix for this level
+            hide_reverted: Whether to hide reverted descendants
         """
+        if not child_names:
+            return []
+
+        # Filter out reverted children if hide_reverted is True
+        if hide_reverted:
+            filtered_names: list[str] = []
+            for name in child_names:
+                status = status_map.get(name.lower(), "WIP")
+                if status.startswith("Reverted"):
+                    self._hidden_reverted_count += 1
+                else:
+                    filtered_names.append(name)
+            child_names = filtered_names
+
         if not child_names:
             return []
 
@@ -162,6 +227,13 @@ class AncestorsChildrenPanel(Static):
         if depth == 0 and len(child_names) == 1:
             name = child_names[0]
             grandchildren_names = children_map.get(name.lower(), [])
+            # Also filter grandchildren for leaf check
+            if hide_reverted:
+                grandchildren_names = [
+                    n
+                    for n in grandchildren_names
+                    if not status_map.get(n.lower(), "WIP").startswith("Reverted")
+                ]
             is_leaf = len(grandchildren_names) == 0
             if is_leaf:
                 # Single leaf child: use ">"
@@ -201,7 +273,15 @@ class AncestorsChildrenPanel(Static):
 
             # Get grandchildren
             grandchildren_names = children_map.get(name.lower(), [])
-            is_leaf = len(grandchildren_names) == 0
+            # Filter for is_leaf check (but don't count as hidden - that happens in recursion)
+            visible_grandchildren = grandchildren_names
+            if hide_reverted:
+                visible_grandchildren = [
+                    n
+                    for n in grandchildren_names
+                    if not status_map.get(n.lower(), "WIP").startswith("Reverted")
+                ]
+            is_leaf = len(visible_grandchildren) == 0
 
             # Build key: prefix + suffix
             base_key = prefix + key_suffix
@@ -223,6 +303,7 @@ class AncestorsChildrenPanel(Static):
                 status_map,
                 depth + 1,
                 recurse_prefix,
+                hide_reverted=hide_reverted,
             )
 
             nodes.append(
@@ -326,4 +407,5 @@ class AncestorsChildrenPanel(Static):
         self._descendant_tree = []
         self._ancestor_keys = {}
         self._children_keys = {}
+        self._hidden_reverted_count = 0
         self.display = False

@@ -26,6 +26,7 @@ class ChangeSpecMixin:
     hooks_collapsed: bool
     commits_collapsed: bool
     mentors_collapsed: bool
+    hide_reverted: bool
     _hint_mode_active: bool
     _hint_mode_hints_for: str | None
     _hint_mappings: dict[int, str]
@@ -35,6 +36,7 @@ class ChangeSpecMixin:
     _all_changespecs: list[ChangeSpec]
     _ancestor_keys: dict[str, str]
     _children_keys: dict[str, str]
+    _hidden_reverted_count: int
 
     def _load_changespecs(self) -> None:
         """Load and filter changespecs from disk."""
@@ -54,14 +56,32 @@ class ChangeSpecMixin:
         self._refresh_display()
 
     def _filter_changespecs(self, changespecs: list[ChangeSpec]) -> list[ChangeSpec]:
-        """Filter changespecs using the parsed query."""
-        from ...query import evaluate_query
+        """Filter changespecs using the parsed query and hide_reverted setting."""
+        from ...changespec import get_base_status
+        from ...query import evaluate_query, query_explicitly_targets_reverted
 
-        return [
+        # First apply the query filter
+        result = [
             cs
             for cs in changespecs
             if evaluate_query(self.parsed_query, cs, changespecs)
         ]
+
+        # Check if we should filter out reverted (only if hide_reverted is True
+        # AND query doesn't explicitly target reverted)
+        self._hidden_reverted_count = 0
+        if self.hide_reverted and not query_explicitly_targets_reverted(
+            self.parsed_query, changespecs
+        ):
+            filtered: list[ChangeSpec] = []
+            for cs in result:
+                if get_base_status(cs.status) == "Reverted":
+                    self._hidden_reverted_count += 1
+                else:
+                    filtered.append(cs)
+            result = filtered
+
+        return result
 
     def _reload_and_reposition(self, current_name: str | None = None) -> None:
         """Reload changespecs and try to stay on the same one."""
@@ -216,6 +236,7 @@ class ChangeSpecMixin:
 
     def _refresh_display(self) -> None:
         """Refresh the display with current state."""
+        from ...query import query_explicitly_targets_reverted
         from ..widgets import (
             AncestorsChildrenPanel,
             ChangeSpecDetail,
@@ -234,6 +255,14 @@ class ChangeSpecMixin:
 
         list_widget.update_list(self.changespecs, self.current_idx)
         search_panel.update_query(self.canonical_query_string)  # type: ignore[attr-defined]
+
+        # Calculate effective hide_reverted (disabled if query targets reverted)
+        effective_hide_reverted = (
+            self.hide_reverted
+            and not query_explicitly_targets_reverted(
+                self.parsed_query, self._all_changespecs
+            )
+        )
 
         if self.changespecs:
             changespec = self.changespecs[self.current_idx]
@@ -261,10 +290,23 @@ class ChangeSpecMixin:
                     commits_collapsed=self.commits_collapsed,
                     mentors_collapsed=self.mentors_collapsed,
                 )
-            footer_widget.update_bindings(changespec)
-            # Update ancestors/children panel
+            # Update ancestors/children panel with hide_reverted
             self._ancestor_keys, self._children_keys = (
-                ancestors_panel.update_relationships(changespec, self._all_changespecs)
+                ancestors_panel.update_relationships(
+                    changespec,
+                    self._all_changespecs,
+                    hide_reverted=effective_hide_reverted,
+                )
+            )
+            # Calculate total hidden count for footer
+            total_hidden = (
+                self._hidden_reverted_count
+                + ancestors_panel.get_hidden_reverted_count()
+            )
+            footer_widget.update_bindings(
+                changespec,
+                hidden_reverted_count=total_hidden,
+                hide_reverted=self.hide_reverted,
             )
         else:
             detail_widget.show_empty(self.canonical_query_string)  # type: ignore[attr-defined]
@@ -313,3 +355,10 @@ class ChangeSpecMixin:
         args.append(file_path)
         with self.suspend():  # type: ignore[attr-defined]
             subprocess.run(args, check=False)
+
+    def action_toggle_hide_reverted(self) -> None:
+        """Toggle visibility of reverted ChangeSpecs."""
+        if self.current_tab != "changespecs":
+            return
+        self.hide_reverted = not self.hide_reverted
+        self._load_changespecs()
