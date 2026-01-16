@@ -296,7 +296,7 @@ class AncestorsChildrenPanel(Static):
                 status = self._ancestor_statuses.get(name, "WIP")
                 indicator, color = _get_simple_status_indicator(status)
                 if indicator:
-                    text.append(f" {indicator}", style=f"bold {color}")
+                    text.append(f" [{indicator}]", style=f"bold {color}")
 
         # CHILDREN section (tree view)
         if self._descendant_tree:
@@ -315,7 +315,7 @@ class AncestorsChildrenPanel(Static):
             text.append(node.name, style="#00D7AF")
             indicator, color = _get_simple_status_indicator(node.status)
             if indicator:
-                text.append(f" {indicator}", style=f"bold {color}")
+                text.append(f" [{indicator}]", style=f"bold {color}")
             # Recursively render children
             self._render_tree(node.children, text)
 
