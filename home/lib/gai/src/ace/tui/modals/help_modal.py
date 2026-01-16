@@ -343,6 +343,7 @@ class HelpModal(ModalScreen[None]):
                     )
 
                     text.append("  \u2502  ", style="dim #FFD700")
+                    text.append("\u25b8 ", style="bold #00FF00")  # Green bullet
 
                     # Slot number with styling
                     slot_style = "bold #00FF00" if is_active else "#228B22"
@@ -350,7 +351,7 @@ class HelpModal(ModalScreen[None]):
                     text.append("  ", style="")
 
                     # Query with syntax highlighting (truncated if needed)
-                    max_query_len = 42
+                    max_query_len = 40  # Reduced from 42 to account for bullet
                     if len(query) > max_query_len:
                         display_query = query[: max_query_len - 3] + "..."
                     else:
@@ -497,11 +498,11 @@ class HelpModal(ModalScreen[None]):
         """
         text.append("  \u2502  ", style=f"dim {border_color}")
 
-        # First entry indicator
+        # Bullet indicator (green for first/has keymap, white for others)
         if is_first:
             text.append("\u25b8 ", style="bold #00FF00")
         else:
-            text.append("  ", style="")
+            text.append("\u25b8 ", style="white")
 
         # Query with syntax highlighting (truncated if needed)
         # Shorter max length for first entry to accommodate nav hint
