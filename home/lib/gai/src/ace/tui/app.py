@@ -92,6 +92,7 @@ class AceApp(
         Binding("z", "start_fold_mode", "Fold", show=False),
         Binding("a", "accept_proposal", "Accept", show=False),
         Binding("b", "rebase", "Rebase", show=False),
+        Binding("t", "open_tmux", "Tmux", show=False),
         # Note: "!" binding removed - use "a" then "@" to mark ready to mail
         Binding("y", "refresh", "Refresh", show=False),
         Binding("slash", "edit_query", "Edit Query", show=False),
