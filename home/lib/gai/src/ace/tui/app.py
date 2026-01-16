@@ -132,8 +132,8 @@ class AceApp(
         Binding("circumflex_accent", "prev_query", "Prev Query", show=False),
         Binding("underscore", "next_query", "Next Query", show=False),
         # Ancestor/child navigation
-        Binding("less_than", "start_ancestor_mode", "Ancestor", show=False),
-        Binding("greater_than", "start_child_mode", "Child", show=False),
+        Binding("<", "start_ancestor_mode", "Ancestor", show=False),
+        Binding(">", "start_child_mode", "Child", show=False),
     ]
 
     # Reactive properties
