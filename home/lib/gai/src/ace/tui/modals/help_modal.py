@@ -15,6 +15,9 @@ from ..widgets.changespec_detail import build_query_text
 if TYPE_CHECKING:
     TabName = Literal["changespecs", "agents", "axe"]
 
+# Box dimensions for consistent formatting
+_BOX_WIDTH = 57  # Total box width in characters
+_CONTENT_WIDTH = 50  # Inner content width (BOX_WIDTH - borders)
 
 # Keybinding definitions for each tab
 # Each section is (section_name, list of (key, description) tuples)
@@ -306,13 +309,20 @@ class HelpModal(ModalScreen[None]):
         text.append("\n")
 
         # Keybindings
+        key_width = 16
+        max_desc_width = _CONTENT_WIDTH - key_width - 2  # 2 chars min spacing
         for key, description in bindings:
             text.append("  \u2502  ", style="dim #87D7FF")
             # Key in bold teal (matches footer styling)
-            text.append(f"{key:<16}", style="bold #00D7AF")
-            text.append(description, style="")
+            text.append(f"{key:<{key_width}}", style="bold #00D7AF")
+            # Truncate long descriptions to maintain box alignment
+            if len(description) > max_desc_width:
+                display_desc = description[: max_desc_width - 3] + "..."
+            else:
+                display_desc = description
+            text.append(display_desc, style="")
             # Right border
-            padding = 50 - len(key.ljust(16)) - len(description)
+            padding = _CONTENT_WIDTH - key_width - len(display_desc)
             if padding > 0:
                 text.append(" " * padding, style="")
             text.append(" \u2502", style="dim #87D7FF")
@@ -348,6 +358,16 @@ class HelpModal(ModalScreen[None]):
             text.append(" \u2502", style="dim #FFD700")
             text.append("\n")
         else:
+            # Calculate max query lengths:
+            # Content area after [slot] and spacing: _CONTENT_WIDTH - 5 = 45 chars
+            # Active indicator " ● active": 9 chars
+            slot_prefix_width = 5  # "[0]" (3) + "  " (2)
+            active_indicator_width = 9  # " ● active"
+            max_query_active = (
+                _CONTENT_WIDTH - slot_prefix_width - active_indicator_width
+            )
+            max_query_inactive = _CONTENT_WIDTH - slot_prefix_width
+
             for slot in KEY_ORDER:
                 if slot in queries:
                     query = queries[slot]
@@ -363,7 +383,9 @@ class HelpModal(ModalScreen[None]):
                     text.append("  ", style="")
 
                     # Query with syntax highlighting (truncated if needed)
-                    max_query_len = 42
+                    max_query_len = (
+                        max_query_active if is_active else max_query_inactive
+                    )
                     if len(query) > max_query_len:
                         display_query = query[: max_query_len - 3] + "..."
                     else:
@@ -371,14 +393,14 @@ class HelpModal(ModalScreen[None]):
 
                     text.append_text(build_query_text(display_query))
 
-                    # Active indicator
+                    # Active indicator and padding
                     if is_active:
-                        padding = max_query_len - len(display_query) - 6
+                        padding = max_query_len - len(display_query)
                         if padding > 0:
                             text.append(" " * padding, style="")
                         text.append(" \u25cf active", style="bold #00FF00")
                     else:
-                        padding = max_query_len - len(display_query) + 3
+                        padding = max_query_len - len(display_query)
                         if padding > 0:
                             text.append(" " * padding, style="")
 
