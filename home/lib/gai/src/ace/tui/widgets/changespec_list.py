@@ -142,25 +142,29 @@ class ChangeSpecList(OptionList):
             changespecs: List of ChangeSpecs to display
             current_idx: Index of currently selected ChangeSpec
         """
-        self._changespecs = changespecs
-        self.clear_options()
+        self._programmatic_update = True
+        try:
+            self._changespecs = changespecs
+            self.clear_options()
 
-        max_width = 0
-        for i, cs in enumerate(changespecs):
-            option = self._format_changespec_option(cs, is_selected=(i == current_idx))
-            self.add_option(option)
-            width = _calculate_entry_display_width(cs)
-            max_width = max(max_width, width)
+            max_width = 0
+            for i, cs in enumerate(changespecs):
+                option = self._format_changespec_option(
+                    cs, is_selected=(i == current_idx)
+                )
+                self.add_option(option)
+                width = _calculate_entry_display_width(cs)
+                max_width = max(max_width, width)
 
-        # Add padding for border, scrollbar, visual comfort (~8 cells)
-        _PADDING = 8
-        optimal_width = max_width + _PADDING
-        self.post_message(self.WidthChanged(optimal_width))
+            # Add padding for border, scrollbar, visual comfort (~8 cells)
+            _PADDING = 8
+            optimal_width = max_width + _PADDING
+            self.post_message(self.WidthChanged(optimal_width))
 
-        # Highlight the current item
-        if changespecs and 0 <= current_idx < len(changespecs):
-            self._programmatic_update = True
-            self.highlighted = current_idx
+            # Highlight the current item
+            if changespecs and 0 <= current_idx < len(changespecs):
+                self.highlighted = current_idx
+        finally:
             self._programmatic_update = False
 
     def _format_changespec_option(
