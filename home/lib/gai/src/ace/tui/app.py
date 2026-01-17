@@ -27,6 +27,7 @@ from .actions import (
     ClipboardMixin,
     EventHandlersMixin,
     HintActionsMixin,
+    MarkingMixin,
     NavigationMixin,
     ProposalRebaseMixin,
 )
@@ -66,6 +67,7 @@ class AceApp(
     ChangeSpecMixin,
     ClipboardMixin,
     EventHandlersMixin,
+    MarkingMixin,
     NavigationMixin,
     ProposalRebaseMixin,
     BaseActionsMixin,
@@ -121,6 +123,9 @@ class AceApp(
         Binding("Q", "stop_axe_and_quit", "Stop & Quit", show=False),
         # Agent actions (Agents tab only)
         Binding("space", "start_custom_agent", "Run Agent", show=False),
+        # Marking (CLs tab only)
+        Binding("m", "toggle_mark", "Mark", show=False),
+        Binding("u", "clear_marks", "Unmark All", show=False),
         Binding("x", "kill_agent", "Kill", show=False),
         Binding("l", "toggle_layout", "Layout", show=False),
         # Copy to clipboard (all tabs)
@@ -149,6 +154,7 @@ class AceApp(
     current_tab: reactive[TabName] = reactive("changespecs", recompose=False)
     axe_running: reactive[bool] = reactive(False, recompose=False)
     hide_reverted: reactive[bool] = reactive(True, recompose=False)
+    marked_indices: reactive[set[int]] = reactive(set, recompose=False)
 
     def __init__(
         self,

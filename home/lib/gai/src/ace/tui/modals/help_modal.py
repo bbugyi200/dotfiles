@@ -31,12 +31,14 @@ _CLS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
         [
             ("a", "Accept proposal"),
             ("b", "Rebase CL onto parent"),
-            ("c", "Checkout CL in workspace"),
+            ("C", "Checkout CL in workspace"),
             ("d", "Show diff"),
             ("h", "Edit hooks"),
-            ("m", "Mail CL"),
+            ("M", "Mail CL"),
+            ("m", "Mark/unmark current CL"),
             ("s", "Change status"),
-            ("t", "Checkout CL and open tmux"),
+            ("T", "Checkout CL and open tmux"),
+            ("u", "Clear all marks"),
             ("v", "View files"),
             ("w", "Reword CL description"),
             ("@", "Edit spec file"),
@@ -55,7 +57,7 @@ _CLS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
         "Workflows & Agents",
         [
             ("r", "Run workflow"),
-            ("<space>", "Run custom agent"),
+            ("<space>", "Run agent on marked CLs (or current)"),
         ],
     ),
     (

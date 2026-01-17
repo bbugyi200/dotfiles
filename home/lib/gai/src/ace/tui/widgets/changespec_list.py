@@ -16,18 +16,23 @@ from ...changespec import (
 )
 
 
-def _calculate_entry_display_width(changespec: ChangeSpec) -> int:
+def _calculate_entry_display_width(changespec: ChangeSpec, is_marked: bool) -> int:
     """Calculate display width of a ChangeSpec entry in terminal cells.
 
     Args:
         changespec: The ChangeSpec to measure
+        is_marked: Whether this ChangeSpec is marked
 
     Returns:
         Width in terminal cells
     """
     indicator, _ = _get_status_indicator(changespec)
-    # Format: "[{indicator}] {name} ({cl})"
-    parts = [f"[{indicator}] ", changespec.name]
+    # Format: "[✓] [{indicator}] {name} ({cl})" (with mark prefix if marked)
+    parts = []
+    if is_marked:
+        parts.append("[✓] ")
+    parts.append(f"[{indicator}] ")
+    parts.append(changespec.name)
     if changespec.cl:
         parts.append(f" ({changespec.cl})")
     text = Text("".join(parts))
@@ -133,27 +138,36 @@ class ChangeSpecList(OptionList):
         """Initialize the ChangeSpec list."""
         super().__init__(**kwargs)
         self._changespecs: list[ChangeSpec] = []
+        self._marked_indices: set[int] = set()
         self._programmatic_update: bool = False
 
-    def update_list(self, changespecs: list[ChangeSpec], current_idx: int) -> None:
+    def update_list(
+        self,
+        changespecs: list[ChangeSpec],
+        current_idx: int,
+        marked_indices: set[int] | None = None,
+    ) -> None:
         """Update the list with new changespecs.
 
         Args:
             changespecs: List of ChangeSpecs to display
             current_idx: Index of currently selected ChangeSpec
+            marked_indices: Set of indices that are marked
         """
         self._programmatic_update = True
+        self._marked_indices = marked_indices or set()
         try:
             self._changespecs = changespecs
             self.clear_options()
 
             max_width = 0
             for i, cs in enumerate(changespecs):
+                is_marked = i in self._marked_indices
                 option = self._format_changespec_option(
-                    cs, is_selected=(i == current_idx)
+                    cs, is_selected=(i == current_idx), is_marked=is_marked
                 )
                 self.add_option(option)
-                width = _calculate_entry_display_width(cs)
+                width = _calculate_entry_display_width(cs, is_marked=is_marked)
                 max_width = max(max_width, width)
 
             # Add padding for border, scrollbar, visual comfort (~8 cells)
@@ -168,18 +182,23 @@ class ChangeSpecList(OptionList):
             self._programmatic_update = False
 
     def _format_changespec_option(
-        self, changespec: ChangeSpec, is_selected: bool
+        self, changespec: ChangeSpec, is_selected: bool, is_marked: bool
     ) -> Option:
         """Format a ChangeSpec as an option for display.
 
         Args:
             changespec: The ChangeSpec to format
             is_selected: Whether this is the currently selected item
+            is_marked: Whether this item is marked
 
         Returns:
             An Option for the OptionList
         """
         text = Text()
+
+        # Mark indicator (green checkmark)
+        if is_marked:
+            text.append("[✓] ", style="bold #00D700")
 
         # Status indicator
         indicator, color = _get_status_indicator(changespec)

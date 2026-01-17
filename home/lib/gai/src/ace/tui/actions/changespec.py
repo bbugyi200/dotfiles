@@ -27,6 +27,7 @@ class ChangeSpecMixin:
     commits_collapsed: bool
     mentors_collapsed: bool
     hide_reverted: bool
+    marked_indices: set[int]
     _hint_mode_active: bool
     _hint_mode_hints_for: str | None
     _hint_mappings: dict[int, str]
@@ -45,6 +46,9 @@ class ChangeSpecMixin:
         all_changespecs = find_all_changespecs()
         self._all_changespecs = all_changespecs  # Cache for ancestry lookup
         self.changespecs = self._filter_changespecs(all_changespecs)
+
+        # Clear marks on reload (indices may shift)
+        self.marked_indices = set()  # type: ignore[assignment]
 
         # Ensure current_idx is within bounds
         if self.changespecs:
@@ -254,7 +258,7 @@ class ChangeSpecMixin:
             "#ancestors-children-panel", AncestorsChildrenPanel
         )
 
-        list_widget.update_list(self.changespecs, self.current_idx)
+        list_widget.update_list(self.changespecs, self.current_idx, self.marked_indices)
         search_panel.update_query(self.canonical_query_string)  # type: ignore[attr-defined]
 
         # Calculate effective hide_reverted (disabled if query targets reverted)
@@ -325,7 +329,9 @@ class ChangeSpecMixin:
         info_panel = self.query_one("#info-panel", ChangeSpecInfoPanel)  # type: ignore[attr-defined]
         # Position is 1-based for display (current_idx is 0-based)
         position = self.current_idx + 1 if self.changespecs else 0
-        info_panel.update_position(position, len(self.changespecs))
+        info_panel.update_position(
+            position, len(self.changespecs), len(self.marked_indices)
+        )
         info_panel.update_countdown(self._countdown_remaining, self.refresh_interval)  # type: ignore[attr-defined]
 
     def action_edit_spec(self) -> None:

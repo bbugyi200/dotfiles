@@ -41,16 +41,23 @@ class AgentWorkflowMixin:
     changespecs: list[ChangeSpec]
     current_idx: int
     current_tab: TabName
+    marked_indices: set[int]
     _agents: list[Agent]
 
     # State for prompt input
     _prompt_context: _PromptContext | None = None
+    # State for bulk agent runs
+    _bulk_changespecs: list[ChangeSpec] | None = None
 
     def action_start_custom_agent(self) -> None:
         """Start a custom agent by selecting project or CL."""
         if self.current_tab == "changespecs":
-            # CLs tab: infer project/CL from current ChangeSpec (skip modals)
-            self._start_agent_from_changespec()
+            # CLs tab: check for marked items first
+            if self.marked_indices:
+                self._start_agents_from_marked()
+            else:
+                # Single CL: infer project/CL from current ChangeSpec (skip modals)
+                self._start_agent_from_changespec()
             return
 
         if self.current_tab != "agents":
@@ -171,6 +178,41 @@ class AgentWorkflowMixin:
             update_target=cl_name,
             new_cl_name=None,
             history_sort_key=cl_name,
+        )
+
+    def _start_agents_from_marked(self) -> None:
+        """Start agents for all marked ChangeSpecs.
+
+        Shows a single prompt input bar; the prompt will be used for all
+        marked items.
+        """
+        if not self.marked_indices:
+            self.notify("No marked ChangeSpecs", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        # Collect all marked ChangeSpecs (sorted by index for consistency)
+        self._bulk_changespecs = [
+            self.changespecs[idx]
+            for idx in sorted(self.marked_indices)
+            if idx < len(self.changespecs)
+        ]
+
+        if not self._bulk_changespecs:
+            self.notify("No valid marked ChangeSpecs", severity="warning")  # type: ignore[attr-defined]
+            self._bulk_changespecs = None
+            return
+
+        # Use first changespec for prompt context (history, etc.)
+        first_cs = self._bulk_changespecs[0]
+        count = len(self._bulk_changespecs)
+        self.notify(f"Running agent on {count} marked CL(s)")  # type: ignore[attr-defined]
+
+        self._show_prompt_input_bar(
+            first_cs.project_basename,
+            cl_name=first_cs.name,
+            update_target=first_cs.name,
+            new_cl_name=None,
+            history_sort_key=first_cs.name,
         )
 
     def _show_prompt_input_bar(
@@ -376,13 +418,18 @@ class AgentWorkflowMixin:
             self.notify("No prompt context - cannot launch", severity="error")  # type: ignore[attr-defined]
             return
 
-        ctx = self._prompt_context
-
-        # Unmount prompt bar
+        # Unmount prompt bar first
         self._unmount_prompt_bar()
+
+        # Check if this is a bulk run
+        if self._bulk_changespecs:
+            self._launch_bulk_agents(prompt)
+            return
+
+        ctx = self._prompt_context
         self._prompt_context = None
 
-        # Launch background agent
+        # Launch single background agent
         self._launch_background_agent(
             cl_name=ctx.display_name,
             project_file=ctx.project_file,
@@ -403,6 +450,86 @@ class AgentWorkflowMixin:
         # Refresh agents list (deferred to avoid lag)
         self.call_later(self._load_agents)  # type: ignore[attr-defined]
         self.notify(f"Agent started for {ctx.display_name}")  # type: ignore[attr-defined]
+
+    def _launch_bulk_agents(self, prompt: str) -> None:
+        """Launch agents for all bulk changespecs.
+
+        Args:
+            prompt: The user's prompt for all agents.
+        """
+        from gai_utils import generate_timestamp
+        from running_field import (
+            get_first_available_axe_workspace,
+            get_workspace_directory_for_num,
+        )
+
+        if not self._bulk_changespecs:
+            self.notify("No bulk changespecs", severity="error")  # type: ignore[attr-defined]
+            return
+
+        changespecs = self._bulk_changespecs
+        self._bulk_changespecs = None
+        self._prompt_context = None
+
+        launched_count = 0
+        failed_count = 0
+
+        for cs in changespecs:
+            project_name = cs.project_basename
+            cl_name = cs.name
+
+            project_file = os.path.expanduser(
+                f"~/.gai/projects/{project_name}/{project_name}.gp"
+            )
+
+            if not os.path.isfile(project_file):
+                self.notify(f"No project file for {cl_name}", severity="warning")  # type: ignore[attr-defined]
+                failed_count += 1
+                continue
+
+            try:
+                workspace_num = get_first_available_axe_workspace(project_file)
+                timestamp = generate_timestamp()
+                workflow_name = f"ace(run)-{timestamp}"
+                workspace_dir, _ = get_workspace_directory_for_num(
+                    workspace_num, project_name
+                )
+            except RuntimeError as e:
+                self.notify(f"Workspace error for {cl_name}: {e}", severity="warning")  # type: ignore[attr-defined]
+                failed_count += 1
+                continue
+
+            self._launch_background_agent(
+                cl_name=cl_name,
+                project_file=project_file,
+                workspace_dir=workspace_dir,
+                workspace_num=workspace_num,
+                workflow_name=workflow_name,
+                prompt=prompt,
+                timestamp=timestamp,
+                new_cl_name=None,
+                parent_cl_name=cl_name,
+                update_target=cl_name,
+                project_name=project_name,
+                history_sort_key=cl_name,
+            )
+            launched_count += 1
+
+        # Clear marks after bulk launch
+        self.marked_indices = set()  # type: ignore[assignment]
+        self._refresh_display()  # type: ignore[attr-defined]
+
+        # Refresh agents list
+        self.call_later(self._load_agents)  # type: ignore[attr-defined]
+
+        # Show summary notification
+        if failed_count > 0:
+            self.notify(  # type: ignore[attr-defined]
+                f"Started {launched_count} agent(s), {failed_count} failed",
+                severity="warning",
+            )
+        else:
+            self.notify(f"Started {launched_count} agent(s)")  # type: ignore[attr-defined]
 
     def _open_editor_for_agent_prompt(self, initial_content: str = "") -> str | None:
         """Suspend TUI and open editor for prompt input.
