@@ -6,6 +6,7 @@ from .agent_list import AgentList
 from .ancestors_children_panel import AncestorsChildrenPanel
 from .axe_dashboard import AxeDashboard
 from .axe_info_panel import AxeInfoPanel
+from .bgcmd_list import BgCmdList
 from .changespec_detail import ChangeSpecDetail, SearchQueryPanel
 from .changespec_info_panel import ChangeSpecInfoPanel
 from .changespec_list import ChangeSpecList
@@ -21,6 +22,7 @@ __all__ = [
     "AncestorsChildrenPanel",
     "AxeDashboard",
     "AxeInfoPanel",
+    "BgCmdList",
     "ChangeSpecDetail",
     "ChangeSpecInfoPanel",
     "ChangeSpecList",

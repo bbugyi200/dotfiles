@@ -72,7 +72,7 @@ _CLS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
     (
         "Axe Control",
         [
-            ("X", "Start / stop axe daemon"),
+            ("X", "Start / stop axe (or select process)"),
             ("Q", "Stop axe and quit"),
         ],
     ),
@@ -116,7 +116,7 @@ _AGENTS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
     (
         "Axe Control",
         [
-            ("X", "Start / stop axe daemon"),
+            ("X", "Start / stop axe (or select process)"),
             ("Q", "Stop axe and quit"),
         ],
     ),
@@ -135,8 +135,16 @@ _AXE_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
     (
         "Navigation",
         [
+            ("j / k", "Move to next / previous command"),
             ("g", "Scroll to top"),
             ("G", "Scroll to bottom"),
+        ],
+    ),
+    (
+        "Background Commands",
+        [
+            ("<space>", "Run background command"),
+            ("X", "Kill current command (or toggle axe)"),
         ],
     ),
     (
@@ -150,7 +158,7 @@ _AXE_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
     (
         "Clipboard",
         [
-            ("%", "Copy axe output to clipboard"),
+            ("%", "Copy output to clipboard"),
         ],
     ),
     (
@@ -174,7 +182,7 @@ _TAB_DISPLAY_NAMES = {
 _COLUMN_SPLITS = {
     "changespecs": 2,  # Left: Navigation, CL Actions; Right: rest
     "agents": 2,  # Left: Navigation, Agent Actions; Right: rest
-    "axe": 2,  # Left: Navigation, Axe Control; Right: rest
+    "axe": 3,  # Left: Navigation, BgCmds, Axe Control; Right: rest
 }
 
 

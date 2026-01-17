@@ -23,6 +23,7 @@ class KeybindingFooter(Horizontal):
         self._axe_running: bool = False
         self._axe_starting: bool = False
         self._axe_stopping: bool = False
+        self._bgcmd_count: int = 0
 
     def compose(self) -> ComposeResult:
         """Compose the footer with bindings on left and status on right."""
@@ -56,6 +57,15 @@ class KeybindingFooter(Horizontal):
         self._axe_stopping = stopping
         self._update_status()
 
+    def set_bgcmd_count(self, count: int) -> None:
+        """Update the background command count.
+
+        Args:
+            count: Number of running background commands.
+        """
+        self._bgcmd_count = count
+        self._update_status()
+
     def _update_status(self) -> None:
         """Update the status indicator widget."""
         try:
@@ -79,6 +89,12 @@ class KeybindingFooter(Horizontal):
             text.append(" RUNNING ", style="bold black on green")
         else:
             text.append(" STOPPED ", style="bold white on red")
+
+        # Add bgcmd count badge if there are background commands running
+        if self._bgcmd_count > 0:
+            text.append(" ")
+            text.append(f" [+{self._bgcmd_count}] ", style="bold black on #00D7AF")
+
         return text
 
     def _update_display(self, bindings_text: Text) -> None:
@@ -149,7 +165,7 @@ class KeybindingFooter(Horizontal):
         Returns:
             List of (key, label) tuples.
         """
-        return [("x", "clear"), ("%", "copy")]
+        return [("<space>", "run cmd"), ("x", "clear"), ("%", "copy")]
 
     def _compute_agent_bindings(
         self,

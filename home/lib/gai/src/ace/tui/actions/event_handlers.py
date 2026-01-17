@@ -8,6 +8,7 @@ from textual import events
 
 from ..widgets import (
     AgentList,
+    BgCmdList,
     ChangeSpecList,
     TabBar,
 )
@@ -126,3 +127,10 @@ class EventHandlersMixin:
         width = max(_MIN_AGENT_LIST_WIDTH, min(_MAX_AGENT_LIST_WIDTH, event.width))
         agent_list_container = self.query_one("#agent-list-container")  # type: ignore[attr-defined]
         agent_list_container.styles.width = width
+
+    def on_bg_cmd_list_selection_changed(
+        self, event: BgCmdList.SelectionChanged
+    ) -> None:
+        """Handle selection change in the BgCmdList widget."""
+        if self.current_tab == "axe":
+            self._switch_to_axe_view(event.item)  # type: ignore[attr-defined]

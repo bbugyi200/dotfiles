@@ -138,11 +138,64 @@ def test_keybinding_footer_set_axe_stopping() -> None:
 
 
 def test_keybinding_footer_axe_bindings() -> None:
-    """Test that AXE tab shows clear and copy bindings."""
+    """Test that AXE tab shows run cmd, clear, and copy bindings."""
     footer = KeybindingFooter()
 
     bindings = footer._compute_axe_bindings()
 
-    assert len(bindings) == 2
-    assert bindings[0] == ("x", "clear")
-    assert bindings[1] == ("%", "copy")
+    assert len(bindings) == 3
+    assert bindings[0] == ("<space>", "run cmd")
+    assert bindings[1] == ("x", "clear")
+    assert bindings[2] == ("%", "copy")
+
+
+def test_keybinding_footer_set_bgcmd_count() -> None:
+    """Test set_bgcmd_count updates the state."""
+    footer = KeybindingFooter()
+    assert footer._bgcmd_count == 0
+
+    footer.set_bgcmd_count(3)
+    assert footer._bgcmd_count == 3
+
+    footer.set_bgcmd_count(0)
+    assert footer._bgcmd_count == 0
+
+
+def test_keybinding_footer_status_with_bgcmd_count() -> None:
+    """Test status indicator shows bgcmd count badge when running."""
+    footer = KeybindingFooter()
+    footer._axe_running = True
+    footer._bgcmd_count = 3
+
+    text = footer._get_status_text()
+    text_str = str(text)
+
+    assert "RUNNING" in text_str
+    assert "[+3]" in text_str
+
+
+def test_keybinding_footer_status_no_bgcmd_badge_when_zero() -> None:
+    """Test status indicator doesn't show bgcmd badge when count is 0."""
+    footer = KeybindingFooter()
+    footer._axe_running = True
+    footer._bgcmd_count = 0
+
+    text = footer._get_status_text()
+    text_str = str(text)
+
+    assert "RUNNING" in text_str
+    assert "[+" not in text_str
+
+
+def test_keybinding_footer_format_bindings() -> None:
+    """Test _format_bindings creates proper Text output."""
+    footer = KeybindingFooter()
+
+    bindings = [("a", "action"), ("b", "binding")]
+    text = footer._format_bindings(bindings)
+    text_str = str(text)
+
+    assert "a" in text_str
+    assert "action" in text_str
+    assert "b" in text_str
+    assert "binding" in text_str

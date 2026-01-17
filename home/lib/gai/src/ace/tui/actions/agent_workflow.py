@@ -60,6 +60,11 @@ class AgentWorkflowMixin:
                 self._start_agent_from_changespec()
             return
 
+        if self.current_tab == "axe":
+            # AXE tab: start background command
+            self.action_start_bgcmd()  # type: ignore[attr-defined]
+            return
+
         if self.current_tab != "agents":
             self.notify("Unknown tab", severity="warning")  # type: ignore[attr-defined]
             return

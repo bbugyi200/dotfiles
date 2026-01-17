@@ -1,9 +1,12 @@
 """Axe info panel widget for the ace TUI."""
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from rich.text import Text
 from textual.widgets import Static
+
+if TYPE_CHECKING:
+    from ..bgcmd import BackgroundCommandInfo
 
 
 class AxeInfoPanel(Static):
@@ -15,14 +18,38 @@ class AxeInfoPanel(Static):
         self._is_running = False
         self._countdown = 0
         self._interval = 0
+        self._bgcmd_mode = False
+        self._bgcmd_slot: int | None = None
+        self._bgcmd_info: BackgroundCommandInfo | None = None
+        self._bgcmd_running = False
 
     def update_status(self, is_running: bool) -> None:
-        """Update the running status display.
+        """Update the running status display for axe daemon.
 
         Args:
             is_running: Whether axe daemon is currently running.
         """
         self._is_running = is_running
+        self._bgcmd_mode = False
+        self._update_display()
+
+    def update_bgcmd_status(
+        self,
+        slot: int,
+        info: "BackgroundCommandInfo | None",
+        is_running: bool,
+    ) -> None:
+        """Update the status display for a background command.
+
+        Args:
+            slot: Slot number (1-9).
+            info: Background command info.
+            is_running: Whether the command is still running.
+        """
+        self._bgcmd_mode = True
+        self._bgcmd_slot = slot
+        self._bgcmd_info = info
+        self._bgcmd_running = is_running
         self._update_display()
 
     def update_countdown(self, countdown: int, interval: int) -> None:
@@ -39,8 +66,22 @@ class AxeInfoPanel(Static):
     def _update_display(self) -> None:
         """Refresh the displayed text."""
         text = Text()
+
+        if self._bgcmd_mode:
+            # Show bgcmd info
+            text.append("Slot ", style="dim")
+            text.append(f"{self._bgcmd_slot}", style="bold #00D7AF")
+            if self._bgcmd_info:
+                text.append(" • ", style="dim")
+                text.append(self._bgcmd_info.project, style="#87D7FF")
+            text.append("  ", style="")
+        else:
+            # Show axe info (just the countdown for now)
+            pass
+
         if self._interval > 0:
             text.append("(auto-refresh in ", style="dim")
             text.append(f"{self._countdown}s", style="bold #FFD700")
             text.append(")", style="dim")
+
         self.update(text)

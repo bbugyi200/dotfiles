@@ -39,6 +39,7 @@ from .widgets import (
     AncestorsChildrenPanel,
     AxeDashboard,
     AxeInfoPanel,
+    BgCmdList,
     ChangeSpecDetail,
     ChangeSpecInfoPanel,
     ChangeSpecList,
@@ -221,6 +222,12 @@ class AceApp(
         self._axe_output: str = ""
         self._axe_pinned_to_bottom: bool = False
 
+        # Background command state
+        from .bgcmd import BackgroundCommandInfo
+
+        self._axe_current_view: Literal["axe"] | int = "axe"
+        self._bgcmd_slots: list[tuple[int, BackgroundCommandInfo]] = []
+
         # Query history stacks for prev/next navigation
         from ..query_history import load_query_history
 
@@ -265,6 +272,10 @@ class AceApp(
                     yield AgentDetail(id="agent-detail-panel")
             # Axe Tab (hidden by default)
             with Horizontal(id="axe-view", classes="hidden"):
+                # Left panel (bgcmd list) - hidden by default, shown when bgcmds exist
+                with Vertical(id="bgcmd-list-container", classes="hidden"):
+                    yield BgCmdList(id="bgcmd-list-panel")
+                # Right panel (dashboard)
                 with Vertical(id="axe-container"):
                     yield AxeInfoPanel(id="axe-info-panel")
                     yield AxeDashboard(id="axe-dashboard")
