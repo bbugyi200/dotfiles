@@ -30,6 +30,8 @@ class EventHandlersMixin:
     refresh_interval: int
     _countdown_remaining: int
     _fold_mode_active: bool
+    _checkout_mode_active: bool
+    _tmux_mode_active: bool
     _agents: list[Agent]
     _changespecs_last_idx: int
     _agents_last_idx: int
@@ -63,9 +65,13 @@ class EventHandlersMixin:
             self._update_axe_info_panel()  # type: ignore[attr-defined]
 
     def on_key(self, event: events.Key) -> None:
-        """Handle key events, including fold and ancestry sub-keys."""
+        """Handle key events, including fold, checkout/tmux, and ancestry sub-keys."""
         if self._fold_mode_active:
             if self._handle_fold_key(event.key):  # type: ignore[attr-defined]
+                event.prevent_default()
+                event.stop()
+        elif self._checkout_mode_active or self._tmux_mode_active:
+            if self._handle_checkout_tmux_key(event.key):  # type: ignore[attr-defined]
                 event.prevent_default()
                 event.stop()
         elif self._ancestor_mode_active or self._child_mode_active:

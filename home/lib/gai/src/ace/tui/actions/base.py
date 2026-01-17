@@ -228,7 +228,15 @@ class BaseActionsMixin:
         self._reload_and_reposition()  # type: ignore[attr-defined]
 
     def action_open_tmux(self) -> None:
-        """Open tmux session for the current ChangeSpec's project."""
+        """Open tmux session for the current ChangeSpec's project (workspace #1)."""
+        self._open_tmux_for_workspace(1)
+
+    def _open_tmux_for_workspace(self, workspace_num: int) -> None:
+        """Open tmux session for the current ChangeSpec's project.
+
+        Args:
+            workspace_num: The workspace number to checkout and open tmux for (1-9).
+        """
         import subprocess
 
         from running_field import get_workspace_directory
@@ -251,12 +259,20 @@ class BaseActionsMixin:
 
         project_basename = changespec.project_basename
 
-        # Get primary workspace directory (workspace #1)
+        # Get workspace directory for specified workspace number
         try:
-            workspace_dir = get_workspace_directory(project_basename, workspace_num=1)
+            workspace_dir = get_workspace_directory(
+                project_basename, workspace_num=workspace_num
+            )
         except RuntimeError as e:
             self.notify(f"Failed to get workspace directory: {e}", severity="error")  # type: ignore[attr-defined]
             return
+
+        # Determine tmux session name: <project> for workspace 1, <project>_<N> otherwise
+        if workspace_num == 1:
+            tmux_session = project_basename
+        else:
+            tmux_session = f"{project_basename}_{workspace_num}"
 
         def run_commands() -> tuple[bool, str]:
             # Run bb_hg_update
@@ -277,10 +293,10 @@ class BaseActionsMixin:
             except FileNotFoundError:
                 return (False, "bb_hg_update command not found")
 
-            # Run tm <project>
+            # Run tm <session>
             try:
-                subprocess.run(["tm", project_basename], check=False)
-                return (True, f"Opened tmux for {project_basename}")
+                subprocess.run(["tm", tmux_session], check=False)
+                return (True, f"Opened tmux for {tmux_session}")
             except FileNotFoundError:
                 return (False, "tm command not found")
 
@@ -294,6 +310,14 @@ class BaseActionsMixin:
 
     def action_checkout(self) -> None:
         """Checkout the current ChangeSpec in the primary workspace (no tmux)."""
+        self._checkout_to_workspace(1)
+
+    def _checkout_to_workspace(self, workspace_num: int) -> None:
+        """Checkout the current ChangeSpec in the specified workspace (no tmux).
+
+        Args:
+            workspace_num: The workspace number to checkout to (1-9).
+        """
         import subprocess
 
         from running_field import get_workspace_directory
@@ -316,9 +340,11 @@ class BaseActionsMixin:
 
         project_basename = changespec.project_basename
 
-        # Get primary workspace directory (workspace #1)
+        # Get workspace directory for specified workspace number
         try:
-            workspace_dir = get_workspace_directory(project_basename, workspace_num=1)
+            workspace_dir = get_workspace_directory(
+                project_basename, workspace_num=workspace_num
+            )
         except RuntimeError as e:
             self.notify(f"Failed to get workspace directory: {e}", severity="error")  # type: ignore[attr-defined]
             return
@@ -351,6 +377,35 @@ class BaseActionsMixin:
             self.notify(message)  # type: ignore[attr-defined]
         else:
             self.notify(message, severity="error")  # type: ignore[attr-defined]
+
+    def action_start_checkout_mode(self) -> None:
+        """Enter checkout mode - press 1-9 to select workspace."""
+        if self.current_tab != "changespecs":
+            return
+        self._checkout_mode_active = True  # type: ignore[attr-defined]
+
+    def action_start_tmux_mode(self) -> None:
+        """Enter tmux mode - press 1-9 to select workspace."""
+        if self.current_tab != "changespecs":
+            return
+        self._tmux_mode_active = True  # type: ignore[attr-defined]
+
+    def _handle_checkout_tmux_key(self, key: str) -> bool:
+        """Handle key in checkout/tmux mode. Returns True if handled."""
+        is_checkout = self._checkout_mode_active  # type: ignore[attr-defined]
+        self._checkout_mode_active = False  # type: ignore[attr-defined]
+        self._tmux_mode_active = False  # type: ignore[attr-defined]
+
+        if key in "123456789":
+            workspace_num = int(key)
+            if is_checkout:
+                self._checkout_to_workspace(workspace_num)
+            else:
+                self._open_tmux_for_workspace(workspace_num)
+            return True
+
+        # Invalid key - just exit mode
+        return True
 
     def action_refresh(self) -> None:
         """Refresh the current tab's content."""

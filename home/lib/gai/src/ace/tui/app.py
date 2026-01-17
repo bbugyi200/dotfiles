@@ -95,7 +95,9 @@ class AceApp(
         Binding("a", "accept_proposal", "Accept", show=False),
         Binding("b", "rebase", "Rebase", show=False),
         Binding("T", "open_tmux", "Tmux", show=False),
+        Binding("t", "start_tmux_mode", "Tmux Mode", show=False),
         Binding("C", "checkout", "Checkout", show=False),
+        Binding("c", "start_checkout_mode", "Checkout Mode", show=False),
         # Note: "!" binding removed - use "a" then "@" to mark ready to mail
         Binding("y", "refresh", "Refresh", show=False),
         Binding("slash", "edit_query", "Edit Query", show=False),
@@ -194,6 +196,10 @@ class AceApp(
 
         # Fold mode state (for z key sub-command)
         self._fold_mode_active: bool = False
+
+        # Checkout/tmux mode state (for c/t key sub-commands)
+        self._checkout_mode_active: bool = False
+        self._tmux_mode_active: bool = False
 
         # Ancestor/child navigation state
         self._ancestor_mode_active: bool = False
