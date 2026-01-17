@@ -292,6 +292,66 @@ class BaseActionsMixin:
         else:
             self.notify(message, severity="error")  # type: ignore[attr-defined]
 
+    def action_checkout(self) -> None:
+        """Checkout the current ChangeSpec in the primary workspace (no tmux)."""
+        import subprocess
+
+        from running_field import get_workspace_directory
+
+        from ...changespec import get_base_status
+
+        if not self.changespecs:
+            return
+
+        changespec = self.changespecs[self.current_idx]
+
+        # Validate status
+        base_status = get_base_status(changespec.status)
+        if base_status in ("Reverted", "Submitted"):
+            self.notify(  # type: ignore[attr-defined]
+                "Checkout not available for Reverted/Submitted ChangeSpecs",
+                severity="warning",
+            )
+            return
+
+        project_basename = changespec.project_basename
+
+        # Get primary workspace directory (workspace #1)
+        try:
+            workspace_dir = get_workspace_directory(project_basename, workspace_num=1)
+        except RuntimeError as e:
+            self.notify(f"Failed to get workspace directory: {e}", severity="error")  # type: ignore[attr-defined]
+            return
+
+        def run_checkout() -> tuple[bool, str]:
+            # Run bb_hg_update
+            try:
+                result = subprocess.run(
+                    ["bb_hg_update", changespec.name],
+                    cwd=workspace_dir,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    timeout=300,
+                )
+                if result.returncode != 0:
+                    error = (result.stderr or result.stdout).strip()
+                    return (False, f"bb_hg_update failed: {error}")
+            except subprocess.TimeoutExpired:
+                return (False, "bb_hg_update timed out")
+            except FileNotFoundError:
+                return (False, "bb_hg_update command not found")
+
+            return (True, f"Checked out {changespec.name} in {workspace_dir}")
+
+        with self.suspend():  # type: ignore[attr-defined]
+            success, message = run_checkout()
+
+        if success:
+            self.notify(message)  # type: ignore[attr-defined]
+        else:
+            self.notify(message, severity="error")  # type: ignore[attr-defined]
+
     def action_refresh(self) -> None:
         """Refresh the current tab's content."""
         if self.current_tab == "agents":

@@ -31,10 +31,12 @@ _CLS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
         [
             ("a", "Accept proposal"),
             ("b", "Rebase CL onto parent"),
+            ("c", "Checkout CL in workspace"),
             ("d", "Show diff"),
             ("h", "Edit hooks"),
             ("m", "Mail CL"),
             ("s", "Change status"),
+            ("t", "Checkout CL and open tmux"),
             ("v", "View files"),
             ("w", "Reword CL description"),
             ("@", "Edit spec file"),

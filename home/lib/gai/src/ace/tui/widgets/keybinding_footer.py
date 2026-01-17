@@ -236,10 +236,6 @@ class KeybindingFooter(Horizontal):
         if base_status in ("WIP", "Drafted", "Mailed"):
             bindings.append(("b", "rebase"))
 
-        # Tmux (only if status is NOT Reverted or Submitted)
-        if base_status not in ("Reverted", "Submitted"):
-            bindings.append(("t", "tmux"))
-
         # Edit hooks
         bindings.append(("h", "hooks"))
 
