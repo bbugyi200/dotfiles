@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# Runs launchpad for DRX.
+function run() {
+  bash -i -c "drx-launchpad $*; exit 0"
+}
+
+run "$@"
