@@ -90,8 +90,9 @@ class ChangeSpecMixin:
         if current_name is None and self.changespecs:
             current_name = self.changespecs[self.current_idx].name
 
-        new_changespecs = find_all_changespecs()
-        new_changespecs = self._filter_changespecs(new_changespecs)
+        all_changespecs = find_all_changespecs()
+        self._all_changespecs = all_changespecs  # Cache for ancestry lookup
+        new_changespecs = self._filter_changespecs(all_changespecs)
 
         # Try to find the same changespec by name
         new_idx = 0
