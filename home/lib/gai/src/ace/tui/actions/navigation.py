@@ -10,7 +10,11 @@ if TYPE_CHECKING:
     from ...changespec import ChangeSpec
     from ...query.types import QueryExpr
     from ...query_history import QueryHistoryStacks
+    from ..bgcmd import BackgroundCommandInfo
     from ..models import Agent
+
+# Type alias for axe view: "axe" for daemon view, int for bgcmd slot (1-9)
+AxeViewType = Literal["axe"] | int
 
 # Type alias for tab names
 TabName = Literal["changespecs", "agents", "axe"]
@@ -40,6 +44,8 @@ class NavigationMixin:
     _query_history: QueryHistoryStacks
     query_string: str
     parsed_query: QueryExpr
+    _axe_current_view: AxeViewType
+    _bgcmd_slots: list[tuple[int, BackgroundCommandInfo]]
 
     # --- Navigation Actions ---
 
@@ -60,13 +66,24 @@ class NavigationMixin:
             else:
                 self.current_idx = 0
         else:  # axe tab
-            from ..widgets import BgCmdList
+            # Get list of items: "axe" first, then bgcmd slots
+            items: list[AxeViewType] = ["axe"]
+            items.extend(slot for slot, _ in self._bgcmd_slots)
 
+            if len(items) <= 1:
+                return  # Nothing to navigate
+
+            # Find current index
             try:
-                bgcmd_list = self.query_one("#bgcmd-list-panel", BgCmdList)  # type: ignore[attr-defined]
-                bgcmd_list.action_cursor_down()
-            except Exception:
-                pass
+                current_idx = items.index(self._axe_current_view)
+            except ValueError:
+                current_idx = 0
+
+            # Calculate next index (with wrapping)
+            next_idx = (current_idx + 1) % len(items)
+
+            # Update view
+            self._switch_to_axe_view(items[next_idx])  # type: ignore[attr-defined]
 
     def action_prev_changespec(self) -> None:
         """Navigate to the previous item, cycling to end if at start."""
@@ -85,13 +102,24 @@ class NavigationMixin:
             else:
                 self.current_idx = len(self._agents) - 1
         else:  # axe tab
-            from ..widgets import BgCmdList
+            # Get list of items: "axe" first, then bgcmd slots
+            items: list[AxeViewType] = ["axe"]
+            items.extend(slot for slot, _ in self._bgcmd_slots)
 
+            if len(items) <= 1:
+                return  # Nothing to navigate
+
+            # Find current index
             try:
-                bgcmd_list = self.query_one("#bgcmd-list-panel", BgCmdList)  # type: ignore[attr-defined]
-                bgcmd_list.action_cursor_up()
-            except Exception:
-                pass
+                current_idx = items.index(self._axe_current_view)
+            except ValueError:
+                current_idx = 0
+
+            # Calculate previous index (with wrapping)
+            prev_idx = (current_idx - 1) % len(items)
+
+            # Update view
+            self._switch_to_axe_view(items[prev_idx])  # type: ignore[attr-defined]
 
     def action_scroll_detail_down(self) -> None:
         """Scroll the detail panel down by half a page (vim Ctrl+D style)."""
