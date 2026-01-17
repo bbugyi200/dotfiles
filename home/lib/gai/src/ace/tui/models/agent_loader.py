@@ -363,6 +363,7 @@ def _load_done_agents() -> list[Agent]:
                         diff_path=data.get("diff_path"),
                         new_cl_name=data.get("new_cl_name"),
                         proposal_id=data.get("proposal_id"),
+                        workspace_num=data.get("workspace_num"),
                     )
                 )
             except Exception:

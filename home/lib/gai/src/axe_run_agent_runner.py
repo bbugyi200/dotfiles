@@ -407,6 +407,7 @@ def main() -> None:
                     "outcome": "new_cl",
                     "diff_path": diff_path,
                     "new_cl_name": full_new_cl_name,
+                    "workspace_num": workspace_num,
                 }
                 done_path = os.path.join(artifacts_dir, "done.json")
                 with open(done_path, "w", encoding="utf-8") as f:
@@ -464,7 +465,7 @@ def main() -> None:
                 diff_path = f"~/.gai/diffs/{safe_name}-{timestamp}.diff"
 
                 # Write done marker for NEW PROPOSAL outcome
-                proposal_done_marker: dict[str, str | None] = {
+                proposal_done_marker: dict[str, str | int | None] = {
                     "cl_name": cl_name,
                     "project_file": project_file,
                     "timestamp": timestamp,
@@ -473,6 +474,7 @@ def main() -> None:
                     "outcome": "new_proposal",
                     "diff_path": diff_path,
                     "proposal_id": proposal_id,
+                    "workspace_num": workspace_num,
                 }
                 done_path = os.path.join(artifacts_dir, "done.json")
                 with open(done_path, "w", encoding="utf-8") as f:
@@ -488,6 +490,7 @@ def main() -> None:
                     "artifacts_timestamp": artifacts_timestamp,
                     "response_path": saved_path,
                     "outcome": "no_changes",
+                    "workspace_num": workspace_num,
                 }
                 done_path = os.path.join(artifacts_dir, "done.json")
                 with open(done_path, "w", encoding="utf-8") as f:
