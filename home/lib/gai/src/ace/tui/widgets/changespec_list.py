@@ -156,30 +156,34 @@ class ChangeSpecList(OptionList):
         """
         self._programmatic_update = True
         self._marked_indices = marked_indices or set()
-        try:
-            self._changespecs = changespecs
-            self.clear_options()
+        self._changespecs = changespecs
+        self.clear_options()
 
-            max_width = 0
-            for i, cs in enumerate(changespecs):
-                is_marked = i in self._marked_indices
-                option = self._format_changespec_option(
-                    cs, is_selected=(i == current_idx), is_marked=is_marked
-                )
-                self.add_option(option)
-                width = _calculate_entry_display_width(cs, is_marked=is_marked)
-                max_width = max(max_width, width)
+        max_width = 0
+        for i, cs in enumerate(changespecs):
+            is_marked = i in self._marked_indices
+            option = self._format_changespec_option(
+                cs, is_selected=(i == current_idx), is_marked=is_marked
+            )
+            self.add_option(option)
+            width = _calculate_entry_display_width(cs, is_marked=is_marked)
+            max_width = max(max_width, width)
 
-            # Add padding for border, scrollbar, visual comfort (~8 cells)
-            _PADDING = 8
-            optimal_width = max_width + _PADDING
-            self.post_message(self.WidthChanged(optimal_width))
+        # Add padding for border, scrollbar, visual comfort (~8 cells)
+        _PADDING = 8
+        optimal_width = max_width + _PADDING
+        self.post_message(self.WidthChanged(optimal_width))
 
-            # Highlight the current item
-            if changespecs and 0 <= current_idx < len(changespecs):
-                self.highlighted = current_idx
-        finally:
-            self._programmatic_update = False
+        # Highlight the current item
+        if changespecs and 0 <= current_idx < len(changespecs):
+            self.highlighted = current_idx
+
+        # Clear flag after event loop processes pending events
+        self.call_later(self._clear_programmatic_flag)
+
+    def _clear_programmatic_flag(self) -> None:
+        """Clear programmatic update flag after event processing."""
+        self._programmatic_update = False
 
     def _format_changespec_option(
         self, changespec: ChangeSpec, is_selected: bool, is_marked: bool

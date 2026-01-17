@@ -49,40 +49,44 @@ class BgCmdList(OptionList):
             current_item: Currently selected item ("axe" or slot number).
         """
         self._programmatic_update = True
-        try:
-            self._axe_running = axe_running
-            self._items = []
-            self._bgcmd_infos = {}
+        self._axe_running = axe_running
+        self._items = []
+        self._bgcmd_infos = {}
 
-            self.clear_options()
+        self.clear_options()
 
-            # Always show axe first
-            self._items.append("axe")
-            option = self._format_axe_option(
-                is_running=axe_running,
-                is_selected=(current_item == "axe"),
+        # Always show axe first
+        self._items.append("axe")
+        option = self._format_axe_option(
+            is_running=axe_running,
+            is_selected=(current_item == "axe"),
+        )
+        self.add_option(option)
+
+        # Add background commands
+        for slot, info in sorted(bgcmd_slots, key=lambda x: x[0]):
+            self._items.append(slot)
+            self._bgcmd_infos[slot] = info
+            option = self._format_bgcmd_option(
+                slot=slot,
+                info=info,
+                is_selected=(current_item == slot),
             )
             self.add_option(option)
 
-            # Add background commands
-            for slot, info in sorted(bgcmd_slots, key=lambda x: x[0]):
-                self._items.append(slot)
-                self._bgcmd_infos[slot] = info
-                option = self._format_bgcmd_option(
-                    slot=slot,
-                    info=info,
-                    is_selected=(current_item == slot),
-                )
-                self.add_option(option)
+        # Highlight the current item
+        if current_item in self._items:
+            idx = self._items.index(current_item)
+            self.highlighted = idx
+        else:
+            self.highlighted = 0  # Default to axe
 
-            # Highlight the current item
-            if current_item in self._items:
-                idx = self._items.index(current_item)
-                self.highlighted = idx
-            else:
-                self.highlighted = 0  # Default to axe
-        finally:
-            self._programmatic_update = False
+        # Clear flag after event loop processes pending events
+        self.call_later(self._clear_programmatic_flag)
+
+    def _clear_programmatic_flag(self) -> None:
+        """Clear programmatic update flag after event processing."""
+        self._programmatic_update = False
 
     def _format_axe_option(self, is_running: bool, is_selected: bool) -> Option:
         """Format the axe option for display.

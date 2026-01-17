@@ -75,29 +75,31 @@ class AgentList(OptionList):
             current_idx: Index of currently selected agent
         """
         self._programmatic_update = True
-        try:
-            self._agents = agents
-            self.clear_options()
+        self._agents = agents
+        self.clear_options()
 
-            max_width = 0
-            for i, agent in enumerate(agents):
-                option = self._format_agent_option(
-                    agent, i, is_selected=(i == current_idx)
-                )
-                self.add_option(option)
-                width = _calculate_entry_display_width(agent)
-                max_width = max(max_width, width)
+        max_width = 0
+        for i, agent in enumerate(agents):
+            option = self._format_agent_option(agent, i, is_selected=(i == current_idx))
+            self.add_option(option)
+            width = _calculate_entry_display_width(agent)
+            max_width = max(max_width, width)
 
-            # Add padding for border, scrollbar, visual comfort (~8 cells)
-            _PADDING = 8
-            optimal_width = max_width + _PADDING
-            self.post_message(self.WidthChanged(optimal_width))
+        # Add padding for border, scrollbar, visual comfort (~8 cells)
+        _PADDING = 8
+        optimal_width = max_width + _PADDING
+        self.post_message(self.WidthChanged(optimal_width))
 
-            # Highlight the current item
-            if agents and 0 <= current_idx < len(agents):
-                self.highlighted = current_idx
-        finally:
-            self._programmatic_update = False
+        # Highlight the current item
+        if agents and 0 <= current_idx < len(agents):
+            self.highlighted = current_idx
+
+        # Clear flag after event loop processes pending events
+        self.call_later(self._clear_programmatic_flag)
+
+    def _clear_programmatic_flag(self) -> None:
+        """Clear programmatic update flag after event processing."""
+        self._programmatic_update = False
 
     def _format_agent_option(
         self, agent: Agent, index: int, is_selected: bool
