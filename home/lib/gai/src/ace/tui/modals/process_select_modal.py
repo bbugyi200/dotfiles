@@ -19,10 +19,10 @@ from ..bgcmd import BackgroundCommandInfo
 
 @dataclass
 class ProcessSelection:
-    """A process that can be selected for stopping."""
+    """A process that can be selected for starting/stopping."""
 
-    process_type: Literal["axe", "bgcmd"]
-    slot: int | None  # None for axe, 1-9 for bgcmd
+    process_type: Literal["axe", "bgcmd", "start_axe"]
+    slot: int | None  # None for axe/start_axe, 1-9 for bgcmd
     display_name: str
     description: str
 
@@ -59,8 +59,8 @@ class ProcessSelectModal(ModalScreen[ProcessSelection | None]):
         self._build_process_list()
 
     def _build_process_list(self) -> None:
-        """Build the list of processes that can be stopped."""
-        # Add axe daemon if running
+        """Build the list of processes that can be started/stopped."""
+        # Add axe option (start or stop depending on state)
         if self._axe_running:
             self._processes.append(
                 ProcessSelection(
@@ -68,6 +68,15 @@ class ProcessSelectModal(ModalScreen[ProcessSelection | None]):
                     slot=None,
                     display_name="gai axe",
                     description="Stop the axe scheduler daemon",
+                )
+            )
+        else:
+            self._processes.append(
+                ProcessSelection(
+                    process_type="start_axe",
+                    slot=None,
+                    display_name="gai axe",
+                    description="Start the axe scheduler daemon",
                 )
             )
 
@@ -90,9 +99,9 @@ class ProcessSelectModal(ModalScreen[ProcessSelection | None]):
     def compose(self) -> ComposeResult:
         """Compose the modal layout."""
         with Container():
-            yield Label("Select Process to Stop", id="modal-title")
+            yield Label("AXE Control", id="modal-title")
             yield Label(
-                "Choose which process to stop. Press Enter to confirm.",
+                "Select an action. Press Enter to confirm.",
                 id="process-hint",
             )
             yield OptionList(
@@ -104,17 +113,21 @@ class ProcessSelectModal(ModalScreen[ProcessSelection | None]):
         """Create styled text for a process option."""
         text = Text()
 
-        if process.process_type == "axe":
-            text.append("[AXE]", style="bold #FFD700")  # Gold for axe
+        if process.process_type == "start_axe":
+            text.append("[START]", style="bold #00FF00")  # Green for start
+            text.append(" ", style="")
+            text.append(process.display_name, style="bold")
+        elif process.process_type == "axe":
+            text.append("[STOP]", style="bold #FFD700")  # Gold for axe stop
             text.append(" ", style="")
             text.append(process.display_name, style="bold")
         else:
-            text.append("[CMD]", style="bold #00D7AF")  # Cyan for bgcmd
+            text.append("[STOP]", style="bold #00D7AF")  # Cyan for bgcmd
             text.append(" ", style="")
             text.append(process.display_name, style="")
 
         text.append("\n", style="")
-        text.append("      ", style="")  # Indent description
+        text.append("       ", style="")  # Indent description (extra space for [START])
         text.append(process.description, style="dim")
 
         return text

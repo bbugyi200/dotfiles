@@ -33,6 +33,20 @@ def test_process_selection_bgcmd() -> None:
     assert selection.description == "myproject (ws 1)"
 
 
+def test_process_selection_start_axe() -> None:
+    """Test ProcessSelection dataclass for start_axe process."""
+    selection = ProcessSelection(
+        process_type="start_axe",
+        slot=None,
+        display_name="gai axe",
+        description="Start the axe scheduler daemon",
+    )
+    assert selection.process_type == "start_axe"
+    assert selection.slot is None
+    assert selection.display_name == "gai axe"
+    assert selection.description == "Start the axe scheduler daemon"
+
+
 def test_process_selection_equality() -> None:
     """Test that ProcessSelection dataclass supports equality."""
     sel1 = ProcessSelection(
@@ -82,6 +96,16 @@ def test_process_select_modal_init_axe_only() -> None:
     assert modal._processes[0].display_name == "gai axe"
 
 
+def test_process_select_modal_init_nothing_running() -> None:
+    """Test ProcessSelectModal initialization with nothing running (shows start option)."""
+    modal = ProcessSelectModal(axe_running=False, bgcmd_slots=[])
+    assert modal._axe_running is False
+    assert len(modal._processes) == 1
+    assert modal._processes[0].process_type == "start_axe"
+    assert modal._processes[0].display_name == "gai axe"
+    assert "Start" in modal._processes[0].description
+
+
 def test_process_select_modal_init_bgcmd_only() -> None:
     """Test ProcessSelectModal initialization with only bgcmds running."""
     info = BackgroundCommandInfo(
@@ -93,9 +117,11 @@ def test_process_select_modal_init_bgcmd_only() -> None:
     )
     modal = ProcessSelectModal(axe_running=False, bgcmd_slots=[(3, info)])
     assert modal._axe_running is False
-    assert len(modal._processes) == 1
-    assert modal._processes[0].process_type == "bgcmd"
-    assert modal._processes[0].slot == 3
+    # Now always shows start_axe option when axe is not running
+    assert len(modal._processes) == 2
+    assert modal._processes[0].process_type == "start_axe"
+    assert modal._processes[1].process_type == "bgcmd"
+    assert modal._processes[1].slot == 3
 
 
 def test_process_select_modal_init_both() -> None:
@@ -123,7 +149,8 @@ def test_process_select_modal_long_command_truncated() -> None:
         started_at="2025-01-01T12:00:00",
     )
     modal = ProcessSelectModal(axe_running=False, bgcmd_slots=[(5, info)])
-    assert "..." in modal._processes[0].display_name
+    # First process is start_axe, second is the bgcmd
+    assert "..." in modal._processes[1].display_name
 
 
 def test_process_select_modal_bindings() -> None:
@@ -143,12 +170,22 @@ def test_process_select_modal_bindings() -> None:
 
 
 def test_process_select_modal_create_styled_label_axe() -> None:
-    """Test _create_styled_label for axe process."""
+    """Test _create_styled_label for axe process (stop action)."""
     modal = ProcessSelectModal(axe_running=True, bgcmd_slots=[])
     proc = modal._processes[0]
     label = modal._create_styled_label(proc)
     label_str = str(label)
-    assert "[AXE]" in label_str
+    assert "[STOP]" in label_str
+    assert "gai axe" in label_str
+
+
+def test_process_select_modal_create_styled_label_start_axe() -> None:
+    """Test _create_styled_label for start_axe process."""
+    modal = ProcessSelectModal(axe_running=False, bgcmd_slots=[])
+    proc = modal._processes[0]
+    label = modal._create_styled_label(proc)
+    label_str = str(label)
+    assert "[START]" in label_str
     assert "gai axe" in label_str
 
 
@@ -161,11 +198,11 @@ def test_process_select_modal_create_styled_label_bgcmd() -> None:
         workspace_dir="/path",
         started_at="2025-01-01T12:00:00",
     )
-    modal = ProcessSelectModal(axe_running=False, bgcmd_slots=[(2, info)])
-    proc = modal._processes[0]
+    modal = ProcessSelectModal(axe_running=True, bgcmd_slots=[(2, info)])
+    proc = modal._processes[1]  # Index 1, since index 0 is now axe
     label = modal._create_styled_label(proc)
     label_str = str(label)
-    assert "[CMD]" in label_str
+    assert "[STOP]" in label_str
 
 
 def test_process_select_modal_create_options() -> None:

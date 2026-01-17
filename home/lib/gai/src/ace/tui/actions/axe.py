@@ -260,7 +260,9 @@ class AxeMixin:
             if selection is None:
                 return
 
-            if selection.process_type == "axe":
+            if selection.process_type == "start_axe":
+                self._start_axe()
+            elif selection.process_type == "axe":
                 self._stop_axe()
             else:
                 slot = selection.slot

@@ -52,13 +52,21 @@ class NavigationMixin:
                 self.current_idx += 1
             else:
                 self.current_idx = 0
-        else:
+        elif self.current_tab == "agents":
             if len(self._agents) == 0:
                 return
             if self.current_idx < len(self._agents) - 1:
                 self.current_idx += 1
             else:
                 self.current_idx = 0
+        else:  # axe tab
+            from ..widgets import BgCmdList
+
+            try:
+                bgcmd_list = self.query_one("#bgcmd-list-panel", BgCmdList)  # type: ignore[attr-defined]
+                bgcmd_list.action_cursor_down()
+            except Exception:
+                pass
 
     def action_prev_changespec(self) -> None:
         """Navigate to the previous item, cycling to end if at start."""
@@ -69,13 +77,21 @@ class NavigationMixin:
                 self.current_idx -= 1
             else:
                 self.current_idx = len(self.changespecs) - 1
-        else:
+        elif self.current_tab == "agents":
             if len(self._agents) == 0:
                 return
             if self.current_idx > 0:
                 self.current_idx -= 1
             else:
                 self.current_idx = len(self._agents) - 1
+        else:  # axe tab
+            from ..widgets import BgCmdList
+
+            try:
+                bgcmd_list = self.query_one("#bgcmd-list-panel", BgCmdList)  # type: ignore[attr-defined]
+                bgcmd_list.action_cursor_up()
+            except Exception:
+                pass
 
     def action_scroll_detail_down(self) -> None:
         """Scroll the detail panel down by half a page (vim Ctrl+D style)."""
