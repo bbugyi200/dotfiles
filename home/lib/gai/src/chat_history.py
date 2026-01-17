@@ -217,3 +217,76 @@ def list_chat_histories() -> list[str]:
     )
 
     return files
+
+
+def parse_chat_filename(
+    basename: str,
+) -> tuple[str | None, str | None, str | None, str | None]:
+    """Parse chat filename into (branch_or_workspace, workflow, agent, timestamp).
+
+    Filename format: {branch_or_workspace}-{workflow}[-{agent}]-{timestamp}.md
+    Timestamp is always last 13 chars: YYmmdd_HHMMSS
+
+    Args:
+        basename: The chat file basename (without .md extension)
+
+    Returns:
+        A tuple of (branch_or_workspace, workflow, agent, timestamp).
+        Agent may be None if not present. Returns all None if parsing fails.
+    """
+    # Timestamp is always last 13 chars: YYmmdd_HHMMSS (e.g., 251231_155309)
+    if len(basename) < 14:  # At least timestamp + one dash + one char
+        return (None, None, None, None)
+
+    # Check for timestamp pattern at end
+    timestamp_candidate = basename[-13:]
+    if len(timestamp_candidate) != 13 or timestamp_candidate[6] != "_":
+        return (None, None, None, None)
+
+    # Verify numeric parts
+    date_part = timestamp_candidate[:6]
+    time_part = timestamp_candidate[7:]
+    if not (date_part.isdigit() and time_part.isdigit()):
+        return (None, None, None, None)
+
+    timestamp = timestamp_candidate
+
+    # Everything before the timestamp (minus the dash separator)
+    prefix = basename[:-14]  # Remove "-YYmmdd_HHMMSS"
+    if not prefix:
+        return (None, None, None, None)
+
+    # Split by dash
+    parts = prefix.split("-")
+    if len(parts) < 2:
+        return (None, None, None, None)
+
+    # First part is branch_or_workspace
+    branch_or_workspace = parts[0]
+
+    # Last part before timestamp could be agent or workflow
+    # Known workflows: run, rerun, crs, mentor, fix_hook, summarize_hook
+    # If len >= 3: could be branch-workflow-agent or branch_with_dashes-workflow
+    if len(parts) == 2:
+        # branch-workflow
+        workflow = parts[1]
+        agent = None
+    else:
+        # Might have agent or multi-part branch name
+        # Try workflow as second part, agent as third
+        workflow = parts[1]
+        agent = "-".join(parts[2:]) if len(parts) > 2 else None
+
+    return (branch_or_workspace, workflow, agent, timestamp)
+
+
+def get_chat_file_full_path(basename: str) -> str:
+    """Get the full path to a chat history file.
+
+    Args:
+        basename: The basename of the chat file (with or without .md extension)
+
+    Returns:
+        The full path to the chat file
+    """
+    return _get_chat_file_path(basename)

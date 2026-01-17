@@ -186,10 +186,10 @@ class KeybindingFooter(Horizontal):
 
         # Kill/dismiss (only when agent selected)
         if agent is not None:
-            if agent.status in ("NO CHANGES", "NEW CL", "NEW PROPOSAL"):
+            if agent.status in ("NO CHANGES", "NEW CL", "NEW PROPOSAL", "REVIVED"):
                 bindings.append(("x", "dismiss"))
                 bindings.append(("@", "edit chat"))
-                # Copy chat (only for completed agents with chat available)
+                # Copy chat (only for completed/revived agents with chat available)
                 if agent.response_path:
                     bindings.append(("%", "copy chat"))
             else:
@@ -201,6 +201,9 @@ class KeybindingFooter(Horizontal):
 
         # Run custom agent
         bindings.append(("<space>", "run agent"))
+
+        # Revive chat as agent
+        bindings.append(("r", "revive chat"))
 
         return bindings
 

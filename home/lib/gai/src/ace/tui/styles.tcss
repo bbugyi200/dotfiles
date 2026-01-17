@@ -572,6 +572,84 @@ PromptHistoryModal #prompt-history-hints {
     margin-top: 1;
 }
 
+/* Chat select modal styling */
+ChatSelectModal {
+    align: center middle;
+}
+
+ChatSelectModal > Container {
+    width: 90%;
+    height: 80%;
+    border: thick $primary;
+    background: $surface;
+    padding: 1 2;
+}
+
+ChatSelectModal #modal-title {
+    text-style: bold;
+    margin-bottom: 1;
+}
+
+ChatSelectModal #chat-select-filter-input {
+    width: 100%;
+    margin-bottom: 1;
+}
+
+ChatSelectModal #chat-select-panels {
+    width: 100%;
+    height: 1fr;
+}
+
+ChatSelectModal #chat-select-list-panel {
+    width: 1fr;
+    height: 100%;
+}
+
+ChatSelectModal #chat-select-list-label {
+    color: $text-muted;
+    text-style: bold;
+    height: 1;
+}
+
+ChatSelectModal OptionList {
+    height: 1fr;
+    border: solid $secondary;
+}
+
+ChatSelectModal #chat-select-preview-panel {
+    width: 1fr;
+    height: 100%;
+    margin-left: 1;
+}
+
+ChatSelectModal #chat-select-preview-label {
+    color: $text-muted;
+    text-style: bold;
+    height: 1;
+}
+
+ChatSelectModal #chat-select-preview-scroll {
+    height: 1fr;
+    border: solid $secondary;
+    padding: 0 1;
+}
+
+ChatSelectModal #chat-select-preview {
+    height: auto;
+}
+
+ChatSelectModal #chat-select-metadata {
+    height: auto;
+    color: $text-muted;
+}
+
+ChatSelectModal #chat-select-hints {
+    height: 1;
+    color: $text-muted;
+    text-align: center;
+    margin-top: 1;
+}
+
 /* Bug input modal styling */
 BugInputModal {
     align: center middle;

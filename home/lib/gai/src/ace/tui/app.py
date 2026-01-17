@@ -130,6 +130,7 @@ class AceApp(
         Binding("m", "toggle_mark", "Mark", show=False),
         Binding("u", "clear_marks", "Unmark All", show=False),
         Binding("x", "kill_agent", "Kill", show=False),
+        Binding("r", "revive_agent", "Revive", show=False),
         Binding("l", "toggle_layout", "Layout", show=False),
         # Copy to clipboard (all tabs)
         Binding("percent_sign", "copy_tab_content", "Copy", show=False),
@@ -215,6 +216,7 @@ class AceApp(
         self._changespecs_last_idx: int = 0
         self._agents_last_idx: int = 0
         self._agents: list[Agent] = []
+        self._revived_agents: list[Agent] = []
 
         # Axe state
         self._axe_status: AxeStatus | None = None
@@ -284,6 +286,9 @@ class AceApp(
 
     def on_mount(self) -> None:
         """Set up the app on mount."""
+        # Load revived agents from persistence
+        self._load_revived_agents()
+
         # Load initial changespecs and save as last query
         self._load_changespecs()
         self._save_current_query()
