@@ -247,6 +247,9 @@ class AxeMixin:
             # If no more bgcmds, switch to axe view
             if len(self._bgcmd_slots) == 0:
                 self._switch_to_axe_view("axe")
+            else:
+                # Refresh display to update the sidebar immediately
+                self._refresh_axe_display()
             return
 
         # Running command - show confirmation dialog
@@ -270,6 +273,9 @@ class AxeMixin:
                 # If no more bgcmds, switch to axe view
                 if len(self._bgcmd_slots) == 0:
                     self._switch_to_axe_view("axe")
+                else:
+                    # Refresh display to update the sidebar immediately
+                    self._refresh_axe_display()
 
         self.push_screen(ConfirmKillModal(description), on_confirmed)  # type: ignore[attr-defined]
 
@@ -299,6 +305,9 @@ class AxeMixin:
                         )
                         self.notify(f"Cleared: {cmd_notify}")  # type: ignore[attr-defined]
                     self._load_bgcmd_state()
+                    # Refresh display if on AXE tab
+                    if self.current_tab == "axe":
+                        self._refresh_axe_display()
             else:  # bgcmd (running)
                 slot = selection.slot
                 if slot is not None:
@@ -313,6 +322,9 @@ class AxeMixin:
                         )
                         self.notify(f"Stopped: {cmd_notify}")  # type: ignore[attr-defined]
                     self._load_bgcmd_state()
+                    # Refresh display if on AXE tab
+                    if self.current_tab == "axe":
+                        self._refresh_axe_display()
 
         self.push_screen(  # type: ignore[attr-defined]
             ProcessSelectModal(self.axe_running, self._bgcmd_slots),
