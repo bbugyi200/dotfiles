@@ -915,3 +915,8 @@ ProcessSelectModal #process-list {
     max-height: 15;
     border: solid $secondary;
 }
+
+/* Move notifications to top-right corner */
+ToastRack {
+    align: right top;
+}
