@@ -605,7 +605,7 @@ class NavigationMixin:
             return False
 
     def action_prev_changespec_history(self) -> None:
-        """Navigate to previous ChangeSpec in history (ctrl+o)."""
+        """Navigate to previous ChangeSpec in history (ctrl+j)."""
         from ..changespec_history import navigate_prev
 
         if self.current_tab != "changespecs":
@@ -623,7 +623,7 @@ class NavigationMixin:
         self._navigate_to_history_entry(prev_entry)
 
     def action_next_changespec_history(self) -> None:
-        """Navigate to next ChangeSpec in history (ctrl+i)."""
+        """Navigate to next ChangeSpec in history (ctrl+k)."""
         from ..changespec_history import navigate_next
 
         if self.current_tab != "changespecs":
