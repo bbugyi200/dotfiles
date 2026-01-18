@@ -42,11 +42,10 @@ class MarkingMixin:
 
         self._refresh_display()  # type: ignore[attr-defined]
 
-        # Auto-navigate to next unmarked spec (only when marking)
-        if not was_marked:
-            next_idx = self._find_next_unmarked_idx()
-            if next_idx is not None:
-                self.current_idx = next_idx
+        # Auto-navigate to next unmarked spec
+        next_idx = self._find_next_unmarked_idx()
+        if next_idx is not None:
+            self.current_idx = next_idx
 
     def _find_next_unmarked_idx(self) -> int | None:
         """Find the next unmarked spec index, searching forward with wraparound."""

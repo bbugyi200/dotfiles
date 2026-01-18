@@ -307,8 +307,8 @@ async def test_mark_stays_when_all_marked() -> None:
             assert app.current_idx == 1
 
 
-async def test_unmark_does_not_navigate() -> None:
-    """Test un-marking a spec does not trigger navigation."""
+async def test_unmark_navigates_to_next_unmarked() -> None:
+    """Test un-marking a spec navigates to the next unmarked spec."""
     mock_changespecs = [
         _make_changespec(name="feature_a"),
         _make_changespec(name="feature_b"),
@@ -325,10 +325,10 @@ async def test_unmark_does_not_navigate() -> None:
             await pilot.press("k")
             assert app.current_idx == 0
 
-            # Un-mark first spec - should stay on current
+            # Un-mark first spec - should navigate to next unmarked (index 1)
             await pilot.press("m")
             assert 0 not in app.marked_indices
-            assert app.current_idx == 0
+            assert app.current_idx == 1
 
 
 async def test_mark_single_spec_stays() -> None:
