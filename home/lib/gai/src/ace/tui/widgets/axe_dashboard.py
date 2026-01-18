@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 class _AxeStatusSection(Static):
-    """Compact status bar showing PID, uptime, and cycles."""
+    """Compact status bar showing runtime, PID, cycles, CLs, and runners."""
 
     def update_display(
         self, status: AxeStatus | None, is_running: bool, full_cycles: int
@@ -29,21 +29,41 @@ class _AxeStatusSection(Static):
         """
         text = Text()
 
-        if status and is_running:
-            # PID
-            text.append("PID: ", style="bold #87D7FF")
-            text.append(f"{status.pid}", style="#FF87D7 bold")
+        if is_running:
+            # Runtime (always show when running)
+            text.append("Runtime: ", style="bold #87D7FF")
+            if status and status.started_at:
+                runtime_str = _format_runtime(status.started_at)
+            else:
+                runtime_str = "..."
+            text.append(runtime_str, style="#00D7AF")
 
-            # Uptime
+            # PID
             text.append("  │  ", style="dim")
-            text.append("Uptime: ", style="bold #87D7FF")
-            uptime_str = _format_uptime(status.uptime_seconds)
-            text.append(f"{uptime_str}", style="#00D7AF")
+            text.append("PID: ", style="bold #87D7FF")
+            if status:
+                text.append(f"{status.pid}", style="#FF87D7 bold")
+            else:
+                text.append("...", style="#FF87D7 bold")
 
             # Cycles
             text.append("  │  ", style="dim")
             text.append("Cycles: ", style="bold #87D7FF")
             text.append(f"{full_cycles}", style="#00D7AF bold")
+
+            # CLs (filtered changespecs)
+            if status:
+                text.append("  │  ", style="dim")
+                text.append("CLs: ", style="bold #87D7FF")
+                text.append(f"{status.filtered_changespecs}", style="#00D7AF")
+
+            # Runners (current/max)
+            if status:
+                text.append("  │  ", style="dim")
+                text.append("Runners: ", style="bold #87D7FF")
+                text.append(
+                    f"{status.current_runners}/{status.max_runners}", style="#00D7AF"
+                )
 
         self.update(text)
 
