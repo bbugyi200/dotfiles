@@ -144,15 +144,20 @@ def get_axe_status() -> dict | None:
 
     return {
         "pid": status.pid,
+        "started_at": status.started_at,
         "status": status.status,
-        "uptime_seconds": status.uptime_seconds,
-        "current_runners": status.current_runners,
+        "full_check_interval": status.full_check_interval,
+        "hook_interval": status.hook_interval,
         "max_runners": status.max_runners,
+        "zombie_timeout": status.zombie_timeout,
+        "query": status.query,
+        "current_runners": status.current_runners,
         "last_full_cycle": status.last_full_cycle,
+        "last_hook_cycle": status.last_hook_cycle,
         "next_full_cycle": status.next_full_cycle,
         "total_changespecs": status.total_changespecs,
         "filtered_changespecs": status.filtered_changespecs,
-        "query": status.query,
+        "uptime_seconds": status.uptime_seconds,
     }
 
 
