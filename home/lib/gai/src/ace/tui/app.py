@@ -145,6 +145,9 @@ class AceApp(
         # Query history navigation
         Binding("circumflex_accent", "prev_query", "Prev Query", show=False),
         Binding("underscore", "next_query", "Next Query", show=False),
+        # ChangeSpec history navigation (vim-style jumplist)
+        Binding("ctrl+o", "prev_changespec_history", "Prev CL History", show=False),
+        Binding("ctrl+i", "next_changespec_history", "Next CL History", show=False),
         # Ancestor/child navigation
         Binding("<", "start_ancestor_mode", "Ancestor", show=False),
         Binding(">", "start_child_mode", "Child", show=False),
@@ -240,6 +243,11 @@ class AceApp(
         from ..query_history import load_query_history
 
         self._query_history = load_query_history()
+
+        # ChangeSpec history stacks for ctrl+o/ctrl+i navigation (session-based)
+        from .changespec_history import create_empty_stacks as create_cs_history_stacks
+
+        self._changespec_history = create_cs_history_stacks()
 
         # Set global model size override in environment if specified
         if model_size_override:
