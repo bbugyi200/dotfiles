@@ -918,5 +918,8 @@ ProcessSelectModal #process-list {
 
 /* Move notifications to top-right corner */
 ToastRack {
+    dock: top;
     align: right top;
+    margin-top: 1;
+    margin-bottom: 0;
 }
