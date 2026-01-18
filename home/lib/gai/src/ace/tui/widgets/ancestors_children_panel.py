@@ -21,7 +21,7 @@ def _get_simple_status_indicator(status: str) -> tuple[str, str]:
         return "S", "#00AF00"
     elif status.startswith("Reverted"):
         return "X", "#808080"
-    return "", "#FFD700"  # WIP - no indicator
+    return "W", "#AF5FFF"  # WIP - purple
 
 
 def _format_display_key(key: str) -> str:

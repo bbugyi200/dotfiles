@@ -64,7 +64,7 @@ def _get_status_indicator(changespec: ChangeSpec) -> tuple[str, str]:
             return f"{error_prefix}{running_prefix}{process_prefix}D", "#FF5F5F"
         elif status.startswith("Mailed"):
             return f"{error_prefix}{running_prefix}{process_prefix}M", "#FF5F5F"
-        return f"{error_prefix}{running_prefix}{process_prefix}", "#FF5F5F"
+        return f"{error_prefix}{running_prefix}{process_prefix}W", "#FF5F5F"
 
     # Running agents get orange color (when no error)
     if has_running:
@@ -80,7 +80,7 @@ def _get_status_indicator(changespec: ChangeSpec) -> tuple[str, str]:
             return f"{running_prefix}{process_prefix}S", "#FFAF00"
         elif status.startswith("Reverted"):
             return f"{running_prefix}{process_prefix}X", "#FFAF00"
-        return f"{running_prefix}{process_prefix}", "#FFAF00"
+        return f"{running_prefix}{process_prefix}W", "#FFAF00"
 
     # Running processes get yellow color (when no error, no running_agent)
     if has_process:
@@ -96,7 +96,7 @@ def _get_status_indicator(changespec: ChangeSpec) -> tuple[str, str]:
             return f"{process_prefix}S", "#FFD700"  # Yellow for running process
         elif status.startswith("Reverted"):
             return f"{process_prefix}X", "#FFD700"  # Yellow for running process
-        return process_prefix, "#FFD700"  # Yellow for running process
+        return f"{process_prefix}W", "#FFD700"  # Yellow for running process
 
     # Check for READY TO MAIL (no running, no error)
     if has_ready_to_mail_suffix(status):
@@ -114,7 +114,7 @@ def _get_status_indicator(changespec: ChangeSpec) -> tuple[str, str]:
     elif status.startswith("Reverted"):
         return "X", "#808080"  # Gray
 
-    return " ", "#FFFFFF"  # Default
+    return "W", "#AF5FFF"  # WIP - purple
 
 
 class ChangeSpecList(OptionList):
