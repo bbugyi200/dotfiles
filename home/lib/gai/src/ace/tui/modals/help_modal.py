@@ -44,7 +44,7 @@ _CLS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
             ("u", "Clear all marks"),
             ("v", "View files"),
             ("w", "Reword CL description"),
-            ("@", "Edit spec file"),
+            ("e", "Edit spec file"),
         ],
     ),
     (
@@ -107,7 +107,7 @@ _AGENTS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
             ("<space>", "Run custom agent"),
             ("r", "Revive chat as agent"),
             ("x", "Kill / dismiss agent"),
-            ("@", "Edit chat in editor"),
+            ("e", "Edit chat in editor"),
             ("l", "Toggle diff/prompt layout"),
         ],
     ),

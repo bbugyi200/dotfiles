@@ -132,14 +132,14 @@ def test_keybinding_footer_workflow_binding_none() -> None:
 
 
 def test_keybinding_footer_edit_spec_always_visible() -> None:
-    """Test '@' (edit spec) binding is always visible."""
+    """Test 'e' (edit spec) binding is always visible."""
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Drafted")
 
     bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
-    assert "@" in binding_keys
+    assert "e" in binding_keys
 
 
 def test_keybinding_footer_copy_always_visible() -> None:

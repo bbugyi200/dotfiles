@@ -51,7 +51,7 @@ def test_keybinding_footer_agent_bindings_completed_agent_with_chat() -> None:
     binding_keys = [b[0] for b in bindings]
 
     assert "x" in binding_keys  # Dismiss is available
-    assert "@" in binding_keys  # Edit chat is available
+    assert "e" in binding_keys  # Edit chat is available
     assert "%" in binding_keys  # Copy chat is available
 
 

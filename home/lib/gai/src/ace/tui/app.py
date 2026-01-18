@@ -102,7 +102,7 @@ class AceApp(
         # Note: "!" binding removed - use "a" then "@" to mark ready to mail
         Binding("y", "refresh", "Refresh", show=False),
         Binding("slash", "edit_query", "Edit Query", show=False),
-        Binding("at", "edit_spec", "Edit Spec", show=False),
+        Binding("e", "edit_spec", "Edit Spec", show=False),
         Binding("ctrl+d", "scroll_detail_down", "Scroll Down", show=False),
         Binding("ctrl+u", "scroll_detail_up", "Scroll Up", show=False),
         Binding("ctrl+f", "scroll_prompt_down", "Scroll Prompt Down", show=False),

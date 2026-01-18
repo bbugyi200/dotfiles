@@ -211,7 +211,7 @@ class KeybindingFooter(Horizontal):
         if agent is not None:
             if agent.status in ("NO CHANGES", "NEW CL", "NEW PROPOSAL", "REVIVED"):
                 bindings.append(("x", "dismiss"))
-                bindings.append(("@", "edit chat"))
+                bindings.append(("e", "edit chat"))
                 # Copy chat (only for completed/revived agents with chat available)
                 if agent.response_path:
                     bindings.append(("%", "copy chat"))
@@ -316,7 +316,7 @@ class KeybindingFooter(Horizontal):
         bindings.append(("/", "edit query"))
 
         # Edit spec
-        bindings.append(("@", "edit spec"))
+        bindings.append(("e", "edit spec"))
 
         # Copy ChangeSpec
         bindings.append(("%", "copy"))
