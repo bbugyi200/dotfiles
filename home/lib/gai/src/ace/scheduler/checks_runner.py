@@ -390,8 +390,12 @@ def _handle_cl_submitted_completion(
     # Update the last_checked timestamp
     update_last_checked(changespec.name)
 
-    # Exit code 0 means submitted
-    if exit_code == 0 and is_parent_submitted(changespec):
+    # Exit code 0 means submitted, but skip if already Submitted
+    if (
+        exit_code == 0
+        and is_parent_submitted(changespec)
+        and changespec.status != "Submitted"
+    ):
         from ..sync_cache import clear_cache_entry
 
         success, old_status, _ = transition_changespec_status(
