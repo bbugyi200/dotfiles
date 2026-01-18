@@ -64,7 +64,7 @@ def test_bgcmd_list_format_bgcmd_option() -> None:
     )
     assert option.id == "3"
     text_str = str(option.prompt)
-    assert "3:" in text_str
+    # Slot number is used for id but not displayed in the text
     assert "make test" in text_str
 
 

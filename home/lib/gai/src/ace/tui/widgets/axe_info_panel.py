@@ -68,11 +68,8 @@ class AxeInfoPanel(Static):
         text = Text()
 
         if self._bgcmd_mode:
-            # Show bgcmd info
-            text.append("Slot ", style="dim")
-            text.append(f"{self._bgcmd_slot}", style="bold #00D7AF")
+            # Show bgcmd info (just project name)
             if self._bgcmd_info:
-                text.append(" • ", style="dim")
                 text.append(self._bgcmd_info.project, style="#87D7FF")
             text.append("  ", style="")
         else:

@@ -129,7 +129,7 @@ class AxeMixin:
         # Check for available slot
         slot = find_first_available_slot()
         if slot is None:
-            self.notify("All 9 background command slots are in use", severity="error")  # type: ignore[attr-defined]
+            self.notify("Maximum background commands reached", severity="error")  # type: ignore[attr-defined]
             return
 
         # Show project select modal
@@ -217,7 +217,9 @@ class AxeMixin:
         # Reload state and switch to the new view
         self._load_bgcmd_state()
         self._switch_to_axe_view(slot)
-        self.notify(f"Started command in slot {slot}")  # type: ignore[attr-defined]
+        # Truncate command for notification
+        cmd_notify = command[:30] + "..." if len(command) > 30 else command
+        self.notify(f"Started: {cmd_notify}")  # type: ignore[attr-defined]
 
     def _confirm_kill_bgcmd(self, slot: int) -> None:
         """Kill or clear a background command.
@@ -235,8 +237,11 @@ class AxeMixin:
         # Check if the command is still running
         if not is_slot_running(slot):
             # Done command - clear immediately without confirmation
+            cmd_notify = (
+                info.command[:30] + "..." if len(info.command) > 30 else info.command
+            )
             clear_slot(slot)
-            self.notify(f"Cleared slot {slot}")  # type: ignore[attr-defined]
+            self.notify(f"Cleared: {cmd_notify}")  # type: ignore[attr-defined]
             self._load_bgcmd_state()
             # If no more bgcmds, switch to axe view
             if len(self._bgcmd_slots) == 0:
@@ -246,13 +251,20 @@ class AxeMixin:
         # Running command - show confirmation dialog
         from ..modals import ConfirmKillModal
 
-        description = f"Slot {slot}: {info.command}\n({info.project}, workspace {info.workspace_num})"
+        description = (
+            f"{info.command}\n({info.project}, workspace {info.workspace_num})"
+        )
 
         def on_confirmed(confirmed: bool) -> None:
             if confirmed:
                 stop_background_command(slot)
                 clear_slot(slot)
-                self.notify(f"Stopped and cleared slot {slot}")  # type: ignore[attr-defined]
+                cmd_notify = (
+                    info.command[:30] + "..."
+                    if len(info.command) > 30
+                    else info.command
+                )
+                self.notify(f"Stopped: {cmd_notify}")  # type: ignore[attr-defined]
                 self._load_bgcmd_state()
                 # If no more bgcmds, switch to axe view
                 if len(self._bgcmd_slots) == 0:
@@ -276,15 +288,29 @@ class AxeMixin:
                 # Done command - just clear it
                 slot = selection.slot
                 if slot is not None:
+                    info = get_slot_info(slot)
                     clear_slot(slot)
-                    self.notify(f"Cleared slot {slot}")  # type: ignore[attr-defined]
+                    if info:
+                        cmd_notify = (
+                            info.command[:30] + "..."
+                            if len(info.command) > 30
+                            else info.command
+                        )
+                        self.notify(f"Cleared: {cmd_notify}")  # type: ignore[attr-defined]
                     self._load_bgcmd_state()
             else:  # bgcmd (running)
                 slot = selection.slot
                 if slot is not None:
+                    info = get_slot_info(slot)
                     stop_background_command(slot)
                     clear_slot(slot)
-                    self.notify(f"Stopped and cleared slot {slot}")  # type: ignore[attr-defined]
+                    if info:
+                        cmd_notify = (
+                            info.command[:30] + "..."
+                            if len(info.command) > 30
+                            else info.command
+                        )
+                        self.notify(f"Stopped: {cmd_notify}")  # type: ignore[attr-defined]
                     self._load_bgcmd_state()
 
         self.push_screen(  # type: ignore[attr-defined]

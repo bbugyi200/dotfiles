@@ -143,9 +143,6 @@ class BgCmdList(OptionList):
             text.append("✓", style="bold #FFD700")  # Gold for done
         text.append("] ", style="dim")
 
-        # Slot number
-        text.append(f"{slot}: ", style="bold #87D7FF")
-
         # Command (truncated)
         cmd_display = info.command
         if len(cmd_display) > 25:
