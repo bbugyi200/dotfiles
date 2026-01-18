@@ -241,8 +241,8 @@ async def test_query_edit_modal_invalid_query() -> None:
 # --- Marking Auto-Navigation Tests ---
 
 
-async def test_mark_navigates_to_next_unmarked() -> None:
-    """Test marking a spec navigates to the next unmarked spec."""
+async def test_mark_navigates_to_next_spec() -> None:
+    """Test marking a spec navigates to the next spec."""
     mock_changespecs = [
         _make_changespec(name="feature_a"),
         _make_changespec(name="feature_b"),
@@ -261,8 +261,8 @@ async def test_mark_navigates_to_next_unmarked() -> None:
             assert app.current_idx == 1
 
 
-async def test_mark_wraps_around_to_find_unmarked() -> None:
-    """Test marking wraps around to find the first unmarked spec."""
+async def test_mark_wraps_around() -> None:
+    """Test marking at last spec wraps around to first."""
     mock_changespecs = [
         _make_changespec(name="feature_a"),
         _make_changespec(name="feature_b"),
@@ -271,9 +271,6 @@ async def test_mark_wraps_around_to_find_unmarked() -> None:
     with patch("ace.changespec.find_all_changespecs", return_value=mock_changespecs):
         app = AceApp(query='"feature"')
         async with app.run_test() as pilot:
-            # Pre-mark the middle spec (index 1)
-            app.marked_indices = {1}
-
             # Navigate to last spec (index 2)
             await pilot.press("j")
             await pilot.press("j")
@@ -285,30 +282,8 @@ async def test_mark_wraps_around_to_find_unmarked() -> None:
             assert app.current_idx == 0
 
 
-async def test_mark_stays_when_all_marked() -> None:
-    """Test marking the last unmarked spec stays on current position."""
-    mock_changespecs = [
-        _make_changespec(name="feature_a"),
-        _make_changespec(name="feature_b"),
-    ]
-    with patch("ace.changespec.find_all_changespecs", return_value=mock_changespecs):
-        app = AceApp(query='"feature"')
-        async with app.run_test() as pilot:
-            # Pre-mark first spec
-            app.marked_indices = {0}
-
-            # Navigate to second spec (index 1)
-            await pilot.press("j")
-            assert app.current_idx == 1
-
-            # Mark second spec (all now marked) - should stay on current
-            await pilot.press("m")
-            assert 1 in app.marked_indices
-            assert app.current_idx == 1
-
-
-async def test_unmark_navigates_to_next_unmarked() -> None:
-    """Test un-marking a spec navigates to the next unmarked spec."""
+async def test_unmark_navigates_to_next_spec() -> None:
+    """Test un-marking a spec navigates to the next spec."""
     mock_changespecs = [
         _make_changespec(name="feature_a"),
         _make_changespec(name="feature_b"),
@@ -325,7 +300,7 @@ async def test_unmark_navigates_to_next_unmarked() -> None:
             await pilot.press("k")
             assert app.current_idx == 0
 
-            # Un-mark first spec - should navigate to next unmarked (index 1)
+            # Un-mark first spec - should navigate to next (index 1)
             await pilot.press("m")
             assert 0 not in app.marked_indices
             assert app.current_idx == 1
