@@ -114,7 +114,7 @@ def _get_status_indicator(changespec: ChangeSpec) -> tuple[str, str]:
     elif status.startswith("Reverted"):
         return "X", "#808080"  # Gray
 
-    return "W", "#AF5FFF"  # WIP - purple
+    return "W", "#FFD700"  # WIP - gold
 
 
 class ChangeSpecList(OptionList):

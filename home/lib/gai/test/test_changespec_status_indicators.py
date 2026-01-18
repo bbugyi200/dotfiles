@@ -38,11 +38,11 @@ def test_get_status_indicator_wip_returns_w() -> None:
     assert indicator == "W"
 
 
-def test_get_status_indicator_wip_color_is_purple() -> None:
-    """Test that WIP status uses purple color."""
+def test_get_status_indicator_wip_color_is_gold() -> None:
+    """Test that WIP status uses gold color."""
     changespec = _make_changespec(status="WIP")
     _, color = _get_status_indicator(changespec)
-    assert color == "#AF5FFF"
+    assert color == "#FFD700"
 
 
 def test_get_simple_status_indicator_wip_returns_w() -> None:
@@ -51,10 +51,10 @@ def test_get_simple_status_indicator_wip_returns_w() -> None:
     assert indicator == "W"
 
 
-def test_get_simple_status_indicator_wip_color_is_purple() -> None:
-    """Test that WIP status uses purple color in simple indicator."""
+def test_get_simple_status_indicator_wip_color_is_gold() -> None:
+    """Test that WIP status uses gold color in simple indicator."""
     _, color = _get_simple_status_indicator("WIP")
-    assert color == "#AF5FFF"
+    assert color == "#FFD700"
 
 
 def test_get_simple_status_indicator_unknown_returns_w() -> None:
