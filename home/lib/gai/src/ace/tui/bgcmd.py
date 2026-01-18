@@ -105,7 +105,7 @@ def _remove_pid(slot: int) -> None:
 
 
 def _is_process_running(pid: int) -> bool:
-    """Check if a process is running.
+    """Check if a process is running (not a zombie).
 
     Args:
         pid: Process ID.
@@ -113,6 +113,19 @@ def _is_process_running(pid: int) -> bool:
     Returns:
         True if process is running, False otherwise.
     """
+    try:
+        # Try to reap zombie if it's our child process
+        result, _ = os.waitpid(pid, os.WNOHANG)
+        if result == pid:
+            # Process was reaped - it's done
+            return False
+    except ChildProcessError:
+        # Not our child, can't waitpid on it - fall through to kill check
+        pass
+    except OSError:
+        # Process doesn't exist
+        return False
+
     try:
         os.kill(pid, 0)
         return True
