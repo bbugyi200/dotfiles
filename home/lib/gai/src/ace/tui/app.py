@@ -162,6 +162,7 @@ class AceApp(
     current_tab: reactive[TabName] = reactive("changespecs", recompose=False)
     axe_running: reactive[bool] = reactive(False, recompose=False)
     hide_reverted: reactive[bool] = reactive(True, recompose=False)
+    hide_non_run_agents: reactive[bool] = reactive(True, recompose=False)
     marked_indices: reactive[set[int]] = reactive(set, recompose=False)
 
     def __init__(
@@ -221,6 +222,8 @@ class AceApp(
         self._agents_last_idx: int = 0
         self._agents: list[Agent] = []
         self._revived_agents: list[Agent] = []
+        self._has_run_agents: bool = False
+        self._hidden_non_run_count: int = 0
 
         # Axe state
         self._axe_status: AxeStatus | None = None

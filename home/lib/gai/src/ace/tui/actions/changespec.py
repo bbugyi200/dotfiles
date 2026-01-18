@@ -364,7 +364,10 @@ class ChangeSpecMixin:
             subprocess.run(args, check=False)
 
     def action_toggle_hide_reverted(self) -> None:
-        """Toggle visibility of reverted ChangeSpecs."""
+        """Toggle visibility of reverted CLs or non-run agents."""
+        if self.current_tab == "agents":
+            self._toggle_hide_non_run_agents()  # type: ignore[attr-defined]
+            return
         if self.current_tab != "changespecs":
             return
         self.hide_reverted = not self.hide_reverted

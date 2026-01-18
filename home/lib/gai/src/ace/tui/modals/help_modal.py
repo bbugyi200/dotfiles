@@ -128,6 +128,7 @@ _AGENTS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
         "General",
         [
             ("Tab / Shift+Tab", "Switch tabs"),
+            (".", "Show/hide non-run agents"),
             ("y", "Refresh"),
             ("q", "Quit"),
             ("?", "Show this help"),

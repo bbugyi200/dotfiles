@@ -142,14 +142,26 @@ class KeybindingFooter(Horizontal):
         agent: "Agent | None",
         *,
         diff_visible: bool = False,
+        has_run_agents: bool = False,
+        hidden_non_run_count: int = 0,
+        hide_non_run: bool = True,
     ) -> None:
         """Update bindings for Agents tab context.
 
         Args:
             agent: Current Agent or None if no agents
             diff_visible: Whether the diff panel is currently visible
+            has_run_agents: Whether any [run] agents exist
+            hidden_non_run_count: Number of hidden non-run agents
+            hide_non_run: Whether non-run agents are currently hidden
         """
-        bindings = self._compute_agent_bindings(agent, diff_visible=diff_visible)
+        bindings = self._compute_agent_bindings(
+            agent,
+            diff_visible=diff_visible,
+            has_run_agents=has_run_agents,
+            hidden_non_run_count=hidden_non_run_count,
+            hide_non_run=hide_non_run,
+        )
         text = self._format_bindings(bindings)
         self._update_display(text)
 
@@ -172,12 +184,18 @@ class KeybindingFooter(Horizontal):
         agent: "Agent | None",
         *,
         diff_visible: bool = False,
+        has_run_agents: bool = False,
+        hidden_non_run_count: int = 0,
+        hide_non_run: bool = True,
     ) -> list[tuple[str, str]]:
         """Compute available bindings for Agents tab.
 
         Args:
             agent: Current Agent or None
             diff_visible: Whether the diff panel is currently visible
+            has_run_agents: Whether any [run] agents exist
+            hidden_non_run_count: Number of hidden non-run agents
+            hide_non_run: Whether non-run agents are currently hidden
 
         Returns:
             List of (key, label) tuples
@@ -204,6 +222,13 @@ class KeybindingFooter(Horizontal):
 
         # Revive chat as agent
         bindings.append(("r", "revive chat"))
+
+        # Show/hide non-run agents (only when both run and non-run agents exist)
+        if has_run_agents and (hidden_non_run_count > 0 or not hide_non_run):
+            if hide_non_run:
+                bindings.append((".", f"show ({hidden_non_run_count})"))
+            else:
+                bindings.append((".", "hide non-run"))
 
         return bindings
 

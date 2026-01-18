@@ -10,7 +10,6 @@ if TYPE_CHECKING:
     from ...changespec import ChangeSpec
     from ..modals import ChatFileItem
     from ..models import Agent
-    from ..models.agent import AgentType
 
 # Type alias for tab names
 TabName = Literal["changespecs", "agents", "axe"]
@@ -24,9 +23,12 @@ class AgentsMixin:
     current_idx: int
     current_tab: TabName
     refresh_interval: int
+    hide_non_run_agents: bool
     _countdown_remaining: int
     _agents: list[Agent]
     _revived_agents: list[Agent]
+    _has_run_agents: bool
+    _hidden_non_run_count: int
 
     def action_kill_agent(self) -> None:
         """Kill or dismiss agent, or clear AXE output depending on tab."""
@@ -299,6 +301,7 @@ class AgentsMixin:
     def _load_agents(self) -> None:
         """Load agents from all sources including revived agents."""
         from ..models import load_all_agents
+        from ..models.agent import AgentType
 
         # Capture current selection identity before reload
         selected_identity: tuple[AgentType, str, str | None] | None = None
@@ -306,10 +309,24 @@ class AgentsMixin:
             selected_identity = self._agents[self.current_idx].identity
 
         # Load fresh agent list
-        self._agents = load_all_agents()
+        all_agents = load_all_agents()
 
         # Merge revived agents (they appear at the end of the list)
-        self._agents.extend(self._revived_agents)
+        all_agents.extend(self._revived_agents)
+
+        # Count agent types for filtering
+        run_agents = [a for a in all_agents if a.agent_type == AgentType.RUNNING]
+        non_run_agents = [a for a in all_agents if a.agent_type != AgentType.RUNNING]
+
+        self._has_run_agents = len(run_agents) > 0
+        self._hidden_non_run_count = 0
+
+        # Filter if we have run agents and hiding is enabled
+        if self._has_run_agents and self.hide_non_run_agents:
+            self._agents = run_agents
+            self._hidden_non_run_count = len(non_run_agents)
+        else:
+            self._agents = all_agents
 
         # Try to restore selection by identity
         if selected_identity is not None:
@@ -354,9 +371,20 @@ class AgentsMixin:
         # Query diff visibility for footer (must be done after update_display)
         diff_visible = agent_detail.is_diff_visible()
 
-        footer_widget.update_agent_bindings(current_agent, diff_visible=diff_visible)
+        footer_widget.update_agent_bindings(
+            current_agent,
+            diff_visible=diff_visible,
+            has_run_agents=self._has_run_agents,
+            hidden_non_run_count=self._hidden_non_run_count,
+            hide_non_run=self.hide_non_run_agents,
+        )
 
         self._update_agents_info_panel()
+
+    def _toggle_hide_non_run_agents(self) -> None:
+        """Toggle visibility of non-run agents and refresh the display."""
+        self.hide_non_run_agents = not self.hide_non_run_agents
+        self._load_agents()
 
     def _update_agents_info_panel(self) -> None:
         """Update the agents info panel with current position and countdown."""
