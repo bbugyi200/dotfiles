@@ -147,7 +147,7 @@ def _print_validation_errors(parsed: _ParsedFileRefs, check_context_dir: bool) -
         )
         for file_path in parsed.parent_dir_paths:
             print(f"  - @{file_path}")
-        print("\n⚠️ All '@' file references MUST NOT start with '..' to escape the CWD.")
+        print("\n⚠️ '@' file references MUST NOT start with '..' to escape the CWD.")
         print(
             "⚠️ This ensures agents can only access files within the project directory."
         )
