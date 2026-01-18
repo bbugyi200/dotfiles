@@ -18,7 +18,11 @@ class _AxeStatusSection(Static):
     """Compact status bar showing runtime, PID, cycles, CLs, and runners."""
 
     def update_display(
-        self, status: AxeStatus | None, is_running: bool, full_cycles: int
+        self,
+        status: AxeStatus | None,
+        is_running: bool,
+        full_cycles: int,
+        countdown: int = 0,
     ) -> None:
         """Update the compact status section for axe daemon.
 
@@ -26,6 +30,7 @@ class _AxeStatusSection(Static):
             status: Current axe status, or None if not available.
             is_running: Whether axe daemon is currently running.
             full_cycles: Number of full cycles run.
+            countdown: Seconds until next auto-refresh.
         """
         text = Text()
 
@@ -69,16 +74,27 @@ class _AxeStatusSection(Static):
             else:
                 text.append("...", style="#00D7AF")
 
+            # Countdown
+            if countdown > 0:
+                text.append("  │  ", style="dim")
+                text.append("(", style="dim")
+                text.append(f"{countdown}s", style="bold #FFD700")
+                text.append(")", style="dim")
+
         self.update(text)
 
     def update_bgcmd_display(
-        self, info: "BackgroundCommandInfo | None", is_running: bool
+        self,
+        info: "BackgroundCommandInfo | None",
+        is_running: bool,
+        countdown: int = 0,
     ) -> None:
         """Update the status section for a background command.
 
         Args:
             info: Background command info, or None if not available.
             is_running: Whether the command is still running.
+            countdown: Seconds until next auto-refresh.
         """
         text = Text()
 
@@ -120,6 +136,13 @@ class _AxeStatusSection(Static):
             text.append("Runtime: ", style="bold #87D7FF")
             runtime_str = _format_elapsed(info.started_at, info.finished_at)
             text.append(runtime_str, style="#00D7AF")
+
+            # Countdown
+            if countdown > 0:
+                text.append("  │  ", style="dim")
+                text.append("(", style="dim")
+                text.append(f"{countdown}s", style="bold #FFD700")
+                text.append(")", style="dim")
 
         self.update(text)
 
@@ -164,6 +187,7 @@ class AxeDashboard(Static):
         status: AxeStatus | None,
         output: str,
         full_cycles: int = 0,
+        countdown: int = 0,
     ) -> None:
         """Update all dashboard sections with current data.
 
@@ -172,11 +196,12 @@ class AxeDashboard(Static):
             status: Current axe status, or None if not available.
             output: Raw output log with ANSI codes.
             full_cycles: Number of full cycles run.
+            countdown: Seconds until next auto-refresh.
         """
         status_section = self.query_one("#axe-status-section", _AxeStatusSection)
         output_section = self.query_one("#axe-output-section", _AxeOutputSection)
 
-        status_section.update_display(status, is_running, full_cycles)
+        status_section.update_display(status, is_running, full_cycles, countdown)
         output_section.update_display(output)
 
     def show_empty(self) -> None:
@@ -193,6 +218,7 @@ class AxeDashboard(Static):
         info: "BackgroundCommandInfo | None",
         output: str,
         is_running: bool,
+        countdown: int = 0,
     ) -> None:
         """Update the dashboard to show background command info and output.
 
@@ -200,11 +226,12 @@ class AxeDashboard(Static):
             info: Background command info.
             output: Raw output log with ANSI codes.
             is_running: Whether the command is still running.
+            countdown: Seconds until next auto-refresh.
         """
         status_section = self.query_one("#axe-status-section", _AxeStatusSection)
         output_section = self.query_one("#axe-output-section", _AxeOutputSection)
 
-        status_section.update_bgcmd_display(info, is_running)
+        status_section.update_bgcmd_display(info, is_running, countdown)
 
         # Update output section
         if not output:

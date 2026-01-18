@@ -481,6 +481,7 @@ class AxeMixin:
                     status=self._axe_status,
                     output=self._axe_output,
                     full_cycles=full_cycles,
+                    countdown=self._countdown_remaining,
                 )
             else:
                 # Showing a bgcmd view
@@ -490,7 +491,9 @@ class AxeMixin:
                 output = read_slot_output_tail(slot, 1000)
 
                 axe_info.update_bgcmd_status(slot, info, running)
-                axe_dashboard.update_bgcmd_display(info, output, running)
+                axe_dashboard.update_bgcmd_display(
+                    info, output, running, self._countdown_remaining
+                )
 
             footer.set_axe_running(self.axe_running)
             running_count, done_count = self._get_bgcmd_counts()
