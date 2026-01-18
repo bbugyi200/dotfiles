@@ -14,15 +14,15 @@ from textual.screen import ModalScreen
 from textual.widgets import Label, OptionList
 from textual.widgets.option_list import Option
 
-from ..bgcmd import BackgroundCommandInfo
+from ..bgcmd import BackgroundCommandInfo, is_slot_running
 
 
 @dataclass
 class ProcessSelection:
-    """A process that can be selected for starting/stopping."""
+    """A process that can be selected for starting/stopping/dismissing."""
 
-    process_type: Literal["axe", "bgcmd", "start_axe"]
-    slot: int | None  # None for axe/start_axe, 1-9 for bgcmd
+    process_type: Literal["axe", "bgcmd", "dismiss_bgcmd", "start_axe"]
+    slot: int | None  # None for axe/start_axe, 1-9 for bgcmd/dismiss_bgcmd
     display_name: str
     description: str
 
@@ -80,16 +80,17 @@ class ProcessSelectModal(ModalScreen[ProcessSelection | None]):
                 )
             )
 
-        # Add background commands
+        # Add background commands (running or done)
         for slot, info in self._bgcmd_slots:
             # Truncate command if too long
             cmd_display = info.command
             if len(cmd_display) > 40:
                 cmd_display = cmd_display[:37] + "..."
 
+            running = is_slot_running(slot)
             self._processes.append(
                 ProcessSelection(
-                    process_type="bgcmd",
+                    process_type="bgcmd" if running else "dismiss_bgcmd",
                     slot=slot,
                     display_name=f"[{slot}] {cmd_display}",
                     description=f"{info.project} (ws {info.workspace_num})",
@@ -115,19 +116,23 @@ class ProcessSelectModal(ModalScreen[ProcessSelection | None]):
 
         if process.process_type == "start_axe":
             text.append("[START]", style="bold #00FF00")  # Green for start
-            text.append(" ", style="")
+            text.append("   ", style="")  # Extra space to align with [DISMISS]
             text.append(process.display_name, style="bold")
         elif process.process_type == "axe":
             text.append("[STOP]", style="bold #FFD700")  # Gold for axe stop
-            text.append(" ", style="")
+            text.append("    ", style="")  # Extra space to align with [DISMISS]
             text.append(process.display_name, style="bold")
-        else:
-            text.append("[STOP]", style="bold #00D7AF")  # Cyan for bgcmd
-            text.append(" ", style="")
+        elif process.process_type == "bgcmd":
+            text.append("[STOP]", style="bold #00D7AF")  # Cyan for running bgcmd
+            text.append("    ", style="")  # Extra space to align with [DISMISS]
             text.append(process.display_name, style="")
+        else:  # dismiss_bgcmd
+            text.append("[DISMISS]", style="bold #FFD700")  # Gold for done bgcmd
+            text.append(" ", style="")
+            text.append(process.display_name, style="dim")
 
         text.append("\n", style="")
-        text.append("       ", style="")  # Indent description (extra space for [START])
+        text.append("          ", style="")  # Indent description
         text.append(process.description, style="dim")
 
         return text

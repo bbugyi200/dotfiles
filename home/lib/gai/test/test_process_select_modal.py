@@ -1,5 +1,7 @@
 """Tests for the process select modal."""
 
+from unittest.mock import patch
+
 from ace.tui.bgcmd import BackgroundCommandInfo
 from ace.tui.modals import ProcessSelection
 from ace.tui.modals.process_select_modal import ProcessSelectModal
@@ -115,13 +117,17 @@ def test_process_select_modal_init_bgcmd_only() -> None:
         workspace_dir="/path",
         started_at="2025-01-01T12:00:00",
     )
-    modal = ProcessSelectModal(axe_running=False, bgcmd_slots=[(3, info)])
-    assert modal._axe_running is False
-    # Now always shows start_axe option when axe is not running
-    assert len(modal._processes) == 2
-    assert modal._processes[0].process_type == "start_axe"
-    assert modal._processes[1].process_type == "bgcmd"
-    assert modal._processes[1].slot == 3
+    # Mock is_slot_running to return True (simulate running process)
+    with patch(
+        "ace.tui.modals.process_select_modal.is_slot_running", return_value=True
+    ):
+        modal = ProcessSelectModal(axe_running=False, bgcmd_slots=[(3, info)])
+        assert modal._axe_running is False
+        # Now always shows start_axe option when axe is not running
+        assert len(modal._processes) == 2
+        assert modal._processes[0].process_type == "start_axe"
+        assert modal._processes[1].process_type == "bgcmd"
+        assert modal._processes[1].slot == 3
 
 
 def test_process_select_modal_init_both() -> None:
@@ -133,10 +139,14 @@ def test_process_select_modal_init_both() -> None:
         workspace_dir="/path",
         started_at="2025-01-01T12:00:00",
     )
-    modal = ProcessSelectModal(axe_running=True, bgcmd_slots=[(1, info)])
-    assert len(modal._processes) == 2
-    assert modal._processes[0].process_type == "axe"
-    assert modal._processes[1].process_type == "bgcmd"
+    # Mock is_slot_running to return True (simulate running process)
+    with patch(
+        "ace.tui.modals.process_select_modal.is_slot_running", return_value=True
+    ):
+        modal = ProcessSelectModal(axe_running=True, bgcmd_slots=[(1, info)])
+        assert len(modal._processes) == 2
+        assert modal._processes[0].process_type == "axe"
+        assert modal._processes[1].process_type == "bgcmd"
 
 
 def test_process_select_modal_long_command_truncated() -> None:
@@ -190,7 +200,7 @@ def test_process_select_modal_create_styled_label_start_axe() -> None:
 
 
 def test_process_select_modal_create_styled_label_bgcmd() -> None:
-    """Test _create_styled_label for bgcmd process."""
+    """Test _create_styled_label for bgcmd process (running)."""
     info = BackgroundCommandInfo(
         command="make test",
         project="myproject",
@@ -198,11 +208,36 @@ def test_process_select_modal_create_styled_label_bgcmd() -> None:
         workspace_dir="/path",
         started_at="2025-01-01T12:00:00",
     )
-    modal = ProcessSelectModal(axe_running=True, bgcmd_slots=[(2, info)])
-    proc = modal._processes[1]  # Index 1, since index 0 is now axe
-    label = modal._create_styled_label(proc)
-    label_str = str(label)
-    assert "[STOP]" in label_str
+    # Mock is_slot_running to return True (simulate running process)
+    with patch(
+        "ace.tui.modals.process_select_modal.is_slot_running", return_value=True
+    ):
+        modal = ProcessSelectModal(axe_running=True, bgcmd_slots=[(2, info)])
+        proc = modal._processes[1]  # Index 1, since index 0 is now axe
+        label = modal._create_styled_label(proc)
+        label_str = str(label)
+        assert "[STOP]" in label_str
+
+
+def test_process_select_modal_create_styled_label_dismiss_bgcmd() -> None:
+    """Test _create_styled_label for dismiss_bgcmd process (done/not running)."""
+    info = BackgroundCommandInfo(
+        command="make test",
+        project="myproject",
+        workspace_num=1,
+        workspace_dir="/path",
+        started_at="2025-01-01T12:00:00",
+    )
+    # Mock is_slot_running to return False (simulate done process)
+    with patch(
+        "ace.tui.modals.process_select_modal.is_slot_running", return_value=False
+    ):
+        modal = ProcessSelectModal(axe_running=True, bgcmd_slots=[(2, info)])
+        proc = modal._processes[1]  # Index 1, since index 0 is now axe
+        assert proc.process_type == "dismiss_bgcmd"
+        label = modal._create_styled_label(proc)
+        label_str = str(label)
+        assert "[DISMISS]" in label_str
 
 
 def test_process_select_modal_create_options() -> None:

@@ -87,7 +87,15 @@ class _AxeStatusSection(Static):
             if is_running:
                 text.append("[RUNNING]", style="bold green")
             else:
-                text.append("[STOPPED]", style="bold red")
+                text.append("[DONE]", style="bold #FFD700")  # Gold/yellow
+
+            # PID
+            text.append("  │  ", style="dim")
+            text.append("PID: ", style="bold #87D7FF")
+            if info.pid:
+                text.append(f"{info.pid}", style="#FF87D7 bold")
+            else:
+                text.append("...", style="#FF87D7 bold")
 
             # Command
             text.append("  │  ", style="dim")

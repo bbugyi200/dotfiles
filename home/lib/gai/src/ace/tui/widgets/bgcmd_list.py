@@ -11,7 +11,7 @@ from textual.message import Message
 from textual.widgets import OptionList
 from textual.widgets.option_list import Option
 
-from ..bgcmd import BackgroundCommandInfo
+from ..bgcmd import BackgroundCommandInfo, is_slot_running
 
 # Item type: "axe" or slot number (1-9)
 ItemType = Literal["axe"] | int
@@ -71,6 +71,7 @@ class BgCmdList(OptionList):
                 slot=slot,
                 info=info,
                 is_selected=(current_item == slot),
+                is_running=is_slot_running(slot),
             )
             self.add_option(option)
 
@@ -115,7 +116,11 @@ class BgCmdList(OptionList):
         return Option(text, id="axe")
 
     def _format_bgcmd_option(
-        self, slot: int, info: BackgroundCommandInfo, is_selected: bool
+        self,
+        slot: int,
+        info: BackgroundCommandInfo,
+        is_selected: bool,
+        is_running: bool,
     ) -> Option:
         """Format a background command option for display.
 
@@ -123,15 +128,19 @@ class BgCmdList(OptionList):
             slot: Slot number (1-9).
             info: Background command information.
             is_selected: Whether this is the currently selected item.
+            is_running: Whether the command is still running.
 
         Returns:
             An Option for the OptionList.
         """
         text = Text()
 
-        # Status indicator (always running if in list)
+        # Status indicator: running (*) vs done (✓)
         text.append("[", style="dim")
-        text.append("*", style="bold #00D7AF")
+        if is_running:
+            text.append("*", style="bold #00D7AF")  # Cyan for running
+        else:
+            text.append("✓", style="bold #FFD700")  # Gold for done
         text.append("] ", style="dim")
 
         # Slot number
@@ -141,7 +150,10 @@ class BgCmdList(OptionList):
         cmd_display = info.command
         if len(cmd_display) > 25:
             cmd_display = cmd_display[:22] + "..."
-        label_style = "bold #00D7AF" if is_selected else "#00D7AF"
+        if is_running:
+            label_style = "bold #00D7AF" if is_selected else "#00D7AF"
+        else:
+            label_style = "bold #FFD700" if is_selected else "#FFD700"
         text.append(cmd_display, style=label_style)
 
         return Option(text, id=str(slot))

@@ -24,13 +24,14 @@ MAX_SLOTS = 9
 
 @dataclass
 class BackgroundCommandInfo:
-    """Information about a running background command."""
+    """Information about a background command (running or done)."""
 
     command: str
     project: str
     workspace_num: int
     workspace_dir: str
     started_at: str
+    pid: int | None = None
 
 
 def _get_slot_dir(slot: int) -> Path:
@@ -204,27 +205,43 @@ def clear_slot_output(slot: int) -> None:
             pass
 
 
-def get_running_slots() -> list[int]:
-    """Get list of slots that have running background commands.
+def get_active_slots() -> list[int]:
+    """Get list of slots that have background command info (running or done).
 
     Returns:
-        List of slot numbers with running processes.
+        List of slot numbers with active commands (running or completed).
     """
-    running = []
+    active = []
     for slot in range(1, MAX_SLOTS + 1):
-        if is_slot_running(slot):
-            running.append(slot)
-    return running
+        if get_slot_info(slot) is not None:
+            active.append(slot)
+    return active
+
+
+def clear_slot(slot: int) -> None:
+    """Clear all files for a slot (info.json, pid, output.log).
+
+    Args:
+        slot: Slot number (1-9).
+    """
+    import shutil
+
+    slot_dir = _get_slot_dir(slot)
+    if slot_dir.exists():
+        shutil.rmtree(slot_dir)
 
 
 def find_first_available_slot() -> int | None:
     """Find the first available slot for a new background command.
 
+    A slot is available if it has no info.json (i.e., not active).
+
     Returns:
         First available slot number (1-9), or None if all slots are in use.
     """
+    active_slots = set(get_active_slots())
     for slot in range(1, MAX_SLOTS + 1):
-        if not is_slot_running(slot):
+        if slot not in active_slots:
             return slot
     return None
 
@@ -255,7 +272,7 @@ def start_background_command(
     # Clear any old output
     output_file.write_text("")
 
-    # Create info
+    # Create info (PID will be added after process starts)
     info = BackgroundCommandInfo(
         command=command,
         project=project,
@@ -263,7 +280,6 @@ def start_background_command(
         workspace_dir=workspace_dir,
         started_at=datetime.now(EASTERN_TZ).isoformat(),
     )
-    _write_info(slot, info)
 
     try:
         # Open output file for writing
@@ -279,8 +295,10 @@ def start_background_command(
                 start_new_session=True,  # Detach from terminal
             )
 
-        # Write PID
+        # Write PID to file and update info with PID
         _write_pid(slot, process.pid)
+        info.pid = process.pid
+        _write_info(slot, info)
         return process.pid
 
     except Exception:

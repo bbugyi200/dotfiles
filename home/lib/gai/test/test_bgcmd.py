@@ -17,7 +17,6 @@ from ace.tui.bgcmd import (
     _write_pid,
     clear_slot_output,
     find_first_available_slot,
-    get_running_slots,
     get_slot_info,
     is_slot_running,
     read_slot_output_tail,
@@ -79,14 +78,6 @@ def test_get_slot_info_not_exists() -> None:
         with patch("ace.tui.bgcmd.BGCMD_STATE_DIR", Path(tmp_dir)):
             info = get_slot_info(1)
             assert info is None
-
-
-def test_get_running_slots_empty() -> None:
-    """Test get_running_slots returns empty list when no slots running."""
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        with patch("ace.tui.bgcmd.BGCMD_STATE_DIR", Path(tmp_dir)):
-            slots = get_running_slots()
-            assert slots == []
 
 
 def test_find_first_available_slot_all_available() -> None:
@@ -278,60 +269,39 @@ def test_is_slot_running_dead_process() -> None:
 
 
 def test_find_first_available_slot_some_used() -> None:
-    """Test find_first_available_slot skips running slots."""
-    import os
-
+    """Test find_first_available_slot skips active slots (with info.json)."""
     with tempfile.TemporaryDirectory() as tmp_dir:
         with patch("ace.tui.bgcmd.BGCMD_STATE_DIR", Path(tmp_dir)):
-            # Mark slot 1 as running (use current process PID)
-            _write_pid(1, os.getpid())
+            # Mark slot 1 as active by writing info.json
+            info = BackgroundCommandInfo(
+                command="make test",
+                project="myproject",
+                workspace_num=1,
+                workspace_dir="/path",
+                started_at="2025-01-01T12:00:00",
+            )
+            _write_info(1, info)
             slot = find_first_available_slot()
-            assert slot == 2  # Should return 2 since 1 is "running"
-
-
-def test_get_running_slots_with_running() -> None:
-    """Test get_running_slots returns slots with running processes."""
-    import os
-
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        with patch("ace.tui.bgcmd.BGCMD_STATE_DIR", Path(tmp_dir)):
-            # Mark slots 1 and 3 as running
-            _write_pid(1, os.getpid())
-            _write_pid(3, os.getpid())
-            # Mark slot 2 as dead
-            _write_pid(2, 99999999)
-
-            slots = get_running_slots()
-            assert 1 in slots
-            assert 3 in slots
-            assert 2 not in slots
+            assert slot == 2  # Should return 2 since 1 is active
 
 
 def test_find_first_available_slot_all_used() -> None:
     """Test find_first_available_slot returns None when all slots used."""
-    import os
-
     with tempfile.TemporaryDirectory() as tmp_dir:
         with patch("ace.tui.bgcmd.BGCMD_STATE_DIR", Path(tmp_dir)):
-            # Mark all 9 slots as running
+            # Mark all 9 slots as active by writing info.json
             for i in range(1, 10):
-                _write_pid(i, os.getpid())
+                info = BackgroundCommandInfo(
+                    command=f"make test {i}",
+                    project="myproject",
+                    workspace_num=1,
+                    workspace_dir="/path",
+                    started_at="2025-01-01T12:00:00",
+                )
+                _write_info(i, info)
 
             slot = find_first_available_slot()
             assert slot is None
-
-
-def test_get_running_slots_filters_dead() -> None:
-    """Test get_running_slots properly filters dead processes."""
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        with patch("ace.tui.bgcmd.BGCMD_STATE_DIR", Path(tmp_dir)):
-            # Write PIDs for dead processes
-            _write_pid(1, 99999999)
-            _write_pid(2, 99999998)
-
-            # Should return empty list since all processes are dead
-            slots = get_running_slots()
-            assert slots == []
 
 
 def test_get_slot_info_with_extra_fields() -> None:

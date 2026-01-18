@@ -59,7 +59,9 @@ def test_bgcmd_list_format_bgcmd_option() -> None:
         workspace_dir="/path",
         started_at="2025-01-01T12:00:00",
     )
-    option = widget._format_bgcmd_option(slot=3, info=info, is_selected=False)
+    option = widget._format_bgcmd_option(
+        slot=3, info=info, is_selected=False, is_running=True
+    )
     assert option.id == "3"
     text_str = str(option.prompt)
     assert "3:" in text_str
@@ -76,7 +78,9 @@ def test_bgcmd_list_format_bgcmd_option_long_command() -> None:
         workspace_dir="/path",
         started_at="2025-01-01T12:00:00",
     )
-    option = widget._format_bgcmd_option(slot=1, info=info, is_selected=False)
+    option = widget._format_bgcmd_option(
+        slot=1, info=info, is_selected=False, is_running=True
+    )
     assert option.id == "1"
     text_str = str(option.prompt)
     # Command should be truncated
@@ -93,5 +97,26 @@ def test_bgcmd_list_format_bgcmd_option_selected() -> None:
         workspace_dir="/path",
         started_at="2025-01-01T12:00:00",
     )
-    option = widget._format_bgcmd_option(slot=5, info=info, is_selected=True)
+    option = widget._format_bgcmd_option(
+        slot=5, info=info, is_selected=True, is_running=True
+    )
     assert option.id == "5"
+
+
+def test_bgcmd_list_format_bgcmd_option_done() -> None:
+    """Test formatting background command option when done (not running)."""
+    widget = BgCmdList()
+    info = BackgroundCommandInfo(
+        command="make test",
+        project="myproject",
+        workspace_num=1,
+        workspace_dir="/path",
+        started_at="2025-01-01T12:00:00",
+    )
+    option = widget._format_bgcmd_option(
+        slot=2, info=info, is_selected=False, is_running=False
+    )
+    assert option.id == "2"
+    text_str = str(option.prompt)
+    # Done commands should show a checkmark
+    assert "✓" in text_str

@@ -21,9 +21,10 @@ from running_field import get_workspace_directory
 
 from ..bgcmd import (
     BackgroundCommandInfo,
+    clear_slot,
     clear_slot_output,
     find_first_available_slot,
-    get_running_slots,
+    get_active_slots,
     get_slot_info,
     is_slot_running,
     read_slot_output_tail,
@@ -83,21 +84,17 @@ class AxeMixin:
                 else:
                     self._start_axe()
             else:
-                # Current view is a bgcmd slot - confirm kill
+                # Current view is a bgcmd slot - kill or clear
                 slot = self._axe_current_view
-                if is_slot_running(slot):
-                    self._confirm_kill_bgcmd(slot)
-                else:
-                    # Slot not running, switch to axe view
-                    self._switch_to_axe_view("axe")
+                self._confirm_kill_bgcmd(slot)
         else:
             # On other tabs - handle based on what's running
-            bgcmd_running = len(self._bgcmd_slots) > 0
+            bgcmd_active = len(self._bgcmd_slots) > 0
 
-            if not self.axe_running and not bgcmd_running:
+            if not self.axe_running and not bgcmd_active:
                 # Nothing running - start axe
                 self._start_axe()
-            elif self.axe_running and not bgcmd_running:
+            elif self.axe_running and not bgcmd_active:
                 # Only axe running - stop it
                 self._stop_axe()
             else:
@@ -223,29 +220,43 @@ class AxeMixin:
         self.notify(f"Started command in slot {slot}")  # type: ignore[attr-defined]
 
     def _confirm_kill_bgcmd(self, slot: int) -> None:
-        """Show confirmation dialog to kill a background command.
+        """Kill or clear a background command.
+
+        For running commands: Show confirmation dialog before killing.
+        For done commands: Clear immediately without confirmation.
 
         Args:
-            slot: Slot number to kill.
+            slot: Slot number to kill/clear.
         """
-        from ..modals import ConfirmKillModal
-
         info = get_slot_info(slot)
         if info is None:
             return
+
+        # Check if the command is still running
+        if not is_slot_running(slot):
+            # Done command - clear immediately without confirmation
+            clear_slot(slot)
+            self.notify(f"Cleared slot {slot}")  # type: ignore[attr-defined]
+            self._load_bgcmd_state()
+            # If no more bgcmds, switch to axe view
+            if len(self._bgcmd_slots) == 0:
+                self._switch_to_axe_view("axe")
+            return
+
+        # Running command - show confirmation dialog
+        from ..modals import ConfirmKillModal
 
         description = f"Slot {slot}: {info.command}\n({info.project}, workspace {info.workspace_num})"
 
         def on_confirmed(confirmed: bool) -> None:
             if confirmed:
-                if stop_background_command(slot):
-                    self.notify(f"Stopped background command in slot {slot}")  # type: ignore[attr-defined]
-                    self._load_bgcmd_state()
-                    # If no more bgcmds, switch to axe view
-                    if len(self._bgcmd_slots) == 0:
-                        self._switch_to_axe_view("axe")
-                else:
-                    self.notify("Failed to stop background command", severity="error")  # type: ignore[attr-defined]
+                stop_background_command(slot)
+                clear_slot(slot)
+                self.notify(f"Stopped and cleared slot {slot}")  # type: ignore[attr-defined]
+                self._load_bgcmd_state()
+                # If no more bgcmds, switch to axe view
+                if len(self._bgcmd_slots) == 0:
+                    self._switch_to_axe_view("axe")
 
         self.push_screen(ConfirmKillModal(description), on_confirmed)  # type: ignore[attr-defined]
 
@@ -261,16 +272,20 @@ class AxeMixin:
                 self._start_axe()
             elif selection.process_type == "axe":
                 self._stop_axe()
-            else:
+            elif selection.process_type == "dismiss_bgcmd":
+                # Done command - just clear it
                 slot = selection.slot
                 if slot is not None:
-                    if stop_background_command(slot):
-                        self.notify(f"Stopped background command in slot {slot}")  # type: ignore[attr-defined]
-                        self._load_bgcmd_state()
-                    else:
-                        self.notify(  # type: ignore[attr-defined]
-                            "Failed to stop background command", severity="error"
-                        )
+                    clear_slot(slot)
+                    self.notify(f"Cleared slot {slot}")  # type: ignore[attr-defined]
+                    self._load_bgcmd_state()
+            else:  # bgcmd (running)
+                slot = selection.slot
+                if slot is not None:
+                    stop_background_command(slot)
+                    clear_slot(slot)
+                    self.notify(f"Stopped and cleared slot {slot}")  # type: ignore[attr-defined]
+                    self._load_bgcmd_state()
 
         self.push_screen(  # type: ignore[attr-defined]
             ProcessSelectModal(self.axe_running, self._bgcmd_slots),
@@ -348,11 +363,11 @@ class AxeMixin:
         self._update_axe_keybinding()
 
     def _load_bgcmd_state(self) -> None:
-        """Load background command state from disk."""
-        running_slots = get_running_slots()
+        """Load background command state from disk (running + done commands)."""
+        active_slots = get_active_slots()
         self._bgcmd_slots = []
 
-        for slot in running_slots:
+        for slot in active_slots:
             info = get_slot_info(slot)
             if info is not None:
                 self._bgcmd_slots.append((slot, info))
