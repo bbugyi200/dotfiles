@@ -24,8 +24,7 @@ def _create_test_changespec(
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".gp") as f:
         parent_val = parent if parent else "None"
         cl_val = cl if cl else "None"
-        f.write(
-            f"""# Test Project
+        f.write(f"""# Test Project
 
 ## ChangeSpec
 
@@ -37,8 +36,7 @@ CL: {cl_val}
 STATUS: {status}
 
 ---
-"""
-        )
+""")
         return ChangeSpec(
             name=name,
             description="A test feature",

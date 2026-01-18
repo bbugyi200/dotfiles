@@ -310,8 +310,7 @@ def test_format_hooks_field_empty() -> None:
 def test_update_changespec_hooks_field_basic() -> None:
     """Test updating hooks field in a project file."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
-        f.write(
-            """## ChangeSpec
+        f.write("""## ChangeSpec
 NAME: test_cl
 DESCRIPTION:
   Test description
@@ -319,8 +318,7 @@ STATUS: Drafted
 HOOKS:
   old_command
       | (1) [240601_100000] PASSED (1m0s)
-"""
-        )
+""")
         f.flush()
         file_path = f.name
 
@@ -352,8 +350,7 @@ HOOKS:
 def test_update_changespec_hooks_field_clear_status() -> None:
     """Test clearing hook status (for rerun)."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
-        f.write(
-            """## ChangeSpec
+        f.write("""## ChangeSpec
 NAME: test_cl
 DESCRIPTION:
   Test description
@@ -361,8 +358,7 @@ STATUS: Drafted
 HOOKS:
   my_command
       | (1) [240601_100000] FAILED (1m0s)
-"""
-        )
+""")
         f.flush()
         file_path = f.name
 
@@ -386,8 +382,7 @@ HOOKS:
 def test_update_changespec_hooks_field_delete_hook() -> None:
     """Test deleting a hook entirely."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
-        f.write(
-            """## ChangeSpec
+        f.write("""## ChangeSpec
 NAME: test_cl
 DESCRIPTION:
   Test description
@@ -397,8 +392,7 @@ HOOKS:
       | (1) [240601_100000] PASSED (1m0s)
   hook2
       | (1) [240601_100000] FAILED (2m0s)
-"""
-        )
+""")
         f.flush()
         file_path = f.name
 

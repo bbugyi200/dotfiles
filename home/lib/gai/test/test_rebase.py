@@ -16,8 +16,7 @@ def _create_test_project_file_with_parent(
     """Create a temporary project file with a test ChangeSpec."""
     parent_line = f"PARENT: {parent}\n" if parent else ""
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".gp") as f:
-        f.write(
-            f"""# Test Project
+        f.write(f"""# Test Project
 
 ## ChangeSpec
 
@@ -29,16 +28,14 @@ STATUS: {status}
 TEST TARGETS: None
 
 ---
-"""
-        )
+""")
         return f.name
 
 
 def _create_multi_changespec_file() -> str:
     """Create a project file with multiple ChangeSpecs for testing eligible parents."""
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".gp") as f:
-        f.write(
-            """# Test Project
+        f.write("""# Test Project
 
 NAME: Feature A
 DESCRIPTION:
@@ -80,8 +77,7 @@ CL: None
 STATUS: Reverted
 
 ---
-"""
-        )
+""")
         return f.name
 
 
@@ -267,8 +263,7 @@ def test_get_eligible_parents_empty_when_no_matches() -> None:
     """Test that empty list is returned when no eligible parents exist."""
     # Create a file with only terminal status ChangeSpecs
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".gp") as f:
-        f.write(
-            """# Test Project
+        f.write("""# Test Project
 
 NAME: Feature A
 DESCRIPTION:
@@ -276,8 +271,7 @@ DESCRIPTION:
 STATUS: Submitted
 
 ---
-"""
-        )
+""")
         project_file = f.name
 
     try:
@@ -291,8 +285,7 @@ STATUS: Submitted
 def test_get_eligible_parents_handles_ready_to_mail_suffix() -> None:
     """Test that READY TO MAIL suffix is handled correctly."""
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".gp") as f:
-        f.write(
-            """# Test Project
+        f.write("""# Test Project
 
 NAME: Feature A
 DESCRIPTION:
@@ -307,8 +300,7 @@ DESCRIPTION:
 STATUS: WIP
 
 ---
-"""
-        )
+""")
         project_file = f.name
 
     try:

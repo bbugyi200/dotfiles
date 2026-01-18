@@ -73,8 +73,7 @@ def test__is_valid_transition_invalid_status() -> None:
 def _create_test_project_file(status: str = "Drafted") -> str:
     """Create a temporary project file with a test ChangeSpec."""
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".md") as f:
-        f.write(
-            f"""# Test Project
+        f.write(f"""# Test Project
 
 ## ChangeSpec
 
@@ -87,8 +86,7 @@ STATUS: {status}
 TEST TARGETS: None
 
 ---
-"""
-        )
+""")
         return f.name
 
 
@@ -183,8 +181,7 @@ def test_transition_changespec_status_nonexistent_changespec() -> None:
 def test_transition_changespec_status_multiple_changespecs() -> None:
     """Test that only the target ChangeSpec is updated."""
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".md") as f:
-        f.write(
-            """# Test Project
+        f.write("""# Test Project
 
 ## ChangeSpec 1
 
@@ -208,8 +205,7 @@ CL: None
 STATUS: Drafted
 
 ---
-"""
-        )
+""")
         project_file = f.name
 
     try:
