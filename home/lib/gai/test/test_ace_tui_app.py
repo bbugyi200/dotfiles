@@ -236,3 +236,110 @@ async def test_query_edit_modal_invalid_query() -> None:
 
             # Query should remain unchanged
             assert app.query_string == original_query
+
+
+# --- Marking Auto-Navigation Tests ---
+
+
+async def test_mark_navigates_to_next_unmarked() -> None:
+    """Test marking a spec navigates to the next unmarked spec."""
+    mock_changespecs = [
+        _make_changespec(name="feature_a"),
+        _make_changespec(name="feature_b"),
+        _make_changespec(name="feature_c"),
+    ]
+    with patch("ace.changespec.find_all_changespecs", return_value=mock_changespecs):
+        app = AceApp(query='"feature"')
+        async with app.run_test() as pilot:
+            # Start at index 0
+            assert app.current_idx == 0
+            assert len(app.marked_indices) == 0
+
+            # Mark first spec - should navigate to second
+            await pilot.press("m")
+            assert 0 in app.marked_indices
+            assert app.current_idx == 1
+
+
+async def test_mark_wraps_around_to_find_unmarked() -> None:
+    """Test marking wraps around to find the first unmarked spec."""
+    mock_changespecs = [
+        _make_changespec(name="feature_a"),
+        _make_changespec(name="feature_b"),
+        _make_changespec(name="feature_c"),
+    ]
+    with patch("ace.changespec.find_all_changespecs", return_value=mock_changespecs):
+        app = AceApp(query='"feature"')
+        async with app.run_test() as pilot:
+            # Pre-mark the middle spec (index 1)
+            app.marked_indices = {1}
+
+            # Navigate to last spec (index 2)
+            await pilot.press("j")
+            await pilot.press("j")
+            assert app.current_idx == 2
+
+            # Mark last spec - should wrap around to first (index 0)
+            await pilot.press("m")
+            assert 2 in app.marked_indices
+            assert app.current_idx == 0
+
+
+async def test_mark_stays_when_all_marked() -> None:
+    """Test marking the last unmarked spec stays on current position."""
+    mock_changespecs = [
+        _make_changespec(name="feature_a"),
+        _make_changespec(name="feature_b"),
+    ]
+    with patch("ace.changespec.find_all_changespecs", return_value=mock_changespecs):
+        app = AceApp(query='"feature"')
+        async with app.run_test() as pilot:
+            # Pre-mark first spec
+            app.marked_indices = {0}
+
+            # Navigate to second spec (index 1)
+            await pilot.press("j")
+            assert app.current_idx == 1
+
+            # Mark second spec (all now marked) - should stay on current
+            await pilot.press("m")
+            assert 1 in app.marked_indices
+            assert app.current_idx == 1
+
+
+async def test_unmark_does_not_navigate() -> None:
+    """Test un-marking a spec does not trigger navigation."""
+    mock_changespecs = [
+        _make_changespec(name="feature_a"),
+        _make_changespec(name="feature_b"),
+        _make_changespec(name="feature_c"),
+    ]
+    with patch("ace.changespec.find_all_changespecs", return_value=mock_changespecs):
+        app = AceApp(query='"feature"')
+        async with app.run_test() as pilot:
+            # Mark first spec (navigates to second)
+            await pilot.press("m")
+            assert app.current_idx == 1
+
+            # Navigate back to first spec
+            await pilot.press("k")
+            assert app.current_idx == 0
+
+            # Un-mark first spec - should stay on current
+            await pilot.press("m")
+            assert 0 not in app.marked_indices
+            assert app.current_idx == 0
+
+
+async def test_mark_single_spec_stays() -> None:
+    """Test marking the only spec stays on it."""
+    mock_changespecs = [_make_changespec(name="only_spec")]
+    with patch("ace.changespec.find_all_changespecs", return_value=mock_changespecs):
+        app = AceApp(query='"only"')
+        async with app.run_test() as pilot:
+            assert app.current_idx == 0
+
+            # Mark the only spec - should stay on it
+            await pilot.press("m")
+            assert 0 in app.marked_indices
+            assert app.current_idx == 0

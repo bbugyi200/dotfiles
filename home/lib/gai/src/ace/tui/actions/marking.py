@@ -30,7 +30,9 @@ class MarkingMixin:
             return
 
         idx = self.current_idx
-        if idx in self.marked_indices:
+        was_marked = idx in self.marked_indices
+
+        if was_marked:
             self.marked_indices.discard(idx)
         else:
             self.marked_indices.add(idx)
@@ -39,6 +41,25 @@ class MarkingMixin:
         self.marked_indices = set(self.marked_indices)  # type: ignore[assignment]
 
         self._refresh_display()  # type: ignore[attr-defined]
+
+        # Auto-navigate to next unmarked spec (only when marking)
+        if not was_marked:
+            next_idx = self._find_next_unmarked_idx()
+            if next_idx is not None:
+                self.current_idx = next_idx
+
+    def _find_next_unmarked_idx(self) -> int | None:
+        """Find the next unmarked spec index, searching forward with wraparound."""
+        n = len(self.changespecs)
+        if n == 0:
+            return None
+
+        for offset in range(1, n):
+            candidate = (self.current_idx + offset) % n
+            if candidate not in self.marked_indices:
+                return candidate
+
+        return None  # All specs are marked
 
     def action_clear_marks(self) -> None:
         """Clear all marks."""
