@@ -126,6 +126,10 @@ class AceApp(
         Binding("Q", "stop_axe_and_quit", "Stop & Quit", show=False),
         # Agent actions (Agents tab only)
         Binding("space", "start_custom_agent", "Run Agent", show=False),
+        # Run agent from ChangeSpec (CLs tab only)
+        Binding(
+            "shift+space", "start_agent_from_changespec", "Run Agent (CL)", show=False
+        ),
         # Marking (CLs tab only)
         Binding("m", "toggle_mark", "Mark", show=False),
         Binding("u", "clear_marks", "Unmark All", show=False),

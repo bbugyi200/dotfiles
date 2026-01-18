@@ -268,8 +268,8 @@ class KeybindingFooter(Horizontal):
         elif len(workflows) > 1:
             bindings.append(("r", f"run ({len(workflows)} workflows)"))
 
-        # Run agent (space)
-        bindings.append(("<space>", "run agent"))
+        # Run agent (shift+space)
+        bindings.append(("<S-space>", "run agent"))
 
         # Status change
         bindings.append(("s", "status"))
@@ -307,11 +307,11 @@ class KeybindingFooter(Horizontal):
         text = Text()
 
         # Sort bindings alphabetically (case-insensitive, lowercase before uppercase)
-        # Put <space> first
+        # Put <space> or <S-space> first
         sorted_bindings = sorted(
             bindings,
             key=lambda x: (
-                0 if x[0] == "<space>" else 1,
+                0 if x[0] in ("<space>", "<S-space>") else 1,
                 x[0].lower(),
                 x[0].isupper(),
                 x[0],

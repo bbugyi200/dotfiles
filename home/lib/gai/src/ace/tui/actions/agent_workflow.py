@@ -49,24 +49,25 @@ class AgentWorkflowMixin:
     # State for bulk agent runs
     _bulk_changespecs: list[ChangeSpec] | None = None
 
-    def action_start_custom_agent(self) -> None:
-        """Start a custom agent by selecting project or CL."""
-        if self.current_tab == "changespecs":
-            # CLs tab: check for marked items first
-            if self.marked_indices:
-                self._start_agents_from_marked()
-            else:
-                # Single CL: infer project/CL from current ChangeSpec (skip modals)
-                self._start_agent_from_changespec()
+    def action_start_agent_from_changespec(self) -> None:
+        """Start agent from current ChangeSpec (CLs tab only, bound to shift+space)."""
+        if self.current_tab != "changespecs":
             return
 
+        if self.marked_indices:
+            self._start_agents_from_marked()
+        else:
+            self._start_agent_from_changespec()
+
+    def action_start_custom_agent(self) -> None:
+        """Start a custom agent by selecting project or CL (Agents/AXE tabs)."""
         if self.current_tab == "axe":
             # AXE tab: start background command
             self.action_start_bgcmd()  # type: ignore[attr-defined]
             return
 
         if self.current_tab != "agents":
-            self.notify("Unknown tab", severity="warning")  # type: ignore[attr-defined]
+            # No-op on CLs tab now (use shift+space instead)
             return
 
         from ..modals import (
