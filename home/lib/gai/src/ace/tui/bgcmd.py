@@ -32,6 +32,7 @@ class BackgroundCommandInfo:
     workspace_dir: str
     started_at: str
     pid: int | None = None
+    finished_at: str | None = None  # Set when command completes
 
 
 def _get_slot_dir(slot: int) -> Path:
@@ -165,6 +166,18 @@ def _write_info(slot: int, info: BackgroundCommandInfo) -> None:
     info_file = _get_slot_dir(slot) / "info.json"
     with open(info_file, "w") as f:
         json.dump(asdict(info), f, indent=2)
+
+
+def mark_slot_finished(slot: int) -> None:
+    """Mark a slot's command as finished by setting finished_at timestamp.
+
+    Args:
+        slot: Slot number (1-9).
+    """
+    info = get_slot_info(slot)
+    if info is not None and info.finished_at is None:
+        info.finished_at = datetime.now(EASTERN_TZ).isoformat()
+        _write_info(slot, info)
 
 
 def read_slot_output_tail(slot: int, lines: int = 1000) -> str:

@@ -27,6 +27,7 @@ from ..bgcmd import (
     get_active_slots,
     get_slot_info,
     is_slot_running,
+    mark_slot_finished,
     read_slot_output_tail,
     start_background_command,
     stop_background_command,
@@ -396,7 +397,12 @@ class AxeMixin:
         for slot in active_slots:
             info = get_slot_info(slot)
             if info is not None:
-                self._bgcmd_slots.append((slot, info))
+                # Check if command just finished and mark it
+                if not is_slot_running(slot) and info.finished_at is None:
+                    mark_slot_finished(slot)
+                    info = get_slot_info(slot)  # Reload to get updated info
+                if info is not None:
+                    self._bgcmd_slots.append((slot, info))
 
         # Update footer with bgcmd count
         self._update_bgcmd_count()

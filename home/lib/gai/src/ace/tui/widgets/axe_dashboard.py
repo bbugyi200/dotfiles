@@ -115,10 +115,10 @@ class _AxeStatusSection(Static):
             text.append("WS: ", style="bold #87D7FF")
             text.append(f"{info.workspace_num}", style="#00D7AF")
 
-            # Runtime
+            # Runtime - use finished_at for done commands
             text.append("  │  ", style="dim")
             text.append("Runtime: ", style="bold #87D7FF")
-            runtime_str = _format_runtime(info.started_at)
+            runtime_str = _format_elapsed(info.started_at, info.finished_at)
             text.append(runtime_str, style="#00D7AF")
 
         self.update(text)
@@ -256,6 +256,27 @@ def _format_runtime(started_at: str) -> str:
         start_time = datetime.fromisoformat(started_at)
         now = datetime.now(EASTERN_TZ)
         elapsed = now - start_time
+        return _format_uptime(int(elapsed.total_seconds()))
+    except (ValueError, TypeError):
+        return "unknown"
+
+
+def _format_elapsed(started_at: str, finished_at: str | None) -> str:
+    """Format elapsed time between start and finish.
+
+    Args:
+        started_at: ISO format start timestamp string.
+        finished_at: ISO format finish timestamp string, or None if still running.
+
+    Returns:
+        Formatted string like "2h 34m 12s".
+    """
+    if finished_at is None:
+        return _format_runtime(started_at)  # Still counting
+    try:
+        start_time = datetime.fromisoformat(started_at)
+        end_time = datetime.fromisoformat(finished_at)
+        elapsed = end_time - start_time
         return _format_uptime(int(elapsed.total_seconds()))
     except (ValueError, TypeError):
         return "unknown"
