@@ -488,6 +488,12 @@ class AxeMixin:
                 slot = self._axe_current_view
                 info = get_slot_info(slot)
                 running = is_slot_running(slot)
+
+                # Check if command just finished and mark it
+                if info is not None and not running and info.finished_at is None:
+                    mark_slot_finished(slot)
+                    info = get_slot_info(slot)  # Reload to get updated info
+
                 output = read_slot_output_tail(slot, 1000)
 
                 axe_info.update_bgcmd_status(slot, info, running)
