@@ -99,7 +99,12 @@ class BaseActionsMixin:
 
     def action_run_workflow(self) -> None:
         """Run a workflow on the current ChangeSpec."""
-        # Only run on changespecs tab - "r" dispatches to revive_agent on agents tab
+        # On agents tab, dispatch to revive_agent instead
+        if self.current_tab == "agents":
+            self.action_revive_agent()  # type: ignore[attr-defined]
+            return
+
+        # Only run on changespecs tab
         if self.current_tab != "changespecs":
             return
 

@@ -134,7 +134,6 @@ class AceApp(
         Binding("m", "toggle_mark", "Mark", show=False),
         Binding("u", "clear_marks", "Unmark All", show=False),
         Binding("x", "kill_agent", "Kill", show=False),
-        Binding("r", "revive_agent", "Revive", show=False),
         Binding("l", "toggle_layout", "Layout", show=False),
         # Copy to clipboard (all tabs)
         Binding("percent_sign", "copy_tab_content", "Copy", show=False),
