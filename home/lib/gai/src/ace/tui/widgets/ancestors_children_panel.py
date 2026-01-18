@@ -362,10 +362,10 @@ class AncestorsChildrenPanel(Static):
         self.display = True
         text = Text()
 
-        # ANCESTORS section
+        # ANCESTORS section (reversed: show furthest ancestor first)
         if self._ancestors:
             text.append("ANCESTORS", style="bold #87D7FF")
-            for name in self._ancestors:
+            for name in reversed(self._ancestors):
                 key = self._ancestor_keys.get(name, "")
                 text.append("\n")
                 text.append(f"  [{_format_display_key(key)}] ", style="bold #FFAF00")
