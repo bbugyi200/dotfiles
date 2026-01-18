@@ -1,4 +1,4 @@
-"""Session-based ChangeSpec navigation history (ctrl+j / ctrl+k).
+"""Session-based ChangeSpec navigation history (ctrl+o / ctrl+k).
 
 This module provides vim-style jumplist navigation for ChangeSpecs.
 History is stored in memory only (session-based, not persisted to disk).

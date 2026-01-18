@@ -146,7 +146,7 @@ class AceApp(
         Binding("circumflex_accent", "prev_query", "Prev Query", show=False),
         Binding("underscore", "next_query", "Next Query", show=False),
         # ChangeSpec history navigation (vim-style jumplist)
-        Binding("ctrl+j", "prev_changespec_history", "Prev CL History", show=False),
+        Binding("ctrl+o", "prev_changespec_history", "Prev CL History", show=False),
         Binding("ctrl+k", "next_changespec_history", "Next CL History", show=False),
         # Ancestor/child navigation
         Binding("<", "start_ancestor_mode", "Ancestor", show=False),
