@@ -51,19 +51,23 @@ class _AxeStatusSection(Static):
             text.append("Cycles: ", style="bold #87D7FF")
             text.append(f"{full_cycles}", style="#00D7AF bold")
 
-            # CLs (filtered changespecs)
+            # CLs (filtered changespecs) - always show, "..." if no status
+            text.append("  │  ", style="dim")
+            text.append("CLs: ", style="bold #87D7FF")
             if status:
-                text.append("  │  ", style="dim")
-                text.append("CLs: ", style="bold #87D7FF")
                 text.append(f"{status.filtered_changespecs}", style="#00D7AF")
+            else:
+                text.append("...", style="#00D7AF")
 
-            # Runners (current/max)
+            # Runners (current/max) - always show, "..." if no status
+            text.append("  │  ", style="dim")
+            text.append("Runners: ", style="bold #87D7FF")
             if status:
-                text.append("  │  ", style="dim")
-                text.append("Runners: ", style="bold #87D7FF")
                 text.append(
                     f"{status.current_runners}/{status.max_runners}", style="#00D7AF"
                 )
+            else:
+                text.append("...", style="#00D7AF")
 
         self.update(text)
 
