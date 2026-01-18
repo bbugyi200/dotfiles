@@ -128,10 +128,7 @@ class AxeMixin:
         self.notify("Output cleared")  # type: ignore[attr-defined]
 
     def action_start_bgcmd(self) -> None:
-        """Start the background command workflow (space key on AXE tab)."""
-        if self.current_tab != "axe":
-            return
-
+        """Start the background command workflow (! key on all tabs)."""
         # Check for available slot
         slot = find_first_available_slot()
         if slot is None:

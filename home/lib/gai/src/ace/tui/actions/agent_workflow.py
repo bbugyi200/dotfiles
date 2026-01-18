@@ -50,7 +50,7 @@ class AgentWorkflowMixin:
     _bulk_changespecs: list[ChangeSpec] | None = None
 
     def action_start_agent_from_changespec(self) -> None:
-        """Start agent from current ChangeSpec (CLs tab only, bound to shift+space)."""
+        """Start agent from current ChangeSpec (CLs tab only, bound to ctrl+space)."""
         if self.current_tab != "changespecs":
             return
 
@@ -60,16 +60,7 @@ class AgentWorkflowMixin:
             self._start_agent_from_changespec()
 
     def action_start_custom_agent(self) -> None:
-        """Start a custom agent by selecting project or CL (Agents/AXE tabs)."""
-        if self.current_tab == "axe":
-            # AXE tab: start background command
-            self.action_start_bgcmd()  # type: ignore[attr-defined]
-            return
-
-        if self.current_tab != "agents":
-            # No-op on CLs tab now (use shift+space instead)
-            return
-
+        """Start a custom agent by selecting project or CL (works on all tabs)."""
         from ..modals import (
             BugInputModal,
             BugInputResult,

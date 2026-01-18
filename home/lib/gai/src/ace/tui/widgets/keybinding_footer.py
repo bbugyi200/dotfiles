@@ -177,7 +177,12 @@ class KeybindingFooter(Horizontal):
         Returns:
             List of (key, label) tuples.
         """
-        return [("<space>", "run cmd"), ("x", "clear"), ("%", "copy")]
+        return [
+            ("<space>", "run agent"),
+            ("!", "run cmd"),
+            ("x", "clear"),
+            ("%", "copy"),
+        ]
 
     def _compute_agent_bindings(
         self,
@@ -219,6 +224,9 @@ class KeybindingFooter(Horizontal):
 
         # Run custom agent
         bindings.append(("<space>", "run agent"))
+
+        # Run background command
+        bindings.append(("!", "run cmd"))
 
         # Revive chat as agent
         bindings.append(("r", "revive chat"))
@@ -268,10 +276,6 @@ class KeybindingFooter(Horizontal):
             if base_status in ("Drafted", "Mailed"):
                 bindings.append(("w", "reword"))
 
-        # Mark ready to mail (only if Drafted without READY TO MAIL suffix)
-        if base_status == "Drafted" and not has_ready_to_mail_suffix(changespec.status):
-            bindings.append(("!", "ready"))
-
         # Mail (only if READY TO MAIL)
         if has_ready_to_mail_suffix(changespec.status):
             bindings.append(("m", "mail"))
@@ -293,8 +297,14 @@ class KeybindingFooter(Horizontal):
         elif len(workflows) > 1:
             bindings.append(("r", f"run ({len(workflows)} workflows)"))
 
-        # Run agent (shift+space)
-        bindings.append(("<S-space>", "run agent"))
+        # Run agent modal flow (space)
+        bindings.append(("<space>", "run agent"))
+
+        # Run agent from ChangeSpec (ctrl+space)
+        bindings.append(("<C-space>", "run agent (CL)"))
+
+        # Run background command
+        bindings.append(("!", "run cmd"))
 
         # Status change
         bindings.append(("s", "status"))
@@ -332,11 +342,11 @@ class KeybindingFooter(Horizontal):
         text = Text()
 
         # Sort bindings alphabetically (case-insensitive, lowercase before uppercase)
-        # Put <space> or <S-space> first
+        # Put <space> or <C-space> first
         sorted_bindings = sorted(
             bindings,
             key=lambda x: (
-                0 if x[0] in ("<space>", "<S-space>") else 1,
+                0 if x[0] in ("<space>", "<C-space>") else 1,
                 x[0].lower(),
                 x[0].isupper(),
                 x[0],

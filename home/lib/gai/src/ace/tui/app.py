@@ -124,12 +124,14 @@ class AceApp(
         # Axe control (global)
         Binding("X", "toggle_axe", "Start/Stop Axe", show=False),
         Binding("Q", "stop_axe_and_quit", "Stop & Quit", show=False),
-        # Agent actions (Agents tab only)
+        # Agent workflow (all tabs) - shows project/CL selection modals
         Binding("space", "start_custom_agent", "Run Agent", show=False),
         # Run agent from ChangeSpec (CLs tab only)
         Binding(
-            "shift+space", "start_agent_from_changespec", "Run Agent (CL)", show=False
+            "ctrl+space", "start_agent_from_changespec", "Run Agent (CL)", show=False
         ),
+        # Background command (all tabs)
+        Binding("exclamation_mark", "start_bgcmd", "Run Cmd", show=False),
         # Marking (CLs tab only)
         Binding("m", "toggle_mark", "Mark", show=False),
         Binding("u", "clear_marks", "Unmark All", show=False),
