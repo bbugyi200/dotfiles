@@ -61,7 +61,8 @@ _CLS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
         "Workflows & Agents",
         [
             ("r", "Run workflow"),
-            ("<space>", "Run agent on marked CLs (or current)"),
+            ("@", "Run agent on marked CLs (or current)"),
+            ("<space>", "Run agent from current CL"),
         ],
     ),
     (
@@ -105,7 +106,7 @@ _AGENTS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
     (
         "Agent Actions",
         [
-            ("<space>", "Run custom agent"),
+            ("@", "Run custom agent"),
             ("r", "Revive chat as agent"),
             ("x", "Kill / dismiss agent"),
             ("e", "Edit chat in editor"),
@@ -149,7 +150,7 @@ _AXE_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
     (
         "Background Commands",
         [
-            ("<space>", "Run background command"),
+            ("@", "Run background command"),
             ("X", "Kill current command (or toggle axe)"),
         ],
     ),

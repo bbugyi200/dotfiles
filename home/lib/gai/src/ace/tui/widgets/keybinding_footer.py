@@ -178,7 +178,7 @@ class KeybindingFooter(Horizontal):
             List of (key, label) tuples.
         """
         return [
-            ("<space>", "run agent"),
+            ("@", "run agent"),
             ("!", "run cmd"),
             ("x", "clear"),
             ("%", "copy"),
@@ -223,7 +223,7 @@ class KeybindingFooter(Horizontal):
             bindings.append(("l", "layout"))
 
         # Run custom agent
-        bindings.append(("<space>", "run agent"))
+        bindings.append(("@", "run agent"))
 
         # Run background command
         bindings.append(("!", "run cmd"))
@@ -297,11 +297,11 @@ class KeybindingFooter(Horizontal):
         elif len(workflows) > 1:
             bindings.append(("r", f"run ({len(workflows)} workflows)"))
 
-        # Run agent modal flow (space)
-        bindings.append(("<space>", "run agent"))
+        # Run agent modal flow (@)
+        bindings.append(("@", "run agent"))
 
-        # Run agent from ChangeSpec (R key)
-        bindings.append(("R", "run agent (CL)"))
+        # Run agent from ChangeSpec (space key)
+        bindings.append(("<space>", "run agent (CL)"))
 
         # Run background command
         bindings.append(("!", "run cmd"))

@@ -144,7 +144,7 @@ def test_keybinding_footer_axe_bindings() -> None:
     bindings = footer._compute_axe_bindings()
 
     assert len(bindings) == 4
-    assert bindings[0] == ("<space>", "run agent")
+    assert bindings[0] == ("@", "run agent")
     assert bindings[1] == ("!", "run cmd")
     assert bindings[2] == ("x", "clear")
     assert bindings[3] == ("%", "copy")

@@ -26,7 +26,7 @@ def test_keybinding_footer_agent_bindings_none_agent() -> None:
     bindings = footer._compute_agent_bindings(None)
     binding_keys = [b[0] for b in bindings]
 
-    assert "<space>" in binding_keys
+    assert "@" in binding_keys
     assert "x" not in binding_keys  # Kill/dismiss only when agent selected
 
 
@@ -39,7 +39,7 @@ def test_keybinding_footer_agent_bindings_running_agent() -> None:
     binding_keys = [b[0] for b in bindings]
 
     assert "x" in binding_keys  # Kill is available
-    assert "<space>" in binding_keys
+    assert "@" in binding_keys
 
 
 def test_keybinding_footer_agent_bindings_completed_agent_with_chat() -> None:
