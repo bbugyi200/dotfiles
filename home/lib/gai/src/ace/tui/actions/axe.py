@@ -380,14 +380,30 @@ class AxeMixin:
             self._update_axe_layout()
 
     def _update_bgcmd_count(self) -> None:
-        """Update the keybinding footer with bgcmd count."""
+        """Update the keybinding footer with bgcmd running/done counts."""
         from ..widgets import KeybindingFooter
 
+        running_count, done_count = self._get_bgcmd_counts()
         try:
             footer = self.query_one("#keybinding-footer", KeybindingFooter)  # type: ignore[attr-defined]
-            footer.set_bgcmd_count(len(self._bgcmd_slots))
+            footer.set_bgcmd_count(running_count, done_count)
         except Exception:
             pass
+
+    def _get_bgcmd_counts(self) -> tuple[int, int]:
+        """Get running and done counts for background commands.
+
+        Returns:
+            Tuple of (running_count, done_count).
+        """
+        running_count = 0
+        done_count = 0
+        for slot, _ in self._bgcmd_slots:
+            if is_slot_running(slot):
+                running_count += 1
+            else:
+                done_count += 1
+        return running_count, done_count
 
     def _update_axe_layout(self) -> None:
         """Update AXE tab layout based on whether bgcmds are running."""
@@ -445,7 +461,8 @@ class AxeMixin:
                 axe_dashboard.update_bgcmd_display(info, output, running)
 
             footer.set_axe_running(self.axe_running)
-            footer.set_bgcmd_count(len(self._bgcmd_slots))
+            running_count, done_count = self._get_bgcmd_counts()
+            footer.set_bgcmd_count(running_count, done_count)
             footer.update_axe_bindings()
 
             # Update bgcmd list if visible
@@ -489,10 +506,11 @@ class AxeMixin:
         """Update the keybinding footer with current axe state."""
         from ..widgets import KeybindingFooter
 
+        running_count, done_count = self._get_bgcmd_counts()
         try:
             footer = self.query_one("#keybinding-footer", KeybindingFooter)  # type: ignore[attr-defined]
             footer.set_axe_running(self.axe_running)
-            footer.set_bgcmd_count(len(self._bgcmd_slots))
+            footer.set_bgcmd_count(running_count, done_count)
         except Exception:
             pass
 

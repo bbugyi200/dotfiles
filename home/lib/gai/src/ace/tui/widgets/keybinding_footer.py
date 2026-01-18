@@ -23,7 +23,8 @@ class KeybindingFooter(Horizontal):
         self._axe_running: bool = False
         self._axe_starting: bool = False
         self._axe_stopping: bool = False
-        self._bgcmd_count: int = 0
+        self._bgcmd_running_count: int = 0
+        self._bgcmd_done_count: int = 0
 
     def compose(self) -> ComposeResult:
         """Compose the footer with bindings on left and status on right."""
@@ -57,13 +58,15 @@ class KeybindingFooter(Horizontal):
         self._axe_stopping = stopping
         self._update_status()
 
-    def set_bgcmd_count(self, count: int) -> None:
-        """Update the background command count.
+    def set_bgcmd_count(self, running_count: int, done_count: int) -> None:
+        """Update the background command counts.
 
         Args:
-            count: Number of running background commands.
+            running_count: Number of running background commands.
+            done_count: Number of done (completed) background commands.
         """
-        self._bgcmd_count = count
+        self._bgcmd_running_count = running_count
+        self._bgcmd_done_count = done_count
         self._update_status()
 
     def _update_status(self) -> None:
@@ -90,10 +93,19 @@ class KeybindingFooter(Horizontal):
         else:
             text.append(" STOPPED ", style="bold white on red")
 
-        # Add bgcmd count badge if there are background commands running
-        if self._bgcmd_count > 0:
+        # Add bgcmd badges if there are any background commands
+        if self._bgcmd_running_count > 0 or self._bgcmd_done_count > 0:
             text.append(" ")
-            text.append(f" [+{self._bgcmd_count}] ", style="bold black on #00D7AF")
+            # Running count badge: [*R] in cyan
+            if self._bgcmd_running_count > 0:
+                text.append(
+                    f" [*{self._bgcmd_running_count}] ", style="bold black on #00D7AF"
+                )
+            # Done count badge: [✓D] in gold
+            if self._bgcmd_done_count > 0:
+                text.append(
+                    f" [✓{self._bgcmd_done_count}] ", style="bold black on #FFD700"
+                )
 
         return text
 
