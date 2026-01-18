@@ -279,11 +279,11 @@ def test_keybinding_footer_always_has_edit_query() -> None:
 
 
 def test_keybinding_footer_always_has_run_agent() -> None:
-    """Test '<C-space>' (run agent from CL) binding is always visible on CLs tab."""
+    """Test 'R' (run agent from CL) binding is always visible on CLs tab."""
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Drafted")
 
     bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
-    assert "<C-space>" in binding_keys
+    assert "R" in binding_keys

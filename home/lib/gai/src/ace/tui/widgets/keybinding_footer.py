@@ -300,8 +300,8 @@ class KeybindingFooter(Horizontal):
         # Run agent modal flow (space)
         bindings.append(("<space>", "run agent"))
 
-        # Run agent from ChangeSpec (ctrl+space)
-        bindings.append(("<C-space>", "run agent (CL)"))
+        # Run agent from ChangeSpec (R key)
+        bindings.append(("R", "run agent (CL)"))
 
         # Run background command
         bindings.append(("!", "run cmd"))
@@ -342,11 +342,11 @@ class KeybindingFooter(Horizontal):
         text = Text()
 
         # Sort bindings alphabetically (case-insensitive, lowercase before uppercase)
-        # Put <space> or <C-space> first
+        # Put <space> first
         sorted_bindings = sorted(
             bindings,
             key=lambda x: (
-                0 if x[0] in ("<space>", "<C-space>") else 1,
+                0 if x[0] == "<space>" else 1,
                 x[0].lower(),
                 x[0].isupper(),
                 x[0],

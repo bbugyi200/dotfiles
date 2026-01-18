@@ -50,7 +50,7 @@ class AgentWorkflowMixin:
     _bulk_changespecs: list[ChangeSpec] | None = None
 
     def action_start_agent_from_changespec(self) -> None:
-        """Start agent from current ChangeSpec (CLs tab only, bound to ctrl+space)."""
+        """Start agent from current ChangeSpec (CLs tab only, bound to R)."""
         if self.current_tab != "changespecs":
             return
 

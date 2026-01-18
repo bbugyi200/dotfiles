@@ -127,9 +127,7 @@ class AceApp(
         # Agent workflow (all tabs) - shows project/CL selection modals
         Binding("space", "start_custom_agent", "Run Agent", show=False),
         # Run agent from ChangeSpec (CLs tab only)
-        Binding(
-            "ctrl+space", "start_agent_from_changespec", "Run Agent (CL)", show=False
-        ),
+        Binding("R", "start_agent_from_changespec", "Run Agent (CL)", show=False),
         # Background command (all tabs)
         Binding("exclamation_mark", "start_bgcmd", "Run Cmd", show=False),
         # Marking (CLs tab only)
