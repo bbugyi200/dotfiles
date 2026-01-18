@@ -351,3 +351,15 @@ class AceApp(
             axe_view.remove_class("hidden")
             # Load axe status
             self._load_axe_status()
+
+        # If help modal is open, refresh it with new tab context
+        from .modals import HelpModal
+
+        if isinstance(self.screen, HelpModal):
+            self.screen.dismiss(None)
+            self.push_screen(
+                HelpModal(
+                    current_tab=new_tab,
+                    active_query=self.canonical_query_string,
+                )
+            )
