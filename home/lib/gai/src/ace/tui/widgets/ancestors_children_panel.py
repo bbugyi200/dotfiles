@@ -24,25 +24,6 @@ def _get_simple_status_indicator(status: str) -> tuple[str, str]:
     return "W", "#FFD700"  # WIP - gold
 
 
-def _format_display_key(key: str) -> str:
-    """Format a keymap for display, omitting leading < or > for multi-char keys.
-
-    Single-character keys are displayed as-is. Multi-character keys have their
-    leading '<' or '>' stripped to reduce visual clutter.
-
-    Examples:
-        '<' -> '<'      (single char, unchanged)
-        '<<' -> '<'     (omit first '<')
-        '<a' -> 'a'     (omit '<')
-        '>' -> '>'      (single char, unchanged)
-        '>>' -> '>'     (omit first '>')
-        '>2' -> '2'     (omit '>')
-    """
-    if len(key) == 1:
-        return key
-    return key[1:]
-
-
 @dataclass
 class _ChildNode:
     """A node in the descendant tree."""
@@ -368,7 +349,7 @@ class AncestorsChildrenPanel(Static):
             for name in reversed(self._ancestors):
                 key = self._ancestor_keys.get(name, "")
                 text.append("\n")
-                text.append(f"  [{_format_display_key(key)}] ", style="bold #FFAF00")
+                text.append(f"  [{key}] ", style="bold #FFAF00")
                 text.append(name, style="#00D7AF")
                 status = self._ancestor_statuses.get(name, "WIP")
                 indicator, color = _get_simple_status_indicator(status)
@@ -400,9 +381,7 @@ class AncestorsChildrenPanel(Static):
 
             if node.depth == 0:
                 # Direct children: render with standard indentation
-                text.append(
-                    f"  [{_format_display_key(node.key)}] ", style="bold #FFAF00"
-                )
+                text.append(f"  [{node.key}] ", style="bold #FFAF00")
                 text.append(node.name, style="#00D7AF")
                 indicator, color = _get_simple_status_indicator(node.status)
                 if indicator:
@@ -416,7 +395,7 @@ class AncestorsChildrenPanel(Static):
                 # Descendants: render with tree branches
                 branch = "└─" if is_last else "├─"
                 text.append(f"{prefix}{branch} ", style="dim")
-                text.append(f"[{_format_display_key(node.key)}] ", style="bold #FFAF00")
+                text.append(f"[{node.key}] ", style="bold #FFAF00")
                 text.append(node.name, style="#00D7AF")
                 indicator, color = _get_simple_status_indicator(node.status)
                 if indicator:
