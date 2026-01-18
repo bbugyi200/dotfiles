@@ -527,8 +527,8 @@ class AxeMixin:
             pass
 
     def _update_axe_info_panel(self) -> None:
-        """Update the axe info panel with countdown."""
-        from ..widgets import AxeInfoPanel
+        """Update the axe info panel and dashboard status bar with countdown."""
+        from ..widgets import AxeDashboard, AxeInfoPanel
 
         try:
             axe_info = self.query_one("#axe-info-panel", AxeInfoPanel)  # type: ignore[attr-defined]
@@ -540,6 +540,10 @@ class AxeMixin:
                 running = is_slot_running(slot)
                 axe_info.update_bgcmd_status(slot, info, running)
             axe_info.update_countdown(self._countdown_remaining, self.refresh_interval)
+
+            # Also update dashboard status bar countdown
+            axe_dashboard = self.query_one("#axe-dashboard", AxeDashboard)  # type: ignore[attr-defined]
+            axe_dashboard.update_countdown(self._countdown_remaining)
         except Exception:
             pass
 

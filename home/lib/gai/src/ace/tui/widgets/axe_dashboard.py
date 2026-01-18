@@ -17,6 +17,20 @@ if TYPE_CHECKING:
 class _AxeStatusSection(Static):
     """Compact status bar showing runtime, PID, cycles, CLs, and runners."""
 
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize the status section."""
+        super().__init__(**kwargs)
+        # State for axe daemon mode
+        self._axe_mode = True
+        self._status: AxeStatus | None = None
+        self._is_running = False
+        self._full_cycles = 0
+        # State for bgcmd mode
+        self._bgcmd_info: BackgroundCommandInfo | None = None
+        self._bgcmd_running = False
+        # Shared state
+        self._countdown = 0
+
     def update_display(
         self,
         status: AxeStatus | None,
@@ -32,56 +46,12 @@ class _AxeStatusSection(Static):
             full_cycles: Number of full cycles run.
             countdown: Seconds until next auto-refresh.
         """
-        text = Text()
-
-        if is_running:
-            # Runtime (always show when running)
-            text.append("Runtime: ", style="bold #87D7FF")
-            if status and status.started_at:
-                runtime_str = _format_runtime(status.started_at)
-            else:
-                runtime_str = "..."
-            text.append(runtime_str, style="#00D7AF")
-
-            # PID
-            text.append("  │  ", style="dim")
-            text.append("PID: ", style="bold #87D7FF")
-            if status:
-                text.append(f"{status.pid}", style="#FF87D7 bold")
-            else:
-                text.append("...", style="#FF87D7 bold")
-
-            # Cycles
-            text.append("  │  ", style="dim")
-            text.append("Cycles: ", style="bold #87D7FF")
-            text.append(f"{full_cycles}", style="#00D7AF bold")
-
-            # CLs (filtered changespecs) - always show, "..." if no status
-            text.append("  │  ", style="dim")
-            text.append("CLs: ", style="bold #87D7FF")
-            if status:
-                text.append(f"{status.filtered_changespecs}", style="#00D7AF")
-            else:
-                text.append("...", style="#00D7AF")
-
-            # Runners (current/max) - always show, "..." if no status
-            text.append("  │  ", style="dim")
-            text.append("Runners: ", style="bold #87D7FF")
-            if status:
-                text.append(
-                    f"{status.current_runners}/{status.max_runners}", style="#00D7AF"
-                )
-            else:
-                text.append("...", style="#00D7AF")
-
-            # Countdown
-            if countdown > 0:
-                text.append("  │  ", style="dim")
-                text.append("(", style="dim")
-                text.append(f"{countdown}s", style="bold #FFD700")
-                text.append(")", style="dim")
-
-        self.update(text)
+        self._axe_mode = True
+        self._status = status
+        self._is_running = is_running
+        self._full_cycles = full_cycles
+        self._countdown = countdown
+        self._refresh_display()
 
     def update_bgcmd_display(
         self,
@@ -96,11 +66,92 @@ class _AxeStatusSection(Static):
             is_running: Whether the command is still running.
             countdown: Seconds until next auto-refresh.
         """
+        self._axe_mode = False
+        self._bgcmd_info = info
+        self._bgcmd_running = is_running
+        self._countdown = countdown
+        self._refresh_display()
+
+    def update_countdown(self, countdown: int) -> None:
+        """Update just the countdown display.
+
+        This is called every second by the countdown tick handler.
+
+        Args:
+            countdown: Seconds until next auto-refresh.
+        """
+        self._countdown = countdown
+        self._refresh_display()
+
+    def _refresh_display(self) -> None:
+        """Refresh the display based on current state."""
+        if self._axe_mode:
+            self._render_axe_display()
+        else:
+            self._render_bgcmd_display()
+
+    def _render_axe_display(self) -> None:
+        """Render the axe daemon status display."""
         text = Text()
+
+        if self._is_running:
+            # Runtime (always show when running)
+            text.append("Runtime: ", style="bold #87D7FF")
+            if self._status and self._status.started_at:
+                runtime_str = _format_runtime(self._status.started_at)
+            else:
+                runtime_str = "..."
+            text.append(runtime_str, style="#00D7AF")
+
+            # PID
+            text.append("  │  ", style="dim")
+            text.append("PID: ", style="bold #87D7FF")
+            if self._status:
+                text.append(f"{self._status.pid}", style="#FF87D7 bold")
+            else:
+                text.append("...", style="#FF87D7 bold")
+
+            # Cycles
+            text.append("  │  ", style="dim")
+            text.append("Cycles: ", style="bold #87D7FF")
+            text.append(f"{self._full_cycles}", style="#00D7AF bold")
+
+            # CLs (filtered changespecs) - always show, "..." if no status
+            text.append("  │  ", style="dim")
+            text.append("CLs: ", style="bold #87D7FF")
+            if self._status:
+                text.append(f"{self._status.filtered_changespecs}", style="#00D7AF")
+            else:
+                text.append("...", style="#00D7AF")
+
+            # Runners (current/max) - always show, "..." if no status
+            text.append("  │  ", style="dim")
+            text.append("Runners: ", style="bold #87D7FF")
+            if self._status:
+                text.append(
+                    f"{self._status.current_runners}/{self._status.max_runners}",
+                    style="#00D7AF",
+                )
+            else:
+                text.append("...", style="#00D7AF")
+
+            # Countdown
+            if self._countdown > 0:
+                text.append("  │  ", style="dim")
+                text.append("(auto-refresh in ", style="dim")
+                text.append(f"{self._countdown}s", style="bold #FFD700")
+                text.append(")", style="dim")
+
+        self.update(text)
+
+    def _render_bgcmd_display(self) -> None:
+        """Render the background command status display."""
+        text = Text()
+        info = self._bgcmd_info
 
         if info:
             # Status indicator
-            if is_running:
+            if self._bgcmd_running:
                 text.append("[RUNNING]", style="bold green")
             else:
                 text.append("[DONE]", style="bold #FFD700")  # Gold/yellow
@@ -138,10 +189,10 @@ class _AxeStatusSection(Static):
             text.append(runtime_str, style="#00D7AF")
 
             # Countdown
-            if countdown > 0:
+            if self._countdown > 0:
                 text.append("  │  ", style="dim")
-                text.append("(", style="dim")
-                text.append(f"{countdown}s", style="bold #FFD700")
+                text.append("(auto-refresh in ", style="dim")
+                text.append(f"{self._countdown}s", style="bold #FFD700")
                 text.append(")", style="dim")
 
         self.update(text)
@@ -245,6 +296,17 @@ class AxeDashboard(Static):
             # Convert ANSI codes to Rich Text for proper rendering
             text = Text.from_ansi(output)
             output_section.update(text)
+
+    def update_countdown(self, countdown: int) -> None:
+        """Update just the countdown display.
+
+        This is called every second by the countdown tick handler.
+
+        Args:
+            countdown: Seconds until next auto-refresh.
+        """
+        status_section = self.query_one("#axe-status-section", _AxeStatusSection)
+        status_section.update_countdown(countdown)
 
 
 def _format_uptime(seconds: int) -> str:
