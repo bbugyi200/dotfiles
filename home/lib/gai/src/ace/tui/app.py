@@ -231,7 +231,7 @@ class AceApp(
         self._axe_status: AxeStatus | None = None
         self._axe_metrics: AxeMetrics | None = None
         self._axe_output: str = ""
-        self._axe_pinned_to_bottom: bool = False
+        self._axe_pinned_to_bottom: bool = True
 
         # Background command state
         from .bgcmd import BackgroundCommandInfo
