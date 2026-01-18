@@ -224,8 +224,8 @@ class AceApp(
         self._agents_last_idx: int = 0
         self._agents: list[Agent] = []
         self._revived_agents: list[Agent] = []
-        self._has_run_agents: bool = False
-        self._hidden_non_run_count: int = 0
+        self._has_always_visible: bool = False
+        self._hidden_count: int = 0
 
         # Axe state
         self._axe_status: AxeStatus | None = None

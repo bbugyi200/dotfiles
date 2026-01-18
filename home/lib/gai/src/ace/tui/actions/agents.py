@@ -14,6 +14,23 @@ if TYPE_CHECKING:
 # Type alias for tab names
 TabName = Literal["changespecs", "agents", "axe"]
 
+# Statuses that indicate an agent is dismissable (shows "x dismiss" in footer)
+DISMISSABLE_STATUSES = {"NO CHANGES", "NEW CL", "NEW PROPOSAL", "REVIVED"}
+
+
+def _is_always_visible(agent: Agent) -> bool:
+    """Check if agent should always be visible (dismissable or running).
+
+    Args:
+        agent: The agent to check.
+
+    Returns:
+        True if agent should always be visible, False if it's hideable.
+    """
+    from ..models.agent import AgentType
+
+    return agent.agent_type == AgentType.RUNNING or agent.status in DISMISSABLE_STATUSES
+
 
 class AgentsMixin:
     """Mixin providing agent loading and display methods."""
@@ -27,8 +44,8 @@ class AgentsMixin:
     _countdown_remaining: int
     _agents: list[Agent]
     _revived_agents: list[Agent]
-    _has_run_agents: bool
-    _hidden_non_run_count: int
+    _has_always_visible: bool
+    _hidden_count: int
 
     def action_kill_agent(self) -> None:
         """Kill or dismiss agent, or clear AXE output depending on tab."""
@@ -314,17 +331,17 @@ class AgentsMixin:
         # Merge revived agents (they appear at the end of the list)
         all_agents.extend(self._revived_agents)
 
-        # Count agent types for filtering
-        run_agents = [a for a in all_agents if a.agent_type == AgentType.RUNNING]
-        non_run_agents = [a for a in all_agents if a.agent_type != AgentType.RUNNING]
+        # Categorize agents: always-visible (dismissable OR running) vs hideable
+        always_visible = [a for a in all_agents if _is_always_visible(a)]
+        hideable = [a for a in all_agents if not _is_always_visible(a)]
 
-        self._has_run_agents = len(run_agents) > 0
-        self._hidden_non_run_count = 0
+        self._has_always_visible = len(always_visible) > 0
+        self._hidden_count = 0
 
-        # Filter if we have run agents and hiding is enabled
-        if self._has_run_agents and self.hide_non_run_agents:
-            self._agents = run_agents
-            self._hidden_non_run_count = len(non_run_agents)
+        # Filter if we have always-visible agents and hiding is enabled
+        if self._has_always_visible and self.hide_non_run_agents and hideable:
+            self._agents = always_visible
+            self._hidden_count = len(hideable)
         else:
             self._agents = all_agents
 
@@ -374,8 +391,8 @@ class AgentsMixin:
         footer_widget.update_agent_bindings(
             current_agent,
             diff_visible=diff_visible,
-            has_run_agents=self._has_run_agents,
-            hidden_non_run_count=self._hidden_non_run_count,
+            has_always_visible=self._has_always_visible,
+            hidden_count=self._hidden_count,
             hide_non_run=self.hide_non_run_agents,
         )
 
