@@ -43,6 +43,7 @@ class AgentsMixin:
     hide_non_run_agents: bool
     _countdown_remaining: int
     _agents: list[Agent]
+    _agents_last_idx: int
     _revived_agents: list[Agent]
     _has_always_visible: bool
     _hidden_count: int
@@ -320,9 +321,12 @@ class AgentsMixin:
         from ..models import load_all_agents
         from ..models.agent import AgentType
 
-        # Capture current selection identity before reload
+        # Only capture selection identity if we're on the agents tab
+        # (current_idx refers to changespecs when on changespecs tab)
+        on_agents_tab = self.current_tab == "agents"
+
         selected_identity: tuple[AgentType, str, str | None] | None = None
-        if self._agents and 0 <= self.current_idx < len(self._agents):
+        if on_agents_tab and self._agents and 0 <= self.current_idx < len(self._agents):
             selected_identity = self._agents[self.current_idx].identity
 
         # Load fresh agent list
@@ -345,26 +349,38 @@ class AgentsMixin:
         else:
             self._agents = all_agents
 
-        # Try to restore selection by identity
+        # Calculate the new index
+        new_idx = self._agents_last_idx  # Start with saved position
+
         if selected_identity is not None:
+            # Try to restore selection by identity
             for idx, agent in enumerate(self._agents):
                 if agent.identity == selected_identity:
-                    self.current_idx = idx
+                    new_idx = idx
                     break
             else:
-                # Agent no longer in list - clamp to bounds
+                # Agent no longer in list - clamp saved position to bounds
                 if self._agents:
-                    self.current_idx = min(self.current_idx, len(self._agents) - 1)
+                    new_idx = min(self._agents_last_idx, len(self._agents) - 1)
                 else:
-                    self.current_idx = 0
+                    new_idx = 0
         else:
             # No previous selection - clamp to bounds
             if self._agents:
-                self.current_idx = min(self.current_idx, len(self._agents) - 1)
+                new_idx = min(self._agents_last_idx, len(self._agents) - 1)
             else:
-                self.current_idx = 0
+                new_idx = 0
 
-        self._refresh_agents_display()
+        # Only modify current_idx if we're on the agents tab
+        # Otherwise, update the saved position for when user switches to agents tab
+        if on_agents_tab:
+            self.current_idx = new_idx
+        else:
+            self._agents_last_idx = new_idx
+
+        # Only refresh display if on agents tab
+        if on_agents_tab:
+            self._refresh_agents_display()
 
     def _refresh_agents_display(self) -> None:
         """Refresh the agents tab display."""
