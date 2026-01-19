@@ -30,6 +30,7 @@ from .actions import (
     MarkingMixin,
     NavigationMixin,
     ProposalRebaseMixin,
+    RenameMixin,
     SyncMixin,
 )
 from .models import Agent
@@ -72,6 +73,7 @@ class AceApp(
     MarkingMixin,
     NavigationMixin,
     ProposalRebaseMixin,
+    RenameMixin,
     SyncMixin,
     BaseActionsMixin,
     HintActionsMixin,
@@ -135,6 +137,7 @@ class AceApp(
         Binding("exclamation_mark", "start_bgcmd", "Run Cmd", show=False),
         # Marking (CLs tab only)
         Binding("m", "toggle_mark", "Mark", show=False),
+        Binding("n", "rename_cl", "Rename", show=False),
         Binding("u", "clear_marks", "Unmark All", show=False),
         Binding("x", "kill_agent", "Kill", show=False),
         Binding("l", "toggle_layout", "Layout", show=False),

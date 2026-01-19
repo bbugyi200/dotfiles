@@ -292,6 +292,10 @@ class KeybindingFooter(Horizontal):
         if base_status in ("WIP", "Drafted", "Mailed"):
             bindings.append(("y", "sync"))
 
+        # Rename (only if status is not Submitted)
+        if base_status != "Submitted":
+            bindings.append(("n", "rename"))
+
         # Edit hooks
         bindings.append(("h", "hooks"))
 

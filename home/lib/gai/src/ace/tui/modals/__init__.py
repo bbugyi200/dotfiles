@@ -11,6 +11,7 @@ from .process_select_modal import ProcessSelection, ProcessSelectModal
 from .project_select_modal import ProjectSelectModal, SelectionItem
 from .prompt_history_modal import PromptHistoryModal
 from .query_edit_modal import QueryEditModal
+from .rename_cl_modal import RenameCLModal
 from .snippet_select_modal import SnippetSelectModal
 from .status_modal import StatusModal
 from .workflow_select_modal import WorkflowSelectModal
@@ -33,6 +34,7 @@ __all__ = [
     "ProjectSelectModal",
     "PromptHistoryModal",
     "QueryEditModal",
+    "RenameCLModal",
     "SelectionItem",
     "SnippetSelectModal",
     "StatusModal",

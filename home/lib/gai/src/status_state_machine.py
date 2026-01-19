@@ -367,7 +367,7 @@ def transition_changespec_status(
             logger.warning(f"Could not get workspace directory: {e}")
 
         # Update PARENT references in other ChangeSpecs
-        _update_parent_references_atomic(project_file, suffixed_name, base_name)
+        update_parent_references_atomic(project_file, suffixed_name, base_name)
 
         # Update RUNNING field entries
         update_running_field_cl_name(project_file, suffixed_name, base_name)
@@ -588,7 +588,7 @@ def update_changespec_parent_atomic(
         write_changespec_atomic(project_file, updated_content, commit_msg)
 
 
-def _update_parent_references_atomic(
+def update_parent_references_atomic(
     project_file: str, old_name: str, new_name: str
 ) -> None:
     """Update all PARENT field references from old_name to new_name.
