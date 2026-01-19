@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# Reset the current Mercurial repository to a specific commit hash.
+function run() {
+  if [[ $# -ne 1 ]]; then
+    echo "Usage: $0 <commit-hash>"
+    exit 1
+  fi
+
+  commit_hash="$1"
+  shift
+
+  hg revert --hidden -r "$commit_hash" $(branch_changes)
+  bb_hg_clean
+}
+
+run "$@"
