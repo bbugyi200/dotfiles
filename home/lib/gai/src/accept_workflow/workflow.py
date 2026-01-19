@@ -40,6 +40,7 @@ from workflow_utils import (
     get_project_from_workspace,
 )
 
+from .conflict_check import run_conflict_check
 from .parsing import find_proposal_entry, parse_proposal_entries, parse_proposal_id
 from .renumber import renumber_commit_entries
 
@@ -290,6 +291,12 @@ class AcceptWorkflow(BaseWorkflow):
             if not success:
                 print_status(f"Failed to update to branch: {error_msg}", "error")
                 return False
+
+            # Run conflict check for 2+ proposals (single proposal can't conflict)
+            if len(validated_proposals) >= 2:
+                conflict_result = run_conflict_check(workspace_dir, validated_proposals)
+                if not conflict_result.success:
+                    return False
 
             # Process each proposal in order
             accepted_proposals: list[tuple[int, str]] = []
