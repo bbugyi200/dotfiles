@@ -246,3 +246,143 @@ STATUS: WIP
         assert cs.bug is None
     finally:
         os.unlink(project_file)
+
+
+def test_add_changespec_inherits_parent_hooks() -> None:
+    """Test that child ChangeSpec inherits hooks from parent."""
+    # Create a project file with a parent ChangeSpec containing hooks
+    parent_content = """NAME: parent_feature
+DESCRIPTION:
+  Parent description
+CL: http://cl/11111
+STATUS: WIP
+HOOKS:
+  !$bb_hg_presubmit
+  bb_hg_lint
+  bb_rabbit_test //foo:parent_test
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write(parent_content)
+        project_file = f.name
+
+    try:
+        with patch(
+            "commit_workflow.changespec_operations.get_project_file_path",
+            return_value=project_file,
+        ):
+            result = add_changespec_to_project_file(
+                project="test_project",
+                cl_name="child_feature",
+                description="Child description",
+                parent="parent_feature",
+                cl_url="http://cl/22222",
+                # initial_hooks contains !$bb_hg_presubmit (should NOT be duplicated)
+                initial_hooks=["!$bb_hg_presubmit"],
+            )
+
+        assert result is True
+
+        with open(project_file, encoding="utf-8") as f:
+            content = f.read()
+
+        # Verify child ChangeSpec exists
+        assert "NAME: child_feature__1" in content
+
+        # Parse to verify hooks - find the child ChangeSpec
+        changespecs = parse_project_file(project_file)
+        child_cs = next(cs for cs in changespecs if cs.name == "child_feature__1")
+        assert child_cs.hooks is not None
+
+        # Get hook commands from the child
+        child_hooks = [h.command for h in child_cs.hooks]
+
+        # Should have: initial hook + inherited parent hooks (minus duplicate)
+        assert "!$bb_hg_presubmit" in child_hooks  # From initial_hooks
+        assert "bb_hg_lint" in child_hooks  # Inherited from parent
+        assert "bb_rabbit_test //foo:parent_test" in child_hooks  # Inherited
+
+        # !$bb_hg_presubmit should NOT be duplicated
+        assert child_hooks.count("!$bb_hg_presubmit") == 1
+    finally:
+        os.unlink(project_file)
+
+
+def test_add_changespec_inherits_parent_hooks_order() -> None:
+    """Test that inherited parent hooks come after initial hooks."""
+    parent_content = """NAME: parent_feature
+DESCRIPTION:
+  Parent description
+CL: http://cl/11111
+STATUS: WIP
+HOOKS:
+  bb_hg_lint
+  bb_rabbit_test //foo:parent_test
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write(parent_content)
+        project_file = f.name
+
+    try:
+        with patch(
+            "commit_workflow.changespec_operations.get_project_file_path",
+            return_value=project_file,
+        ):
+            result = add_changespec_to_project_file(
+                project="test_project",
+                cl_name="child_feature",
+                description="Child description",
+                parent="parent_feature",
+                cl_url="http://cl/22222",
+                initial_hooks=["!$bb_hg_presubmit", "bb_rabbit_test //foo:child_test"],
+            )
+
+        assert result is True
+
+        # Parse to verify hook order
+        changespecs = parse_project_file(project_file)
+        child_cs = next(cs for cs in changespecs if cs.name == "child_feature__1")
+        assert child_cs.hooks is not None
+        child_hooks = [h.command for h in child_cs.hooks]
+
+        # Order should be: initial hooks first, then inherited parent hooks
+        assert child_hooks == [
+            "!$bb_hg_presubmit",  # From initial_hooks
+            "bb_rabbit_test //foo:child_test",  # From initial_hooks
+            "bb_hg_lint",  # Inherited from parent
+            "bb_rabbit_test //foo:parent_test",  # Inherited from parent
+        ]
+    finally:
+        os.unlink(project_file)
+
+
+def test_add_changespec_no_parent_hooks_inherited_when_no_parent() -> None:
+    """Test that no hooks are inherited when there's no parent."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write("")
+        project_file = f.name
+
+    try:
+        with patch(
+            "commit_workflow.changespec_operations.get_project_file_path",
+            return_value=project_file,
+        ):
+            result = add_changespec_to_project_file(
+                project="test_project",
+                cl_name="orphan_feature",
+                description="Orphan description",
+                parent=None,  # No parent
+                cl_url="http://cl/33333",
+                initial_hooks=["!$bb_hg_presubmit"],
+            )
+
+        assert result is True
+
+        changespecs = parse_project_file(project_file)
+        cs = changespecs[0]
+        assert cs.hooks is not None
+        child_hooks = [h.command for h in cs.hooks]
+
+        # Should only have initial hooks
+        assert child_hooks == ["!$bb_hg_presubmit"]
+    finally:
+        os.unlink(project_file)

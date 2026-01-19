@@ -150,14 +150,6 @@ def add_changespec_to_project_file(
                 commits_lines.append(f"      | DIFF: {diff_path}\n")
         commits_block = "".join(commits_lines)
 
-    # Build HOOKS field if initial_hooks provided
-    hooks_block = ""
-    if initial_hooks:
-        hooks_lines = ["HOOKS:\n"]
-        for hook_cmd in initial_hooks:
-            hooks_lines.append(f"  {hook_cmd}\n")
-        hooks_block = "".join(hooks_lines)
-
     try:
         with changespec_lock(project_file):
             with open(project_file, encoding="utf-8") as f:
@@ -175,23 +167,29 @@ def add_changespec_to_project_file(
             suffix_num = get_next_suffix_number(cl_name, existing_names)
             cl_name = f"{cl_name}__{suffix_num}"
 
-            # Build the ChangeSpec block with the suffixed name
-            changespec_block = f"""
-
-NAME: {cl_name}
-DESCRIPTION:
-{formatted_description}
-{parent_line}{bug_line}CL: {cl_url}
-STATUS: WIP
-{commits_block}{hooks_block}"""
-
-            # Determine insertion point
+            # Determine insertion point and collect parent hooks
+            parent_hooks_to_add: list[str] = []
             if parent:
                 # Find the end of the parent ChangeSpec
                 parent_end = _find_changespec_end_line(lines, parent)
                 if parent_end is not None:
                     # Insert after parent ChangeSpec
                     insert_index = parent_end + 1
+
+                    # Get parent hooks to inherit
+                    from ace.changespec import parse_project_file
+
+                    changespecs = parse_project_file(project_file)
+                    for cs in changespecs:
+                        if cs.name == parent and cs.hooks:
+                            # Collect existing hook commands to avoid duplicates
+                            existing_hooks = (
+                                set(initial_hooks) if initial_hooks else set()
+                            )
+                            for hook_entry in cs.hooks:
+                                if hook_entry.command not in existing_hooks:
+                                    parent_hooks_to_add.append(hook_entry.command)
+                            break
                 else:
                     # Parent not found, append to end
                     print_status(
@@ -203,6 +201,25 @@ STATUS: WIP
             else:
                 # No parent - append to end of file
                 insert_index = len(lines)
+
+            # Build HOOKS field with initial hooks + inherited parent hooks
+            all_hooks = list(initial_hooks or []) + parent_hooks_to_add
+            hooks_block = ""
+            if all_hooks:
+                hooks_lines = ["HOOKS:\n"]
+                for hook_cmd in all_hooks:
+                    hooks_lines.append(f"  {hook_cmd}\n")
+                hooks_block = "".join(hooks_lines)
+
+            # Build the ChangeSpec block with the suffixed name
+            changespec_block = f"""
+
+NAME: {cl_name}
+DESCRIPTION:
+{formatted_description}
+{parent_line}{bug_line}CL: {cl_url}
+STATUS: WIP
+{commits_block}{hooks_block}"""
 
             # Insert the new ChangeSpec
             lines.insert(insert_index, changespec_block)
