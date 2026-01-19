@@ -38,6 +38,8 @@ class EventHandlersMixin:
     _agents_last_idx: int
     _ancestor_mode_active: bool
     _child_mode_active: bool
+    _hint_mode_active: bool
+    _accept_mode_active: bool
 
     def _on_auto_refresh(self) -> None:
         """Auto-refresh handler called by timer."""
@@ -45,6 +47,15 @@ class EventHandlersMixin:
 
         # Always poll axe status regardless of tab (for STARTING/STOPPING states)
         self._load_axe_status()  # type: ignore[attr-defined]
+
+        # Skip changespec refresh if user is in an input mode
+        # (prompt bar or hint bar is active)
+        if getattr(self, "_prompt_context", None) is not None:
+            return
+        if getattr(self, "_hint_mode_active", False):
+            return
+        if getattr(self, "_accept_mode_active", False):
+            return
 
         # Tab-specific refreshes
         if self.current_tab == "changespecs":
