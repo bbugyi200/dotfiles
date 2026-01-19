@@ -288,6 +288,10 @@ class KeybindingFooter(Horizontal):
         if base_status in ("WIP", "Drafted", "Mailed"):
             bindings.append(("b", "rebase"))
 
+        # Sync (only if status is WIP, Drafted, or Mailed)
+        if base_status in ("WIP", "Drafted", "Mailed"):
+            bindings.append(("y", "sync"))
+
         # Edit hooks
         bindings.append(("h", "hooks"))
 

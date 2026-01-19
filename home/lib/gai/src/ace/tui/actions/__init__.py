@@ -11,6 +11,7 @@ from .hints import HintActionsMixin
 from .marking import MarkingMixin
 from .navigation import NavigationMixin
 from .proposal_rebase import ProposalRebaseMixin
+from .sync import SyncMixin
 
 __all__ = [
     "AgentsMixin",
@@ -24,4 +25,5 @@ __all__ = [
     "MarkingMixin",
     "NavigationMixin",
     "ProposalRebaseMixin",
+    "SyncMixin",
 ]

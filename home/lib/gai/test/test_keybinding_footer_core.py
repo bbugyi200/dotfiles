@@ -235,9 +235,42 @@ def test_keybinding_footer_always_has_status() -> None:
 
 
 def test_keybinding_footer_refresh_hidden() -> None:
-    """Test 'y' (refresh) binding is hidden from footer (only in help popup)."""
+    """Test 'R' (refresh) binding is hidden from footer (only in help popup)."""
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Drafted")
+
+    bindings = footer._compute_available_bindings(changespec)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "R" not in binding_keys
+
+
+def test_keybinding_footer_sync_visible_for_wip() -> None:
+    """Test 'y' (sync) binding is visible for WIP status."""
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="WIP")
+
+    bindings = footer._compute_available_bindings(changespec)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "y" in binding_keys
+
+
+def test_keybinding_footer_sync_visible_for_drafted() -> None:
+    """Test 'y' (sync) binding is visible for Drafted status."""
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Drafted")
+
+    bindings = footer._compute_available_bindings(changespec)
+    binding_keys = [b[0] for b in bindings]
+
+    assert "y" in binding_keys
+
+
+def test_keybinding_footer_sync_hidden_for_submitted() -> None:
+    """Test 'y' (sync) binding is hidden for Submitted status."""
+    footer = KeybindingFooter()
+    changespec = _make_changespec(status="Submitted")
 
     bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
