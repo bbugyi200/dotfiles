@@ -6,11 +6,11 @@ from unittest.mock import MagicMock, patch
 
 from ace.changespec import ChangeSpec, MentorEntry, MentorStatusLine
 from ace.revert import (
-    _get_next_reverted_suffix,
     _has_children,
     _has_valid_cl,
     revert_changespec,
 )
+from gai_utils import get_next_suffix_number
 from running_field import _WorkspaceClaim
 
 
@@ -102,43 +102,31 @@ def test__has_children_ignores_reverted_children() -> None:
     Path(reverted_child.file_path).unlink()
 
 
-def test__get_next_reverted_suffix_first_revert() -> None:
-    """Test _get_next_reverted_suffix returns 1 for first revert."""
-    changespec = _create_test_changespec(name="test_feature")
-    all_changespecs = [changespec]
+def test_get_next_suffix_number_first_revert() -> None:
+    """Test get_next_suffix_number returns 1 for first revert."""
+    existing_names = {"test_feature"}
 
-    suffix = _get_next_reverted_suffix("test_feature", all_changespecs)
+    suffix = get_next_suffix_number("test_feature", existing_names)
 
     assert suffix == 1
-    Path(changespec.file_path).unlink()
 
 
-def test__get_next_reverted_suffix_second_revert() -> None:
-    """Test _get_next_reverted_suffix returns 2 when __1 already exists."""
-    original = _create_test_changespec(name="test_feature")
-    reverted1 = _create_test_changespec(name="test_feature__1")
-    all_changespecs = [original, reverted1]
+def test_get_next_suffix_number_second_revert() -> None:
+    """Test get_next_suffix_number returns 2 when __1 already exists."""
+    existing_names = {"test_feature", "test_feature__1"}
 
-    suffix = _get_next_reverted_suffix("test_feature", all_changespecs)
+    suffix = get_next_suffix_number("test_feature", existing_names)
 
     assert suffix == 2
-    Path(original.file_path).unlink()
-    Path(reverted1.file_path).unlink()
 
 
-def test__get_next_reverted_suffix_fills_gap() -> None:
-    """Test _get_next_reverted_suffix finds lowest available number."""
-    original = _create_test_changespec(name="test_feature")
-    reverted2 = _create_test_changespec(name="test_feature__2")
-    reverted3 = _create_test_changespec(name="test_feature__3")
-    all_changespecs = [original, reverted2, reverted3]
+def test_get_next_suffix_number_fills_gap() -> None:
+    """Test get_next_suffix_number finds lowest available number."""
+    existing_names = {"test_feature", "test_feature__2", "test_feature__3"}
 
-    suffix = _get_next_reverted_suffix("test_feature", all_changespecs)
+    suffix = get_next_suffix_number("test_feature", existing_names)
 
     assert suffix == 1
-    Path(original.file_path).unlink()
-    Path(reverted2.file_path).unlink()
-    Path(reverted3.file_path).unlink()
 
 
 def test_revert_changespec_fails_without_cl() -> None:

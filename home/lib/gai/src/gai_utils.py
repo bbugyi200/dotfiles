@@ -87,6 +87,34 @@ def strip_reverted_suffix(name: str) -> str:
     return match.group(1) if match else name
 
 
+def has_suffix(name: str) -> bool:
+    """Check if a ChangeSpec name has a __<N> suffix.
+
+    Args:
+        name: ChangeSpec name to check
+
+    Returns:
+        True if name has __<N> suffix, False otherwise
+    """
+    return bool(re.match(r"^.+__\d+$", name))
+
+
+def get_next_suffix_number(base_name: str, existing_names: set[str]) -> int:
+    """Find the lowest positive integer N such that `<base_name>__<N>` doesn't exist.
+
+    Args:
+        base_name: The base name to append suffix to
+        existing_names: Set of existing names to check for conflicts
+
+    Returns:
+        The lowest available suffix number
+    """
+    n = 1
+    while f"{base_name}__{n}" in existing_names:
+        n += 1
+    return n
+
+
 def shorten_path(path: str) -> str:
     """Shorten a file path by replacing home directory with ~.
 

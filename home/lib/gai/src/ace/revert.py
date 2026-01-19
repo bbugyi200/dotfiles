@@ -10,7 +10,11 @@ from rich.console import Console
 
 # Add parent directory to path for status_state_machine import
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from gai_utils import get_workspace_directory_for_changespec
+from gai_utils import (
+    get_next_suffix_number,
+    get_workspace_directory_for_changespec,
+    has_suffix,
+)
 from running_field import (
     get_claimed_workspaces,
     release_workspace,
@@ -83,25 +87,6 @@ def _has_children(changespec: ChangeSpec, all_changespecs: list[ChangeSpec]) -> 
         if cs.parent == changespec.name and cs.status != "Reverted":
             return True
     return False
-
-
-def _get_next_reverted_suffix(base_name: str, all_changespecs: list[ChangeSpec]) -> int:
-    """Find the lowest positive integer N such that `<base_name>__<N>` doesn't exist.
-
-    Args:
-        base_name: The base name to append suffix to
-        all_changespecs: All ChangeSpecs to check for conflicts
-
-    Returns:
-        The lowest available suffix number
-    """
-    existing_names = {cs.name for cs in all_changespecs}
-
-    n = 1
-    while f"{base_name}__{n}" in existing_names:
-        n += 1
-
-    return n
 
 
 def update_changespec_name_atomic(
@@ -337,8 +322,13 @@ def revert_changespec(
         return (False, f"Workspace directory does not exist: {workspace_dir}")
 
     # Calculate new name with suffix
-    suffix = _get_next_reverted_suffix(changespec.name, all_changespecs)
-    new_name = f"{changespec.name}__{suffix}"
+    # Skip adding suffix if this is a WIP ChangeSpec that already has one
+    if changespec.status == "WIP" and has_suffix(changespec.name):
+        new_name = changespec.name  # Keep existing name
+    else:
+        existing_names = {cs.name for cs in all_changespecs}
+        suffix = get_next_suffix_number(changespec.name, existing_names)
+        new_name = f"{changespec.name}__{suffix}"
 
     if console:
         console.print(f"[cyan]Renaming ChangeSpec to: {new_name}[/cyan]")
@@ -360,18 +350,23 @@ def revert_changespec(
     if console:
         console.print(f"[green]Pruned revision: {changespec.name}[/green]")
 
-    # Rename the ChangeSpec
-    try:
-        update_changespec_name_atomic(changespec.file_path, changespec.name, new_name)
-        # Also update any RUNNING field entries that reference the old name
-        update_running_field_cl_name(changespec.file_path, changespec.name, new_name)
-    except Exception as e:
-        return (False, f"Failed to rename ChangeSpec: {e}")
+    # Rename the ChangeSpec (skip if name is unchanged, e.g., WIP with existing suffix)
+    if new_name != changespec.name:
+        try:
+            update_changespec_name_atomic(
+                changespec.file_path, changespec.name, new_name
+            )
+            # Also update any RUNNING field entries that reference the old name
+            update_running_field_cl_name(
+                changespec.file_path, changespec.name, new_name
+            )
+        except Exception as e:
+            return (False, f"Failed to rename ChangeSpec: {e}")
 
-    if console:
-        console.print(
-            f"[green]Renamed ChangeSpec: {changespec.name} → {new_name}[/green]"
-        )
+        if console:
+            console.print(
+                f"[green]Renamed ChangeSpec: {changespec.name} → {new_name}[/green]"
+            )
 
     # Update STATUS to Reverted
     success, _, error = transition_changespec_status(

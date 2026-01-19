@@ -130,7 +130,7 @@ def add_changespec_to_project_file(
     description_lines = description.strip().split("\n")
     formatted_description = "\n".join(f"  {line}" for line in description_lines)
 
-    # Build the ChangeSpec block (with leading newlines for separation)
+    # Build partial ChangeSpec components (name added after suffix computation)
     # Only include PARENT line if parent is specified
     parent_line = f"PARENT: {parent}\n" if parent else ""
     # Only include BUG line if bug is specified
@@ -158,7 +158,25 @@ def add_changespec_to_project_file(
             hooks_lines.append(f"  {hook_cmd}\n")
         hooks_block = "".join(hooks_lines)
 
-    changespec_block = f"""
+    try:
+        with changespec_lock(project_file):
+            with open(project_file, encoding="utf-8") as f:
+                lines = f.readlines()
+
+            # Extract existing names to compute unique suffix
+            existing_names = set()
+            for line in lines:
+                if line.startswith("NAME: "):
+                    existing_names.add(line[6:].strip())
+
+            # Add __<N> suffix to make name unique (for WIP ChangeSpecs)
+            from gai_utils import get_next_suffix_number
+
+            suffix_num = get_next_suffix_number(cl_name, existing_names)
+            cl_name = f"{cl_name}__{suffix_num}"
+
+            # Build the ChangeSpec block with the suffixed name
+            changespec_block = f"""
 
 NAME: {cl_name}
 DESCRIPTION:
@@ -166,11 +184,6 @@ DESCRIPTION:
 {parent_line}{bug_line}CL: {cl_url}
 STATUS: WIP
 {commits_block}{hooks_block}"""
-
-    try:
-        with changespec_lock(project_file):
-            with open(project_file, encoding="utf-8") as f:
-                lines = f.readlines()
 
             # Determine insertion point
             if parent:

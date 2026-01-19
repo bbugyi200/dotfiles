@@ -253,6 +253,10 @@ def transition_changespec_status(
         - old_status: Previous status value (None if not found)
         - error_msg: Error message if failed (None if succeeded)
     """
+    # Track if we need to strip suffix after lock releases
+    suffix_strip_info: tuple[str, str] | None = None
+    result: tuple[bool, str | None, str | None] | None = None
+
     with changespec_lock(project_file):
         with open(project_file, encoding="utf-8") as f:
             lines = f.readlines()
@@ -263,10 +267,9 @@ def transition_changespec_status(
         if old_status is None:
             error_msg = f"ChangeSpec '{changespec_name}' not found in {project_file}"
             logger.error(error_msg)
-            return (False, None, error_msg)
-
-        # Skip validation if not requested (e.g., for rollback operations)
-        if not validate:
+            result = (False, None, error_msg)
+        elif not validate:
+            # Skip validation if not requested (e.g., for rollback operations)
             logger.info(
                 f"Transitioning {changespec_name}: '{old_status}' -> '{new_status}' "
                 f"(validation skipped)"
@@ -284,10 +287,18 @@ def transition_changespec_status(
 
                 clear_mentor_wip_flags(project_file, changespec_name)
 
-            return (True, old_status, None)
+                # Check if we need to strip suffix (done outside lock)
+                from gai_utils import has_suffix, strip_reverted_suffix
 
-        # Validate transition
-        if not _is_valid_transition(old_status, new_status):
+                if has_suffix(changespec_name):
+                    suffix_strip_info = (
+                        changespec_name,
+                        strip_reverted_suffix(changespec_name),
+                    )
+
+            result = (True, old_status, None)
+        elif not _is_valid_transition(old_status, new_status):
+            # Validate transition
             error_msg = (
                 f"Invalid status transition for '{changespec_name}': "
                 f"'{old_status}' -> '{new_status}'. "
@@ -295,29 +306,56 @@ def transition_changespec_status(
                 f"{VALID_TRANSITIONS.get(old_status, [])}"
             )
             logger.error(error_msg)
-            return (False, old_status, error_msg)
+            result = (False, old_status, error_msg)
+        else:
+            # Perform transition
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            logger.info(
+                f"[{timestamp}] Transitioning {changespec_name}: "
+                f"'{old_status}' -> '{new_status}'"
+            )
 
-        # Perform transition
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        logger.info(
-            f"[{timestamp}] Transitioning {changespec_name}: "
-            f"'{old_status}' -> '{new_status}'"
-        )
+            updated_content = _apply_status_update(lines, changespec_name, new_status)
+            write_changespec_atomic(
+                project_file,
+                updated_content,
+                f"Update STATUS to {new_status} for {changespec_name}",
+            )
 
-        updated_content = _apply_status_update(lines, changespec_name, new_status)
-        write_changespec_atomic(
-            project_file,
-            updated_content,
-            f"Update STATUS to {new_status} for {changespec_name}",
-        )
+            # Clear #WIP from mentors when transitioning from WIP to Drafted
+            if old_status == "WIP" and new_status == "Drafted":
+                from ace.mentors import clear_mentor_wip_flags
 
-        # Clear #WIP from mentors when transitioning from WIP to Drafted
-        if old_status == "WIP" and new_status == "Drafted":
-            from ace.mentors import clear_mentor_wip_flags
+                clear_mentor_wip_flags(project_file, changespec_name)
 
-            clear_mentor_wip_flags(project_file, changespec_name)
+                # Check if we need to strip suffix (done outside lock)
+                from gai_utils import has_suffix, strip_reverted_suffix
 
-        return (True, old_status, None)
+                if has_suffix(changespec_name):
+                    suffix_strip_info = (
+                        changespec_name,
+                        strip_reverted_suffix(changespec_name),
+                    )
+
+            result = (True, old_status, None)
+
+    # Strip __<N> suffix when transitioning from WIP to Drafted (outside lock)
+    if suffix_strip_info is not None:
+        suffixed_name, base_name = suffix_strip_info
+        from ace.revert import update_changespec_name_atomic
+        from running_field import update_running_field_cl_name
+
+        # Update NAME field
+        update_changespec_name_atomic(project_file, suffixed_name, base_name)
+
+        # Update PARENT references in other ChangeSpecs
+        _update_parent_references_atomic(project_file, suffixed_name, base_name)
+
+        # Update RUNNING field entries
+        update_running_field_cl_name(project_file, suffixed_name, base_name)
+
+    assert result is not None
+    return result
 
 
 # Suffix appended to STATUS line when ChangeSpec is ready to be mailed
@@ -490,3 +528,35 @@ def update_changespec_parent_atomic(
         updated_content = _apply_parent_update(lines, changespec_name, new_parent)
 
         write_changespec_atomic(project_file, updated_content, commit_msg)
+
+
+def _update_parent_references_atomic(
+    project_file: str, old_name: str, new_name: str
+) -> None:
+    """Update all PARENT field references from old_name to new_name.
+
+    Acquires a lock for the entire read-modify-write cycle.
+
+    Args:
+        project_file: Path to the ProjectSpec file
+        old_name: The old name to replace in PARENT fields
+        new_name: The new name to use in PARENT fields
+    """
+    with changespec_lock(project_file):
+        with open(project_file, encoding="utf-8") as f:
+            lines = f.readlines()
+
+        updated_lines = []
+        for line in lines:
+            if line.startswith("PARENT: "):
+                current_parent = line[8:].strip()
+                if current_parent == old_name:
+                    updated_lines.append(f"PARENT: {new_name}\n")
+                    continue
+            updated_lines.append(line)
+
+        write_changespec_atomic(
+            project_file,
+            "".join(updated_lines),
+            f"Update PARENT references from {old_name} to {new_name}",
+        )
