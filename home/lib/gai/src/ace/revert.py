@@ -20,7 +20,11 @@ from running_field import (
     release_workspace,
     update_running_field_cl_name,
 )
-from status_state_machine import reset_changespec_cl, transition_changespec_status
+from status_state_machine import (
+    reset_changespec_cl,
+    transition_changespec_status,
+    update_parent_references_atomic,
+)
 
 from .changespec import (
     ChangeSpec,
@@ -358,6 +362,10 @@ def revert_changespec(
             )
             # Also update any RUNNING field entries that reference the old name
             update_running_field_cl_name(
+                changespec.file_path, changespec.name, new_name
+            )
+            # Update PARENT fields in any child ChangeSpecs
+            update_parent_references_atomic(
                 changespec.file_path, changespec.name, new_name
             )
         except Exception as e:
