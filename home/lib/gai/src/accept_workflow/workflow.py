@@ -22,13 +22,7 @@ from ace.hooks.processes import (
 )
 from ace.mentors import update_changespec_mentors_field
 from ace.operations import update_to_changespec
-from commit_utils import (
-    apply_diff_to_workspace,
-    clean_workspace,
-    get_current_commit_hash,
-    reset_to_commit,
-    run_bb_hg_clean,
-)
+from commit_utils import apply_diff_to_workspace, clean_workspace, run_bb_hg_clean
 from rich_utils import print_status
 from running_field import (
     claim_workspace,
@@ -66,48 +60,6 @@ def _extract_mentor_workflow_from_suffix(suffix: str) -> str | None:
         timestamp = match.group(2)
         return f"axe(mentor)-{mentor_name}-{timestamp}"
     return None
-
-
-def _rollback_and_return_false(
-    workspace_dir: str,
-    original_commit_hash: str | None,
-    proposal_id: str,
-    error_context: str,
-) -> bool:
-    """Rollback workspace state and return False.
-
-    If a commit hash is available, attempts to reset to that commit using
-    bb_hg_reset. Falls back to clean_workspace() if reset fails or no hash
-    is available.
-
-    Args:
-        workspace_dir: The workspace directory to rollback.
-        original_commit_hash: The commit hash to reset to, or None.
-        proposal_id: The proposal ID for error messages (e.g., "2a").
-        error_context: Description of where the error occurred.
-
-    Returns:
-        Always returns False.
-    """
-    if original_commit_hash:
-        reset_success, reset_error = reset_to_commit(
-            workspace_dir, original_commit_hash
-        )
-        if reset_success:
-            print_status(
-                f"Rolled back workspace to {original_commit_hash[:12]} "
-                f"after {error_context} for proposal ({proposal_id})",
-                "warning",
-            )
-        else:
-            print_status(
-                f"bb_hg_reset failed: {reset_error}. Falling back to clean_workspace.",
-                "warning",
-            )
-            clean_workspace(workspace_dir)
-    else:
-        clean_workspace(workspace_dir)
-    return False
 
 
 class AcceptWorkflow(BaseWorkflow):
@@ -339,13 +291,6 @@ class AcceptWorkflow(BaseWorkflow):
                 print_status(f"Failed to update to branch: {error_msg}", "error")
                 return False
 
-            # Capture commit hash for potential rollback
-            original_commit_hash, hash_error = get_current_commit_hash(workspace_dir)
-            if not original_commit_hash:
-                print_status(
-                    f"Warning: Could not get commit hash: {hash_error}", "warning"
-                )
-
             # Process each proposal in order
             accepted_proposals: list[tuple[int, str]] = []
             extra_msgs: list[str | None] = []
@@ -367,12 +312,8 @@ class AcceptWorkflow(BaseWorkflow):
                         f"Failed to apply proposal ({base_num}{letter}): {error_msg}",
                         "error",
                     )
-                    return _rollback_and_return_false(
-                        workspace_dir,
-                        original_commit_hash,
-                        f"{base_num}{letter}",
-                        "hg import failure",
-                    )
+                    clean_workspace(workspace_dir)
+                    return False
 
                 print_status(f"Applied proposal ({base_num}{letter}).", "success")
 
@@ -404,12 +345,8 @@ class AcceptWorkflow(BaseWorkflow):
                     )
                     if result.returncode != 0:
                         print_status(f"bb_hg_amend failed: {result.stderr}", "error")
-                        return _rollback_and_return_false(
-                            workspace_dir,
-                            original_commit_hash,
-                            f"{base_num}{letter}",
-                            "bb_hg_amend failure",
-                        )
+                        clean_workspace(workspace_dir)
+                        return False
                 except FileNotFoundError:
                     print_status("bb_hg_amend command not found", "error")
                     return False

@@ -19,8 +19,6 @@ from commit_utils.modifiers import (
 from commit_utils.workspace import (
     apply_diff_to_workspace,
     clean_workspace,
-    get_current_commit_hash,
-    reset_to_commit,
     run_bb_hg_clean,
     save_diff,
 )
@@ -30,11 +28,9 @@ __all__ = [
     "add_proposed_commit_entry",
     "apply_diff_to_workspace",
     "clean_workspace",
-    "get_current_commit_hash",
     "get_next_commit_number",
     "reject_all_new_proposals",
     "reject_proposals_and_set_status_atomic",
-    "reset_to_commit",
     "run_bb_hg_clean",
     "save_diff",
     "update_commit_entry_suffix",
