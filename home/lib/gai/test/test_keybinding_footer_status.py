@@ -138,16 +138,14 @@ def test_keybinding_footer_set_axe_stopping() -> None:
 
 
 def test_keybinding_footer_axe_bindings() -> None:
-    """Test that AXE tab shows run agent, run cmd, clear, and copy bindings."""
+    """Test that AXE tab shows clear and copy bindings."""
     footer = KeybindingFooter()
 
     bindings = footer._compute_axe_bindings()
 
-    assert len(bindings) == 4
-    assert bindings[0] == ("@", "run agent")
-    assert bindings[1] == ("!", "run cmd")
-    assert bindings[2] == ("x", "clear")
-    assert bindings[3] == ("%", "copy")
+    assert len(bindings) == 2
+    assert bindings[0] == ("x", "clear")
+    assert bindings[1] == ("%", "copy")
 
 
 def test_keybinding_footer_set_bgcmd_count() -> None:

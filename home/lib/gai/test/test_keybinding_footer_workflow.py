@@ -162,30 +162,3 @@ def test_keybinding_footer_fold_always_visible() -> None:
     binding_keys = [b[0] for b in bindings]
 
     assert "z" in binding_keys
-
-
-# --- Run Cmd Binding Tests ---
-
-
-def test_keybinding_footer_run_cmd_always_visible() -> None:
-    """Test '!' (run cmd) binding is always visible on CLs tab."""
-    footer = KeybindingFooter()
-    changespec = _make_changespec(status="Drafted")
-
-    bindings = footer._compute_available_bindings(changespec)
-    binding_dict = dict(bindings)
-
-    assert "!" in binding_dict
-    assert binding_dict["!"] == "run cmd"
-
-
-def test_keybinding_footer_run_cmd_visible_with_suffix() -> None:
-    """Test '!' (run cmd) binding is visible even with READY TO MAIL suffix."""
-    footer = KeybindingFooter()
-    changespec = _make_changespec(status="Drafted - (!: READY TO MAIL)")
-
-    bindings = footer._compute_available_bindings(changespec)
-    binding_dict = dict(bindings)
-
-    assert "!" in binding_dict
-    assert binding_dict["!"] == "run cmd"
