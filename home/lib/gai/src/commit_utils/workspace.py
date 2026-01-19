@@ -93,6 +93,42 @@ def apply_diff_to_workspace(workspace_dir: str, diff_path: str) -> tuple[bool, s
         return False, str(e)
 
 
+def apply_diffs_to_workspace(
+    workspace_dir: str, diff_paths: list[str]
+) -> tuple[bool, str]:
+    """Apply multiple saved diffs to the workspace using a single hg import.
+
+    Args:
+        workspace_dir: The workspace directory to apply the diffs in.
+        diff_paths: List of paths to diff files (may use ~ for home).
+
+    Returns:
+        Tuple of (success, error_message). error_message is empty on success.
+    """
+    if not diff_paths:
+        return True, ""
+
+    expanded_paths = []
+    for diff_path in diff_paths:
+        expanded = os.path.expanduser(diff_path)
+        if not os.path.exists(expanded):
+            return False, f"Diff file not found: {diff_path}"
+        expanded_paths.append(expanded)
+
+    try:
+        result = subprocess.run(
+            ["hg", "import", "--no-commit"] + expanded_paths,
+            cwd=workspace_dir,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            return False, result.stderr.strip() or "hg import failed"
+        return True, ""
+    except Exception as e:
+        return False, str(e)
+
+
 def clean_workspace(workspace_dir: str) -> bool:
     """Clean the workspace by reverting all uncommitted changes.
 

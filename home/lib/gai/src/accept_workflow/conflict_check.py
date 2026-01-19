@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from itertools import combinations
 
 from ace.changespec import CommitEntry
-from commit_utils import apply_diff_to_workspace, clean_workspace
+from commit_utils import apply_diffs_to_workspace, clean_workspace
 from rich_utils import print_status
 
 
@@ -39,26 +39,25 @@ def _format_proposal_id(base_num: int, letter: str) -> str:
     return f"({base_num}{letter})"
 
 
-def _apply_proposals_sequentially(
+def _apply_all_proposals(
     workspace_dir: str,
     proposals: list[tuple[int, str, CommitEntry]],
-) -> tuple[int, str, str] | None:
-    """Apply proposals sequentially and return the first failure.
+) -> tuple[bool, str]:
+    """Apply all proposals together and check if they succeed.
 
     Args:
         workspace_dir: The workspace directory.
         proposals: List of (base_num, letter, entry) tuples.
 
     Returns:
-        Tuple of (base_num, letter, error_message) for the first failed proposal,
-        or None if all succeeded.
+        Tuple of (success, error_message).
     """
-    for base_num, letter, entry in proposals:
+    diff_paths = []
+    for _base_num, _letter, entry in proposals:
         assert entry.diff is not None
-        success, error_msg = apply_diff_to_workspace(workspace_dir, entry.diff)
-        if not success:
-            return (base_num, letter, error_msg)
-    return None
+        diff_paths.append(entry.diff)
+
+    return apply_diffs_to_workspace(workspace_dir, diff_paths)
 
 
 def _find_conflicting_pairs(
@@ -67,7 +66,7 @@ def _find_conflicting_pairs(
 ) -> list[ConflictPair]:
     """Find all unique pairs of proposals that conflict.
 
-    Tests each unique pair by applying them in order (A then B).
+    Tests each unique pair by applying both diffs together in a single command.
 
     Args:
         workspace_dir: The workspace directory.
@@ -84,17 +83,13 @@ def _find_conflicting_pairs(
         # Clean workspace before each pair test
         clean_workspace(workspace_dir)
 
-        # Apply first proposal
+        # Apply both proposals together
         assert entry_a.diff is not None
-        success_a, _ = apply_diff_to_workspace(workspace_dir, entry_a.diff)
-        if not success_a:
-            # First proposal of pair can't even apply alone - skip this pair
-            continue
-
-        # Apply second proposal on top of first
         assert entry_b.diff is not None
-        success_b, error_msg = apply_diff_to_workspace(workspace_dir, entry_b.diff)
-        if not success_b:
+        success, error_msg = apply_diffs_to_workspace(
+            workspace_dir, [entry_a.diff, entry_b.diff]
+        )
+        if not success:
             conflicting_pairs.append(
                 ConflictPair(
                     proposal_a=(num_a, letter_a),
@@ -113,9 +108,9 @@ def run_conflict_check(
 ) -> ConflictCheckResult:
     """Run conflict check on a set of proposals.
 
-    This function tests whether all proposals can be applied sequentially.
-    If any fails and there are >2 proposals, it identifies which specific
-    pairs conflict.
+    This function tests whether all proposals can be applied together using
+    a single hg import command. If they fail and there are >2 proposals,
+    it identifies which specific pairs conflict.
 
     Args:
         workspace_dir: The workspace directory to test in.
@@ -146,27 +141,23 @@ def run_conflict_check(
             "progress",
         )
 
-    # Try applying all proposals sequentially
-    failure = _apply_proposals_sequentially(workspace_dir, proposals)
+    # Try applying all proposals together
+    success, error_msg = _apply_all_proposals(workspace_dir, proposals)
 
-    # Clean workspace after sequential test
+    # Clean workspace after test
     clean_workspace(workspace_dir)
 
-    if failure is None:
-        # All proposals applied successfully
+    if success:
         return ConflictCheckResult(
             success=True,
             failed_proposal=None,
             conflicting_pairs=[],
         )
 
-    # A proposal failed to apply
-    base_num, letter, _error_msg = failure
-
+    # Proposals failed to apply together
     if verbose:
         print_status(
-            f"Conflict detected: proposal {_format_proposal_id(base_num, letter)} "
-            f"failed to apply",
+            f"Conflict detected when applying proposals together: {error_msg}",
             "error",
         )
 
@@ -179,7 +170,7 @@ def run_conflict_check(
             )
         return ConflictCheckResult(
             success=False,
-            failed_proposal=(base_num, letter),
+            failed_proposal=None,  # Can't determine which one failed
             conflicting_pairs=[],
         )
 
@@ -206,6 +197,6 @@ def run_conflict_check(
 
     return ConflictCheckResult(
         success=False,
-        failed_proposal=(base_num, letter),
+        failed_proposal=None,  # Can't determine which one failed
         conflicting_pairs=conflicting_pairs,
     )

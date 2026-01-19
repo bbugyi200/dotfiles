@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 from accept_workflow.conflict_check import (
     ConflictCheckResult,
     ConflictPair,
-    _apply_proposals_sequentially,
+    _apply_all_proposals,
     _find_conflicting_pairs,
     _format_proposal_id,
     run_conflict_check,
@@ -49,7 +49,7 @@ def test_run_conflict_check_single_proposal_returns_success() -> None:
 
 
 @patch("accept_workflow.conflict_check.clean_workspace")
-@patch("accept_workflow.conflict_check.apply_diff_to_workspace")
+@patch("accept_workflow.conflict_check.apply_diffs_to_workspace")
 def test_run_conflict_check_two_proposals_no_conflict(
     mock_apply: MagicMock,
     mock_clean: MagicMock,
@@ -67,19 +67,19 @@ def test_run_conflict_check_two_proposals_no_conflict(
     assert result.success is True
     assert result.failed_proposal is None
     assert result.conflicting_pairs == []
-    # Should have applied both proposals
-    assert mock_apply.call_count == 2
+    # Should have applied both proposals together in single call
+    assert mock_apply.call_count == 1
 
 
 @patch("accept_workflow.conflict_check.clean_workspace")
-@patch("accept_workflow.conflict_check.apply_diff_to_workspace")
+@patch("accept_workflow.conflict_check.apply_diffs_to_workspace")
 def test_run_conflict_check_two_proposals_with_conflict(
     mock_apply: MagicMock,
     mock_clean: MagicMock,
 ) -> None:
     """Test two proposals that conflict (no pair detection for 2 proposals)."""
-    # First proposal succeeds, second fails
-    mock_apply.side_effect = [(True, ""), (False, "patch failed")]
+    # Both proposals fail when applied together
+    mock_apply.return_value = (False, "patch failed")
     mock_clean.return_value = True
 
     entry_a = _make_entry(2, "a", "~/.gai/diffs/a.diff")
@@ -92,51 +92,45 @@ def test_run_conflict_check_two_proposals_with_conflict(
     result = run_conflict_check("/workspace", validated, verbose=False)
 
     assert result.success is False
-    assert result.failed_proposal == (2, "b")
+    # Can't determine which proposal failed when applying together
+    assert result.failed_proposal is None
     # No pair detection for 2 proposals
     assert result.conflicting_pairs == []
 
 
 @patch("accept_workflow.conflict_check.clean_workspace")
-@patch("accept_workflow.conflict_check.apply_diff_to_workspace")
+@patch("accept_workflow.conflict_check.apply_diffs_to_workspace")
 def test_run_conflict_check_three_proposals_triggers_pair_detection(
     mock_apply: MagicMock,
     mock_clean: MagicMock,
 ) -> None:
     """Test three proposals triggers pair detection when conflict found."""
-    # Sequential: A succeeds, B fails on top of A
-    # Pair testing will show A+B conflicts
+    # All three together fails, then pair testing shows A+B conflicts
     mock_clean.return_value = True
 
     call_count = 0
 
-    def apply_side_effect(_workspace_dir: str, _diff_path: str) -> tuple[bool, str]:
+    def apply_side_effect(
+        _workspace_dir: str, diff_paths: list[str]
+    ) -> tuple[bool, str]:
         nonlocal call_count
         call_count += 1
 
-        # Sequential phase: A, B (B fails)
-        if call_count == 1:  # A
-            return (True, "")
-        if call_count == 2:  # B on top of A
+        # Initial phase: all 3 together (fails)
+        if call_count == 1:
             return (False, "patch conflict")
 
-        # Pair testing phase:
-        # Pair (A,B): A succeeds, B fails
-        if call_count == 3:  # A alone
-            return (True, "")
-        if call_count == 4:  # B on A
+        # Pair testing phase (each pair tested with single hg import):
+        # Pair (A,B): conflicts
+        if call_count == 2:
             return (False, "patch conflict")
 
-        # Pair (A,C): both succeed
-        if call_count == 5:  # A alone
-            return (True, "")
-        if call_count == 6:  # C on A
+        # Pair (A,C): succeeds
+        if call_count == 3:
             return (True, "")
 
-        # Pair (B,C): both succeed
-        if call_count == 7:  # B alone
-            return (True, "")
-        if call_count == 8:  # C on B
+        # Pair (B,C): succeeds
+        if call_count == 4:
             return (True, "")
 
         return (True, "")
@@ -155,49 +149,56 @@ def test_run_conflict_check_three_proposals_triggers_pair_detection(
     result = run_conflict_check("/workspace", validated, verbose=False)
 
     assert result.success is False
-    assert result.failed_proposal == (2, "b")
+    # Can't determine which proposal failed when applying together
+    assert result.failed_proposal is None
     assert len(result.conflicting_pairs) == 1
     assert result.conflicting_pairs[0].proposal_a == (2, "a")
     assert result.conflicting_pairs[0].proposal_b == (2, "b")
 
 
-@patch("accept_workflow.conflict_check.apply_diff_to_workspace")
-def test_apply_proposals_sequentially_all_succeed(
+@patch("accept_workflow.conflict_check.apply_diffs_to_workspace")
+def test_apply_all_proposals_succeeds(
     mock_apply: MagicMock,
 ) -> None:
-    """Test sequential application when all succeed."""
+    """Test applying all proposals together when they succeed."""
     mock_apply.return_value = (True, "")
 
     entry_a = _make_entry(2, "a", "~/.gai/diffs/a.diff")
     entry_b = _make_entry(2, "b", "~/.gai/diffs/b.diff")
     proposals = [(2, "a", entry_a), (2, "b", entry_b)]
 
-    result = _apply_proposals_sequentially("/workspace", proposals)
+    success, error_msg = _apply_all_proposals("/workspace", proposals)
 
-    assert result is None
-    assert mock_apply.call_count == 2
+    assert success is True
+    assert error_msg == ""
+    # All proposals applied together in single call
+    assert mock_apply.call_count == 1
+    # Verify correct diff paths were passed
+    mock_apply.assert_called_once_with(
+        "/workspace", ["~/.gai/diffs/a.diff", "~/.gai/diffs/b.diff"]
+    )
 
 
-@patch("accept_workflow.conflict_check.apply_diff_to_workspace")
-def test_apply_proposals_sequentially_returns_first_failure(
+@patch("accept_workflow.conflict_check.apply_diffs_to_workspace")
+def test_apply_all_proposals_fails(
     mock_apply: MagicMock,
 ) -> None:
-    """Test sequential application returns on first failure."""
-    mock_apply.side_effect = [(True, ""), (False, "conflict error")]
+    """Test applying all proposals together when they fail."""
+    mock_apply.return_value = (False, "conflict error")
 
     entry_a = _make_entry(2, "a", "~/.gai/diffs/a.diff")
     entry_b = _make_entry(2, "b", "~/.gai/diffs/b.diff")
     proposals = [(2, "a", entry_a), (2, "b", entry_b)]
 
-    result = _apply_proposals_sequentially("/workspace", proposals)
+    success, error_msg = _apply_all_proposals("/workspace", proposals)
 
-    assert result == (2, "b", "conflict error")
-    # Should stop after first failure
-    assert mock_apply.call_count == 2
+    assert success is False
+    assert error_msg == "conflict error"
+    assert mock_apply.call_count == 1
 
 
 @patch("accept_workflow.conflict_check.clean_workspace")
-@patch("accept_workflow.conflict_check.apply_diff_to_workspace")
+@patch("accept_workflow.conflict_check.apply_diffs_to_workspace")
 def test_find_conflicting_pairs_finds_conflicts(
     mock_apply: MagicMock,
     mock_clean: MagicMock,
@@ -205,16 +206,15 @@ def test_find_conflicting_pairs_finds_conflicts(
     """Test pair detection finds all conflicting pairs."""
     mock_clean.return_value = True
 
-    # A+B: A succeeds, B fails
-    # A+C: both succeed
-    # B+C: both succeed
+    # Each pair is applied together in a single hg import call
+    # Pairs: (A,B), (A,C), (B,C)
+    # A+B: conflict
+    # A+C: succeeds
+    # B+C: succeeds
     mock_apply.side_effect = [
-        (True, ""),  # A
-        (False, "B conflicts with A"),  # B on A
-        (True, ""),  # A
-        (True, ""),  # C on A
-        (True, ""),  # B
-        (True, ""),  # C on B
+        (False, "A+B conflicts"),  # (A,B) together
+        (True, ""),  # (A,C) together
+        (True, ""),  # (B,C) together
     ]
 
     entry_a = _make_entry(2, "a", "~/.gai/diffs/a.diff")
@@ -227,26 +227,27 @@ def test_find_conflicting_pairs_finds_conflicts(
     assert len(pairs) == 1
     assert pairs[0].proposal_a == (2, "a")
     assert pairs[0].proposal_b == (2, "b")
-    assert pairs[0].error_message == "B conflicts with A"
+    assert pairs[0].error_message == "A+B conflicts"
 
 
 @patch("accept_workflow.conflict_check.clean_workspace")
-@patch("accept_workflow.conflict_check.apply_diff_to_workspace")
-def test_find_conflicting_pairs_skips_when_first_fails(
+@patch("accept_workflow.conflict_check.apply_diffs_to_workspace")
+def test_find_conflicting_pairs_multiple_conflicts(
     mock_apply: MagicMock,
     mock_clean: MagicMock,
 ) -> None:
-    """Test pair detection skips pair when first proposal can't apply."""
+    """Test pair detection finds multiple conflicting pairs."""
     mock_clean.return_value = True
 
-    # For each pair, we apply the first proposal fresh (after clean_workspace)
+    # Each pair is applied together in a single hg import call
     # Pairs: (A,B), (A,C), (B,C)
-    # A fails alone (corrupted diff), so A+B and A+C pairs are skipped
+    # A+B: conflict
+    # A+C: conflict
+    # B+C: succeeds
     mock_apply.side_effect = [
-        (False, "A corrupted"),  # A alone for (A,B) - fails, skip pair
-        (False, "A corrupted"),  # A alone for (A,C) - fails, skip pair
-        (True, ""),  # B alone for (B,C) - succeeds
-        (True, ""),  # C on B for (B,C) - succeeds
+        (False, "A+B conflicts"),  # (A,B) together
+        (False, "A+C conflicts"),  # (A,C) together
+        (True, ""),  # (B,C) together
     ]
 
     entry_a = _make_entry(2, "a", "~/.gai/diffs/a.diff")
@@ -256,8 +257,12 @@ def test_find_conflicting_pairs_skips_when_first_fails(
 
     pairs = _find_conflicting_pairs("/workspace", proposals)
 
-    # A+B and A+C skipped because A fails, B+C succeeds
-    assert len(pairs) == 0
+    # Both A+B and A+C conflict
+    assert len(pairs) == 2
+    assert pairs[0].proposal_a == (2, "a")
+    assert pairs[0].proposal_b == (2, "b")
+    assert pairs[1].proposal_a == (2, "a")
+    assert pairs[1].proposal_b == (2, "c")
 
 
 def test_conflict_check_result_dataclass() -> None:
