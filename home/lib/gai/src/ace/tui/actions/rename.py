@@ -34,11 +34,11 @@ class RenameMixin:
 
         changespec = self.changespecs[self.current_idx]
 
-        # Validate status - rename not available for Submitted
+        # Validate status - rename not available for Submitted or Reverted
         base_status = get_base_status(changespec.status)
-        if base_status == "Submitted":
+        if base_status in ("Submitted", "Reverted"):
             self.notify(  # type: ignore[attr-defined]
-                "Rename not available for Submitted ChangeSpecs",
+                "Rename not available for Submitted/Reverted ChangeSpecs",
                 severity="warning",
             )
             return
