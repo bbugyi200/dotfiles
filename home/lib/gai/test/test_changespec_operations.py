@@ -28,7 +28,7 @@ def test_add_changespec_with_initial_hooks() -> None:
                 initial_hooks=["!$bb_hg_presubmit", "bb_hg_lint"],
             )
 
-        assert result is True
+        assert result is not None
 
         with open(project_file, encoding="utf-8") as f:
             content = f.read()
@@ -61,7 +61,7 @@ def test_add_changespec_without_initial_hooks() -> None:
                 # No initial_hooks parameter - backward compatible
             )
 
-        assert result is True
+        assert result is not None
 
         with open(project_file, encoding="utf-8") as f:
             content = f.read()
@@ -96,7 +96,7 @@ def test_add_changespec_hooks_in_correct_order() -> None:
                 ],
             )
 
-        assert result is True
+        assert result is not None
 
         with open(project_file, encoding="utf-8") as f:
             content = f.read()
@@ -130,7 +130,7 @@ def test_add_changespec_with_empty_hooks_list() -> None:
                 initial_hooks=[],  # Empty list
             )
 
-        assert result is True
+        assert result is not None
 
         with open(project_file, encoding="utf-8") as f:
             content = f.read()
@@ -161,7 +161,7 @@ def test_add_changespec_with_bug_field() -> None:
                 bug="http://b/12345678",
             )
 
-        assert result is True
+        assert result is not None
 
         with open(project_file, encoding="utf-8") as f:
             content = f.read()
@@ -192,7 +192,7 @@ def test_add_changespec_without_bug_field() -> None:
                 # No bug parameter
             )
 
-        assert result is True
+        assert result is not None
 
         with open(project_file, encoding="utf-8") as f:
             content = f.read()
@@ -280,7 +280,7 @@ HOOKS:
                 initial_hooks=["!$bb_hg_presubmit"],
             )
 
-        assert result is True
+        assert result is not None
 
         with open(project_file, encoding="utf-8") as f:
             content = f.read()
@@ -336,7 +336,7 @@ HOOKS:
                 initial_hooks=["!$bb_hg_presubmit", "bb_rabbit_test //foo:child_test"],
             )
 
-        assert result is True
+        assert result is not None
 
         # Parse to verify hook order
         changespecs = parse_project_file(project_file)
@@ -375,7 +375,7 @@ def test_add_changespec_no_parent_hooks_inherited_when_no_parent() -> None:
                 initial_hooks=["!$bb_hg_presubmit"],
             )
 
-        assert result is True
+        assert result is not None
 
         changespecs = parse_project_file(project_file)
         cs = changespecs[0]

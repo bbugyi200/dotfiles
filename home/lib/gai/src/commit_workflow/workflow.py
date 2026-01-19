@@ -265,7 +265,7 @@ class CommitWorkflow(BaseWorkflow):
                 # Format bug as URL for ChangeSpec (use bug or fixed_bug, whichever is set)
                 bug_url = f"http://b/{bug}" if bug else None
                 fixed_bug_url = f"http://b/{fixed_bug}" if fixed_bug else None
-                if add_changespec_to_project_file(
+                suffixed_name = add_changespec_to_project_file(
                     project=project,
                     cl_name=full_name,
                     description=original_description,
@@ -273,10 +273,25 @@ class CommitWorkflow(BaseWorkflow):
                     cl_url=cl_url,
                     initial_hooks=initial_hooks,
                     bug=bug_url or fixed_bug_url,
-                ):
+                )
+                if suffixed_name:
+                    # Rename the CL to match the suffixed ChangeSpec name
+                    if suffixed_name != full_name:
+                        rename_result = run_shell_command(
+                            f'bb_hg_rename "{suffixed_name}"', capture_output=True
+                        )
+                        if rename_result.returncode != 0:
+                            print_status(
+                                f"Warning: Failed to rename CL: {rename_result.stderr}",
+                                "warning",
+                            )
+
                     print_status(
-                        f"ChangeSpec '{full_name}' added to project file.", "success"
+                        f"ChangeSpec '{suffixed_name}' added to project file.",
+                        "success",
                     )
+                    # Update full_name to use suffixed version for subsequent operations
+                    full_name = suffixed_name
                 else:
                     print_status("Failed to add ChangeSpec to project file.", "warning")
         else:

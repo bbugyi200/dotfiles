@@ -101,7 +101,7 @@ def _create_new_changespec(
     diff_path: str,
     bug: str | None = None,
     fixed_bug: str | None = None,
-) -> bool:
+) -> str | None:
     """Create a new WIP ChangeSpec for the agent's changes.
 
     Follows the same workflow as gai commit:
@@ -123,7 +123,8 @@ def _create_new_changespec(
         fixed_bug: Bug number for FIXED: field (mutually exclusive with bug).
 
     Returns:
-        True if successful, False otherwise.
+        The suffixed CL name on success (e.g., "project_foo_bar__1"),
+        None on failure.
     """
     import tempfile
 
@@ -174,7 +175,7 @@ def _create_new_changespec(
         commit_result = run_shell_command(commit_cmd, capture_output=True)
         if commit_result.returncode != 0:
             console.print(f"[red]Failed to create commit: {commit_result.stderr}[/red]")
-            return False
+            return None
 
         # Run hg fix
         print("Running hg fix...")
@@ -195,7 +196,7 @@ def _create_new_changespec(
         cl_number = get_cl_number()
         if not cl_number:
             console.print("[red]Failed to get CL number[/red]")
-            return False
+            return None
         cl_url = f"http://cl/{cl_number}"
         print(f"CL URL: {cl_url}")
 
@@ -207,7 +208,7 @@ def _create_new_changespec(
         # Format bug as URL for ChangeSpec (use bug or fixed_bug, whichever is set)
         bug_url = f"http://b/{bug}" if bug else None
         fixed_bug_url = f"http://b/{fixed_bug}" if fixed_bug else None
-        success = add_changespec_to_project_file(
+        suffixed_name = add_changespec_to_project_file(
             project=project_name,
             cl_name=full_cl_name,
             description=description,  # Original, unformatted description
@@ -218,12 +219,20 @@ def _create_new_changespec(
             bug=bug_url or fixed_bug_url,
         )
 
-        if success:
-            console.print(f"[green]Created new ChangeSpec: {full_cl_name}[/green]")
+        if suffixed_name:
+            # Rename the CL to match the suffixed ChangeSpec name
+            if suffixed_name != full_cl_name:
+                rename_result = run_shell_command(
+                    f'bb_hg_rename "{suffixed_name}"', capture_output=True
+                )
+                if rename_result.returncode != 0:
+                    print(f"Warning: Failed to rename CL: {rename_result.stderr}")
+
+            console.print(f"[green]Created new ChangeSpec: {suffixed_name}[/green]")
+            return suffixed_name
         else:
             console.print(f"[red]Failed to create ChangeSpec: {full_cl_name}[/red]")
-
-        return success
+            return None
 
     finally:
         # Clean up temp file
@@ -380,7 +389,7 @@ def main() -> None:
 
                 # Create a new ChangeSpec for the changes
                 print(f"\nCreating new ChangeSpec: {new_cl_name}")
-                _create_new_changespec(
+                full_new_cl_name = _create_new_changespec(
                     console=console,
                     project_file=project_file,
                     new_cl_name=new_cl_name,
@@ -391,11 +400,12 @@ def main() -> None:
                     fixed_bug=fixed_bug,
                 )
 
-                # Extract project name and build full CL name
-                from pathlib import Path
+                # If ChangeSpec creation failed, use unsuffixed name for done marker
+                if not full_new_cl_name:
+                    from pathlib import Path
 
-                project_name = Path(project_file).parent.name
-                full_new_cl_name = f"{project_name}_{new_cl_name}"
+                    project_name = Path(project_file).parent.name
+                    full_new_cl_name = f"{project_name}_{new_cl_name}"
 
                 # Write done marker for NEW CL outcome
                 new_cl_done_marker = {

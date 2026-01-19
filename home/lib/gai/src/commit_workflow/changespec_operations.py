@@ -98,7 +98,7 @@ def add_changespec_to_project_file(
     initial_hooks: list[str] | None = None,
     initial_commits: list[tuple[int, str, str | None, str | None]] | None = None,
     bug: str | None = None,
-) -> bool:
+) -> str | None:
     """Add a new ChangeSpec to the project file.
 
     The ChangeSpec is placed:
@@ -109,7 +109,7 @@ def add_changespec_to_project_file(
 
     Args:
         project: Project name.
-        cl_name: NAME field value.
+        cl_name: NAME field value (will be suffixed with __<N> for uniqueness).
         description: DESCRIPTION field value (raw, will be indented).
         parent: PARENT field value (or None for "None").
         cl_url: CL field value (e.g., "http://cl/12345").
@@ -122,7 +122,7 @@ def add_changespec_to_project_file(
             is added.
 
     Returns:
-        True if the ChangeSpec was added successfully, False otherwise.
+        The suffixed cl_name (e.g., "foo_bar__1") on success, None on failure.
     """
     project_file = get_project_file_path(project)
 
@@ -231,10 +231,10 @@ STATUS: WIP
                 f"Add ChangeSpec {cl_name}",
             )
 
-        return True
+        return cl_name
     except Exception as e:
         print_status(f"Failed to add ChangeSpec to project file: {e}", "warning")
-        return False
+        return None
 
 
 def ensure_required_hooks(

@@ -342,11 +342,29 @@ def transition_changespec_status(
     # Strip __<N> suffix when transitioning from WIP to Drafted (outside lock)
     if suffix_strip_info is not None:
         suffixed_name, base_name = suffix_strip_info
+        import subprocess
+        from pathlib import Path
+
         from ace.revert import update_changespec_name_atomic
-        from running_field import update_running_field_cl_name
+        from running_field import get_workspace_directory, update_running_field_cl_name
 
         # Update NAME field
         update_changespec_name_atomic(project_file, suffixed_name, base_name)
+
+        # Rename the CL in Mercurial to match the new name
+        project_basename = Path(project_file).stem
+        try:
+            workspace_dir = get_workspace_directory(project_basename)
+            rename_result = subprocess.run(
+                ["bb_hg_rename", base_name],
+                cwd=workspace_dir,
+                capture_output=True,
+                text=True,
+            )
+            if rename_result.returncode != 0:
+                logger.warning(f"Failed to rename CL: {rename_result.stderr}")
+        except RuntimeError as e:
+            logger.warning(f"Could not get workspace directory: {e}")
 
         # Update PARENT references in other ChangeSpecs
         _update_parent_references_atomic(project_file, suffixed_name, base_name)

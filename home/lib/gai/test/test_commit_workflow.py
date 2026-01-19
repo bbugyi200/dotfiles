@@ -119,13 +119,16 @@ def test_add_changespec_to_project_file_success() -> None:
                 parent="existing_feature",
                 cl_url="http://cl/54321",
             )
-            assert result is True
+            # Now returns suffixed name (e.g., "new_feature__1") or None
+            assert result is not None
+            assert result.startswith("new_feature__")
 
         # Verify the file was updated correctly
         with open(project_file) as f:
             content = f.read()
 
-        assert "NAME: new_feature" in content
+        # Name will have __<N> suffix
+        assert f"NAME: {result}" in content
         assert "  A new feature" in content
         assert "  with multiple lines" in content
         assert "PARENT: existing_feature" in content
@@ -153,7 +156,8 @@ def test_add_changespec_to_project_file_none_parent() -> None:
                 parent=None,
                 cl_url="http://cl/99999",
             )
-            assert result is True
+            # Now returns suffixed name or None
+            assert result is not None
 
         with open(project_file) as f:
             content = f.read()
@@ -278,15 +282,17 @@ def test_add_changespec_placed_after_parent() -> None:
                 parent="feature_a",
                 cl_url="http://cl/222",
             )
-            assert result is True
+            # Now returns suffixed name or None
+            assert result is not None
+            assert result.startswith("feature_b__")
 
         # Read and verify order
         with open(project_file) as f:
             content = f.read()
 
-        # feature_b should appear between feature_a and feature_c
+        # feature_b (with suffix) should appear between feature_a and feature_c
         pos_a = content.find("NAME: feature_a")
-        pos_b = content.find("NAME: feature_b")
+        pos_b = content.find(f"NAME: {result}")
         pos_c = content.find("NAME: feature_c")
 
         assert pos_a < pos_b < pos_c
@@ -317,14 +323,16 @@ def test_add_changespec_no_parent_placed_at_bottom() -> None:
                 parent=None,
                 cl_url="http://cl/999",
             )
-            assert result is True
+            # Now returns suffixed name or None
+            assert result is not None
+            assert result.startswith("new_root_feature__")
 
         # Read and verify order
         with open(project_file) as f:
             content = f.read()
 
-        # new_root_feature should appear after existing_feature (at bottom)
-        pos_new = content.find("NAME: new_root_feature")
+        # new_root_feature (with suffix) should appear after existing_feature (at bottom)
+        pos_new = content.find(f"NAME: {result}")
         pos_existing = content.find("NAME: existing_feature")
 
         assert pos_existing < pos_new
