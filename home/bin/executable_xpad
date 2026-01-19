@@ -1,8 +1,16 @@
 #!/bin/bash
 
 # Runs launchpad for DRX.
+
+# Count other running instances of this script (excluding current process)
+instance_count=$(pgrep -f "$(basename "$0")" | grep -v "^$$\$" | wc -l)
+
 function run() {
-  bash -i -c "drx-launchpad $*; exit 0"
+  local port_offset_arg=""
+  if [[ $instance_count -gt 0 ]]; then
+    port_offset_arg="--port_offset=$instance_count"
+  fi
+  bash -i -c "drx-launchpad $port_offset_arg $*; exit 0"
 }
 
 run "$@"
