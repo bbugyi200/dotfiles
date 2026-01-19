@@ -1,11 +1,9 @@
 #!/bin/bash
 
-set -e
+# The `hg evolve` command may fail if there are no changes to evolve.
+hg evolve --any
 
-if ! hg evolve; then
-  hg evolve --abort
-  echo "Evolve failed, aborted."
-  exit 1
-fi
+# But the following commands MUST always succeed.
+set -e
 hg fix
 hg upload tree
