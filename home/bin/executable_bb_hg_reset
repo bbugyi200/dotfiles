@@ -10,8 +10,9 @@ function run() {
   commit_hash="$1"
   shift
 
-  hg revert --hidden -r "$commit_hash" $(branch_changes)
   bb_hg_clean
+  hg revert --hidden -r "$commit_hash" $(branch_changes)
+  bb_hg_amend "@rev Reset to old commit: $commit_hash"
 }
 
 run "$@"
