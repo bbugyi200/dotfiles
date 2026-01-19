@@ -372,8 +372,48 @@ def transition_changespec_status(
         # Update RUNNING field entries
         update_running_field_cl_name(project_file, suffixed_name, base_name)
 
+        # Auto-revert sibling WIP ChangeSpecs with the same basename
+        _revert_sibling_wip_changespecs(project_file, base_name, suffixed_name)
+
     assert result is not None
     return result
+
+
+def _revert_sibling_wip_changespecs(
+    project_file: str,
+    base_name: str,
+    excluded_name: str,
+) -> None:
+    """Revert all WIP ChangeSpecs with the same basename.
+
+    When a WIP ChangeSpec transitions to Drafted and has its suffix stripped,
+    any other WIP ChangeSpecs with the same base name are automatically reverted
+    since they are now obsolete.
+
+    Args:
+        project_file: Path to the project file.
+        base_name: The base name without suffix (e.g., "foo_bar").
+        excluded_name: The original suffixed name that was just transitioned
+            (don't revert this one).
+    """
+    from ace.changespec import parse_project_file
+    from ace.revert import revert_changespec
+    from gai_utils import strip_reverted_suffix
+
+    changespecs = parse_project_file(project_file)
+
+    for cs in changespecs:
+        # Skip the one we just transitioned
+        if cs.name == excluded_name:
+            continue
+
+        # Check if same basename and is WIP
+        cs_base = strip_reverted_suffix(cs.name)
+        if cs_base == base_name and cs.status == "WIP":
+            logger.info(f"Auto-reverting sibling WIP ChangeSpec: {cs.name}")
+            success, error = revert_changespec(cs, console=None)
+            if not success:
+                logger.warning(f"Failed to revert {cs.name}: {error}")
 
 
 # Suffix appended to STATUS line when ChangeSpec is ready to be mailed

@@ -148,6 +148,7 @@ class AgentWorkflowMixin:
                 CLNameInputModal(
                     selection_type=selection_type,  # type: ignore[arg-type]
                     selected_cl_name=selected_cl_name,
+                    project_name=project_name,
                 ),
                 on_cl_name_input,
             )

@@ -54,16 +54,19 @@ class CLNameInputModal(ModalScreen[CLNameResult | None]):
         self,
         selection_type: Literal["project", "cl"],
         selected_cl_name: str | None = None,
+        project_name: str | None = None,
     ) -> None:
         """Initialize the CL name input modal.
 
         Args:
             selection_type: Whether user selected a "project" or "cl"
             selected_cl_name: The name of the selected CL (if selection_type is "cl")
+            project_name: The project name (used for name validation)
         """
         super().__init__()
         self.selection_type = selection_type
         self.selected_cl_name = selected_cl_name
+        self._project_name = project_name
 
     def compose(self) -> ComposeResult:
         """Compose the modal layout."""
@@ -113,6 +116,20 @@ class CLNameInputModal(ModalScreen[CLNameResult | None]):
             # Show error - don't dismiss
             self.notify("CL name is required for projects", severity="error")
             return
+
+        # Validate against conflicting ChangeSpecs
+        if value and self._project_name:
+            from commit_workflow.changespec_queries import get_conflicting_changespec
+
+            conflict = get_conflicting_changespec(self._project_name, value)
+            if conflict:
+                conflict_name, conflict_status = conflict
+                self.notify(
+                    f"Cannot use '{value}': conflicts with '{conflict_name}' "
+                    f"(status: {conflict_status})",
+                    severity="error",
+                )
+                return  # Don't dismiss modal
 
         # Return result
         self.dismiss(

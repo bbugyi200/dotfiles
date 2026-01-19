@@ -128,6 +128,20 @@ class CommitWorkflow(BaseWorkflow):
         if not self.cl_name.startswith(f"{project}_"):
             full_name = f"{project}_{self.cl_name}"
 
+        # Check for conflicts with non-WIP/non-Reverted ChangeSpecs
+        from .changespec_queries import get_conflicting_changespec
+
+        conflict = get_conflicting_changespec(project, full_name)
+        if conflict:
+            conflict_name, conflict_status = conflict
+            print_status(
+                f"Cannot create CL '{self.cl_name}': conflicts with existing "
+                f"ChangeSpec '{conflict_name}' (status: {conflict_status}). "
+                f"Only WIP or Reverted ChangeSpecs can have the same base name.",
+                "error",
+            )
+            return False
+
         # Check if ChangeSpec already exists (for restore workflow)
         existing_changespec = changespec_exists(project, full_name)
         existing_description = None

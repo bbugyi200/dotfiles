@@ -144,6 +144,18 @@ def _create_new_changespec(
     if not new_cl_name.startswith(f"{project_name}_"):
         full_cl_name = f"{project_name}_{new_cl_name}"
 
+    # Validate CL name doesn't conflict with non-WIP/non-Reverted ChangeSpecs
+    from commit_workflow.changespec_queries import get_conflicting_changespec
+
+    conflict = get_conflicting_changespec(project_name, full_cl_name)
+    if conflict:
+        conflict_name, conflict_status = conflict
+        console.print(
+            f"[red]Cannot create CL '{new_cl_name}': conflicts with "
+            f"'{conflict_name}' (status: {conflict_status})[/red]"
+        )
+        return None
+
     # Generate description using summarize agent
     print("Generating description from chat history...")
     description = get_file_summary(
