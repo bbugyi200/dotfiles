@@ -206,6 +206,8 @@ class _AgentDiffPanel(Static):
         self._current_agent: Agent | None = None
         self._current_worker: Worker[str | None] | None = None
         self._has_displayed_content: bool = False
+        self._last_diff_content: str | None = None
+        self._is_background_refreshing: bool = False
 
     def update_display(self, agent: Agent, stale_threshold_seconds: int = 10) -> None:
         """Update with agent diff output.
@@ -216,23 +218,32 @@ class _AgentDiffPanel(Static):
         """
         self._current_agent = agent
 
-        # Check cache - only use if fresh (less than threshold seconds old)
+        # Check cache
         cache_key = _get_cache_key(agent)
-        if cache_key in _diff_cache:
-            cache_entry = _diff_cache[cache_key]
+        cache_entry = _diff_cache.get(cache_key)
+
+        if cache_entry is not None:
             age_seconds = (datetime.now() - cache_entry.fetch_time).total_seconds()
             if age_seconds < stale_threshold_seconds:
-                # Cache is fresh - use it and post visibility message
+                # Cache is fresh - use it directly
                 self._display_diff_with_timestamp(
                     cache_entry.diff_output,
                     cache_entry.fetch_time,
                     post_visibility_message=True,
                 )
                 return
-            # Cache is stale - fall through to fetch
 
-        # Not in cache or stale - show loading and start background fetch
-        self._show_loading()
+            # Cache is stale - display stale content while fetching in background
+            self._is_background_refreshing = True
+            self._display_diff_with_timestamp(
+                cache_entry.diff_output,
+                cache_entry.fetch_time,
+                post_visibility_message=True,
+                is_stale=True,
+            )
+        else:
+            # No cache - show loading for first-time loads
+            self._show_loading()
 
         # Cancel any existing worker
         if self._current_worker is not None and self._current_worker.is_running:
@@ -278,12 +289,47 @@ class _AgentDiffPanel(Static):
         text.append("Please wait while fetching changes.", style="dim")
         self.update(text)
 
+    def _get_scroll_container(self) -> VerticalScroll | None:
+        """Get the parent scroll container for this diff panel.
+
+        Returns:
+            The VerticalScroll container, or None if not found.
+        """
+        try:
+            return self.app.query_one("#agent-diff-scroll", VerticalScroll)
+        except Exception:
+            return None
+
+    def _save_scroll_position(self) -> float:
+        """Save the current scroll position.
+
+        Returns:
+            The current scroll Y position, or 0 if unavailable.
+        """
+        container = self._get_scroll_container()
+        if container is not None:
+            return container.scroll_y
+        return 0.0
+
+    def _restore_scroll_position(self, position: float) -> None:
+        """Restore a previously saved scroll position.
+
+        Args:
+            position: The scroll Y position to restore.
+        """
+        container = self._get_scroll_container()
+        if container is not None:
+            self.call_after_refresh(
+                lambda: container.scroll_to(y=position, animate=False)
+            )
+
     def _display_diff_with_timestamp(
         self,
         diff_output: str | None,
         fetch_time: datetime,
         *,
         post_visibility_message: bool = True,
+        is_stale: bool = False,
     ) -> None:
         """Display diff output with fetch timestamp.
 
@@ -292,30 +338,25 @@ class _AgentDiffPanel(Static):
             fetch_time: When the diff was fetched.
             post_visibility_message: Whether to post visibility change message.
                 Set to False when displaying cached data to avoid flicker.
+            is_stale: Whether the content is stale (showing while refreshing).
         """
+        # Track last displayed content for change detection
+        self._last_diff_content = diff_output
+
         # Post visibility message to parent (only for fresh fetches to avoid flicker)
         if post_visibility_message:
             self.post_message(_DiffVisibilityChanged(has_diff=diff_output is not None))
 
-        if diff_output:
-            # Build text with timestamp header
-            text = Text()
-            text.append("Last fetched: ", style="dim")
-            text.append(fetch_time.strftime("%H:%M:%S"), style="#87D7FF")
-            text.append("\n\n")
+        # Build refresh indicator if stale and background refreshing
+        refresh_indicator = ""
+        if is_stale and self._is_background_refreshing:
+            refresh_indicator = " (refreshing...)"
 
-            # Create syntax-highlighted diff
-            syntax = Syntax(
-                diff_output,
-                "diff",
-                theme="monokai",
-                line_numbers=True,
-                word_wrap=True,
-            )
-            # We need to render both - use a Group or just update with syntax
+        if diff_output:
             # For simplicity, prepend timestamp to the diff output
             diff_with_header = (
-                f"# Last fetched: {fetch_time.strftime('%H:%M:%S')}\n\n{diff_output}"
+                f"# Last fetched: {fetch_time.strftime('%H:%M:%S')}"
+                f"{refresh_indicator}\n\n{diff_output}"
             )
             syntax = Syntax(
                 diff_with_header,
@@ -329,6 +370,8 @@ class _AgentDiffPanel(Static):
             text = Text()
             text.append("Last fetched: ", style="dim")
             text.append(fetch_time.strftime("%H:%M:%S"), style="#87D7FF")
+            if refresh_indicator:
+                text.append(refresh_indicator, style="dim italic")
             text.append("\n\n")
             text.append("No changes detected.\n", style="dim italic")
             self.update(text)
@@ -360,15 +403,34 @@ class _AgentDiffPanel(Static):
         if event.worker != self._current_worker:
             return
 
+        # Always clear background refreshing flag when worker completes
+        self._is_background_refreshing = False
+
         if event.state == WorkerState.SUCCESS:
             # Worker completed - display result from cache
             if self._current_agent:
                 cache_key = _get_cache_key(self._current_agent)
                 if cache_key in _diff_cache:
                     cache_entry = _diff_cache[cache_key]
-                    self._display_diff_with_timestamp(
-                        cache_entry.diff_output, cache_entry.fetch_time
-                    )
+
+                    # Skip update if content hasn't changed
+                    if cache_entry.diff_output == self._last_diff_content:
+                        # Content unchanged - just update timestamp without scroll reset
+                        # Re-display to update the timestamp (removes "refreshing...")
+                        scroll_pos = self._save_scroll_position()
+                        self._display_diff_with_timestamp(
+                            cache_entry.diff_output,
+                            cache_entry.fetch_time,
+                            post_visibility_message=False,
+                        )
+                        self._restore_scroll_position(scroll_pos)
+                    else:
+                        # Content changed - save scroll, update, restore scroll
+                        scroll_pos = self._save_scroll_position()
+                        self._display_diff_with_timestamp(
+                            cache_entry.diff_output, cache_entry.fetch_time
+                        )
+                        self._restore_scroll_position(scroll_pos)
         elif event.state == WorkerState.ERROR:
             # Show error state
             text = Text()
