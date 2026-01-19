@@ -1,0 +1,7 @@
+#!/bin/bash
+
+set -e
+
+hg sync "$@" && clear_branch_name
+hg evolve
+hg upload tree
