@@ -156,12 +156,14 @@ class AgentWorkflowMixin:
         self.push_screen(ProjectSelectModal(), on_project_select)  # type: ignore[attr-defined]
 
     def _start_agent_from_changespec(self) -> None:
-        """Start agent using current ChangeSpec (skips modal prompts).
+        """Start agent using current ChangeSpec (skips ProjectSelectModal).
 
         This is used when pressing space on the CLs tab - it infers the
-        project and CL name from the currently selected ChangeSpec instead
-        of showing the ProjectSelectModal and CLNameInputModal.
+        project and CL name from the currently selected ChangeSpec. Shows
+        CLNameInputModal to optionally create a new CL.
         """
+        from ..modals import CLNameAction, CLNameInputModal, CLNameResult
+
         if not self.changespecs:
             self.notify("No ChangeSpecs available", severity="warning")  # type: ignore[attr-defined]
             return
@@ -170,20 +172,38 @@ class AgentWorkflowMixin:
         project_name = changespec.project_basename
         cl_name = changespec.name
 
-        self._show_prompt_input_bar(
-            project_name,
-            cl_name=cl_name,
-            update_target=cl_name,
-            new_cl_name=None,
-            history_sort_key=cl_name,
+        def on_cl_name_input(result: CLNameResult | None) -> None:
+            if result is None or result.action == CLNameAction.CANCEL:
+                self.notify("CL name cancelled")  # type: ignore[attr-defined]
+                return
+
+            new_cl_name = result.cl_name
+
+            self._show_prompt_input_bar(
+                project_name,
+                cl_name=cl_name,
+                update_target=cl_name,
+                new_cl_name=new_cl_name,
+                history_sort_key=cl_name,
+            )
+
+        self.push_screen(  # type: ignore[attr-defined]
+            CLNameInputModal(
+                selection_type="cl",
+                selected_cl_name=cl_name,
+                project_name=project_name,
+            ),
+            on_cl_name_input,
         )
 
     def _start_agents_from_marked(self) -> None:
         """Start agents for all marked ChangeSpecs.
 
-        Shows a single prompt input bar; the prompt will be used for all
-        marked items.
+        Shows CLNameInputModal first, then a single prompt input bar.
+        The prompt and optional new CL name will be used for all marked items.
         """
+        from ..modals import CLNameAction, CLNameInputModal, CLNameResult
+
         if not self.marked_indices:
             self.notify("No marked ChangeSpecs", severity="warning")  # type: ignore[attr-defined]
             return
@@ -203,14 +223,31 @@ class AgentWorkflowMixin:
         # Use first changespec for prompt context (history, etc.)
         first_cs = self._bulk_changespecs[0]
         count = len(self._bulk_changespecs)
-        self.notify(f"Running agent on {count} marked CL(s)")  # type: ignore[attr-defined]
 
-        self._show_prompt_input_bar(
-            first_cs.project_basename,
-            cl_name=first_cs.name,
-            update_target=first_cs.name,
-            new_cl_name=None,
-            history_sort_key=first_cs.name,
+        def on_cl_name_input(result: CLNameResult | None) -> None:
+            if result is None or result.action == CLNameAction.CANCEL:
+                self.notify("CL name cancelled")  # type: ignore[attr-defined]
+                self._bulk_changespecs = None
+                return
+
+            new_cl_name = result.cl_name
+            self.notify(f"Running agent on {count} marked CL(s)")  # type: ignore[attr-defined]
+
+            self._show_prompt_input_bar(
+                first_cs.project_basename,
+                cl_name=first_cs.name,
+                update_target=first_cs.name,
+                new_cl_name=new_cl_name,
+                history_sort_key=first_cs.name,
+            )
+
+        self.push_screen(  # type: ignore[attr-defined]
+            CLNameInputModal(
+                selection_type="cl",
+                selected_cl_name=first_cs.name,
+                project_name=first_cs.project_basename,
+            ),
+            on_cl_name_input,
         )
 
     def _show_prompt_input_bar(
@@ -467,6 +504,9 @@ class AgentWorkflowMixin:
 
         changespecs = self._bulk_changespecs
         self._bulk_changespecs = None
+
+        # Extract new_cl_name before clearing context
+        new_cl_name = self._prompt_context.new_cl_name if self._prompt_context else None
         self._prompt_context = None
 
         launched_count = 0
@@ -505,7 +545,7 @@ class AgentWorkflowMixin:
                 workflow_name=workflow_name,
                 prompt=prompt,
                 timestamp=timestamp,
-                new_cl_name=None,
+                new_cl_name=new_cl_name,
                 parent_cl_name=cl_name,
                 update_target=cl_name,
                 project_name=project_name,
