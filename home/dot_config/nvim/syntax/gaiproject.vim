@@ -166,7 +166,7 @@ syn match GaiProjectCommitsSuffixKilledProcess "(\~\$:\s*[^)]\+)" contained
 syn match GaiProjectCommitsSuffixRejectedProposal "(\~!:\s*[^)]\+)" contained
 syn match GaiProjectCommitsSuffixSummarizeComplete "(%:\s*[^)]\+)" contained
 syn match GaiProjectCommitsSuffixSummarizeCompleteEmpty "(%)" contained
-syn match GaiProjectCommitsSuffixMetahookComplete "(\^:\s*[^)]\+)" contained contains=GaiProjectFailedHooksPath
+syn match GaiProjectCommitsSuffixMetahookComplete "(\^:\s*[^)]\+)" contained
 syn match GaiProjectCommitsSuffixMetahookCompleteEmpty "(\^)" contained
 " CHAT and DIFF sub-fields (6-space indented with | prefix)
 syn match GaiProjectCommitsChatLine "^\s\{6\}[|]\s*CHAT:\s*.\+$" contains=GaiProjectCommitsSubfieldPipe,GaiProjectCommitsChatKey,GaiProjectCommitsPath,GaiProjectCommitsChatDuration
@@ -239,7 +239,7 @@ syn match GaiProjectHooksSuffixKilledProcess "(\~\$:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixRejectedProposal "(\~!:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixSummarizeComplete "(%:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixSummarizeCompleteEmpty "(%)" contained
-syn match GaiProjectHooksSuffixMetahookComplete "(\^:\s*[^)]\+)" contained contains=GaiProjectFailedHooksPath
+syn match GaiProjectHooksSuffixMetahookComplete "(\^:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixMetahookCompleteEmpty "(\^)" contained
 syn match GaiProjectHooksSuffixTimestamp "(\d\{6\}_\d\{6\})" contained
 " Entry reference suffix at end of line: (N), (Na), (N | summary), or (Na | summary)
@@ -348,8 +348,3 @@ highlight GaiProjectMentorsSuffixProposalRef gui=bold guifg=#FF87AF
 " URL pattern (matches http:// or https:// URLs)
 syn match GaiProjectURL "https\?://[[:alnum:]._/%-?&=+#:~]\+" contained
 highlight GaiProjectURL gui=bold,underline guifg=#569CD6
-
-" Failed hooks file path pattern (matches /tmp/*_failed_hooks_*.txt)
-" Used inside metahook_complete suffixes
-syn match GaiProjectFailedHooksPath "/tmp/[[:alnum:]_]*_failed_hooks_[[:alnum:]_]*\.txt" contained
-highlight GaiProjectFailedHooksPath gui=bold,underline guifg=#00D7AF
