@@ -621,15 +621,26 @@ def check_hook_completion(
     completed_status = "PASSED" if exit_code == 0 else "FAILED"
 
     # Auto-append summary suffix for hooks with "!" prefix (skip_fix_hook)
+    # BUT only if no metahook matches - let metahook workflow handle those
     auto_skip_suffix = None
     if completed_status == "FAILED" and hook.skip_fix_hook:
-        from summarize_utils import get_file_summary
+        from metahook_config import find_matching_metahook
 
-        auto_skip_suffix = get_file_summary(
-            target_file=output_path,
-            usage="a hook failure suffix in a HISTORY entry",
-            fallback="Hook Command Failed",
-        )
+        # Read hook output to check for metahook match
+        hook_output_content = ""
+        if os.path.exists(output_path):
+            with open(output_path, encoding="utf-8") as f:
+                hook_output_content = f.read()
+
+        # Only auto-summarize if no metahook matches
+        if not find_matching_metahook(hook.command, hook_output_content):
+            from summarize_utils import get_file_summary
+
+            auto_skip_suffix = get_file_summary(
+                target_file=output_path,
+                usage="a hook failure suffix in a HISTORY entry",
+                fallback="Hook Command Failed",
+            )
 
     # Create updated status line
     updated_status_line = HookStatusLine(
