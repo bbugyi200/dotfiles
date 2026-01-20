@@ -10,7 +10,6 @@ from rich.console import Console
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from running_field import get_workspace_directory
 from status_state_machine import (
     remove_ready_to_mail_suffix,
     transition_changespec_status,
@@ -25,11 +24,9 @@ class MailPrepResult:
 
     Attributes:
         should_mail: True if the user confirmed they want to mail the CL.
-        target_dir: The workspace directory for the CL.
     """
 
     should_mail: bool
-    target_dir: str
 
 
 def _has_valid_parent(changespec: ChangeSpec) -> tuple[bool, ChangeSpec | None]:
@@ -308,7 +305,9 @@ Startblock:
         return "\n".join(result_lines)
 
 
-def prepare_mail(changespec: ChangeSpec, console: Console) -> MailPrepResult | None:
+def prepare_mail(
+    changespec: ChangeSpec, target_dir: str, console: Console
+) -> MailPrepResult | None:
     """Prepare for mailing a CL with startblock configuration.
 
     This performs all the prep work (reviewer prompts, description modification,
@@ -316,19 +315,13 @@ def prepare_mail(changespec: ChangeSpec, console: Console) -> MailPrepResult | N
 
     Args:
         changespec: The ChangeSpec to prepare for mailing
+        target_dir: The workspace directory for the CL
         console: Rich console for output
 
     Returns:
         MailPrepResult if successful (with should_mail indicating user's choice),
         None if the operation was aborted or failed.
     """
-    # Get target directory
-    try:
-        target_dir = get_workspace_directory(changespec.project_basename)
-    except RuntimeError as e:
-        console.print(f"[red]Error: {e}[/red]")
-        return None
-
     # Prompt for reviewers (optional) - loop to handle @ input for findreviewers
     while True:
         console.print(
@@ -503,7 +496,7 @@ def prepare_mail(changespec: ChangeSpec, console: Console) -> MailPrepResult | N
     if not should_mail:
         console.print("[yellow]User declined to mail[/yellow]")
 
-    return MailPrepResult(should_mail=should_mail, target_dir=target_dir)
+    return MailPrepResult(should_mail=should_mail)
 
 
 def execute_mail(changespec: ChangeSpec, target_dir: str, console: Console) -> bool:
@@ -539,7 +532,7 @@ def execute_mail(changespec: ChangeSpec, target_dir: str, console: Console) -> b
     return True
 
 
-def handle_mail(changespec: ChangeSpec, console: Console) -> bool:
+def handle_mail(changespec: ChangeSpec, target_dir: str, console: Console) -> bool:
     """Handle mailing a CL with startblock configuration.
 
     This is the main entry point for the "m" (mail) action. It performs
@@ -547,13 +540,14 @@ def handle_mail(changespec: ChangeSpec, console: Console) -> bool:
 
     Args:
         changespec: The ChangeSpec to mail
+        target_dir: The workspace directory for the CL
         console: Rich console for output
 
     Returns:
         True if mailing succeeded, False otherwise
     """
     # Run mail prep
-    prep_result = prepare_mail(changespec, console)
+    prep_result = prepare_mail(changespec, target_dir, console)
     if prep_result is None:
         return False
 
@@ -561,7 +555,7 @@ def handle_mail(changespec: ChangeSpec, console: Console) -> bool:
         return False
 
     # Execute the mail command
-    success = execute_mail(changespec, prep_result.target_dir, console)
+    success = execute_mail(changespec, target_dir, console)
     if not success:
         return False
 

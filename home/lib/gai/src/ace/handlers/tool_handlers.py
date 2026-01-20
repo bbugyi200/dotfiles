@@ -9,7 +9,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from ..changespec import ChangeSpec
 from ..mail_ops import handle_mail as mail_ops_handle_mail
-from ..operations import get_workspace_directory, update_to_changespec
+from ..operations import update_to_changespec
 
 if TYPE_CHECKING:
     from ..tui._workflow_context import WorkflowContext
@@ -444,7 +444,10 @@ def handle_mail(
     changespecs: list[ChangeSpec],
     current_idx: int,
 ) -> tuple[list[ChangeSpec], int]:
-    """Handle 'm' (mail) action.
+    """Handle 'M' (mail) action.
+
+    Claims a workspace in the 100-199 range, checks out the CL,
+    runs mail prep and execution, then releases the workspace.
 
     Args:
         self: The WorkflowContext instance
@@ -455,6 +458,13 @@ def handle_mail(
     Returns:
         Tuple of (updated_changespecs, updated_index)
     """
+    from running_field import (
+        claim_workspace,
+        get_first_available_axe_workspace,
+        get_workspace_directory_for_num,
+        release_workspace,
+    )
+
     from ..changespec import get_base_status
 
     base_status = get_base_status(changespec.status)
@@ -464,25 +474,46 @@ def handle_mail(
         )
         return changespecs, current_idx
 
-    # Determine which workspace directory to use
-    workspace_dir, workspace_suffix = get_workspace_directory(changespec)
+    # Claim a workspace in the 100-199 range
+    workspace_num = get_first_available_axe_workspace(changespec.file_path)
 
-    if workspace_suffix:
-        self.console.print(f"[cyan]Using workspace share: {workspace_suffix}[/cyan]")
-
-    # Update to the changespec branch (NAME field) to ensure we're on the correct branch
-    success, error_msg = update_to_changespec(
-        changespec, self.console, revision=changespec.name, workspace_dir=workspace_dir
-    )
-    if not success:
-        self.console.print(f"[red]Error: {error_msg}[/red]")
+    if not claim_workspace(
+        changespec.file_path, workspace_num, "mail", os.getpid(), changespec.name
+    ):
+        self.console.print("[red]Failed to claim workspace[/red]")
         return changespecs, current_idx
 
-    # Run the mail handler
-    success = mail_ops_handle_mail(changespec, self.console)
+    try:
+        # Get workspace directory
+        workspace_dir, workspace_suffix = get_workspace_directory_for_num(
+            workspace_num, changespec.project_basename
+        )
 
-    if success:
-        # Reload changespecs to reflect the status update
-        changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)
+        if workspace_suffix:
+            self.console.print(f"[cyan]Using workspace: {workspace_suffix}[/cyan]")
+
+        # Update to the changespec branch (NAME field) to ensure we're on the correct branch
+        success, error_msg = update_to_changespec(
+            changespec,
+            self.console,
+            revision=changespec.name,
+            workspace_dir=workspace_dir,
+        )
+        if not success:
+            self.console.print(f"[red]Error: {error_msg}[/red]")
+            return changespecs, current_idx
+
+        # Run the mail handler with the claimed workspace directory
+        success = mail_ops_handle_mail(changespec, workspace_dir, self.console)
+
+        if success:
+            # Reload changespecs to reflect the status update
+            changespecs, current_idx = self._reload_and_reposition(
+                changespecs, changespec
+            )
+
+    finally:
+        # Always release the workspace
+        release_workspace(changespec.file_path, workspace_num, "mail", changespec.name)
 
     return changespecs, current_idx

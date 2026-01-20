@@ -89,16 +89,26 @@ class AcceptMailMixin(HintMixinBase):
         """Handle the full mail flow when "@" alone is input.
 
         This runs the mail operations in a specific order:
-        1. Run mail prep FIRST (reviewer prompts, description modification, nvim)
-        2. Ask user if they want to mail
-        3. Run mark_ready_to_mail operations (kill processes, reject proposals)
-        4. Set status atomically (to "Mailed" if user confirmed, or READY TO MAIL if not)
-        5. Execute hg mail if user confirmed
+        1. Claim a workspace in the 100-199 range
+        2. Run mail prep FIRST (reviewer prompts, description modification, nvim)
+        3. Ask user if they want to mail
+        4. Run mark_ready_to_mail operations (kill processes, reject proposals)
+        5. Set status atomically (to "Mailed" if user confirmed, or READY TO MAIL if not)
+        6. Execute hg mail if user confirmed
+        7. Release the workspace
 
         Args:
             changespec: The ChangeSpec to process
         """
+        import os
+
         from rich.console import Console
+        from running_field import (
+            claim_workspace,
+            get_first_available_axe_workspace,
+            get_workspace_directory_for_num,
+            release_workspace,
+        )
 
         from ....changespec import get_base_status, has_ready_to_mail_suffix
         from ....mail_ops import MailPrepResult, execute_mail, prepare_mail
@@ -112,47 +122,71 @@ class AcceptMailMixin(HintMixinBase):
             self.notify("Already marked as ready to mail", severity="warning")  # type: ignore[attr-defined]
             return
 
-        # STEP 1: Run mail prep FIRST (prompts for reviewers, modifies description, opens nvim)
-        prep_result: MailPrepResult | None = None
+        # Claim a workspace in the 100-199 range
+        workspace_num = get_first_available_axe_workspace(changespec.file_path)
 
-        def run_mail_prep() -> MailPrepResult | None:
-            console = Console()
-            return prepare_mail(changespec, console)
-
-        with self.suspend():  # type: ignore[attr-defined]
-            prep_result = run_mail_prep()
-
-        if prep_result is None:
-            # User aborted or error occurred
-            self._reload_and_reposition()  # type: ignore[attr-defined]
+        if not claim_workspace(
+            changespec.file_path, workspace_num, "mail", os.getpid(), changespec.name
+        ):
+            self.notify("Failed to claim workspace", severity="error")  # type: ignore[attr-defined]
             return
 
-        # STEP 2: Mark ready to mail with appropriate final status
-        # If user said "yes" to mail, set status directly to "Mailed"
-        # If user said "no", just add READY TO MAIL suffix
-        final_status = "Mailed" if prep_result.should_mail else None
-        success = self._mark_ready_to_mail_atomic(changespec, final_status)  # type: ignore[attr-defined]
+        try:
+            # Get workspace directory
+            workspace_dir, workspace_suffix = get_workspace_directory_for_num(
+                workspace_num, changespec.project_basename
+            )
 
-        if not success:
-            self.notify("Failed to mark as ready to mail", severity="error")  # type: ignore[attr-defined]
-            self._reload_and_reposition()  # type: ignore[attr-defined]
-            return
+            if workspace_suffix:
+                self.notify(f"Using workspace: {workspace_suffix}")  # type: ignore[attr-defined]
 
-        # STEP 3: Execute mail if user confirmed
-        if prep_result.should_mail:
+            # STEP 1: Run mail prep FIRST (prompts for reviewers, modifies description, opens nvim)
+            prep_result: MailPrepResult | None = None
 
-            def run_mail() -> bool:
+            def run_mail_prep() -> MailPrepResult | None:
                 console = Console()
-                return execute_mail(changespec, prep_result.target_dir, console)
+                return prepare_mail(changespec, workspace_dir, console)
 
             with self.suspend():  # type: ignore[attr-defined]
-                mail_success = run_mail()
+                prep_result = run_mail_prep()
 
-            if mail_success:
-                self.notify("CL mailed successfully")  # type: ignore[attr-defined]
+            if prep_result is None:
+                # User aborted or error occurred
+                self._reload_and_reposition()  # type: ignore[attr-defined]
+                return
+
+            # STEP 2: Mark ready to mail with appropriate final status
+            # If user said "yes" to mail, set status directly to "Mailed"
+            # If user said "no", just add READY TO MAIL suffix
+            final_status = "Mailed" if prep_result.should_mail else None
+            success = self._mark_ready_to_mail_atomic(changespec, final_status)  # type: ignore[attr-defined]
+
+            if not success:
+                self.notify("Failed to mark as ready to mail", severity="error")  # type: ignore[attr-defined]
+                self._reload_and_reposition()  # type: ignore[attr-defined]
+                return
+
+            # STEP 3: Execute mail if user confirmed
+            if prep_result.should_mail:
+
+                def run_mail() -> bool:
+                    console = Console()
+                    return execute_mail(changespec, workspace_dir, console)
+
+                with self.suspend():  # type: ignore[attr-defined]
+                    mail_success = run_mail()
+
+                if mail_success:
+                    self.notify("CL mailed successfully")  # type: ignore[attr-defined]
+                else:
+                    self.notify("Failed to mail CL", severity="error")  # type: ignore[attr-defined]
             else:
-                self.notify("Failed to mail CL", severity="error")  # type: ignore[attr-defined]
-        else:
-            self.notify("Marked as ready to mail")  # type: ignore[attr-defined]
+                self.notify("Marked as ready to mail")  # type: ignore[attr-defined]
 
-        self._reload_and_reposition()  # type: ignore[attr-defined]
+            self._reload_and_reposition()  # type: ignore[attr-defined]
+
+        finally:
+            # Always release the workspace
+            release_workspace(
+                changespec.file_path, workspace_num, "mail", changespec.name
+            )
