@@ -96,6 +96,7 @@ class AceApp(
         Binding("w", "reword", "Reword", show=False),
         Binding("v", "view_files", "View", show=False),
         Binding("h", "edit_hooks", "Hooks", show=False),
+        Binding("H", "hooks_from_failed", "Hooks (Failed)", show=False),
         Binding("z", "start_fold_mode", "Fold", show=False),
         Binding("a", "accept_proposal", "Accept", show=False),
         Binding("b", "rebase", "Rebase", show=False),

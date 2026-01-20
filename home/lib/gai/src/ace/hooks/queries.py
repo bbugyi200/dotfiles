@@ -1,5 +1,8 @@
 """Hook queries - test target helpers, workflow queries, and hook mutations."""
 
+import re
+from typing import TYPE_CHECKING
+
 from ..changespec import (
     HookEntry,
     HookStatusLine,
@@ -7,6 +10,14 @@ from ..changespec import (
 )
 from .execution import update_changespec_hooks_field, write_hooks_unlocked
 from .history import is_proposal_entry
+
+if TYPE_CHECKING:
+    from ..changespec import ChangeSpec
+
+# Regex to match /tmp/*_failed_hooks_*.txt paths
+_FAILED_HOOKS_FILE_PATTERN = re.compile(
+    r"/tmp/[a-zA-Z0-9_]*_failed_hooks_[a-zA-Z0-9_]*\.txt"
+)
 
 # Test target hook helpers
 TEST_TARGET_HOOK_PREFIX = "bb_rabbit_test "
@@ -624,3 +635,39 @@ def rerun_delete_hooks_by_command(
             return True
     except Exception:
         return False
+
+
+def get_failed_hooks_file_path(changespec: "ChangeSpec") -> str | None:
+    """Find a failed hooks file path in the ChangeSpec's metahook_complete suffixes.
+
+    Iterates through all hooks with status lines, looking for any status line
+    with suffix_type == "metahook_complete" that contains a path matching
+    /tmp/*_failed_hooks_*.txt pattern in either the suffix or summary field.
+
+    Args:
+        changespec: The ChangeSpec to search.
+
+    Returns:
+        The first matching file path found, or None if not found.
+    """
+    if not changespec.hooks:
+        return None
+
+    for hook in changespec.hooks:
+        if not hook.status_lines:
+            continue
+        for sl in hook.status_lines:
+            if sl.suffix_type != "metahook_complete":
+                continue
+            # Check suffix field
+            if sl.suffix:
+                match = _FAILED_HOOKS_FILE_PATTERN.search(sl.suffix)
+                if match:
+                    return match.group(0)
+            # Check summary field
+            if sl.summary:
+                match = _FAILED_HOOKS_FILE_PATTERN.search(sl.summary)
+                if match:
+                    return match.group(0)
+
+    return None

@@ -38,6 +38,7 @@ _CLS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
             ("C / c1-c9", "Checkout CL (workspace 1-9)"),
             ("d", "Show diff"),
             ("h", "Edit hooks"),
+            ("H", "Add hooks from failed targets"),
             ("M", "Mail CL"),
             ("m", "Mark/unmark current CL"),
             ("n", "Rename CL (non-Sub/Rev)"),

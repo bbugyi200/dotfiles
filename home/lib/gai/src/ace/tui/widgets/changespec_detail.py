@@ -342,3 +342,39 @@ class ChangeSpecDetail(Static):
                         text.append("(FAILED)\n", style="bold #FF5F5F")
                     else:
                         text.append(f"  {target}\n", style="bold #AFD75F")
+
+    def show_failed_hooks_targets(
+        self,
+        targets: list[str],
+        file_path: str,
+    ) -> None:
+        """Display failed hooks targets with numbered hints for selection.
+
+        Args:
+            targets: List of test targets (lines starting with //).
+            file_path: Path to the failed hooks file.
+        """
+        text = Text()
+
+        # Header with file path
+        text.append("FAILED HOOKS TARGETS\n", style="bold #FF5F5F")
+        text.append("Source: ", style="dim")
+        text.append(file_path, style="bold underline #00D7AF")
+        text.append("\n\n")
+
+        # List targets with numbered hints
+        text.append("Select targets to add as hooks:\n", style="dim italic")
+        for idx, target in enumerate(targets, 1):
+            text.append(f"  [{idx}] ", style="bold #FFFF00")
+            text.append(f"{target}\n", style="bold #AFD75F")
+
+        text.append("\n")
+        text.append("Enter numbers (e.g., 1 3 5 or 1-5) to add as hooks", style="dim")
+
+        panel = Panel(
+            text,
+            title="Failed Hooks Selection",
+            border_style="#FF5F5F",
+            padding=(1, 2),
+        )
+        self.update(panel)

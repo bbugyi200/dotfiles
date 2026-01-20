@@ -62,13 +62,13 @@ class HintInputBar(Static):
         """Message sent when hint input is submitted."""
 
         def __init__(
-            self, value: str, mode: Literal["view", "hooks", "accept"]
+            self, value: str, mode: Literal["view", "hooks", "accept", "failed_hooks"]
         ) -> None:
             """Initialize the message.
 
             Args:
                 value: The input value
-                mode: The current hint mode ("view", "hooks", or "accept")
+                mode: The current hint mode ("view", "hooks", "accept", or "failed_hooks")
             """
             super().__init__()
             self.value = value
@@ -85,14 +85,14 @@ class HintInputBar(Static):
 
     def __init__(
         self,
-        mode: Literal["view", "hooks", "accept"],
+        mode: Literal["view", "hooks", "accept", "failed_hooks"],
         placeholder: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize the hint input bar.
 
         Args:
-            mode: The current hint mode ("view", "hooks", or "accept")
+            mode: The current hint mode ("view", "hooks", "accept", or "failed_hooks")
             placeholder: Optional custom placeholder text (used for "accept" mode)
             **kwargs: Additional arguments for Static
         """
@@ -113,6 +113,12 @@ class HintInputBar(Static):
                 yield Label("Hooks: ", id="hint-label")
                 yield _HintInput(
                     placeholder="1-5 or 2@ (@ to delete) or //target or command",
+                    id="hint-input",
+                )
+            elif self.mode == "failed_hooks":
+                yield Label("Failed Hooks: ", id="hint-label")
+                yield _HintInput(
+                    placeholder="1-5 or 1 3 5 (select targets to add as hooks)",
                     id="hint-input",
                 )
             else:  # accept mode
@@ -139,6 +145,8 @@ class HintInputBar(Static):
         text = Text()
         if self.mode == "view":
             text.append("View: ", style="bold #87D7FF")
+        elif self.mode == "failed_hooks":
+            text.append("Failed Hooks: ", style="bold #87D7FF")
         else:
             text.append("Hooks: ", style="bold #87D7FF")
         return text

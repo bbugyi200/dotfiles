@@ -8,6 +8,7 @@ from textual.containers import Horizontal
 from textual.widgets import Static
 
 from ...changespec import ChangeSpec, has_ready_to_mail_suffix
+from ...hooks import get_failed_hooks_file_path
 from ...operations import get_available_workflows
 
 if TYPE_CHECKING:
@@ -298,6 +299,10 @@ class KeybindingFooter(Horizontal):
 
         # Edit hooks
         bindings.append(("h", "hooks"))
+
+        # Hooks from failed targets (only if failed hooks file exists)
+        if get_failed_hooks_file_path(changespec):
+            bindings.append(("H", "hooks (failed)"))
 
         # Fold toggle
         bindings.append(("z", "fold (c,h,m,z)"))

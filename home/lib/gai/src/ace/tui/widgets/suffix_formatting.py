@@ -4,9 +4,16 @@ Contains common styling logic for suffix types used across different sections
 (COMMITS, HOOKS, COMMENTS, MENTORS).
 """
 
+import re
+
 from rich.text import Text
 
 from ...display_helpers import is_entry_ref_suffix, is_suffix_timestamp
+
+# Pattern for failed hooks file paths in metahook_complete suffixes
+_FAILED_HOOKS_FILE_PATTERN = re.compile(
+    r"/tmp/[a-zA-Z0-9_]*_failed_hooks_[a-zA-Z0-9_]*\.txt"
+)
 
 # Style definitions for suffix types
 SUFFIX_STYLES = {
@@ -21,6 +28,34 @@ SUFFIX_STYLES = {
     "metahook_complete": "bold #FFFFFF on #8B008B",
     "entry_ref": "bold #FF87AF",
 }
+
+
+def _style_with_file_path_highlight(content: str, base_style: str) -> Text:
+    """Style content with special highlighting for failed hooks file paths.
+
+    Args:
+        content: The text content to style.
+        base_style: The base style to apply to non-file-path content.
+
+    Returns:
+        A styled Text object with file paths highlighted.
+    """
+    text = Text()
+    last_end = 0
+
+    for match in _FAILED_HOOKS_FILE_PATTERN.finditer(content):
+        # Add text before the match with base style
+        if match.start() > last_end:
+            text.append(content[last_end : match.start()], style=base_style)
+        # Add the file path with special highlighting
+        text.append(match.group(0), style="bold underline #00D7AF")
+        last_end = match.end()
+
+    # Add any remaining text after the last match
+    if last_end < len(content):
+        text.append(content[last_end:], style=base_style)
+
+    return text
 
 
 def _build_suffix_content(
@@ -95,9 +130,19 @@ def append_suffix_to_text(
             text.append("(%)", style=SUFFIX_STYLES["summarize_complete"])
     elif suffix_type == "metahook_complete":
         if suffix_content:
-            text.append(
-                f"(^: {suffix_content})", style=SUFFIX_STYLES["metahook_complete"]
-            )
+            # Check for failed hooks file path to apply special highlighting
+            if _FAILED_HOOKS_FILE_PATTERN.search(suffix_content):
+                text.append("(^: ", style=SUFFIX_STYLES["metahook_complete"])
+                text.append_text(
+                    _style_with_file_path_highlight(
+                        suffix_content, SUFFIX_STYLES["metahook_complete"]
+                    )
+                )
+                text.append(")", style=SUFFIX_STYLES["metahook_complete"])
+            else:
+                text.append(
+                    f"(^: {suffix_content})", style=SUFFIX_STYLES["metahook_complete"]
+                )
         else:
             text.append("(^)", style=SUFFIX_STYLES["metahook_complete"])
     elif check_entry_ref and suffix and is_entry_ref_suffix(suffix):

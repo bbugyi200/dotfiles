@@ -20,6 +20,7 @@ from ...hints import (
     parse_test_targets,
     parse_view_input,
 )
+from ...hooks import get_failed_hooks_file_path
 from ..widgets import ChangeSpecDetail, HintInputBar
 
 if TYPE_CHECKING:
@@ -40,6 +41,8 @@ class HintActionsMixin:
     _hint_changespec_name: str
     _accept_mode_active: bool
     _accept_last_base: str | None
+    _failed_hooks_targets: list[str]  # List of failed test targets from file
+    _failed_hooks_file_path: str | None  # Path to the failed hooks file
 
     # --- Edit Hooks Action ---
 
@@ -75,6 +78,55 @@ class HintActionsMixin:
         # Mount the hint input bar
         detail_container = self.query_one("#detail-container")  # type: ignore[attr-defined]
         hint_bar = HintInputBar(mode="hooks", id="hint-input-bar")
+        detail_container.mount(hint_bar)
+
+    # --- Hooks From Failed Action ---
+
+    def action_hooks_from_failed(self) -> None:
+        """Add hooks from a failed targets file (from TAP metahook)."""
+        if not self.changespecs:
+            return
+
+        changespec = self.changespecs[self.current_idx]
+
+        # Get the failed hooks file path
+        file_path = get_failed_hooks_file_path(changespec)
+        if not file_path:
+            self.notify("No failed hooks file found", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        # Read and parse the file
+        try:
+            with open(file_path) as f:
+                lines = f.readlines()
+        except OSError as e:
+            self.notify(f"Cannot read file: {e}", severity="error")  # type: ignore[attr-defined]
+            return
+
+        # Extract lines starting with // (test targets)
+        targets: list[str] = []
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith("//"):
+                targets.append(stripped)
+
+        if not targets:
+            self.notify("No test targets found in file", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        # Store state for later processing
+        self._failed_hooks_targets = targets
+        self._failed_hooks_file_path = file_path
+        self._hint_mode_active = True
+        self._hint_changespec_name = changespec.name
+
+        # Update detail panel to show numbered targets
+        detail_widget = self.query_one("#detail-panel", ChangeSpecDetail)  # type: ignore[attr-defined]
+        detail_widget.show_failed_hooks_targets(targets, file_path)
+
+        # Mount the hint input bar
+        detail_container = self.query_one("#detail-container")  # type: ignore[attr-defined]
+        hint_bar = HintInputBar(mode="failed_hooks", id="hint-input-bar")
         detail_container.mount(hint_bar)
 
     def _apply_hook_changes(
@@ -312,6 +364,8 @@ class HintActionsMixin:
             self._process_view_input(event.value)
         elif event.mode == "hooks":
             self._process_hooks_input(event.value)
+        elif event.mode == "failed_hooks":
+            self._process_failed_hooks_input(event.value)
         else:  # accept mode
             self._process_accept_input(event.value)
 
@@ -432,6 +486,74 @@ class HintActionsMixin:
             )
             if success:
                 self._reload_and_reposition()  # type: ignore[attr-defined]
+
+    def _process_failed_hooks_input(self, user_input: str) -> None:
+        """Process failed hooks input to add selected targets as hooks.
+
+        Input can be:
+        - Single numbers: "1", "2", "3"
+        - Space-separated: "1 3 5"
+        - Ranges: "1-5"
+        - Mixed: "1 3-5 7"
+        """
+        if not user_input:
+            return
+
+        changespec = self.changespecs[self.current_idx]
+        targets = getattr(self, "_failed_hooks_targets", [])
+
+        if not targets:
+            self.notify("No targets available", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        # Parse the input to get selected indices (1-based)
+        selected_indices: set[int] = set()
+        invalid_parts: list[str] = []
+
+        parts = user_input.split()
+        for part in parts:
+            if "-" in part and not part.startswith("-"):
+                # Range like "1-5"
+                try:
+                    start_str, end_str = part.split("-", 1)
+                    start = int(start_str)
+                    end = int(end_str)
+                    for i in range(start, end + 1):
+                        if 1 <= i <= len(targets):
+                            selected_indices.add(i)
+                        else:
+                            invalid_parts.append(str(i))
+                except ValueError:
+                    invalid_parts.append(part)
+            else:
+                # Single number
+                try:
+                    idx = int(part)
+                    if 1 <= idx <= len(targets):
+                        selected_indices.add(idx)
+                    else:
+                        invalid_parts.append(part)
+                except ValueError:
+                    invalid_parts.append(part)
+
+        if invalid_parts:
+            self.notify(  # type: ignore[attr-defined]
+                f"Invalid selections: {', '.join(invalid_parts)}",
+                severity="warning",
+            )
+            return
+
+        if not selected_indices:
+            self.notify("No valid targets selected", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        # Get the selected targets (convert 1-based to 0-based)
+        selected_targets = [targets[i - 1] for i in sorted(selected_indices)]
+
+        # Add them as hooks
+        success = self._add_test_target_hooks(changespec, selected_targets)
+        if success:
+            self._reload_and_reposition()  # type: ignore[attr-defined]
 
     def _process_accept_input(self, user_input: str) -> None:
         """Process accept proposal input.
