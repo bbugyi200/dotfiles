@@ -129,6 +129,8 @@ def get_failing_hooks_for_fix(hooks: list[HookEntry]) -> list[HookEntry]:
     for hook in hooks:
         if hook.status != "FAILED":
             continue
+        if hook.skip_fix_hook:
+            continue
         if _hook_has_fix_excluded_suffix(hook):
             continue
         # Exclude proposal entries - they go to summarize-hook instead
@@ -163,6 +165,8 @@ def get_failing_hook_entries_for_fix(
     result: list[tuple[HookEntry, str]] = []
     for hook in hooks:
         if not hook.status_lines:
+            continue
+        if hook.skip_fix_hook:
             continue
         for entry_id in entry_ids:
             # Skip proposal entries - they don't get fix-hook
