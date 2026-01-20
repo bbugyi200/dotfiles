@@ -22,7 +22,7 @@ snippets:
     publisher feature (see @contentads/drx/fe/g3doc/admin/publisher_features.md for more information on publisher features)
   newfeat: |
     Can you help me add a new #feat named {1} to the java/com/google/ads/publisher/domain/entity/feature/publisher_features.textproto file?
-    This publisher feature will be used to {2}.
+    This publisher feature will be used to {2}. #noc
   noc: "You should make the necessary file changes, but should NOT create/amend a CL."
   nocl: "#noc #cl"
   scuba: "Make sure all related tests pass, except for some scuba diff tests, which are expected to fail."
