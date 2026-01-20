@@ -570,7 +570,7 @@ def handle_mail(changespec: ChangeSpec, console: Console) -> bool:
 
     # Update status to "Mailed"
     console.print("[cyan]Updating status to 'Mailed'...[/cyan]")
-    status_success, old_status, status_error = transition_changespec_status(
+    status_success, old_status, status_error, _ = transition_changespec_status(
         changespec.file_path,
         changespec.name,
         "Mailed",

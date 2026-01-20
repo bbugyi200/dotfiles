@@ -95,7 +95,7 @@ def test_transition_changespec_status_valid_transition() -> None:
     project_file = _create_test_project_file("Drafted")
 
     try:
-        success, old_status, error = transition_changespec_status(
+        success, old_status, error, _ = transition_changespec_status(
             project_file, "Test Feature", "Mailed", validate=True
         )
 
@@ -118,7 +118,7 @@ def test_transition_changespec_status_invalid_transition() -> None:
     project_file = _create_test_project_file("Drafted")
 
     try:
-        success, old_status, error = transition_changespec_status(
+        success, old_status, error, _ = transition_changespec_status(
             project_file, "Test Feature", "Submitted", validate=True
         )
 
@@ -143,7 +143,7 @@ def test_transition_changespec_status_skip_validation() -> None:
 
     try:
         # This transition would normally be invalid
-        success, old_status, error = transition_changespec_status(
+        success, old_status, error, _ = transition_changespec_status(
             project_file, "Test Feature", "Submitted", validate=False
         )
 
@@ -165,7 +165,7 @@ def test_transition_changespec_status_nonexistent_changespec() -> None:
     project_file = _create_test_project_file("Drafted")
 
     try:
-        success, old_status, error = transition_changespec_status(
+        success, old_status, error, _ = transition_changespec_status(
             project_file, "Nonexistent Feature", "Mailed", validate=True
         )
 
@@ -209,7 +209,7 @@ STATUS: Drafted
         project_file = f.name
 
     try:
-        success, old_status, error = transition_changespec_status(
+        success, old_status, error, _ = transition_changespec_status(
             project_file, "Feature A", "Mailed", validate=True
         )
 
@@ -267,7 +267,7 @@ def test_atomic_file_operations() -> None:
 
     try:
         # Test 1: Verify file is updated atomically
-        success, old_status, error = transition_changespec_status(
+        success, old_status, error, _ = transition_changespec_status(
             project_file, "Test Feature", "Mailed", validate=True
         )
 
@@ -290,7 +290,7 @@ def test_atomic_file_operations() -> None:
         assert len(original_content) > 0
 
         # Test 3: Verify that multiple status updates work correctly
-        success2, old_status2, error2 = transition_changespec_status(
+        success2, old_status2, error2, _ = transition_changespec_status(
             project_file, "Test Feature", "Submitted", validate=True
         )
 

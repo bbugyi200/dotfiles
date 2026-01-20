@@ -52,6 +52,7 @@ class BaseActionsMixin:
 
     def _apply_status_change(self, changespec: ChangeSpec, new_status: str) -> None:
         """Apply a status change to a ChangeSpec."""
+        from gai_utils import has_suffix
         from status_state_machine import (
             remove_ready_to_mail_suffix,
             transition_changespec_status,
@@ -80,16 +81,53 @@ class BaseActionsMixin:
         # Remove READY TO MAIL suffix if present before transitioning
         remove_ready_to_mail_suffix(changespec.file_path, changespec.name)
 
-        # Update the status in the project file
-        success, old_status, error_msg = transition_changespec_status(
-            changespec.file_path,
-            changespec.name,
-            new_status,
-            validate=False,
+        # Check if this is a WIP→Drafted transition with suffix (may trigger sibling reverts)
+        may_have_sibling_reverts = (
+            changespec.status == "WIP"
+            and new_status == "Drafted"
+            and has_suffix(changespec.name)
         )
 
+        if may_have_sibling_reverts:
+            # Need to suspend to show console output during sibling reverts
+            from rich.console import Console
+
+            with self.suspend():  # type: ignore[attr-defined]
+                console = Console()
+                success, old_status, error_msg, sibling_results = (
+                    transition_changespec_status(
+                        changespec.file_path,
+                        changespec.name,
+                        new_status,
+                        validate=False,
+                        console=console,
+                    )
+                )
+        else:
+            # No sibling reverts expected, run without console
+            success, old_status, error_msg, sibling_results = (
+                transition_changespec_status(
+                    changespec.file_path,
+                    changespec.name,
+                    new_status,
+                    validate=False,
+                )
+            )
+
         if success:
-            self.notify(f"Status updated: {old_status} -> {new_status}")  # type: ignore[attr-defined]
+            # Build notification message
+            msg_parts = [f"Status updated: {old_status} -> {new_status}"]
+
+            # Add info about reverted siblings
+            reverted = [r.name for r in sibling_results if r.success]
+            failed = [r.name for r in sibling_results if not r.success]
+
+            if reverted:
+                msg_parts.append(f"Auto-reverted siblings: {', '.join(reverted)}")
+            if failed:
+                msg_parts.append(f"Failed to revert: {', '.join(failed)}")
+
+            self.notify("\n".join(msg_parts))  # type: ignore[attr-defined]
         else:
             self.notify(f"Error: {error_msg}", severity="error")  # type: ignore[attr-defined]
 

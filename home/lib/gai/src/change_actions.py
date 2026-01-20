@@ -591,8 +591,10 @@ def execute_change_action(
         # Transition status from WIP to Drafted
         # Note: transition_changespec_status automatically calls clear_mentor_wip_flags()
         # when transitioning from WIP to Drafted
-        promote_success, old_status_opt, promote_error = transition_changespec_status(
-            resolved_project_file, cl_name, "Drafted", validate=True
+        promote_success, old_status_opt, promote_error, _ = (
+            transition_changespec_status(
+                resolved_project_file, cl_name, "Drafted", validate=True
+            )
         )
 
         if promote_success:

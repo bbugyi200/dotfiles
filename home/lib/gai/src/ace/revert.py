@@ -377,7 +377,7 @@ def revert_changespec(
             )
 
     # Update STATUS to Reverted
-    success, _, error = transition_changespec_status(
+    success, _, error, _ = transition_changespec_status(
         changespec.file_path,
         new_name,  # Use the new name after rename
         "Reverted",

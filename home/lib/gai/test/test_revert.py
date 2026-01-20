@@ -203,7 +203,7 @@ def test_revert_changespec_success() -> None:
                     ) as mock_rename:
                         with patch(
                             "ace.revert.transition_changespec_status",
-                            return_value=(True, "Mailed", None),
+                            return_value=(True, "Mailed", None, []),
                         ):
                             with patch("ace.revert.reset_changespec_cl"):
                                 success, error = revert_changespec(changespec, console)
@@ -287,7 +287,7 @@ def test_revert_changespec_releases_mentor_workspace() -> None:
                     with patch("ace.revert.update_changespec_name_atomic"):
                         with patch(
                             "ace.revert.transition_changespec_status",
-                            return_value=(True, "Mailed", None),
+                            return_value=(True, "Mailed", None, []),
                         ):
                             with patch("ace.revert.reset_changespec_cl"):
                                 with patch(

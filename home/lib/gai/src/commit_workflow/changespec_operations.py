@@ -35,7 +35,7 @@ def update_existing_changespec(project: str, cl_name: str, cl_url: str) -> bool:
         update_changespec_cl_atomic(project_file, cl_name, cl_url)
 
         # Update STATUS to "WIP"
-        success, _, _ = transition_changespec_status(
+        success, _, _, _ = transition_changespec_status(
             project_file, cl_name, "WIP", validate=False
         )
         return success

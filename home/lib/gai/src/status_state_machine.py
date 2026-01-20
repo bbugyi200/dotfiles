@@ -7,11 +7,25 @@ STATUS field transitions across all gai workflows.
 
 import logging
 import re
+from dataclasses import dataclass
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from ace.changespec import changespec_lock, get_base_status, write_changespec_atomic
 
+if TYPE_CHECKING:
+    from rich.console import Console
+
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class _SiblingRevertResult:
+    """Result of reverting a sibling WIP ChangeSpec."""
+
+    name: str
+    success: bool
+    error: str | None = None
 
 
 def remove_workspace_suffix(status: str) -> str:
@@ -235,7 +249,8 @@ def transition_changespec_status(
     changespec_name: str,
     new_status: str,
     validate: bool = True,
-) -> tuple[bool, str | None, str | None]:
+    console: "Console | None" = None,
+) -> tuple[bool, str | None, str | None, list[_SiblingRevertResult]]:
     """
     Transition a ChangeSpec to a new STATUS with optional validation.
 
@@ -246,16 +261,19 @@ def transition_changespec_status(
         changespec_name: NAME of the ChangeSpec to update
         new_status: New STATUS value
         validate: If True, validate the transition is allowed
+        console: Optional Rich console for output during sibling reverts
 
     Returns:
-        Tuple of (success, old_status, error_msg)
+        Tuple of (success, old_status, error_msg, sibling_revert_results)
         - success: True if transition succeeded
         - old_status: Previous status value (None if not found)
         - error_msg: Error message if failed (None if succeeded)
+        - sibling_revert_results: List of _SiblingRevertResult for reverted siblings
     """
     # Track if we need to strip suffix after lock releases
     suffix_strip_info: tuple[str, str] | None = None
     result: tuple[bool, str | None, str | None] | None = None
+    sibling_results: list[_SiblingRevertResult] = []
 
     with changespec_lock(project_file):
         with open(project_file, encoding="utf-8") as f:
@@ -373,17 +391,20 @@ def transition_changespec_status(
         update_running_field_cl_name(project_file, suffixed_name, base_name)
 
         # Auto-revert sibling WIP ChangeSpecs with the same basename
-        _revert_sibling_wip_changespecs(project_file, base_name, suffixed_name)
+        sibling_results = _revert_sibling_wip_changespecs(
+            project_file, base_name, suffixed_name, console
+        )
 
     assert result is not None
-    return result
+    return (result[0], result[1], result[2], sibling_results)
 
 
 def _revert_sibling_wip_changespecs(
     project_file: str,
     base_name: str,
     excluded_name: str,
-) -> None:
+    console: "Console | None" = None,
+) -> list[_SiblingRevertResult]:
     """Revert all WIP ChangeSpecs with the same basename.
 
     When a WIP ChangeSpec transitions to Drafted and has its suffix stripped,
@@ -395,12 +416,18 @@ def _revert_sibling_wip_changespecs(
         base_name: The base name without suffix (e.g., "foo_bar").
         excluded_name: The original suffixed name that was just transitioned
             (don't revert this one).
+        console: Optional Rich console for output.
+
+    Returns:
+        List of _SiblingRevertResult for each sibling that was attempted to be
+        reverted.
     """
     from ace.changespec import parse_project_file
     from ace.revert import revert_changespec
     from gai_utils import strip_reverted_suffix
 
     changespecs = parse_project_file(project_file)
+    results: list[_SiblingRevertResult] = []
 
     for cs in changespecs:
         # Skip the one we just transitioned
@@ -411,9 +438,16 @@ def _revert_sibling_wip_changespecs(
         cs_base = strip_reverted_suffix(cs.name)
         if cs_base == base_name and cs.status == "WIP":
             logger.info(f"Auto-reverting sibling WIP ChangeSpec: {cs.name}")
-            success, error = revert_changespec(cs, console=None)
+            if console:
+                console.print(f"[yellow]Auto-reverting sibling WIP:[/] {cs.name}")
+            success, error = revert_changespec(cs, console=console)
             if not success:
                 logger.warning(f"Failed to revert {cs.name}: {error}")
+            results.append(
+                _SiblingRevertResult(name=cs.name, success=success, error=error)
+            )
+
+    return results
 
 
 # Suffix appended to STATUS line when ChangeSpec is ready to be mailed

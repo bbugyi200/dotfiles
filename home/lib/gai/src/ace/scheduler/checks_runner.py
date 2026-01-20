@@ -398,7 +398,7 @@ def _handle_cl_submitted_completion(
     ):
         from ..sync_cache import clear_cache_entry
 
-        success, old_status, _ = transition_changespec_status(
+        success, old_status, _, _ = transition_changespec_status(
             changespec.file_path,
             changespec.name,
             "Submitted",
