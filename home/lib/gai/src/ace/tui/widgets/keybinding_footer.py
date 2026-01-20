@@ -283,7 +283,7 @@ class KeybindingFooter(Horizontal):
 
         # Mail (only if READY TO MAIL)
         if has_ready_to_mail_suffix(changespec.status):
-            bindings.append(("m", "mail"))
+            bindings.append(("M", "mail"))
 
         # Rebase (only if status is WIP, Drafted, or Mailed)
         if base_status in ("WIP", "Drafted", "Mailed"):

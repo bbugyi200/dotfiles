@@ -128,25 +128,25 @@ def test_keybinding_footer_diff_hidden_without_cl() -> None:
 
 
 def test_keybinding_footer_mail_visible_ready_to_mail() -> None:
-    """Test 'm' binding is visible with READY TO MAIL suffix."""
+    """Test 'M' binding is visible with READY TO MAIL suffix."""
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Drafted - (!: READY TO MAIL)", cl="123456")
 
     bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
-    assert "m" in binding_keys
+    assert "M" in binding_keys
 
 
 def test_keybinding_footer_mail_hidden_without_suffix() -> None:
-    """Test 'm' binding is hidden without READY TO MAIL suffix."""
+    """Test 'M' binding is hidden without READY TO MAIL suffix."""
     footer = KeybindingFooter()
     changespec = _make_changespec(status="Drafted", cl="123456")
 
     bindings = footer._compute_available_bindings(changespec)
     binding_keys = [b[0] for b in bindings]
 
-    assert "m" not in binding_keys
+    assert "M" not in binding_keys
 
 
 # --- Accept Binding Tests ---
