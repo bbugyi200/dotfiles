@@ -78,7 +78,8 @@ def is_running_process_suffix(suffix: str | None) -> bool:
     if suffix is None:
         return False
     # PID format: all digits, typically 4-6 chars but could be more
-    return suffix.isdigit() and len(suffix) >= 1
+    # Use >= 4 to distinguish from commit references (1-3 digits like "3", "12")
+    return suffix.isdigit() and len(suffix) >= 4
 
 
 def is_plain_suffix(suffix: str | None) -> bool:
