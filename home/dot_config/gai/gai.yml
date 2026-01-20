@@ -24,6 +24,12 @@ snippets:
   nocl: "#noc #cl"
   scuba: "Make sure all related tests pass, except for some scuba diff tests, which are expected to fail."
 
+# Metahooks intercept failing hooks before the summarize agent runs.
+metahooks:
+  - name: scuba
+    hook_command: bb_rabbit_test
+    output_regex: "Expected: Scuba Result PASSED"
+
 # Mentor profiles define which mentors to apply to which files.
 # Each profile contains its mentor definitions inline.
 mentor_profiles:

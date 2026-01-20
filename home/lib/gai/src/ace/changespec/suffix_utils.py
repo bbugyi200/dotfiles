@@ -20,6 +20,7 @@ _PREFIX_MAP: list[tuple[str, str | None]] = [
     ("@:", "running_agent"),
     ("$:", "running_process"),
     ("%:", "summarize_complete"),
+    ("^:", "metahook_complete"),
     ("~:", None),  # Legacy prefix, treated as plain suffix
 ]
 
@@ -38,6 +39,8 @@ def parse_suffix_prefix(suffix_val: str | None) -> _ParsedSuffix:
     - "$:" -> running_process
     - "%:" -> summarize_complete
     - "%" (alone) -> summarize_complete with empty value
+    - "^:" -> metahook_complete
+    - "^" (alone) -> metahook_complete with empty value
     - "~:" -> plain (legacy, no suffix_type)
 
     Args:
@@ -58,6 +61,8 @@ def parse_suffix_prefix(suffix_val: str | None) -> _ParsedSuffix:
         return _ParsedSuffix("", "running_agent")
     if suffix_val == "%":
         return _ParsedSuffix("", "summarize_complete")
+    if suffix_val == "^":
+        return _ParsedSuffix("", "metahook_complete")
 
     # No prefix - return as-is with no suffix_type
     return _ParsedSuffix(suffix_val, None)

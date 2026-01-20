@@ -16,6 +16,7 @@ Output file will contain:
 """
 
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -23,6 +24,7 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ace.hooks import set_hook_suffix
+from metahook_config import MetahookConfig, find_matching_metahook
 from summarize_utils import get_file_summary
 
 # Workflow completion marker (same pattern as other axe runners)
@@ -54,6 +56,67 @@ def main() -> int:
         print(f"Hook output: {hook_output_path}")
         print(f"Entry ID: {entry_id}")
         print()
+
+        # Check for matching metahook
+        hook_output_content = Path(hook_output_path).read_text(encoding="utf-8")
+        matching_metahook: MetahookConfig | None = find_matching_metahook(
+            hook_command, hook_output_content
+        )
+
+        if matching_metahook:
+            print(f"Found matching metahook: {matching_metahook.name}")
+            metahook_script = f"gai_metahook_{matching_metahook.name}"
+
+            try:
+                result = subprocess.run(
+                    [metahook_script, hook_output_path],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+
+                if result.returncode != 0:
+                    # Metahook returned non-zero - use its output as summary
+                    summary = result.stdout.strip() or "Metahook failed"
+                    print(f"Metahook completed with summary: {summary}")
+
+                    success = set_hook_suffix(
+                        project_file,
+                        changespec_name,
+                        hook_command,
+                        summary,
+                        hooks=None,
+                        entry_id=entry_id,
+                        suffix_type="metahook_complete",
+                    )
+                    if success:
+                        print(
+                            f"Updated hook suffix for entry ({entry_id}) to: {summary}"
+                        )
+                        exit_code = 0
+                    else:
+                        print(
+                            f"Warning: Could not update hook suffix for {changespec_name}"
+                        )
+                        exit_code = 1
+
+                    # Write completion marker and return early
+                    print()
+                    print(f"{WORKFLOW_COMPLETE_MARKER}None EXIT_CODE: {exit_code}")
+                    return exit_code
+                else:
+                    print("Metahook returned 0, continuing with normal summarize flow")
+
+            except FileNotFoundError:
+                print(
+                    f"Metahook script not found: {metahook_script}, continuing with normal flow"
+                )
+            except subprocess.TimeoutExpired:
+                print(
+                    f"Metahook script timed out: {metahook_script}, continuing with normal flow"
+                )
+            except Exception as e:
+                print(f"Error running metahook: {e}, continuing with normal flow")
 
         # Create artifacts directory using same timestamp as agent suffix
         # This ensures the Agents tab can find the prompt file
