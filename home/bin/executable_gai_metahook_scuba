@@ -1,3 +1,15 @@
 #!/bin/bash
+
+hook_output_path="$1"
+
 echo "Scuba screenshot tests failed."
+
+# Extract the last sponge2 URL from the hook output
+if [[ -n "$hook_output_path" && -f "$hook_output_path" ]]; then
+    last_url=$(grep -oE 'http://sponge2/[^ ]+' "$hook_output_path" | tail -1)
+    if [[ -n "$last_url" ]]; then
+        echo "$last_url"
+    fi
+fi
+
 exit 1
