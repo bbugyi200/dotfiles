@@ -13,6 +13,7 @@ mkdir -p "$(dirname "$diff_file")"
 hg diff >"$diff_file"
 
 set -x
+hg evolve --abort
 hg addremove
 hg update --clean .
 hg clean
