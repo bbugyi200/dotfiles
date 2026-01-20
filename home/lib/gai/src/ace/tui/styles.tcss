@@ -107,11 +107,11 @@ ChangeSpecList > .option-list--option-highlighted {
 }
 
 /* Modal styling */
-StatusModal, QueryEditModal, WorkflowSelectModal, AcceptProposalModal, ConfirmKillModal {
+StatusModal, QueryEditModal, WorkflowSelectModal, AcceptProposalModal, ConfirmKillModal, CLNameInputModal {
     align: center middle;
 }
 
-StatusModal > Container, QueryEditModal > Container, WorkflowSelectModal > Container, AcceptProposalModal > Container, ConfirmKillModal > Container {
+StatusModal > Container, QueryEditModal > Container, WorkflowSelectModal > Container, AcceptProposalModal > Container, ConfirmKillModal > Container, CLNameInputModal > Container {
     width: 60;
     height: auto;
     max-height: 80%;
