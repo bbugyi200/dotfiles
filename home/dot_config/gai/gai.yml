@@ -29,6 +29,9 @@ metahooks:
   - name: scuba
     hook_command: bb_rabbit_test
     output_regex: "Expected: Scuba Result PASSED"
+  - name: hg_presubmit_tap
+    hook_command: bb_hg_presubmit
+    output_regex: "has failing targets"
 
 # Mentor profiles define which mentors to apply to which files.
 # Each profile contains its mentor definitions inline.

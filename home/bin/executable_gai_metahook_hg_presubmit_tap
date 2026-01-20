@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+"""Metahook script for bb_hg_presubmit TAP test failures."""
+
+import re
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+
+def main() -> int:
+    if len(sys.argv) < 2:
+        return 0  # No output file, let normal flow proceed
+
+    hook_output_path = Path(sys.argv[1])
+    if not hook_output_path.exists():
+        return 0
+
+    hook_output = hook_output_path.read_text()
+
+    # Find the last URL matching http://test/OCL:*
+    url_pattern = r"http://test/(OCL:[^\s)]+)"
+    matches = re.findall(url_pattern, hook_output)
+    if not matches:
+        return 0  # No matching URL, let normal flow proceed
+
+    ocl_part = matches[-1]  # Use the last match
+    full_url = f"http://test/{ocl_part}"
+
+    # Run bb_failed_tap_tests to get test results
+    try:
+        result = subprocess.run(
+            ["bb_failed_tap_tests", ocl_part],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        tap_output = result.stdout
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return 0  # Failed to get results, let normal flow proceed
+
+    # Parse protobuf text output to find FAILED targets
+    # Look for result blocks with status: FAILED and extract target_name
+    failed_targets = []
+
+    # Split into result blocks and find FAILED ones
+    result_blocks = re.split(r"\n  result \{", tap_output)
+    for block in result_blocks[1:]:  # Skip first (before any result)
+        if re.search(r"status:\s*FAILED", block):
+            target_match = re.search(r'target_name:\s*"([^"]+)"', block)
+            if target_match:
+                failed_targets.append(target_match.group(1))
+
+    if not failed_targets:
+        return 0  # No failed targets, let normal flow proceed
+
+    # Create output file with failed targets
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        prefix="tap_failed_targets_",
+        suffix=".txt",
+        delete=False,
+    ) as f:
+        f.write(f"Failed test targets from {full_url}:\n\n")
+        for target in failed_targets:
+            f.write(f"{target}\n")
+        output_path = f.name
+
+    print(f"TAP Test Targets Failed: {output_path}")
+    return 1  # Take over summarization
+
+
+if __name__ == "__main__":
+    sys.exit(main())
