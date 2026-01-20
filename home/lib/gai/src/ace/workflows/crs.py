@@ -108,6 +108,7 @@ def run_crs_workflow(
         workflow = CrsWorkflow(
             context_file_directory=context_file_directory,
             comments_file=comments_file,
+            timestamp=crs_start_timestamp,
         )
         workflow_succeeded = workflow.run()
 
