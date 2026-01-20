@@ -216,6 +216,7 @@ def test_suffix_styles_contains_expected_keys() -> None:
         "killed_process",
         "killed_agent",
         "summarize_complete",
+        "metahook_complete",
         "entry_ref",
     }
     assert set(SUFFIX_STYLES.keys()) == expected_keys

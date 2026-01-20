@@ -18,6 +18,7 @@ SUFFIX_STYLES = {
     "killed_process": "bold #B8A800 on #444444",
     "killed_agent": "bold #FF8C00 on #444444",
     "summarize_complete": "bold #FFFFFF on #008B8B",
+    "metahook_complete": "bold #FFFFFF on #8B008B",
     "entry_ref": "bold #FF87AF",
 }
 
@@ -92,6 +93,13 @@ def append_suffix_to_text(
             )
         else:
             text.append("(%)", style=SUFFIX_STYLES["summarize_complete"])
+    elif suffix_type == "metahook_complete":
+        if suffix_content:
+            text.append(
+                f"(^: {suffix_content})", style=SUFFIX_STYLES["metahook_complete"]
+            )
+        else:
+            text.append("(^)", style=SUFFIX_STYLES["metahook_complete"])
     elif check_entry_ref and suffix and is_entry_ref_suffix(suffix):
         text.append(f"({suffix_content})", style=SUFFIX_STYLES["entry_ref"])
     else:

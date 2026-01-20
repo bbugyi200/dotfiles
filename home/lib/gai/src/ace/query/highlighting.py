@@ -260,6 +260,8 @@ QUERY_TOKEN_STYLES: dict[str, str] = {
     "running_process": "bold #3D2B1F on #FFD700",
     "pending_dead_process": "bold #FFD700 on #444444",
     "killed_process": "bold #B8A800 on #444444",
+    "summarize_complete": "bold #FFFFFF on #008B8B",
+    "metahook_complete": "bold #FFFFFF on #8B008B",
     "quoted": "#808080",
     "term": "#00D7AF",
     "paren": "bold #FFFFFF",

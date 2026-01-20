@@ -428,6 +428,22 @@ def display_changespec(
                                 )
                             else:
                                 text.append("(%)", style="bold #FFFFFF on #008B8B")
+                        elif sl.suffix_type == "metahook_complete":
+                            # Purple background for metahook complete
+                            suffix_content = sl.suffix or ""
+                            if sl.summary:
+                                suffix_content = (
+                                    f"{sl.suffix} | {sl.summary}"
+                                    if sl.suffix
+                                    else sl.summary
+                                )
+                            if suffix_content:
+                                text.append(
+                                    f"(^: {suffix_content})",
+                                    style="bold #FFFFFF on #8B008B",
+                                )
+                            else:
+                                text.append("(^)", style="bold #FFFFFF on #8B008B")
                         elif is_entry_ref_suffix(sl.suffix):
                             # Entry reference suffix (e.g., "2", "1a") - light red/pink
                             suffix_content = sl.suffix
