@@ -481,9 +481,9 @@ def main() -> None:
                         )
 
                 # Build diff path (same format as save_diff uses)
-                from gai_utils import make_safe_filename
+                from gai_utils import make_safe_filename, strip_reverted_suffix
 
-                safe_name = make_safe_filename(cl_name)
+                safe_name = make_safe_filename(strip_reverted_suffix(cl_name))
                 diff_path = f"~/.gai/diffs/{safe_name}-{timestamp}.diff"
 
                 # Write done marker for NEW PROPOSAL outcome
