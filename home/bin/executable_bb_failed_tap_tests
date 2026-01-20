@@ -1,0 +1,7 @@
+#!/bin/bash
+
+run_id="$1"
+shift
+
+stubby call blade:tap-api PresubmitResultsService.RequestResults --proto2 \
+  "id: \"${run_id}\" include_last_known_results: false return_skipped_tests: true max_target_results: 1000000"
