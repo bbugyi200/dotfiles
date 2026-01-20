@@ -373,14 +373,32 @@ def transition_changespec_status(
         project_basename = Path(project_file).stem
         try:
             workspace_dir = get_workspace_directory(project_basename)
-            rename_result = subprocess.run(
-                ["bb_hg_rename", base_name],
+
+            # First checkout the CL we want to rename
+            update_result = subprocess.run(
+                ["bb_hg_update", suffixed_name],
                 cwd=workspace_dir,
                 capture_output=True,
                 text=True,
+                timeout=300,
             )
-            if rename_result.returncode != 0:
-                logger.warning(f"Failed to rename CL: {rename_result.stderr}")
+            if update_result.returncode != 0:
+                logger.warning(
+                    f"Failed to checkout CL {suffixed_name}: {update_result.stderr}"
+                )
+            else:
+                # Now rename the CL
+                rename_result = subprocess.run(
+                    ["bb_hg_rename", base_name],
+                    cwd=workspace_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=300,
+                )
+                if rename_result.returncode != 0:
+                    logger.warning(f"Failed to rename CL: {rename_result.stderr}")
+        except subprocess.TimeoutExpired:
+            logger.warning("bb_hg_update or bb_hg_rename timed out")
         except RuntimeError as e:
             logger.warning(f"Could not get workspace directory: {e}")
 
