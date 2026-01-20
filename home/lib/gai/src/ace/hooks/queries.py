@@ -657,8 +657,6 @@ def get_failed_hooks_file_path(changespec: "ChangeSpec") -> str | None:
         if not hook.status_lines:
             continue
         for sl in hook.status_lines:
-            if sl.suffix_type != "metahook_complete":
-                continue
             # Check suffix field
             if sl.suffix:
                 match = _FAILED_HOOKS_FILE_PATTERN.search(sl.suffix)
