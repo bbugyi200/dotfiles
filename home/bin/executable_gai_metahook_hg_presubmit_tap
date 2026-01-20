@@ -61,7 +61,9 @@ def main() -> int:
         suffix=".txt",
         delete=False,
     ) as f:
-        f.write(f"Failed test targets from {full_url}:\n\n")
+        header = f"Failed test targets from {full_url}"
+        f.write(f"{header}\n")
+        f.write("=" * len(header) + "\n\n")
         for target in failed_targets:
             f.write(f"{target}\n")
         output_path = f.name
