@@ -120,6 +120,13 @@ StatusModal > Container, QueryEditModal > Container, WorkflowSelectModal > Conta
     padding: 1 2;
 }
 
+/* CL Name Input Modal - wider and shorter */
+CLNameInputModal > Container {
+    width: 80;
+    height: auto;
+    max-height: 20%;
+}
+
 /* Confirm Kill Modal styling */
 ConfirmKillModal #confirm-message {
     margin: 1 0;
