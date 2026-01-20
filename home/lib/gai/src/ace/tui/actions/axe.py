@@ -106,6 +106,7 @@ class AxeMixin:
         """Stop the axe daemon and quit the application."""
         if self.axe_running:
             self._stop_axe()
+        self._save_current_selection()  # type: ignore[attr-defined]
         self.exit()  # type: ignore[attr-defined]
 
     def action_clear_axe_output(self) -> None:

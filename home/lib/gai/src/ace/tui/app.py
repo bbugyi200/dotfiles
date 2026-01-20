@@ -312,6 +312,7 @@ class AceApp(
 
         # Load initial changespecs and save as last query
         self._load_changespecs()
+        self._restore_last_selection()
         self._save_current_query()
 
         # Initialize axe status
@@ -326,6 +327,31 @@ class AceApp(
             self._refresh_timer = self.set_interval(
                 self.refresh_interval, self._on_auto_refresh, name="auto-refresh"
             )
+
+    def _save_current_selection(self) -> None:
+        """Save the currently selected ChangeSpec name."""
+        from ..last_selection import save_last_selection
+
+        if self.changespecs:
+            changespec = self.changespecs[self.current_idx]
+            save_last_selection(changespec.name)
+
+    def _restore_last_selection(self) -> None:
+        """Restore the previously selected ChangeSpec if it exists."""
+        from ..last_selection import load_last_selection
+
+        last_name = load_last_selection()
+        if last_name is None:
+            return
+        for idx, cs in enumerate(self.changespecs):
+            if cs.name == last_name:
+                self.current_idx = idx
+                return
+
+    async def action_quit(self) -> None:
+        """Quit the application, saving the current selection."""
+        self._save_current_selection()
+        self.exit()
 
     def watch_current_idx(self, old_idx: int, new_idx: int) -> None:
         """React to current_idx changes."""
