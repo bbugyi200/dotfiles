@@ -46,7 +46,7 @@ def main() -> int:
     # Split into result blocks and find FAILED ones
     result_blocks = re.split(r"\n  result \{", tap_output)
     for block in result_blocks[1:]:  # Skip first (before any result)
-        if re.search(r"status:\s*FAILED", block):
+        if re.search(r"status:\s*FAILED", block) and re.search(r"target_type:\s*TEST", block):
             target_match = re.search(r'target_name:\s*"([^"]+)"', block)
             if target_match:
                 failed_targets.append(target_match.group(1))
