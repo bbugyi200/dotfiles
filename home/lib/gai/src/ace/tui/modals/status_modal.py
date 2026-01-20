@@ -15,16 +15,14 @@ sys.path.append(
 
 from ace.status import get_available_statuses
 
+from .base import OptionListNavigationMixin
 
-class StatusModal(ModalScreen[str | None]):
+
+class StatusModal(OptionListNavigationMixin, ModalScreen[str | None]):
     """Modal for selecting a new status."""
 
-    BINDINGS = [
-        ("escape", "cancel", "Cancel"),
-        ("q", "cancel", "Cancel"),
-        ("j", "next_option", "Next"),
-        ("k", "prev_option", "Previous"),
-    ]
+    _option_list_id = "status-list"
+    BINDINGS = [*OptionListNavigationMixin.NAVIGATION_BINDINGS]
 
     def __init__(self, current_status: str) -> None:
         """Initialize the status modal.
@@ -49,15 +47,3 @@ class StatusModal(ModalScreen[str | None]):
         """Handle option selection."""
         if event.option and event.option.id:
             self.dismiss(str(event.option.id))
-
-    def action_cancel(self) -> None:
-        """Cancel the modal."""
-        self.dismiss(None)
-
-    def action_next_option(self) -> None:
-        """Move to next option."""
-        self.query_one("#status-list", OptionList).action_cursor_down()
-
-    def action_prev_option(self) -> None:
-        """Move to previous option."""
-        self.query_one("#status-list", OptionList).action_cursor_up()

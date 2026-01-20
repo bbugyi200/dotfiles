@@ -6,16 +6,14 @@ from textual.screen import ModalScreen
 from textual.widgets import Label, OptionList
 from textual.widgets.option_list import Option
 
+from .base import OptionListNavigationMixin
 
-class ParentSelectModal(ModalScreen[str | None]):
+
+class ParentSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
     """Modal for selecting a new parent ChangeSpec for rebasing."""
 
-    BINDINGS = [
-        ("escape", "cancel", "Cancel"),
-        ("q", "cancel", "Cancel"),
-        ("j", "next_option", "Next"),
-        ("k", "prev_option", "Previous"),
-    ]
+    _option_list_id = "parent-list"
+    BINDINGS = [*OptionListNavigationMixin.NAVIGATION_BINDINGS]
 
     def __init__(self, available_parents: list[tuple[str, str]]) -> None:
         """Initialize the parent selection modal.
@@ -42,15 +40,3 @@ class ParentSelectModal(ModalScreen[str | None]):
         """Handle option selection."""
         if event.option and event.option.id:
             self.dismiss(event.option.id)
-
-    def action_cancel(self) -> None:
-        """Cancel the modal."""
-        self.dismiss(None)
-
-    def action_next_option(self) -> None:
-        """Move to next option."""
-        self.query_one("#parent-list", OptionList).action_cursor_down()
-
-    def action_prev_option(self) -> None:
-        """Move to previous option."""
-        self.query_one("#parent-list", OptionList).action_cursor_up()

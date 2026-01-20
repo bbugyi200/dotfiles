@@ -15,6 +15,7 @@ from textual.widgets import Label, OptionList
 from textual.widgets.option_list import Option
 
 from ..bgcmd import BackgroundCommandInfo, is_slot_running
+from .base import OptionListNavigationMixin
 
 
 @dataclass
@@ -27,19 +28,13 @@ class ProcessSelection:
     description: str
 
 
-class ProcessSelectModal(ModalScreen[ProcessSelection | None]):
+class ProcessSelectModal(
+    OptionListNavigationMixin, ModalScreen[ProcessSelection | None]
+):
     """Modal for selecting which process to stop."""
 
-    BINDINGS = [
-        ("escape", "cancel", "Cancel"),
-        ("q", "cancel", "Cancel"),
-        ("j", "next_option", "Next"),
-        ("k", "prev_option", "Previous"),
-        ("down", "next_option", "Next"),
-        ("up", "prev_option", "Previous"),
-        ("ctrl+n", "next_option", "Next"),
-        ("ctrl+p", "prev_option", "Previous"),
-    ]
+    _option_list_id = "process-list"
+    BINDINGS = [*OptionListNavigationMixin.NAVIGATION_BINDINGS]
 
     def __init__(
         self,
@@ -155,15 +150,3 @@ class ProcessSelectModal(ModalScreen[ProcessSelection | None]):
             idx = int(event.option.id)
             if 0 <= idx < len(self._processes):
                 self.dismiss(self._processes[idx])
-
-    def action_cancel(self) -> None:
-        """Cancel the modal."""
-        self.dismiss(None)
-
-    def action_next_option(self) -> None:
-        """Move to next option."""
-        self.query_one("#process-list", OptionList).action_cursor_down()
-
-    def action_prev_option(self) -> None:
-        """Move to previous option."""
-        self.query_one("#process-list", OptionList).action_cursor_up()

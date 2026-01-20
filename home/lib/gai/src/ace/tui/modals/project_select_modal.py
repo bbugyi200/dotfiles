@@ -13,6 +13,7 @@ from textual.widgets import Input, Label, OptionList
 from textual.widgets.option_list import Option
 
 from ...changespec import find_all_changespecs
+from .base import FilterInput, OptionListNavigationMixin
 
 
 @dataclass
@@ -25,28 +26,13 @@ class SelectionItem:
     cl_name: str | None  # CL name if type is "cl", None for projects
 
 
-class _FilterInput(Input):
-    """Custom Input with readline-style key bindings."""
-
-    BINDINGS = [
-        ("ctrl+f", "cursor_right", "Forward"),
-        ("ctrl+b", "cursor_left", "Backward"),
-    ]
-
-
-class ProjectSelectModal(ModalScreen[SelectionItem | str | None]):
+class ProjectSelectModal(
+    OptionListNavigationMixin, ModalScreen[SelectionItem | str | None]
+):
     """Modal for selecting project or CL with filtering."""
 
-    BINDINGS = [
-        ("escape", "cancel", "Cancel"),
-        ("q", "cancel", "Cancel"),
-        ("j", "next_option", "Next"),
-        ("k", "prev_option", "Previous"),
-        ("down", "next_option", "Next"),
-        ("up", "prev_option", "Previous"),
-        ("ctrl+n", "next_option", "Next"),
-        ("ctrl+p", "prev_option", "Previous"),
-    ]
+    _option_list_id = "selection-list"
+    BINDINGS = [*OptionListNavigationMixin.NAVIGATION_BINDINGS]
 
     def __init__(self) -> None:
         """Initialize the project selection modal."""
@@ -90,7 +76,7 @@ class ProjectSelectModal(ModalScreen[SelectionItem | str | None]):
         """Compose the modal layout."""
         with Container():
             yield Label("Select Project or CL", id="modal-title")
-            yield _FilterInput(placeholder="Type to filter...", id="filter-input")
+            yield FilterInput(placeholder="Type to filter...", id="filter-input")
             yield OptionList(
                 *self._create_options(self.all_items),
                 id="selection-list",
@@ -127,7 +113,7 @@ class ProjectSelectModal(ModalScreen[SelectionItem | str | None]):
 
     def on_mount(self) -> None:
         """Focus the input on mount."""
-        filter_input = self.query_one("#filter-input", _FilterInput)
+        filter_input = self.query_one("#filter-input", FilterInput)
         filter_input.focus()
 
     def on_input_changed(self, event: Input.Changed) -> None:
@@ -164,20 +150,8 @@ class ProjectSelectModal(ModalScreen[SelectionItem | str | None]):
         """Handle option selection (Enter or click)."""
         if event.option and event.option.id is not None:
             # Get the current filtered items
-            filter_input = self.query_one("#filter-input", _FilterInput)
+            filter_input = self.query_one("#filter-input", FilterInput)
             filtered_items = self._get_filtered_items(filter_input.value)
             idx = int(event.option.id)
             if 0 <= idx < len(filtered_items):
                 self.dismiss(filtered_items[idx])
-
-    def action_cancel(self) -> None:
-        """Cancel the modal."""
-        self.dismiss(None)
-
-    def action_next_option(self) -> None:
-        """Move to next option."""
-        self.query_one("#selection-list", OptionList).action_cursor_down()
-
-    def action_prev_option(self) -> None:
-        """Move to previous option."""
-        self.query_one("#selection-list", OptionList).action_cursor_up()

@@ -17,14 +17,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Input, Label, OptionList, Static
 from textual.widgets.option_list import Option
 
-
-class _FilterInput(Input):
-    """Custom Input with readline-style key bindings."""
-
-    BINDINGS = [
-        ("ctrl+f", "cursor_right", "Forward"),
-        ("ctrl+b", "cursor_left", "Backward"),
-    ]
+from .base import FilterInput, OptionListNavigationMixin
 
 
 @dataclass
@@ -39,19 +32,11 @@ class ChatFileItem:
     branch_or_workspace: str | None
 
 
-class ChatSelectModal(ModalScreen[ChatFileItem | None]):
+class ChatSelectModal(OptionListNavigationMixin, ModalScreen[ChatFileItem | None]):
     """Modal for selecting a chat file to revive as an agent."""
 
-    BINDINGS = [
-        ("escape", "cancel", "Cancel"),
-        ("q", "cancel", "Cancel"),
-        ("j", "next_option", "Next"),
-        ("k", "prev_option", "Previous"),
-        ("down", "next_option", "Next"),
-        ("up", "prev_option", "Previous"),
-        ("ctrl+n", "next_option", "Next"),
-        ("ctrl+p", "prev_option", "Previous"),
-    ]
+    _option_list_id = "chat-select-list"
+    BINDINGS = [*OptionListNavigationMixin.NAVIGATION_BINDINGS]
 
     def __init__(self) -> None:
         """Initialize the chat select modal."""
@@ -95,7 +80,7 @@ class ChatSelectModal(ModalScreen[ChatFileItem | None]):
             if not self._all_items:
                 yield Label("No chat history found.")
             else:
-                yield _FilterInput(
+                yield FilterInput(
                     placeholder="Type to filter by name...",
                     id="chat-select-filter-input",
                 )
@@ -180,7 +165,7 @@ class ChatSelectModal(ModalScreen[ChatFileItem | None]):
     def on_mount(self) -> None:
         """Focus the input and show initial preview on mount."""
         if self._all_items:
-            filter_input = self.query_one("#chat-select-filter-input", _FilterInput)
+            filter_input = self.query_one("#chat-select-filter-input", FilterInput)
             filter_input.focus()
             # Show preview for first item
             if self._filtered_items:
@@ -294,17 +279,3 @@ class ChatSelectModal(ModalScreen[ChatFileItem | None]):
             metadata.update("")
         except Exception:
             pass
-
-    def action_cancel(self) -> None:
-        """Cancel the modal."""
-        self.dismiss(None)
-
-    def action_next_option(self) -> None:
-        """Move to next option."""
-        if self._all_items:
-            self.query_one("#chat-select-list", OptionList).action_cursor_down()
-
-    def action_prev_option(self) -> None:
-        """Move to previous option."""
-        if self._all_items:
-            self.query_one("#chat-select-list", OptionList).action_cursor_up()

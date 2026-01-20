@@ -12,6 +12,8 @@ from textual.widgets import Button, Input, Label, OptionList, Static
 from textual.widgets.option_list import Option
 from textual.worker import Worker, WorkerState
 
+from .base import FilterInput
+
 
 @dataclass
 class _Bug:
@@ -80,15 +82,6 @@ def _parse_bb_bugs_output(output: str) -> list[_Bug]:
     return bugs
 
 
-class _BugInput(Input):
-    """Custom Input with readline-style key bindings."""
-
-    BINDINGS = [
-        ("ctrl+f", "cursor_right", "Forward"),
-        ("ctrl+b", "cursor_left", "Backward"),
-    ]
-
-
 class BugInputModal(ModalScreen[BugInputResult | None]):
     """Modal for inputting an optional bug number with bb_bugs integration.
 
@@ -120,7 +113,7 @@ class BugInputModal(ModalScreen[BugInputResult | None]):
                 "Stored as BUG: or FIXED: http://b/<number>",
                 id="modal-instructions",
             )
-            yield _BugInput(
+            yield FilterInput(
                 placeholder="Type to filter or enter bug ID...", id="bug-input"
             )
             yield Label("Loading bugs...", id="bug-status")
@@ -136,7 +129,7 @@ class BugInputModal(ModalScreen[BugInputResult | None]):
 
     def on_mount(self) -> None:
         """Focus the input and start loading bugs on mount."""
-        bug_input = self.query_one("#bug-input", _BugInput)
+        bug_input = self.query_one("#bug-input", FilterInput)
         bug_input.focus()
         # Start async bug loading
         self._current_worker = self.run_worker(self._fetch_bugs, thread=True)
@@ -232,7 +225,7 @@ class BugInputModal(ModalScreen[BugInputResult | None]):
 
     def on_input_submitted(self, _event: Input.Submitted) -> None:
         """Handle Enter key - two-phase behavior."""
-        bug_input = self.query_one("#bug-input", _BugInput)
+        bug_input = self.query_one("#bug-input", FilterInput)
         value = bug_input.value.strip()
 
         if self._has_selected_bug:
@@ -256,7 +249,7 @@ class BugInputModal(ModalScreen[BugInputResult | None]):
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         """Handle option selection (Enter or click on list item)."""
         if event.option and event.option.id:
-            bug_input = self.query_one("#bug-input", _BugInput)
+            bug_input = self.query_one("#bug-input", FilterInput)
             bug_id = str(event.option.id)
             bug_input.value = bug_id
             bug_input.cursor_position = len(bug_id)

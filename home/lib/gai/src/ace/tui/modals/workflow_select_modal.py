@@ -6,16 +6,14 @@ from textual.screen import ModalScreen
 from textual.widgets import Label, OptionList
 from textual.widgets.option_list import Option
 
+from .base import OptionListNavigationMixin
 
-class WorkflowSelectModal(ModalScreen[int | None]):
+
+class WorkflowSelectModal(OptionListNavigationMixin, ModalScreen[int | None]):
     """Modal for selecting which workflow to run."""
 
-    BINDINGS = [
-        ("escape", "cancel", "Cancel"),
-        ("q", "cancel", "Cancel"),
-        ("j", "next_option", "Next"),
-        ("k", "prev_option", "Previous"),
-    ]
+    _option_list_id = "workflow-list"
+    BINDINGS = [*OptionListNavigationMixin.NAVIGATION_BINDINGS]
 
     def __init__(self, workflows: list[str]) -> None:
         """Initialize the workflow selection modal.
@@ -42,15 +40,3 @@ class WorkflowSelectModal(ModalScreen[int | None]):
         """Handle option selection."""
         if event.option and event.option.id:
             self.dismiss(int(event.option.id))
-
-    def action_cancel(self) -> None:
-        """Cancel the modal."""
-        self.dismiss(None)
-
-    def action_next_option(self) -> None:
-        """Move to next option."""
-        self.query_one("#workflow-list", OptionList).action_cursor_down()
-
-    def action_prev_option(self) -> None:
-        """Move to previous option."""
-        self.query_one("#workflow-list", OptionList).action_cursor_up()

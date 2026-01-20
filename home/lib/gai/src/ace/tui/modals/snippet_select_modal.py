@@ -8,29 +8,14 @@ from textual.screen import ModalScreen
 from textual.widgets import Input, Label, OptionList, Static
 from textual.widgets.option_list import Option
 
-
-class _FilterInput(Input):
-    """Custom Input with readline-style key bindings."""
-
-    BINDINGS = [
-        ("ctrl+f", "cursor_right", "Forward"),
-        ("ctrl+b", "cursor_left", "Backward"),
-    ]
+from .base import FilterInput, OptionListNavigationMixin
 
 
-class SnippetSelectModal(ModalScreen[str | None]):
+class SnippetSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
     """Modal for selecting a snippet with filtering and preview."""
 
-    BINDINGS = [
-        ("escape", "cancel", "Cancel"),
-        ("q", "cancel", "Cancel"),
-        ("j", "next_option", "Next"),
-        ("k", "prev_option", "Previous"),
-        ("down", "next_option", "Next"),
-        ("up", "prev_option", "Previous"),
-        ("ctrl+n", "next_option", "Next"),
-        ("ctrl+p", "prev_option", "Previous"),
-    ]
+    _option_list_id = "snippet-list"
+    BINDINGS = [*OptionListNavigationMixin.NAVIGATION_BINDINGS]
 
     def __init__(self) -> None:
         """Initialize the snippet modal."""
@@ -45,7 +30,7 @@ class SnippetSelectModal(ModalScreen[str | None]):
             if not self.snippets:
                 yield Label("No snippets configured in ~/.config/gai/gai.yml")
             else:
-                yield _FilterInput(
+                yield FilterInput(
                     placeholder="Type to filter...", id="snippet-filter-input"
                 )
                 with Horizontal(id="snippet-panels"):
@@ -86,7 +71,7 @@ class SnippetSelectModal(ModalScreen[str | None]):
     def on_mount(self) -> None:
         """Focus the input and show initial preview on mount."""
         if self.snippets:
-            filter_input = self.query_one("#snippet-filter-input", _FilterInput)
+            filter_input = self.query_one("#snippet-filter-input", FilterInput)
             filter_input.focus()
             # Show preview for first item
             if self._filtered_names:
@@ -146,17 +131,3 @@ class SnippetSelectModal(ModalScreen[str | None]):
             preview.update("")
         except Exception:
             pass
-
-    def action_cancel(self) -> None:
-        """Cancel the modal."""
-        self.dismiss(None)
-
-    def action_next_option(self) -> None:
-        """Move to next option."""
-        if self.snippets:
-            self.query_one("#snippet-list", OptionList).action_cursor_down()
-
-    def action_prev_option(self) -> None:
-        """Move to previous option."""
-        if self.snippets:
-            self.query_one("#snippet-list", OptionList).action_cursor_up()
