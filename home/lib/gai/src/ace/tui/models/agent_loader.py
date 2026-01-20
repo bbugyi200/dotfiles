@@ -162,6 +162,7 @@ def _load_agents_from_running_field(
                     pid=claim.pid,
                     # Use artifacts_timestamp as raw_suffix for prompt lookup
                     raw_suffix=claim.artifacts_timestamp,
+                    new_cl_name=claim.new_cl_name,
                 )
             )
 

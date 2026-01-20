@@ -259,6 +259,7 @@ class AgentLaunchMixin:
             process.pid,
             cl_name,
             artifacts_timestamp=timestamp,
+            new_cl_name=new_cl_name,
         ):
             self.notify(  # type: ignore[attr-defined]
                 "Failed to claim workspace, terminating agent", severity="error"
