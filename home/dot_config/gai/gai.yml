@@ -112,7 +112,7 @@ mentor_profiles:
           output of the `branch_number` command and that the value we used for the 'rollout_bug_id' field is equal to
           the output of the `cl_bug` command?
     file_globs:
-      - "java/com/google/ads/publisher/domain/entity/feature/publisher_features.textproto"
+      - "**/publisher_features.textproto"
   - profile_name: tests
     mentors:
       - mentor_name: aaa
