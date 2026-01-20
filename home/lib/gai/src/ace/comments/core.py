@@ -3,7 +3,12 @@
 import os
 from datetime import datetime
 
-from gai_utils import EASTERN_TZ, ensure_gai_directory, make_safe_filename
+from gai_utils import (
+    EASTERN_TZ,
+    ensure_gai_directory,
+    make_safe_filename,
+    strip_reverted_suffix,
+)
 
 from ..changespec import CommentEntry, is_error_suffix
 from ..constants import DEFAULT_ZOMBIE_TIMEOUT_SECONDS
@@ -21,7 +26,7 @@ def get_comments_file_path(name: str, reviewer: str, timestamp: str) -> str:
         Full path to the comments file.
     """
     comments_dir = ensure_gai_directory("comments")
-    safe_name = make_safe_filename(name)
+    safe_name = make_safe_filename(strip_reverted_suffix(name))
     filename = f"{safe_name}-{reviewer}-{timestamp}.json"
     return os.path.join(comments_dir, filename)
 

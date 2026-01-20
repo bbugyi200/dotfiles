@@ -6,7 +6,7 @@ import time
 from collections.abc import Callable
 
 from commit_utils import run_bb_hg_clean
-from gai_utils import ensure_gai_directory, make_safe_filename
+from gai_utils import ensure_gai_directory, make_safe_filename, strip_reverted_suffix
 from running_field import (
     claim_workspace,
     get_first_available_axe_workspace,
@@ -47,7 +47,7 @@ def get_workflow_output_path(name: str, workflow_type: str, timestamp: str) -> s
         Full path to the workflow output file.
     """
     workflows_dir = ensure_gai_directory("workflows")
-    safe_name = make_safe_filename(name)
+    safe_name = make_safe_filename(strip_reverted_suffix(name))
     filename = f"{safe_name}_{workflow_type}-{timestamp}.txt"
     return os.path.join(workflows_dir, filename)
 

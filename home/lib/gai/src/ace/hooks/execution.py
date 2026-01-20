@@ -42,7 +42,7 @@ def get_hook_output_path(name: str, timestamp: str) -> str:
         Full path to the hook output file.
     """
     hooks_dir = ensure_gai_directory("hooks")
-    safe_name = make_safe_filename(name)
+    safe_name = make_safe_filename(strip_reverted_suffix(name))
     filename = f"{safe_name}-{timestamp}.txt"
     return os.path.join(hooks_dir, filename)
 

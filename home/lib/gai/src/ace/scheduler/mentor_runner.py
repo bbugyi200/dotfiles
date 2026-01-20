@@ -6,7 +6,12 @@ import time
 from collections.abc import Callable
 
 from commit_utils import run_bb_hg_clean
-from gai_utils import ensure_gai_directory, get_gai_directory, make_safe_filename
+from gai_utils import (
+    ensure_gai_directory,
+    get_gai_directory,
+    make_safe_filename,
+    strip_reverted_suffix,
+)
 from mentor_config import MentorProfileConfig
 from running_field import (
     claim_workspace,
@@ -35,7 +40,7 @@ def _get_mentor_output_path(name: str, mentor_name: str, timestamp: str) -> str:
         Full path to the mentor output file.
     """
     mentors_dir = ensure_gai_directory("mentors")
-    safe_name = make_safe_filename(name)
+    safe_name = make_safe_filename(strip_reverted_suffix(name))
     filename = f"{safe_name}-{mentor_name}-{timestamp}.txt"
     return os.path.join(mentors_dir, filename)
 
@@ -57,7 +62,8 @@ def get_mentor_chat_path(cl_name: str, mentor_name: str, timestamp: str) -> str:
     # Format matches chat_history._generate_chat_filename() with:
     # - branch_or_workspace = cl_name
     # - workflow = "mentor-{mentor_name}" (normalized to "mentor_{mentor_name}")
-    filename = f"{cl_name}-mentor_{mentor_name}-{timestamp}.md"
+    base_name = strip_reverted_suffix(cl_name)
+    filename = f"{base_name}-mentor_{mentor_name}-{timestamp}.md"
     return os.path.join(chats_dir, filename)
 
 

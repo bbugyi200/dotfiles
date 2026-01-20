@@ -4,7 +4,12 @@ import os
 import subprocess
 from pathlib import Path
 
-from gai_utils import ensure_gai_directory, generate_timestamp, make_safe_filename
+from gai_utils import (
+    ensure_gai_directory,
+    generate_timestamp,
+    make_safe_filename,
+    strip_reverted_suffix,
+)
 
 
 def save_diff(
@@ -50,7 +55,7 @@ def save_diff(
         return None
 
     # Generate filename: cl_name-timestamp.diff
-    safe_name = make_safe_filename(cl_name)
+    safe_name = make_safe_filename(strip_reverted_suffix(cl_name))
     if timestamp is None:
         timestamp = generate_timestamp()
     filename = f"{safe_name}-{timestamp}.diff"
