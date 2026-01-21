@@ -18,6 +18,7 @@ snippets:
   clr: "cl/{1} (see the #(cl_desc_and_diff: p4 diff -c '{1}') file)"
   clref: "Use #clr:{1} as a reference."
   duck: "See the agent chat in @$(printf '%s\\n' ~/bb/duckie/* | sort | tail -n 1) for some initial ideas."
+  duckie: "Make sure to use your ask-duckie tool to perform some research before deciding on a solution."
   feat: |
     publisher feature (see @contentads/drx/fe/g3doc/admin/publisher_features.md for more information on publisher features)
   newfeat: |
