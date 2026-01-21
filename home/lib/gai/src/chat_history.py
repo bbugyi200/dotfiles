@@ -14,6 +14,7 @@ from gai_utils import (
     ensure_gai_directory,
     generate_timestamp,
     get_gai_directory,
+    strip_reverted_suffix,
 )
 from shared_utils import run_shell_command
 
@@ -23,7 +24,7 @@ def _get_branch_or_workspace_name() -> str:
     result = run_shell_command("branch_or_workspace_name", capture_output=True)
     if result.returncode != 0:
         raise RuntimeError(f"Failed to get branch_or_workspace_name: {result.stderr}")
-    return result.stdout.strip()
+    return strip_reverted_suffix(result.stdout.strip())
 
 
 def _generate_chat_filename(

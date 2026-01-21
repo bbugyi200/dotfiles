@@ -46,6 +46,17 @@ def test_get_branch_or_workspace_name_success() -> None:
         assert result == "my-branch"
 
 
+def test_get_branch_or_workspace_name_strips_reverted_suffix() -> None:
+    """Test _get_branch_or_workspace_name strips reverted suffix."""
+    mock_result = MagicMock()
+    mock_result.returncode = 0
+    mock_result.stdout = "feature_branch__3\n"
+
+    with patch("chat_history.run_shell_command", return_value=mock_result):
+        result = _get_branch_or_workspace_name()
+        assert result == "feature_branch"  # suffix stripped
+
+
 def test_get_branch_or_workspace_name_failure() -> None:
     """Test _get_branch_or_workspace_name with failed command."""
     mock_result = MagicMock()

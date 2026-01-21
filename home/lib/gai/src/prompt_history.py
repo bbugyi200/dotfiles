@@ -4,7 +4,7 @@ import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from gai_utils import generate_timestamp
+from gai_utils import generate_timestamp, strip_reverted_suffix
 from shared_utils import run_shell_command
 
 _PROMPT_HISTORY_FILE = Path.home() / ".gai" / "prompt_history.json"
@@ -33,7 +33,7 @@ def _get_current_branch_or_workspace() -> str:
     result = run_shell_command("branch_or_workspace_name", capture_output=True)
     if result.returncode != 0:
         return "unknown"
-    return result.stdout.strip() or "unknown"
+    return strip_reverted_suffix(result.stdout.strip()) or "unknown"
 
 
 def _get_workspace_name() -> str:
