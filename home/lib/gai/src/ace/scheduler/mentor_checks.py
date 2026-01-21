@@ -51,7 +51,8 @@ def _all_non_skip_hooks_ready(changespec: ChangeSpec, entry_id: str) -> bool:
 
     A hook is "ready" for the given entry if it has either:
     - PASSED status for this entry, or
-    - FAILED status for this entry with an entry_ref suffix (proposal attached)
+    - FAILED status for this entry with an entry_ref suffix (proposal attached), or
+    - FAILED status with summarization complete (%: or ^: prefix)
 
     Hooks with skip_fix_hook (! prefix) are completely ignored.
 
@@ -85,9 +86,16 @@ def _all_non_skip_hooks_ready(changespec: ChangeSpec, entry_id: str) -> bool:
             return False
 
         if status_line.status == "FAILED":
-            # Failed hooks are ready if fix-hook is running OR has created a proposal
-            if status_line.suffix_type == "running_agent":
-                continue  # fix-hook is running, ready
+            # Failed hooks are ready if:
+            # - fix-hook is running (@:), OR
+            # - has a proposal (entry_ref like 2a), OR
+            # - summarization is complete (%: or ^:)
+            if status_line.suffix_type in (
+                "running_agent",
+                "summarize_complete",
+                "metahook_complete",
+            ):
+                continue  # Hook has been processed, ready
             if not is_entry_ref_suffix(status_line.suffix):
                 return False  # fix-hook hasn't started yet
             # Has entry_ref suffix - ready
