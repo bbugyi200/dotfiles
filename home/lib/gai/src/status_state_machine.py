@@ -287,6 +287,176 @@ def transition_changespec_status(
             error_msg = f"ChangeSpec '{changespec_name}' not found in {project_file}"
             logger.error(error_msg)
             result = (False, None, error_msg)
+
+        # Check 1: Cannot transition to WIP if children have invalid status
+        # This check always runs regardless of validate parameter
+        elif new_status == "WIP":
+            from ace.changespec import find_all_changespecs, parse_project_file
+
+            all_changespecs = find_all_changespecs()
+            invalid_children = [
+                cs
+                for cs in all_changespecs
+                if cs.parent == changespec_name and cs.status not in ("WIP", "Reverted")
+            ]
+            if invalid_children:
+                child_info = ", ".join(
+                    f"{cs.name} ({cs.status})" for cs in invalid_children
+                )
+                error_msg = (
+                    f"Cannot transition '{changespec_name}' to WIP: "
+                    f"children must be WIP or Reverted. "
+                    f"Invalid children: {child_info}"
+                )
+                logger.error(error_msg)
+                result = (False, old_status, error_msg)
+            elif validate and not _is_valid_transition(old_status, new_status):
+                # Validate transition
+                error_msg = (
+                    f"Invalid status transition for '{changespec_name}': "
+                    f"'{old_status}' -> '{new_status}'. "
+                    f"Allowed transitions from '{old_status}': "
+                    f"{VALID_TRANSITIONS.get(old_status, [])}"
+                )
+                logger.error(error_msg)
+                result = (False, old_status, error_msg)
+            else:
+                # Valid transition to WIP
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                log_msg = (
+                    f"[{timestamp}] Transitioning {changespec_name}: "
+                    f"'{old_status}' -> '{new_status}'"
+                )
+                if not validate:
+                    log_msg += " (validation skipped)"
+                logger.info(log_msg)
+
+                updated_content = _apply_status_update(
+                    lines, changespec_name, new_status
+                )
+                write_changespec_atomic(
+                    project_file,
+                    updated_content,
+                    f"Update STATUS to {new_status} for {changespec_name}",
+                )
+
+                # Add __<N> suffix when transitioning to WIP
+                from ace.mentors import set_mentor_wip_flags
+                from gai_utils import get_next_suffix_number
+
+                existing_names = {cs.name for cs in all_changespecs}
+                suffix_num = get_next_suffix_number(changespec_name, existing_names)
+                suffix_append_info = (
+                    changespec_name,
+                    f"{changespec_name}__{suffix_num}",
+                )
+
+                # Set #WIP flag on mentors
+                set_mentor_wip_flags(project_file, changespec_name)
+
+                result = (True, old_status, None)
+
+        # Check 2: Cannot transition away from WIP/Reverted if parent is WIP
+        # This check always runs regardless of validate parameter
+        elif new_status not in ("WIP", "Reverted"):
+            from ace.changespec import parse_project_file
+
+            changespecs = parse_project_file(project_file)
+            current_cs = next(
+                (cs for cs in changespecs if cs.name == changespec_name), None
+            )
+            if current_cs and current_cs.parent:
+                parent_cs = next(
+                    (cs for cs in changespecs if cs.name == current_cs.parent), None
+                )
+                if parent_cs and parent_cs.status == "WIP":
+                    error_msg = (
+                        f"Cannot transition '{changespec_name}' to {new_status}: "
+                        f"parent '{current_cs.parent}' is WIP. "
+                        f"Children of WIP ChangeSpecs must be WIP or Reverted."
+                    )
+                    logger.error(error_msg)
+                    result = (False, old_status, error_msg)
+
+            # If no parent constraint violation, proceed with normal validation
+            if result is None:
+                if not validate:
+                    # Skip validation if not requested (e.g., for rollback operations)
+                    logger.info(
+                        f"Transitioning {changespec_name}: '{old_status}' -> '{new_status}' "
+                        f"(validation skipped)"
+                    )
+                    updated_content = _apply_status_update(
+                        lines, changespec_name, new_status
+                    )
+                    write_changespec_atomic(
+                        project_file,
+                        updated_content,
+                        f"Update STATUS to {new_status} for {changespec_name}",
+                    )
+
+                    # Clear #WIP from mentors when transitioning from WIP to Drafted
+                    if old_status == "WIP" and new_status == "Drafted":
+                        from ace.mentors import clear_mentor_wip_flags
+
+                        clear_mentor_wip_flags(project_file, changespec_name)
+
+                        # Check if we need to strip suffix (done outside lock)
+                        from gai_utils import has_suffix, strip_reverted_suffix
+
+                        if has_suffix(changespec_name):
+                            suffix_strip_info = (
+                                changespec_name,
+                                strip_reverted_suffix(changespec_name),
+                            )
+
+                    result = (True, old_status, None)
+                elif not _is_valid_transition(old_status, new_status):
+                    # Validate transition
+                    error_msg = (
+                        f"Invalid status transition for '{changespec_name}': "
+                        f"'{old_status}' -> '{new_status}'. "
+                        f"Allowed transitions from '{old_status}': "
+                        f"{VALID_TRANSITIONS.get(old_status, [])}"
+                    )
+                    logger.error(error_msg)
+                    result = (False, old_status, error_msg)
+                else:
+                    # Perform transition
+                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    logger.info(
+                        f"[{timestamp}] Transitioning {changespec_name}: "
+                        f"'{old_status}' -> '{new_status}'"
+                    )
+
+                    updated_content = _apply_status_update(
+                        lines, changespec_name, new_status
+                    )
+                    write_changespec_atomic(
+                        project_file,
+                        updated_content,
+                        f"Update STATUS to {new_status} for {changespec_name}",
+                    )
+
+                    # Clear #WIP from mentors when transitioning from WIP to Drafted
+                    if old_status == "WIP" and new_status == "Drafted":
+                        from ace.mentors import clear_mentor_wip_flags
+
+                        clear_mentor_wip_flags(project_file, changespec_name)
+
+                        # Check if we need to strip suffix (done outside lock)
+                        from gai_utils import has_suffix, strip_reverted_suffix
+
+                        if has_suffix(changespec_name):
+                            suffix_strip_info = (
+                                changespec_name,
+                                strip_reverted_suffix(changespec_name),
+                            )
+
+                    result = (True, old_status, None)
+
+        # Remaining case: new_status == "Reverted"
+        # Reverted is a terminal state - no WIP-related suffix handling needed
         elif not validate:
             # Skip validation if not requested (e.g., for rollback operations)
             logger.info(
@@ -299,39 +469,6 @@ def transition_changespec_status(
                 updated_content,
                 f"Update STATUS to {new_status} for {changespec_name}",
             )
-
-            # Clear #WIP from mentors when transitioning from WIP to Drafted
-            if old_status == "WIP" and new_status == "Drafted":
-                from ace.mentors import clear_mentor_wip_flags
-
-                clear_mentor_wip_flags(project_file, changespec_name)
-
-                # Check if we need to strip suffix (done outside lock)
-                from gai_utils import has_suffix, strip_reverted_suffix
-
-                if has_suffix(changespec_name):
-                    suffix_strip_info = (
-                        changespec_name,
-                        strip_reverted_suffix(changespec_name),
-                    )
-
-            # Add __<N> suffix when transitioning from Drafted to WIP
-            if old_status == "Drafted" and new_status == "WIP":
-                from ace.changespec import find_all_changespecs
-                from ace.mentors import set_mentor_wip_flags
-                from gai_utils import get_next_suffix_number
-
-                all_changespecs = find_all_changespecs()
-                existing_names = {cs.name for cs in all_changespecs}
-                suffix_num = get_next_suffix_number(changespec_name, existing_names)
-                suffix_append_info = (
-                    changespec_name,
-                    f"{changespec_name}__{suffix_num}",
-                )
-
-                # Set #WIP flag on mentors
-                set_mentor_wip_flags(project_file, changespec_name)
-
             result = (True, old_status, None)
         elif not _is_valid_transition(old_status, new_status):
             # Validate transition
@@ -344,7 +481,7 @@ def transition_changespec_status(
             logger.error(error_msg)
             result = (False, old_status, error_msg)
         else:
-            # Perform transition
+            # Perform transition to Reverted
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             logger.info(
                 f"[{timestamp}] Transitioning {changespec_name}: "
@@ -357,39 +494,6 @@ def transition_changespec_status(
                 updated_content,
                 f"Update STATUS to {new_status} for {changespec_name}",
             )
-
-            # Clear #WIP from mentors when transitioning from WIP to Drafted
-            if old_status == "WIP" and new_status == "Drafted":
-                from ace.mentors import clear_mentor_wip_flags
-
-                clear_mentor_wip_flags(project_file, changespec_name)
-
-                # Check if we need to strip suffix (done outside lock)
-                from gai_utils import has_suffix, strip_reverted_suffix
-
-                if has_suffix(changespec_name):
-                    suffix_strip_info = (
-                        changespec_name,
-                        strip_reverted_suffix(changespec_name),
-                    )
-
-            # Add __<N> suffix when transitioning from Drafted to WIP
-            if old_status == "Drafted" and new_status == "WIP":
-                from ace.changespec import find_all_changespecs
-                from ace.mentors import set_mentor_wip_flags
-                from gai_utils import get_next_suffix_number
-
-                all_changespecs = find_all_changespecs()
-                existing_names = {cs.name for cs in all_changespecs}
-                suffix_num = get_next_suffix_number(changespec_name, existing_names)
-                suffix_append_info = (
-                    changespec_name,
-                    f"{changespec_name}__{suffix_num}",
-                )
-
-                # Set #WIP flag on mentors
-                set_mentor_wip_flags(project_file, changespec_name)
-
             result = (True, old_status, None)
 
     # Strip __<N> suffix when transitioning from WIP to Drafted (outside lock)

@@ -648,3 +648,234 @@ TEST TARGETS: None
 
     finally:
         Path(project_file).unlink()
+
+
+# === WIP children constraint tests ===
+
+
+def test_transition_to_wip_blocked_when_child_is_drafted() -> None:
+    """Test that transition to WIP is blocked when a child has Drafted status."""
+    from unittest.mock import MagicMock, patch
+
+    project_file = _create_test_project_file_with_suffix(
+        name="Parent Feature", status="Drafted"
+    )
+
+    try:
+        # Mock find_all_changespecs to return a child with Drafted status
+        mock_child = MagicMock()
+        mock_child.name = "Child Feature"
+        mock_child.parent = "Parent Feature"
+        mock_child.status = "Drafted"
+
+        with patch("ace.changespec.find_all_changespecs") as mock_find:
+            mock_find.return_value = [mock_child]
+
+            success, old_status, error, _ = transition_changespec_status(
+                project_file, "Parent Feature", "WIP", validate=True
+            )
+
+            assert success is False
+            assert old_status == "Drafted"
+            assert error is not None
+            assert "Cannot transition 'Parent Feature' to WIP" in error
+            assert "children must be WIP or Reverted" in error
+            assert "Child Feature (Drafted)" in error
+
+    finally:
+        Path(project_file).unlink()
+
+
+def test_transition_to_wip_allowed_when_children_are_wip_or_reverted() -> None:
+    """Test that transition to WIP succeeds when children are WIP or Reverted."""
+    from unittest.mock import MagicMock, patch
+
+    project_file = _create_test_project_file_with_suffix(
+        name="Parent Feature", status="Drafted"
+    )
+
+    try:
+        # Mock find_all_changespecs to return children with valid statuses
+        mock_child_wip = MagicMock()
+        mock_child_wip.name = "Child WIP"
+        mock_child_wip.parent = "Parent Feature"
+        mock_child_wip.status = "WIP"
+
+        mock_child_reverted = MagicMock()
+        mock_child_reverted.name = "Child Reverted"
+        mock_child_reverted.parent = "Parent Feature"
+        mock_child_reverted.status = "Reverted"
+
+        # Also include an unrelated child (different parent)
+        mock_unrelated = MagicMock()
+        mock_unrelated.name = "Unrelated"
+        mock_unrelated.parent = "Other Parent"
+        mock_unrelated.status = "Drafted"
+
+        with (
+            patch("ace.changespec.find_all_changespecs") as mock_find,
+            patch("ace.mentors.set_mentor_wip_flags"),
+            patch("ace.revert.update_changespec_name_atomic"),
+            patch("running_field.get_workspace_directory") as mock_ws_dir,
+            patch("status_state_machine.update_parent_references_atomic"),
+            patch("running_field.update_running_field_cl_name"),
+        ):
+            mock_find.return_value = [
+                mock_child_wip,
+                mock_child_reverted,
+                mock_unrelated,
+            ]
+            mock_ws_dir.side_effect = RuntimeError("No workspace")
+
+            success, old_status, error, _ = transition_changespec_status(
+                project_file, "Parent Feature", "WIP", validate=True
+            )
+
+            assert success is True
+            assert old_status == "Drafted"
+            assert error is None
+
+    finally:
+        Path(project_file).unlink()
+
+
+def test_transition_from_wip_blocked_when_parent_is_wip() -> None:
+    """Test that child cannot transition away from WIP/Reverted when parent is WIP."""
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".md") as f:
+        f.write("""# Test Project
+
+## ChangeSpec
+
+NAME: Parent Feature
+DESCRIPTION:
+  A parent feature
+CL: None
+STATUS: WIP
+TEST TARGETS: None
+
+
+## ChangeSpec
+
+NAME: Child Feature
+DESCRIPTION:
+  A child feature
+PARENT: Parent Feature
+CL: None
+STATUS: WIP
+TEST TARGETS: None
+
+---
+""")
+        project_file = f.name
+
+    try:
+        # Try to transition child from WIP to Drafted when parent is WIP
+        success, old_status, error, _ = transition_changespec_status(
+            project_file, "Child Feature", "Drafted", validate=True
+        )
+
+        assert success is False
+        assert old_status == "WIP"
+        assert error is not None
+        assert "Cannot transition 'Child Feature' to Drafted" in error
+        assert "parent 'Parent Feature' is WIP" in error
+        assert "Children of WIP ChangeSpecs must be WIP or Reverted" in error
+
+    finally:
+        Path(project_file).unlink()
+
+
+def test_transition_from_wip_allowed_when_parent_is_not_wip() -> None:
+    """Test that child can transition when parent is not WIP."""
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".md") as f:
+        f.write("""# Test Project
+
+## ChangeSpec
+
+NAME: Parent Feature
+DESCRIPTION:
+  A parent feature
+CL: None
+STATUS: Drafted
+TEST TARGETS: None
+
+
+## ChangeSpec
+
+NAME: Child Feature
+DESCRIPTION:
+  A child feature
+PARENT: Parent Feature
+CL: None
+STATUS: WIP
+TEST TARGETS: None
+
+---
+""")
+        project_file = f.name
+
+    try:
+        # Mock the external dependencies
+        from unittest.mock import patch
+
+        with (
+            patch("ace.mentors.clear_mentor_wip_flags"),
+            patch("gai_utils.has_suffix") as mock_has_suffix,
+        ):
+            mock_has_suffix.return_value = False
+
+            # Transition child from WIP to Drafted when parent is Drafted
+            success, old_status, error, _ = transition_changespec_status(
+                project_file, "Child Feature", "Drafted", validate=True
+            )
+
+            assert success is True
+            assert old_status == "WIP"
+            assert error is None
+
+    finally:
+        Path(project_file).unlink()
+
+
+def test_transition_to_reverted_allowed_when_parent_is_wip() -> None:
+    """Test that child can transition to Reverted even when parent is WIP."""
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".md") as f:
+        f.write("""# Test Project
+
+## ChangeSpec
+
+NAME: Parent Feature
+DESCRIPTION:
+  A parent feature
+CL: None
+STATUS: WIP
+TEST TARGETS: None
+
+
+## ChangeSpec
+
+NAME: Child Feature
+DESCRIPTION:
+  A child feature
+PARENT: Parent Feature
+CL: None
+STATUS: WIP
+TEST TARGETS: None
+
+---
+""")
+        project_file = f.name
+
+    try:
+        # Transition child to Reverted - this should succeed even with WIP parent
+        # Note: validate=False because Reverted is typically set via revert operation
+        success, old_status, error, _ = transition_changespec_status(
+            project_file, "Child Feature", "Reverted", validate=False
+        )
+
+        assert success is True
+        assert old_status == "WIP"
+        assert error is None
+
+    finally:
+        Path(project_file).unlink()
