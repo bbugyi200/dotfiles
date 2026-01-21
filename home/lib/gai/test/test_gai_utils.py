@@ -11,7 +11,9 @@ from gai_utils import (
     generate_timestamp,
     get_context_files,
     get_gai_directory,
+    get_next_suffix_number,
     get_workspace_directory_for_changespec,
+    has_suffix,
     make_safe_filename,
     shorten_path,
     strip_hook_prefix,
@@ -288,3 +290,53 @@ def test_get_context_files_sorted() -> None:
         result = get_context_files(tmpdir)
         filenames = [os.path.basename(f) for f in result]
         assert filenames == sorted(filenames)
+
+
+# Tests for has_suffix
+
+
+def test_has_suffix_with_suffix() -> None:
+    """Test has_suffix returns True for names with __<N> suffix."""
+    assert has_suffix("feature__1") is True
+    assert has_suffix("feature__2") is True
+    assert has_suffix("feature__99") is True
+    assert has_suffix("my_feature__123") is True
+
+
+def test_has_suffix_without_suffix() -> None:
+    """Test has_suffix returns False for names without __<N> suffix."""
+    assert has_suffix("feature") is False
+    assert has_suffix("my_feature") is False
+    assert has_suffix("feature_1") is False  # single underscore
+    assert has_suffix("feature__") is False  # no number
+    assert has_suffix("feature__abc") is False  # non-numeric
+
+
+# Tests for get_next_suffix_number
+
+
+def test_get_next_suffix_number_empty_set() -> None:
+    """Test get_next_suffix_number returns 1 when no existing names."""
+    result = get_next_suffix_number("feature", set())
+    assert result == 1
+
+
+def test_get_next_suffix_number_first_available() -> None:
+    """Test get_next_suffix_number finds first available suffix."""
+    existing = {"feature__1", "feature__2"}
+    result = get_next_suffix_number("feature", existing)
+    assert result == 3
+
+
+def test_get_next_suffix_number_fills_gap() -> None:
+    """Test get_next_suffix_number fills gaps in sequence."""
+    existing = {"feature__2", "feature__3"}  # no __1
+    result = get_next_suffix_number("feature", existing)
+    assert result == 1  # Should fill the gap
+
+
+def test_get_next_suffix_number_ignores_other_bases() -> None:
+    """Test get_next_suffix_number ignores names with different bases."""
+    existing = {"other__1", "other__2", "feature__1"}
+    result = get_next_suffix_number("feature", existing)
+    assert result == 2  # Only considers feature__*, so next is 2

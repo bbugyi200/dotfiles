@@ -6,6 +6,7 @@ from pathlib import Path
 from status_state_machine import (
     VALID_STATUSES,
     VALID_TRANSITIONS,
+    _apply_cl_update,
     _is_valid_transition,
     transition_changespec_status,
 )
@@ -419,12 +420,231 @@ def test__is_valid_transition_with_workspace_suffix() -> None:
     assert _is_valid_transition("WIP (proj_1)", "Drafted (proj_2)") is True
 
 
-def test__is_valid_transition_drafted_cannot_go_back() -> None:
-    """Test that Drafted cannot transition back to WIP."""
-    assert _is_valid_transition("Drafted", "WIP") is False
+def test__is_valid_transition_drafted_to_wip() -> None:
+    """Test that Drafted CAN transition back to WIP."""
+    assert _is_valid_transition("Drafted", "WIP") is True
+
+
+def test__apply_cl_update_sets_cl() -> None:
+    """Test _apply_cl_update sets CL field."""
+    lines = [
+        "NAME: Test Feature\n",
+        "DESCRIPTION:\n",
+        "  Test description\n",
+        "CL: old_cl\n",
+        "STATUS: WIP\n",
+    ]
+    result = _apply_cl_update(lines, "Test Feature", "new_cl_value")
+    assert "CL: new_cl_value\n" in result
+    assert "CL: old_cl\n" not in result
+
+
+def test__apply_cl_update_removes_cl() -> None:
+    """Test _apply_cl_update removes CL when None."""
+    lines = [
+        "NAME: Test Feature\n",
+        "CL: old_cl\n",
+        "STATUS: WIP\n",
+    ]
+    result = _apply_cl_update(lines, "Test Feature", None)
+    assert "CL:" not in result
+
+
+def test__apply_cl_update_adds_cl_before_status() -> None:
+    """Test _apply_cl_update adds CL before STATUS when missing."""
+    lines = [
+        "NAME: Test Feature\n",
+        "DESCRIPTION:\n",
+        "  Test description\n",
+        "STATUS: WIP\n",
+    ]
+    result = _apply_cl_update(lines, "Test Feature", "new_cl")
+    assert "CL: new_cl\n" in result
+    # CL should appear before STATUS
+    lines_list = result.split("\n")
+    cl_idx = next(i for i, ln in enumerate(lines_list) if "CL:" in ln)
+    status_idx = next(i for i, ln in enumerate(lines_list) if "STATUS:" in ln)
+    assert cl_idx < status_idx
 
 
 def test__is_valid_transition_mailed_cannot_go_back() -> None:
     """Test that Mailed cannot transition back to Drafted or WIP."""
     assert _is_valid_transition("Mailed", "Drafted") is False
     assert _is_valid_transition("Mailed", "WIP") is False
+
+
+def _create_test_project_file_with_suffix(
+    name: str = "Test Feature", status: str = "Drafted"
+) -> str:
+    """Create a temporary project file with a specific NAME for suffix testing."""
+    import tempfile
+
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".md") as f:
+        f.write(f"""# Test Project
+
+## ChangeSpec
+
+NAME: {name}
+DESCRIPTION:
+  A test feature for unit testing
+PARENT: None
+CL: None
+STATUS: {status}
+TEST TARGETS: None
+
+---
+""")
+        return f.name
+
+
+def test_transition_changespec_status_drafted_to_wip_adds_suffix() -> None:
+    """Test that Drafted -> WIP transition adds __<N> suffix."""
+    from unittest.mock import patch
+
+    project_file = _create_test_project_file_with_suffix(
+        name="Test Feature", status="Drafted"
+    )
+
+    try:
+        # Mock functions imported at runtime - use source module paths
+        with (
+            patch("ace.changespec.find_all_changespecs") as mock_find,
+            patch("ace.mentors.set_mentor_wip_flags") as mock_set_wip,
+            patch("ace.revert.update_changespec_name_atomic") as mock_rename,
+            patch("running_field.get_workspace_directory") as mock_ws_dir,
+            patch(
+                "status_state_machine.update_parent_references_atomic"
+            ) as mock_parent_refs,
+            patch("running_field.update_running_field_cl_name"),
+        ):
+            mock_find.return_value = []
+            mock_ws_dir.side_effect = RuntimeError("No workspace")
+
+            success, old_status, error, _ = transition_changespec_status(
+                project_file, "Test Feature", "WIP", validate=True
+            )
+
+            assert success is True
+            assert old_status == "Drafted"
+            assert error is None
+
+            # Verify NAME rename was called with correct suffix
+            mock_rename.assert_called_once_with(
+                project_file, "Test Feature", "Test Feature__1"
+            )
+
+            # Verify PARENT references were updated
+            mock_parent_refs.assert_called_once_with(
+                project_file, "Test Feature", "Test Feature__1"
+            )
+
+            # Verify set_mentor_wip_flags was called
+            mock_set_wip.assert_called_once()
+
+    finally:
+        Path(project_file).unlink()
+
+
+def test_transition_changespec_status_drafted_to_wip_increments_suffix() -> None:
+    """Test that Drafted -> WIP uses next available suffix number."""
+    from unittest.mock import MagicMock, patch
+
+    project_file = _create_test_project_file_with_suffix(
+        name="Test Feature", status="Drafted"
+    )
+
+    try:
+        # Mock find_all_changespecs to return existing suffixed names
+        mock_cs1 = MagicMock()
+        mock_cs1.name = "Test Feature__1"
+        mock_cs2 = MagicMock()
+        mock_cs2.name = "Test Feature__2"
+
+        # Mock functions imported at runtime - use source module paths
+        with (
+            patch("ace.changespec.find_all_changespecs") as mock_find,
+            patch("ace.mentors.set_mentor_wip_flags"),
+            patch("ace.revert.update_changespec_name_atomic") as mock_rename,
+            patch("running_field.get_workspace_directory") as mock_ws_dir,
+            patch("status_state_machine.update_parent_references_atomic"),
+            patch("running_field.update_running_field_cl_name"),
+        ):
+            mock_find.return_value = [mock_cs1, mock_cs2]
+            mock_ws_dir.side_effect = RuntimeError("No workspace")
+
+            success, old_status, error, _ = transition_changespec_status(
+                project_file, "Test Feature", "WIP", validate=True
+            )
+
+            assert success is True
+
+            # Should use __3 since __1 and __2 exist
+            mock_rename.assert_called_once_with(
+                project_file, "Test Feature", "Test Feature__3"
+            )
+
+    finally:
+        Path(project_file).unlink()
+
+
+def test_transition_changespec_status_drafted_to_wip_updates_parent_refs() -> None:
+    """Test that Drafted -> WIP updates PARENT references in child ChangeSpecs."""
+    import tempfile
+    from unittest.mock import patch
+
+    # Create a project file with parent-child relationship
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".md") as f:
+        f.write("""# Test Project
+
+## ChangeSpec
+
+NAME: Parent Feature
+DESCRIPTION:
+  A parent feature
+CL: None
+STATUS: Drafted
+TEST TARGETS: None
+
+
+## ChangeSpec
+
+NAME: Child Feature
+DESCRIPTION:
+  A child feature
+PARENT: Parent Feature
+CL: None
+STATUS: WIP
+TEST TARGETS: None
+
+---
+""")
+        project_file = f.name
+
+    try:
+        # Mock functions imported at runtime - use source module paths
+        with (
+            patch("ace.changespec.find_all_changespecs") as mock_find,
+            patch("ace.mentors.set_mentor_wip_flags"),
+            patch("ace.revert.update_changespec_name_atomic"),
+            patch("running_field.get_workspace_directory") as mock_ws_dir,
+            patch(
+                "status_state_machine.update_parent_references_atomic"
+            ) as mock_parent_refs,
+            patch("running_field.update_running_field_cl_name"),
+        ):
+            mock_find.return_value = []
+            mock_ws_dir.side_effect = RuntimeError("No workspace")
+
+            success, _, _, _ = transition_changespec_status(
+                project_file, "Parent Feature", "WIP", validate=True
+            )
+
+            assert success is True
+
+            # Verify PARENT references update was called with old->new names
+            mock_parent_refs.assert_called_once_with(
+                project_file, "Parent Feature", "Parent Feature__1"
+            )
+
+    finally:
+        Path(project_file).unlink()

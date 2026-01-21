@@ -61,7 +61,7 @@ VALID_STATUSES = [
 # Key: current status, Value: list of allowed next statuses
 VALID_TRANSITIONS: dict[str, list[str]] = {
     "WIP": ["Drafted"],
-    "Drafted": ["Mailed"],
+    "Drafted": ["Mailed", "WIP"],
     "Mailed": ["Submitted"],
     # Submitted is terminal
     "Submitted": [],
@@ -270,8 +270,9 @@ def transition_changespec_status(
         - error_msg: Error message if failed (None if succeeded)
         - sibling_revert_results: List of _SiblingRevertResult for reverted siblings
     """
-    # Track if we need to strip suffix after lock releases
+    # Track if we need to strip/append suffix after lock releases
     suffix_strip_info: tuple[str, str] | None = None
+    suffix_append_info: tuple[str, str] | None = None
     result: tuple[bool, str | None, str | None] | None = None
     sibling_results: list[_SiblingRevertResult] = []
 
@@ -314,6 +315,23 @@ def transition_changespec_status(
                         strip_reverted_suffix(changespec_name),
                     )
 
+            # Add __<N> suffix when transitioning from Drafted to WIP
+            if old_status == "Drafted" and new_status == "WIP":
+                from ace.changespec import find_all_changespecs
+                from ace.mentors import set_mentor_wip_flags
+                from gai_utils import get_next_suffix_number
+
+                all_changespecs = find_all_changespecs()
+                existing_names = {cs.name for cs in all_changespecs}
+                suffix_num = get_next_suffix_number(changespec_name, existing_names)
+                suffix_append_info = (
+                    changespec_name,
+                    f"{changespec_name}__{suffix_num}",
+                )
+
+                # Set #WIP flag on mentors
+                set_mentor_wip_flags(project_file, changespec_name)
+
             result = (True, old_status, None)
         elif not _is_valid_transition(old_status, new_status):
             # Validate transition
@@ -354,6 +372,23 @@ def transition_changespec_status(
                         changespec_name,
                         strip_reverted_suffix(changespec_name),
                     )
+
+            # Add __<N> suffix when transitioning from Drafted to WIP
+            if old_status == "Drafted" and new_status == "WIP":
+                from ace.changespec import find_all_changespecs
+                from ace.mentors import set_mentor_wip_flags
+                from gai_utils import get_next_suffix_number
+
+                all_changespecs = find_all_changespecs()
+                existing_names = {cs.name for cs in all_changespecs}
+                suffix_num = get_next_suffix_number(changespec_name, existing_names)
+                suffix_append_info = (
+                    changespec_name,
+                    f"{changespec_name}__{suffix_num}",
+                )
+
+                # Set #WIP flag on mentors
+                set_mentor_wip_flags(project_file, changespec_name)
 
             result = (True, old_status, None)
 
@@ -412,6 +447,57 @@ def transition_changespec_status(
         sibling_results = _revert_sibling_wip_changespecs(
             project_file, base_name, suffixed_name, console
         )
+
+    # Append __<N> suffix when transitioning from Drafted to WIP (outside lock)
+    if suffix_append_info is not None:
+        base_name, suffixed_name = suffix_append_info
+        import subprocess
+        from pathlib import Path
+
+        from ace.revert import update_changespec_name_atomic
+        from running_field import get_workspace_directory, update_running_field_cl_name
+
+        # Update NAME field
+        update_changespec_name_atomic(project_file, base_name, suffixed_name)
+
+        # Rename the CL in Mercurial to match the new name
+        project_basename = Path(project_file).stem
+        try:
+            workspace_dir = get_workspace_directory(project_basename)
+
+            # First checkout the CL we want to rename
+            update_result = subprocess.run(
+                ["bb_hg_update", base_name],
+                cwd=workspace_dir,
+                capture_output=True,
+                text=True,
+                timeout=300,
+            )
+            if update_result.returncode != 0:
+                logger.warning(
+                    f"Failed to checkout CL {base_name}: {update_result.stderr}"
+                )
+            else:
+                # Now rename the CL
+                rename_result = subprocess.run(
+                    ["bb_hg_rename", suffixed_name],
+                    cwd=workspace_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=300,
+                )
+                if rename_result.returncode != 0:
+                    logger.warning(f"Failed to rename CL: {rename_result.stderr}")
+        except subprocess.TimeoutExpired:
+            logger.warning("bb_hg_update or bb_hg_rename timed out")
+        except RuntimeError as e:
+            logger.warning(f"Could not get workspace directory: {e}")
+
+        # Update PARENT references in other ChangeSpecs
+        update_parent_references_atomic(project_file, base_name, suffixed_name)
+
+        # Update RUNNING field entries
+        update_running_field_cl_name(project_file, base_name, suffixed_name)
 
     assert result is not None
     return (result[0], result[1], result[2], sibling_results)

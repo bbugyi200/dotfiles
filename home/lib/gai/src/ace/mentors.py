@@ -565,3 +565,50 @@ def clear_mentor_wip_flags(project_file: str, changespec_name: str) -> bool:
         return True  # ChangeSpec not found, nothing to do
     except Exception:
         return False
+
+
+def set_mentor_wip_flags(project_file: str, changespec_name: str) -> bool:
+    """Set is_wip flag and filter profiles for the LAST MENTORS entry.
+
+    This is called when transitioning from Drafted to WIP status. It:
+    1. Finds the MENTORS entry with the highest entry_id
+    2. Sets the is_wip flag to True
+    3. Filters profiles to only those with run_on_wip mentors
+
+    Args:
+        project_file: Path to the project file.
+        changespec_name: NAME of the ChangeSpec to update.
+
+    Returns:
+        True if successful (or no mentors to update), False on error.
+    """
+    from mentor_config import profile_has_wip_mentors
+
+    try:
+        changespecs = parse_project_file(project_file)
+        for cs in changespecs:
+            if cs.name == changespec_name:
+                if not cs.mentors:
+                    return True  # No mentors, nothing to do
+
+                # Sort by entry_id and get the last one
+                sorted_entries = sorted(
+                    cs.mentors, key=lambda e: parse_commit_entry_id(e.entry_id)
+                )
+                last_entry = sorted_entries[-1]
+
+                # Set the WIP flag
+                last_entry.is_wip = True
+
+                # Filter profiles to only those with run_on_wip mentors
+                last_entry.profiles = [
+                    p for p in last_entry.profiles if profile_has_wip_mentors(p)
+                ]
+
+                # Write back
+                return update_changespec_mentors_field(
+                    project_file, changespec_name, cs.mentors
+                )
+        return True  # ChangeSpec not found, nothing to do
+    except Exception:
+        return False

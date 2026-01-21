@@ -9,6 +9,7 @@ from ace.mentors import (
     _format_mentors_field,
     _format_profile_with_count,
     clear_mentor_wip_flags,
+    set_mentor_wip_flags,
 )
 from mentor_config import MentorConfig, MentorProfileConfig
 
@@ -432,6 +433,101 @@ STATUS: Drafted
         file_path = f.name
 
     result = clear_mentor_wip_flags(file_path, "nonexistent-cl")
+    assert result is True
+
+    Path(file_path).unlink()
+
+
+# Tests for set_mentor_wip_flags
+
+
+def test_set_mentor_wip_flags_sets_wip_on_last_entry() -> None:
+    """Test that set_mentor_wip_flags sets is_wip on the highest entry_id."""
+    content = """NAME: test-cl
+STATUS: Drafted
+MENTORS:
+  (1) feature
+  (2) feature
+  (3) feature
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+        f.write(content)
+        file_path = f.name
+
+    with patch("mentor_config.profile_has_wip_mentors", return_value=True):
+        with patch("mentor_config.get_mentor_profile_by_name", return_value=None):
+            result = set_mentor_wip_flags(file_path, "test-cl")
+            assert result is True
+
+    with open(file_path) as f:
+        updated_content = f.read()
+
+    # Only entry (3) should have #WIP set
+    lines = updated_content.split("\n")
+    mentors_section = [ln for ln in lines if ln.strip().startswith("(")]
+    assert any("(1)" in ln and "#WIP" not in ln for ln in mentors_section)
+    assert any("(2)" in ln and "#WIP" not in ln for ln in mentors_section)
+    assert any("(3)" in ln and "#WIP" in ln for ln in mentors_section)
+
+    Path(file_path).unlink()
+
+
+def test_set_mentor_wip_flags_filters_profiles() -> None:
+    """Test that set_mentor_wip_flags filters to only WIP-enabled profiles."""
+    content = """NAME: test-cl
+STATUS: Drafted
+MENTORS:
+  (1) profile_a profile_b
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+        f.write(content)
+        file_path = f.name
+
+    def mock_has_wip(name: str) -> bool:
+        # profile_a has WIP mentors, profile_b does not
+        return name == "profile_a"
+
+    with patch("mentor_config.profile_has_wip_mentors", side_effect=mock_has_wip):
+        with patch("mentor_config.get_mentor_profile_by_name", return_value=None):
+            result = set_mentor_wip_flags(file_path, "test-cl")
+            assert result is True
+
+    with open(file_path) as file_obj:
+        updated_content = file_obj.read()
+
+    # Only profile_a should remain, profile_b should be filtered out
+    assert "profile_a" in updated_content
+    assert "profile_b" not in updated_content
+    assert "#WIP" in updated_content
+
+    Path(file_path).unlink()
+
+
+def test_set_mentor_wip_flags_no_mentors() -> None:
+    """Test that function returns True when no mentors exist."""
+    content = """NAME: test-cl
+STATUS: Drafted
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+        f.write(content)
+        file_path = f.name
+
+    result = set_mentor_wip_flags(file_path, "test-cl")
+    assert result is True
+
+    Path(file_path).unlink()
+
+
+def test_set_mentor_wip_flags_changespec_not_found() -> None:
+    """Test that function returns True when changespec not found."""
+    content = """NAME: other-cl
+STATUS: Drafted
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+        f.write(content)
+        file_path = f.name
+
+    result = set_mentor_wip_flags(file_path, "nonexistent-cl")
     assert result is True
 
     Path(file_path).unlink()
