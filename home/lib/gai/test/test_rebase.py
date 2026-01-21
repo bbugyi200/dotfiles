@@ -4,10 +4,8 @@ import tempfile
 from pathlib import Path
 
 from ace.changespec import get_eligible_parents_in_project
-from status_state_machine import (
-    _apply_parent_update,
-    update_changespec_parent_atomic,
-)
+from status_state_machine import update_changespec_parent_atomic
+from status_state_machine.field_updates import _apply_parent_update
 
 
 def _create_test_project_file_with_parent(

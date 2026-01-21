@@ -6,10 +6,10 @@ from pathlib import Path
 from status_state_machine import (
     VALID_STATUSES,
     VALID_TRANSITIONS,
-    _apply_cl_update,
-    _is_valid_transition,
+    is_valid_transition,
     transition_changespec_status,
 )
+from status_state_machine.field_updates import _apply_cl_update
 
 
 def test_valid_statuses_defined() -> None:
@@ -31,44 +31,44 @@ def test_valid_transitions_defined() -> None:
         assert status in VALID_TRANSITIONS
 
 
-def test__is_valid_transition_wip_to_drafted() -> None:
+def test_is_valid_transition_wip_to_drafted() -> None:
     """Test transition from 'WIP' to 'Drafted' is valid."""
-    assert _is_valid_transition("WIP", "Drafted") is True
+    assert is_valid_transition("WIP", "Drafted") is True
 
 
-def test__is_valid_transition_invalid_from_wip() -> None:
+def test_is_valid_transition_invalid_from_wip() -> None:
     """Test that WIP can only transition to Drafted."""
-    assert _is_valid_transition("WIP", "Mailed") is False
-    assert _is_valid_transition("WIP", "Submitted") is False
-    assert _is_valid_transition("WIP", "Reverted") is False
+    assert is_valid_transition("WIP", "Mailed") is False
+    assert is_valid_transition("WIP", "Submitted") is False
+    assert is_valid_transition("WIP", "Reverted") is False
 
 
-def test__is_valid_transition_drafted_to_mailed() -> None:
+def test_is_valid_transition_drafted_to_mailed() -> None:
     """Test transition from 'Drafted' to 'Mailed' is valid."""
-    assert _is_valid_transition("Drafted", "Mailed") is True
+    assert is_valid_transition("Drafted", "Mailed") is True
 
 
-def test__is_valid_transition_mailed_to_submitted() -> None:
+def test_is_valid_transition_mailed_to_submitted() -> None:
     """Test transition from 'Mailed' to 'Submitted' is valid."""
-    assert _is_valid_transition("Mailed", "Submitted") is True
+    assert is_valid_transition("Mailed", "Submitted") is True
 
 
-def test__is_valid_transition_invalid_from_submitted() -> None:
+def test_is_valid_transition_invalid_from_submitted() -> None:
     """Test that transitions from 'Submitted' (terminal state) are invalid."""
-    assert _is_valid_transition("Submitted", "Mailed") is False
-    assert _is_valid_transition("Submitted", "Drafted") is False
+    assert is_valid_transition("Submitted", "Mailed") is False
+    assert is_valid_transition("Submitted", "Drafted") is False
 
 
-def test__is_valid_transition_invalid_from_reverted() -> None:
+def test_is_valid_transition_invalid_from_reverted() -> None:
     """Test that transitions from 'Reverted' (terminal state) are invalid."""
-    assert _is_valid_transition("Reverted", "Mailed") is False
-    assert _is_valid_transition("Reverted", "Drafted") is False
+    assert is_valid_transition("Reverted", "Mailed") is False
+    assert is_valid_transition("Reverted", "Drafted") is False
 
 
-def test__is_valid_transition_invalid_status() -> None:
+def test_is_valid_transition_invalid_status() -> None:
     """Test that invalid status names are rejected."""
-    assert _is_valid_transition("Invalid Status", "Mailed") is False
-    assert _is_valid_transition("Mailed", "Invalid Status") is False
+    assert is_valid_transition("Invalid Status", "Mailed") is False
+    assert is_valid_transition("Mailed", "Invalid Status") is False
 
 
 def _create_test_project_file(status: str = "Drafted") -> str:
@@ -259,7 +259,7 @@ def test_required_transitions_are_valid() -> None:
 
     for from_status, to_status in required_transitions:
         error_msg = f"Required transition '{from_status}' -> '{to_status}' is not valid"
-        assert _is_valid_transition(from_status, to_status), error_msg
+        assert is_valid_transition(from_status, to_status), error_msg
 
 
 def test_atomic_file_operations() -> None:
@@ -413,16 +413,16 @@ def test_remove_workspace_suffix_both_suffixes() -> None:
     assert result == "Drafted"
 
 
-def test__is_valid_transition_with_workspace_suffix() -> None:
-    """Test that _is_valid_transition handles workspace suffixes correctly."""
-    assert _is_valid_transition("WIP (fig_3)", "Drafted") is True
-    assert _is_valid_transition("Drafted", "Mailed (project_1)") is True
-    assert _is_valid_transition("WIP (proj_1)", "Drafted (proj_2)") is True
+def test_is_valid_transition_with_workspace_suffix() -> None:
+    """Test that is_valid_transition handles workspace suffixes correctly."""
+    assert is_valid_transition("WIP (fig_3)", "Drafted") is True
+    assert is_valid_transition("Drafted", "Mailed (project_1)") is True
+    assert is_valid_transition("WIP (proj_1)", "Drafted (proj_2)") is True
 
 
-def test__is_valid_transition_drafted_to_wip() -> None:
+def test_is_valid_transition_drafted_to_wip() -> None:
     """Test that Drafted CAN transition back to WIP."""
-    assert _is_valid_transition("Drafted", "WIP") is True
+    assert is_valid_transition("Drafted", "WIP") is True
 
 
 def test__apply_cl_update_sets_cl() -> None:
@@ -467,10 +467,10 @@ def test__apply_cl_update_adds_cl_before_status() -> None:
     assert cl_idx < status_idx
 
 
-def test__is_valid_transition_mailed_cannot_go_back() -> None:
+def test_is_valid_transition_mailed_cannot_go_back() -> None:
     """Test that Mailed cannot transition back to Drafted or WIP."""
-    assert _is_valid_transition("Mailed", "Drafted") is False
-    assert _is_valid_transition("Mailed", "WIP") is False
+    assert is_valid_transition("Mailed", "Drafted") is False
+    assert is_valid_transition("Mailed", "WIP") is False
 
 
 def _create_test_project_file_with_suffix(
@@ -513,7 +513,7 @@ def test_transition_changespec_status_drafted_to_wip_adds_suffix() -> None:
             patch("ace.revert.update_changespec_name_atomic") as mock_rename,
             patch("running_field.get_workspace_directory") as mock_ws_dir,
             patch(
-                "status_state_machine.update_parent_references_atomic"
+                "status_state_machine.field_updates.update_parent_references_atomic"
             ) as mock_parent_refs,
             patch("running_field.update_running_field_cl_name"),
         ):
@@ -566,7 +566,7 @@ def test_transition_changespec_status_drafted_to_wip_increments_suffix() -> None
             patch("ace.mentors.set_mentor_wip_flags"),
             patch("ace.revert.update_changespec_name_atomic") as mock_rename,
             patch("running_field.get_workspace_directory") as mock_ws_dir,
-            patch("status_state_machine.update_parent_references_atomic"),
+            patch("status_state_machine.field_updates.update_parent_references_atomic"),
             patch("running_field.update_running_field_cl_name"),
         ):
             mock_find.return_value = [mock_cs1, mock_cs2]
@@ -628,7 +628,7 @@ TEST TARGETS: None
             patch("ace.revert.update_changespec_name_atomic"),
             patch("running_field.get_workspace_directory") as mock_ws_dir,
             patch(
-                "status_state_machine.update_parent_references_atomic"
+                "status_state_machine.field_updates.update_parent_references_atomic"
             ) as mock_parent_refs,
             patch("running_field.update_running_field_cl_name"),
         ):
@@ -717,7 +717,7 @@ def test_transition_to_wip_allowed_when_children_are_wip_or_reverted() -> None:
             patch("ace.mentors.set_mentor_wip_flags"),
             patch("ace.revert.update_changespec_name_atomic"),
             patch("running_field.get_workspace_directory") as mock_ws_dir,
-            patch("status_state_machine.update_parent_references_atomic"),
+            patch("status_state_machine.field_updates.update_parent_references_atomic"),
             patch("running_field.update_running_field_cl_name"),
         ):
             mock_find.return_value = [
