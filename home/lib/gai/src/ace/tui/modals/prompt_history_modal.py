@@ -1,6 +1,7 @@
 """Prompt history selection modal with filtering for the ace TUI."""
 
 from dataclasses import dataclass
+from enum import Enum, auto
 
 from prompt_history import PromptEntry, get_prompts_for_fzf
 from rich.text import Text
@@ -13,6 +14,21 @@ from textual.widgets.option_list import Option
 from .base import FilterInput, OptionListNavigationMixin
 
 
+class PromptHistoryAction(Enum):
+    """Action type for prompt history modal result."""
+
+    SUBMIT = auto()  # Enter - submit prompt directly
+    EDIT_FIRST = auto()  # Ctrl+G - open in editor first
+
+
+@dataclass
+class PromptHistoryResult:
+    """Result from PromptHistoryModal."""
+
+    action: PromptHistoryAction
+    prompt_text: str
+
+
 @dataclass
 class _PromptDisplayItem:
     """Wrapper for prompt entry with display info."""
@@ -22,11 +38,16 @@ class _PromptDisplayItem:
     display_branch: str  # Padded branch name
 
 
-class PromptHistoryModal(OptionListNavigationMixin, ModalScreen[str | None]):
+class PromptHistoryModal(
+    OptionListNavigationMixin, ModalScreen[PromptHistoryResult | None]
+):
     """Modal for selecting a prompt from history with filtering and preview."""
 
     _option_list_id = "prompt-history-list"
-    BINDINGS = [*OptionListNavigationMixin.NAVIGATION_BINDINGS]
+    BINDINGS = [
+        *OptionListNavigationMixin.NAVIGATION_BINDINGS,
+        ("ctrl+g", "edit_first", "Edit in editor"),
+    ]
 
     def __init__(
         self,
@@ -101,7 +122,7 @@ class PromptHistoryModal(OptionListNavigationMixin, ModalScreen[str | None]):
                             yield Static("", id="prompt-history-preview")
                             yield Static("", id="prompt-history-metadata")
                 yield Static(
-                    "j/k ↑/↓ ^n/^p: navigate • Enter: select • Esc/q: cancel",
+                    "j/k ↑/↓ ^n/^p: navigate • Enter: submit • ^g: edit • Esc/q: cancel",
                     id="prompt-history-hints",
                 )
 
@@ -165,6 +186,16 @@ class PromptHistoryModal(OptionListNavigationMixin, ModalScreen[str | None]):
             or filter_lower in item.entry.branch_or_workspace.lower()
         ]
 
+    def _get_selected_prompt_text(self) -> str | None:
+        """Get the prompt text for the currently highlighted item."""
+        if not self._filtered_items:
+            return None
+        option_list = self.query_one("#prompt-history-list", OptionList)
+        highlighted = option_list.highlighted
+        if highlighted is not None and 0 <= highlighted < len(self._filtered_items):
+            return self._filtered_items[highlighted].entry.text
+        return self._filtered_items[0].entry.text
+
     def on_mount(self) -> None:
         """Focus the input and show initial preview on mount."""
         if self._all_items:
@@ -188,17 +219,15 @@ class PromptHistoryModal(OptionListNavigationMixin, ModalScreen[str | None]):
             self._clear_preview()
 
     def on_input_submitted(self, _event: Input.Submitted) -> None:
-        """Handle Enter key in input - select highlighted item."""
-        if not self._filtered_items:
-            return
-
-        option_list = self.query_one("#prompt-history-list", OptionList)
-        highlighted = option_list.highlighted
-        if highlighted is not None and 0 <= highlighted < len(self._filtered_items):
-            self.dismiss(self._filtered_items[highlighted].entry.text)
-        else:
-            # Select first item if none highlighted
-            self.dismiss(self._filtered_items[0].entry.text)
+        """Handle Enter key in input - select and submit directly."""
+        prompt_text = self._get_selected_prompt_text()
+        if prompt_text:
+            self.dismiss(
+                PromptHistoryResult(
+                    action=PromptHistoryAction.SUBMIT,
+                    prompt_text=prompt_text,
+                )
+            )
 
     def on_option_list_option_highlighted(
         self, event: OptionList.OptionHighlighted
@@ -210,11 +239,27 @@ class PromptHistoryModal(OptionListNavigationMixin, ModalScreen[str | None]):
                 self._update_preview(self._filtered_items[idx])
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
-        """Handle option selection."""
+        """Handle option selection (click/double-click) - submit directly."""
         if event.option and event.option.id is not None:
             idx = int(event.option.id)
             if 0 <= idx < len(self._filtered_items):
-                self.dismiss(self._filtered_items[idx].entry.text)
+                self.dismiss(
+                    PromptHistoryResult(
+                        action=PromptHistoryAction.SUBMIT,
+                        prompt_text=self._filtered_items[idx].entry.text,
+                    )
+                )
+
+    def action_edit_first(self) -> None:
+        """Handle Ctrl+G - select and open in editor first."""
+        prompt_text = self._get_selected_prompt_text()
+        if prompt_text:
+            self.dismiss(
+                PromptHistoryResult(
+                    action=PromptHistoryAction.EDIT_FIRST,
+                    prompt_text=prompt_text,
+                )
+            )
 
     def _update_preview(self, item: _PromptDisplayItem) -> None:
         """Update preview panel with full prompt and metadata."""

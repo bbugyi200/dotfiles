@@ -9,7 +9,11 @@ from .help_modal import HelpModal
 from .parent_select_modal import ParentSelectModal
 from .process_select_modal import ProcessSelection, ProcessSelectModal
 from .project_select_modal import ProjectSelectModal, SelectionItem
-from .prompt_history_modal import PromptHistoryModal
+from .prompt_history_modal import (
+    PromptHistoryAction,
+    PromptHistoryModal,
+    PromptHistoryResult,
+)
 from .query_edit_modal import QueryEditModal
 from .rename_cl_modal import RenameCLModal
 from .snippet_select_modal import SnippetSelectModal
@@ -32,7 +36,9 @@ __all__ = [
     "ProcessSelectModal",
     "ProcessSelection",
     "ProjectSelectModal",
+    "PromptHistoryAction",
     "PromptHistoryModal",
+    "PromptHistoryResult",
     "QueryEditModal",
     "RenameCLModal",
     "SelectionItem",

@@ -400,22 +400,31 @@ class AgentWorkflowMixin(AgentLaunchMixin):
         if self._prompt_context is None:
             return
 
-        from ..modals import PromptHistoryModal
+        from ..modals import (
+            PromptHistoryAction,
+            PromptHistoryModal,
+            PromptHistoryResult,
+        )
 
-        def on_history_select(result: str | None) -> None:
-            if result:
-                # Open editor with selected prompt (preserves fzf behavior)
-                edited_prompt = self._open_editor_for_agent_prompt(result)
+        def on_history_select(result: PromptHistoryResult | None) -> None:
+            if result is None:
+                self.notify("No prompt from history - cancelled", severity="warning")  # type: ignore[attr-defined]
+                self._unmount_prompt_bar()
+                self._prompt_context = None
+                return
+
+            if result.action == PromptHistoryAction.SUBMIT:
+                # Direct submit - skip editor
+                self._finish_agent_launch(result.prompt_text)
+            else:
+                # Edit first - open editor with selected prompt
+                edited_prompt = self._open_editor_for_agent_prompt(result.prompt_text)
                 if edited_prompt:
                     self._finish_agent_launch(edited_prompt)
                 else:
                     self.notify("No prompt from editor - cancelled", severity="warning")  # type: ignore[attr-defined]
                     self._unmount_prompt_bar()
                     self._prompt_context = None
-            else:
-                self.notify("No prompt from history - cancelled", severity="warning")  # type: ignore[attr-defined]
-                self._unmount_prompt_bar()
-                self._prompt_context = None
 
         self.push_screen(  # type: ignore[attr-defined]
             PromptHistoryModal(
