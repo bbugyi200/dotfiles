@@ -10,7 +10,7 @@ Grammar (EBNF):
     string       = bare_word | [c], '"', { string_char }, '"' ;
     bare_word    = (letter | "_"), { letter | digit | "_" | "-" } ;
     property     = property_key, ":", property_value ;
-    property_key = "status" | "project" | "ancestor" ;
+    property_key = "status" | "project" | "ancestor" | "name" | "sibling" ;
     property_value = bare_word | quoted_string ;
     error_suffix = "!!!" | "!" (when standalone) ;
     not_error_suffix = "!!" (when standalone) ;

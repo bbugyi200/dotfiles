@@ -324,7 +324,7 @@ class NavigationMixin:
         # If only one sibling with key "~", navigate directly
         if len(self._sibling_keys) == 1 and "~" in self._sibling_keys:
             target = self._sibling_keys["~"]
-            self._navigate_to_changespec(target, is_ancestor=False)
+            self._navigate_to_changespec(target, is_ancestor=False, is_sibling=True)
         else:
             self._sibling_mode_active = True
 
@@ -434,14 +434,14 @@ class NavigationMixin:
             # ~~ - go to first sibling
             if "~~" in self._sibling_keys:
                 target = self._sibling_keys["~~"]
-                self._navigate_to_changespec(target, is_ancestor=False)
+                self._navigate_to_changespec(target, is_ancestor=False, is_sibling=True)
             return True
         elif len(key) == 1 and key.isalpha() and key.islower():
             # ~a, ~b, etc. - find matching sibling
             expected_key = f"~{key}"
             if expected_key in self._sibling_keys:
                 target = self._sibling_keys[expected_key]
-                self._navigate_to_changespec(target, is_ancestor=False)
+                self._navigate_to_changespec(target, is_ancestor=False, is_sibling=True)
             return True
 
         return True  # Consume the key regardless
@@ -473,11 +473,13 @@ class NavigationMixin:
             # After letter, expect digit
             return key.isdigit() and "2" <= key <= "9"
 
-    def _navigate_to_changespec(self, target_name: str, is_ancestor: bool) -> None:
+    def _navigate_to_changespec(
+        self, target_name: str, is_ancestor: bool, is_sibling: bool = False
+    ) -> None:
         """Navigate to a ChangeSpec by name.
 
         If target is in current filtered list, just jump to it.
-        If not, change query to ancestor:<name> and jump.
+        If not, change query to ancestor:<name> or sibling:<base_name> and jump.
         """
         # Push current ChangeSpec to history before navigating away
         self._push_changespec_to_history()
@@ -490,7 +492,7 @@ class NavigationMixin:
             self.current_idx = target_idx
         else:
             # Target not in current list - change query
-            self._change_query_for_navigation(target_name, is_ancestor)
+            self._change_query_for_navigation(target_name, is_ancestor, is_sibling)
 
     def _find_in_current_list(self, name: str) -> int | None:
         """Find a ChangeSpec by name in current filtered list."""
@@ -504,26 +506,33 @@ class NavigationMixin:
         self,
         target_name: str,
         is_ancestor: bool,
+        is_sibling: bool = False,
     ) -> None:
         """Change query to navigate to a target not in current list.
 
-        Uses ancestor:<name> query where:
-        - For ancestor navigation: name is the ancestor's name
-        - For child navigation: name is the current ChangeSpec's name
+        Uses appropriate query based on navigation type:
+        - For sibling navigation: sibling:<base_name> (strips __<N> suffix)
+        - For ancestor navigation: ancestor:<ancestor_name>
+        - For child navigation: ancestor:<current_name>
         """
+        from gai_utils import strip_reverted_suffix
+
         from ...query import parse_query, to_canonical_string
         from ...query_history import push_to_prev_stack, save_query_history
 
-        if is_ancestor:
+        if is_sibling:
+            # For sibling navigation: use sibling:<base_name>
+            current_cs = self.changespecs[self.current_idx]
+            base_name = strip_reverted_suffix(current_cs.name)
+            new_query = f"sibling:{base_name}"
+        elif is_ancestor:
             # Going to ancestor: use ancestor's name
-            query_name = target_name
+            new_query = f"ancestor:{target_name}"
         else:
             # Going to child: use current ChangeSpec's name
             # This shows all descendants of current
             current_cs = self.changespecs[self.current_idx]
-            query_name = current_cs.name
-
-        new_query = f"ancestor:{query_name}"
+            new_query = f"ancestor:{current_cs.name}"
 
         try:
             new_parsed = parse_query(new_query)

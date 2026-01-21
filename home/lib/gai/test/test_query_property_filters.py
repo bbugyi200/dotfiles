@@ -669,3 +669,102 @@ def test_evaluate_name_combined_with_status() -> None:
 
     cs3 = _make_changespec(name="other_feature", status="Drafted")
     assert evaluate_query(query, cs3) is False
+
+
+# --- Sibling Filter Tokenizer Tests ---
+
+
+def test_tokenize_explicit_sibling_property() -> None:
+    """Test tokenizing sibling:myname explicitly."""
+    tokens = list(tokenize("sibling:myname"))
+    assert len(tokens) == 2
+    assert tokens[0].type == TokenType.PROPERTY
+    assert tokens[0].value == "myname"
+    assert tokens[0].property_key == "sibling"
+
+
+# --- Sibling Filter Parser Tests ---
+
+
+def test_parse_sibling_property() -> None:
+    """Test parsing sibling property filter."""
+    result = parse_query("sibling:myname")
+    assert isinstance(result, PropertyMatch)
+    assert result.key == "sibling"
+    assert result.value == "myname"
+
+
+# --- Sibling Filter Canonicalization Tests ---
+
+
+def test_canonical_sibling_property() -> None:
+    """Test canonicalization of sibling property."""
+    result = parse_query("sibling:myname")
+    assert to_canonical_string(result) == "sibling:myname"
+
+
+# --- Sibling Filter Evaluator Tests ---
+
+
+def test_evaluate_sibling_exact_match() -> None:
+    """Test sibling filter matches exact name."""
+    query = parse_query("sibling:foo")
+    cs = _make_changespec(name="foo")
+    assert evaluate_query(query, cs) is True
+
+
+def test_evaluate_sibling_matches_with_suffix() -> None:
+    """Test sibling:foo matches foo__2."""
+    query = parse_query("sibling:foo")
+    cs = _make_changespec(name="foo__2")
+    assert evaluate_query(query, cs) is True
+
+
+def test_evaluate_sibling_matches_base_to_suffix() -> None:
+    """Test sibling:foo__3 matches foo (base name)."""
+    query = parse_query("sibling:foo__3")
+    cs = _make_changespec(name="foo")
+    assert evaluate_query(query, cs) is True
+
+
+def test_evaluate_sibling_matches_suffix_to_suffix() -> None:
+    """Test sibling:foo__1 matches foo__5."""
+    query = parse_query("sibling:foo__1")
+    cs = _make_changespec(name="foo__5")
+    assert evaluate_query(query, cs) is True
+
+
+def test_evaluate_sibling_case_insensitive() -> None:
+    """Test sibling matching is case-insensitive."""
+    query = parse_query("sibling:FOO")
+    cs = _make_changespec(name="foo__2")
+    assert evaluate_query(query, cs) is True
+
+
+def test_evaluate_sibling_no_match_different_base() -> None:
+    """Test sibling filter doesn't match different base name."""
+    query = parse_query("sibling:foo")
+    cs = _make_changespec(name="bar")
+    assert evaluate_query(query, cs) is False
+
+    cs2 = _make_changespec(name="foobar")
+    assert evaluate_query(query, cs2) is False
+
+    cs3 = _make_changespec(name="bar__2")
+    assert evaluate_query(query, cs3) is False
+
+
+def test_evaluate_sibling_combined_with_status() -> None:
+    """Test combining sibling and status filters."""
+    query = parse_query("sibling:feature %d")
+    cs1 = _make_changespec(name="feature", status="Drafted")
+    assert evaluate_query(query, cs1) is True
+
+    cs2 = _make_changespec(name="feature__2", status="Drafted")
+    assert evaluate_query(query, cs2) is True
+
+    cs3 = _make_changespec(name="feature__3", status="Mailed")
+    assert evaluate_query(query, cs3) is False
+
+    cs4 = _make_changespec(name="other_feature", status="Drafted")
+    assert evaluate_query(query, cs4) is False

@@ -192,7 +192,7 @@ def tokenize_query_for_display(query: str) -> list[tuple[str, str]]:
             # Check if this is a property key (followed by :)
             if i < len(query) and query[i] == ":":
                 word_lower = word.lower()
-                if word_lower in ("status", "project", "ancestor"):
+                if word_lower in ("status", "project", "ancestor", "name", "sibling"):
                     # Property key
                     tokens.append((word + ":", "property_key"))
                     i += 1  # Skip the colon

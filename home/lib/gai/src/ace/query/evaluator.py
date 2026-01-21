@@ -203,6 +203,34 @@ def _match_name(prop: PropertyMatch, changespec: ChangeSpec) -> bool:
     return changespec.name.lower() == prop.value.lower()
 
 
+def _match_sibling(prop: PropertyMatch, changespec: ChangeSpec) -> bool:
+    """Match if ChangeSpec is in the same sibling family as the given name.
+
+    A ChangeSpec matches if its base name (with __<N> suffix stripped) equals
+    the search value's base name (also with any __<N> suffix stripped).
+
+    This matches all ChangeSpecs that share the same "family" - the exact name
+    plus all its __1, __2, etc. variants.
+
+    Args:
+        prop: The PropertyMatch with key="sibling".
+        changespec: The ChangeSpec to check.
+
+    Returns:
+        True if the base names match (case-insensitive).
+    """
+    from gai_utils import strip_reverted_suffix
+
+    # Get the base name of the search value (strip __<N> suffix)
+    search_base = strip_reverted_suffix(prop.value).lower()
+
+    # Get the base name of the changespec's name
+    cs_base = strip_reverted_suffix(changespec.name).lower()
+
+    # Match if base names are equal
+    return cs_base == search_base
+
+
 def _match_ancestor(
     prop: PropertyMatch,
     changespec: ChangeSpec,
@@ -283,6 +311,8 @@ def _match_property(
         return _match_ancestor(prop, changespec, all_changespecs)
     elif prop.key == "name":
         return _match_name(prop, changespec)
+    elif prop.key == "sibling":
+        return _match_sibling(prop, changespec)
     else:
         # Unknown property key - should not happen with proper tokenization
         return False
@@ -367,7 +397,7 @@ def query_explicitly_targets_reverted(
         if isinstance(e, PropertyMatch):
             if e.key == "status" and e.value.lower() == "reverted":
                 return True
-            if e.key in ("name", "ancestor"):
+            if e.key in ("name", "ancestor", "sibling"):
                 # Check if the referenced spec is reverted
                 ref_status = status_map.get(e.value.lower(), "")
                 if ref_status == "Reverted":
