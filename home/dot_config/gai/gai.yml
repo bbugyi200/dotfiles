@@ -126,6 +126,18 @@ mentor_profiles:
           the output of the `cl_bug` command?
     file_globs:
       - "**/publisher_features.textproto"
+  - profile_name: sql
+    mentors:
+      - mentor_name: sql
+        prompt: |
+          Can you help me ensure that the SQL files added by this CL have file paths of the form
+          `configs/storage/f1/data_changes/gfp-f1-prod/input/*.sql` OR `configs/storage/f1/data_changes/gfp-f1-prod/input/gfp-f1-<team>/*.sql`,
+          where `<team>` is the name of a team/domain (check to see which subdirectories exist)? We are only allowed to
+          use the latter form when that subdirectory contains a README.md file that lists the name of the SQL table we
+          are modifying; however, if that is the case, then you MUST use the latter form. You should also ensure that
+          this CL adheres to the best practices described in the @contentads/gfp/agave/g3doc/modify/data_change.md file.
+    file_globs:
+      - "**/*.sql"
   - profile_name: ui
     mentors:
       - mentor_name: ui
