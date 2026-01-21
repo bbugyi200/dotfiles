@@ -120,6 +120,7 @@ mentor_profiles:
   - profile_name: pubfeat
     mentors:
       - mentor_name: pubfeat
+        run_on_wip: true
         prompt: |
           Can you ensure that if this CL adds a new #feat that the value we used for the 'id' field is equal to the
           output of the `branch_number` command and that the value we used for the 'rollout_bug_id' field is equal to
@@ -129,6 +130,7 @@ mentor_profiles:
   - profile_name: sql
     mentors:
       - mentor_name: sql
+        run_on_wip: true
         prompt: |
           Can you help me ensure that the SQL files added by this CL have file paths of the form
           `configs/storage/f1/data_changes/gfp-f1-prod/input/*.sql` OR `configs/storage/f1/data_changes/gfp-f1-prod/input/gfp-f1-<team>/*.sql`,
