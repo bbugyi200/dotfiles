@@ -11,6 +11,7 @@ from change_actions import (
     prompt_for_change_action,
 )
 from chat_history import save_chat_history
+from commit_utils import run_bb_hg_clean
 from gai_utils import generate_timestamp, strip_hook_prefix
 from gemini_wrapper import invoke_agent
 from running_field import (
@@ -235,6 +236,15 @@ def handle_run_fix_hook_workflow(
 
     if workspace_suffix:
         self.console.print(f"[cyan]Using workspace share: {workspace_suffix}[/cyan]")
+
+    # Clean workspace before switching branches
+    clean_success, clean_error = run_bb_hg_clean(
+        workspace_dir, f"{changespec.name}-fix-hook"
+    )
+    if not clean_success:
+        self.console.print(
+            f"[yellow]Warning: bb_hg_clean failed: {clean_error}[/yellow]"
+        )
 
     # Update to the changespec NAME (cd and bb_hg_update to the branch)
     success, error_msg = update_to_changespec(

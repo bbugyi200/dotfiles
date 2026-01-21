@@ -9,6 +9,7 @@ from typing import NoReturn
 from ace.changespec import find_all_changespecs
 from ace.scheduler.mentor_runner import get_mentor_chat_path
 from change_actions import execute_change_action, prompt_for_change_action
+from commit_utils import run_bb_hg_clean
 from gai_utils import generate_timestamp
 from gemini_wrapper import invoke_agent
 from mentor_config import (
@@ -227,6 +228,15 @@ class MentorWorkflow(BaseWorkflow):
 
             # Run bb_hg_update to checkout the CL (skip if workspace already set up)
             if self._owns_workspace:
+                # Clean workspace before switching branches
+                clean_success, clean_error = run_bb_hg_clean(
+                    workspace_dir, f"{resolved_cl_name}-mentor-{self.mentor_name}"
+                )
+                if not clean_success:
+                    print_status(
+                        f"Warning: bb_hg_clean failed: {clean_error}", "warning"
+                    )
+
                 print_status(f"Checking out CL: {resolved_cl_name}", "progress")
                 result = subprocess.run(
                     ["bb_hg_update", resolved_cl_name],

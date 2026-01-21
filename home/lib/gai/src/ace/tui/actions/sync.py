@@ -6,6 +6,8 @@ import os
 import subprocess
 from typing import TYPE_CHECKING
 
+from commit_utils import run_bb_hg_clean
+
 if TYPE_CHECKING:
     from ...changespec import ChangeSpec
 
@@ -83,6 +85,13 @@ class SyncMixin:
                 return (False, "Failed to claim workspace")
 
             try:
+                # Clean workspace before switching branches
+                clean_success, clean_error = run_bb_hg_clean(
+                    workspace_dir, f"{changespec.name}-sync"
+                )
+                if not clean_success:
+                    print(f"Warning: bb_hg_clean failed: {clean_error}")
+
                 # Checkout the CL
                 print(f"Checking out {changespec.name}...")
                 try:

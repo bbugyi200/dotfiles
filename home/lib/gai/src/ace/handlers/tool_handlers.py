@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
+from commit_utils import run_bb_hg_clean
+
 from ..changespec import ChangeSpec
 from ..mail_ops import handle_mail as mail_ops_handle_mail
 from ..operations import update_to_changespec
@@ -100,6 +102,15 @@ def handle_reword(self: "WorkflowContext", changespec: ChangeSpec) -> None:
 
         if workspace_suffix:
             self.console.print(f"[cyan]Using workspace: {workspace_suffix}[/cyan]")
+
+        # Clean workspace before switching branches
+        clean_success, clean_error = run_bb_hg_clean(
+            workspace_dir, f"{changespec.name}-reword"
+        )
+        if not clean_success:
+            self.console.print(
+                f"[yellow]Warning: bb_hg_clean failed: {clean_error}[/yellow]"
+            )
 
         # Update to the changespec (checkout the CL)
         self.console.print(f"[cyan]Checking out {changespec.name}...[/cyan]")
@@ -491,6 +502,15 @@ def handle_mail(
 
         if workspace_suffix:
             self.console.print(f"[cyan]Using workspace: {workspace_suffix}[/cyan]")
+
+        # Clean workspace before switching branches
+        clean_success, clean_error = run_bb_hg_clean(
+            workspace_dir, f"{changespec.name}-mail"
+        )
+        if not clean_success:
+            self.console.print(
+                f"[yellow]Warning: bb_hg_clean failed: {clean_error}[/yellow]"
+            )
 
         # Update to the changespec branch (NAME field) to ensure we're on the correct branch
         success, error_msg = update_to_changespec(
