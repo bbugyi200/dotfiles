@@ -96,10 +96,11 @@ def append_suffix_to_text(
     elif suffix_type == "metahook_complete":
         if suffix_content:
             text.append(
-                f"(^: {suffix_content})", style=SUFFIX_STYLES["metahook_complete"]
+                f"(!: metahook | {suffix_content})",
+                style=SUFFIX_STYLES["metahook_complete"],
             )
         else:
-            text.append("(^)", style=SUFFIX_STYLES["metahook_complete"])
+            text.append("(!: metahook)", style=SUFFIX_STYLES["metahook_complete"])
     elif check_entry_ref and suffix and is_entry_ref_suffix(suffix):
         text.append(f"({suffix_content})", style=SUFFIX_STYLES["entry_ref"])
     else:

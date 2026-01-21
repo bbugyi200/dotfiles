@@ -117,7 +117,11 @@ def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
                         elif sl.suffix_type == "killed_process":
                             suffix_content = f"~$: {suffix_val}"
                         elif sl.suffix_type == "metahook_complete":
-                            suffix_content = f"^: {suffix_val}" if suffix_val else "^"
+                            suffix_content = (
+                                f"!: metahook | {suffix_val}"
+                                if suffix_val
+                                else "!: metahook"
+                            )
                         else:
                             suffix_content = suffix_val
 

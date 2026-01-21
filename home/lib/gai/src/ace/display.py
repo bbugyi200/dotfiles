@@ -439,11 +439,13 @@ def display_changespec(
                                 )
                             if suffix_content:
                                 text.append(
-                                    f"(^: {suffix_content})",
+                                    f"(!: metahook | {suffix_content})",
                                     style="bold #FFFFFF on #8B008B",
                                 )
                             else:
-                                text.append("(^)", style="bold #FFFFFF on #8B008B")
+                                text.append(
+                                    "(!: metahook)", style="bold #FFFFFF on #8B008B"
+                                )
                         elif is_entry_ref_suffix(sl.suffix):
                             # Entry reference suffix (e.g., "2", "1a") - light red/pink
                             suffix_content = sl.suffix

@@ -54,6 +54,16 @@ def parse_suffix_prefix(suffix_val: str | None) -> _ParsedSuffix:
 
     for prefix, suffix_type in _PREFIX_MAP:
         if suffix_val.startswith(prefix):
+            # Special case: "!: metahook" or "!: metahook | ..." is metahook_complete
+            if prefix == "!:":
+                remainder = suffix_val[len(prefix) :].lstrip()
+                if remainder == "metahook" or remainder.startswith("metahook |"):
+                    # Extract content after "metahook | " if present
+                    if remainder.startswith("metahook |"):
+                        value = remainder[len("metahook |") :].strip()
+                    else:
+                        value = ""
+                    return _ParsedSuffix(value, "metahook_complete")
             return _ParsedSuffix(suffix_val[len(prefix) :].strip(), suffix_type)
 
     # Handle standalone markers

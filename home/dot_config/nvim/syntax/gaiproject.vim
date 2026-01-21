@@ -141,10 +141,10 @@ highlight GaiProjectPresubmitFailed gui=bold guifg=#FF5F5F
 " Key line
 syn match GaiProjectCommitsKey "^COMMITS:"
 " Regular entry lines: (N) Note text (2-space indented)
-syn match GaiProjectCommitsEntry "^\s\s(\d\+)\s.\+$" contains=GaiProjectCommitsNumber,GaiProjectCommitsSuffixError,GaiProjectCommitsSuffixRejectedProposal,GaiProjectCommitsSuffixRunningAgent,GaiProjectCommitsSuffixRunningAgentEmpty,GaiProjectCommitsSuffixKilledAgent,GaiProjectCommitsSuffixRunningProcess,GaiProjectCommitsSuffixPendingDeadProcess,GaiProjectCommitsSuffixKilledProcess,GaiProjectCommitsSuffixSummarizeComplete,GaiProjectCommitsSuffixMetahookComplete
+syn match GaiProjectCommitsEntry "^\s\s(\d\+)\s.\+$" contains=GaiProjectCommitsNumber,GaiProjectCommitsSuffixMetahookComplete,GaiProjectCommitsSuffixMetahookCompleteEmpty,GaiProjectCommitsSuffixError,GaiProjectCommitsSuffixRejectedProposal,GaiProjectCommitsSuffixRunningAgent,GaiProjectCommitsSuffixRunningAgentEmpty,GaiProjectCommitsSuffixKilledAgent,GaiProjectCommitsSuffixRunningProcess,GaiProjectCommitsSuffixPendingDeadProcess,GaiProjectCommitsSuffixKilledProcess,GaiProjectCommitsSuffixSummarizeComplete
 syn match GaiProjectCommitsNumber "(\d\+)" contained
 " Proposed entry lines: (Na) Note text (2-space indented, where 'a' is a-z)
-syn match GaiProjectCommitsProposedEntry "^\s\s(\d\+[a-z])\s.\+$" contains=GaiProjectCommitsProposedNumber,GaiProjectCommitsSuffixError,GaiProjectCommitsSuffixRejectedProposal,GaiProjectCommitsSuffixRunningAgent,GaiProjectCommitsSuffixRunningAgentEmpty,GaiProjectCommitsSuffixKilledAgent,GaiProjectCommitsSuffixRunningProcess,GaiProjectCommitsSuffixPendingDeadProcess,GaiProjectCommitsSuffixKilledProcess,GaiProjectCommitsSuffixSummarizeComplete,GaiProjectCommitsSuffixMetahookComplete
+syn match GaiProjectCommitsProposedEntry "^\s\s(\d\+[a-z])\s.\+$" contains=GaiProjectCommitsProposedNumber,GaiProjectCommitsSuffixMetahookComplete,GaiProjectCommitsSuffixMetahookCompleteEmpty,GaiProjectCommitsSuffixError,GaiProjectCommitsSuffixRejectedProposal,GaiProjectCommitsSuffixRunningAgent,GaiProjectCommitsSuffixRunningAgentEmpty,GaiProjectCommitsSuffixKilledAgent,GaiProjectCommitsSuffixRunningProcess,GaiProjectCommitsSuffixPendingDeadProcess,GaiProjectCommitsSuffixKilledProcess,GaiProjectCommitsSuffixSummarizeComplete
 syn match GaiProjectCommitsProposedNumber "(\d\+[a-z])" contained
 " Suffix patterns for COMMITS entry lines
 " (!: <msg>) = error suffix with red background for maximum visibility
@@ -155,7 +155,9 @@ syn match GaiProjectCommitsProposedNumber "(\d\+[a-z])" contained
 " (?$: <PID>) = pending dead process suffix with yellow foreground on gray background
 " (~$: <PID>) = killed process suffix with faded grayish-yellow background
 " (%: <msg>) = summarize_complete suffix with teal background
-" (^: <msg>) = metahook_complete suffix with purple background
+" (!: metahook | <msg>) = metahook_complete suffix with purple background
+syn match GaiProjectCommitsSuffixMetahookComplete "(!:\s*metahook\s*|[^)]*)" contained
+syn match GaiProjectCommitsSuffixMetahookCompleteEmpty "(!:\s*metahook)" contained
 syn match GaiProjectCommitsSuffixError "(!:\s*[^)]\+)" contained
 syn match GaiProjectCommitsSuffixRunningAgent "(@:\s*[^)]\+)" contained
 syn match GaiProjectCommitsSuffixRunningAgentEmpty "(@)" contained
@@ -166,8 +168,6 @@ syn match GaiProjectCommitsSuffixKilledProcess "(\~\$:\s*[^)]\+)" contained
 syn match GaiProjectCommitsSuffixRejectedProposal "(\~!:\s*[^)]\+)" contained
 syn match GaiProjectCommitsSuffixSummarizeComplete "(%:\s*[^)]\+)" contained
 syn match GaiProjectCommitsSuffixSummarizeCompleteEmpty "(%)" contained
-syn match GaiProjectCommitsSuffixMetahookComplete "(\^:\s*[^)]\+)" contained
-syn match GaiProjectCommitsSuffixMetahookCompleteEmpty "(\^)" contained
 " CHAT and DIFF sub-fields (6-space indented with | prefix)
 syn match GaiProjectCommitsChatLine "^\s\{6\}[|]\s*CHAT:\s*.\+$" contains=GaiProjectCommitsSubfieldPipe,GaiProjectCommitsChatKey,GaiProjectCommitsPath,GaiProjectCommitsChatDuration
 syn match GaiProjectCommitsDiffLine "^\s\{6\}[|]\s*DIFF:\s*.\+$" contains=GaiProjectCommitsSubfieldPipe,GaiProjectCommitsDiffKey,GaiProjectCommitsPath
@@ -208,7 +208,7 @@ syn match GaiProjectHooksKey "^HOOKS:"
 syn match GaiProjectHooksCommand "^\s\s[^ \t\[()].*$"
 " Status lines (6-space + "| " prefixed)
 " Format: (N) or (Na) [YYmmdd_HHMMSS] STATUS (XmYs)
-syn match GaiProjectHooksStatusLine "^\s\{6\}[|]\s*(\d\+[a-z]\?)\s*\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|DEAD\).*$" contains=GaiProjectHooksStatusPipe,GaiProjectHooksEntryNum,GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksDead,GaiProjectHooksDuration,GaiProjectHooksSuffixError,GaiProjectHooksSuffixRejectedProposal,GaiProjectHooksSuffixTimestamp,GaiProjectHooksSuffixRunningAgent,GaiProjectHooksSuffixRunningAgentEmpty,GaiProjectHooksSuffixKilledAgent,GaiProjectHooksSuffixRunningProcess,GaiProjectHooksSuffixPendingDeadProcess,GaiProjectHooksSuffixKilledProcess,GaiProjectHooksSuffixProposalRef,GaiProjectHooksSuffixSummarizeComplete,GaiProjectHooksSuffixSummarizeCompleteEmpty,GaiProjectHooksSuffixMetahookComplete,GaiProjectHooksSuffixMetahookCompleteEmpty
+syn match GaiProjectHooksStatusLine "^\s\{6\}[|]\s*(\d\+[a-z]\?)\s*\[\d\{6\}_\d\{6\}\]\s*\%(RUNNING\|PASSED\|FAILED\|DEAD\).*$" contains=GaiProjectHooksStatusPipe,GaiProjectHooksEntryNum,GaiProjectHooksTimestamp,GaiProjectHooksPassed,GaiProjectHooksFailed,GaiProjectHooksRunning,GaiProjectHooksDead,GaiProjectHooksDuration,GaiProjectHooksSuffixMetahookComplete,GaiProjectHooksSuffixMetahookCompleteEmpty,GaiProjectHooksSuffixError,GaiProjectHooksSuffixRejectedProposal,GaiProjectHooksSuffixTimestamp,GaiProjectHooksSuffixRunningAgent,GaiProjectHooksSuffixRunningAgentEmpty,GaiProjectHooksSuffixKilledAgent,GaiProjectHooksSuffixRunningProcess,GaiProjectHooksSuffixPendingDeadProcess,GaiProjectHooksSuffixKilledProcess,GaiProjectHooksSuffixProposalRef,GaiProjectHooksSuffixSummarizeComplete,GaiProjectHooksSuffixSummarizeCompleteEmpty
 syn match GaiProjectHooksStatusPipe "^\s\{6\}\zs[|]" contained
 syn match GaiProjectHooksEntryNum "(\d\+[a-z]\?)" contained
 syn match GaiProjectHooksTimestamp "\[\d\{6\}_\d\{6\}\]" contained
@@ -226,9 +226,11 @@ syn match GaiProjectHooksDuration "(\d\+[hms]\+[^)]*)" contained
 " (?$: <PID>) = pending dead process suffix with yellow foreground on gray background
 " (~$: <PID>) = killed process suffix with faded grayish-yellow background
 " (%: <msg>) = summarize_complete suffix with teal background
-" (^: <msg>) = metahook_complete suffix with purple background
+" (!: metahook | <msg>) = metahook_complete suffix with purple background
 " (YYmmdd_HHMMSS) = timestamp suffix (pink foreground) - legacy, now uses @:
 " (N), (Na), (N | summary), (Na | summary) = entry reference suffix (light red/pink)
+syn match GaiProjectHooksSuffixMetahookComplete "(!:\s*metahook\s*|[^)]*)" contained
+syn match GaiProjectHooksSuffixMetahookCompleteEmpty "(!:\s*metahook)" contained
 syn match GaiProjectHooksSuffixError "(!:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixRunningAgent "(@:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixRunningAgentEmpty "(@)" contained
@@ -239,8 +241,6 @@ syn match GaiProjectHooksSuffixKilledProcess "(\~\$:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixRejectedProposal "(\~!:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixSummarizeComplete "(%:\s*[^)]\+)" contained
 syn match GaiProjectHooksSuffixSummarizeCompleteEmpty "(%)" contained
-syn match GaiProjectHooksSuffixMetahookComplete "(\^:\s*[^)]\+)" contained
-syn match GaiProjectHooksSuffixMetahookCompleteEmpty "(\^)" contained
 syn match GaiProjectHooksSuffixTimestamp "(\d\{6\}_\d\{6\})" contained
 " Entry reference suffix at end of line: (N), (Na), (N | summary), or (Na | summary)
 " Use \zs to only highlight the (...) part, not the " - " prefix
