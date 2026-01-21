@@ -373,4 +373,4 @@ class ChangeSpecMixin:
         if self.current_tab != "changespecs":
             return
         self.hide_reverted = not self.hide_reverted
-        self._load_changespecs()
+        self._reload_and_reposition()
