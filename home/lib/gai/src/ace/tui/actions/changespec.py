@@ -373,4 +373,5 @@ class ChangeSpecMixin:
         if self.current_tab != "changespecs":
             return
         self.hide_reverted = not self.hide_reverted
-        self._load_changespecs()
+        # Use _reload_and_reposition to preserve current CL selection
+        self._reload_and_reposition()
