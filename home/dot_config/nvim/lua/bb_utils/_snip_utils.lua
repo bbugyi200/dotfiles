@@ -191,7 +191,10 @@ function M.get_markdown_snippets()
 		-- SNIPPET: fixt
 		s({ trig = "fixt", desc = "Can you help me fix this test?" }, { t("Can you help me fix this test?") }),
 		-- SNIPPET: fixx
-		s({ trig = "fixx", desc = "Can you help me fix these?" }, { t("Can you help me fix these?") }),
+		s(
+			{ trig = "fixx", desc = "Can you help me fix these?" },
+			{ t("Can you help me diagnose the root cause of this issue and fix it?") }
+		),
 		-- SNIPPET: help
 		s({ trig = "help", desc = "Can you help me...?" }, { t("Can you help me "), i(1), t("?") }),
 		-- SNIPPET: helpp
