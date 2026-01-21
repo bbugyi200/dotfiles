@@ -37,6 +37,7 @@ class ChangeSpecMixin:
     _all_changespecs: list[ChangeSpec]
     _ancestor_keys: dict[str, str]
     _children_keys: dict[str, str]
+    _sibling_keys: dict[str, str]
     _hidden_reverted_count: int
 
     def _load_changespecs(self) -> None:
@@ -295,8 +296,8 @@ class ChangeSpecMixin:
                     commits_collapsed=self.commits_collapsed,
                     mentors_collapsed=self.mentors_collapsed,
                 )
-            # Update ancestors/children panel with hide_reverted
-            self._ancestor_keys, self._children_keys = (
+            # Update ancestors/children/siblings panel with hide_reverted
+            self._ancestor_keys, self._children_keys, self._sibling_keys = (
                 ancestors_panel.update_relationships(
                     changespec,
                     self._all_changespecs,
@@ -319,6 +320,7 @@ class ChangeSpecMixin:
             ancestors_panel.clear()
             self._ancestor_keys = {}
             self._children_keys = {}
+            self._sibling_keys = {}
 
         self._update_info_panel()
 

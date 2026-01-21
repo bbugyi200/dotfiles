@@ -40,9 +40,11 @@ class NavigationMixin:
     _axe_pinned_to_bottom: bool
     _ancestor_mode_active: bool
     _child_mode_active: bool
+    _sibling_mode_active: bool
     _child_key_buffer: str
     _ancestor_keys: dict[str, str]
     _children_keys: dict[str, str]
+    _sibling_keys: dict[str, str]
     _all_changespecs: list[ChangeSpec]
     _query_history: QueryHistoryStacks
     _changespec_history: ChangeSpecHistoryStacks
@@ -311,8 +313,23 @@ class NavigationMixin:
             self._child_key_buffer = ""
             self._child_mode_active = True
 
+    def action_start_sibling_mode(self) -> None:
+        """Enter sibling navigation mode (~ key pressed)."""
+        if self.current_tab != "changespecs" or not self.changespecs:
+            return
+
+        if not self._sibling_keys:
+            return
+
+        # If only one sibling with key "~", navigate directly
+        if len(self._sibling_keys) == 1 and "~" in self._sibling_keys:
+            target = self._sibling_keys["~"]
+            self._navigate_to_changespec(target, is_ancestor=False)
+        else:
+            self._sibling_mode_active = True
+
     def _handle_ancestry_key(self, key: str) -> bool:
-        """Handle key in ancestor/child navigation mode.
+        """Handle key in ancestor/child/sibling navigation mode.
 
         Returns True if the key was handled.
         """
@@ -320,6 +337,8 @@ class NavigationMixin:
             return self._process_ancestor_key(key)
         elif self._child_mode_active:
             return self._process_child_key(key)
+        elif self._sibling_mode_active:
+            return self._process_sibling_key(key)
         return False
 
     def _process_ancestor_key(self, key: str) -> bool:
@@ -403,6 +422,29 @@ class NavigationMixin:
         self._child_key_buffer = ""
         self._child_mode_active = False
         return True
+
+    def _process_sibling_key(self, key: str) -> bool:
+        """Process key in sibling mode.
+
+        Handles sequences like ~~, ~a, ~b, etc.
+        """
+        self._sibling_mode_active = False
+
+        if key in ("tilde", "~"):
+            # ~~ - go to first sibling
+            if "~~" in self._sibling_keys:
+                target = self._sibling_keys["~~"]
+                self._navigate_to_changespec(target, is_ancestor=False)
+            return True
+        elif len(key) == 1 and key.isalpha() and key.islower():
+            # ~a, ~b, etc. - find matching sibling
+            expected_key = f"~{key}"
+            if expected_key in self._sibling_keys:
+                target = self._sibling_keys[expected_key]
+                self._navigate_to_changespec(target, is_ancestor=False)
+            return True
+
+        return True  # Consume the key regardless
 
     def _is_valid_next_child_key(self, key: str) -> bool:
         """Check if key is valid as the next character in child key sequence.

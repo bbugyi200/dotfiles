@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from gai_utils import has_suffix, strip_reverted_suffix
 from rich.text import Text
 from textual.widgets import Static
 
@@ -47,13 +48,20 @@ class AncestorsChildrenPanel(Static):
         self._ancestor_keys: dict[str, str] = {}  # name -> key hint
         self._children_keys: dict[str, str] = {}  # key -> name (for navigation)
         self._hidden_reverted_count: int = 0  # Count of hidden reverted entries
+        # Sibling-related fields
+        self._siblings: list[str] = []  # Sibling names sorted by suffix number
+        self._sibling_statuses: dict[str, str] = {}  # name -> status
+        self._sibling_keys: dict[str, str] = {}  # key -> name (for navigation)
+        self._hidden_reverted_sibling_count: int = (
+            0  # Count of hidden reverted siblings
+        )
 
     def update_relationships(
         self,
         changespec: ChangeSpec,
         all_changespecs: list[ChangeSpec],
         hide_reverted: bool = False,
-    ) -> tuple[dict[str, str], dict[str, str]]:
+    ) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
         """Update with ancestors and descendants of current ChangeSpec.
 
         Args:
@@ -62,12 +70,14 @@ class AncestorsChildrenPanel(Static):
             hide_reverted: Whether to hide reverted ChangeSpecs from display
 
         Returns:
-            Tuple of (ancestor_keys, children_keys) mappings
+            Tuple of (ancestor_keys, children_keys, sibling_keys) mappings
             - ancestor_keys: name -> key (e.g., {"parent": "<<"})
             - children_keys: key -> name (e.g., {">>": "child1", ">2a": "grandchild"})
+            - sibling_keys: key -> name (e.g., {"~~": "foo__1", "~a": "foo__2"})
         """
-        # Reset hidden count
+        # Reset hidden counts
         self._hidden_reverted_count = 0
+        self._hidden_reverted_sibling_count = 0
 
         # Build ancestors (recursive parent traversal)
         self._ancestors = self._find_ancestors(
@@ -79,20 +89,24 @@ class AncestorsChildrenPanel(Static):
             changespec.name, all_changespecs, hide_reverted
         )
 
+        # Build siblings (same base name with __<N> suffix)
+        self._siblings = self._find_siblings(changespec, all_changespecs, hide_reverted)
+
         # Assign keybindings
         self._ancestor_keys = self._assign_ancestor_keys(self._ancestors)
         self._children_keys = self._build_children_keys_map(self._descendant_tree)
+        self._sibling_keys = self._assign_sibling_keys(self._siblings)
 
         self._refresh_content()
-        return self._ancestor_keys, self._children_keys
+        return self._ancestor_keys, self._children_keys, self._sibling_keys
 
     def get_hidden_reverted_count(self) -> int:
         """Get the count of hidden reverted entries in this panel.
 
         Returns:
-            Number of reverted ancestors/descendants that were hidden.
+            Number of reverted ancestors/descendants/siblings that were hidden.
         """
-        return self._hidden_reverted_count
+        return self._hidden_reverted_count + self._hidden_reverted_sibling_count
 
     def _find_ancestors(
         self,
@@ -139,6 +153,67 @@ class AncestorsChildrenPanel(Static):
                 break
 
         return ancestors
+
+    def _find_siblings(
+        self,
+        changespec: ChangeSpec,
+        all_changespecs: list[ChangeSpec],
+        hide_reverted: bool = False,
+    ) -> list[str]:
+        """Find all sibling ChangeSpecs (same base name with __<N> suffix).
+
+        Siblings are ChangeSpecs that share the same base name after stripping
+        the __<N> suffix. Only ChangeSpecs WITH a suffix can have siblings.
+
+        Args:
+            changespec: The starting ChangeSpec
+            all_changespecs: All changespecs for lookup
+            hide_reverted: Whether to hide reverted siblings from display
+
+        Returns:
+            List of sibling names sorted by suffix number, excluding current.
+        """
+        self._sibling_statuses = {}
+
+        # Only ChangeSpecs WITH a suffix can have siblings
+        if not has_suffix(changespec.name):
+            return []
+
+        # Get base name for comparison (case-insensitive)
+        base_name = strip_reverted_suffix(changespec.name).lower()
+
+        # Find all siblings (same base name, different suffix, not self)
+        siblings: list[tuple[int, str, str]] = []  # (suffix_num, name, status)
+        for cs in all_changespecs:
+            if cs.name.lower() == changespec.name.lower():
+                continue  # Skip self
+            if not has_suffix(cs.name):
+                continue  # Skip non-suffixed names
+            if strip_reverted_suffix(cs.name).lower() != base_name:
+                continue  # Different base name
+
+            # Check if we should hide this reverted sibling
+            if hide_reverted and cs.status.startswith("Reverted"):
+                self._hidden_reverted_sibling_count += 1
+                continue
+
+            # Extract suffix number for sorting
+            import re
+
+            match = re.match(r"^.+__(\d+)$", cs.name)
+            suffix_num = int(match.group(1)) if match else 0
+            siblings.append((suffix_num, cs.name, cs.status))
+
+        # Sort by suffix number ascending
+        siblings.sort(key=lambda x: x[0])
+
+        # Build result list and status map
+        result: list[str] = []
+        for _, name, status in siblings:
+            result.append(name)
+            self._sibling_statuses[name] = status
+
+        return result
 
     def _build_descendant_tree(
         self,
@@ -334,14 +409,44 @@ class AncestorsChildrenPanel(Static):
 
         return result
 
+    def _assign_sibling_keys(self, names: list[str]) -> dict[str, str]:
+        """Assign keybindings to siblings.
+
+        Pattern: "~" (single), "~~" (first of multiple), "~a", "~b", etc.
+
+        Args:
+            names: List of sibling names (sorted by suffix number).
+
+        Returns:
+            Dict mapping key -> name (e.g., {"~~": "foo__1", "~a": "foo__2"}).
+        """
+        if not names:
+            return {}
+
+        result: dict[str, str] = {}
+
+        if len(names) == 1:
+            result["~"] = names[0]
+        else:
+            # First item gets double prefix
+            result["~~"] = names[0]
+            # Remaining get letter suffixes (a-z)
+            for i, name in enumerate(names[1:], start=0):
+                if i < 26:  # a-z
+                    letter = chr(ord("a") + i)
+                    result[f"~{letter}"] = name
+
+        return result
+
     def _refresh_content(self) -> None:
         """Refresh the panel content."""
-        if not self._ancestors and not self._descendant_tree:
+        if not self._ancestors and not self._descendant_tree and not self._siblings:
             self.display = False
             return
 
         self.display = True
         text = Text()
+        has_previous_section = False
 
         # ANCESTORS section (reversed: show furthest ancestor first)
         if self._ancestors:
@@ -355,13 +460,35 @@ class AncestorsChildrenPanel(Static):
                 indicator, color = _get_simple_status_indicator(status)
                 if indicator:
                     text.append(f" [{indicator}]", style=f"bold {color}")
+            has_previous_section = True
 
         # CHILDREN section (tree view)
         if self._descendant_tree:
-            if self._ancestors:
+            if has_previous_section:
                 text.append("\n\n")  # Blank line between sections
             text.append("CHILDREN", style="bold #87D7FF")
             self._render_tree(self._descendant_tree, text)
+            has_previous_section = True
+
+        # SIBLINGS section
+        if self._siblings:
+            if has_previous_section:
+                text.append("\n\n")  # Blank line between sections
+            text.append("SIBLINGS", style="bold #87D7FF")
+            for name in self._siblings:
+                # Find key for this sibling (reverse lookup)
+                key = ""
+                for k, n in self._sibling_keys.items():
+                    if n == name:
+                        key = k
+                        break
+                text.append("\n")
+                text.append(f"  [{key}] ", style="bold #FFAF00")
+                text.append(name, style="#00D7AF")
+                status = self._sibling_statuses.get(name, "WIP")
+                indicator, color = _get_simple_status_indicator(status)
+                if indicator:
+                    text.append(f" [{indicator}]", style=f"bold {color}")
 
         self.update(text)
 
@@ -415,4 +542,9 @@ class AncestorsChildrenPanel(Static):
         self._ancestor_keys = {}
         self._children_keys = {}
         self._hidden_reverted_count = 0
+        # Clear sibling-related fields
+        self._siblings = []
+        self._sibling_statuses = {}
+        self._sibling_keys = {}
+        self._hidden_reverted_sibling_count = 0
         self.display = False

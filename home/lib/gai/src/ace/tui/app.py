@@ -155,9 +155,10 @@ class AceApp(
         # ChangeSpec history navigation (vim-style jumplist)
         Binding("ctrl+o", "prev_changespec_history", "Prev CL History", show=False),
         Binding("ctrl+k", "next_changespec_history", "Next CL History", show=False),
-        # Ancestor/child navigation
+        # Ancestor/child/sibling navigation
         Binding("<", "start_ancestor_mode", "Ancestor", show=False),
         Binding(">", "start_child_mode", "Child", show=False),
+        Binding("~", "start_sibling_mode", "Sibling", show=False),
         # Hide/show reverted
         Binding("full_stop", "toggle_hide_reverted", "Toggle Reverted", show=False),
     ]
@@ -217,12 +218,14 @@ class AceApp(
         self._checkout_mode_active: bool = False
         self._tmux_mode_active: bool = False
 
-        # Ancestor/child navigation state
+        # Ancestor/child/sibling navigation state
         self._ancestor_mode_active: bool = False
         self._child_mode_active: bool = False
+        self._sibling_mode_active: bool = False
         self._child_key_buffer: str = ""  # Buffer for multi-key child sequences
         self._ancestor_keys: dict[str, str] = {}  # name -> keymap
         self._children_keys: dict[str, str] = {}  # key -> name (for navigation)
+        self._sibling_keys: dict[str, str] = {}  # key -> name (for sibling navigation)
         self._all_changespecs: list[ChangeSpec] = []  # Cache for ancestry lookup
         self._hidden_reverted_count: int = 0  # Count of filtered reverted CLs
 

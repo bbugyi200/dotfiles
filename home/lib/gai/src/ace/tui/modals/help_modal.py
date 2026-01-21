@@ -26,6 +26,7 @@ _CLS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
         "Navigation",
         [
             ("j / k", "Move to next / previous CL"),
+            ("< / > / ~", "Navigate to ancestor / child / sibling"),
             ("Ctrl+O / K", "Jump back / forward in history"),
             ("Ctrl+D / U", "Scroll detail panel down / up"),
         ],

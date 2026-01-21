@@ -38,6 +38,7 @@ class EventHandlersMixin:
     _agents_last_idx: int
     _ancestor_mode_active: bool
     _child_mode_active: bool
+    _sibling_mode_active: bool
     _hint_mode_active: bool
     _accept_mode_active: bool
 
@@ -86,7 +87,11 @@ class EventHandlersMixin:
             if self._handle_checkout_tmux_key(event.key):  # type: ignore[attr-defined]
                 event.prevent_default()
                 event.stop()
-        elif self._ancestor_mode_active or self._child_mode_active:
+        elif (
+            self._ancestor_mode_active
+            or self._child_mode_active
+            or self._sibling_mode_active
+        ):
             if self._handle_ancestry_key(event.key):  # type: ignore[attr-defined]
                 event.prevent_default()
                 event.stop()
