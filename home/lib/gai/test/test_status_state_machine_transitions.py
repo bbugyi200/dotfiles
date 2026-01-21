@@ -244,3 +244,233 @@ def test_atomic_file_operations() -> None:
 
     finally:
         Path(project_file).unlink()
+
+
+def _create_project_file_with_multiple_changespecs(
+    changespecs: list[tuple[str, str, str | None]],
+) -> str:
+    """Create a project file with multiple ChangeSpecs.
+
+    Args:
+        changespecs: List of (name, status, parent) tuples.
+
+    Returns:
+        Path to the created project file.
+    """
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".md") as f:
+        f.write("# Test Project\n\n")
+        for name, status, parent in changespecs:
+            parent_val = parent if parent else "None"
+            f.write(f"""## ChangeSpec
+
+NAME: {name}
+DESCRIPTION:
+  Test description
+PARENT: {parent_val}
+CL: None
+STATUS: {status}
+TEST TARGETS: None
+
+---
+
+""")
+        return f.name
+
+
+def test_wip_to_drafted_blocked_when_sibling_has_children() -> None:
+    """Test WIP->Drafted blocked when sibling WIP ChangeSpec has unreverted children."""
+    from unittest.mock import patch
+
+    # Create project file with:
+    # - foo_bar__1 (WIP) - the one we're transitioning
+    # - foo_bar__2 (WIP) - sibling that has a child
+    # - child_of_2 (Drafted) - child of foo_bar__2
+    project_file = _create_project_file_with_multiple_changespecs(
+        [
+            ("foo_bar__1", "WIP", None),
+            ("foo_bar__2", "WIP", None),
+            ("child_of_2", "Drafted", "foo_bar__2"),
+        ]
+    )
+
+    try:
+        # Mock find_all_changespecs to return our test ChangeSpecs
+        from ace.changespec import ChangeSpec
+
+        mock_changespecs = [
+            ChangeSpec(
+                name="foo_bar__1",
+                description="Test",
+                parent=None,
+                cl=None,
+                status="WIP",
+                test_targets=None,
+                kickstart=None,
+                file_path=project_file,
+                line_number=6,
+            ),
+            ChangeSpec(
+                name="foo_bar__2",
+                description="Test",
+                parent=None,
+                cl=None,
+                status="WIP",
+                test_targets=None,
+                kickstart=None,
+                file_path=project_file,
+                line_number=18,
+            ),
+            ChangeSpec(
+                name="child_of_2",
+                description="Test",
+                parent="foo_bar__2",
+                cl=None,
+                status="Drafted",
+                test_targets=None,
+                kickstart=None,
+                file_path=project_file,
+                line_number=30,
+            ),
+        ]
+
+        with patch(
+            "ace.changespec.find_all_changespecs",
+            return_value=mock_changespecs,
+        ):
+            success, old_status, error, _ = transition_changespec_status(
+                project_file, "foo_bar__1", "Drafted", validate=True
+            )
+
+        assert success is False
+        assert old_status == "WIP"
+        assert error is not None
+        assert "sibling WIP ChangeSpec 'foo_bar__2' has unreverted children" in error
+
+    finally:
+        Path(project_file).unlink()
+
+
+def test_wip_to_drafted_allowed_when_sibling_children_reverted() -> None:
+    """Test WIP->Drafted allowed when sibling's children are all Reverted."""
+    from unittest.mock import patch
+
+    # Create project file with:
+    # - foo_bar__1 (WIP) - the one we're transitioning
+    # - foo_bar__2 (WIP) - sibling
+    # - child_of_2 (Reverted) - child of foo_bar__2 that is reverted
+    project_file = _create_project_file_with_multiple_changespecs(
+        [
+            ("foo_bar__1", "WIP", None),
+            ("foo_bar__2", "WIP", None),
+            ("child_of_2", "Reverted", "foo_bar__2"),
+        ]
+    )
+
+    try:
+        from ace.changespec import ChangeSpec
+
+        mock_changespecs = [
+            ChangeSpec(
+                name="foo_bar__1",
+                description="Test",
+                parent=None,
+                cl=None,
+                status="WIP",
+                test_targets=None,
+                kickstart=None,
+                file_path=project_file,
+                line_number=6,
+            ),
+            ChangeSpec(
+                name="foo_bar__2",
+                description="Test",
+                parent=None,
+                cl=None,
+                status="WIP",
+                test_targets=None,
+                kickstart=None,
+                file_path=project_file,
+                line_number=18,
+            ),
+            ChangeSpec(
+                name="child_of_2",
+                description="Test",
+                parent="foo_bar__2",
+                cl=None,
+                status="Reverted",
+                test_targets=None,
+                kickstart=None,
+                file_path=project_file,
+                line_number=30,
+            ),
+        ]
+
+        with patch(
+            "ace.changespec.find_all_changespecs",
+            return_value=mock_changespecs,
+        ):
+            # Also need to mock the functions called after successful transition
+            with patch("ace.mentors.clear_mentor_wip_flags"):
+                with patch(
+                    "status_state_machine.transitions._handle_suffix_strip",
+                    return_value=[],
+                ):
+                    success, old_status, error, _ = transition_changespec_status(
+                        project_file, "foo_bar__1", "Drafted", validate=True
+                    )
+
+        assert success is True
+        assert old_status == "WIP"
+        assert error is None
+
+    finally:
+        Path(project_file).unlink()
+
+
+def test_wip_to_drafted_allowed_when_no_siblings() -> None:
+    """Test WIP->Drafted allowed when no sibling WIP ChangeSpecs exist."""
+    from unittest.mock import patch
+
+    # Create project file with just one WIP ChangeSpec (no siblings)
+    project_file = _create_project_file_with_multiple_changespecs(
+        [
+            ("foo_bar__1", "WIP", None),
+        ]
+    )
+
+    try:
+        from ace.changespec import ChangeSpec
+
+        mock_changespecs = [
+            ChangeSpec(
+                name="foo_bar__1",
+                description="Test",
+                parent=None,
+                cl=None,
+                status="WIP",
+                test_targets=None,
+                kickstart=None,
+                file_path=project_file,
+                line_number=6,
+            ),
+        ]
+
+        with patch(
+            "ace.changespec.find_all_changespecs",
+            return_value=mock_changespecs,
+        ):
+            with patch("ace.mentors.clear_mentor_wip_flags"):
+                with patch(
+                    "status_state_machine.transitions._handle_suffix_strip",
+                    return_value=[],
+                ):
+                    success, old_status, error, _ = transition_changespec_status(
+                        project_file, "foo_bar__1", "Drafted", validate=True
+                    )
+
+        assert success is True
+        assert old_status == "WIP"
+        assert error is None
+
+    finally:
+        Path(project_file).unlink()

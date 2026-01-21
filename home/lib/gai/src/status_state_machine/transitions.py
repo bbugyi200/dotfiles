@@ -31,6 +31,51 @@ class SiblingRevertResult:
     error: str | None = None
 
 
+def _check_siblings_for_unreverted_children(
+    project_file: str,
+    base_name: str,
+    excluded_name: str,
+) -> str | None:
+    """Check if any sibling WIP ChangeSpec has unreverted children.
+
+    When transitioning a WIP ChangeSpec to Drafted, sibling WIP ChangeSpecs
+    will be auto-reverted. This function checks if any of those siblings
+    have unreverted children, which would block the revert operation.
+
+    Args:
+        project_file: Path to the project file.
+        base_name: The base name without suffix (e.g., "foo_bar").
+        excluded_name: The original suffixed name that is being transitioned
+            (don't check this one).
+
+    Returns:
+        Error message if any sibling has unreverted children, None otherwise.
+    """
+    from ace.changespec import find_all_changespecs, parse_project_file
+    from ace.revert import has_children
+    from gai_utils import strip_reverted_suffix
+
+    changespecs = parse_project_file(project_file)
+    all_changespecs = find_all_changespecs()
+
+    for cs in changespecs:
+        # Skip the one being transitioned
+        if cs.name == excluded_name:
+            continue
+
+        # Check if same basename and is WIP
+        cs_base = strip_reverted_suffix(cs.name)
+        if cs_base == base_name and cs.status == "WIP":
+            # Check if this sibling has unreverted children
+            if has_children(cs, all_changespecs):
+                return (
+                    f"Cannot transition '{excluded_name}' to Drafted: "
+                    f"sibling WIP ChangeSpec '{cs.name}' has unreverted children."
+                )
+
+    return None
+
+
 def _revert_sibling_wip_changespecs(
     project_file: str,
     base_name: str,
@@ -325,6 +370,19 @@ def _handle_non_wip_transition(
         )
         logger.error(error_msg)
         return (False, old_status, error_msg, None)
+
+    # Validate siblings don't have unreverted children when WIP -> Drafted
+    if old_status == "WIP" and new_status == "Drafted":
+        from gai_utils import has_suffix, strip_reverted_suffix
+
+        if has_suffix(changespec_name):
+            base_name = strip_reverted_suffix(changespec_name)
+            sibling_error = _check_siblings_for_unreverted_children(
+                project_file, base_name, changespec_name
+            )
+            if sibling_error:
+                logger.error(sibling_error)
+                return (False, old_status, sibling_error, None)
 
     # Perform transition
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

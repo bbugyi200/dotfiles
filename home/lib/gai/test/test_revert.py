@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, patch
 
 from ace.changespec import ChangeSpec, MentorEntry, MentorStatusLine
 from ace.revert import (
-    _has_children,
     _has_valid_cl,
+    has_children,
     revert_changespec,
 )
 from gai_utils import get_next_suffix_number
@@ -64,39 +64,39 @@ def test__has_valid_cl_with_none_cl() -> None:
     Path(changespec.file_path).unlink()
 
 
-def test__has_children_with_no_children() -> None:
-    """Test _has_children returns False when no children exist."""
+def test_has_children_with_no_children() -> None:
+    """Test has_children returns False when no children exist."""
     parent = _create_test_changespec(name="parent_feature")
     child = _create_test_changespec(name="unrelated_feature", parent=None)
     all_changespecs = [parent, child]
 
-    assert _has_children(parent, all_changespecs) is False
+    assert has_children(parent, all_changespecs) is False
 
     Path(parent.file_path).unlink()
     Path(child.file_path).unlink()
 
 
-def test__has_children_with_children() -> None:
-    """Test _has_children returns True when children exist."""
+def test_has_children_with_children() -> None:
+    """Test has_children returns True when children exist."""
     parent = _create_test_changespec(name="parent_feature")
     child = _create_test_changespec(name="child_feature", parent="parent_feature")
     all_changespecs = [parent, child]
 
-    assert _has_children(parent, all_changespecs) is True
+    assert has_children(parent, all_changespecs) is True
 
     Path(parent.file_path).unlink()
     Path(child.file_path).unlink()
 
 
-def test__has_children_ignores_reverted_children() -> None:
-    """Test _has_children returns False when only child is Reverted."""
+def test_has_children_ignores_reverted_children() -> None:
+    """Test has_children returns False when only child is Reverted."""
     parent = _create_test_changespec(name="parent_feature")
     reverted_child = _create_test_changespec(
         name="child_feature__1", parent="parent_feature", status="Reverted"
     )
     all_changespecs = [parent, reverted_child]
 
-    assert _has_children(parent, all_changespecs) is False
+    assert has_children(parent, all_changespecs) is False
 
     Path(parent.file_path).unlink()
     Path(reverted_child.file_path).unlink()

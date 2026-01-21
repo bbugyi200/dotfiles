@@ -77,7 +77,7 @@ def _has_valid_cl(changespec: ChangeSpec) -> bool:
     return changespec.cl is not None
 
 
-def _has_children(changespec: ChangeSpec, all_changespecs: list[ChangeSpec]) -> bool:
+def has_children(changespec: ChangeSpec, all_changespecs: list[ChangeSpec]) -> bool:
     """Check if any non-reverted ChangeSpec has this one as a parent.
 
     Args:
@@ -311,7 +311,7 @@ def revert_changespec(
     all_changespecs = find_all_changespecs()
 
     # Validate no children
-    if _has_children(changespec, all_changespecs):
+    if has_children(changespec, all_changespecs):
         return (
             False,
             "Cannot revert: other ChangeSpecs have this one as their parent",
