@@ -12,6 +12,7 @@ from commit_utils.entries import (
     get_next_commit_number,
 )
 from commit_utils.modifiers import (
+    mark_proposal_broken,
     reject_all_new_proposals,
     reject_proposals_and_set_status_atomic,
     update_commit_entry_suffix,
@@ -31,6 +32,7 @@ __all__ = [
     "apply_diffs_to_workspace",
     "clean_workspace",
     "get_next_commit_number",
+    "mark_proposal_broken",
     "reject_all_new_proposals",
     "reject_proposals_and_set_status_atomic",
     "run_bb_hg_clean",

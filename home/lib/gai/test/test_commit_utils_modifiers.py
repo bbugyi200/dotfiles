@@ -3,7 +3,7 @@
 import tempfile
 from pathlib import Path
 
-from commit_utils import reject_proposals_and_set_status_atomic
+from commit_utils import mark_proposal_broken, reject_proposals_and_set_status_atomic
 
 
 def _create_test_project_file(content: str) -> Path:
@@ -214,5 +214,124 @@ MENTORS:
         assert "STATUS: Mailed" in new_content
         assert "(~!: NEW PROPOSAL)" in new_content
         assert "MENTORS:" in new_content
+    finally:
+        project_file.unlink()
+
+
+def test_mark_proposal_broken_success() -> None:
+    """Test successfully marking a proposal as broken."""
+    content = """NAME: test-cl
+STATUS: Drafted
+COMMITS:
+  (1) First commit
+  (2a) Proposal A - (!: NEW PROPOSAL)
+  (2b) Proposal B - (!: NEW PROPOSAL)
+"""
+    project_file = _create_test_project_file(content)
+    try:
+        result = mark_proposal_broken(str(project_file), "test-cl", "2a")
+        assert result is True
+
+        # Read back and verify
+        with open(project_file) as f:
+            new_content = f.read()
+
+        # Only 2a should be marked as broken
+        assert "(2a) Proposal A - (~!: BROKEN PROPOSAL)" in new_content
+        # 2b should still be a new proposal
+        assert "(2b) Proposal B - (!: NEW PROPOSAL)" in new_content
+    finally:
+        project_file.unlink()
+
+
+def test_mark_proposal_broken_entry_not_found() -> None:
+    """Test when the entry doesn't exist."""
+    content = """NAME: test-cl
+STATUS: Drafted
+COMMITS:
+  (1) First commit
+  (2a) Proposal A - (!: NEW PROPOSAL)
+"""
+    project_file = _create_test_project_file(content)
+    try:
+        result = mark_proposal_broken(str(project_file), "test-cl", "3a")
+        # Should fail because entry 3a doesn't exist
+        assert result is False
+
+        # Content should be unchanged
+        with open(project_file) as f:
+            new_content = f.read()
+        assert "(!: NEW PROPOSAL)" in new_content
+        assert "BROKEN PROPOSAL" not in new_content
+    finally:
+        project_file.unlink()
+
+
+def test_mark_proposal_broken_wrong_cl() -> None:
+    """Test when the CL name doesn't match."""
+    content = """NAME: other-cl
+STATUS: Drafted
+COMMITS:
+  (1) First commit
+  (2a) Proposal A - (!: NEW PROPOSAL)
+"""
+    project_file = _create_test_project_file(content)
+    try:
+        result = mark_proposal_broken(str(project_file), "test-cl", "2a")
+        # Should fail because the CL name doesn't match
+        assert result is False
+    finally:
+        project_file.unlink()
+
+
+def test_mark_proposal_broken_already_rejected() -> None:
+    """Test when the entry is already rejected (not a NEW PROPOSAL)."""
+    content = """NAME: test-cl
+STATUS: Drafted
+COMMITS:
+  (1) First commit
+  (2a) Proposal A - (~!: NEW PROPOSAL)
+"""
+    project_file = _create_test_project_file(content)
+    try:
+        result = mark_proposal_broken(str(project_file), "test-cl", "2a")
+        # Should fail because it's already rejected, not (!: NEW PROPOSAL)
+        assert result is False
+    finally:
+        project_file.unlink()
+
+
+def test_mark_proposal_broken_multiple_changespecs() -> None:
+    """Test with multiple changespecs in the file."""
+    content = """NAME: first-cl
+STATUS: Drafted
+COMMITS:
+  (1) First commit
+  (2a) Proposal A - (!: NEW PROPOSAL)
+
+NAME: test-cl
+STATUS: Drafted
+COMMITS:
+  (1) First commit
+  (3a) Proposal B - (!: NEW PROPOSAL)
+
+NAME: third-cl
+STATUS: Drafted
+COMMITS:
+  (1) Third commit
+"""
+    project_file = _create_test_project_file(content)
+    try:
+        result = mark_proposal_broken(str(project_file), "test-cl", "3a")
+        assert result is True
+
+        # Read back and verify
+        with open(project_file) as f:
+            new_content = f.read()
+
+        # Only test-cl's 3a should be marked as broken
+        assert "(3a) Proposal B - (~!: BROKEN PROPOSAL)" in new_content
+        # first-cl's 2a should still be a new proposal
+        assert "(2a) Proposal A - (!: NEW PROPOSAL)" in new_content
     finally:
         project_file.unlink()

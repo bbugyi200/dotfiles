@@ -5,7 +5,12 @@ import subprocess
 import time
 from collections.abc import Callable
 
-from commit_utils import apply_diff_to_workspace, clean_workspace, run_bb_hg_clean
+from commit_utils import (
+    apply_diff_to_workspace,
+    clean_workspace,
+    mark_proposal_broken,
+    run_bb_hg_clean,
+)
 from running_field import (
     claim_workspace,
     get_claimed_workspaces,
@@ -244,6 +249,14 @@ def _start_stale_hooks_for_proposal(
         )
         return updates, started_hooks, limited_count
 
+    # Skip proposals already marked as broken
+    if entry.suffix == "BROKEN PROPOSAL":
+        log(
+            f"Skipping broken proposal ({entry_id}) for {changespec.name}",
+            "dim",
+        )
+        return updates, started_hooks, limited_count
+
     # Build proposal-specific workflow name (e.g., "axe(hooks)-3a")
     proposal_workflow = f"axe(hooks)-{entry_id}"
 
@@ -356,6 +369,12 @@ def _start_stale_hooks_for_proposal(
                     f"[WS#{workspace_num}] Warning: Failed to apply proposal diff for "
                     f"{changespec.name}: {error_msg}",
                     "yellow",
+                )
+                # Mark proposal as broken so we don't retry
+                mark_proposal_broken(
+                    changespec.file_path,
+                    changespec.name,
+                    entry_id,
                 )
                 clean_workspace(workspace_dir)
                 release_workspace(

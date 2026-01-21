@@ -305,3 +305,88 @@ def update_commit_entry_suffix(
             return True
     except Exception:
         return False
+
+
+def mark_proposal_broken(
+    project_file: str,
+    cl_name: str,
+    entry_id: str,
+) -> bool:
+    """Mark a proposal as broken by changing (!: NEW PROPOSAL) to (~!: BROKEN PROPOSAL).
+
+    This is called when a proposal's diff fails to apply to a workspace.
+    Broken proposals are skipped in future hook runs.
+
+    Args:
+        project_file: Path to the project file.
+        cl_name: The CL name to update.
+        entry_id: The proposal entry ID (e.g., "2a").
+
+    Returns:
+        True if successful, False otherwise.
+    """
+    try:
+        with changespec_lock(project_file):
+            with open(project_file, encoding="utf-8") as f:
+                lines = f.readlines()
+
+            in_target_changespec = False
+            in_commits = False
+            updated = False
+
+            for i, line in enumerate(lines):
+                if line.startswith("NAME: "):
+                    current_name = line[6:].strip()
+                    in_target_changespec = current_name == cl_name
+                    in_commits = False
+                elif in_target_changespec:
+                    if line.startswith("COMMITS:"):
+                        in_commits = True
+                    elif line.startswith(
+                        (
+                            "NAME:",
+                            "DESCRIPTION:",
+                            "PARENT:",
+                            "CL:",
+                            "STATUS:",
+                            "TEST TARGETS:",
+                            "KICKSTART:",
+                            "HOOKS:",
+                            "COMMENTS:",
+                            "MENTORS:",
+                        )
+                    ):
+                        in_commits = False
+                        if line.startswith("NAME:"):
+                            in_target_changespec = False
+                    elif in_commits:
+                        stripped = line.strip()
+                        # Match: (Na) Note text - (!: NEW PROPOSAL)
+                        entry_match = re.match(
+                            rf"^\(({re.escape(entry_id)})\)\s+(.+?)\s+-\s+\(!:\s*NEW PROPOSAL\)$",
+                            stripped,
+                        )
+                        if entry_match:
+                            matched_id = entry_match.group(1)
+                            note_text = entry_match.group(2)
+                            leading_ws = line[: len(line) - len(line.lstrip())]
+                            # Change to (~!: BROKEN PROPOSAL)
+                            new_line = (
+                                f"{leading_ws}({matched_id}) {note_text} - "
+                                f"(~!: BROKEN PROPOSAL)\n"
+                            )
+                            lines[i] = new_line
+                            updated = True
+                            break
+
+            if not updated:
+                return False
+
+            write_changespec_atomic(
+                project_file,
+                "".join(lines),
+                f"Mark proposal {entry_id} as broken for {cl_name}",
+            )
+            return True
+    except Exception:
+        return False
