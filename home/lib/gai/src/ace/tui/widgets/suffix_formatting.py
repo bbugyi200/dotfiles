@@ -128,4 +128,5 @@ def should_show_suffix(
         bool(suffix)
         or suffix_type == "running_agent"
         or suffix_type == "running_process"
+        or suffix_type == "metahook_complete"
     )
