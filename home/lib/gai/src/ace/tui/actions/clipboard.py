@@ -162,7 +162,8 @@ class ClipboardMixin:
             if content is None:
                 # Error already notified by helper
                 return
-            contents.append((target_name, content))
+            # Strip leading/trailing whitespace to avoid blank lines in output
+            contents.append((target_name, content.strip()))
 
         # Format output
         if use_multi_format:
