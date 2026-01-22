@@ -11,6 +11,8 @@ if TYPE_CHECKING:
     from ...changespec import ChangeSpec
     from ..models.agent import Agent
 
+from ...changespec import get_raw_changespec_text
+
 TabName = Literal["changespecs", "agents", "axe"]
 
 
@@ -40,7 +42,11 @@ class ClipboardMixin:
             return
 
         changespec = self.changespecs[self.current_idx]
-        content = _format_changespec_for_clipboard(changespec)
+
+        # Try to get raw text from file first, fall back to formatted version
+        content = get_raw_changespec_text(changespec)
+        if content is None:
+            content = _format_changespec_for_clipboard(changespec)
 
         if _copy_to_system_clipboard(content):
             self.notify(f"Copied ChangeSpec: {changespec.name}")  # type: ignore[attr-defined]

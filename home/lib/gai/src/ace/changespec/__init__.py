@@ -27,6 +27,7 @@ from .models import (
     parse_commit_entry_id,
 )
 from .parser import parse_project_file
+from .raw_text import get_raw_changespec_text
 from .validation import (
     all_hooks_passed_for_entries,
     count_all_runners_global,
@@ -76,6 +77,7 @@ __all__ = [
     "get_current_and_proposal_entry_ids",
     "all_hooks_passed_for_entries",
     "parse_project_file",
+    "get_raw_changespec_text",
     "find_all_changespecs",
     "get_eligible_parents_in_project",
 ]
