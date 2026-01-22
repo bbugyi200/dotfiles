@@ -204,6 +204,18 @@ class CommitWorkflow(BaseWorkflow):
 
         # Create the commit
         print_status(f"Creating Mercurial commit with name: {full_name}", "progress")
+        # Checkout parent to handle case where another agent amended parent CL
+        if parent_branch:
+            print_status(f"Checking out parent branch: {parent_branch}", "progress")
+            update_result = run_shell_command(
+                f'bb_hg_update "{parent_branch}"', capture_output=True
+            )
+            if update_result.returncode != 0:
+                print_status(
+                    f"Warning: Failed to checkout parent: {update_result.stderr}",
+                    "warning",
+                )
+                # Continue anyway - commit may still work
         commit_cmd = f'hg commit --name "{full_name}" --logfile "{file_path}"'
         commit_result = run_shell_command(commit_cmd, capture_output=True)
 

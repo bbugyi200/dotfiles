@@ -8,6 +8,7 @@ It handles workspace cleanup and releases the workspace upon completion.
 import json
 import os
 import signal
+import subprocess
 import sys
 import time
 
@@ -55,8 +56,6 @@ def _prepare_workspace(workspace_dir: str, cl_name: str, update_target: str) -> 
     Returns:
         True if successful, False otherwise.
     """
-    import subprocess
-
     from commit_utils import run_bb_hg_clean
 
     # Clean workspace (saves any existing changes to a diff file)
@@ -180,6 +179,19 @@ def _create_new_changespec(
         # Run hg addremove to stage new/deleted files
         print("Running hg addremove...")
         run_shell_command("hg addremove", capture_output=True)
+
+        # Checkout parent to handle case where another agent amended parent CL
+        if parent_branch:
+            print(f"Checking out parent branch: {parent_branch}")
+            result = subprocess.run(
+                ["bb_hg_update", parent_branch],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if result.returncode != 0:
+                print(f"Warning: Failed to checkout parent: {result.stderr}")
+                # Continue anyway
 
         # Create the Mercurial commit
         print(f"Creating Mercurial commit with name: {full_cl_name}")
