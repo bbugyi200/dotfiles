@@ -192,7 +192,6 @@ class KeybindingFooter(Horizontal):
         """
         return [
             ("x", "clear"),
-            ("%", "copy"),
         ]
 
     def _compute_agent_bindings(
@@ -223,9 +222,6 @@ class KeybindingFooter(Horizontal):
             if agent.status in ("NO CHANGES", "NEW CL", "NEW PROPOSAL", "REVIVED"):
                 bindings.append(("x", "dismiss"))
                 bindings.append(("e", "edit chat"))
-                # Copy chat (only for completed/revived agents with chat available)
-                if agent.response_path:
-                    bindings.append(("%", "copy chat"))
             else:
                 bindings.append(("x", "kill"))
 
@@ -328,9 +324,6 @@ class KeybindingFooter(Horizontal):
 
         # Edit spec
         bindings.append(("e", "edit spec"))
-
-        # Copy ChangeSpec
-        bindings.append(("%", "copy"))
 
         # Show/hide reverted toggle (only show if there are reverted to hide/show)
         if hidden_reverted_count > 0 or not hide_reverted:

@@ -52,7 +52,6 @@ def test_keybinding_footer_agent_bindings_completed_agent_with_chat() -> None:
 
     assert "x" in binding_keys  # Dismiss is available
     assert "e" in binding_keys  # Edit chat is available
-    assert "%" in binding_keys  # Copy chat is available
 
 
 def test_keybinding_footer_agent_bindings_diff_visible() -> None:

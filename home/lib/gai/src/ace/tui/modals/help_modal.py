@@ -87,11 +87,21 @@ _CLS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
         ],
     ),
     (
+        "Copy Mode (%)",
+        [
+            ("%%", "Copy ChangeSpec"),
+            ("%!", "Copy ChangeSpec + snapshot"),
+            ("%b", "Copy bug number"),
+            ("%c", "Copy CL number"),
+            ("%p", "Copy project spec file"),
+            ("%s", "Copy gai ace snapshot"),
+        ],
+    ),
+    (
         "General",
         [
             ("Tab / Shift+Tab", "Switch tabs"),
             (".", "Show/hide reverted CLs"),
-            ("%", "Copy to clipboard"),
             ("R", "Refresh"),
             ("q", "Quit"),
             ("?", "Show this help"),
@@ -120,12 +130,6 @@ _AGENTS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
         ],
     ),
     (
-        "Clipboard",
-        [
-            ("%", "Copy chat to clipboard"),
-        ],
-    ),
-    (
         "Axe Control",
         [
             ("X", "Start / stop axe (or select process)"),
@@ -137,6 +141,7 @@ _AGENTS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
         [
             ("Tab / Shift+Tab", "Switch tabs"),
             (".", "Show/hide non-run agents"),
+            ("%", "Copy chat to clipboard"),
             ("R", "Refresh"),
             ("q", "Quit"),
             ("?", "Show this help"),
@@ -170,15 +175,10 @@ _AXE_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
         ],
     ),
     (
-        "Clipboard",
-        [
-            ("%", "Copy output to clipboard"),
-        ],
-    ),
-    (
         "General",
         [
             ("Tab / Shift+Tab", "Switch tabs"),
+            ("%", "Copy output to clipboard"),
             ("R", "Refresh"),
             ("q", "Quit"),
             ("?", "Show this help"),
