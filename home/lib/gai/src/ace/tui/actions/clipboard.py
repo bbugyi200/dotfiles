@@ -71,6 +71,8 @@ class ClipboardMixin:
             self._copy_bug_number()
         elif key == "c":  # %c
             self._copy_cl_number()
+        elif key == "n":  # %n
+            self._copy_cl_name()
         elif key == "p":  # %p
             self._copy_project_spec()
         elif key == "s":  # %s
@@ -143,6 +145,16 @@ class ClipboardMixin:
 
         if _copy_to_system_clipboard(cl_number):
             self.notify(f"Copied: CL Number ({cl_number})")  # type: ignore[attr-defined]
+        else:
+            self.notify("Failed to copy to clipboard", severity="error")  # type: ignore[attr-defined]
+
+    def _copy_cl_name(self) -> None:
+        """Copy the CL name from the current changespec (%n)."""
+        changespec = self.changespecs[self.current_idx]
+        cl_name = changespec.name
+
+        if _copy_to_system_clipboard(cl_name):
+            self.notify(f"Copied: CL Name ({cl_name})")  # type: ignore[attr-defined]
         else:
             self.notify("Failed to copy to clipboard", severity="error")  # type: ignore[attr-defined]
 

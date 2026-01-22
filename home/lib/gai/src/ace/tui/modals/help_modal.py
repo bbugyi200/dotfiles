@@ -93,6 +93,7 @@ _CLS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
             ("%!", "Copy ChangeSpec + snapshot"),
             ("%b", "Copy bug number"),
             ("%c", "Copy CL number"),
+            ("%n", "Copy CL name"),
             ("%p", "Copy project spec file"),
             ("%s", "Copy gai ace snapshot"),
         ],
