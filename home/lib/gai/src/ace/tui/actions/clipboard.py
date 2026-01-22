@@ -18,8 +18,8 @@ TabName = Literal["changespecs", "agents", "axe"]
 
 # Copy target option names (in order, 1-indexed for user)
 COPY_TARGET_NAMES = [
-    "Entire Project Spec File",
-    "Entire ChangeSpec",
+    "Project Spec File",
+    "ChangeSpec",
     "CL Name",
     "CL Number",
     "TUI Snapshot",

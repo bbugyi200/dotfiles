@@ -396,8 +396,8 @@ class ChangeSpecDetail(Static):
         # List targets with numbered hints
         text.append("Select what to copy:\n", style="dim italic")
         copy_targets = [
-            "Entire Project Spec File",
-            "Entire ChangeSpec",
+            "Project Spec File",
+            "ChangeSpec",
             "CL Name",
             "CL Number",
             "TUI Snapshot",
