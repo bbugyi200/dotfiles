@@ -249,12 +249,8 @@ def _start_stale_hooks_for_proposal(
         )
         return updates, started_hooks, limited_count
 
-    # Skip proposals already marked as broken
+    # Skip proposals already marked as broken (logged once when marked)
     if entry.suffix == "BROKEN PROPOSAL":
-        log(
-            f"Skipping broken proposal ({entry_id}) for {changespec.name}",
-            "dim",
-        )
         return updates, started_hooks, limited_count
 
     # Build proposal-specific workflow name (e.g., "axe(hooks)-3a")
@@ -375,6 +371,11 @@ def _start_stale_hooks_for_proposal(
                     changespec.file_path,
                     changespec.name,
                     entry_id,
+                )
+                log(
+                    f"[WS#{workspace_num}] Marked proposal ({entry_id}) as broken for "
+                    f"{changespec.name}",
+                    "yellow",
                 )
                 clean_workspace(workspace_dir)
                 release_workspace(
