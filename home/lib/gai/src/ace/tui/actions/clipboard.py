@@ -73,6 +73,8 @@ class ClipboardMixin:
             self._copy_cl_number()
         elif key == "p":  # %p
             self._copy_project_spec()
+        elif key == "s":  # %s
+            self._copy_snapshot()
         elif key == "escape":
             # Cancel copy mode silently
             return True
@@ -153,6 +155,22 @@ class ClipboardMixin:
 
         if _copy_to_system_clipboard(content.strip()):
             self.notify("Copied: Project Spec File")  # type: ignore[attr-defined]
+        else:
+            self.notify("Failed to copy to clipboard", severity="error")  # type: ignore[attr-defined]
+
+    def _copy_snapshot(self) -> None:
+        """Copy the tmux pane snapshot with header and backticks (%s)."""
+        snapshot_content = _capture_tmux_pane()
+        if snapshot_content is None:
+            self.notify("Failed to capture tmux pane", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        # Format with header and backticks
+        contents = [("`gai ace` Snapshot", snapshot_content.strip())]
+        final_content = _format_multi_copy_content(contents)
+
+        if _copy_to_system_clipboard(final_content):
+            self.notify("Copied: Snapshot")  # type: ignore[attr-defined]
         else:
             self.notify("Failed to copy to clipboard", severity="error")  # type: ignore[attr-defined]
 
