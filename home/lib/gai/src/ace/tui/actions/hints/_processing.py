@@ -26,6 +26,8 @@ class InputProcessingMixin(HintMixinBase):
             self._process_hooks_input(event.value)
         elif event.mode == "failed_hooks":
             self._process_failed_hooks_input(event.value)
+        elif event.mode == "copy":
+            self._process_copy_input(event.value)  # type: ignore[attr-defined]
         else:  # accept mode
             self._process_accept_input(event.value)  # type: ignore[attr-defined]
 

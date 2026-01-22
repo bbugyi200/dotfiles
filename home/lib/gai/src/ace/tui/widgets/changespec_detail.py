@@ -378,3 +378,44 @@ class ChangeSpecDetail(Static):
             padding=(1, 2),
         )
         self.update(panel)
+
+    def show_copy_targets(self, changespec_name: str) -> None:
+        """Display copy targets with numbered options for selection.
+
+        Args:
+            changespec_name: The name of the current ChangeSpec (for display).
+        """
+        text = Text()
+
+        # Header
+        text.append("COPY TARGETS\n", style="bold #87D7FF")
+        text.append("ChangeSpec: ", style="dim")
+        text.append(changespec_name, style="bold underline #00D7AF")
+        text.append("\n\n")
+
+        # List targets with numbered hints
+        text.append("Select what to copy:\n", style="dim italic")
+        copy_targets = [
+            "Entire Project Spec File",
+            "Entire ChangeSpec",
+            "CL Name",
+            "CL Number",
+            "TUI Snapshot",
+        ]
+        for idx, target in enumerate(copy_targets, 1):
+            text.append(f"  [{idx}] ", style="bold #FFFF00")
+            text.append(f"{target}\n", style="bold #AFD75F")
+
+        text.append("\n")
+        text.append("Enter numbers (e.g., 1 or 1-3 or 2@)\n", style="dim")
+        text.append(
+            "@ suffix forces multi-target format for single selections", style="dim"
+        )
+
+        panel = Panel(
+            text,
+            title="Copy Selection",
+            border_style="#87D7FF",
+            padding=(1, 2),
+        )
+        self.update(panel)
