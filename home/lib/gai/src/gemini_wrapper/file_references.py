@@ -418,6 +418,9 @@ def process_xcmd_references(prompt: str) -> str:
     if not matches:
         return prompt
 
+    # Track generated filenames to avoid collisions within this call
+    generated_filenames: dict[str, int] = {}
+
     # Process from last to first to preserve string positions
     for match in reversed(matches):
         filename = match.group(1).strip()
@@ -439,13 +442,21 @@ def process_xcmd_references(prompt: str) -> str:
 
         # Add timestamp suffix before extension
         if ext_match := re.search(r"\.\w+$", processed_filename):
-            # Insert before existing extension (e.g., output.json → output-240427_153045.json)
             ext = ext_match.group()
             base = processed_filename[: ext_match.start()]
-            processed_filename = f"{base}{timestamp_suffix}{ext}"
+            base_with_timestamp = f"{base}{timestamp_suffix}"
         else:
-            # No extension - add suffix then .txt (e.g., foo → foo-240427_153045.txt)
-            processed_filename = f"{processed_filename}{timestamp_suffix}.txt"
+            base_with_timestamp = f"{processed_filename}{timestamp_suffix}"
+            ext = ".txt"
+
+        # Handle filename collisions with counter (like process_file_references)
+        count = generated_filenames.get(base_with_timestamp, 0)
+        generated_filenames[base_with_timestamp] = count + 1
+
+        if count == 0:
+            processed_filename = f"{base_with_timestamp}{ext}"
+        else:
+            processed_filename = f"{base_with_timestamp}_{count}{ext}"
 
         # Create output directory
         xcmds_dir = Path("bb/gai/xcmds")

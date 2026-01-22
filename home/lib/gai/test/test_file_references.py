@@ -539,3 +539,53 @@ def test_find_command_substitutions_multiple() -> None:
     assert len(result) == 2
     assert result[0] == (0, 7, "cmd1")
     assert result[1] == (12, 19, "cmd2")
+
+
+def test_process_xcmd_references_filename_collision(
+    tmp_path: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that two xcmds with same filename get unique names via counter."""
+    monkeypatch.chdir(tmp_path)
+    prompt = '#(out.txt: echo "first") #(out.txt: echo "second")'
+    result = process_xcmd_references(prompt)
+
+    # Both patterns should be replaced
+    assert "#(" not in result
+
+    # Should have two distinct file references
+    xcmds_dir = os.path.join(tmp_path, "bb/gai/xcmds")
+    files = os.listdir(xcmds_dir)
+    out_files = [f for f in files if f.startswith("out-")]
+    assert len(out_files) == 2
+
+    # One should have no counter suffix, other should have _1
+    has_base = any(re.match(r"out-\d{6}_\d{6}\.txt$", f) for f in out_files)
+    has_counter = any(re.match(r"out-\d{6}_\d{6}_1\.txt$", f) for f in out_files)
+    assert has_base, f"Expected base filename pattern, got: {out_files}"
+    assert has_counter, f"Expected counter filename pattern, got: {out_files}"
+
+
+def test_process_xcmd_references_multiple_filename_collisions(
+    tmp_path: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that three xcmds with same filename get unique names via counter."""
+    monkeypatch.chdir(tmp_path)
+    prompt = '#(out.json: echo "a") #(out.json: echo "b") #(out.json: echo "c")'
+    result = process_xcmd_references(prompt)
+
+    # All patterns should be replaced
+    assert "#(" not in result
+
+    # Should have three distinct file references
+    xcmds_dir = os.path.join(tmp_path, "bb/gai/xcmds")
+    files = os.listdir(xcmds_dir)
+    out_files = [f for f in files if f.startswith("out-")]
+    assert len(out_files) == 3
+
+    # Should have base, _1, and _2 suffixes
+    has_base = any(re.match(r"out-\d{6}_\d{6}\.json$", f) for f in out_files)
+    has_counter_1 = any(re.match(r"out-\d{6}_\d{6}_1\.json$", f) for f in out_files)
+    has_counter_2 = any(re.match(r"out-\d{6}_\d{6}_2\.json$", f) for f in out_files)
+    assert has_base, f"Expected base filename pattern, got: {out_files}"
+    assert has_counter_1, f"Expected _1 counter filename pattern, got: {out_files}"
+    assert has_counter_2, f"Expected _2 counter filename pattern, got: {out_files}"
