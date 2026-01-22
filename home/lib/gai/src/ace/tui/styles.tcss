@@ -47,7 +47,7 @@
 /* Ancestors/Children Panel */
 #ancestors-children-panel {
     height: auto;
-    max-height: 18;  /* Increased from 12 to accommodate SIBLINGS section */
+    max-height: 24;  /* Increased from 18 to accommodate reverted children when visible */
     padding: 0 1 1 1;
     border: solid $secondary;
     background: $surface;
