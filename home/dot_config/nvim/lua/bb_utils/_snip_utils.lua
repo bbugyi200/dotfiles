@@ -195,6 +195,8 @@ function M.get_markdown_snippets()
 			{ trig = "fixx", desc = "Can you help me fix these?" },
 			{ t("Can you help me diagnose the root cause of this issue and fix it?") }
 		),
+		-- SNIPPET: gsnap
+		s({ trig = "gsnap", desc = "`gai ace` snapshot" }, { t("(see the `gai ace` snapshot below)") }),
 		-- SNIPPET: help
 		s({ trig = "help", desc = "Can you help me...?" }, { t("Can you help me "), i(1), t("?") }),
 		-- SNIPPET: helpp
