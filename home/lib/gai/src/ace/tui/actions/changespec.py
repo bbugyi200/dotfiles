@@ -272,11 +272,8 @@ class ChangeSpecMixin:
 
         if self.changespecs:
             changespec = self.changespecs[self.current_idx]
-            # Preserve copy targets panel if in copy mode
-            if getattr(self, "_copy_mode_active", False):
-                detail_widget.show_copy_targets(changespec.name)
             # Preserve hints if in hint mode
-            elif self._hint_mode_active:
+            if self._hint_mode_active:
                 # Respect collapsed states: show hints only on visible lines
                 hint_mappings, hook_hint_to_idx, hint_to_entry_id = (
                     detail_widget.update_display_with_hints(

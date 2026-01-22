@@ -12,18 +12,8 @@ if TYPE_CHECKING:
     from ..models.agent import Agent
 
 from ...changespec import get_raw_changespec_text
-from ...hints import parse_copy_input
 
 TabName = Literal["changespecs", "agents", "axe"]
-
-# Copy target option names (in order, 1-indexed for user)
-COPY_TARGET_NAMES = [
-    "Project Spec File",
-    "ChangeSpec",
-    "CL Name",
-    "CL Number",
-    "TUI Snapshot",
-]
 
 
 class ClipboardMixin:
@@ -39,34 +29,146 @@ class ClipboardMixin:
     def action_copy_tab_content(self) -> None:
         """Copy tab-specific content to clipboard based on current tab."""
         if self.current_tab == "changespecs":
-            self._copy_changespec_to_clipboard()
+            self.action_start_copy_mode()
         elif self.current_tab == "agents":
             self._copy_agent_chat_to_clipboard()
         else:  # axe
             self._copy_axe_artifacts_to_clipboard()
 
-    def _copy_changespec_to_clipboard(self) -> None:
-        """Show copy target selection for the current ChangeSpec."""
+    def action_start_copy_mode(self) -> None:
+        """Start copy mode - wait for second key to determine copy action."""
+        if self.current_tab != "changespecs":
+            return
+
         if not self.changespecs:
             self.notify("No ChangeSpec to copy", severity="warning")  # type: ignore[attr-defined]
             return
 
+        self._copy_mode_active = True  # type: ignore[attr-defined]
+
+    def _handle_copy_key(self, key: str) -> bool:
+        """Handle the second key in copy mode sequence.
+
+        Args:
+            key: The key pressed after %.
+
+        Returns:
+            True if key was handled, False otherwise.
+        """
+        self._copy_mode_active = False  # type: ignore[attr-defined]
+
+        if self.current_tab != "changespecs":
+            return False
+
+        if not self.changespecs:
+            return False
+
+        if key == "percent_sign":  # %%
+            self._copy_changespec()
+        elif key == "exclamation_mark":  # %!
+            self._copy_changespec_and_project()
+        elif key == "b":  # %b
+            self._copy_bug_number()
+        elif key == "c":  # %c
+            self._copy_cl_number()
+        elif key == "p":  # %p
+            self._copy_project_spec()
+        elif key == "escape":
+            # Cancel copy mode silently
+            return True
+        else:
+            self.notify("Unknown copy key", severity="warning")  # type: ignore[attr-defined]
+            return False
+        return True
+
+    def _copy_changespec(self) -> None:
+        """Copy the raw changespec text to clipboard (%%)."""
+        changespec = self.changespecs[self.current_idx]
+        content = get_raw_changespec_text(changespec)
+        if content is None:
+            content = _format_changespec_for_clipboard(changespec)
+
+        if _copy_to_system_clipboard(content.strip()):
+            self.notify("Copied: ChangeSpec")  # type: ignore[attr-defined]
+        else:
+            self.notify("Failed to copy to clipboard", severity="error")  # type: ignore[attr-defined]
+
+    def _copy_changespec_and_project(self) -> None:
+        """Copy changespec and project spec with multi-format (%!)."""
         changespec = self.changespecs[self.current_idx]
 
-        # Store state for later processing
-        self._copy_mode_active = True  # type: ignore[attr-defined]
-        self._copy_changespec = changespec  # type: ignore[attr-defined]
+        # Get changespec content
+        cs_content = get_raw_changespec_text(changespec)
+        if cs_content is None:
+            cs_content = _format_changespec_for_clipboard(changespec)
 
-        # Update detail panel to show copy targets
-        from ..widgets import ChangeSpecDetail, HintInputBar
+        # Get project spec content
+        proj_content = self._get_project_spec_content(changespec)
+        if proj_content is None:
+            return  # Error already notified
 
-        detail_widget = self.query_one("#detail-panel", ChangeSpecDetail)  # type: ignore[attr-defined]
-        detail_widget.show_copy_targets(changespec.name)
+        # Format with headers
+        contents = [
+            ("ChangeSpec", cs_content.strip()),
+            ("Project Spec File", proj_content.strip()),
+        ]
+        final_content = _format_multi_copy_content(contents)
 
-        # Mount the hint input bar
-        detail_container = self.query_one("#detail-container")  # type: ignore[attr-defined]
-        hint_bar = HintInputBar(mode="copy", id="hint-input-bar")
-        detail_container.mount(hint_bar)
+        if _copy_to_system_clipboard(final_content):
+            self.notify("Copied: ChangeSpec + Project Spec")  # type: ignore[attr-defined]
+        else:
+            self.notify("Failed to copy to clipboard", severity="error")  # type: ignore[attr-defined]
+
+    def _copy_bug_number(self) -> None:
+        """Copy the bug number from the current changespec (%b)."""
+        changespec = self.changespecs[self.current_idx]
+        bug_number = self._get_bug_number(changespec)
+        if bug_number is None:
+            return  # Error already notified
+
+        if _copy_to_system_clipboard(bug_number):
+            self.notify(f"Copied: Bug Number ({bug_number})")  # type: ignore[attr-defined]
+        else:
+            self.notify("Failed to copy to clipboard", severity="error")  # type: ignore[attr-defined]
+
+    def _copy_cl_number(self) -> None:
+        """Copy the CL number from the current changespec (%c)."""
+        changespec = self.changespecs[self.current_idx]
+        cl_number = self._get_cl_number(changespec)
+        if cl_number is None:
+            return  # Error already notified
+
+        if _copy_to_system_clipboard(cl_number):
+            self.notify(f"Copied: CL Number ({cl_number})")  # type: ignore[attr-defined]
+        else:
+            self.notify("Failed to copy to clipboard", severity="error")  # type: ignore[attr-defined]
+
+    def _copy_project_spec(self) -> None:
+        """Copy the project spec file content (%p)."""
+        changespec = self.changespecs[self.current_idx]
+        content = self._get_project_spec_content(changespec)
+        if content is None:
+            return  # Error already notified
+
+        if _copy_to_system_clipboard(content.strip()):
+            self.notify("Copied: Project Spec File")  # type: ignore[attr-defined]
+        else:
+            self.notify("Failed to copy to clipboard", severity="error")  # type: ignore[attr-defined]
+
+    def _get_bug_number(self, changespec: ChangeSpec) -> str | None:
+        """Extract the bug number from a ChangeSpec's bug field.
+
+        Args:
+            changespec: The ChangeSpec.
+
+        Returns:
+            The bug number string, or None if unavailable.
+        """
+        if not changespec.bug:
+            self.notify("No bug number available", severity="warning")  # type: ignore[attr-defined]
+            return None
+
+        return changespec.bug
 
     def _copy_agent_chat_to_clipboard(self) -> None:
         """Copy the current agent's chat to clipboard."""
@@ -125,96 +227,6 @@ class ClipboardMixin:
         ansi_escape = re.compile(r"\x1b\[[0-9;]*m")
         return ansi_escape.sub("", self._axe_output)
 
-    def _process_copy_input(self, user_input: str) -> None:
-        """Process copy target selection input.
-
-        Args:
-            user_input: The user's input string (e.g., "1", "1-3", "2@")
-        """
-        if not user_input:
-            return
-
-        # Get the stored changespec
-        changespec: ChangeSpec | None = getattr(self, "_copy_changespec", None)
-        if changespec is None:
-            self.notify("No ChangeSpec selected", severity="error")  # type: ignore[attr-defined]
-            return
-
-        # Parse input
-        targets, use_multi_format, invalid_targets = parse_copy_input(user_input)
-
-        if invalid_targets:
-            self.notify(  # type: ignore[attr-defined]
-                f"Invalid selections: {', '.join(str(t) for t in invalid_targets)}",
-                severity="warning",
-            )
-            return
-
-        if not targets:
-            self.notify("No valid targets selected", severity="warning")  # type: ignore[attr-defined]
-            return
-
-        # Collect content for each target
-        contents: list[tuple[str, str]] = []  # (target_name, content)
-        for target_num in targets:
-            target_name = COPY_TARGET_NAMES[target_num - 1]  # Convert to 0-indexed
-            content = self._get_copy_target_content(changespec, target_num)
-            if content is None:
-                # Error already notified by helper
-                return
-            # Strip leading/trailing whitespace to avoid blank lines in output
-            contents.append((target_name, content.strip()))
-
-        # Format output
-        if use_multi_format:
-            final_content = _format_multi_target_content(contents)
-        else:
-            # Single target without @ suffix - just copy raw content
-            final_content = contents[0][1]
-
-        # Copy to clipboard
-        if _copy_to_system_clipboard(final_content):
-            if len(targets) == 1:
-                self.notify(f"Copied: {COPY_TARGET_NAMES[targets[0] - 1]}")  # type: ignore[attr-defined]
-            else:
-                self.notify(f"Copied {len(targets)} items")  # type: ignore[attr-defined]
-        else:
-            self.notify("Failed to copy to clipboard", severity="error")  # type: ignore[attr-defined]
-
-    def _get_copy_target_content(
-        self, changespec: ChangeSpec, target_num: int
-    ) -> str | None:
-        """Get content for a specific copy target.
-
-        Args:
-            changespec: The ChangeSpec to get content from.
-            target_num: The target number (1-indexed).
-
-        Returns:
-            The content string, or None if an error occurred.
-        """
-        if target_num == 1:
-            # Entire Project Spec File
-            return self._get_project_spec_content(changespec)
-        elif target_num == 2:
-            # Entire ChangeSpec
-            content = get_raw_changespec_text(changespec)
-            if content is None:
-                content = _format_changespec_for_clipboard(changespec)
-            return content
-        elif target_num == 3:
-            # CL Name
-            return changespec.name
-        elif target_num == 4:
-            # CL Number
-            return self._get_cl_number(changespec)
-        elif target_num == 5:
-            # TUI Snapshot
-            return self._get_tui_snapshot()
-        else:
-            self.notify(f"Invalid target: {target_num}", severity="error")  # type: ignore[attr-defined]
-            return None
-
     def _get_project_spec_content(self, changespec: ChangeSpec) -> str | None:
         """Read the entire project spec (.gp) file content.
 
@@ -252,37 +264,8 @@ class ClipboardMixin:
         self.notify("Could not extract CL number from URL", severity="warning")  # type: ignore[attr-defined]
         return None
 
-    def _get_tui_snapshot(self) -> str:
-        """Get a plain text snapshot of the current TUI state.
 
-        Returns:
-            The TUI snapshot as plain text (ANSI codes stripped).
-        """
-        # For now, return a simple representation
-        # In a full implementation, this would capture the actual TUI rendering
-        lines: list[str] = []
-
-        # Add CL list
-        lines.append("=== CLs ===")
-        for idx, cs in enumerate(self.changespecs):
-            marker = ">" if idx == self.current_idx else " "
-            lines.append(f"{marker} {cs.name} [{cs.status}]")
-
-        # Add detail panel
-        lines.append("")
-        lines.append("=== Detail ===")
-        if self.changespecs:
-            cs = self.changespecs[self.current_idx]
-            lines.append(f"NAME: {cs.name}")
-            lines.append(f"DESCRIPTION: {cs.description}")
-            if cs.cl:
-                lines.append(f"CL: {cs.cl}")
-            lines.append(f"STATUS: {cs.status}")
-
-        return "\n".join(lines)
-
-
-def _format_multi_target_content(contents: list[tuple[str, str]]) -> str:
+def _format_multi_copy_content(contents: list[tuple[str, str]]) -> str:
     """Format multiple copy targets with headers and code blocks.
 
     Args:

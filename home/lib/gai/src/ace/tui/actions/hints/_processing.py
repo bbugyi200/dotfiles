@@ -26,8 +26,6 @@ class InputProcessingMixin(HintMixinBase):
             self._process_hooks_input(event.value)
         elif event.mode == "failed_hooks":
             self._process_failed_hooks_input(event.value)
-        elif event.mode == "copy":
-            self._process_copy_input(event.value)  # type: ignore[attr-defined]
         else:  # accept mode
             self._process_accept_input(event.value)  # type: ignore[attr-defined]
 
@@ -44,9 +42,6 @@ class InputProcessingMixin(HintMixinBase):
 
         # Clear accept mode state
         self._accept_mode_active = False
-
-        # Clear copy mode state
-        self._copy_mode_active = False  # type: ignore[attr-defined]
 
         try:
             hint_bar = self.query_one("#hint-input-bar", HintInputBar)  # type: ignore[attr-defined]

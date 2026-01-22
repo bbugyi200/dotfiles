@@ -189,57 +189,6 @@ def parse_edit_hooks_input(
     return hints_to_rerun, hints_to_delete, invalid_hints
 
 
-def parse_copy_input(
-    user_input: str, max_target: int = 5
-) -> tuple[list[int], bool, list[int]]:
-    """Parse user input for copy target selection.
-
-    Args:
-        user_input: The user's input string (e.g., "1", "1-3", "1 3 5", "2@")
-        max_target: Maximum valid target number (default 5)
-
-    Returns:
-        Tuple of:
-        - List of valid target numbers (1-indexed)
-        - Whether to use multi-target formatting (@ suffix or multiple targets)
-        - List of invalid target numbers
-    """
-    if not user_input:
-        return [], False, []
-
-    valid_targets: list[int] = []
-    invalid_targets: list[int] = []
-    use_multi_format = False
-
-    parts = user_input.split()
-    for part in parts:
-        # Check for @ suffix (forces multi-target format)
-        if part.endswith("@"):
-            use_multi_format = True
-            part = part[:-1]
-
-        # Skip empty parts (standalone '@' is not supported)
-        if not part:
-            continue
-
-        # Expand the part (handles both single numbers and ranges)
-        target_nums = _expand_hint_part(part)
-
-        for target_num in target_nums:
-            if 1 <= target_num <= max_target:
-                if target_num not in valid_targets:  # Avoid duplicates
-                    valid_targets.append(target_num)
-            else:
-                if target_num not in invalid_targets:
-                    invalid_targets.append(target_num)
-
-    # Multiple targets implies multi-format
-    if len(valid_targets) > 1:
-        use_multi_format = True
-
-    return valid_targets, use_multi_format, invalid_targets
-
-
 def parse_test_targets(test_input: str) -> list[str]:
     """Parse test target input into a list of targets.
 

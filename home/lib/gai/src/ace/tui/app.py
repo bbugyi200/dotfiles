@@ -142,8 +142,8 @@ class AceApp(
         Binding("u", "clear_marks", "Unmark All", show=False),
         Binding("x", "kill_agent", "Kill", show=False),
         Binding("l", "toggle_layout", "Layout", show=False),
-        # Copy to clipboard (all tabs)
-        Binding("percent_sign", "copy_tab_content", "Copy", show=False),
+        # Copy to clipboard (changespecs tab - % followed by key)
+        Binding("percent_sign", "start_copy_mode", "Copy", show=False),
         # Scroll to top/bottom (Axe tab)
         Binding("g", "scroll_to_top", "Top", show=False),
         Binding("G", "scroll_to_bottom", "Bottom", show=False),
@@ -217,6 +217,9 @@ class AceApp(
         # Checkout/tmux mode state (for c/t key sub-commands)
         self._checkout_mode_active: bool = False
         self._tmux_mode_active: bool = False
+
+        # Copy mode state (for % key sub-commands)
+        self._copy_mode_active: bool = False
 
         # Ancestor/child/sibling navigation state
         self._ancestor_mode_active: bool = False

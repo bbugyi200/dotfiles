@@ -64,7 +64,7 @@ class HintInputBar(Static):
         def __init__(
             self,
             value: str,
-            mode: Literal["view", "hooks", "accept", "failed_hooks", "copy"],
+            mode: Literal["view", "hooks", "accept", "failed_hooks"],
         ) -> None:
             """Initialize the message.
 
@@ -87,14 +87,14 @@ class HintInputBar(Static):
 
     def __init__(
         self,
-        mode: Literal["view", "hooks", "accept", "failed_hooks", "copy"],
+        mode: Literal["view", "hooks", "accept", "failed_hooks"],
         placeholder: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize the hint input bar.
 
         Args:
-            mode: The current hint mode ("view", "hooks", "accept", "failed_hooks", or "copy")
+            mode: The current hint mode ("view", "hooks", "accept", or "failed_hooks")
             placeholder: Optional custom placeholder text (used for "accept" mode)
             **kwargs: Additional arguments for Static
         """
@@ -121,12 +121,6 @@ class HintInputBar(Static):
                 yield Label("Failed Hooks: ", id="hint-label")
                 yield _HintInput(
                     placeholder="1-5 or 1 3 5 (select targets to add as hooks)",
-                    id="hint-input",
-                )
-            elif self.mode == "copy":
-                yield Label("Copy: ", id="hint-label")
-                yield _HintInput(
-                    placeholder="1-5 (@ suffix for multi-format)",
                     id="hint-input",
                 )
             else:  # accept mode
