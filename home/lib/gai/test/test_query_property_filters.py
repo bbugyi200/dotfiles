@@ -158,6 +158,15 @@ def test_tokenize_ancestor_shorthand() -> None:
     assert tokens[0].property_key == "ancestor"
 
 
+def test_tokenize_sibling_shorthand() -> None:
+    """Test tokenizing ~name as sibling:name."""
+    tokens = list(tokenize("~sibling_name"))
+    assert len(tokens) == 2
+    assert tokens[0].type == TokenType.PROPERTY
+    assert tokens[0].value == "sibling_name"
+    assert tokens[0].property_key == "sibling"
+
+
 def test_tokenize_explicit_status_property() -> None:
     """Test tokenizing status:DRAFTED explicitly."""
     tokens = list(tokenize("status:DRAFTED"))

@@ -345,6 +345,20 @@ def tokenize(query: str) -> Iterator[Token]:
                 )
             else:
                 raise TokenizerError("Expected ancestor name after '^'", start)
+        # Sibling shorthand: ~identifier
+        elif char == "~":
+            start = pos
+            pos += 1
+            if pos < length and (query[pos].isalpha() or query[pos] == "_"):
+                value, pos = _parse_property_value(query, pos)
+                yield Token(
+                    type=TokenType.PROPERTY,
+                    value=value,
+                    position=start,
+                    property_key="sibling",
+                )
+            else:
+                raise TokenizerError("Expected sibling name after '~'", start)
         # Name shorthand: &identifier
         elif char == "&":
             start = pos

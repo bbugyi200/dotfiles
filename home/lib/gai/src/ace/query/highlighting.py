@@ -25,7 +25,7 @@ def tokenize_query_for_display(query: str) -> list[tuple[str, str]]:
         - "paren" for ( and )
         - "quoted" for quoted strings (including the quotes)
         - "term" for unquoted search terms
-        - "shorthand" for %d, %m, %s, %r, +project, ^ancestor
+        - "shorthand" for %d, %m, %s, %r, +project, ^ancestor, ~sibling
         - "property_key" for status:, project:, ancestor:
         - "property_value" for the value after a property key
         - "whitespace" for spaces
@@ -141,6 +141,19 @@ def tokenize_query_for_display(query: str) -> list[tuple[str, str]]:
         ):
             start = i
             i += 1  # Skip ^
+            while i < len(query) and _is_bare_word_char(query[i]):
+                i += 1
+            tokens.append((query[start:i], "shorthand"))
+            continue
+
+        # Check for sibling shorthand: ~identifier
+        if (
+            query[i] == "~"
+            and i + 1 < len(query)
+            and (query[i + 1].isalpha() or query[i + 1] == "_")
+        ):
+            start = i
+            i += 1  # Skip ~
             while i < len(query) and _is_bare_word_char(query[i]):
                 i += 1
             tokens.append((query[start:i], "shorthand"))
