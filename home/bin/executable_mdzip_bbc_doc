@@ -1,0 +1,94 @@
+#!/bin/bash
+
+source ~/lib/bugyi.sh
+
+export USAGE_GRAMMAR=(
+  "[-v]"
+  "-h"
+)
+
+read -r -d '' DOC <<EOM
+$(usage)
+
+Run mdzip and copy the resulting markdown to a remote machine.
+
+Runs mdzip to convert a zip file from ~/Downloads to markdown, then copies
+the output to bbugyi.c.googlers.com:/usr/local/google/home/bbugyi/bb/doc/
+
+Optional Arguments
+------------------
+-h | --help
+    View this help message.
+
+-v | --verbose
+    Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
+
+Examples
+--------
+mdzip_bbc_doc       # Process zip and copy to remote
+mdzip_bbc_doc -v    # Process with verbose output
+
+EOM
+
+set -e
+
+function run() {
+  parse_cli_args "$@"
+
+  # Run mdzip and capture output
+  local mdzip_output
+  mdzip_output="$(mdzip)"
+
+  # Extract the file path from "FILE: <path>" output
+  local md_file
+  md_file="$(echo "${mdzip_output}" | grep "^FILE: " | sed 's/^FILE: //')"
+
+  if [[ -z "${md_file}" ]]; then
+    die "Failed to get markdown file path from mdzip output"
+  fi
+
+  log::info "Markdown file: %s" "${md_file}"
+
+  # SCP to remote machine
+  local remote_dest="bbugyi.c.googlers.com:/usr/local/google/home/bbugyi/bb/doc/"
+  log::info "Copying to: %s" "${remote_dest}"
+  scp "${md_file}" "${remote_dest}"
+
+  log::info "Successfully copied to remote machine"
+}
+
+function parse_cli_args() {
+  log::debug "Command-Line Arguments: ($*)"
+
+  eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
+
+  VERBOSE=0
+  while [[ -n "$1" ]]; do
+    case $1 in
+    -h | --help)
+      echo "${DOC}"
+      exit 0
+      ;;
+    -v | --verbose)
+      VERBOSE=$((VERBOSE + 1))
+      ;;
+    --)
+      shift
+      break
+      ;;
+    esac
+    shift
+  done
+
+  if [[ "${VERBOSE}" -gt 1 ]]; then
+    PS4='$LINENO: '
+    set -x
+  fi
+
+  readonly DOC
+  readonly VERBOSE
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+  run "$@"
+fi
