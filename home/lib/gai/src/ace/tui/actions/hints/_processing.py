@@ -45,6 +45,9 @@ class InputProcessingMixin(HintMixinBase):
         # Clear accept mode state
         self._accept_mode_active = False
 
+        # Clear copy mode state
+        self._copy_mode_active = False  # type: ignore[attr-defined]
+
         try:
             hint_bar = self.query_one("#hint-input-bar", HintInputBar)  # type: ignore[attr-defined]
             hint_bar.remove()
