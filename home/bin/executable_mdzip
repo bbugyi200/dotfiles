@@ -1,0 +1,125 @@
+#!/bin/bash
+
+source ~/lib/bugyi.sh
+
+export USAGE_GRAMMAR=(
+  "[-v]"
+  "-h"
+)
+
+read -r -d '' DOC <<EOM
+$(usage)
+
+Convert a zip file from ~/Downloads containing an HTML file to markdown.
+
+Looks for zip files in ~/Downloads. If exactly one is found, copies it to
+~/bb/mdzip/.zip/, unzips it, and converts the HTML to markdown at
+~/bb/mdzip/<zip_basename>.md using pandoc.
+
+Optional Arguments
+------------------
+-h | --help
+    View this help message.
+
+-v | --verbose
+    Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
+
+Examples
+--------
+mdzip       # Process the single zip file in ~/Downloads
+mdzip -v    # Process with verbose output
+
+EOM
+
+set -e
+
+function run() {
+  parse_cli_args "$@"
+
+  # Find zip files in ~/Downloads
+  local zip_files
+  zip_files=(~/Downloads/*.zip)
+
+  # Check if glob matched anything
+  if [[ ! -e "${zip_files[0]}" ]]; then
+    die "No zip files found in ~/Downloads"
+  fi
+
+  # Check for multiple zip files
+  if [[ ${#zip_files[@]} -gt 1 ]]; then
+    die "Found %d zip files in ~/Downloads, expected exactly 1" "${#zip_files[@]}"
+  fi
+
+  local zip_file="${zip_files[0]}"
+  local zip_basename
+  zip_basename="$(basename "${zip_file}" .zip)"
+
+  log::info "Processing zip file: %s" "${zip_file}"
+
+  # Create output directories
+  local zip_dest_dir="$HOME/bb/mdzip/.zip"
+  mkdir -p "${zip_dest_dir}"
+
+  # Copy zip file to destination
+  cp "${zip_file}" "${zip_dest_dir}/"
+  log::info "Copied zip to: %s" "${zip_dest_dir}/"
+
+  # Unzip the contents
+  local extract_dir="${zip_dest_dir}/${zip_basename}"
+  mkdir -p "${extract_dir}"
+  unzip -o "${zip_dest_dir}/$(basename "${zip_file}")" -d "${extract_dir}"
+
+  # Find the HTML file
+  local html_files
+  html_files=("${extract_dir}"/*.html)
+
+  if [[ ! -e "${html_files[0]}" ]]; then
+    die "No HTML files found in the extracted zip contents"
+  fi
+
+  local html_file="${html_files[0]}"
+  log::info "Found HTML file: %s" "${html_file}"
+
+  # Convert to markdown using pandoc
+  local md_output="$HOME/bb/mdzip/${zip_basename}.md"
+  pandoc "${html_file}" -o "${md_output}"
+
+  log::info "Created markdown file: %s" "${md_output}"
+  echo "FILE: ${md_output}"
+}
+
+function parse_cli_args() {
+  log::debug "Command-Line Arguments: ($*)"
+
+  eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
+
+  VERBOSE=0
+  while [[ -n "$1" ]]; do
+    case $1 in
+    -h | --help)
+      echo "${DOC}"
+      exit 0
+      ;;
+    -v | --verbose)
+      VERBOSE=$((VERBOSE + 1))
+      ;;
+    --)
+      shift
+      break
+      ;;
+    esac
+    shift
+  done
+
+  if [[ "${VERBOSE}" -gt 1 ]]; then
+    PS4='$LINENO: '
+    set -x
+  fi
+
+  readonly DOC
+  readonly VERBOSE
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+  run "$@"
+fi
