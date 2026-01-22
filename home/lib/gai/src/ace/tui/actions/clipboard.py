@@ -66,7 +66,7 @@ class ClipboardMixin:
         if key == "percent_sign":  # %%
             self._copy_changespec()
         elif key == "exclamation_mark":  # %!
-            self._copy_changespec_and_project()
+            self._copy_changespec_and_snapshot()
         elif key == "b":  # %b
             self._copy_bug_number()
         elif key == "c":  # %c
@@ -93,8 +93,8 @@ class ClipboardMixin:
         else:
             self.notify("Failed to copy to clipboard", severity="error")  # type: ignore[attr-defined]
 
-    def _copy_changespec_and_project(self) -> None:
-        """Copy changespec and project spec with multi-format (%!)."""
+    def _copy_changespec_and_snapshot(self) -> None:
+        """Copy changespec and tmux pane snapshot with multi-format (%!)."""
         changespec = self.changespecs[self.current_idx]
 
         # Get changespec content
@@ -102,20 +102,21 @@ class ClipboardMixin:
         if cs_content is None:
             cs_content = _format_changespec_for_clipboard(changespec)
 
-        # Get project spec content
-        proj_content = self._get_project_spec_content(changespec)
-        if proj_content is None:
-            return  # Error already notified
+        # Get tmux pane snapshot
+        snapshot_content = _capture_tmux_pane()
+        if snapshot_content is None:
+            self.notify("Failed to capture tmux pane", severity="warning")  # type: ignore[attr-defined]
+            return
 
         # Format with headers
         contents = [
             ("ChangeSpec", cs_content.strip()),
-            ("Project Spec File", proj_content.strip()),
+            ("`gai ace` Snapshot", snapshot_content.strip()),
         ]
         final_content = _format_multi_copy_content(contents)
 
         if _copy_to_system_clipboard(final_content):
-            self.notify("Copied: ChangeSpec + Project Spec")  # type: ignore[attr-defined]
+            self.notify("Copied: ChangeSpec + Snapshot")  # type: ignore[attr-defined]
         else:
             self.notify("Failed to copy to clipboard", severity="error")  # type: ignore[attr-defined]
 
@@ -262,6 +263,24 @@ class ClipboardMixin:
             return match.group(1)
 
         self.notify("Could not extract CL number from URL", severity="warning")  # type: ignore[attr-defined]
+        return None
+
+
+def _capture_tmux_pane() -> str | None:
+    """Capture the visible contents of the current tmux pane.
+
+    Returns:
+        The pane contents as a string, or None if capture failed.
+    """
+    try:
+        result = subprocess.run(
+            ["tmux", "capture-pane", "-p"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return result.stdout
+    except (subprocess.CalledProcessError, FileNotFoundError):
         return None
 
 
