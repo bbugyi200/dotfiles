@@ -22,7 +22,7 @@ class HookEditingMixin(HintMixinBase):
         # Re-render detail with hints for hooks_latest_only
         detail_widget = self.query_one("#detail-panel", ChangeSpecDetail)  # type: ignore[attr-defined]
         query_str = self.canonical_query_string  # type: ignore[attr-defined]
-        hint_mappings, hook_hint_to_idx, hint_to_entry_id = (
+        hint_mappings, hook_hint_to_idx, hint_to_entry_id, mentor_hint_to_info = (
             detail_widget.update_display_with_hints(
                 changespec,
                 query_str,
@@ -39,6 +39,7 @@ class HookEditingMixin(HintMixinBase):
         self._hint_mappings = hint_mappings
         self._hook_hint_to_idx = hook_hint_to_idx
         self._hint_to_entry_id = hint_to_entry_id
+        self._mentor_hint_to_info = mentor_hint_to_info
         self._hint_changespec_name = changespec.name
 
         # Mount the hint input bar
@@ -118,58 +119,123 @@ class HookEditingMixin(HintMixinBase):
             kill_running_processes_for_hooks,
             rerun_delete_hooks_by_command,
         )
+        from ....mentors import clear_mentor_status_lines
 
-        if not hook_hint_to_idx:
-            self.notify("No hooks with status lines to rerun", severity="warning")  # type: ignore[attr-defined]
+        # Get mentor hint mapping (may not be set if not available)
+        mentor_hint_to_info: dict[int, tuple[str, str]] = getattr(
+            self, "_mentor_hint_to_info", {}
+        )
+
+        # Separate hook hints from mentor hints
+        hook_hints_to_rerun = [
+            h for h in result.hints_to_rerun if h in hook_hint_to_idx
+        ]
+        hook_hints_to_delete = [
+            h for h in result.hints_to_delete if h in hook_hint_to_idx
+        ]
+        mentor_hints_to_rerun = [
+            h for h in result.hints_to_rerun if h in mentor_hint_to_info
+        ]
+        mentor_hints_to_delete = [
+            h for h in result.hints_to_delete if h in mentor_hint_to_info
+        ]
+
+        # Warn if user tries to delete mentor entries
+        if mentor_hints_to_delete:
+            self.notify("Cannot delete mentor entries, only rerun", severity="warning")  # type: ignore[attr-defined]
+
+        # Check if there's anything to do
+        if (
+            not hook_hints_to_rerun
+            and not hook_hints_to_delete
+            and not mentor_hints_to_rerun
+        ):
+            self.notify(  # type: ignore[attr-defined]
+                "No hooks or mentors with status lines to rerun", severity="warning"
+            )
             return False
 
-        # Get the hook indices for each action
-        hook_indices_to_rerun = {hook_hint_to_idx[h] for h in result.hints_to_rerun}
-        hook_indices_to_delete = {hook_hint_to_idx[h] for h in result.hints_to_delete}
+        success = True
+        messages: list[str] = []
 
-        # Collect the specific entry IDs to clear for rerun hints
-        entry_ids_to_clear = {self._hint_to_entry_id[h] for h in result.hints_to_rerun}
+        # Process hook hints
+        if hook_hints_to_rerun or hook_hints_to_delete:
+            # Get the hook indices for each action
+            hook_indices_to_rerun = {hook_hint_to_idx[h] for h in hook_hints_to_rerun}
+            hook_indices_to_delete = {hook_hint_to_idx[h] for h in hook_hints_to_delete}
 
-        # Kill any running processes/agents for hooks being rerun or deleted
-        all_affected_indices = hook_indices_to_rerun | hook_indices_to_delete
-        killed_count = kill_running_processes_for_hooks(
-            changespec.hooks, all_affected_indices
-        )
-        if killed_count > 0:
-            self.notify(f"Killed {killed_count} running process(es)")  # type: ignore[attr-defined]
+            # Collect the specific entry IDs to clear for rerun hints
+            entry_ids_to_clear = {
+                self._hint_to_entry_id[h] for h in hook_hints_to_rerun
+            }
 
-        # Extract command strings from in-memory hooks (may be stale, but just
-        # using for identification - actual hooks will be re-read from disk)
-        hooks_list = changespec.hooks or []
-        commands_to_rerun: set[str] = set()
-        commands_to_delete: set[str] = set()
-        for idx in hook_indices_to_rerun:
-            if idx < len(hooks_list):
-                commands_to_rerun.add(hooks_list[idx].command)
-        for idx in hook_indices_to_delete:
-            if idx < len(hooks_list):
-                commands_to_delete.add(hooks_list[idx].command)
+            # Kill any running processes/agents for hooks being rerun or deleted
+            all_affected_indices = hook_indices_to_rerun | hook_indices_to_delete
+            killed_count = kill_running_processes_for_hooks(
+                changespec.hooks, all_affected_indices
+            )
+            if killed_count > 0:
+                self.notify(f"Killed {killed_count} running process(es)")  # type: ignore[attr-defined]
 
-        # Use the new function that re-reads fresh state from disk
-        success = rerun_delete_hooks_by_command(
-            changespec.file_path,
-            changespec.name,
-            commands_to_rerun,
-            commands_to_delete,
-            entry_ids_to_clear,
-        )
+            # Extract command strings from in-memory hooks (may be stale, but just
+            # using for identification - actual hooks will be re-read from disk)
+            hooks_list = changespec.hooks or []
+            commands_to_rerun: set[str] = set()
+            commands_to_delete: set[str] = set()
+            for idx in hook_indices_to_rerun:
+                if idx < len(hooks_list):
+                    commands_to_rerun.add(hooks_list[idx].command)
+            for idx in hook_indices_to_delete:
+                if idx < len(hooks_list):
+                    commands_to_delete.add(hooks_list[idx].command)
 
-        if success:
-            messages = []
-            if result.hints_to_rerun:
+            # Use the new function that re-reads fresh state from disk
+            hook_success = rerun_delete_hooks_by_command(
+                changespec.file_path,
+                changespec.name,
+                commands_to_rerun,
+                commands_to_delete,
+                entry_ids_to_clear,
+            )
+
+            if hook_success:
+                if hook_hints_to_rerun:
+                    messages.append(
+                        f"Cleared status for {len(hook_hints_to_rerun)} hook(s)"
+                    )
+                if hook_hints_to_delete:
+                    messages.append(f"Deleted {len(hook_hints_to_delete)} hook(s)")
+            else:
+                self.notify("Error updating hooks", severity="error")  # type: ignore[attr-defined]
+                success = False
+
+        # Process mentor hints (rerun only - clear status lines)
+        if mentor_hints_to_rerun:
+            # Collect mentor info to clear, grouped by entry_id
+            mentors_to_clear_by_entry: dict[str, set[tuple[str, str]]] = {}
+            for hint in mentor_hints_to_rerun:
+                entry_id = self._hint_to_entry_id[hint]
+                mentor_name, profile_name = mentor_hint_to_info[hint]
+                if entry_id not in mentors_to_clear_by_entry:
+                    mentors_to_clear_by_entry[entry_id] = set()
+                mentors_to_clear_by_entry[entry_id].add((mentor_name, profile_name))
+
+            mentor_success = clear_mentor_status_lines(
+                changespec.file_path,
+                changespec.name,
+                mentors_to_clear_by_entry,
+            )
+
+            if mentor_success:
                 messages.append(
-                    f"Cleared status for {len(result.hints_to_rerun)} hook(s)"
+                    f"Cleared status for {len(mentor_hints_to_rerun)} mentor(s)"
                 )
-            if result.hints_to_delete:
-                messages.append(f"Deleted {len(result.hints_to_delete)} hook(s)")
+            else:
+                self.notify("Error clearing mentor status", severity="error")  # type: ignore[attr-defined]
+                success = False
+
+        if messages:
             self.notify("; ".join(messages))  # type: ignore[attr-defined]
-        else:
-            self.notify("Error updating hooks", severity="error")  # type: ignore[attr-defined]
 
         return success
 

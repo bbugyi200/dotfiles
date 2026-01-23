@@ -567,6 +567,67 @@ def clear_mentor_wip_flags(project_file: str, changespec_name: str) -> bool:
         return False
 
 
+def clear_mentor_status_lines(
+    project_file: str,
+    changespec_name: str,
+    mentors_to_clear: dict[str, set[tuple[str, str]]],
+) -> bool:
+    """Remove status lines for specific mentors (to allow rerun).
+
+    Args:
+        project_file: Path to the project file.
+        changespec_name: Name of the ChangeSpec.
+        mentors_to_clear: Dict mapping entry_id to set of (mentor_name, profile_name)
+            tuples to clear.
+
+    Returns:
+        True if successful, False otherwise.
+    """
+    try:
+        with changespec_lock(project_file):
+            changespecs = parse_project_file(project_file)
+            current_mentors: list[MentorEntry] = []
+            for cs in changespecs:
+                if cs.name == changespec_name:
+                    current_mentors = list(cs.mentors) if cs.mentors else []
+                    break
+
+            if not current_mentors:
+                return True  # Nothing to clear
+
+            # Remove specified status lines
+            for entry in current_mentors:
+                if entry.entry_id not in mentors_to_clear:
+                    continue
+                if not entry.status_lines:
+                    continue
+
+                mentors_to_remove = mentors_to_clear[entry.entry_id]
+                entry.status_lines = [
+                    sl
+                    for sl in entry.status_lines
+                    if (sl.mentor_name, sl.profile_name) not in mentors_to_remove
+                ]
+
+            # Write updated mentors
+            with open(project_file, encoding="utf-8") as f:
+                lines = f.readlines()
+
+            updated_lines = _apply_mentors_update(
+                lines, changespec_name, current_mentors
+            )
+            content = "".join(updated_lines)
+
+            write_changespec_atomic(
+                project_file,
+                content,
+                f"Clear mentor status lines for {changespec_name}",
+            )
+            return True
+    except Exception:
+        return False
+
+
 def set_mentor_wip_flags(project_file: str, changespec_name: str) -> bool:
     """Set is_wip flag and filter profiles for the LAST MENTORS entry.
 

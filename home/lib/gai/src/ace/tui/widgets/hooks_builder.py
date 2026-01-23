@@ -229,4 +229,5 @@ def build_hooks_section(
         mappings=hint_mappings,
         hook_hint_to_idx=hook_hint_to_idx,
         hint_to_entry_id=hint_to_entry_id,
+        mentor_hint_to_info=hint_tracker.mentor_hint_to_info,
     )

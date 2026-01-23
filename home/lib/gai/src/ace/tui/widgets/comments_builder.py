@@ -63,4 +63,5 @@ def build_comments_section(
         mappings=hint_mappings,
         hook_hint_to_idx=hint_tracker.hook_hint_to_idx,
         hint_to_entry_id=hint_tracker.hint_to_entry_id,
+        mentor_hint_to_info=hint_tracker.mentor_hint_to_info,
     )

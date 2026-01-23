@@ -33,6 +33,7 @@ def build_mentors_section(
     hint_mappings = dict(hint_tracker.mappings) if hint_tracker else {}
     hook_hint_to_idx = dict(hint_tracker.hook_hint_to_idx) if hint_tracker else {}
     hint_to_entry_id = dict(hint_tracker.hint_to_entry_id) if hint_tracker else {}
+    mentor_hint_to_info = dict(hint_tracker.mentor_hint_to_info) if hint_tracker else {}
 
     if not changespec.mentors:
         return HintTracker(
@@ -40,6 +41,7 @@ def build_mentors_section(
             mappings=hint_mappings,
             hook_hint_to_idx=hook_hint_to_idx,
             hint_to_entry_id=hint_to_entry_id,
+            mentor_hint_to_info=mentor_hint_to_info,
         )
 
     # Find the latest (highest numeric) commit ID from COMMITS field
@@ -139,6 +141,10 @@ def build_mentors_section(
                     )
                     hint_mappings[hint_counter] = chat_path
                     hint_to_entry_id[hint_counter] = mentor_entry.entry_id
+                    mentor_hint_to_info[hint_counter] = (
+                        msl.mentor_name,
+                        msl.profile_name,
+                    )
                     text.append(f"[{hint_counter}] ", style="bold #FFFF00")
                     hint_counter += 1
 
@@ -184,4 +190,5 @@ def build_mentors_section(
         mappings=hint_mappings,
         hook_hint_to_idx=hook_hint_to_idx,
         hint_to_entry_id=hint_to_entry_id,
+        mentor_hint_to_info=mentor_hint_to_info,
     )
