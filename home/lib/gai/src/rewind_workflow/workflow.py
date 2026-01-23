@@ -163,7 +163,7 @@ class RewindWorkflow:
             for entry in sorted(numeric_entries, key=lambda e: e.number):
                 if entry.number <= selected_entry_num:
                     if entry.diff:
-                        diff_files.append(entry.diff)
+                        diff_files.append(os.path.expanduser(entry.diff))
 
             if not diff_files:
                 return (False, "No diff files found to rewind")
