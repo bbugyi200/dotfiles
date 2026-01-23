@@ -84,7 +84,9 @@ def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
                 # Check for suffix (including empty string with running_agent type)
                 # or summary (compound suffix format)
                 has_suffix = sl.suffix is not None and (
-                    sl.suffix or sl.suffix_type == "running_agent"
+                    sl.suffix
+                    or sl.suffix_type
+                    in ("running_agent", "summarize_complete", "metahook_complete")
                 )
                 has_summary_only = sl.summary and not has_suffix
                 if has_suffix or has_summary_only:

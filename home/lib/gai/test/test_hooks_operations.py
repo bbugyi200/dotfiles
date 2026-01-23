@@ -306,6 +306,46 @@ def test_format_hooks_field_empty() -> None:
     assert result == []
 
 
+def test_format_hooks_field_metahook_complete_with_empty_suffix() -> None:
+    """Test that metahook_complete suffix_type preserves prefix even with empty suffix.
+
+    This is a regression test for the bug where (!: metahook | Summary) was being
+    corrupted to (Summary) because has_suffix evaluated to False when suffix="".
+    """
+    status_line = HookStatusLine(
+        commit_entry_num="1",
+        timestamp="240601_123456",
+        status="FAILED",
+        duration="30s",
+        suffix="",  # Empty suffix
+        suffix_type="metahook_complete",
+        summary="Scuba tests failed: ad_unit_detail_test",
+    )
+    hooks = [HookEntry(command="pytest tests", status_lines=[status_line])]
+    result = _format_hooks_field(hooks)
+    result_str = "".join(result)
+    # The !: metahook prefix should be preserved even with empty suffix
+    assert "(!: metahook | Scuba tests failed: ad_unit_detail_test)" in result_str
+
+
+def test_format_hooks_field_summarize_complete_with_empty_suffix() -> None:
+    """Test that summarize_complete suffix_type preserves prefix even with empty suffix."""
+    status_line = HookStatusLine(
+        commit_entry_num="1",
+        timestamp="240601_123456",
+        status="FAILED",
+        duration="30s",
+        suffix="",  # Empty suffix
+        suffix_type="summarize_complete",
+        summary="Some test summary",
+    )
+    hooks = [HookEntry(command="pytest tests", status_lines=[status_line])]
+    result = _format_hooks_field(hooks)
+    result_str = "".join(result)
+    # The % prefix should be preserved even with empty suffix
+    assert "(% | Some test summary)" in result_str
+
+
 # Tests for update_changespec_hooks_field
 def test_update_changespec_hooks_field_basic() -> None:
     """Test updating hooks field in a project file."""
