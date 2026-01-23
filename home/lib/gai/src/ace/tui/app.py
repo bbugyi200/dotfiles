@@ -100,6 +100,7 @@ class AceApp(
         Binding("z", "start_fold_mode", "Fold", show=False),
         Binding("a", "accept_proposal", "Accept", show=False),
         Binding("b", "rebase", "Rebase", show=False),
+        Binding("R", "start_rewind", "Rewind", show=False),
         Binding("T", "open_tmux", "Tmux", show=False),
         Binding("t", "start_tmux_mode", "Tmux Mode", show=False),
         Binding("C", "checkout", "Checkout", show=False),
@@ -210,6 +211,9 @@ class AceApp(
         # Accept mode state
         self._accept_mode_active: bool = False
         self._accept_last_base: str | None = None
+
+        # Rewind mode state
+        self._rewind_mode_active: bool = False
 
         # Fold mode state (for z key sub-command)
         self._fold_mode_active: bool = False

@@ -35,6 +35,9 @@ class HintMixinBase:
     _accept_mode_active: bool
     _accept_last_base: str | None
 
+    # Rewind mode state
+    _rewind_mode_active: bool
+
     # Failed hooks state
     _failed_hooks_targets: list[str]
     _failed_hooks_file_path: str | None

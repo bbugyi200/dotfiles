@@ -26,6 +26,8 @@ class InputProcessingMixin(HintMixinBase):
             self._process_hooks_input(event.value)
         elif event.mode == "failed_hooks":
             self._process_failed_hooks_input(event.value)
+        elif event.mode == "rewind":
+            self._process_rewind_input(event.value)  # type: ignore[attr-defined]
         else:  # accept mode
             self._process_accept_input(event.value)  # type: ignore[attr-defined]
 
@@ -42,6 +44,9 @@ class InputProcessingMixin(HintMixinBase):
 
         # Clear accept mode state
         self._accept_mode_active = False
+
+        # Clear rewind mode state
+        self._rewind_mode_active = False
 
         try:
             hint_bar = self.query_one("#hint-input-bar", HintInputBar)  # type: ignore[attr-defined]

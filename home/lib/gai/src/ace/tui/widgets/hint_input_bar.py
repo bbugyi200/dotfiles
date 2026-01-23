@@ -64,7 +64,7 @@ class HintInputBar(Static):
         def __init__(
             self,
             value: str,
-            mode: Literal["view", "hooks", "accept", "failed_hooks"],
+            mode: Literal["view", "hooks", "accept", "failed_hooks", "rewind"],
         ) -> None:
             """Initialize the message.
 
@@ -87,15 +87,15 @@ class HintInputBar(Static):
 
     def __init__(
         self,
-        mode: Literal["view", "hooks", "accept", "failed_hooks"],
+        mode: Literal["view", "hooks", "accept", "failed_hooks", "rewind"],
         placeholder: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize the hint input bar.
 
         Args:
-            mode: The current hint mode ("view", "hooks", "accept", or "failed_hooks")
-            placeholder: Optional custom placeholder text (used for "accept" mode)
+            mode: The current hint mode ("view", "hooks", "accept", "failed_hooks", or "rewind")
+            placeholder: Optional custom placeholder text (used for "accept" and "rewind" modes)
             **kwargs: Additional arguments for Static
         """
         super().__init__(**kwargs)
@@ -123,6 +123,10 @@ class HintInputBar(Static):
                     placeholder="1-5 or 1 3 5 (select targets to add as hooks)",
                     id="hint-input",
                 )
+            elif self.mode == "rewind":
+                yield Label("Rewind: ", id="hint-label")
+                placeholder = self._custom_placeholder or ""
+                yield _HintInput(placeholder=placeholder, id="hint-input")
             else:  # accept mode
                 yield Label("Accept: ", id="hint-label")
                 placeholder = self._custom_placeholder or ""
