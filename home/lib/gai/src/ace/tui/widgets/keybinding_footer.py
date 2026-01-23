@@ -285,8 +285,8 @@ class KeybindingFooter(Horizontal):
         if base_status in ("WIP", "Drafted", "Mailed"):
             bindings.append(("b", "rebase"))
 
-        # Rewind (only if there are >=2 all-numeric COMMITS entries)
-        if changespec.commits:
+        # Rewind (only if status is not Submitted/Reverted and >=2 accepted entries)
+        if base_status not in ("Submitted", "Reverted") and changespec.commits:
             numeric_entries = [e for e in changespec.commits if not e.is_proposed]
             if len(numeric_entries) >= 2:
                 bindings.append(("R", "rewind"))

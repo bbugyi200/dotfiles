@@ -43,7 +43,7 @@ _CLS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
             ("M", "Mail CL"),
             ("m", "Mark/unmark current CL"),
             ("n", "Rename CL (non-Sub/Rev)"),
-            ("R", "Rewind to commit entry"),
+            ("R", "Rewind to prev commit (non-Sub/Rev)"),
             ("s", "Change status"),
             ("T / t1-t9", "Checkout + tmux (workspace 1-9)"),
             ("u", "Clear all marks"),
