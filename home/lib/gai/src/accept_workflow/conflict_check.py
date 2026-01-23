@@ -200,3 +200,27 @@ def run_conflict_check(
         failed_proposal=None,  # Can't determine which one failed
         conflicting_pairs=conflicting_pairs,
     )
+
+
+def format_conflict_message(result: ConflictCheckResult) -> str:
+    """Format conflict information for display.
+
+    Args:
+        result: The conflict check result.
+
+    Returns:
+        A formatted message describing the conflicts.
+    """
+    lines: list[str] = []
+
+    # Add conflicting pair messages (only if there are any)
+    for pair in result.conflicting_pairs:
+        lines.append(
+            f"Conflicting pair: {_format_proposal_id(*pair.proposal_a)} and "
+            f"{_format_proposal_id(*pair.proposal_b)}"
+        )
+
+    # Always add the abort message
+    lines.append("Accept aborted. Try accepting non-conflicting proposals separately.")
+
+    return "\n".join(lines)

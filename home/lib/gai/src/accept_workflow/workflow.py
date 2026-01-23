@@ -40,7 +40,7 @@ from workflow_utils import (
     get_project_from_workspace,
 )
 
-from .conflict_check import run_conflict_check
+from .conflict_check import ConflictCheckResult, run_conflict_check
 from .parsing import find_proposal_entry, parse_proposal_entries, parse_proposal_id
 from .renumber import renumber_commit_entries
 
@@ -89,6 +89,7 @@ class AcceptWorkflow(BaseWorkflow):
         self._cl_name = cl_name
         self._project_file = project_file
         self._mark_ready_to_mail = mark_ready_to_mail
+        self._conflict_result: ConflictCheckResult | None = None
 
     @property
     def name(self) -> str:
@@ -97,6 +98,11 @@ class AcceptWorkflow(BaseWorkflow):
     @property
     def description(self) -> str:
         return "Accept one or more proposed COMMITS entries"
+
+    @property
+    def conflict_result(self) -> ConflictCheckResult | None:
+        """Return the conflict check result if one was performed."""
+        return self._conflict_result
 
     def run(self) -> bool:
         """Run the accept workflow.
@@ -294,8 +300,10 @@ class AcceptWorkflow(BaseWorkflow):
 
             # Run conflict check for 2+ proposals (single proposal can't conflict)
             if len(validated_proposals) >= 2:
-                conflict_result = run_conflict_check(workspace_dir, validated_proposals)
-                if not conflict_result.success:
+                self._conflict_result = run_conflict_check(
+                    workspace_dir, validated_proposals
+                )
+                if not self._conflict_result.success:
                     return False
 
             # Process each proposal in order

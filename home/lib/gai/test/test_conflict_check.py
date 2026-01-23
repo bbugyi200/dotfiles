@@ -8,6 +8,7 @@ from accept_workflow.conflict_check import (
     _apply_all_proposals,
     _find_conflicting_pairs,
     _format_proposal_id,
+    format_conflict_message,
     run_conflict_check,
 )
 from ace.changespec import CommitEntry
@@ -293,3 +294,79 @@ def test_conflict_pair_dataclass() -> None:
     assert pair.proposal_a == (1, "a")
     assert pair.proposal_b == (1, "b")
     assert pair.error_message == "test error"
+
+
+def test_format_conflict_message_no_pairs() -> None:
+    """Test formatting when there are no conflicting pairs (2 proposals case)."""
+    result = ConflictCheckResult(
+        success=False,
+        failed_proposal=None,
+        conflicting_pairs=[],
+    )
+    message = format_conflict_message(result)
+    assert (
+        message == "Accept aborted. Try accepting non-conflicting proposals separately."
+    )
+
+
+def test_format_conflict_message_single_pair() -> None:
+    """Test formatting with a single conflicting pair."""
+    result = ConflictCheckResult(
+        success=False,
+        failed_proposal=None,
+        conflicting_pairs=[
+            ConflictPair(
+                proposal_a=(2, "a"),
+                proposal_b=(2, "b"),
+                error_message="patch conflict",
+            )
+        ],
+    )
+    message = format_conflict_message(result)
+    lines = message.split("\n")
+    assert len(lines) == 2
+    assert lines[0] == "Conflicting pair: (2a) and (2b)"
+    assert (
+        lines[1]
+        == "Accept aborted. Try accepting non-conflicting proposals separately."
+    )
+
+
+def test_format_conflict_message_multiple_pairs() -> None:
+    """Test formatting with multiple conflicting pairs."""
+    result = ConflictCheckResult(
+        success=False,
+        failed_proposal=None,
+        conflicting_pairs=[
+            ConflictPair(
+                proposal_a=(2, "a"),
+                proposal_b=(2, "b"),
+                error_message="patch conflict",
+            ),
+            ConflictPair(
+                proposal_a=(2, "a"),
+                proposal_b=(2, "c"),
+                error_message="patch conflict",
+            ),
+        ],
+    )
+    message = format_conflict_message(result)
+    lines = message.split("\n")
+    assert len(lines) == 3
+    assert lines[0] == "Conflicting pair: (2a) and (2b)"
+    assert lines[1] == "Conflicting pair: (2a) and (2c)"
+    assert (
+        lines[2]
+        == "Accept aborted. Try accepting non-conflicting proposals separately."
+    )
+
+
+def test_accept_workflow_conflict_result_initially_none() -> None:
+    """Test that AcceptWorkflow.conflict_result is None initially."""
+    from accept_workflow import AcceptWorkflow
+
+    workflow = AcceptWorkflow(
+        proposals=[("2a", None)],
+        cl_name="test-cl",
+    )
+    assert workflow.conflict_result is None

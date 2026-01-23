@@ -239,8 +239,13 @@ class ProposalRebaseMixin:
                 READY TO MAIL suffix to STATUS, all in the same atomic write.
         """
         from accept_workflow import AcceptWorkflow
+        from accept_workflow.conflict_check import format_conflict_message
+
+        workflow: AcceptWorkflow | None = None
+        success = False
 
         def run_handler() -> None:
+            nonlocal workflow, success
             # Build display message
             if len(entries) == 1:
                 proposal_id, _ = entries[0]
@@ -260,16 +265,23 @@ class ProposalRebaseMixin:
                 self.notify(msg)  # type: ignore[attr-defined]
 
             # Run accept workflow
-            accept_workflow = AcceptWorkflow(
+            workflow = AcceptWorkflow(
                 proposals=entries,
                 cl_name=changespec.name,
                 project_file=changespec.file_path,
                 mark_ready_to_mail=mark_ready_to_mail,
             )
-            accept_workflow.run()
+            success = workflow.run()
 
         with self.suspend():  # type: ignore[attr-defined]
             run_handler()
+
+        # Check for conflict-related failure and show notification
+        if not success and workflow is not None:
+            conflict_result = workflow.conflict_result
+            if conflict_result is not None and not conflict_result.success:
+                conflict_msg = format_conflict_message(conflict_result)
+                self.notify(conflict_msg, severity="error")  # type: ignore[attr-defined]
 
         self._reload_and_reposition()  # type: ignore[attr-defined]
 
