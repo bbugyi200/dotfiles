@@ -24,7 +24,7 @@ class FileViewingMixin(HintMixinBase):
         # Re-render detail with hints
         detail_widget = self.query_one("#detail-panel", ChangeSpecDetail)  # type: ignore[attr-defined]
         query_str = self.canonical_query_string  # type: ignore[attr-defined]
-        hint_mappings, _, _ = detail_widget.update_display_with_hints(
+        hint_mappings, _, _, _ = detail_widget.update_display_with_hints(
             changespec,
             query_str,
             hints_for=None,

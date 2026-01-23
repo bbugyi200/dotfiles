@@ -275,7 +275,7 @@ class ChangeSpecMixin:
             # Preserve hints if in hint mode
             if self._hint_mode_active:
                 # Respect collapsed states: show hints only on visible lines
-                hint_mappings, hook_hint_to_idx, hint_to_entry_id = (
+                hint_mappings, hook_hint_to_idx, hint_to_entry_id, _ = (
                     detail_widget.update_display_with_hints(
                         changespec,
                         self.canonical_query_string,  # type: ignore[attr-defined]
