@@ -386,3 +386,114 @@ def test_add_changespec_no_parent_hooks_inherited_when_no_parent() -> None:
         assert child_hooks == ["!$bb_hg_presubmit"]
     finally:
         os.unlink(project_file)
+
+
+def test_add_changespec_inherits_parent_bug() -> None:
+    """Test that child ChangeSpec inherits BUG from parent."""
+    # Create a project file with a parent ChangeSpec containing BUG
+    parent_content = """NAME: parent_feature
+DESCRIPTION:
+  Parent description
+BUG: http://b/12345678
+CL: http://cl/11111
+STATUS: WIP
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write(parent_content)
+        project_file = f.name
+
+    try:
+        with patch(
+            "commit_workflow.changespec_operations.get_project_file_path",
+            return_value=project_file,
+        ):
+            result = add_changespec_to_project_file(
+                project="test_project",
+                cl_name="child_feature",
+                description="Child description",
+                parent="parent_feature",
+                cl_url="http://cl/22222",
+                # No bug parameter - should inherit from parent
+            )
+
+        assert result is not None
+
+        # Parse to verify BUG inheritance
+        changespecs = parse_project_file(project_file)
+        child_cs = next(cs for cs in changespecs if cs.name == "child_feature__1")
+
+        # Child should have inherited parent's BUG
+        assert child_cs.bug == "http://b/12345678"
+    finally:
+        os.unlink(project_file)
+
+
+def test_add_changespec_explicit_bug_overrides_parent() -> None:
+    """Test that explicit bug parameter takes precedence over parent's BUG."""
+    # Create a project file with a parent ChangeSpec containing BUG
+    parent_content = """NAME: parent_feature
+DESCRIPTION:
+  Parent description
+BUG: http://b/11111111
+CL: http://cl/11111
+STATUS: WIP
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write(parent_content)
+        project_file = f.name
+
+    try:
+        with patch(
+            "commit_workflow.changespec_operations.get_project_file_path",
+            return_value=project_file,
+        ):
+            result = add_changespec_to_project_file(
+                project="test_project",
+                cl_name="child_feature",
+                description="Child description",
+                parent="parent_feature",
+                cl_url="http://cl/22222",
+                bug="http://b/99999999",  # Explicit bug should override parent
+            )
+
+        assert result is not None
+
+        # Parse to verify explicit BUG takes precedence
+        changespecs = parse_project_file(project_file)
+        child_cs = next(cs for cs in changespecs if cs.name == "child_feature__1")
+
+        # Child should have its explicit BUG, not parent's
+        assert child_cs.bug == "http://b/99999999"
+    finally:
+        os.unlink(project_file)
+
+
+def test_add_changespec_no_parent_bug_inherited_when_no_parent() -> None:
+    """Test that no BUG is inherited when there's no parent."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write("")
+        project_file = f.name
+
+    try:
+        with patch(
+            "commit_workflow.changespec_operations.get_project_file_path",
+            return_value=project_file,
+        ):
+            result = add_changespec_to_project_file(
+                project="test_project",
+                cl_name="orphan_feature",
+                description="Orphan description",
+                parent=None,  # No parent
+                cl_url="http://cl/33333",
+                # No bug parameter
+            )
+
+        assert result is not None
+
+        changespecs = parse_project_file(project_file)
+        cs = changespecs[0]
+
+        # Should have no BUG since no parent and no explicit bug
+        assert cs.bug is None
+    finally:
+        os.unlink(project_file)

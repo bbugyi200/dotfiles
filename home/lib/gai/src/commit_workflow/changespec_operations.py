@@ -133,8 +133,7 @@ def add_changespec_to_project_file(
     # Build partial ChangeSpec components (name added after suffix computation)
     # Only include PARENT line if parent is specified
     parent_line = f"PARENT: {parent}\n" if parent else ""
-    # Only include BUG line if bug is specified
-    bug_line = f"BUG: {bug}\n" if bug else ""
+    # BUG line is built later after potential parent inheritance
 
     # Build COMMITS field if initial_commits provided
     commits_block = ""
@@ -176,19 +175,24 @@ def add_changespec_to_project_file(
                     # Insert after parent ChangeSpec
                     insert_index = parent_end + 1
 
-                    # Get parent hooks to inherit
+                    # Get parent hooks and BUG to inherit
                     from ace.changespec import parse_project_file
 
                     changespecs = parse_project_file(project_file)
                     for cs in changespecs:
-                        if cs.name == parent and cs.hooks:
-                            # Collect existing hook commands to avoid duplicates
-                            existing_hooks = (
-                                set(initial_hooks) if initial_hooks else set()
-                            )
-                            for hook_entry in cs.hooks:
-                                if hook_entry.command not in existing_hooks:
-                                    parent_hooks_to_add.append(hook_entry.command)
+                        if cs.name == parent:
+                            # Inherit hooks from parent
+                            if cs.hooks:
+                                # Collect existing hook commands to avoid duplicates
+                                existing_hooks = (
+                                    set(initial_hooks) if initial_hooks else set()
+                                )
+                                for hook_entry in cs.hooks:
+                                    if hook_entry.command not in existing_hooks:
+                                        parent_hooks_to_add.append(hook_entry.command)
+                            # Inherit BUG from parent if not explicitly provided
+                            if not bug and cs.bug:
+                                bug = cs.bug
                             break
                 else:
                     # Parent not found, append to end
@@ -201,6 +205,9 @@ def add_changespec_to_project_file(
             else:
                 # No parent - append to end of file
                 insert_index = len(lines)
+
+            # Build BUG line (may be inherited from parent)
+            bug_line = f"BUG: {bug}\n" if bug else ""
 
             # Build HOOKS field with initial hooks + inherited parent hooks
             all_hooks = list(initial_hooks or []) + parent_hooks_to_add
