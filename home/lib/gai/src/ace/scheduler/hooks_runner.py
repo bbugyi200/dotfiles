@@ -253,6 +253,27 @@ def _start_stale_hooks_for_proposal(
     if entry.suffix == "BROKEN PROPOSAL":
         return updates, started_hooks, limited_count
 
+    # Early exit: when skip_limited=True, check if any unlimited hooks need to run
+    # This prevents claiming a workspace only to release it immediately when
+    # all hooks would be skipped due to runner limit
+    if skip_limited:
+        has_unlimited_hooks_to_start = False
+        for hook in changespec.hooks:
+            # Skip $ prefixed hooks for proposals
+            if hook.skip_proposal_runs:
+                continue
+            # Only consider unlimited hooks (! prefix)
+            if not hook.skip_fix_hook:
+                continue
+            # Check if this hook actually needs to run
+            if not hook_needs_run(hook, entry_id):
+                continue
+            has_unlimited_hooks_to_start = True
+            break
+
+        if not has_unlimited_hooks_to_start:
+            return updates, started_hooks, limited_count
+
     # Build proposal-specific workflow name (e.g., "axe(hooks)-3a")
     proposal_workflow = f"axe(hooks)-{entry_id}"
 
@@ -486,6 +507,24 @@ def _start_stale_hooks_shared_workspace(
 
     if not changespec.hooks:
         return updates, started_hooks, limited_count
+
+    # Early exit: when skip_limited=True, check if any unlimited hooks need to run
+    # This prevents claiming a workspace only to release it immediately when
+    # all hooks would be skipped due to runner limit
+    if skip_limited:
+        has_unlimited_hooks_to_start = False
+        for hook in changespec.hooks:
+            # Only consider unlimited hooks (! prefix)
+            if not hook.skip_fix_hook:
+                continue
+            # Check if this hook actually needs to run
+            if not hook_needs_run(hook, entry_id):
+                continue
+            has_unlimited_hooks_to_start = True
+            break
+
+        if not has_unlimited_hooks_to_start:
+            return updates, started_hooks, limited_count
 
     # Build entry-specific workflow name (e.g., "axe(hooks)-3")
     entry_workflow = f"axe(hooks)-{entry_id}"
