@@ -46,7 +46,7 @@ function run() {
     fi
 
     log::info "Reverse applying: %s" "${diff_file}"
-    if ! nog3 "${diff_file}" | patch -R -p0; then
+    if ! nog3 "${diff_file}" | patch -R -p1; then
       die "Failed to reverse-apply diff: %s" "${diff_file}"
     fi
   done
