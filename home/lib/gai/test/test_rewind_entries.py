@@ -304,3 +304,36 @@ def test_rewind_no_entry_after() -> None:
         assert result is False
     finally:
         os.unlink(temp_path)
+
+
+def test_rewind_deletes_orphaned_mentors_entries() -> None:
+    """Test that MENTORS entries for non-existent commits are deleted."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
+        f.write("NAME: test_cl\n")
+        f.write("STATUS: Drafted\n")
+        f.write("COMMITS:\n")
+        f.write("  (1) First commit\n")
+        f.write("  (2) Second commit\n")
+        f.write("  (3) Third commit\n")
+        # Note: No (4) in COMMITS - MENTORS (4) is orphaned
+        f.write("MENTORS:\n")
+        f.write("  (1) mentor1\n")
+        f.write("      | (1) [251224_120100] PASSED\n")
+        f.write("  (4) mentor4\n")
+        f.write("      | (4) [251224_120400] PASSED\n")
+        temp_path = f.name
+
+    try:
+        result = rewind_commit_entries(temp_path, "test_cl", 2)
+        assert result is True
+
+        with open(temp_path) as f:
+            content = f.read()
+
+        # MENTORS (1) should remain
+        assert "(1) mentor1" in content
+        # MENTORS (4) should be deleted (orphaned entry > selected)
+        assert "(4) mentor4" not in content
+        assert "[251224_120400]" not in content
+    finally:
+        os.unlink(temp_path)

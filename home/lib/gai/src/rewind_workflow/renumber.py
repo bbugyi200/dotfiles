@@ -121,15 +121,19 @@ def _update_mentors_with_id_mapping(
     lines: list[str],
     cl_name: str,
     id_mapping: dict[str, str | None],
+    selected_entry_num: int,
 ) -> list[str]:
     """Update MENTORS entry IDs and suffixes based on the mapping.
 
-    Entries mapped to None are deleted.
+    Entries mapped to None are deleted. Additionally, orphaned MENTORS entries
+    (numeric entries > selected_entry_num that aren't in the id_mapping) are
+    also deleted.
 
     Args:
         lines: All lines from the project file.
         cl_name: The CL name.
         id_mapping: Mapping from old entry IDs to new entry IDs (or None for deletion).
+        selected_entry_num: The entry number being rewound to.
 
     Returns:
         Updated lines with mentor entries renumbered.
@@ -159,6 +163,17 @@ def _update_mentors_with_id_mapping(
                 old_id = entry_match.group(1)
                 rest = entry_match.group(2)
                 new_id = id_mapping.get(old_id, old_id)
+
+                # Check for orphaned numeric entries > selected_entry_num
+                # These are MENTORS entries for commits that don't exist in COMMITS
+                if new_id is not None and old_id not in id_mapping:
+                    id_match = re.match(r"^(\d+)([a-z])?$", old_id)
+                    if id_match:
+                        num = int(id_match.group(1))
+                        letter = id_match.group(2)
+                        if letter is None and num > selected_entry_num:
+                            new_id = None  # Mark for deletion
+
                 if new_id is None:
                     # Delete this entry and its status lines
                     skip_status_lines = True
@@ -558,7 +573,9 @@ def rewind_commit_entries(
 
             # Update hooks, mentors, comments with ID mapping
             new_lines = _update_hooks_with_id_mapping(new_lines, cl_name, id_mapping)
-            new_lines = _update_mentors_with_id_mapping(new_lines, cl_name, id_mapping)
+            new_lines = _update_mentors_with_id_mapping(
+                new_lines, cl_name, id_mapping, selected_entry_num
+            )
             new_lines = _update_comments_with_id_mapping(new_lines, cl_name, id_mapping)
 
             # Sort hook status lines
