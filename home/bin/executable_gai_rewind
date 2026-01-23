@@ -1,0 +1,92 @@
+#!/bin/bash
+
+source ~/lib/bugyi.sh
+
+export USAGE_GRAMMAR=(
+  "[-v] DIFF_FILE [DIFF_FILE ...]"
+  "-h"
+)
+
+read -r -d '' DOC <<EOM
+$(usage)
+
+Reverse-apply diff files using patch -R.
+
+Diff content is piped through 'nog3' to convert /google3/ paths to / before
+applying with patch.
+
+Positional Arguments
+--------------------
+DIFF_FILE
+    One or more diff files to reverse-apply.
+
+Optional Arguments
+------------------
+-h | --help
+    View this help message.
+
+-v | --verbose
+    Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
+
+Examples
+--------
+$(basename "${BASH_SOURCE[0]}") changes.diff
+$(basename "${BASH_SOURCE[0]}") -v patch1.diff patch2.diff
+
+EOM
+
+set -e
+
+function run() {
+  parse_cli_args "$@"
+
+  for diff_file in "${DIFF_FILES[@]}"; do
+    log::info "Reverse applying: %s" "${diff_file}"
+    nog3 "${diff_file}" | patch -R -p0
+  done
+}
+
+function parse_cli_args() {
+  log::debug "Command-Line Arguments: ($*)"
+
+  eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
+
+  VERBOSE=0
+  while [[ -n "$1" ]]; do
+    case $1 in
+    -h | --help)
+      echo "${DOC}"
+      exit 0
+      ;;
+    -v | --verbose)
+      VERBOSE=$((VERBOSE + 1))
+      ;;
+    --)
+      shift
+      break
+      ;;
+    esac
+    shift
+  done
+
+  if [[ "${VERBOSE}" -gt 1 ]]; then
+    PS4='$LINENO: '
+    set -x
+  fi
+
+  if [[ $# -eq 0 ]]; then
+    echo "Error: at least one DIFF_FILE is required" >&2
+    echo "${DOC}"
+    exit 1
+  fi
+
+  DIFF_FILES=("$@")
+
+  readonly DOC
+  readonly VERBOSE
+  readonly DIFF_FILES
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+  run "$@"
+fi
