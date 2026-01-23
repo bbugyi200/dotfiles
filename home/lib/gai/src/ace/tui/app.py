@@ -105,8 +105,8 @@ class AceApp(
         Binding("C", "checkout", "Checkout", show=False),
         Binding("c", "start_checkout_mode", "Checkout Mode", show=False),
         # Note: "!" binding removed - use "a" then "@" to mark ready to mail
-        Binding("R", "refresh", "Refresh", show=False),
-        Binding("y", "sync", "Sync", show=False),
+        Binding("y", "refresh", "Refresh", show=False),
+        Binding("Y", "sync", "Sync", show=False),
         Binding("slash", "edit_query", "Edit Query", show=False),
         Binding("e", "edit_spec", "Edit Spec", show=False),
         Binding("ctrl+d", "scroll_detail_down", "Scroll Down", show=False),
