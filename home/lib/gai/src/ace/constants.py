@@ -8,5 +8,5 @@ DEFAULT_ZOMBIE_TIMEOUT_SECONDS = 2 * 60 * 60
 # - "$" prefix: skip running for proposal entries (e.g., "1a")
 REQUIRED_CHANGESPEC_HOOKS = (
     "!$bb_hg_presubmit",
-    "bb_hg_lint",
+    "$bb_hg_lint",
 )
