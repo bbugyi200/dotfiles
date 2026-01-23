@@ -158,10 +158,10 @@ class RewindWorkflow:
             if not success:
                 return (False, f"Failed to update to branch: {error_msg}")
 
-            # Collect diffs to rewind (entries 1..N where N = selected_entry_num)
+            # Collect diffs to rewind (entries after N where N = selected_entry_num)
             diff_files: list[str] = []
             for entry in sorted(numeric_entries, key=lambda e: e.number):
-                if entry.number <= selected_entry_num:
+                if entry.number > selected_entry_num:
                     if entry.diff:
                         diff_files.append(os.path.expanduser(entry.diff))
 
