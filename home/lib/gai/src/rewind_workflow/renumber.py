@@ -354,21 +354,21 @@ def rewind_commit_entries(
     """Update ChangeSpec after rewinding to a previous entry.
 
     The renumbering logic:
-    1. Keep entries 1...(selected-1) as accepted entries
-    2. Delete ALL entries after "entry after selected" (entries selected+2, selected+3, ...)
-    3. Convert entry (selected+1) to proposal with lowest available letter
-    4. Keep existing proposals for base=selected, convert them to base=(selected-1)
-    5. Convert selected entry to proposal with next available letter
+    1. Keep entries 1...(selected-1) as accepted entries (unchanged)
+    2. Keep selected entry (N) as (N) but add "(!: NEW PROPOSAL)" suffix
+    3. Convert entry (N+1) to proposal (Na) with "(!: NEW PROPOSAL)" suffix
+    4. Keep existing proposals for base N (Nb, Nc, etc.) unchanged
+    5. Delete ALL entries after (N+1) (entries N+2, N+3, ...)
     6. Update all references in HOOKS/MENTORS/COMMENTS
 
     Example: Entries (1), (2), (3), (3a), (3b), (4), (5), (6), rewind to (3):
     - Keep (1), (2) as accepted
-    - Delete (5), (6) - entries after "entry after" (4)
-    - Convert (4) to (2a) - entry after becomes lowest letter proposal
-    - Convert (3a), (3b) to (2b), (2c) - existing proposals
-    - Convert (3) to (2d) - selected entry becomes proposal
+    - Keep (3) as (3) with NEW PROPOSAL suffix
+    - Keep (3a), (3b) unchanged
+    - Convert (4) to (3c) with NEW PROPOSAL suffix (lowest available letter)
+    - Delete (5), (6)
 
-    Result: (1), (2), (2a)[was 4], (2b)[was 3a], (2c)[was 3b], (2d)[was 3]
+    Result: (1), (2), (3)[NEW PROPOSAL], (3a), (3b), (3c)[was 4, NEW PROPOSAL]
 
     Args:
         project_file: Path to the project file.
@@ -441,7 +441,7 @@ def rewind_commit_entries(
                 entries.append(current_entry)
 
             # Calculate base number for new proposals
-            base_num = selected_entry_num - 1
+            base_num = selected_entry_num
 
             # Separate entries into categories
             numeric_entries = [e for e in entries if e["letter"] is None]
@@ -482,32 +482,28 @@ def rewind_commit_entries(
                 old_id = _get_entry_id(e)
                 id_mapping[old_id] = None
 
-            # Track used letters for the new base
-            used_letters: set[str] = set()
+            # Selected entry stays as (N) - same ID
+            old_id = _get_entry_id(selected_entry)
+            id_mapping[old_id] = old_id
 
-            # Entry after -> lowest letter proposal
+            # Track used letters for the base number (existing proposals)
+            used_letters: set[str] = set()
+            for e in existing_proposals:
+                if e["letter"]:
+                    used_letters.add(e["letter"])
+
+            # Entry after -> lowest available letter proposal (Na)
             entry_after_new_letter = _get_lowest_available_letter(
                 base_num, used_letters
             )
-            used_letters.add(entry_after_new_letter)
             old_id = _get_entry_id(entry_after)
             new_id = f"{base_num}{entry_after_new_letter}"
             id_mapping[old_id] = new_id
 
-            # Existing proposals -> next available letters
-            for e in sorted(existing_proposals, key=lambda x: x["letter"] or ""):
-                new_letter = _get_lowest_available_letter(base_num, used_letters)
-                used_letters.add(new_letter)
+            # Existing proposals stay unchanged
+            for e in existing_proposals:
                 old_id = _get_entry_id(e)
-                new_id = f"{base_num}{new_letter}"
-                id_mapping[old_id] = new_id
-
-            # Selected entry -> next available letter
-            selected_new_letter = _get_lowest_available_letter(base_num, used_letters)
-            used_letters.add(selected_new_letter)
-            old_id = _get_entry_id(selected_entry)
-            new_id = f"{base_num}{selected_new_letter}"
-            id_mapping[old_id] = new_id
+                id_mapping[old_id] = old_id
 
             # Build new entries list
             new_entries: list[dict[str, Any]] = []
@@ -516,7 +512,17 @@ def rewind_commit_entries(
             for e in entries_to_keep:
                 new_entries.append(e.copy())
 
-            # Entry after -> proposal
+            # Selected entry stays as (N) but with NEW PROPOSAL suffix
+            new_entry = selected_entry.copy()
+            # Strip any existing suffix
+            new_entry["note"] = re.sub(
+                r" - \([!~@$%?]: [^)]+\)$", "", new_entry["note"]
+            )
+            # Add NEW PROPOSAL suffix
+            new_entry["note"] = f"{new_entry['note']} - (!: NEW PROPOSAL)"
+            new_entries.append(new_entry)
+
+            # Entry after -> proposal (Na)
             new_entry = entry_after.copy()
             new_entry["number"] = base_num
             new_entry["letter"] = entry_after_new_letter
@@ -528,30 +534,9 @@ def rewind_commit_entries(
             new_entry["note"] = f"{new_entry['note']} - (!: NEW PROPOSAL)"
             new_entries.append(new_entry)
 
-            # Existing proposals -> renumbered proposals
+            # Existing proposals stay unchanged
             for e in sorted(existing_proposals, key=lambda x: x["letter"] or ""):
-                new_entry = e.copy()
-                new_entry["number"] = base_num
-                old_id = _get_entry_id(e)
-                mapped_id = id_mapping.get(old_id)
-                # Extract the letter from the mapped ID (e.g., "2b" -> "b")
-                if mapped_id and len(mapped_id) > 1:
-                    new_entry["letter"] = mapped_id[-1]
-                else:
-                    new_entry["letter"] = e["letter"]
-                new_entries.append(new_entry)
-
-            # Selected entry -> proposal
-            new_entry = selected_entry.copy()
-            new_entry["number"] = base_num
-            new_entry["letter"] = selected_new_letter
-            # Strip any existing suffix
-            new_entry["note"] = re.sub(
-                r" - \([!~@$%?]: [^)]+\)$", "", new_entry["note"]
-            )
-            # Add NEW PROPOSAL suffix
-            new_entry["note"] = f"{new_entry['note']} - (!: NEW PROPOSAL)"
-            new_entries.append(new_entry)
+                new_entries.append(e.copy())
 
             # Sort entries
             new_entries = _sort_entries_by_id(new_entries)
