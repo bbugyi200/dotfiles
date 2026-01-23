@@ -3,6 +3,8 @@
 import os
 import re
 import tempfile
+from datetime import datetime
+from unittest.mock import patch
 
 import pytest
 from gemini_wrapper import file_references
@@ -547,7 +549,12 @@ def test_process_xcmd_references_filename_collision(
     """Test that two xcmds with same filename get unique names via counter."""
     monkeypatch.chdir(tmp_path)
     prompt = '#(out.txt: echo "first") #(out.txt: echo "second")'
-    result = process_xcmd_references(prompt)
+
+    # Mock datetime.now() to ensure consistent timestamp during test
+    fixed_time = datetime(2024, 1, 15, 10, 30, 45)
+    with patch("gemini_wrapper.file_references.datetime") as mock_datetime:
+        mock_datetime.now.return_value = fixed_time
+        result = process_xcmd_references(prompt)
 
     # Both patterns should be replaced
     assert "#(" not in result
@@ -571,7 +578,12 @@ def test_process_xcmd_references_multiple_filename_collisions(
     """Test that three xcmds with same filename get unique names via counter."""
     monkeypatch.chdir(tmp_path)
     prompt = '#(out.json: echo "a") #(out.json: echo "b") #(out.json: echo "c")'
-    result = process_xcmd_references(prompt)
+
+    # Mock datetime.now() to ensure consistent timestamp during test
+    fixed_time = datetime(2024, 1, 15, 10, 30, 45)
+    with patch("gemini_wrapper.file_references.datetime") as mock_datetime:
+        mock_datetime.now.return_value = fixed_time
+        result = process_xcmd_references(prompt)
 
     # All patterns should be replaced
     assert "#(" not in result
