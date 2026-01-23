@@ -35,14 +35,20 @@ $(basename "${BASH_SOURCE[0]}") -v patch1.diff patch2.diff
 
 EOM
 
-set -e
+set -eo pipefail
 
 function run() {
   parse_cli_args "$@"
 
   for diff_file in "${DIFF_FILES[@]}"; do
+    if [[ ! -f "${diff_file}" ]]; then
+      die "Diff file not found: %s" "${diff_file}"
+    fi
+
     log::info "Reverse applying: %s" "${diff_file}"
-    nog3 "${diff_file}" | patch -R -p0
+    if ! nog3 "${diff_file}" | patch -R -p0; then
+      die "Failed to reverse-apply diff: %s" "${diff_file}"
+    fi
   done
 }
 
