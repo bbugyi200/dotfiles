@@ -111,6 +111,7 @@ mentor_profiles:
   - profile_name: g3doc
     mentors:
       - mentor_name: g3doc
+        run_on_wip: true
         prompt: |
           Can you help me ensure that markdown file changes in this CL adhere to the g3doc best practices outlined in
           the @corp/g3doc/docs/reference/style.md file?
