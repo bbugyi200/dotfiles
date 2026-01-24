@@ -4,6 +4,8 @@ Contains common styling logic for suffix types used across different sections
 (COMMITS, HOOKS, COMMENTS, MENTORS).
 """
 
+import re
+
 from rich.text import Text
 
 from ...display_helpers import is_entry_ref_suffix, is_suffix_timestamp
@@ -21,6 +23,16 @@ SUFFIX_STYLES = {
     "metahook_complete": "bold #FFFFFF on #8B008B",
     "entry_ref": "bold #FF87AF",
 }
+
+# Pattern to match " | /tmp/..._failed_hooks_....txt" at end of content
+_TMP_FILE_SUFFIX_PATTERN = re.compile(
+    r"\s*\|\s*/tmp/[a-zA-Z0-9_]*_failed_hooks_[a-zA-Z0-9_]*\.txt$"
+)
+
+
+def _strip_tmp_file_for_display(content: str) -> str:
+    """Strip tmp file path suffix for display purposes."""
+    return _TMP_FILE_SUFFIX_PATTERN.sub("", content)
 
 
 def _build_suffix_content(
@@ -94,9 +106,10 @@ def append_suffix_to_text(
         else:
             text.append("(%)", style=SUFFIX_STYLES["summarize_complete"])
     elif suffix_type == "metahook_complete":
-        if suffix_content:
+        display_content = _strip_tmp_file_for_display(suffix_content)
+        if display_content:
             text.append(
-                f"(!: metahook | {suffix_content})",
+                f"(!: metahook | {display_content})",
                 style=SUFFIX_STYLES["metahook_complete"],
             )
         else:

@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 from ace.tui.widgets.suffix_formatting import (
     SUFFIX_STYLES,
     _build_suffix_content,
+    _strip_tmp_file_for_display,
     append_suffix_to_text,
     should_show_suffix,
 )
@@ -34,6 +35,26 @@ def test_build_suffix_content_neither() -> None:
     assert _build_suffix_content(None, None) == ""
     assert _build_suffix_content("", None) == ""
     assert _build_suffix_content("", "") == ""
+
+
+# Tests for _strip_tmp_file_for_display
+def test_strip_tmp_file_for_display_with_path() -> None:
+    """Test _strip_tmp_file_for_display strips tmp file path suffix."""
+    content = "3 Tests Failed | http://test/OCL:123 | /tmp/tap_failed_hooks_abc123.txt"
+    result = _strip_tmp_file_for_display(content)
+    assert result == "3 Tests Failed | http://test/OCL:123"
+
+
+def test_strip_tmp_file_for_display_without_path() -> None:
+    """Test _strip_tmp_file_for_display leaves content without tmp path unchanged."""
+    content = "3 Tests Failed | http://test/OCL:123"
+    result = _strip_tmp_file_for_display(content)
+    assert result == content
+
+
+def test_strip_tmp_file_for_display_empty() -> None:
+    """Test _strip_tmp_file_for_display handles empty string."""
+    assert _strip_tmp_file_for_display("") == ""
 
 
 # Tests for should_show_suffix

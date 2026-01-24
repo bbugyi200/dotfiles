@@ -65,12 +65,12 @@ def main() -> int:
     ) as f:
         header = f"Failed test targets from {full_url}"
         f.write(f"{header}\n")
-        f.write("=" * len(header) + "\n")
+        f.write("\n")
         for target in failed_targets:
             f.write(f"{target}\n")
         output_path = f.name
 
-    print(f"{len(failed_targets)} TAP Test Targets Failed: {output_path}")
+    print(f"{len(failed_targets)} Tests Failed | {full_url} | {output_path}")
     return 1  # Take over summarization
 
 
