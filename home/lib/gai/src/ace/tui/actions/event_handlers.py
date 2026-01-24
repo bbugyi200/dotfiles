@@ -127,9 +127,9 @@ class EventHandlersMixin:
             self._save_current_tab_position()  # type: ignore[attr-defined]
             # Set appropriate index for target tab
             if event.tab == "changespecs":
-                self.current_idx = self._changespecs_last_idx  # type: ignore[attr-defined]
+                self.current_idx = self._get_clamped_changespecs_idx()  # type: ignore[attr-defined]
             elif event.tab == "agents":
-                self.current_idx = self._agents_last_idx  # type: ignore[attr-defined]
+                self.current_idx = self._get_clamped_agents_idx()  # type: ignore[attr-defined]
             else:  # axe
                 self.current_idx = 0  # Axe has no list
             self.current_tab = event.tab  # type: ignore[assignment]
