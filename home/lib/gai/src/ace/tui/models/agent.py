@@ -57,6 +57,9 @@ class Agent:
     # Bug URL for agents with associated bug IDs
     bug: str | None = None
 
+    # CL number for agents with associated CL
+    cl_num: str | None = None
+
     @property
     def display_type(self) -> str:
         """Human-readable agent type for display."""
