@@ -39,6 +39,21 @@ def _should_show_commits_drawers(
     return False
 
 
+def _should_show_chat_drawer(
+    entry: CommitEntry,
+    changespec: ChangeSpec,
+    commits_collapsed: bool,
+) -> bool:
+    """Determine if CHAT drawer should be shown for a COMMITS entry.
+
+    CHAT is always shown for entry 1 (first entry, non-proposal).
+    For other entries, follows the same logic as DIFF.
+    """
+    if entry.number == 1 and not entry.is_proposed:
+        return True
+    return _should_show_commits_drawers(entry, changespec, commits_collapsed)
+
+
 def _get_rejected_proposals_for_entry(
     entry: CommitEntry,
     all_commits: list[CommitEntry],
@@ -154,6 +169,7 @@ def build_commits_section(
         show_drawers = _should_show_commits_drawers(
             entry, changespec, commits_collapsed
         )
+        show_chat = _should_show_chat_drawer(entry, changespec, commits_collapsed)
 
         # Add folded suffix if drawers are hidden or proposals are folded
         rejected_proposals = (
@@ -161,15 +177,16 @@ def build_commits_section(
             if commits_collapsed
             else []
         )
-        has_folded_drawers = not show_drawers and (entry.chat or entry.diff)
-        has_folded_content = has_folded_drawers or rejected_proposals
+        has_folded_chat = not show_chat and entry.chat
+        has_folded_diff = not show_drawers and entry.diff
+        has_folded_content = has_folded_chat or has_folded_diff or rejected_proposals
 
         if has_folded_content:
             text.append("  [folded: ", style="italic #808080")
             parts: list[tuple[str, str]] = []
-            if not show_drawers and entry.chat:
+            if has_folded_chat:
                 parts.append(("CHAT", "bold #87D7FF"))
-            if not show_drawers and entry.diff:
+            if has_folded_diff:
                 parts.append(("DIFF", "bold #87D7FF"))
             if rejected_proposals:
                 count = len(rejected_proposals)
@@ -184,8 +201,8 @@ def build_commits_section(
 
         text.append("\n")
 
-        # CHAT field - only show if drawers visible
-        if entry.chat and show_drawers:
+        # CHAT field - only show if chat drawer visible
+        if entry.chat and show_chat:
             text.append("      ", style="")
             # Parse duration suffix from chat (e.g., "path (1h2m3s)")
             chat_duration_match = re.search(r" \((\d+[hms]+[^)]*)\)$", entry.chat)
