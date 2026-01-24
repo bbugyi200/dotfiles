@@ -131,11 +131,13 @@ def _get_all_project_files() -> list[str]:
 
 def _load_agents_from_running_field(
     project_files: list[str],
+    bug_by_cl_name: dict[str, str | None],
 ) -> list[Agent]:
     """Load agents from RUNNING field in all project files.
 
     Args:
         project_files: List of project file paths.
+        bug_by_cl_name: Mapping of CL names to bug URLs.
 
     Returns:
         List of Agent objects from RUNNING field claims.
@@ -150,10 +152,11 @@ def _load_agents_from_running_field(
             if claim.workflow and claim.workflow.startswith("axe(hooks)"):
                 continue
 
+            cl_name = claim.cl_name or "unknown"
             agents.append(
                 Agent(
                     agent_type=AgentType.RUNNING,
-                    cl_name=claim.cl_name or "unknown",
+                    cl_name=cl_name,
                     project_file=project_file,
                     status="RUNNING",
                     start_time=None,  # RUNNING field doesn't have timestamps
@@ -163,17 +166,19 @@ def _load_agents_from_running_field(
                     # Use artifacts_timestamp as raw_suffix for prompt lookup
                     raw_suffix=claim.artifacts_timestamp,
                     new_cl_name=claim.new_cl_name,
+                    bug=bug_by_cl_name.get(cl_name),
                 )
             )
 
     return agents
 
 
-def _load_agents_from_hooks(cs: ChangeSpec) -> list[Agent]:
+def _load_agents_from_hooks(cs: ChangeSpec, bug: str | None) -> list[Agent]:
     """Load running agents from HOOKS field.
 
     Args:
         cs: The ChangeSpec to extract agents from.
+        bug: Bug URL from the ChangeSpec, or None.
 
     Returns:
         List of Agent objects from running hook agents.
@@ -207,17 +212,19 @@ def _load_agents_from_hooks(cs: ChangeSpec) -> list[Agent]:
                     commit_entry_id=sl.commit_entry_num,
                     pid=extract_pid_from_agent_suffix(sl.suffix),
                     raw_suffix=sl.suffix,
+                    bug=bug,
                 )
             )
 
     return agents
 
 
-def _load_agents_from_mentors(cs: ChangeSpec) -> list[Agent]:
+def _load_agents_from_mentors(cs: ChangeSpec, bug: str | None) -> list[Agent]:
     """Load running agents from MENTORS field.
 
     Args:
         cs: The ChangeSpec to extract agents from.
+        bug: Bug URL from the ChangeSpec, or None.
 
     Returns:
         List of Agent objects from running mentor agents.
@@ -247,17 +254,19 @@ def _load_agents_from_mentors(cs: ChangeSpec) -> list[Agent]:
                     commit_entry_id=mentor_entry.entry_id,
                     pid=extract_pid_from_agent_suffix(msl.suffix),
                     raw_suffix=msl.suffix,
+                    bug=bug,
                 )
             )
 
     return agents
 
 
-def _load_agents_from_comments(cs: ChangeSpec) -> list[Agent]:
+def _load_agents_from_comments(cs: ChangeSpec, bug: str | None) -> list[Agent]:
     """Load running agents from COMMENTS field.
 
     Args:
         cs: The ChangeSpec to extract agents from.
+        bug: Bug URL from the ChangeSpec, or None.
 
     Returns:
         List of Agent objects from running CRS agents.
@@ -281,6 +290,7 @@ def _load_agents_from_comments(cs: ChangeSpec) -> list[Agent]:
                 reviewer=comment.reviewer,
                 pid=extract_pid_from_agent_suffix(comment.suffix),
                 raw_suffix=comment.suffix,
+                bug=bug,
             )
         )
 
@@ -304,10 +314,13 @@ def _parse_timestamp_14_digit(timestamp_str: str) -> datetime | None:
         return None
 
 
-def _load_done_agents() -> list[Agent]:
+def _load_done_agents(bug_by_cl_name: dict[str, str | None]) -> list[Agent]:
     """Load completed agents from done.json marker files.
 
     Scans ~/.gai/projects/*/artifacts/ace-run/*/done.json for completed agents.
+
+    Args:
+        bug_by_cl_name: Mapping of CL names to bug URLs.
 
     Returns:
         List of Agent objects with status="NO CHANGES", "NEW CL", or "NEW PROPOSAL".
@@ -351,10 +364,11 @@ def _load_done_agents() -> list[Agent]:
                 else:
                     status = "NO CHANGES"
 
+                cl_name = data.get("cl_name", "unknown")
                 agents.append(
                     Agent(
                         agent_type=AgentType.RUNNING,
-                        cl_name=data.get("cl_name", "unknown"),
+                        cl_name=cl_name,
                         project_file=data.get("project_file", ""),
                         status=status,
                         start_time=start_time,
@@ -365,6 +379,7 @@ def _load_done_agents() -> list[Agent]:
                         new_cl_name=data.get("new_cl_name"),
                         proposal_id=data.get("proposal_id"),
                         workspace_num=data.get("workspace_num"),
+                        bug=bug_by_cl_name.get(cl_name),
                     )
                 )
             except Exception:
@@ -392,24 +407,33 @@ def load_all_agents() -> list[Agent]:
     # Get all project files
     project_files = _get_all_project_files()
 
-    # 1. Load from RUNNING field
-    agents.extend(_load_agents_from_running_field(project_files))
-
-    # 1a. Load completed (DONE) agents
-    agents.extend(_load_done_agents())
-
-    # 2. Load from each ChangeSpec's fields
+    # Load all ChangeSpecs early to build bug lookup
     all_changespecs = find_all_changespecs()
 
+    # Build bug URL lookup by CL name
+    bug_by_cl_name: dict[str, str | None] = {}
     for cs in all_changespecs:
+        if cs.bug:
+            bug_by_cl_name[cs.name] = f"http://b/{cs.bug}"
+
+    # 1. Load from RUNNING field
+    agents.extend(_load_agents_from_running_field(project_files, bug_by_cl_name))
+
+    # 1a. Load completed (DONE) agents
+    agents.extend(_load_done_agents(bug_by_cl_name))
+
+    # 2. Load from each ChangeSpec's fields
+    for cs in all_changespecs:
+        bug = f"http://b/{cs.bug}" if cs.bug else None
+
         # HOOKS - fix-hook and summarize agents
-        agents.extend(_load_agents_from_hooks(cs))
+        agents.extend(_load_agents_from_hooks(cs, bug))
 
         # MENTORS - mentor agents
-        agents.extend(_load_agents_from_mentors(cs))
+        agents.extend(_load_agents_from_mentors(cs, bug))
 
         # COMMENTS - CRS agents
-        agents.extend(_load_agents_from_comments(cs))
+        agents.extend(_load_agents_from_comments(cs, bug))
 
     # Filter out agents with dead PIDs (but keep DONE agents)
     verified_agents: list[Agent] = []

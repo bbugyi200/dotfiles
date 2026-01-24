@@ -54,6 +54,9 @@ class Agent:
     # Proposal ID for NEW PROPOSAL agents
     proposal_id: str | None = None
 
+    # Bug URL for agents with associated bug IDs
+    bug: str | None = None
+
     @property
     def display_type(self) -> str:
         """Human-readable agent type for display."""

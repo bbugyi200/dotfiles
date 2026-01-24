@@ -100,6 +100,11 @@ class _AgentPromptPanel(Static):
             header_text.append("New Proposal ID: ", style="bold #87D7FF")
             header_text.append(f"{agent.proposal_id}\n", style="#AF87D7 bold")
 
+        # BUG field (if available)
+        if agent.bug:
+            header_text.append("BUG: ", style="bold #87D7FF")
+            header_text.append(f"{agent.bug}\n", style="#FFD700")
+
         # Separator
         header_text.append("\n")
         header_text.append("─" * 50 + "\n", style="dim")
