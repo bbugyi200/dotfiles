@@ -70,7 +70,7 @@ def main() -> int:
             f.write(f"{target}\n")
         output_path = f.name
 
-    print(f"{len(failed_targets)} Tests Failed | {full_url} | {output_path}")
+    print(f"{len(failed_targets)} Tests Failed: {full_url} | {output_path}")
     return 1  # Take over summarization
 
 
