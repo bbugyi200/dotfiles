@@ -94,6 +94,9 @@ gai commit my_feature -b 12345     # Associate with bug (BUG= tag)
 gai commit my_feature -B 12345     # Bug is fixed by this CL (FIXED= tag)
 gai commit my_feature -n "Note"    # Custom initial HISTORY note
 gai commit my_feature -p project   # Override project name
+gai commit my_feature --chat /path/chat.txt  # Associate with chat file
+gai commit my_feature --timestamp 250125_103045  # Shared timestamp for synced files
+gai commit my_feature --end-timestamp 250125_110000  # End timestamp for duration
 ```
 
 ### gai amend
@@ -106,6 +109,9 @@ gai amend -p                       # Create proposed HISTORY entry
 gai amend -a 2a                    # Accept proposal entry 2a
 gai amend -a '2b(Add field)'       # Accept with custom message
 gai amend --chat /path/to/chat     # Associate with chat file
+gai amend --cl my_feature -a 2a    # Accept on specific CL (not current branch)
+gai amend --target-dir /path/dir   # Run commands in specific directory
+gai amend --timestamp 250125_103045  # Shared timestamp for synced files
 ```
 
 ### gai restore
@@ -157,9 +163,13 @@ gai run mentor code:comments       # Run mentor agent
 gai run split my_feature           # Split CL into multiple CLs
 gai run summarize file.py "usage"  # Summarize a file
 gai run "Your question here"       # Execute query directly
+gai run                            # Open editor to write prompt
+gai run .                          # Pick from prompt history
 gai run -r                         # Resume last conversation
 gai run -r history_file            # Resume specific conversation
 gai run -l                         # List chat history files
+gai run -a "Accept msg" "prompt"   # Auto-accept with custom message
+gai run -c my_cl "Commit msg" "prompt"  # Override CL name and commit message
 ```
 
 ## Ace TUI Reference
@@ -179,30 +189,49 @@ The Ace TUI has three tabs:
 | Section | Key | Action |
 |---------|-----|--------|
 | **Navigation** | `j` / `k` | Move to next / previous CL |
-| | `Ctrl+D` / `U` | Scroll detail panel down / up |
+| | `< / > / ~` | Navigate to ancestor / child / sibling |
+| | `Ctrl+O / K` | Jump back / forward in history |
+| | `Ctrl+D / U` | Scroll detail panel down / up |
 | **CL Actions** | `a` | Accept proposal |
 | | `b` | Rebase CL onto parent |
+| | `C / c1-c9` | Checkout CL (workspace 1-9) |
 | | `d` | Show diff |
+| | `e` | Edit spec file |
 | | `h` | Edit hooks |
-| | `m` | Mail CL |
+| | `H` | Add hooks from failed targets |
+| | `M` | Mail CL |
+| | `m` | Mark/unmark current CL |
+| | `n` | Rename CL (non-Submitted/Reverted) |
+| | `R` | Rewind to prev commit (non-Submitted/Reverted) |
 | | `s` | Change status |
+| | `T / t1-t9` | Checkout + tmux (workspace 1-9) |
+| | `u` | Clear all marks |
 | | `v` | View files |
 | | `w` | Reword CL description |
-| | `@` | Edit spec file |
+| | `Y` | Sync workspace |
 | **Fold Mode** | `z c` | Toggle commits section |
 | | `z h` | Toggle hooks section |
 | | `z m` | Toggle mentors section |
 | | `z z` | Toggle all sections |
-| **Workflows** | `r` | Run workflow |
-| | `<space>` | Run custom agent |
+| **Workflows & Agents** | `r` | Run workflow |
+| | `@` | Run agent on marked CLs (or current) |
+| | `!` | Run background command |
+| | `<space>` | Run agent from current CL |
 | **Queries** | `/` | Edit search query |
 | | `0-9` | Load saved query |
-| | `^` | Previous query in history |
-| | `_` | Next query in history |
-| **Axe Control** | `X` | Start / stop axe daemon |
+| | `^` | Previous query |
+| | `_` | Next query |
+| **Copy Mode (%)** | `%%` | Copy ChangeSpec |
+| | `%!` | Copy ChangeSpec + snapshot |
+| | `%b` | Copy bug number |
+| | `%c` | Copy CL number |
+| | `%n` | Copy CL name |
+| | `%p` | Copy project spec file |
+| | `%s` | Copy gai ace snapshot |
+| **Axe Control** | `X` | Start / stop axe (or select process) |
 | | `Q` | Stop axe and quit |
-| **General** | `Tab` / `Shift+Tab` | Switch tabs |
-| | `%` | Copy to clipboard |
+| **General** | `Tab / Shift+Tab` | Switch tabs |
+| | `.` | Show/hide reverted CLs |
 | | `y` | Refresh |
 | | `q` | Quit |
 | | `?` | Show help |
@@ -212,24 +241,41 @@ The Ace TUI has three tabs:
 | Section | Key | Action |
 |---------|-----|--------|
 | **Navigation** | `j` / `k` | Move to next / previous agent |
-| | `Ctrl+D` / `U` | Scroll diff panel down / up |
-| | `Ctrl+F` / `B` | Scroll prompt panel down / up |
-| **Agent Actions** | `<space>` | Run custom agent |
+| | `Ctrl+D / U` | Scroll diff panel down / up |
+| | `Ctrl+F / B` | Scroll prompt panel down / up |
+| **Agent Actions** | `@` | Run custom agent |
+| | `!` | Run background command |
+| | `r` | Revive chat as agent |
 | | `x` | Kill / dismiss agent |
-| | `@` | Edit chat in editor |
+| | `e` | Edit chat in editor |
 | | `l` | Toggle diff/prompt layout |
-| **Clipboard** | `%` | Copy chat to clipboard |
+| **Axe Control** | `X` | Start / stop axe (or select process) |
+| | `Q` | Stop axe and quit |
+| **General** | `Tab / Shift+Tab` | Switch tabs |
+| | `.` | Show/hide non-run agents |
+| | `%` | Copy chat to clipboard |
+| | `y` | Refresh |
+| | `q` | Quit |
+| | `?` | Show help |
 
 #### Axe Tab
 
 | Section | Key | Action |
 |---------|-----|--------|
-| **Navigation** | `g` | Scroll to top |
+| **Navigation** | `j` / `k` | Move to next / previous command |
+| | `g` | Scroll to top |
 | | `G` | Scroll to bottom |
+| **Background Commands** | `@` | Run agent |
+| | `!` | Run background command |
+| | `X` | Kill current command (or toggle axe) |
 | **Axe Control** | `x` | Clear output |
 | | `X` | Start / stop axe daemon |
 | | `Q` | Stop axe and quit |
-| **Clipboard** | `%` | Copy axe output to clipboard |
+| **General** | `Tab / Shift+Tab` | Switch tabs |
+| | `%` | Copy output to clipboard |
+| | `y` | Refresh |
+| | `q` | Quit |
+| | `?` | Show help |
 
 ### Status Indicators
 
@@ -290,7 +336,10 @@ DESCRIPTION:
 PARENT: project_parent_cl  # Optional, for dependent CLs
 CL: http://cl/12345        # Set after CL creation
 STATUS: Drafted
+BUG: b/12345               # Associated bug number
 TEST TARGETS: //path/to:test
+KICKSTART:                 # Optional kickstart prompt for AI workflows
+  Initial context or instructions for AI agents
 ```
 
 ### Status Values
@@ -315,7 +364,7 @@ TEST TARGETS: //path/to:test
 
 ## Query Language Reference
 
-The query language supports boolean logic and property filters.
+The query language supports boolean logic, property filters, and convenient shorthands.
 
 ### Operators
 
@@ -343,35 +392,78 @@ Quoted strings match against all searchable text:
 | `project:` | `project:myproj` | Match project name |
 | `name:` | `name:my_feature` | Match exact CL name |
 | `ancestor:` | `ancestor:parent_cl` | Match CL or any parent in chain |
+| `sibling:` | `sibling:related_cl` | Match CLs in same "family" |
 
-### Shorthands
+### Special Marker Shorthands
 
 | Shorthand | Meaning | Matches |
 |-----------|---------|---------|
 | `!!!` | Error suffix | CLs with any `(!:` error suffix |
 | `@@@` | Running agent | CLs with `(@:` running agent marker |
 | `$$$` | Running process | CLs with `($:` running process marker |
+| `!` | (standalone) | Same as `!!!` |
+| `@` | (standalone) | Same as `@@@` |
+| `$` | (standalone) | Same as `$$$` |
+| `*` | Any special | `(!!! OR @@@ OR $$$)` |
+
+### Negation Shorthands
+
+| Shorthand | Expands To | Description |
+|-----------|------------|-------------|
+| `!!` | `NOT !!!` | No error suffix |
+| `!@` | `NOT @@@` | No running agents |
+| `!$` | `NOT $$$` | No running processes |
+
+### Status Shorthands
+
+| Shorthand | Expands To |
+|-----------|------------|
+| `%d` | `status:DRAFTED` |
+| `%m` | `status:MAILED` |
+| `%r` | `status:REVERTED` |
+| `%s` | `status:SUBMITTED` |
+| `%w` | `status:WIP` |
+
+### Property Filter Shorthands
+
+| Shorthand | Expands To | Example |
+|-----------|------------|---------|
+| `+name` | `project:name` | `+myproject` |
+| `^name` | `ancestor:name` | `^parent_cl` |
+| `~name` | `sibling:name` | `~related_cl` |
+| `&name` | `name:name` | `&my_feature` |
 
 ### Examples
 
 ```bash
 # CLs with errors
 '!!!'
+'!'                      # Shorthand for !!!
 
 # Running agents
 '@@@'
+'@'                      # Shorthand for @@@
+
+# Any CL with errors, running agents, or processes
+'*'
+
+# CLs without errors
+'!!'
 
 # Drafted CLs in project "foo"
 'status:Drafted AND project:foo'
+'%d +foo'                # Same, using shorthands
 
 # Feature CLs not yet mailed
 '"feature" AND NOT status:Mailed'
 
 # All descendants of a parent CL
 'ancestor:my_parent_cl'
+'^my_parent_cl'          # Same, using shorthand
 
 # Complex filter
 '(status:Drafted OR status:Mailed) AND project:myproj AND NOT !!!'
+'(%d OR %m) +myproj !!'  # Same, using shorthands
 ```
 
 ## Workflows Reference
@@ -606,9 +698,13 @@ Suffixes indicate the state of COMMITS, HOOKS, COMMENTS, and MENTORS entries.
 
 | Pattern | Matches |
 |---------|---------|
-| `!!!` | Any entry with `(!:` error suffix |
-| `@@@` | Any entry with `(@` running agent marker |
-| `$$$` | Any entry with `($:` running process marker |
+| `!!!` or `!` | Any entry with `(!:` error suffix |
+| `@@@` or `@` | Any entry with `(@` running agent marker |
+| `$$$` or `$` | Any entry with `($:` running process marker |
+| `*` | Any entry with error, running agent, or running process |
+| `!!` | No error suffix (`NOT !!!`) |
+| `!@` | No running agents (`NOT @@@`) |
+| `!$` | No running processes (`NOT $$$`) |
 
 ### Status Suffix Styling
 
