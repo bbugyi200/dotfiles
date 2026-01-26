@@ -20,6 +20,10 @@ return {
 			vim.g.mkdp_filetypes = { "bugged", "codecompanion", "markdown" }
 		end
 
+		vim.g.mkdp_preview_options = {
+			disable_sync_scroll = 1,
+		}
+
 		-- KEYMAP: <leader>mdp
 		vim.keymap.set("n", "<leader>mdp", "<cmd>MarkdownPreviewToggle<cr>", {
 			desc = "MarkdownPreviewToggle",
