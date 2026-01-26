@@ -34,6 +34,7 @@ class _PromptContext:
     update_target: str
     bug: str | None = None
     fixed_bug: str | None = None
+    is_home_mode: bool = False
 
 
 class AgentWorkflowMixin(AgentLaunchMixin):
@@ -76,6 +77,11 @@ class AgentWorkflowMixin(AgentLaunchMixin):
         def on_project_select(result: SelectionItem | str | None) -> None:
             if result is None:
                 self.notify("Selection cancelled")  # type: ignore[attr-defined]
+                return
+
+            # Handle home directory selection - skip CL name and bug modals
+            if isinstance(result, SelectionItem) and result.item_type == "home":
+                self._show_prompt_input_bar_for_home()
                 return
 
             # Determine selection type and details
@@ -351,6 +357,41 @@ class AgentWorkflowMixin(AgentLaunchMixin):
             bar.remove()
         except Exception:
             pass  # Bar not present
+
+    def _show_prompt_input_bar_for_home(self) -> None:
+        """Show prompt input bar for home directory mode.
+
+        This skips CL name and bug modals, running the agent from the user's
+        home directory without version control or workspace management.
+        """
+        from pathlib import Path
+
+        from gai_utils import generate_timestamp
+
+        from ..widgets import PromptInputBar
+
+        timestamp = generate_timestamp()
+        workflow_name = f"ace(run)-{timestamp}"
+
+        # Store context for when prompt is submitted
+        self._prompt_context = _PromptContext(
+            project_name="home",
+            cl_name=None,
+            new_cl_name=None,
+            parent_cl_name=None,
+            project_file="",
+            workspace_dir=str(Path.home()),
+            workspace_num=0,
+            workflow_name=workflow_name,
+            timestamp=timestamp,
+            history_sort_key="home",
+            display_name="~",
+            update_target="",
+            is_home_mode=True,
+        )
+
+        # Show prompt input bar
+        self.mount(PromptInputBar(id="prompt-input-bar"))  # type: ignore[attr-defined]
 
     def on_prompt_input_bar_submitted(self, event: object) -> None:
         """Handle prompt submission from the input bar."""

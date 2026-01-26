@@ -21,9 +21,9 @@ class SelectionItem:
     """An item that can be selected in the modal."""
 
     display_name: str  # What to show in the list (e.g., "[P] myproject")
-    item_type: Literal["project", "cl"]  # Type for processing
+    item_type: Literal["project", "cl", "home"]  # Type for processing
     project_name: str  # Project name
-    cl_name: str | None  # CL name if type is "cl", None for projects
+    cl_name: str | None  # CL name if type is "cl", None for projects/home
 
 
 class ProjectSelectModal(
@@ -42,6 +42,16 @@ class ProjectSelectModal(
 
     def _load_items(self) -> None:
         """Load all projects and CLs."""
+        # Add home directory option first
+        self.all_items.append(
+            SelectionItem(
+                display_name="[H] ~ (home directory)",
+                item_type="home",
+                project_name="home",
+                cl_name=None,
+            )
+        )
+
         # Load projects from ~/.gai/projects/<p>/<p>.gp
         projects_dir = Path.home() / ".gai" / "projects"
         if projects_dir.exists():
@@ -85,7 +95,10 @@ class ProjectSelectModal(
     def _create_styled_label(self, display_name: str) -> Text:
         """Create styled text for an option label."""
         text = Text()
-        if display_name.startswith("[P]"):
+        if display_name.startswith("[H]"):
+            text.append("[H]", style="bold #FFD700")  # Gold for home
+            text.append(display_name[3:])
+        elif display_name.startswith("[P]"):
             text.append("[P]", style="bold #87D7FF")  # Cyan for projects
             text.append(display_name[3:])
         elif display_name.startswith("[C]"):

@@ -60,6 +60,7 @@ class AgentLaunchMixin:
             history_sort_key=ctx.history_sort_key,  # type: ignore[attr-defined]
             bug=ctx.bug,  # type: ignore[attr-defined]
             fixed_bug=ctx.fixed_bug,  # type: ignore[attr-defined]
+            is_home_mode=getattr(ctx, "is_home_mode", False),
         )
 
         # Refresh agents list (deferred to avoid lag)
@@ -165,6 +166,7 @@ class AgentLaunchMixin:
         history_sort_key: str = "",
         bug: str | None = None,
         fixed_bug: str | None = None,
+        is_home_mode: bool = False,
     ) -> None:
         """Launch agent as background process.
 
@@ -183,6 +185,7 @@ class AgentLaunchMixin:
             history_sort_key: CL name to associate with the prompt in history.
             bug: Bug number to associate with a new ChangeSpec (BUG: field).
             fixed_bug: Bug number for FIXED: field (mutually exclusive with bug).
+            is_home_mode: If True, skip workspace management (for home directory).
         """
         import subprocess
         import tempfile
@@ -216,7 +219,8 @@ class AgentLaunchMixin:
         # Start background process first to get actual PID
         # Args: cl_name, project_file, workspace_dir, output_path, workspace_num,
         #       workflow_name, prompt_file, timestamp, new_cl_name, parent_cl_name,
-        #       update_target, project_name, history_sort_key, bug, fixed_bug
+        #       update_target, project_name, history_sort_key, bug, fixed_bug,
+        #       is_home_mode
         try:
             with open(output_path, "w") as output_file:
                 process = subprocess.Popen(
@@ -238,6 +242,7 @@ class AgentLaunchMixin:
                         history_sort_key,
                         bug or "",
                         fixed_bug or "",
+                        "1" if is_home_mode else "",
                     ],
                     cwd=workspace_dir,
                     stdout=output_file,
@@ -249,24 +254,25 @@ class AgentLaunchMixin:
             self.notify(f"Failed to start agent: {e}", severity="error")  # type: ignore[attr-defined]
             return
 
-        # Claim workspace with actual subprocess PID
-        from running_field import claim_workspace
+        # Claim workspace with actual subprocess PID (skip for home mode)
+        if not is_home_mode:
+            from running_field import claim_workspace
 
-        if not claim_workspace(
-            project_file,
-            workspace_num,
-            workflow_name,
-            process.pid,
-            cl_name,
-            artifacts_timestamp=timestamp,
-            new_cl_name=new_cl_name,
-        ):
-            self.notify(  # type: ignore[attr-defined]
-                "Failed to claim workspace, terminating agent", severity="error"
-            )
-            process.terminate()
-            try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                process.kill()
-            return
+            if not claim_workspace(
+                project_file,
+                workspace_num,
+                workflow_name,
+                process.pid,
+                cl_name,
+                artifacts_timestamp=timestamp,
+                new_cl_name=new_cl_name,
+            ):
+                self.notify(  # type: ignore[attr-defined]
+                    "Failed to claim workspace, terminating agent", severity="error"
+                )
+                process.terminate()
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                return

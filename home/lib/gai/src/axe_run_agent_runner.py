@@ -268,16 +268,16 @@ def _create_new_changespec(
 
 def main() -> None:
     """Run agent workflow and release workspace on completion."""
-    # Accept 16 args: cl_name, project_file, workspace_dir, output_path,
+    # Accept 17 args: cl_name, project_file, workspace_dir, output_path,
     # workspace_num, workflow_name, prompt_file, timestamp, new_cl_name,
     # parent_cl_name, update_target, project_name, cl_name_for_history, bug,
-    # fixed_bug
-    if len(sys.argv) != 16:
+    # fixed_bug, is_home_mode
+    if len(sys.argv) != 17:
         print(
             f"Usage: {sys.argv[0]} <cl_name> <project_file> <workspace_dir> "
             "<output_path> <workspace_num> <workflow_name> <prompt_file> <timestamp> "
             "<new_cl_name> <parent_cl_name> <update_target> <project_name> "
-            "<cl_name_for_history> <bug> <fixed_bug>",
+            "<cl_name_for_history> <bug> <fixed_bug> <is_home_mode>",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -299,11 +299,13 @@ def main() -> None:
     cl_name_for_history = sys.argv[13]
     bug_arg = sys.argv[14]
     fixed_bug_arg = sys.argv[15]
-    # Convert empty strings to None
+    is_home_mode_arg = sys.argv[16]
+    # Convert empty strings to None/False
     new_cl_name: str | None = new_cl_name_arg if new_cl_name_arg else None
     parent_cl_name: str | None = parent_cl_name_arg if parent_cl_name_arg else None
     bug: str | None = bug_arg if bug_arg else None
     fixed_bug: str | None = fixed_bug_arg if fixed_bug_arg else None
+    is_home_mode: bool = bool(is_home_mode_arg)
 
     # Read prompt from temp file
     try:
@@ -344,8 +346,8 @@ def main() -> None:
 
     console = Console()
 
-    # Prepare workspace before running agent
-    if update_target:
+    # Prepare workspace before running agent (skip for home mode)
+    if update_target and not is_home_mode:
         print("=== Preparing Workspace ===")
         if not _prepare_workspace(workspace_dir, cl_name, update_target):
             print("Failed to prepare workspace", file=sys.stderr)
@@ -358,9 +360,12 @@ def main() -> None:
             # Change to workspace directory
             os.chdir(workspace_dir)
 
-            # Get project name from project_file path
+            # Get project name from project_file path (or use "home" for home mode)
             # Path format: ~/.gai/projects/<project>/<project>.gp
-            project_name = os.path.basename(os.path.dirname(project_file))
+            if is_home_mode:
+                project_name = "home"
+            else:
+                project_name = os.path.basename(os.path.dirname(project_file))
 
             # Create artifacts directory using shared timestamp
             # Convert timestamp from YYmmdd_HHMMSS to YYYYmmddHHMMSS format
@@ -389,13 +394,16 @@ def main() -> None:
             )
             print(f"\nChat history saved to: {saved_path}")
 
-            # Check for local changes
-            from gai_utils import run_shell_command
+            # Check for local changes (skip for home mode - not version-controlled)
+            if is_home_mode:
+                has_changes = False
+            else:
+                from gai_utils import run_shell_command
 
-            changes_result = run_shell_command(
-                "branch_local_changes", capture_output=True
-            )
-            has_changes = bool(changes_result.stdout.strip())
+                changes_result = run_shell_command(
+                    "branch_local_changes", capture_output=True
+                )
+                has_changes = bool(changes_result.stdout.strip())
 
             if has_changes and new_cl_name:
                 # Save diff BEFORE creating the new ChangeSpec (before hg commit)
@@ -580,13 +588,15 @@ def main() -> None:
         print(f"Duration: {duration}")
 
     finally:
-        # Always release workspace, even if killed via SIGTERM
-        # This prevents zombie workspace claims in the RUNNING field
-        try:
-            release_workspace(project_file, workspace_num, workflow_name, cl_name)
-            print("Workspace released")
-        except Exception as e:
-            print(f"Error releasing workspace: {e}", file=sys.stderr)
+        # Release workspace (skip for home mode - no workspace to release)
+        if not is_home_mode:
+            # Always release workspace, even if killed via SIGTERM
+            # This prevents zombie workspace claims in the RUNNING field
+            try:
+                release_workspace(project_file, workspace_num, workflow_name, cl_name)
+                print("Workspace released")
+            except Exception as e:
+                print(f"Error releasing workspace: {e}", file=sys.stderr)
 
         # Write completion marker
         try:
