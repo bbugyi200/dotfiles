@@ -104,35 +104,43 @@ class AgentWorkflowMixin(AgentLaunchMixin):
                 # Determine sort key for prompt history (never use new_cl_name)
                 history_sort_key = selected_cl_name or project_name
 
-                # For projects, CL name is required (modal validates this)
+                # Handle project selection
                 if selection_type == "project":
-                    if new_cl_name is None:
-                        self.notify("CL name cancelled for project")  # type: ignore[attr-defined]
-                        return
+                    if new_cl_name is not None:
+                        # New CL name provided - show bug input modal (existing behavior)
+                        def on_bug_input(bug_result: BugInputResult | None) -> None:
+                            if bug_result is None or bug_result.cancelled:
+                                self.notify("Cancelled")  # type: ignore[attr-defined]
+                                return
 
-                    # Show bug input modal for project selections
-                    def on_bug_input(bug_result: BugInputResult | None) -> None:
-                        if bug_result is None or bug_result.cancelled:
-                            self.notify("Cancelled")  # type: ignore[attr-defined]
-                            return
+                            # Determine bug vs fixed_bug based on is_fixed flag
+                            bug_value = (
+                                bug_result.bug if not bug_result.is_fixed else None
+                            )
+                            fixed_bug_value = (
+                                bug_result.bug if bug_result.is_fixed else None
+                            )
 
-                        # Determine bug vs fixed_bug based on is_fixed flag
-                        bug_value = bug_result.bug if not bug_result.is_fixed else None
-                        fixed_bug_value = (
-                            bug_result.bug if bug_result.is_fixed else None
-                        )
+                            self._show_prompt_input_bar(
+                                project_name,
+                                cl_name=None,
+                                update_target="p4head",
+                                new_cl_name=new_cl_name,
+                                history_sort_key=history_sort_key or project_name,
+                                bug=bug_value,
+                                fixed_bug=fixed_bug_value,
+                            )
 
+                        self.push_screen(BugInputModal(), on_bug_input)  # type: ignore[attr-defined]
+                    else:
+                        # No CL name provided - skip bug modal, go straight to prompt
                         self._show_prompt_input_bar(
                             project_name,
                             cl_name=None,
                             update_target="p4head",
-                            new_cl_name=new_cl_name,
+                            new_cl_name=None,
                             history_sort_key=history_sort_key or project_name,
-                            bug=bug_value,
-                            fixed_bug=fixed_bug_value,
                         )
-
-                    self.push_screen(BugInputModal(), on_bug_input)  # type: ignore[attr-defined]
                 else:
                     if new_cl_name is None and selected_cl_name is None:
                         self.notify("No CL name and no selected CL")  # type: ignore[attr-defined]

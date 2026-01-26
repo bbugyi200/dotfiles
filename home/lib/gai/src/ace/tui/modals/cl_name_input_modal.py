@@ -37,8 +37,9 @@ class _CLNameInput(Input):
 class CLNameInputModal(ModalScreen[CLNameResult | None]):
     """Modal for inputting a new CL name.
 
-    For project selections, the CL name is required.
-    For existing CL selections, it's optional (empty = add proposal to existing CL).
+    For both project and CL selections, the CL name is optional:
+    - Project selections: Empty = run agent without creating a ChangeSpec
+    - CL selections: Empty = add proposal to existing CL
 
     Returns CLNameResult with action indicating how the modal was dismissed:
     - SUBMIT: Normal enter - proceed with new prompt
@@ -76,7 +77,7 @@ class CLNameInputModal(ModalScreen[CLNameResult | None]):
             # Show different instructions based on selection type
             if self.selection_type == "project":
                 yield Label(
-                    "Required: Enter a name for the new ChangeSpec",
+                    "Optional: Leave empty to run agent without creating a ChangeSpec",
                     id="modal-instructions",
                 )
             else:
@@ -110,12 +111,6 @@ class CLNameInputModal(ModalScreen[CLNameResult | None]):
         """Validate and submit the input value."""
         cl_input = self.query_one("#cl-name-input", Input)
         value = cl_input.value.strip()
-
-        # For projects, CL name is required
-        if self.selection_type == "project" and not value:
-            # Show error - don't dismiss
-            self.notify("CL name is required for projects", severity="error")
-            return
 
         # Validate against conflicting ChangeSpecs
         if value and self._project_name:

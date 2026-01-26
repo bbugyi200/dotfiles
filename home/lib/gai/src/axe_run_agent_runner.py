@@ -448,6 +448,37 @@ def main() -> None:
                     json.dump(new_cl_done_marker, f, indent=2)
                 print(f"Done marker written to: {done_path}")
             elif has_changes:
+                # Check if this is a "project-only" run (no existing CL)
+                # Indicated by update_target being "p4head" AND no parent CL
+                is_project_only_run = update_target == "p4head" and not parent_cl_name
+
+                if is_project_only_run:
+                    # ERROR: Changes detected but no CL name provided for project-only
+                    error_msg = (
+                        "Agent made file changes but no CL name was provided. "
+                        "When running against a project without specifying a new CL "
+                        "name, the agent must not make changes to the codebase."
+                    )
+                    console.print(f"[red]Error: {error_msg}[/red]")
+
+                    # Write error outcome marker
+                    error_done_marker = {
+                        "cl_name": cl_name,
+                        "project_file": project_file,
+                        "timestamp": timestamp,
+                        "artifacts_timestamp": artifacts_timestamp,
+                        "response_path": saved_path,
+                        "outcome": "error_changes_without_cl",
+                        "error_message": error_msg,
+                        "workspace_num": workspace_num,
+                    }
+                    done_path = os.path.join(artifacts_dir, "done.json")
+                    with open(done_path, "w", encoding="utf-8") as f:
+                        json.dump(error_done_marker, f, indent=2)
+                    print(f"Done marker written to: {done_path}")
+
+                    raise RuntimeError(error_msg)
+
                 # No new_cl_name provided - create a proposal for existing CL
                 # Generate summary from chat history for better proposal note
                 from summarize_utils import get_file_summary
