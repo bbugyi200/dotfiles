@@ -408,6 +408,70 @@ def _load_done_agents(
     return agents
 
 
+def _load_running_home_agents() -> list[Agent]:
+    """Load running home mode agents from running.json marker files.
+
+    Scans ~/.gai/projects/home/artifacts/ace-run/*/running.json for running agents.
+    Only includes agents with PIDs that are still running.
+
+    Returns:
+        List of Agent objects with status="RUNNING".
+    """
+    agents: list[Agent] = []
+    home_ace_run_dir = (
+        Path.home() / ".gai" / "projects" / "home" / "artifacts" / "ace-run"
+    )
+
+    if not home_ace_run_dir.exists():
+        return agents
+
+    for artifact_dir in home_ace_run_dir.iterdir():
+        if not artifact_dir.is_dir():
+            continue
+
+        running_file = artifact_dir / "running.json"
+        if not running_file.exists():
+            continue
+
+        try:
+            with open(running_file, encoding="utf-8") as f:
+                data = json.load(f)
+
+            # Verify PID is still running
+            pid = data.get("pid")
+            if pid is None or not is_process_running(pid):
+                # Process died - clean up the stale marker
+                try:
+                    running_file.unlink()
+                except OSError:
+                    pass
+                continue
+
+            # Parse timestamp from artifact dir name (YYYYmmddHHMMSS)
+            timestamp_str = artifact_dir.name
+            start_time = _parse_timestamp_14_digit(timestamp_str)
+
+            cl_name = data.get("cl_name", "~")
+            agents.append(
+                Agent(
+                    agent_type=AgentType.RUNNING,
+                    cl_name=cl_name,
+                    project_file=str(
+                        Path.home() / ".gai" / "projects" / "home" / "home.gp"
+                    ),
+                    status="RUNNING",
+                    start_time=start_time,
+                    workflow="ace(run)",
+                    pid=pid,
+                    raw_suffix=timestamp_str,
+                )
+            )
+        except Exception:
+            continue
+
+    return agents
+
+
 def load_all_agents() -> list[Agent]:
     """Load all running agents from all sources.
 
@@ -449,6 +513,9 @@ def load_all_agents() -> list[Agent]:
 
     # 1a. Load completed (DONE) agents
     agents.extend(_load_done_agents(bug_by_cl_name, cl_by_cl_name))
+
+    # 1b. Load running home mode agents (from running.json markers)
+    agents.extend(_load_running_home_agents())
 
     # 2. Load from each ChangeSpec's fields
     for cs in all_changespecs:

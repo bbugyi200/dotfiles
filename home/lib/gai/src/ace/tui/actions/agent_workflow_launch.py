@@ -255,7 +255,15 @@ class AgentLaunchMixin:
             return
 
         # Claim workspace with actual subprocess PID (skip for home mode)
-        if not is_home_mode:
+        if is_home_mode:
+            # Create home project directory and file if needed (for artifact path resolution)
+            home_project_dir = os.path.expanduser("~/.gai/projects/home")
+            home_project_file = os.path.join(home_project_dir, "home.gp")
+            os.makedirs(home_project_dir, exist_ok=True)
+            if not os.path.exists(home_project_file):
+                with open(home_project_file, "w", encoding="utf-8") as f:
+                    f.write("")  # Empty file - just needs to exist
+        else:
             from running_field import claim_workspace
 
             if not claim_workspace(

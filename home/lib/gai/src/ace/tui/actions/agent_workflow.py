@@ -374,12 +374,13 @@ class AgentWorkflowMixin(AgentLaunchMixin):
         workflow_name = f"ace(run)-{timestamp}"
 
         # Store context for when prompt is submitted
+        # project_file is needed for artifact path resolution in agent_loader
         self._prompt_context = _PromptContext(
             project_name="home",
             cl_name=None,
             new_cl_name=None,
             parent_cl_name=None,
-            project_file="",
+            project_file=os.path.expanduser("~/.gai/projects/home/home.gp"),
             workspace_dir=str(Path.home()),
             workspace_num=0,
             workflow_name=workflow_name,

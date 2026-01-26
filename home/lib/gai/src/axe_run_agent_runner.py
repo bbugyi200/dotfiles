@@ -355,6 +355,9 @@ def main() -> None:
         print("===========================")
         print()
 
+    # Track running marker path for cleanup (home mode only)
+    running_marker_path: str | None = None
+
     try:
         try:
             # Change to workspace directory
@@ -374,6 +377,18 @@ def main() -> None:
                 f"~/.gai/projects/{project_name}/artifacts/ace-run/{artifacts_timestamp}"
             )
             os.makedirs(artifacts_dir, exist_ok=True)
+
+            # Write running marker for home mode (no workspace tracking available)
+            if is_home_mode:
+                running_marker_path = os.path.join(artifacts_dir, "running.json")
+                running_marker = {
+                    "cl_name": cl_name,
+                    "pid": os.getpid(),
+                    "timestamp": timestamp,
+                    "prompt": prompt,
+                }
+                with open(running_marker_path, "w", encoding="utf-8") as f:
+                    json.dump(running_marker, f, indent=2)
 
             # Run the agent
             ai_result = invoke_agent(
@@ -588,6 +603,13 @@ def main() -> None:
         print(f"Duration: {duration}")
 
     finally:
+        # Clean up running marker for home mode (done.json replaces it)
+        if running_marker_path and os.path.exists(running_marker_path):
+            try:
+                os.unlink(running_marker_path)
+            except OSError:
+                pass
+
         # Release workspace (skip for home mode - no workspace to release)
         if not is_home_mode:
             # Always release workspace, even if killed via SIGTERM
