@@ -211,19 +211,22 @@ def validate_file_references(prompt: str) -> None:
         sys.exit(1)
 
 
-def process_file_references(prompt: str) -> str:
+def process_file_references(prompt: str, *, is_home_mode: bool = False) -> str:
     """
     Process file paths prefixed with '@' in the prompt.
 
-    For absolute paths:
+    For absolute paths (when is_home_mode=False):
     - Copy the file to bb/gai/context/ directory
     - Replace the path in the prompt with the relative path
+
+    For absolute paths (when is_home_mode=True):
+    - Just expand ~ to the full home directory path (no copying)
 
     For relative paths: validate they exist and don't escape CWD
 
     This function extracts all file paths from the prompt that are prefixed
     with '@' and verifies that:
-    1. Absolute paths exist and are copied to bb/gai/context/
+    1. Absolute paths exist and are copied to bb/gai/context/ (or just expanded in home mode)
     2. Relative paths do not start with '..' (to prevent escaping CWD)
     3. All files exist
     4. There are no duplicate file path references
@@ -233,9 +236,11 @@ def process_file_references(prompt: str) -> str:
 
     Args:
         prompt: The prompt text to process
+        is_home_mode: If True, skip copying files and just expand tilde paths
 
     Returns:
         The modified prompt with absolute paths replaced by relative paths to bb/gai/context/
+        (or expanded paths in home mode)
 
     Raises:
         SystemExit: If any referenced file starts with '..', does not exist, or is duplicated
@@ -245,13 +250,24 @@ def process_file_references(prompt: str) -> str:
 
     parsed = _parse_file_refs(prompt)
 
-    # Validate and exit on errors (including context_dir check)
-    if _print_validation_errors(parsed, check_context_dir=True):
+    # Validate and exit on errors (skip context_dir check in home mode since we don't use it)
+    if _print_validation_errors(parsed, check_context_dir=not is_home_mode):
         sys.exit(1)
 
-    # If there are no absolute paths to copy, just return the original prompt
+    # If there are no absolute paths to process, just return the original prompt
     if not parsed.absolute_paths:
         return prompt
+
+    # In home mode, just expand tilde paths without copying
+    if is_home_mode:
+        modified_prompt = prompt
+        for original_path, expanded_path in parsed.absolute_paths:
+            # Only replace if the path differs (i.e., had a tilde to expand)
+            if original_path != expanded_path:
+                modified_prompt = modified_prompt.replace(
+                    f"@{original_path}", f"@{expanded_path}"
+                )
+        return modified_prompt
 
     # Notify user that we're processing absolute file paths
     file_count = len(parsed.absolute_paths)

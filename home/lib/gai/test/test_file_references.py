@@ -10,6 +10,7 @@ import pytest
 from gemini_wrapper import file_references
 from gemini_wrapper.file_references import (
     _parse_file_refs,
+    process_file_references,
     process_xcmd_references,
     validate_file_references,
 )
@@ -601,3 +602,121 @@ def test_process_xcmd_references_multiple_filename_collisions(
     assert has_base, f"Expected base filename pattern, got: {out_files}"
     assert has_counter_1, f"Expected _1 counter filename pattern, got: {out_files}"
     assert has_counter_2, f"Expected _2 counter filename pattern, got: {out_files}"
+
+
+# Tests for process_file_references with is_home_mode
+
+
+def test_process_file_references_home_mode_expands_tilde() -> None:
+    """Test that home mode expands tilde paths without copying."""
+    home = os.path.expanduser("~")
+
+    # Create a temp file in home directory
+    with tempfile.NamedTemporaryFile(
+        suffix=".txt", dir=home, delete=False, prefix="test_home_mode_"
+    ) as f:
+        temp_path = f.name
+        temp_basename = os.path.basename(temp_path)
+
+    try:
+        prompt = f"Check @~/{temp_basename}"
+        result = process_file_references(prompt, is_home_mode=True)
+
+        # Should expand tilde to full path
+        assert f"@{home}/{temp_basename}" in result
+        # Original tilde reference should be gone
+        assert f"@~/{temp_basename}" not in result
+    finally:
+        os.unlink(temp_path)
+
+
+def test_process_file_references_home_mode_no_copy(
+    tmp_path: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that home mode does NOT create bb/gai/context directory."""
+    monkeypatch.chdir(tmp_path)
+
+    # Create a temp file with absolute path
+    with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as f:
+        temp_path = f.name
+        f.write(b"test content")
+
+    try:
+        prompt = f"Check @{temp_path}"
+        result = process_file_references(prompt, is_home_mode=True)
+
+        # bb/gai/context should NOT be created in home mode
+        context_dir = os.path.join(tmp_path, "bb/gai/context")
+        assert not os.path.exists(context_dir)
+
+        # Prompt should be unchanged for non-tilde absolute paths
+        assert f"@{temp_path}" in result
+    finally:
+        os.unlink(temp_path)
+
+
+def test_process_file_references_home_mode_absolute_path_unchanged() -> None:
+    """Test that absolute paths without tilde are left unchanged in home mode."""
+    # Create a temp file with absolute path
+    with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as f:
+        temp_path = f.name
+        f.write(b"test content")
+
+    try:
+        prompt = f"Check @{temp_path}"
+        result = process_file_references(prompt, is_home_mode=True)
+
+        # Absolute path without tilde should remain unchanged
+        assert f"@{temp_path}" in result
+    finally:
+        os.unlink(temp_path)
+
+
+def test_process_file_references_home_mode_relative_path_unchanged(
+    tmp_path: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that relative paths are left unchanged in home mode."""
+    monkeypatch.chdir(tmp_path)
+
+    # Create a temp file in cwd
+    test_file = os.path.join(tmp_path, "test_relative.txt")
+    with open(test_file, "w") as f:
+        f.write("test content")
+
+    prompt = "Check @test_relative.txt"
+    result = process_file_references(prompt, is_home_mode=True)
+
+    # Relative path should remain unchanged
+    assert "@test_relative.txt" in result
+
+
+def test_process_file_references_normal_mode_copies_files(
+    tmp_path: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that normal mode (is_home_mode=False) still copies files."""
+    monkeypatch.chdir(tmp_path)
+
+    # Create a temp file with absolute path
+    with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as f:
+        temp_path = f.name
+        f.write(b"test content")
+        temp_basename = os.path.basename(temp_path)
+
+    try:
+        prompt = f"Check @{temp_path}"
+        result = process_file_references(prompt, is_home_mode=False)
+
+        # bb/gai/context should be created in normal mode
+        # Note: uses PID-based subdirectory
+        pid = os.getpid()
+        context_dir = os.path.join(tmp_path, f"bb/gai/context/{pid}")
+        assert os.path.exists(context_dir)
+
+        # File should be copied
+        copied_file = os.path.join(context_dir, temp_basename)
+        assert os.path.exists(copied_file)
+
+        # Prompt should reference the copied file
+        assert f"@bb/gai/context/{pid}/{temp_basename}" in result
+    finally:
+        os.unlink(temp_path)

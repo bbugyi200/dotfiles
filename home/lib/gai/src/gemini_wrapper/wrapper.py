@@ -199,6 +199,7 @@ def invoke_agent(
     workflow: str | None = None,
     suppress_output: bool = False,
     timestamp: str | None = None,
+    is_home_mode: bool = False,
 ) -> AIMessage:
     """Invoke a Gemini agent with standard logging context.
 
@@ -217,6 +218,7 @@ def invoke_agent(
         workflow: Optional workflow name for chat history.
         suppress_output: If True, suppress output display.
         timestamp: Optional timestamp for chat file naming (YYmmdd_HHMMSS format).
+        is_home_mode: If True, skip file copying for @ file references.
 
     Returns:
         The AIMessage response from the agent.
@@ -230,6 +232,7 @@ def invoke_agent(
         suppress_output=suppress_output,
         workflow=workflow,
         timestamp=timestamp,
+        is_home_mode=is_home_mode,
     )
     messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
     return model.invoke(messages)
@@ -247,6 +250,7 @@ class GeminiCommandWrapper:
         self.suppress_output: bool = (
             False  # Flag to suppress immediate prompt/response output
         )
+        self.is_home_mode: bool = False  # Skip file copying in home mode
         # Check for global override first, then use constructor arg
         override = os.environ.get("GAI_MODEL_SIZE_OVERRIDE")
         self.model_size: Literal["little", "big"] = (
@@ -266,6 +270,7 @@ class GeminiCommandWrapper:
         suppress_output: bool = False,
         workflow: str | None = None,
         timestamp: str | None = None,
+        is_home_mode: bool = False,
     ) -> None:
         """Set the context for logging prompts and responses.
 
@@ -277,6 +282,7 @@ class GeminiCommandWrapper:
             suppress_output: If True, suppress immediate prompt/response output
             workflow: Workflow name for saving to ~/.gai/chats/ (e.g., "crs")
             timestamp: Optional timestamp for chat file naming (YYmmdd_HHMMSS format)
+            is_home_mode: If True, skip file copying for @ file references
         """
         self.agent_type = agent_type
         self.iteration = iteration
@@ -285,6 +291,7 @@ class GeminiCommandWrapper:
         self.suppress_output = suppress_output
         self.workflow = workflow
         self.timestamp = timestamp
+        self.is_home_mode = is_home_mode
 
     def _display_decision_counts(self) -> None:
         """Display the planning agent decision counts."""
@@ -317,7 +324,8 @@ class GeminiCommandWrapper:
         query = process_xcmd_references(query)
 
         # Process file references in the prompt (copy absolute paths to bb/gai/context/ and update prompt)
-        query = process_file_references(query)
+        # In home mode, just expand tilde paths without copying files
+        query = process_file_references(query, is_home_mode=self.is_home_mode)
 
         # Process Jinja2 templates AFTER all expansions, so conditions can check resolved values
         if is_jinja2_template(query):

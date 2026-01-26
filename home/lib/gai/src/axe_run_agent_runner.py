@@ -397,6 +397,7 @@ def main() -> None:
                 model_size="big",
                 artifacts_dir=artifacts_dir,
                 timestamp=timestamp,
+                is_home_mode=is_home_mode,
             )
 
             # Prepare and save chat history
