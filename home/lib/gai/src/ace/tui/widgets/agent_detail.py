@@ -108,6 +108,10 @@ class _AgentPromptPanel(Static):
             header_text.append("BUG: ", style="bold #87D7FF")
             header_text.append(f"{agent.bug}\n", style="#FFD700")
 
+        # Timestamp (when agent started)
+        header_text.append("Timestamp: ", style="bold #87D7FF")
+        header_text.append(f"{agent.start_time_display}\n", style="#D7D7FF")
+
         # Separator
         header_text.append("\n")
         header_text.append("─" * 50 + "\n", style="dim")
