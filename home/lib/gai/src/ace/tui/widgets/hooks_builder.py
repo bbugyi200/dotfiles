@@ -67,6 +67,27 @@ def _is_fix_hook_proposal_for_this_hook(
     return parent_status_line.suffix == entry_id
 
 
+def _is_old_proposal(entry_id: str, changespec: ChangeSpec) -> bool:
+    """Check if entry_id is an OLD proposal (not a new one).
+
+    A proposal is "old" if its base number doesn't match the highest
+    all-numeric commit number.
+    """
+    parsed = parse_proposal_id(entry_id)
+    if parsed is None:
+        return False  # Not a proposal at all
+
+    base_number, _letter = parsed
+
+    if not changespec.commits:
+        return False
+    max_number = max(
+        (e.number for e in changespec.commits if not e.is_proposed),
+        default=0,
+    )
+    return base_number != max_number
+
+
 def build_hooks_section(
     text: Text,
     changespec: ChangeSpec,
@@ -109,6 +130,9 @@ def build_hooks_section(
         dead_ids: list[str] = []  # Historical only
         if hooks_collapsed and hook.status_lines:
             for sl in hook.status_lines:
+                # Skip old proposal IDs in folded summary
+                if _is_old_proposal(sl.commit_entry_num, changespec):
+                    continue
                 if sl.status == "PASSED":
                     # Exclude fix-hook proposal PASSED (shown, not folded)
                     if not _is_fix_hook_proposal_for_this_hook(
