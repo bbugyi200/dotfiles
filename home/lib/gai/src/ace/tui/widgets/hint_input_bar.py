@@ -36,13 +36,20 @@ class _HintInput(Input):
         self._ace_app.action_scroll_detail_down()
 
     def action_unix_line_discard(self) -> None:
-        """Clear from cursor to beginning of line, or scroll up if nothing to clear."""
+        """Scroll detail panel up, or clear line if already at top."""
+        from textual.containers import VerticalScroll
+
+        # Check if we can scroll up in the detail panel
+        if self._ace_app.current_tab == "changespecs":
+            scroll_container = self._ace_app.query_one("#detail-scroll", VerticalScroll)
+            if scroll_container.scroll_y > 0:
+                self._ace_app.action_scroll_detail_up()
+                return
+
+        # At the top (or not on changespecs tab) - clear line
         if self.cursor_position > 0:
             self.value = self.value[self.cursor_position :]
             self.cursor_position = 0
-        else:
-            # Nothing to clear - fall back to scrolling up
-            self._ace_app.action_scroll_detail_up()
 
     def action_end_or_fill_placeholder(self) -> None:
         """Fill placeholder if input is empty, otherwise move cursor to end."""
