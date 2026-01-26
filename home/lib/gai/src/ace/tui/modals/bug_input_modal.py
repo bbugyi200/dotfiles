@@ -226,7 +226,6 @@ class BugInputModal(ModalScreen[BugInputResult | None]):
     def on_input_submitted(self, _event: Input.Submitted) -> None:
         """Handle Enter key - two-phase behavior."""
         bug_input = self.query_one("#bug-input", FilterInput)
-        value = bug_input.value.strip()
 
         if self._has_selected_bug:
             # Phase 2: Submit the selected bug ID
@@ -241,10 +240,9 @@ class BugInputModal(ModalScreen[BugInputResult | None]):
                 bug_input.value = selected_bug.issue
                 bug_input.cursor_position = len(selected_bug.issue)
                 self._has_selected_bug = True
-            elif value:
-                # User typed something without selecting - just submit it
+            else:
+                # No selection - submit whatever is in the input (even if empty)
                 self._submit_value()
-            # If no selection and no input, do nothing
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         """Handle option selection (Enter or click on list item)."""
