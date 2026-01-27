@@ -53,7 +53,7 @@ lint-python-lite: $(VENV_DIR) ## Run core Python linters (fast).
 	@printf "\n---------- Running ruff format check on Python files... ----------\n"
 	$(VENV_DIR)/bin/ruff format --check home/lib
 	@printf "\n---------- Running mypy on Python files... ----------\n"
-	MYPYPATH=home/lib/gai/src $(VENV_DIR)/bin/mypy --explicit-package-bases home/lib/gai/src home/lib/gai/test home/lib/xfile
+	MYPYPATH=home/lib/gai/src:home/lib/gai/test $(VENV_DIR)/bin/mypy --explicit-package-bases --exclude 'home/lib/gai/src/__main__.py' home/lib/gai/src home/lib/gai/test home/lib/xfile
 	@printf "\n---------- Running flake8 on Python files... ----------\n"
 	$(VENV_DIR)/bin/flake8 home/lib
 	@printf "\n---------- Running black check on Python files... ----------\n"

@@ -3,9 +3,10 @@
 import sys
 from pathlib import Path
 
-# Add src directory to path so we can import gai modules
+# Add src and test directories to path so we can import modules
 # NOTE: This must happen BEFORE importing any gai modules
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent))
 
 import pytest
 from ace.changespec import (
