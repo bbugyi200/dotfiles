@@ -424,6 +424,7 @@ def start_fix_hook_workflow(
         workflow_name,
         pid,
         changespec.name,
+        artifacts_timestamp=timestamp,
     ):
         log(
             f"[WS#{workspace_num}] Warning: Failed to claim workspace for fix-hook on "

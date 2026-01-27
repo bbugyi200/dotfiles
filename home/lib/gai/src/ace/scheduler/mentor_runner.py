@@ -266,6 +266,7 @@ def _start_single_mentor(
         workflow_name,
         pid,
         changespec.name,
+        artifacts_timestamp=timestamp,
     ):
         set_mentor_status(
             changespec.file_path,

@@ -103,6 +103,38 @@ def _parse_timestamp_from_suffix(suffix: str | None) -> datetime | None:
     return None
 
 
+def _parse_timestamp_13_char(timestamp_str: str) -> datetime | None:
+    """Parse a 13-character timestamp string (YYmmdd_HHMMSS).
+
+    Args:
+        timestamp_str: The timestamp string to parse.
+
+    Returns:
+        Parsed datetime, or None if parsing fails.
+    """
+    if len(timestamp_str) != 13 or timestamp_str[6] != "_":
+        return None
+    try:
+        return datetime.strptime(timestamp_str, "%y%m%d_%H%M%S")
+    except ValueError:
+        return None
+
+
+def _parse_timestamp_from_workflow_name(workflow: str | None) -> datetime | None:
+    """Parse timestamp from workflow name as fallback.
+
+    Args:
+        workflow: Workflow name like "axe(fix-hook)-260112_134051"
+
+    Returns:
+        Parsed datetime, or None if not extractable.
+    """
+    ts_str = _extract_timestamp_from_workflow(workflow)
+    if ts_str:
+        return _parse_timestamp_13_char(ts_str)
+    return None
+
+
 def _get_all_project_files() -> list[str]:
     """Get all project file paths.
 
@@ -162,9 +194,9 @@ def _load_agents_from_running_field(
                     project_file=project_file,
                     status="RUNNING",
                     start_time=(
-                        _parse_timestamp_14_digit(claim.artifacts_timestamp)
+                        _parse_timestamp_13_char(claim.artifacts_timestamp)
                         if claim.artifacts_timestamp
-                        else None
+                        else _parse_timestamp_from_workflow_name(claim.workflow)
                     ),
                     workspace_num=claim.workspace_num,
                     workflow=claim.workflow,
