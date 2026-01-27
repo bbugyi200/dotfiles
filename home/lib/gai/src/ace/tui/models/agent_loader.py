@@ -161,7 +161,11 @@ def _load_agents_from_running_field(
                     cl_name=cl_name,
                     project_file=project_file,
                     status="RUNNING",
-                    start_time=None,  # RUNNING field doesn't have timestamps
+                    start_time=(
+                        _parse_timestamp_14_digit(claim.artifacts_timestamp)
+                        if claim.artifacts_timestamp
+                        else None
+                    ),
                     workspace_num=claim.workspace_num,
                     workflow=claim.workflow,
                     pid=claim.pid,
