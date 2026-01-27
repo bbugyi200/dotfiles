@@ -23,22 +23,114 @@ class _XPromptArgumentError(_XPromptError):
     pass
 
 
+def _process_text_block(value: str) -> str:
+    """Process a value that may be a text block [[...]].
+
+    Strips mandatory 2-space indentation from each line.
+    Raises error if indentation is missing.
+    """
+    if not (value.startswith("[[") and value.endswith("]]")):
+        return value
+
+    content = value[2:-2]  # Remove [[ and ]]
+    lines = content.split("\n")
+
+    processed_lines: list[str] = []
+    for i, line in enumerate(lines):
+        if i == 0:
+            # First line after [[ - strip leading whitespace
+            processed_lines.append(line.lstrip())
+        elif line.strip() == "":
+            # Empty line - preserve as empty
+            processed_lines.append("")
+        else:
+            # Strip exactly 2 spaces from beginning
+            if line.startswith("  "):
+                processed_lines.append(line[2:])
+            else:
+                raise _XPromptArgumentError(
+                    f"Text block line must start with 2 spaces: {line!r}"
+                )
+
+    return "\n".join(processed_lines).strip()
+
+
 # Maximum number of expansion iterations to prevent infinite loops
 _MAX_EXPANSION_ITERATIONS = 100
 
-# Pattern to match xprompt references: #name, #name(args), #name:arg, or #name+
+# Pattern to match xprompt references: #name, #name(, #name:arg, or #name+
 # Must be at start of string, after whitespace, or after certain punctuation
 # Note: No space allowed after # (to avoid matching markdown headings)
 # Supports:
 #   - #name - simple xprompt (no args)
-#   - #name(args) - parenthesis syntax for one or more args
+#   - #name( - parenthesis syntax start (matching ) found programmatically)
 #   - #name:arg - colon syntax for single arg (word-like chars only)
 #   - #name+ - plus syntax, equivalent to #name:true
 _XPROMPT_PATTERN = (
     r"(?:^|(?<=\s)|(?<=[(\[{\"']))"  # Must be at start, after whitespace, or after ([{"'
     r"#([a-zA-Z_][a-zA-Z0-9_]*)"  # Group 1: xprompt name
-    r"(?:\(([^)]*)\)|:([a-zA-Z0-9_.-]+)|(\+))?"  # Group 2: paren args OR Group 3: colon arg OR Group 4: plus
+    r"(?:(\()|:([a-zA-Z0-9_.-]+)|(\+))?"  # Group 2: open paren OR Group 3: colon arg OR Group 4: plus
 )
+
+
+def _find_matching_paren_for_args(text: str, start: int) -> int | None:
+    """Find the matching ) for an opening ( at position start.
+
+    Respects quoted strings ("..." and '...'), text blocks ([[...]]),
+    and nested parentheses.
+
+    Args:
+        text: The full text to search.
+        start: Position of the opening '(' character.
+
+    Returns:
+        Position of the matching ')' or None if not found.
+    """
+    if start >= len(text) or text[start] != "(":
+        return None
+
+    depth = 1
+    in_quotes = False
+    quote_char = ""
+    in_text_block = False
+    i = start + 1
+
+    while i < len(text):
+        # Check for text block start
+        if not in_quotes and not in_text_block and text[i : i + 2] == "[[":
+            in_text_block = True
+            i += 2
+            continue
+        # Check for text block end
+        if in_text_block and text[i : i + 2] == "]]":
+            in_text_block = False
+            i += 2
+            continue
+
+        char = text[i]
+
+        if in_text_block:
+            i += 1
+            continue
+
+        if char in ('"', "'") and not in_quotes:
+            in_quotes = True
+            quote_char = char
+        elif char == quote_char and in_quotes:
+            in_quotes = False
+            quote_char = ""
+        elif not in_quotes:
+            if char == "(":
+                depth += 1
+            elif char == ")":
+                depth -= 1
+                if depth == 0:
+                    return i
+
+        i += 1
+
+    return None
+
 
 # Lazy-initialized Jinja2 environment
 _jinja_env: Environment | None = None
@@ -63,24 +155,41 @@ def _parse_named_arg(token: str) -> tuple[str | None, str]:
     """Parse a single token to extract name=value if present.
 
     Returns (name, value) if named arg, or (None, token) if positional.
+    Handles quoted strings and text blocks [[...]].
     """
     in_quotes = False
     quote_char = ""
+    in_text_block = False
+    i = 0
 
-    for i, char in enumerate(token):
-        if char in ('"', "'") and not in_quotes:
+    while i < len(token):
+        char = token[i]
+        # Check for text block start
+        if not in_quotes and not in_text_block and token[i : i + 2] == "[[":
+            in_text_block = True
+            i += 2
+            continue
+        # Check for text block end
+        if in_text_block and token[i : i + 2] == "]]":
+            in_text_block = False
+            i += 2
+            continue
+        if char in ('"', "'") and not in_quotes and not in_text_block:
             in_quotes = True
             quote_char = char
         elif char == quote_char and in_quotes:
             in_quotes = False
             quote_char = ""
-        elif char == "=" and not in_quotes:
+        elif char == "=" and not in_quotes and not in_text_block:
             name = token[:i].strip()
             value = token[i + 1 :].strip()
             # Strip quotes from value if present
             if len(value) >= 2 and value[0] in ('"', "'") and value[-1] == value[0]:
                 value = value[1:-1]
+            # Process text blocks
+            value = _process_text_block(value)
             return name, value
+        i += 1
 
     return None, token
 
@@ -88,8 +197,8 @@ def _parse_named_arg(token: str) -> tuple[str | None, str]:
 def _parse_args(args_str: str) -> tuple[list[str], dict[str, str]]:
     """Parse argument string into positional and named arguments.
 
-    Handles quoted strings that may contain commas or equals signs.
-    Named args use syntax: name=value or name="value with spaces"
+    Handles quoted strings and text blocks [[...]] that may contain commas or equals.
+    Named args use syntax: name=value or name="value with spaces" or name=[[text block]]
 
     Args:
         args_str: The argument string (e.g., "arg1, name=value" or 'hello, "world"')
@@ -100,14 +209,29 @@ def _parse_args(args_str: str) -> tuple[list[str], dict[str, str]]:
     if not args_str.strip():
         return [], {}
 
-    # First tokenize by comma, respecting quotes
+    # First tokenize by comma, respecting quotes and text blocks
     tokens: list[str] = []
     current_token = ""
     in_quotes = False
     quote_char = ""
+    in_text_block = False
+    i = 0
 
-    for char in args_str:
-        if char in ('"', "'") and not in_quotes:
+    while i < len(args_str):
+        char = args_str[i]
+        # Check for text block start
+        if not in_quotes and not in_text_block and args_str[i : i + 2] == "[[":
+            in_text_block = True
+            current_token += "[["
+            i += 2
+            continue
+        # Check for text block end
+        if in_text_block and args_str[i : i + 2] == "]]":
+            in_text_block = False
+            current_token += "]]"
+            i += 2
+            continue
+        if char in ('"', "'") and not in_quotes and not in_text_block:
             in_quotes = True
             quote_char = char
             current_token += char
@@ -115,12 +239,13 @@ def _parse_args(args_str: str) -> tuple[list[str], dict[str, str]]:
             in_quotes = False
             quote_char = ""
             current_token += char
-        elif char == "," and not in_quotes:
+        elif char == "," and not in_quotes and not in_text_block:
             if current_token.strip():
                 tokens.append(current_token.strip())
             current_token = ""
         else:
             current_token += char
+        i += 1
 
     # Don't forget the last token
     if current_token.strip():
@@ -138,6 +263,8 @@ def _parse_args(args_str: str) -> tuple[list[str], dict[str, str]]:
             # Strip quotes from positional args too
             if len(value) >= 2 and value[0] in ('"', "'") and value[-1] == value[0]:
                 value = value[1:-1]
+            # Process text blocks for positional args
+            value = _process_text_block(value)
             positional.append(value)
 
     return positional, named
@@ -381,6 +508,7 @@ def process_xprompt_references(prompt: str) -> str:
     - XPrompts with positional args: #bar(arg1, arg2)
     - XPrompts with named args: #bar(name=value, other="text")
     - Mixed args: #bar(pos1, name=value)
+    - Text block args: #bar([[multi-line content]])
     - Colon syntax for single arg: #foo:arg
     - Plus syntax (equivalent to :true): #foo+
     - Legacy placeholders: {1}, {2}, {1:default}
@@ -435,11 +563,28 @@ def process_xprompt_references(prompt: str) -> str:
                 xprompt = xprompts[name]
 
                 # Extract arguments from parenthesis, colon, or plus syntax
-                paren_args = match.group(2)
+                # Group 2: open paren marker, Group 3: colon arg, Group 4: plus
+                has_open_paren = match.group(2) is not None
                 colon_arg = match.group(3)
                 plus_suffix = match.group(4)
-                if paren_args is not None:
-                    positional_args, named_args = _parse_args(paren_args)
+
+                # Track the actual end position (may extend beyond match.end())
+                match_end = match.end()
+
+                positional_args: list[str]
+                named_args: dict[str, str]
+                if has_open_paren:
+                    # Two-phase parsing: regex matched #name(, now find matching )
+                    paren_start = match.end() - 1  # Position of the '('
+                    paren_end = _find_matching_paren_for_args(prompt, paren_start)
+                    if paren_end is None:
+                        # Unclosed paren - treat as no args
+                        positional_args, named_args = [], {}
+                    else:
+                        # Extract content between ( and )
+                        paren_content = prompt[paren_start + 1 : paren_end]
+                        positional_args, named_args = _parse_args(paren_content)
+                        match_end = paren_end + 1  # Include the closing )
                 elif colon_arg is not None:
                     positional_args, named_args = [colon_arg], {}
                 elif plus_suffix is not None:
@@ -458,7 +603,7 @@ def process_xprompt_references(prompt: str) -> str:
                     if not is_at_line_start:
                         expanded = "\n\n" + expanded
 
-                prompt = prompt[: match.start()] + expanded + prompt[match.end() :]
+                prompt = prompt[: match.start()] + expanded + prompt[match_end:]
         except _XPromptError as e:
             print_status(str(e), "error")
             sys.exit(1)

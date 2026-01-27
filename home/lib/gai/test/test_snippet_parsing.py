@@ -4,8 +4,10 @@ import pytest
 from xprompt.models import XPrompt
 from xprompt.processor import (
     _expand_single_xprompt,
+    _find_matching_paren_for_args,
     _parse_args,
     _parse_named_arg,
+    _process_text_block,
     _substitute_placeholders,
     _XPromptArgumentError,
     is_jinja2_template,
@@ -290,3 +292,192 @@ def test_expand_single_xprompt_mixed_args_jinja2() -> None:
     xprompt = XPrompt(name="msg", content="{{ _1 }} says {{ message }}")
     result = _expand_single_xprompt(xprompt, ["Alice"], {"message": "hello"})
     assert result == "Alice says hello"
+
+
+# Tests for _process_text_block
+
+
+def test_process_text_block_not_text_block() -> None:
+    """Test that non-text-block values are returned unchanged."""
+    assert _process_text_block("hello") == "hello"
+    assert _process_text_block('"quoted"') == '"quoted"'
+    assert _process_text_block("[[partial") == "[[partial"
+
+
+def test_process_text_block_simple() -> None:
+    """Test processing a simple single-line text block."""
+    assert _process_text_block("[[hello world]]") == "hello world"
+
+
+def test_process_text_block_empty() -> None:
+    """Test processing an empty text block."""
+    assert _process_text_block("[[]]") == ""
+
+
+def test_process_text_block_multiline_with_indentation() -> None:
+    """Test processing a multiline text block with proper indentation."""
+    text_block = """\
+[[
+  Line one.
+
+  Line two.
+]]"""
+    result = _process_text_block(text_block)
+    assert result == "Line one.\n\nLine two."
+
+
+def test_process_text_block_first_line_content() -> None:
+    """Test that content on first line after [[ is stripped of leading whitespace."""
+    text_block = "[[  content here]]"
+    result = _process_text_block(text_block)
+    assert result == "content here"
+
+
+def test_process_text_block_missing_indentation_error() -> None:
+    """Test that missing 2-space indentation raises an error."""
+    text_block = """\
+[[
+  Line one.
+Line two without indent.
+]]"""
+    with pytest.raises(_XPromptArgumentError, match="must start with 2 spaces"):
+        _process_text_block(text_block)
+
+
+def test_process_text_block_preserves_extra_indentation() -> None:
+    """Test that indentation beyond 2 spaces is preserved."""
+    text_block = """\
+[[
+  First level.
+    Second level.
+      Third level.
+]]"""
+    result = _process_text_block(text_block)
+    assert result == "First level.\n  Second level.\n    Third level."
+
+
+# Tests for _find_matching_paren_for_args
+
+
+def test_find_matching_paren_simple() -> None:
+    """Test finding matching paren in simple case."""
+    assert _find_matching_paren_for_args("(abc)", 0) == 4
+
+
+def test_find_matching_paren_nested() -> None:
+    """Test finding matching paren with nested parens."""
+    assert _find_matching_paren_for_args("(a(b)c)", 0) == 6
+
+
+def test_find_matching_paren_with_quotes() -> None:
+    """Test that parens inside quotes are ignored."""
+    assert _find_matching_paren_for_args('("a)b")', 0) == 6
+
+
+def test_find_matching_paren_with_text_block() -> None:
+    """Test that parens inside text blocks are ignored."""
+    assert _find_matching_paren_for_args("([[a)b]])", 0) == 8
+
+
+def test_find_matching_paren_complex() -> None:
+    """Test finding matching paren with mixed quotes and text blocks."""
+    text = '(arg1, "val)", [[block)]], name=val)'
+    assert _find_matching_paren_for_args(text, 0) == len(text) - 1
+
+
+def test_find_matching_paren_unclosed() -> None:
+    """Test that unclosed paren returns None."""
+    assert _find_matching_paren_for_args("(abc", 0) is None
+
+
+def test_find_matching_paren_not_at_paren() -> None:
+    """Test that non-paren start returns None."""
+    assert _find_matching_paren_for_args("abc)", 0) is None
+
+
+# Tests for _parse_args with text blocks
+
+
+def test_parse_args_text_block_positional() -> None:
+    """Test parsing a text block as a positional argument."""
+    positional, named = _parse_args("[[hello world]]")
+    assert positional == ["hello world"]
+    assert named == {}
+
+
+def test_parse_args_text_block_multiline() -> None:
+    """Test parsing a multiline text block."""
+    args_str = """\
+[[
+  This is line one.
+
+  This is line two.
+]]"""
+    positional, named = _parse_args(args_str)
+    assert positional == ["This is line one.\n\nThis is line two."]
+    assert named == {}
+
+
+def test_parse_args_text_block_named() -> None:
+    """Test parsing a text block as a named argument."""
+    positional, named = _parse_args("msg=[[hello world]]")
+    assert positional == []
+    assert named == {"msg": "hello world"}
+
+
+def test_parse_args_text_block_with_commas() -> None:
+    """Test that commas inside text blocks don't split."""
+    positional, named = _parse_args("[[a, b, c]]")
+    assert positional == ["a, b, c"]
+    assert named == {}
+
+
+def test_parse_args_text_block_with_parens() -> None:
+    """Test that parentheses inside text blocks are preserved."""
+    positional, named = _parse_args("[[func(x)]]")
+    assert positional == ["func(x)"]
+    assert named == {}
+
+
+def test_parse_args_mixed_text_blocks_and_quotes() -> None:
+    """Test parsing mixed text blocks and quoted strings."""
+    positional, named = _parse_args('"quoted", [[text block]], name=value')
+    assert positional == ["quoted", "text block"]
+    assert named == {"name": "value"}
+
+
+def test_parse_args_multiple_text_blocks() -> None:
+    """Test parsing multiple text blocks."""
+    args_str = "[[first]], [[second]]"
+    positional, named = _parse_args(args_str)
+    assert positional == ["first", "second"]
+    assert named == {}
+
+
+def test_parse_args_text_block_named_multiline() -> None:
+    """Test parsing a multiline text block as a named argument."""
+    args_str = """\
+msg=[[
+  Line one.
+  Line two.
+]]"""
+    positional, named = _parse_args(args_str)
+    assert positional == []
+    assert named == {"msg": "Line one.\nLine two."}
+
+
+# Tests for _parse_named_arg with text blocks
+
+
+def test_parse_named_arg_text_block_value() -> None:
+    """Test parsing named arg with text block value."""
+    name, value = _parse_named_arg("key=[[value with = sign]]")
+    assert name == "key"
+    assert value == "value with = sign"
+
+
+def test_parse_named_arg_text_block_positional() -> None:
+    """Test parsing text block as positional (no = outside block)."""
+    name, value = _parse_named_arg("[[content=here]]")
+    assert name is None
+    assert value == "[[content=here]]"
