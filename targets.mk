@@ -12,7 +12,7 @@ fix-header:
 	@printf "└───────────────────────────────────────────────────────┘\n"
 
 .PHONY: fix
-fix: fix-header fix-python fix-lua ## Fix and format Python and Lua files.
+fix: fix-header fix-python fix-lua fix-md ## Fix and format Python, Lua, and Markdown files.
 
 .PHONY: lint-header
 lint-header:
@@ -22,7 +22,7 @@ lint-header:
 	@printf "└───────────────────────────────────────────────────────┘\n"
 
 .PHONY: lint
-lint: lint-header lint-llscheck lint-luacheck lint-python ## Run linters on dotfiles.
+lint: lint-header lint-llscheck lint-luacheck lint-python lint-md ## Run linters on dotfiles.
 
 .PHONY: lint-llscheck
 lint-llscheck: ## Run llscheck linter on dotfiles.
@@ -35,6 +35,11 @@ lint-llscheck: ## Run llscheck linter on dotfiles.
 lint-luacheck: ## Run luacheck linter on dotfiles.
 	@printf "\n---------- Running luacheck linter on Lua files... ----------\n"
 	luacheck --no-global ./home/dot_config/nvim ./tests/nvim ./home/lib
+
+.PHONY: lint-md
+lint-md: ## Check Markdown formatting with prettier.
+	@printf "\n---------- Checking Markdown formatting with prettier... ----------\n"
+	prettier --check --prose-wrap=always --print-width=120 "**/*.md"
 
 VENV_DIR := .venv
 PYTHON := python3.12
@@ -90,6 +95,11 @@ fix-python: $(VENV_DIR) ## Fix and format Python files with ruff and black.
 fix-lua: ## Format Lua files with stylua.
 	@printf "\n---------- Formatting Lua files with stylua... ----------\n"
 	stylua ./home/dot_config/nvim ./tests/nvim ./home/lib
+
+.PHONY: fix-md
+fix-md: ## Format Markdown files with prettier.
+	@printf "\n---------- Formatting Markdown files with prettier... ----------\n"
+	prettier --write --prose-wrap=always --print-width=120 "**/*.md"
 
 .PHONY: test-header
 test-header:
