@@ -43,7 +43,7 @@ class CycleResult:
     """Result of a scheduler cycle for logging/debugging."""
 
     timestamp: str
-    cycle_type: Literal["full", "hook"]
+    cycle_type: Literal["full", "hook", "comment"]
     duration_ms: int
     changespecs_processed: int
     updates: list[dict] = field(default_factory=list)
@@ -189,11 +189,13 @@ def write_cycle_result(result: CycleResult) -> None:
     _atomic_write_json(result_file, asdict(result))
 
 
-def read_cycle_result(cycle_type: Literal["full", "hook"]) -> CycleResult | None:
+def read_cycle_result(
+    cycle_type: Literal["full", "hook", "comment"],
+) -> CycleResult | None:
     """Read last cycle result from disk.
 
     Args:
-        cycle_type: Type of cycle to read ("full" or "hook").
+        cycle_type: Type of cycle to read ("full", "hook", or "comment").
 
     Returns:
         CycleResult object, or None if file doesn't exist or is invalid.

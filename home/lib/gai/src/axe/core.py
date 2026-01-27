@@ -91,6 +91,7 @@ class AxeScheduler:
         zombie_timeout_seconds: int = DEFAULT_ZOMBIE_TIMEOUT_SECONDS,
         max_runners: int = 5,
         query: str = "",
+        comment_check_interval: int = 60,
     ) -> None:
         """Initialize the axe scheduler.
 
@@ -100,12 +101,14 @@ class AxeScheduler:
             zombie_timeout_seconds: Zombie detection timeout in seconds (default: 2 hours).
             max_runners: Maximum concurrent runners globally (default: 5).
             query: Query string for filtering ChangeSpecs (empty = all ChangeSpecs).
+            comment_check_interval: Comment check interval in seconds (default: 60 = 1 minute).
 
         Raises:
             QueryParseError: If the query string is invalid.
         """
         self.full_check_interval = full_check_interval
         self.hook_interval = hook_interval
+        self.comment_check_interval = comment_check_interval
         self.zombie_timeout_seconds = zombie_timeout_seconds
         self.max_runners = max_runners
         self.query = query
@@ -124,6 +127,7 @@ class AxeScheduler:
         self._start_time = datetime.now(EASTERN_TZ)
         self._last_full_cycle: datetime | None = None
         self._last_hook_cycle: datetime | None = None
+        self._last_comment_cycle: datetime | None = None
         self._first_cycle = True
         self._running = True
 
@@ -190,10 +194,15 @@ class AxeScheduler:
 
     def _setup_jobs(self) -> None:
         """Configure all scheduled jobs."""
-        # Full cycle (status checks) - runs at full_check_interval
+        # Full cycle (CL submitted checks) - runs at full_check_interval
         self.scheduler.every(self.full_check_interval).seconds.do(
             self._safe_run_job, self._run_full_check_cycle, "full_cycle"
         ).tag("full_cycle")
+
+        # Comment cycle (reviewer/author comment checks) - runs at comment_check_interval
+        self.scheduler.every(self.comment_check_interval).seconds.do(
+            self._safe_run_job, self._run_comment_check_cycle, "comment_cycle"
+        ).tag("comment_cycle")
 
         # Hook cycle jobs - all run at hook_interval
         self.scheduler.every(self.hook_interval).seconds.do(
@@ -293,7 +302,7 @@ class AxeScheduler:
         return should_check(changespec.name)
 
     def _run_full_check_cycle(self) -> None:
-        """Run full status check cycle - starts pending CL/comment checks."""
+        """Run full status check cycle - starts CL submitted checks only."""
         start = time.time()
         all_changespecs = self._get_all_changespecs()
         filtered_changespecs = self._get_filtered_changespecs(all_changespecs)
@@ -303,8 +312,8 @@ class AxeScheduler:
             # On first cycle, bypass cache for leaf CLs
             bypass_cache = self._first_cycle and self._is_leaf_cl(changespec)
 
-            # Start pending checks
-            check_updates = self._start_pending_checks(changespec, bypass_cache)
+            # Start CL submitted checks only
+            check_updates = self._start_cl_submitted_check(changespec, bypass_cache)
             for update in check_updates:
                 updates.append({"changespec": changespec.name, "message": update})
                 self._log(f"* {changespec.name}: {update}", style="green bold")
@@ -329,10 +338,44 @@ class AxeScheduler:
         if updates:
             self._log(f"Full cycle complete: {len(updates)} update(s)", style="green")
 
-    def _start_pending_checks(
+    def _run_comment_check_cycle(self) -> None:
+        """Run comment check cycle - starts reviewer/author comment checks."""
+        start = time.time()
+        all_changespecs = self._get_all_changespecs()
+        filtered_changespecs = self._get_filtered_changespecs(all_changespecs)
+        updates: list[dict] = []
+
+        for changespec in filtered_changespecs:
+            # Start comment checks (no cache throttling - has its own interval)
+            check_updates = self._start_comment_checks(changespec)
+            for update in check_updates:
+                updates.append({"changespec": changespec.name, "message": update})
+                self._log(f"* {changespec.name}: {update}", style="green bold")
+
+        self._last_comment_cycle = datetime.now(EASTERN_TZ)
+        self._metrics.total_updates += len(updates)
+
+        # Write cycle result
+        duration_ms = int((time.time() - start) * 1000)
+        result = CycleResult(
+            timestamp=self._last_comment_cycle.isoformat(),
+            cycle_type="comment",
+            duration_ms=duration_ms,
+            changespecs_processed=len(filtered_changespecs),
+            updates=updates,
+            errors=[],
+        )
+        write_cycle_result(result)
+
+        if updates:
+            self._log(
+                f"Comment cycle complete: {len(updates)} update(s)", style="green"
+            )
+
+    def _start_cl_submitted_check(
         self, changespec: ChangeSpec, bypass_cache: bool = False
     ) -> list[str]:
-        """Start background checks for a ChangeSpec (non-blocking).
+        """Start CL submitted check for a ChangeSpec (non-blocking).
 
         Args:
             changespec: The ChangeSpec to check.
@@ -343,7 +386,7 @@ class AxeScheduler:
         """
         updates: list[str] = []
 
-        # Get workspace directory (needed for all checks)
+        # Get workspace directory
         try:
             workspace_dir = get_workspace_directory(changespec.project_basename)
         except RuntimeError:
@@ -363,12 +406,35 @@ class AxeScheduler:
                 if update:
                     updates.append(update)
 
+        return updates
+
+    def _start_comment_checks(self, changespec: ChangeSpec) -> list[str]:
+        """Start reviewer and author comment checks for a ChangeSpec (non-blocking).
+
+        Comment checks bypass the sync_cache since they have their own interval.
+
+        Args:
+            changespec: The ChangeSpec to check.
+
+        Returns:
+            List of update messages for checks that were started.
+        """
+        updates: list[str] = []
+
+        # Get workspace directory
+        try:
+            workspace_dir = get_workspace_directory(changespec.project_basename)
+        except RuntimeError:
+            workspace_dir = None
+
+        if not workspace_dir:
+            return updates
+
         # Start reviewer comments check if conditions are met
         if not has_pending_check(changespec, CHECK_TYPE_REVIEWER_COMMENTS):
             if (
                 is_parent_submitted(changespec)
                 and get_base_status(changespec.status) == "Mailed"
-                and workspace_dir
             ):
                 # Check if we need to start
                 existing_reviewer_entry = None
@@ -390,10 +456,7 @@ class AxeScheduler:
 
         # Start author comments check if conditions are met
         if not has_pending_check(changespec, CHECK_TYPE_AUTHOR_COMMENTS):
-            if (
-                get_base_status(changespec.status) in ("Drafted", "Mailed")
-                and workspace_dir
-            ):
+            if get_base_status(changespec.status) in ("Drafted", "Mailed"):
                 # Skip if any [critique] entry exists
                 has_reviewer = False
                 if changespec.comments:
@@ -630,10 +693,15 @@ class AxeScheduler:
             if self.full_check_interval >= 60
             else f"{self.full_check_interval} seconds"
         )
+        comment_str = (
+            f"{self.comment_check_interval // 60} minute(s)"
+            if self.comment_check_interval >= 60
+            else f"{self.comment_check_interval} seconds"
+        )
         hook_str = f"{self.hook_interval} second(s)"
         self._log(
-            f"Full cycle: {interval_str}, Hook cycle: {hook_str}, "
-            f"Max runners: {self.max_runners}"
+            f"Full cycle: {interval_str}, Comment cycle: {comment_str}, "
+            f"Hook cycle: {hook_str}, Max runners: {self.max_runners}"
         )
         if self.query:
             self._log(f"Query filter: {self.query}")
@@ -646,8 +714,9 @@ class AxeScheduler:
         # Write initial status
         self._update_status_file()
 
-        # Run first full cycle immediately
+        # Run first full and comment cycles immediately
         self._run_full_check_cycle()
+        self._run_comment_check_cycle()
 
         try:
             while self._running:

@@ -56,6 +56,12 @@ def create_parser() -> argparse.ArgumentParser:
     )
     # Options for 'axe' (keep sorted alphabetically by long option name)
     axe_parser.add_argument(
+        "--comment-check-interval",
+        type=int,
+        default=60,
+        help="Comment check interval in seconds (default: 60 = 1 minute)",
+    )
+    axe_parser.add_argument(
         "--full-check-interval",
         type=int,
         default=300,

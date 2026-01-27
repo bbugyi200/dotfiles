@@ -227,6 +227,7 @@ def main() -> NoReturn:
                 zombie_timeout_seconds=args.zombie_timeout,
                 max_runners=args.max_runners,
                 query=args.query,
+                comment_check_interval=args.comment_check_interval,
             )
         except QueryParseError as e:
             print(f"Error: Invalid query: {e}")
