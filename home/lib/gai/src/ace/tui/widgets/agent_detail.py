@@ -75,7 +75,8 @@ class _AgentPromptPanel(Static):
         header_text.append("ChangeSpec: ", style="bold #87D7FF")
         header_text.append(f"{agent.cl_name}", style="#00D7AF")
         if agent.cl_num:
-            header_text.append(f" (http://cl/{agent.cl_num})", style="#FFD700")
+            cl_id = agent.cl_num.removeprefix("http://cl/")
+            header_text.append(f" (http://cl/{cl_id})", style="#FFD700")
         header_text.append("\n")
 
         # Workspace (if available)

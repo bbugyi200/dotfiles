@@ -502,7 +502,8 @@ def load_all_agents() -> list[Agent]:
     bug_by_cl_name: dict[str, str | None] = {}
     for cs in all_changespecs:
         if cs.bug:
-            bug_by_cl_name[cs.name] = f"http://b/{cs.bug}"
+            bug_id = cs.bug.removeprefix("http://b/")
+            bug_by_cl_name[cs.name] = f"http://b/{bug_id}"
 
     # Build CL number lookup by CL name
     cl_by_cl_name: dict[str, str | None] = {}
@@ -523,7 +524,8 @@ def load_all_agents() -> list[Agent]:
 
     # 2. Load from each ChangeSpec's fields
     for cs in all_changespecs:
-        bug = f"http://b/{cs.bug}" if cs.bug else None
+        stripped_bug_id = cs.bug.removeprefix("http://b/") if cs.bug else None
+        bug = f"http://b/{stripped_bug_id}" if stripped_bug_id else None
         cl_num = cs.cl
 
         # HOOKS - fix-hook and summarize agents
