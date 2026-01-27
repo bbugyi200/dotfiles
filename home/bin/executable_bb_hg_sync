@@ -2,6 +2,17 @@
 
 set -e
 
-hg sync "$@" && clear_branch_name
+if ! hg sync "$@"; then
+    status_output=$(hg status)
+    if echo "$status_output" | grep -q "Unresolved merge conflicts"; then
+        echo "Error: hg sync failed due to unresolved merge conflicts. Aborting rebase..." >&2
+        hg rebase --abort
+    else
+        echo "Error: hg sync failed." >&2
+    fi
+    exit 1
+fi
+
+clear_branch_name
 hg evolve
 hg upload tree
