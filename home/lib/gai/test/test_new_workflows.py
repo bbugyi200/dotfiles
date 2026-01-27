@@ -20,7 +20,8 @@ class TestCrsWorkflow:
     def test_build_crs_prompt_basic(self) -> None:
         """Test building a CRS prompt."""
         prompt = _build_crs_prompt("/path/to/comments.json")
-        assert "#cl" in prompt
+        # #cl xprompt is expanded to context files section
+        assert "Context Files Related to this CL" in prompt
         assert "@/path/to/comments.json" in prompt
         assert "Critique" in prompt
 
@@ -46,5 +47,6 @@ class TestCrsWorkflowAdvanced:
                 f.write("# Test Context\n")
 
             prompt = _build_crs_prompt("/path/to/comments.json", tmpdir)
-            assert "#cl" in prompt
+            # #cl xprompt is expanded to context files section
+            assert "Context Files Related to this CL" in prompt
             assert "context.md" in prompt

@@ -18,8 +18,23 @@ from split_spec import (
     topological_sort_entries,
     validate_split_spec,
 )
+from xprompt import process_xprompt_references
 
 from .spec import archive_spec_file, edit_spec_content
+
+
+def _escape_for_xprompt(text: str) -> str:
+    """Escape text for use in an xprompt argument string.
+
+    Escapes double quotes and backslashes.
+
+    Args:
+        text: The text to escape.
+
+    Returns:
+        The escaped text safe for use in xprompt argument.
+    """
+    return text.replace("\\", "\\\\").replace('"', '\\"')
 
 
 def _build_spec_generator_prompt(
@@ -27,72 +42,21 @@ def _build_spec_generator_prompt(
     workspace_name: str,
     diff_path: str,
 ) -> str:
-    """Build the prompt for the agent to generate a split spec.
+    """Build the prompt for the agent to generate a split spec using xprompt.
 
     Args:
-        cl_name: The name of the CL being split.
+        cl_name: The name of the CL being split (unused, kept for API compatibility).
         workspace_name: The workspace name prefix for CL names.
         diff_path: Path to the diff file.
 
     Returns:
         The formatted prompt string.
     """
-    return f"""# Generate Split Specification
-
-You need to analyze the changes in a CL and generate a YAML split specification
-that divides the work into multiple smaller, focused CLs.
-
-## Original Diff
-@{diff_path}
-
-## Guidelines
-
-Refer to the following files for guidance:
-* @~/bb/docs/small_cls.md - Guidelines for determining how many CLs to create
-* @~/bb/docs/cl_descriptions.md - Guidelines for writing good CL descriptions
-
-## CRITICAL REQUIREMENTS
-
-1. **All 'name' field values MUST be prefixed with `{workspace_name}_`**
-   - Example: `{workspace_name}_add_logging`, `{workspace_name}_refactor_utils`
-
-2. Output ONLY valid YAML - no explanation, no markdown code fences, just raw YAML
-
-3. Each entry should have:
-   - `name`: The CL name (with {workspace_name}_ prefix)
-   - `description`: A clear, concise description following the CL description guidelines
-   - `parent`: (optional) The name of the parent CL if this builds on another split CL
-
-4. **PRIORITIZE PARALLEL CLs**: Only use `parent` when there is a TRUE dependency
-   - CL B should only be a child of CL A if B's changes cannot be applied without A's changes
-   - If two CLs modify different files or independent parts of the codebase, they should be PARALLEL (no parent)
-   - Parallel CLs can be reviewed and submitted independently, which is faster
-   - When in doubt, prefer parallel CLs over creating unnecessary parent-child chains
-
-## Expected Output Format
-
-IMPORTANT: Use TWO blank lines between each entry for readability.
-
-```yaml
-# Parallel CLs (no parent - can be reviewed/submitted independently)
-- name: {workspace_name}_first_change
-  description: |
-    Brief summary of first change.
-
-
-- name: {workspace_name}_second_change
-  description: |
-    Brief summary of second change (independent of first).
-
-
-# Child CL (only when truly dependent on parent)
-- name: {workspace_name}_dependent_change
-  description: |
-    This change requires first_change to be applied first.
-  parent: {workspace_name}_first_change
-```
-
-Generate the split specification now. Output ONLY the YAML content."""
+    del cl_name  # Unused, kept for API compatibility
+    escaped_workspace = _escape_for_xprompt(workspace_name)
+    escaped_diff = _escape_for_xprompt(diff_path)
+    prompt_text = f'#split_spec_generator(workspace_name="{escaped_workspace}", diff_path="{escaped_diff}")'
+    return process_xprompt_references(prompt_text)
 
 
 def _extract_yaml_from_response(response: str) -> str:
@@ -371,7 +335,7 @@ def build_split_prompt(
     original_name: str,
     spec_archive_path: str,
 ) -> str:
-    """Build the prompt for the Gemini agent to perform the split.
+    """Build the prompt for the Gemini agent to perform the split using xprompt.
 
     Args:
         diff_path: Path to the saved diff file.
@@ -396,32 +360,26 @@ def build_split_prompt(
     # Build commit flag for bug number
     bug_flag = f"-b {bug} " if bug else ""
 
-    prompt = f"""Can you help me replicate the changes shown in the @{diff_path} file EXACTLY by
-splitting the changes across multiple new CLs (specified below)?
+    # Build processing order list
+    processing_order = chr(10).join(
+        f"{i + 1}. {e.name}" + (f" (parent: {e.parent})" if e.parent else "")
+        for i, e in enumerate(sorted_entries)
+    )
 
-## Split Specification
-{spec_markdown}
+    # Build the xprompt call
+    escaped_diff = _escape_for_xprompt(diff_path)
+    escaped_spec = _escape_for_xprompt(spec_markdown)
+    escaped_parent = _escape_for_xprompt(default_parent)
+    escaped_bug = _escape_for_xprompt(bug_flag)
+    escaped_note = _escape_for_xprompt(note)
+    escaped_order = _escape_for_xprompt(processing_order)
 
-## Instructions
-For each entry in the split specification (process in the order shown - parents before children):
-
-1. **Navigate to the parent CL:**
-   - If `parent` is specified in the entry: run `bb_hg_update <parent>`
-   - Otherwise: run `bb_hg_update {default_parent}`
-
-2. **Make the file changes for this CL based on its description.**
-   - Analyze the original diff and determine which changes belong to this CL
-   - Use the description to understand what this CL should contain
-   - Apply EXACTLY the portions of the diff that logically belong to this CL
-
-3. **Create the description file** at `bb/gai/<name>_desc.txt` with the description from the spec.
-
-4. **Run:** `gai commit {bug_flag}-n "{note}" <name> bb/gai/<name>_desc.txt`
-
-5. **Repeat** for the next entry.
-
-## Processing Order
-Process the entries in this order (parents before children):
-{chr(10).join(f"{i + 1}. {e.name}" + (f" (parent: {e.parent})" if e.parent else "") for i, e in enumerate(sorted_entries))}
-"""
-    return prompt
+    prompt_text = (
+        f'#split_executor(diff_path="{escaped_diff}", '
+        f'spec_markdown="{escaped_spec}", '
+        f'default_parent="{escaped_parent}", '
+        f'bug_flag="{escaped_bug}", '
+        f'note="{escaped_note}", '
+        f'processing_order="{escaped_order}")'
+    )
+    return process_xprompt_references(prompt_text)

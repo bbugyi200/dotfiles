@@ -9,10 +9,25 @@ from gemini_wrapper import invoke_agent
 from rich.console import Console
 from shared_utils import ensure_str_content, generate_workflow_tag
 from workflow_base import BaseWorkflow
+from xprompt import process_xprompt_references
+
+
+def _escape_for_xprompt(text: str) -> str:
+    """Escape text for use in an xprompt argument string.
+
+    Escapes double quotes and backslashes.
+
+    Args:
+        text: The text to escape.
+
+    Returns:
+        The escaped text safe for use in xprompt argument.
+    """
+    return text.replace("\\", "\\\\").replace('"', '\\"')
 
 
 def _build_fix_hook_prompt(hook_command: str, output_file: str) -> str:
-    """Build the prompt for the fix-hook agent.
+    """Build the prompt for the fix-hook agent using the fix_hook xprompt.
 
     Args:
         hook_command: The failing hook command.
@@ -21,14 +36,12 @@ def _build_fix_hook_prompt(hook_command: str, output_file: str) -> str:
     Returns:
         The formatted prompt string.
     """
-    return (
-        f'The command "{hook_command}" is failing. The output of the last run can '
-        f"be found in the @{output_file} file. Can you help me fix this command by "
-        "making the appropriate file changes? Verify that your fix worked when you "
-        "are done by re-running that command.\n\n"
-        "IMPORTANT: Do NOT commit or amend any changes. Only make file edits and "
-        "leave them uncommitted."
+    escaped_command = _escape_for_xprompt(hook_command)
+    escaped_output = _escape_for_xprompt(output_file)
+    prompt_text = (
+        f'#fix_hook(hook_command="{escaped_command}", output_file="{escaped_output}")'
     )
+    return process_xprompt_references(prompt_text)
 
 
 class FixHookWorkflow(BaseWorkflow):

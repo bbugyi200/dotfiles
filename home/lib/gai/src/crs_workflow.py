@@ -22,6 +22,7 @@ from shared_utils import (
     run_shell_command,
 )
 from workflow_base import BaseWorkflow
+from xprompt import process_xprompt_references
 
 
 def _create_critique_comments_artifact(
@@ -58,10 +59,24 @@ def _create_critique_comments_artifact(
     return artifact_path
 
 
+def _escape_for_xprompt(text: str) -> str:
+    """Escape text for use in an xprompt argument string.
+
+    Escapes double quotes and backslashes.
+
+    Args:
+        text: The text to escape.
+
+    Returns:
+        The escaped text safe for use in xprompt argument.
+    """
+    return text.replace("\\", "\\\\").replace('"', '\\"')
+
+
 def _build_crs_prompt(
     critique_comments_path: str, context_file_directory: str | None = None
 ) -> str:
-    """Build the change request prompt with context from artifacts.
+    """Build the change request prompt using the crs xprompt.
 
     Args:
         critique_comments_path: Path to the critique comments JSON file
@@ -70,21 +85,18 @@ def _build_crs_prompt(
     Returns:
         The formatted prompt string
     """
-    prompt = f"""Can you help me address the Critique comments? Read all of the files below VERY carefully to make sure that the changes
-you make align with the overall goal of this CL! Make the necessary file changes, but do NOT amend/upload the CL.
-
-#cl
-+ @{critique_comments_path} - Unresolved Critique comments left on this CL (these are the comments you should address!)
-"""
-
-    # Add context files from the directory if provided
+    # Build context files section if directory provided
+    context_files_section = ""
     context_files = get_context_files(context_file_directory)
     if context_files:
-        prompt += "\n### ADDITIONAL CONTEXT\n"
+        context_files_section = "\n### ADDITIONAL CONTEXT\n"
         for context_file in context_files:
-            prompt += f"+ @{context_file}\n"
+            context_files_section += f"+ @{context_file}\n"
 
-    return prompt
+    escaped_path = _escape_for_xprompt(critique_comments_path)
+    escaped_section = _escape_for_xprompt(context_files_section)
+    prompt_text = f'#crs(critique_comments_path="{escaped_path}", context_files_section="{escaped_section}")'
+    return process_xprompt_references(prompt_text)
 
 
 class CrsWorkflow(BaseWorkflow):
