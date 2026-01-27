@@ -1,3 +1,72 @@
+# Metahooks intercept failing hooks before the summarize agent runs.
+metahooks:
+  - name: scuba
+    hook_command: bb_rabbit_test
+    output_regex: "Expected: Scuba Result PASSED"
+  - name: hg_presubmit_tap
+    hook_command: bb_hg_presubmit
+    output_regex: "[1-9]\\d* failed,"
+
+# Mentor profiles define which mentors to apply to which files.
+# Each profile contains its mentor definitions inline.
+mentor_profiles:
+  - profile_name: aaa
+    mentors:
+      - xprompt: "#mentor/aaa"
+    file_globs:
+      - "javatests/**/*.java"
+      - "**/test*.dart"
+  - profile_name: code
+    mentors:
+      - xprompt: "#mentor/comments"
+      - xprompt: "#mentor/shared_code"
+      - xprompt: "#mentor/sound_tests"
+        run_on_wip: true
+      - xprompt: "#mentor/symbol_names"
+      - xprompt: "#mentor/vision"
+    file_globs:
+      - "**/*.java"
+      - "**/*.dart"
+      - "**/*.acx.html"
+  - profile_name: complete
+    mentors:
+      - xprompt: "#mentor/complete"
+        run_on_wip: true
+    amend_note_regexes:
+      - "Initial Commit"
+      - "\\[mentor:complete\\]"
+  - profile_name: g3doc
+    mentors:
+      - xprompt: "#mentor/g3doc"
+        run_on_wip: true
+    file_globs:
+      - "**/*.md"
+  - profile_name: i18n
+    mentors:
+      - xprompt: "#mentor/i18n"
+    file_globs:
+      - "**/*.dart"
+      - "**/*.acx.html"
+  - profile_name: pubfeat
+    mentors:
+      - xprompt: "#mentor/pubfeat"
+        run_on_wip: true
+    file_globs:
+      - "**/publisher_features.textproto"
+  - profile_name: sql
+    mentors:
+      - xprompt: "#mentor/sql"
+        run_on_wip: true
+    file_globs:
+      - "**/*.sql"
+  - profile_name: ui
+    mentors:
+      - xprompt: "#mentor/ui"
+    file_globs:
+      - "**/*.dart"
+      - "**/*.acx.html"
+      - "**/*.scss"
+
 # XPrompts are reusable text templates that can be referenced in prompts.
 # Usage: #xprompt_name or #xprompt_name(arg1, arg2)
 # Placeholders: {1}, {2} for positional args, {1:default} for optional
@@ -117,72 +186,3 @@ xprompts:
       Can you help me ensure that the changes made by this CL adhere to the guidelines outlined in the
       @contentads/drx/fe/client/g3doc/drx_ui_style.md document?
     ]])
-
-# Metahooks intercept failing hooks before the summarize agent runs.
-metahooks:
-  - name: scuba
-    hook_command: bb_rabbit_test
-    output_regex: "Expected: Scuba Result PASSED"
-  - name: hg_presubmit_tap
-    hook_command: bb_hg_presubmit
-    output_regex: "[1-9]\\d* failed,"
-
-# Mentor profiles define which mentors to apply to which files.
-# Each profile contains its mentor definitions inline.
-mentor_profiles:
-  - profile_name: aaa
-    mentors:
-      - xprompt: "#mentor/aaa"
-    file_globs:
-      - "javatests/**/*.java"
-      - "**/test*.dart"
-  - profile_name: code
-    mentors:
-      - xprompt: "#mentor/comments"
-      - xprompt: "#mentor/shared_code"
-      - xprompt: "#mentor/sound_tests"
-        run_on_wip: true
-      - xprompt: "#mentor/symbol_names"
-      - xprompt: "#mentor/vision"
-    file_globs:
-      - "**/*.java"
-      - "**/*.dart"
-      - "**/*.acx.html"
-  - profile_name: complete
-    mentors:
-      - xprompt: "#mentor/complete"
-        run_on_wip: true
-    amend_note_regexes:
-      - "Initial Commit"
-      - "\\[mentor:complete\\]"
-  - profile_name: g3doc
-    mentors:
-      - xprompt: "#mentor/g3doc"
-        run_on_wip: true
-    file_globs:
-      - "**/*.md"
-  - profile_name: i18n
-    mentors:
-      - xprompt: "#mentor/i18n"
-    file_globs:
-      - "**/*.dart"
-      - "**/*.acx.html"
-  - profile_name: pubfeat
-    mentors:
-      - xprompt: "#mentor/pubfeat"
-        run_on_wip: true
-    file_globs:
-      - "**/publisher_features.textproto"
-  - profile_name: sql
-    mentors:
-      - xprompt: "#mentor/sql"
-        run_on_wip: true
-    file_globs:
-      - "**/*.sql"
-  - profile_name: ui
-    mentors:
-      - xprompt: "#mentor/ui"
-    file_globs:
-      - "**/*.dart"
-      - "**/*.acx.html"
-      - "**/*.scss"
