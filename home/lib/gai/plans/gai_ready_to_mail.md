@@ -2,14 +2,16 @@
 
 ## Overview
 
-Add a 10s check to `gai loop` that appends " - (!: READY TO MAIL)" to "STATUS: Drafted" ChangeSpecs when they are ready to be mailed, and update "f"/"m" option visibility to only show when this suffix is present.
+Add a 10s check to `gai loop` that appends " - (!: READY TO MAIL)" to "STATUS: Drafted" ChangeSpecs when they are ready
+to be mailed, and update "f"/"m" option visibility to only show when this suffix is present.
 
 ## Requirements Summary
 
 1. **Add suffix**: Append " - (!: READY TO MAIL)" to STATUS line when:
    - STATUS is "Drafted"
    - No other " - (!: <msg>)" suffixes exist anywhere in the ChangeSpec (HISTORY, HOOKS, COMMENTS)
-   - Either: no PARENT, OR PARENT status is "Submitted", "Mailed", OR PARENT has "READY TO MAIL" suffix (chained readiness)
+   - Either: no PARENT, OR PARENT status is "Submitted", "Mailed", OR PARENT has "READY TO MAIL" suffix (chained
+     readiness)
 
 2. **Remove suffix**: Strip " - (!: READY TO MAIL)" when status changes to "Mailed" (via "m" or "s" options)
 
@@ -26,7 +28,8 @@ Add a 10s check to `gai loop` that appends " - (!: READY TO MAIL)" to "STATUS: D
 2. **`home/lib/gai/work/changespec.py`**
    - Add constant `READY_TO_MAIL_SUFFIX = " - (!: READY TO MAIL)"`
    - Add helper `has_ready_to_mail_suffix(status: str) -> bool`
-   - Add helper `has_any_error_suffix(changespec: ChangeSpec) -> bool` to check HISTORY/HOOKS/COMMENTS for " - (!: " patterns
+   - Add helper `has_any_error_suffix(changespec: ChangeSpec) -> bool` to check HISTORY/HOOKS/COMMENTS for " - (!: "
+     patterns
 
 3. **`home/lib/gai/work/loop/core.py`**
    - Add new method `_check_ready_to_mail(changespec: ChangeSpec) -> list[str]` in `LoopWorkflow`
@@ -62,7 +65,8 @@ Add a 10s check to `gai loop` that appends " - (!: READY TO MAIL)" to "STATUS: D
 ### Vim Syntax Highlighting
 
 8. **`home/dot_config/nvim/syntax/gaiproject.vim`**
-   - Add pattern to highlight " - (!: READY TO MAIL)" suffix in STATUS line with appropriate color (green to indicate ready state)
+   - Add pattern to highlight " - (!: READY TO MAIL)" suffix in STATUS line with appropriate color (green to indicate
+     ready state)
 
 ### Tests
 
@@ -76,6 +80,7 @@ Add a 10s check to `gai loop` that appends " - (!: READY TO MAIL)" to "STATUS: D
 ## Implementation Steps
 
 ### Step 1: Add Constants and Helpers (changespec.py)
+
 ```python
 READY_TO_MAIL_SUFFIX = " - (!: READY TO MAIL)"
 
@@ -133,9 +138,11 @@ def is_parent_ready_for_mail(changespec: ChangeSpec, all_changespecs: list[Chang
 ```
 
 ### Step 2: Update Status State Machine (status_state_machine.py)
+
 - Modify `remove_workspace_suffix()` to also strip READY TO MAIL suffix pattern
 
 ### Step 3: Add STATUS Update Function (hooks/operations.py)
+
 ```python
 def update_changespec_status_suffix(
     file_path: str,
@@ -147,19 +154,24 @@ def update_changespec_status_suffix(
 ```
 
 ### Step 4: Add 10s Check (loop/core.py)
+
 - Add `_check_ready_to_mail()` method
 - Add to `_run_hooks_cycle()` call sequence
 
 ### Step 5: Update Mail Operations (mail_ops.py)
+
 - Strip suffix before status transition
 
 ### Step 6: Update Option Visibility (navigation.py)
+
 - Change visibility condition for "f" and "m" options
 
 ### Step 7: Add Vim Syntax (gaiproject.vim)
+
 - Add pattern for READY TO MAIL suffix highlighting
 
 ### Step 8: Add Tests
+
 - Unit tests for new helpers
 - Integration tests for the 10s check behavior
 

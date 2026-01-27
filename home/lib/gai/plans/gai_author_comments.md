@@ -16,7 +16,8 @@ prompt: |
 
 ## Summary
 
-Add periodic detection of `#gai` author comments to the loop workflow, enabling CRS workflow for self-addressed comments.
+Add periodic detection of `#gai` author comments to the loop workflow, enabling CRS workflow for self-addressed
+comments.
 
 ## Requirements
 
@@ -43,6 +44,7 @@ def _check_author_comments(self, changespec: ChangeSpec) -> list[str]:
 ```
 
 **Logic**:
+
 - Skip if status not in ("Drafted", "Mailed")
 - Skip if any `[reviewer]` entry exists
 - Run `subprocess.run(["critique_comments", "--gai", changespec.name], ...)`
@@ -66,10 +68,13 @@ updates.extend(author_comment_updates)
 **File**: `home/lib/gai/work/operations.py` (lines 104-109)
 
 Change:
+
 ```python
 if entry.reviewer == "reviewer" and entry.suffix is None:
 ```
+
 To:
+
 ```python
 if entry.reviewer in ("reviewer", "author") and entry.suffix is None:
 ```
@@ -86,13 +91,15 @@ if entry.reviewer in ("reviewer", "author") and entry.suffix is None:
 **File**: `home/lib/gai/work/workflows/crs.py`
 
 - Add parameter: `comment_reviewer: str = "reviewer"`
-- Replace all hardcoded `"reviewer"` in `set_comment_suffix()` calls (lines 102, 122, 148, 163, 183, 194) with `comment_reviewer`
+- Replace all hardcoded `"reviewer"` in `set_comment_suffix()` calls (lines 102, 122, 148, 163, 183, 194) with
+  `comment_reviewer`
 
 ### 6. Add tests
 
 **File**: `home/lib/gai/work/loop/test/test_loop.py` (new tests)
 
 Test cases:
+
 - `_check_author_comments()` skips non-Drafted/Mailed status
 - `_check_author_comments()` skips when `[reviewer]` entry exists
 - Creates `[author]` entry when `#gai` comments found
@@ -102,13 +109,13 @@ Test cases:
 
 ## Files to Modify
 
-| File | Changes |
-|------|---------|
-| `home/lib/gai/work/loop/core.py` | Add `_check_author_comments()`, integrate into cycle |
-| `home/lib/gai/work/operations.py` | Update `get_available_workflows()` for `[author]` |
-| `home/lib/gai/work/handlers/workflow_handlers.py` | Pass `comment_reviewer` to CRS |
-| `home/lib/gai/work/workflows/crs.py` | Parameterize with `comment_reviewer` |
-| `home/lib/gai/work/loop/test/test_loop.py` | Add tests for author comments |
+| File                                              | Changes                                              |
+| ------------------------------------------------- | ---------------------------------------------------- |
+| `home/lib/gai/work/loop/core.py`                  | Add `_check_author_comments()`, integrate into cycle |
+| `home/lib/gai/work/operations.py`                 | Update `get_available_workflows()` for `[author]`    |
+| `home/lib/gai/work/handlers/workflow_handlers.py` | Pass `comment_reviewer` to CRS                       |
+| `home/lib/gai/work/workflows/crs.py`              | Parameterize with `comment_reviewer`                 |
+| `home/lib/gai/work/loop/test/test_loop.py`        | Add tests for author comments                        |
 
 ---
 

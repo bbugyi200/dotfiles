@@ -3,11 +3,13 @@
 ## Overview
 
 Add three features:
+
 1. **Add `- (!: NEW PROPOSAL)` suffix** to proposed HISTORY entries via `gai amend --propose`
 2. **Add `- (~: <msg>)` "acknowledged" suffix** with parsing, display, and syntax highlighting (yellow/orange)
 3. **Transform old proposals' suffixes** from `(!:)` to `(~:)` every 10s in `gai loop`
 
-"Old proposal" = entry `(Na)` where N < latest regular entry number (e.g., if `(3)` exists, then `(2a)` is old but `(3a)` is current).
+"Old proposal" = entry `(Na)` where N < latest regular entry number (e.g., if `(3)` exists, then `(2a)` is old but
+`(3a)` is current).
 
 ---
 
@@ -34,6 +36,7 @@ Note: `gai commit` uses `add_history_entry()` for `(1)` entries - no change need
 ### File: `home/lib/gai/work/changespec.py`
 
 1. **Add constants and helper (after line 31):**
+
    ```python
    ACKNOWLEDGED_SUFFIX_MESSAGES = frozenset({"NEW PROPOSAL"})
 
@@ -42,6 +45,7 @@ Note: `gai commit` uses `add_history_entry()` for `(1)` entries - no change need
    ```
 
 2. **Add fields to `HistoryEntry` dataclass (line 35):**
+
    ```python
    suffix: str | None = None  # e.g., "NEW PROPOSAL"
    suffix_type: str | None = None  # "error" for !:, "acknowledged" for ~:
@@ -82,6 +86,7 @@ Note: `gai commit` uses `add_history_entry()` for `(1)` entries - no change need
 ### File: `home/dot_config/nvim/syntax/gaiproject.vim`
 
 1. **Add HISTORY suffix patterns (after line 141):**
+
    ```vim
    syn match GaiProjectHistorySuffixError " - (!:\s*[^)]\+)" contained
    syn match GaiProjectHistorySuffixAcknowledged " - (~:\s*[^)]\+)" contained
@@ -92,6 +97,7 @@ Note: `gai commit` uses `add_history_entry()` for `(1)` entries - no change need
 2. **Update HISTORY entry patterns (lines 137, 140)** to include suffix groups
 
 3. **Add hook suffix pattern (after line 179):**
+
    ```vim
    syn match GaiProjectHooksSuffixAcknowledged "(~:\s*[^)]\+)" contained
    highlight GaiProjectHooksSuffixAcknowledged gui=bold guifg=#FFAF00
@@ -100,6 +106,7 @@ Note: `gai commit` uses `add_history_entry()` for `(1)` entries - no change need
 4. **Update hook status line pattern (line 167)** to include acknowledged suffix
 
 5. **Add comment suffix pattern (after line 207):**
+
    ```vim
    syn match GaiProjectCommentsSuffixAcknowledged "(~:\s*[^)]\+)" contained
    highlight GaiProjectCommentsSuffixAcknowledged gui=bold guifg=#FFAF00
@@ -114,6 +121,7 @@ Note: `gai commit` uses `add_history_entry()` for `(1)` entries - no change need
 ### File: `home/lib/gai/history_utils.py`
 
 **Add new function:**
+
 ```python
 def update_history_entry_suffix(
     project_file: str,
@@ -147,14 +155,14 @@ def update_history_entry_suffix(
 
 ## Files to Modify
 
-| File | Changes |
-|------|---------|
-| `home/lib/gai/history_utils.py` | Add `(!: NEW PROPOSAL)` suffix; add `update_history_entry_suffix()` |
-| `home/lib/gai/work/changespec.py` | Add `ACKNOWLEDGED_SUFFIX_MESSAGES`, `is_acknowledged_suffix()`, `HistoryEntry.suffix/suffix_type`, update parsing |
-| `home/lib/gai/work/display.py` | Add acknowledged suffix styling (yellow/orange) |
-| `home/lib/gai/work/hooks/operations.py` | Format `(~: MSG)` for acknowledged suffixes |
-| `home/lib/gai/work/loop/core.py` | Add `_transform_old_proposal_suffixes()` method |
-| `home/dot_config/nvim/syntax/gaiproject.vim` | Add `~:` syntax patterns with yellow/orange highlighting |
+| File                                         | Changes                                                                                                           |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `home/lib/gai/history_utils.py`              | Add `(!: NEW PROPOSAL)` suffix; add `update_history_entry_suffix()`                                               |
+| `home/lib/gai/work/changespec.py`            | Add `ACKNOWLEDGED_SUFFIX_MESSAGES`, `is_acknowledged_suffix()`, `HistoryEntry.suffix/suffix_type`, update parsing |
+| `home/lib/gai/work/display.py`               | Add acknowledged suffix styling (yellow/orange)                                                                   |
+| `home/lib/gai/work/hooks/operations.py`      | Format `(~: MSG)` for acknowledged suffixes                                                                       |
+| `home/lib/gai/work/loop/core.py`             | Add `_transform_old_proposal_suffixes()` method                                                                   |
+| `home/dot_config/nvim/syntax/gaiproject.vim` | Add `~:` syntax patterns with yellow/orange highlighting                                                          |
 
 ---
 

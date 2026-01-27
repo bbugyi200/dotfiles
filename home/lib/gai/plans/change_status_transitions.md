@@ -2,23 +2,29 @@
 
 ## Overview
 
-This plan outlines the implementation required to ensure proper state transitions for the ChangeSpec STATUS field across all gai workflows.
+This plan outlines the implementation required to ensure proper state transitions for the ChangeSpec STATUS field across
+all gai workflows.
 
 ## Current State
 
 ### STATUS Field Definition
+
 - Defined in: `home/lib/gai/docs/change_spec.md`
 - Valid statuses defined in: `home/lib/gai/hitl_review_workflow.py` (lines 16-27)
 
 ### Current STATUS Transition Handling
+
 Status transitions are currently handled in `home/lib/gai/work_projects_workflow/workflow_nodes.py`:
+
 - `_update_changespec_status()` function (lines 1087-1123) performs status updates
 - Status tracking in workflow state (`status_updated_to_in_progress`, `status_updated_to_fixing_tests`)
 - Interrupt handling in `work_projects_workflow/main.py` (lines 109-140) reverts status on Ctrl+C
 
 ### Gaps Identified
+
 1. **No centralized state machine**: Status transitions are scattered across workflow_nodes.py
-2. **No transition validation**: No validation that transitions are valid (e.g., can't go from "Mailed" to "In Progress")
+2. **No transition validation**: No validation that transitions are valid (e.g., can't go from "Mailed" to "In
+   Progress")
 3. **Incomplete interrupt handling**: Only some status changes are tracked for rollback
 4. **Missing transitions**: Not all required transitions have corresponding workflow code
 
@@ -26,21 +32,21 @@ Status transitions are currently handled in `home/lib/gai/work_projects_workflow
 
 ### Workflow-Driven Transitions
 
-| From | To | Trigger | Current Implementation |
-|------|-----|---------|------------------------|
-| "Not Started" | "In Progress" | new-failed-tests workflow starts | ✅ Implemented (lines 1333-1338) |
-| "In Progress" | "Not Started" | new-failed-tests fails or Ctrl+C | ⚠️ Partial (Ctrl+C handling exists) |
-| "In Progress" | "TDD CL Created" | new-failed-tests creates TDD CL | ✅ Implemented (lines 599-651) |
-| "TDD CL Created" | "Fixing Tests" | fix-tests workflow starts | ✅ Implemented (lines 678-684) |
-| "Fixing Tests" | "TDD CL Created" | fix-tests workflow fails | ❌ Missing (currently goes to "Failed to Fix Tests") |
-| "Fixing Tests" | "Drafted" | fix-tests workflow succeeds | ✅ Implemented (lines 759-767) |
+| From             | To               | Trigger                          | Current Implementation                               |
+| ---------------- | ---------------- | -------------------------------- | ---------------------------------------------------- |
+| "Not Started"    | "In Progress"    | new-failed-tests workflow starts | ✅ Implemented (lines 1333-1338)                     |
+| "In Progress"    | "Not Started"    | new-failed-tests fails or Ctrl+C | ⚠️ Partial (Ctrl+C handling exists)                  |
+| "In Progress"    | "TDD CL Created" | new-failed-tests creates TDD CL  | ✅ Implemented (lines 599-651)                       |
+| "TDD CL Created" | "Fixing Tests"   | fix-tests workflow starts        | ✅ Implemented (lines 678-684)                       |
+| "Fixing Tests"   | "TDD CL Created" | fix-tests workflow fails         | ❌ Missing (currently goes to "Failed to Fix Tests") |
+| "Fixing Tests"   | "Drafted"        | fix-tests workflow succeeds      | ✅ Implemented (lines 759-767)                       |
 
 ### Manual Transitions
 
-| From | To | Trigger | Current Implementation |
-|------|-----|---------|------------------------|
-| "Drafted" | "Mailed" | User confirms to mail CL | ❌ Manual only |
-| "Mailed" | "Submitted" | CL is submitted | ❌ Manual only |
+| From      | To          | Trigger                  | Current Implementation |
+| --------- | ----------- | ------------------------ | ---------------------- |
+| "Drafted" | "Mailed"    | User confirms to mail CL | ❌ Manual only         |
+| "Mailed"  | "Submitted" | CL is submitted          | ❌ Manual only         |
 
 ## Implementation Strategy
 
@@ -51,9 +57,11 @@ Create `home/lib/gai/status_state_machine.py` with:
 1. **Status enum/constants**: Define all valid statuses
 2. **Transition validation function**: `is_valid_transition(from_status: str, to_status: str) -> bool`
 3. **Transition map**: Dictionary defining all valid transitions
-4. **Transition trigger function**: `transition_status(project_file, changespec_name, from_status, to_status, reason) -> bool`
+4. **Transition trigger function**:
+   `transition_status(project_file, changespec_name, from_status, to_status, reason) -> bool`
 
 Benefits:
+
 - Centralized transition logic
 - Easy to add new transitions
 - Validation prevents invalid state changes
@@ -66,6 +74,7 @@ Benefits:
 File: `home/lib/gai/new_failing_tests_workflow/workflow_nodes.py`
 
 Changes:
+
 1. **Workflow start**: Transition "Not Started" → "In Progress"
    - Location: After validation (line 179)
    - Track transition for rollback
@@ -87,6 +96,7 @@ Changes:
 File: `home/lib/gai/fix_tests_workflow/workflow_nodes.py`
 
 Changes:
+
 1. **Workflow start**: Transition "TDD CL Created" → "Fixing Tests"
    - Location: Workflow entry point
    - Track transition for rollback
@@ -109,6 +119,7 @@ Changes:
 File: `home/lib/gai/work_projects_workflow/workflow_nodes.py`
 
 Changes:
+
 1. Update all `_update_changespec_status()` calls to use new state machine
 2. Add validation before each transition
 3. Improve error messages when transitions are invalid
@@ -123,6 +134,7 @@ Enhance state tracking in each workflow:
 3. **Rollback on error**: Conditionally revert on workflow failures
 
 Pattern:
+
 ```python
 class WorkflowState:
     status_transitions: list[tuple[str, str, datetime]] = []
@@ -141,17 +153,20 @@ class WorkflowState:
 Create utility script: `home/lib/gai/scripts/update_changespec_status.py`
 
 Purpose:
+
 - Allow manual status transitions (e.g., "Drafted" → "Mailed")
 - Validate transition is allowed
 - Update ChangeSpec STATUS field
 - Log transition with timestamp and reason
 
 Usage:
+
 ```bash
 update-changespec-status <project-file> <changespec-name> <new-status> [--reason <reason>]
 ```
 
 Validation:
+
 - Check current status
 - Validate transition is allowed (using state machine)
 - Require confirmation for destructive transitions
@@ -165,6 +180,7 @@ Validation:
 4. **Manual transition tests**: Test the utility script
 
 Test files:
+
 - `home/lib/gai/tests/test_status_state_machine.py`
 - `home/lib/gai/tests/test_workflow_status_transitions.py`
 
@@ -189,7 +205,8 @@ VALID_TRANSITIONS = {
 }
 ```
 
-Note: The transition "Fixing Tests" → "Failed to Fix Tests" is included for completeness, but per requirements, workflow code should transition to "TDD CL Created" instead to allow automatic retry.
+Note: The transition "Fixing Tests" → "Failed to Fix Tests" is included for completeness, but per requirements, workflow
+code should transition to "TDD CL Created" instead to allow automatic retry.
 
 ### Status Update Function Enhancement
 
@@ -198,6 +215,7 @@ Current: `_update_changespec_status(project_file, changespec_name, new_status)`
 Enhanced: `transition_changespec_status(project_file, changespec_name, new_status, validate=True)`
 
 Changes:
+
 1. Read current status before updating
 2. Validate transition if `validate=True`
 3. Log transition with timestamp
@@ -213,6 +231,7 @@ Each workflow should implement:
 4. **Cleanup**: Ensure consistent state before exit
 
 Example (in workflow main.py):
+
 ```python
 try:
     # Run workflow
@@ -233,33 +252,39 @@ except KeyboardInterrupt:
 ## Migration Path
 
 ### Step 1: Create state machine module (no behavior change)
+
 - Implement status_state_machine.py
 - Add tests
 - Validate against current transitions
 
 ### Step 2: Update work-projects workflow (preserve current behavior)
+
 - Replace direct `_update_changespec_status()` calls
 - Add validation (but don't enforce yet)
 - Log any invalid transitions that would occur
 
 ### Step 3: Update new-failed-tests workflow
+
 - Add status tracking to workflow state
 - Implement transition on workflow start
 - Implement rollback on error/interrupt
 - Change "Fixing Tests" → "TDD CL Created" transition (instead of "Failed to Fix Tests")
 
 ### Step 4: Update fix-tests workflow
+
 - Add status tracking to workflow state
 - Implement transition on workflow start
 - Implement rollback on error/interrupt
 - Change failure transition to "TDD CL Created"
 
 ### Step 5: Enable strict validation
+
 - Enforce transition validation
 - Fail fast on invalid transitions
 - Update any workflows that violate constraints
 
 ### Step 6: Add manual transition tool
+
 - Create update-changespec-status script
 - Add to PATH
 - Document usage
@@ -271,6 +296,7 @@ except KeyboardInterrupt:
 **File**: `home/lib/gai/new_failing_tests_workflow/workflow_nodes.py`
 
 **Change 1: Add transition on workflow start**
+
 ```python
 # After line 179 (after status validation)
 # Transition "Not Started" → "In Progress"
@@ -289,6 +315,7 @@ state.track_status_transition(old_status, "In Progress")
 ```
 
 **Change 2: Add state tracking to state.py**
+
 ```python
 # home/lib/gai/new_failing_tests_workflow/state.py
 status_transitions: list[tuple[str, str]] = field(default_factory=list)
@@ -298,6 +325,7 @@ def track_status_transition(self, from_status: str, to_status: str):
 ```
 
 **Change 3: Add interrupt handling to main.py**
+
 ```python
 # home/lib/gai/new_failing_tests_workflow/main.py
 try:
@@ -318,12 +346,10 @@ except KeyboardInterrupt:
 
 **File**: `home/lib/gai/fix_tests_workflow/workflow_nodes.py`
 
-**Change 1: Add transition on workflow start**
-Similar pattern to new-failed-tests workflow
+**Change 1: Add transition on workflow start** Similar pattern to new-failed-tests workflow
 
-**Change 2: Change failure transition**
-Currently: "Fixing Tests" → "Failed to Fix Tests"
-New: "Fixing Tests" → "TDD CL Created"
+**Change 2: Change failure transition** Currently: "Fixing Tests" → "Failed to Fix Tests" New: "Fixing Tests" → "TDD CL
+Created"
 
 This allows automatic retry without manual intervention.
 
@@ -336,20 +362,24 @@ Replace all `_update_changespec_status()` calls with `transition_changespec_stat
 ## Edge Cases
 
 ### 1. Manual STATUS changes
-If user manually edits project file, validation may fail on next workflow run.
-Solution: Allow force flag to override validation when needed.
+
+If user manually edits project file, validation may fail on next workflow run. Solution: Allow force flag to override
+validation when needed.
 
 ### 2. Multiple ChangeSpecs in flight
-If multiple ChangeSpecs are being worked on simultaneously, ensure transitions don't conflict.
-Solution: Transitions are per-ChangeSpec, so this should work naturally.
+
+If multiple ChangeSpecs are being worked on simultaneously, ensure transitions don't conflict. Solution: Transitions are
+per-ChangeSpec, so this should work naturally.
 
 ### 3. Failed states
-"Failed to Create CL" and "Failed to Fix Tests" should allow transition back to retry.
-Solution: Include these in transition map.
+
+"Failed to Create CL" and "Failed to Fix Tests" should allow transition back to retry. Solution: Include these in
+transition map.
 
 ### 4. Workflow interrupted mid-transition
-If process is killed during status update, file may be in inconsistent state.
-Solution: Make status updates atomic (write to temp file, then rename).
+
+If process is killed during status update, file may be in inconsistent state. Solution: Make status updates atomic
+(write to temp file, then rename).
 
 ## Success Criteria
 

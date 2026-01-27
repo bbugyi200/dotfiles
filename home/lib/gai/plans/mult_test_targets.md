@@ -2,11 +2,13 @@
 
 ## Overview
 
-Add support for specifying multiple test targets in the TEST TARGETS field using a multi-line format similar to DESCRIPTION, but without blank lines.
+Add support for specifying multiple test targets in the TEST TARGETS field using a multi-line format similar to
+DESCRIPTION, but without blank lines.
 
 ## Current Format
 
 **Single-line, space-separated:**
+
 ```
 TEST TARGETS: //my/package:test1 //other/package:test2
 ```
@@ -14,6 +16,7 @@ TEST TARGETS: //my/package:test1 //other/package:test2
 ## Proposed Format
 
 **Multi-line, 2-space indented (like DESCRIPTION, but no blank lines):**
+
 ```
 TEST TARGETS:
   //my/package:test1
@@ -22,6 +25,7 @@ TEST TARGETS:
 ```
 
 **Special values remain single-line:**
+
 ```
 TEST TARGETS: None
 ```
@@ -35,6 +39,7 @@ TEST TARGETS: None
 **Function:** `_parse_project_spec` (lines 1643-1708)
 
 **Changes needed:**
+
 - Modify parsing logic to handle TEST TARGETS like DESCRIPTION
 - When TEST TARGETS field is encountered:
   - If the line contains a value (e.g., `TEST TARGETS: None`), treat as single-line
@@ -44,6 +49,7 @@ TEST TARGETS: None
 - Store internally as newline-separated string or list
 
 **Backwards compatibility:**
+
 - Must still support single-line format: `TEST TARGETS: //foo:bar //baz:qux`
 - Detection: if line contains value after colon, parse as single-line
 
@@ -54,12 +60,14 @@ TEST TARGETS: None
 **Function:** `_format_changespec` (lines 1711-1741)
 
 **Current code (line 1736):**
+
 ```python
 if "TEST TARGETS" in cs:
     lines.append(f"TEST TARGETS: {cs['TEST TARGETS']}")
 ```
 
 **New logic:**
+
 ```python
 if "TEST TARGETS" in cs:
     test_targets = cs["TEST TARGETS"]
@@ -82,6 +90,7 @@ if "TEST TARGETS" in cs:
 **Function:** `_format_changespec_with_colors` (lines 1795-1804)
 
 **Current code:**
+
 ```python
 # TEST TARGETS field (optional)
 if "TEST TARGETS" in cs:
@@ -96,6 +105,7 @@ if "TEST TARGETS" in cs:
 ```
 
 **New logic:**
+
 ```python
 # TEST TARGETS field (optional)
 if "TEST TARGETS" in cs:
@@ -127,12 +137,15 @@ if "TEST TARGETS" in cs:
 **File:** `home/lib/gai/work_projects_workflow/workflow_nodes.py`
 
 **Usage locations:**
+
 - Line 882: `test_targets = selected_cs.get("TEST TARGETS", "").strip()`
 - Line 1329: `test_targets_raw = selected_cs.get("TEST TARGETS", "").strip()`
 - Line 1195: `test_cmd = f"rabbit test -c opt --no_show_progress {test_targets}"`
 
 **Changes needed:**
+
 - Create helper function to convert multi-line format to space-separated:
+
   ```python
   def _test_targets_to_command_args(test_targets: str) -> str:
       """Convert multi-line or single-line test targets to space-separated string."""
@@ -155,6 +168,7 @@ if "TEST TARGETS" in cs:
 **File:** `home/dot_config/nvim/syntax/gaiproject.vim`
 
 **Current TEST TARGETS syntax (lines 48-55):**
+
 ```vim
 syn match GaiProjectTestTargetsLine "^TEST TARGETS:\s*\%(None\)\@!.\+$" contains=GaiProjectTestTargetsKey
 syn match GaiProjectTestTargetsKey "^TEST TARGETS:" contained
@@ -163,6 +177,7 @@ syn match GaiProjectTestTargetsNoneKey "^TEST TARGETS:" contained
 ```
 
 **New syntax (multi-line support + validation):**
+
 ```vim
 " TEST TARGETS field - key line
 syn match GaiProjectTestTargetsKey "^TEST TARGETS:" nextgroup=GaiProjectTestTargetsInline,GaiProjectTestTargetsNoneValue skipwhite
@@ -186,6 +201,7 @@ highlight GaiProjectTestTargetsMultiLine gui=bold guifg=#AFD75F
 ```
 
 **Key improvements:**
+
 - Uses regex pattern `//[a-zA-Z0-9_/.-]+:[a-zA-Z0-9_-]+` to validate bazel targets
 - Only highlights valid test targets (both single-line and multi-line)
 - Invalid targets (wrong format) won't be highlighted
@@ -196,6 +212,7 @@ highlight GaiProjectTestTargetsMultiLine gui=bold guifg=#AFD75F
 **File:** `home/lib/gai/new_failing_tests_workflow/prompts.py`
 
 **Current format (lines 107-114):**
+
 ```
 TEST_TARGETS: <target1> <target2> ...
 
@@ -204,6 +221,7 @@ Rules:
 ```
 
 **Updated format:**
+
 ```
 TEST_TARGETS:
   <target1>
@@ -226,6 +244,7 @@ Rules:
 **File:** `home/lib/gai/new_failing_tests_workflow/agents.py`
 
 **Current extraction (lines 60-63):**
+
 ```python
 elif line_stripped.startswith("TEST_TARGETS:"):
     # Extract test targets from the line
@@ -233,6 +252,7 @@ elif line_stripped.startswith("TEST_TARGETS:"):
 ```
 
 **Updated to handle multi-line:**
+
 ```python
 elif line_stripped.startswith("TEST_TARGETS:"):
     # Extract test targets (single or multi-line)
@@ -259,11 +279,13 @@ elif line_stripped.startswith("TEST_TARGETS:"):
 **File:** `home/lib/gai/docs/change_spec.md`
 
 **Current (line 11):**
+
 ```
 TEST TARGETS: <TEST_TARGETS>  // Optional field. Either "None" (no tests required), one or more bazel/test targets (e.g., "//my/package:my_test"), or omitted (tests required but targets TBD)
 ```
 
 **Updated:**
+
 ```
 TEST TARGETS:  // Optional field. Either "None" (no tests required), or one or more bazel test targets
   // Formats supported:
@@ -282,6 +304,7 @@ TEST TARGETS:  // Optional field. Either "None" (no tests required), or one or m
 **Add test cases:**
 
 1. **Test parsing multi-line TEST TARGETS:**
+
 ```python
 def test_parse_multiline_test_targets():
     spec = """
@@ -299,6 +322,7 @@ TEST TARGETS:
 ```
 
 2. **Test backwards compatibility with single-line:**
+
 ```python
 def test_parse_singleline_test_targets_backwards_compat():
     spec = """
@@ -310,6 +334,7 @@ TEST TARGETS: //my/package:test1 //other/package:test2
 ```
 
 3. **Test formatting multi-line TEST TARGETS:**
+
 ```python
 def test_format_multiline_test_targets():
     cs = {
@@ -321,6 +346,7 @@ def test_format_multiline_test_targets():
 ```
 
 4. **Test command argument conversion:**
+
 ```python
 def test_test_targets_to_command_args():
     # Multi-line to space-separated
@@ -336,6 +362,7 @@ def test_test_targets_to_command_args():
 ```
 
 5. **Test blank line rejection in parsing:**
+
 ```python
 def test_parse_test_targets_rejects_blank_lines():
     spec = """
@@ -355,6 +382,7 @@ TEST TARGETS:
 **File:** `home/dot_config/nvim/luasnippets/gaiproject.lua`
 
 **Current TEST TARGETS snippet** may need updating to suggest multi-line format:
+
 ```lua
 s("test_targets", {
   t("TEST TARGETS:"),
@@ -372,12 +400,14 @@ s("test_targets", {
 **Valid pattern:** `//path/to/package:target_name`
 
 **Component rules:**
+
 - Must start with `//`
 - Path segment: `[a-zA-Z0-9_/.-]+` (alphanumeric, underscore, slash, dot, hyphen)
 - Separator: `:`
 - Target name: `[a-zA-Z0-9_-]+` (alphanumeric, underscore, hyphen)
 
 **Examples:**
+
 - ✅ `//my/package:my_test`
 - ✅ `//foo/bar/baz.qux:integration-test`
 - ✅ `//tools:all`
@@ -393,10 +423,12 @@ s("test_targets", {
    - Format as single-line when empty
 
 2. **Single target in multi-line format:**
+
    ```
    TEST TARGETS:
      //my/package:test
    ```
+
    - Store as single-line internally (optimization)
    - Or keep as multi-line (consistency)
 
@@ -405,20 +437,24 @@ s("test_targets", {
    - Format with exactly 2 spaces
 
 4. **"None" in multi-line format:**
+
    ```
    TEST TARGETS:
      None
    ```
+
    - Reject? Or normalize to single-line "None"?
    - Recommendation: normalize to `TEST TARGETS: None`
 
 5. **Blank lines (CRITICAL - must reject):**
+
    ```
    TEST TARGETS:
      //my/package:test1
 
      //my/package:test2
    ```
+
    - Unlike DESCRIPTION, TEST TARGETS should NOT allow blank lines
    - Either reject the spec or stop parsing at blank line
 

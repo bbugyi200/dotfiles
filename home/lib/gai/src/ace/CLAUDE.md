@@ -2,7 +2,8 @@
 
 ## ChangeSpec Suffix Syntax Highlighting
 
-**CRITICAL**: When updating styling for ChangeSpec suffix types (e.g., `killed_process`, `running_agent`, `error`), you MUST update ALL of these files:
+**CRITICAL**: When updating styling for ChangeSpec suffix types (e.g., `killed_process`, `running_agent`, `error`), you
+MUST update ALL of these files:
 
 1. `home/dot_config/nvim/syntax/gaiproject.vim` - Vim syntax highlighting (2 places: COMMITS and HOOKS sections)
 2. `home/lib/gai/ace/display.py` - CLI Rich styling (3 places: commits, hooks, comments)
@@ -11,7 +12,8 @@
 
 ## Help Popup Maintenance
 
-**CRITICAL**: Whenever you modify a `gai ace` option (add, remove, or change behavior), you MUST update the `?` (help) popup content to keep the documentation in sync with the actual functionality.
+**CRITICAL**: Whenever you modify a `gai ace` option (add, remove, or change behavior), you MUST update the `?` (help)
+popup content to keep the documentation in sync with the actual functionality.
 
 ## Help Modal Box Formatting
 

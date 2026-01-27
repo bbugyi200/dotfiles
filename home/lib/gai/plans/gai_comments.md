@@ -36,7 +36,8 @@ prompt: |
 
 ## Overview
 
-Replace the "Changes Requested" STATUS approach with a new COMMENTS field that tracks Critique code review comments with file references and suffix-based workflow status tracking.
+Replace the "Changes Requested" STATUS approach with a new COMMENTS field that tracks Critique code review comments with
+file references and suffix-based workflow status tracking.
 
 ## New COMMENTS Field Format
 
@@ -50,6 +51,7 @@ COMMENTS:
 ```
 
 Suffix meanings:
+
 - No suffix: CRS workflow available to run
 - `(YYmmdd_HHMMSS)`: CRS workflow running (timestamp when started)
 - `(2a)`: CRS completed, linked to proposal ID
@@ -63,6 +65,7 @@ Suffix meanings:
 ### Phase 1: Data Structures (`work/changespec.py`)
 
 1. **Add CommentEntry dataclass** (after HookEntry):
+
    ```python
    @dataclass
    class CommentEntry:
@@ -72,6 +75,7 @@ Suffix meanings:
    ```
 
 2. **Update ChangeSpec dataclass** - add field:
+
    ```python
    comments: list[CommentEntry] | None = None
    ```
@@ -214,19 +218,19 @@ highlight GaiProjectCommentsSuffixTimestamp gui=bold guifg=#D75F87
 
 ## Critical Files
 
-| File | Changes |
-|------|---------|
-| `work/changespec.py` | Add CommentEntry, update ChangeSpec, parsing, display |
-| `work/comments/core.py` | NEW - timestamps, stale detection, utilities |
-| `work/comments/operations.py` | NEW - file operations, field updates |
-| `work/loop/core.py` | Add comment checking, remove status transitions |
-| `work/workflows/crs.py` | Accept comments_file, manage suffix lifecycle |
-| `crs_workflow.py` | Accept comments_file, optionally copy |
-| `work/operations.py` | Update get_available_workflows() |
-| `work/handlers/workflow_handlers.py` | Pass comments_file, manage suffix |
-| `status_state_machine.py` | Remove "Changes Requested" |
-| `work/cl_status.py` | Update SYNCABLE_STATUSES |
-| `dot_config/nvim/syntax/gaiproject.vim` | Add COMMENTS syntax, remove Changes Requested |
+| File                                    | Changes                                               |
+| --------------------------------------- | ----------------------------------------------------- |
+| `work/changespec.py`                    | Add CommentEntry, update ChangeSpec, parsing, display |
+| `work/comments/core.py`                 | NEW - timestamps, stale detection, utilities          |
+| `work/comments/operations.py`           | NEW - file operations, field updates                  |
+| `work/loop/core.py`                     | Add comment checking, remove status transitions       |
+| `work/workflows/crs.py`                 | Accept comments_file, manage suffix lifecycle         |
+| `crs_workflow.py`                       | Accept comments_file, optionally copy                 |
+| `work/operations.py`                    | Update get_available_workflows()                      |
+| `work/handlers/workflow_handlers.py`    | Pass comments_file, manage suffix                     |
+| `status_state_machine.py`               | Remove "Changes Requested"                            |
+| `work/cl_status.py`                     | Update SYNCABLE_STATUSES                              |
+| `dot_config/nvim/syntax/gaiproject.vim` | Add COMMENTS syntax, remove Changes Requested         |
 
 ---
 

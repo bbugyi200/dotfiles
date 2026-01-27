@@ -19,24 +19,29 @@ work/
 ### Separation of Concerns
 
 **changespec.py** - Data layer
+
 - `ChangeSpec` dataclass
 - Parsing from markdown files
 - Finding all changespecs across projects
 - Rich display formatting
 
 **filters.py** - Filter layer
+
 - `validate_filters()` - Validate status and project filters
 - `filter_changespecs()` - Apply filters with OR logic
 
 **status.py** - Status management
+
 - `get_available_statuses()` - Get valid status transitions
 - `prompt_status_change()` - Interactive status selection UI
 
 **operations.py** - ChangeSpec operations
+
 - `should_show_run_option()` - Check if run action is available
 - `update_to_changespec()` - Update working directory (bb_hg_update)
 
 **workflow.py** - Orchestration layer
+
 - `WorkWorkflow` - Main workflow class
 - Interactive navigation loop
 - Action handlers: next, prev, status change, run, diff, tmux
@@ -76,6 +81,7 @@ workflow = WorkWorkflow(
 ### Smart Defaults
 
 Default action adapts to context:
+
 - **Last changespec** → default to quit
 - **Forward navigation** → default to next
 - **Backward navigation** → default to prev
@@ -84,6 +90,7 @@ Default action adapts to context:
 ### State Management
 
 After modifying changespecs:
+
 1. Reload from files (`find_all_changespecs()`)
 2. Reapply filters (`filter_changespecs()`)
 3. Reposition to same changespec by name
@@ -94,6 +101,7 @@ After modifying changespecs:
 ### Why Separate Modules?
 
 Original `main.py` was 730 lines. Refactoring benefits:
+
 - **Testability** - Pure functions easy to unit test
 - **Reusability** - Operations/filters usable outside workflow
 - **Maintainability** - Clear boundaries, single responsibility
@@ -102,6 +110,7 @@ Original `main.py` was 730 lines. Refactoring benefits:
 ### Why Action Handler Methods?
 
 Action handlers (`_handle_*`) stay as methods because they:
+
 - Need workflow state (console, filters, current position)
 - Coordinate multiple operations atomically
 - Manage UI feedback and error handling
@@ -112,6 +121,7 @@ Pure operations extracted to `operations.py` for reuse.
 ### Why Reload After Modifications?
 
 Changespecs stored in markdown files. After status changes or workflow runs:
+
 - File content is source of truth
 - Other processes may modify files
 - Filters may change which changespecs are visible

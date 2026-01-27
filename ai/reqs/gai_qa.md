@@ -2,7 +2,9 @@
 
 ## Overview
 
-The `gai work` command should support a QA (Quality Assurance) workflow step between presubmit completion and mailing. After presubmits succeed, the CL transitions to a "Needs QA" status where the user can run a QA workflow before proceeding to mail.
+The `gai work` command should support a QA (Quality Assurance) workflow step between presubmit completion and mailing.
+After presubmits succeed, the CL transitions to a "Needs QA" status where the user can run a QA workflow before
+proceeding to mail.
 
 ---
 
@@ -15,6 +17,7 @@ Add a new status value to the state machine:
 - **"Needs QA"** - Indicates a CL has passed presubmits and is ready for QA testing
 
 Update `status_state_machine.py`:
+
 - [ ] Add "Needs QA" to `VALID_STATUSES`
 - [ ] Add transitions in `VALID_TRANSITIONS`
 
@@ -22,10 +25,10 @@ Update `status_state_machine.py`:
 
 Configure the following state transitions:
 
-| From Status | To Status | Trigger |
-|-------------|-----------|---------|
-| Running Presubmits... | Needs QA | Presubmit succeeds (via periodic check) |
-| Needs QA | Pre-Mailed | QA workflow completes successfully |
+| From Status           | To Status  | Trigger                                 |
+| --------------------- | ---------- | --------------------------------------- |
+| Running Presubmits... | Needs QA   | Presubmit succeeds (via periodic check) |
+| Needs QA              | Pre-Mailed | QA workflow completes successfully      |
 
 - [ ] Update presubmit success transition to go to "Needs QA" instead of "Pre-Mailed"
 - [ ] Add transitions to `VALID_TRANSITIONS` dict
@@ -58,12 +61,12 @@ Add color for the new status in `changespec.py` `_get_status_color()`:
 
 ### Files to Modify
 
-| File | Changes |
-|------|---------|
-| `status_state_machine.py` | Add "Needs QA" status and transitions |
-| `work/operations.py` | Gate `["qa"]` workflow to "Needs QA" status only |
-| `work/changespec.py` | Add status color for "Needs QA" |
-| `work/cl_status.py` | Update presubmit success transition to "Needs QA" |
+| File                      | Changes                                           |
+| ------------------------- | ------------------------------------------------- |
+| `status_state_machine.py` | Add "Needs QA" status and transitions             |
+| `work/operations.py`      | Gate `["qa"]` workflow to "Needs QA" status only  |
+| `work/changespec.py`      | Add status color for "Needs QA"                   |
+| `work/cl_status.py`       | Update presubmit success transition to "Needs QA" |
 
 ### Updated State Machine Diagram
 

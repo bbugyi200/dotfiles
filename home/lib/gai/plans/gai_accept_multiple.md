@@ -1,7 +1,9 @@
 # Plan: Multi-Proposal Accept Support for `gai cl accept`
 
 ## Summary
+
 Modify `gai cl accept` to accept multiple proposal entries with the syntax:
+
 ```
 gai cl accept <id1>[(<msg1>)] [<id2>[(<msg2>)]] ...
 ```
@@ -13,6 +15,7 @@ Example: `gai cl accept 2b(Add foobar field) 2a 2c(Add baz field)`
 ### 1. `/Users/bbugyi/.local/share/chezmoi/home/lib/gai/accept_workflow.py`
 
 **Add new parser function** (~line 29, after `_parse_proposal_id`):
+
 ```python
 def parse_proposal_entries(args: list[str]) -> list[tuple[str, str | None]] | None:
     """Parse proposal entry arguments into (id, msg) tuples.
@@ -22,18 +25,22 @@ def parse_proposal_entries(args: list[str]) -> list[tuple[str, str | None]] | No
     - Legacy syntax: "2b" followed by optional separate message argument
     """
 ```
+
 - Use regex pattern `r"^(\d+[a-z])(?:\((.+)\))?$"` to match `<id>[(<msg>)]`
 - Handle backward compatibility for legacy `gai cl accept 2a "msg"` syntax
 
 **Modify `_renumber_history_entries`** (line 246):
+
 - Change `extra_msg: str | None` parameter to `extra_msgs: list[str | None] | None`
 - Update logic around line 373 to apply per-proposal messages
 
 **Modify `AcceptWorkflow.__init__`** (line 443):
+
 - Change `proposal: str` to `proposals: list[tuple[str, str | None]]`
 - Remove separate `msg` parameter
 
 **Refactor `AcceptWorkflow.run()`** (line 472):
+
 1. Validate ALL proposals upfront (exist, have DIFFs) before making changes
 2. Claim workspace once
 3. Loop through proposals in order:
@@ -46,6 +53,7 @@ def parse_proposal_entries(args: list[str]) -> list[tuple[str, str | None]] | No
 ### 2. `/Users/bbugyi/.local/share/chezmoi/home/lib/gai/main.py`
 
 **Modify argument parser** (lines 100-109):
+
 ```python
 # Replace single proposal + optional msg with:
 accept_parser.add_argument(
@@ -57,6 +65,7 @@ accept_parser.add_argument(
 ```
 
 **Modify handler** (lines 610-617):
+
 ```python
 if args.cl_command == "accept":
     from gai.accept_workflow import parse_proposal_entries
@@ -74,6 +83,7 @@ if args.cl_command == "accept":
 ### 3. `/Users/bbugyi/.local/share/chezmoi/home/lib/gai/test/test_accept_workflow.py`
 
 **Add tests for `parse_proposal_entries`**:
+
 - Single entry with message: `["2a(Add foobar)"]` -> `[("2a", "Add foobar")]`
 - Single entry without message: `["2a"]` -> `[("2a", None)]`
 - Multiple entries: `["2b(Add foobar)", "2a", "2c(Fix typo)"]`
@@ -82,6 +92,7 @@ if args.cl_command == "accept":
 - Empty list returns None
 
 **Add tests for multi-proposal `_renumber_history_entries`**:
+
 - Multiple proposals with per-proposal messages
 
 ## Implementation Order
@@ -103,6 +114,7 @@ if args.cl_command == "accept":
 ## Error Handling
 
 Fail-fast behavior:
+
 1. Validate all proposal IDs are valid format
 2. Validate all proposals exist in HISTORY
 3. Validate all proposals have DIFF paths

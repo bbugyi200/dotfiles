@@ -1,6 +1,7 @@
 # ChangeSpec Format Documentation
 
-A **ChangeSpec** is a structured specification for a change list (CL), also known as a pull request (PR). It defines the metadata, description, dependencies, and status of a proposed code change.
+A **ChangeSpec** is a structured specification for a change list (CL), also known as a pull request (PR). It defines the
+metadata, description, dependencies, and status of a proposed code change.
 
 ## Format Overview
 
@@ -27,11 +28,13 @@ STATUS: <STATUS>
 The unique identifier for the change list.
 
 **Format**: `<prefix>_<descriptive_suffix>`
+
 - Must start with a project-specific prefix followed by an underscore
 - Suffix should use underscores to separate words
 - Suffix should be descriptive but concise
 
 **Examples**:
+
 - `my_project_add_config_parser`
 - `feature_x_implement_validation`
 - `refactor_database_layer`
@@ -41,11 +44,13 @@ The unique identifier for the change list.
 A comprehensive description of what the CL does and why.
 
 **Structure**:
+
 1. **TITLE** (first line): A brief one-line summary
 2. **Blank line**: Always include one blank line after the title
 3. **BODY** (remaining lines): Detailed multi-line description
 
 **Formatting**:
+
 - **All lines must be 2-space indented** (including the blank line)
 - TITLE should be concise (one line)
 - BODY should include:
@@ -55,6 +60,7 @@ A comprehensive description of what the CL does and why.
   - What will be tested (if applicable)
 
 **Example**:
+
 ```
 DESCRIPTION:
   Add configuration file parser for user settings
@@ -72,10 +78,12 @@ DESCRIPTION:
 Specifies the dependency relationship between CLs.
 
 **Values**:
+
 - Omit this field entirely - This CL has no dependencies (default, preferred for parallelization)
 - `<parent_cl_name>` - The NAME of a parent CL that must be completed first
 
 **CRITICAL Dependency Guidelines**:
+
 - **Default to omitting PARENT** to maximize parallel development
 - **Only set a PARENT when there's a real content dependency**:
   - CL B calls a function/class that CL A creates
@@ -88,6 +96,7 @@ Specifies the dependency relationship between CLs.
   - Documentation that doesn't reference new code
 
 **Examples**:
+
 ```
 # No PARENT field = no dependencies (preferred)
 PARENT: my_project_add_config_parser   # Depends on another CL
@@ -98,10 +107,12 @@ PARENT: my_project_add_config_parser   # Depends on another CL
 The CL identifier (e.g., CL number or PR number).
 
 **Values**:
+
 - Omit this field entirely - CL not yet created (initial state)
 - `http://cl/<CL_ID>` - URL to the created CL/PR
 
 **Example**:
+
 ```
 # No CL field = CL not yet created
 CL: http://cl/12345        # After CL creation
@@ -137,12 +148,14 @@ Specifies the test targets that need to pass for this CL.
 **NEVER use `TEST TARGETS: None`** - either specify targets or omit the field.
 
 **Target Format**:
+
 - General: `//path/to/package:target_name`
 - For Dart: Strip the `test/` directory from the path
   - File: `//path/to/component/test/my_widget_test.dart`
   - Target: `//path/to/component:my_widget_test` (not `//path/to/component/test:my_widget_test`)
 
 **Examples**:
+
 ```
 # Single target
 TEST TARGETS: //my/project:config_parser_test
@@ -170,6 +183,7 @@ STATUS: Unstarted
 The current state of the CL.
 
 **Valid Values**:
+
 - `Blocked` - Has a PARENT that hasn't reached "Drafted" status or beyond
 - `Unstarted` - Ready to start but work hasn't begun
 - `In Progress` - Work is currently ongoing
@@ -182,6 +196,7 @@ The current state of the CL.
 - `Submitted` - Merged/submitted to the codebase
 
 **Status Selection Rules**:
+
 - If `PARENT: None`, typically use `Unstarted`
 - If PARENT is set to another CL name, use `Blocked`
 - Update status as work progresses through the lifecycle

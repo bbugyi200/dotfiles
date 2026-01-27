@@ -2,7 +2,8 @@
 
 ## Overview
 
-Add a new 10-second check to `gai loop` that detects FAILED hooks with proposed HISTORY entry IDs (e.g., "1a", "2b") and runs an async summarize workflow to add a failure summary suffix instead of triggering fix-hook.
+Add a new 10-second check to `gai loop` that detects FAILED hooks with proposed HISTORY entry IDs (e.g., "1a", "2b") and
+runs an async summarize workflow to add a failure summary suffix instead of triggering fix-hook.
 
 ## Key Design Decisions
 
@@ -16,15 +17,18 @@ Add a new 10-second check to `gai loop` that detects FAILED hooks with proposed 
 ### 1. `home/lib/gai/work/hooks/operations.py`
 
 **Add new function** `get_failing_hooks_for_summarize()`:
+
 ```python
 def get_failing_hooks_for_summarize(hooks: list[HookEntry]) -> list[HookEntry]:
     """Get failing hooks eligible for summarize-hook (proposal entries, no suffix)."""
 ```
+
 - Check `sl.status == "FAILED"`
 - Check `_is_proposal_entry(sl.history_entry_num)` (import from `.core`)
 - Check `sl.suffix is None`
 
 **Modify** `get_failing_hooks_for_fix()` (line 443-449):
+
 - Add condition to EXCLUDE proposal entries: `not _is_proposal_entry(sl.history_entry_num)`
 
 ### 2. `home/lib/gai/work/hooks/__init__.py`
@@ -52,6 +56,7 @@ Export `get_failing_hooks_for_summarize`.
 ### 4. `home/lib/gai/loop_summarize_hook_runner.py` (NEW)
 
 Simplified runner script (no workspace needed):
+
 ```python
 #!/usr/bin/env python3
 """Standalone summarize-hook workflow runner."""
@@ -67,6 +72,7 @@ Simplified runner script (no workspace needed):
 ### 5. `home/lib/gai/test/test_summarize_hook.py` (NEW)
 
 Tests for:
+
 - `get_failing_hooks_for_summarize()` - proposal entries eligible
 - `get_failing_hooks_for_summarize()` - regular entries NOT eligible
 - `get_failing_hooks_for_summarize()` - hooks with suffix NOT eligible

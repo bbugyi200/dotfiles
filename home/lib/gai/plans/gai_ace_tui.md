@@ -1,6 +1,7 @@
 # Plan: Convert `gai ace` to Textual TUI
 
 ## Requirements
+
 - **Replace CLI**: TUI becomes the only interface for `gai ace`
 - **Default query**: `'"(!: "'` (filters out error suffixes)
 - **Layout**: List + detail (left sidebar with ChangeSpecs list, right panel with detail)
@@ -31,28 +32,33 @@ ace/tui/
 ## Key Components
 
 ### 1. Main App (`app.py`)
+
 - Textual `App` subclass with reactive properties for `changespecs`, `current_idx`, `query_string`
 - Key bindings for all single-key actions: n, p, q, s, r, R, m, f, d, v, h, a, y, /
 - Auto-refresh timer using `set_interval()`
 - Layout: `Header` + `Horizontal(ChangeSpecList, ChangeSpecDetail)` + `KeybindingFooter`
 
 ### 2. ChangeSpecList Widget (`changespec_list.py`)
+
 - Extends `OptionList` for scrollable, selectable list
 - Shows each ChangeSpec with name, status indicator, error markers
 - Highlights currently selected item
 - Responds to n/p keys and mouse clicks
 
 ### 3. ChangeSpecDetail Widget (`changespec_detail.py`)
+
 - Adapts `display_changespec()` from `display.py` to render Rich `Text` in a Textual `Static` widget
 - Shows full ChangeSpec info: NAME, DESCRIPTION, STATUS, HISTORY, HOOKS, etc.
 - Preserves existing color scheme from `display.py`
 
 ### 4. KeybindingFooter Widget (`keybinding_footer.py`)
+
 - Dynamic footer showing available actions based on current context
 - Adapts logic from `build_navigation_options()` in `navigation.py`
 - Shows/hides options based on ChangeSpec state (e.g., hide 'm' if not ready to mail)
 
 ### 5. Modal Dialogs
+
 - **StatusModal**: Selection list for status change (s key)
 - **QueryEditModal**: Input field for editing query (/ key)
 - **WorkflowSelectModal**: Selection for multiple workflows (r key when multiple available)
@@ -60,6 +66,7 @@ ace/tui/
 ## Integration Strategy
 
 ### Preserve Existing Handlers
+
 All action handlers in `actions.py` and `handlers/` stay unchanged. The TUI only replaces the I/O layer:
 
 ```python
@@ -75,7 +82,9 @@ def action_change_status(self) -> None:
 ```
 
 ### External Process Handling
+
 For actions that spawn external processes (d, m, R, workflows):
+
 - Use Textual's `app.suspend()` before spawning
 - Resume after process completes
 - Use `run_worker()` for background tasks with progress
@@ -94,6 +103,7 @@ For actions that spawn external processes (d, m, R, workflows):
 ## Implementation Phases
 
 ### Phase 1: Core Structure
+
 1. Create `ace/tui/` directory and `__init__.py`
 2. Create `app.py` with basic Textual App skeleton
 3. Create `styles.tcss` with initial CSS
@@ -102,32 +112,38 @@ For actions that spawn external processes (d, m, R, workflows):
 6. Implement `KeybindingFooter` widget
 
 ### Phase 2: Navigation & Display
+
 1. Wire up n/p/q key bindings
 2. Implement reactive updates when `current_idx` changes
 3. Add auto-refresh timer
 4. Test basic navigation flow
 
 ### Phase 3: Simple Actions
+
 1. Implement y (refresh) - direct handler call
 2. Implement d (diff) - suspend for external process
 3. Implement f (findreviewers) - direct handler call
 
 ### Phase 4: Modal Dialogs
+
 1. Implement `StatusModal` for s key
 2. Implement `QueryEditModal` for / key
 3. Implement `WorkflowSelectModal` for r key
 
 ### Phase 5: Complex Actions
+
 1. Implement h (edit hooks)
 2. Implement v (view files)
 3. Implement a (accept proposal) - parse a1, a2, etc.
 4. Implement m (mail) and R (run query)
 
 ### Phase 6: Entry Point & Testing
+
 1. Update parser.py for default query
 2. Update entry.py to use TUI
 3. Add tests for TUI components
 4. Run `make fix && make lint && make test`
 
 ## Dependencies
+
 Add to project: `textual>=0.45.0`

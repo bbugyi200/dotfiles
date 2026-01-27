@@ -1,10 +1,12 @@
 # Plan: Acknowledge Terminal Status Attention Markers
 
-Add a new 10-second check to `gai loop` that transforms `(!: <msg>)` suffixes to `(~: <msg>)` for ChangeSpecs with terminal statuses ("Reverted" or "Submitted").
+Add a new 10-second check to `gai loop` that transforms `(!: <msg>)` suffixes to `(~: <msg>)` for ChangeSpecs with
+terminal statuses ("Reverted" or "Submitted").
 
 ## Summary
 
-For ChangeSpecs with STATUS = "Reverted" or "Submitted", no further action is needed. This check automatically acknowledges all attention markers across HISTORY, HOOKS, and COMMENTS entries.
+For ChangeSpecs with STATUS = "Reverted" or "Submitted", no further action is needed. This check automatically
+acknowledges all attention markers across HISTORY, HOOKS, and COMMENTS entries.
 
 ---
 
@@ -15,6 +17,7 @@ For ChangeSpecs with STATUS = "Reverted" or "Submitted", no further action is ne
 **File:** `home/lib/gai/work/changespec.py`
 
 Add `suffix_type: str | None = None` field to:
+
 - `HookStatusLine` dataclass (line ~108)
 - `CommentEntry` dataclass (line ~208)
 
@@ -25,6 +28,7 @@ Values: `"error"` for `(!:)`, `"acknowledged"` for `(~:)`, `None` for plain suff
 **File:** `home/lib/gai/work/changespec.py`
 
 In `_parse_changespec_from_lines()`:
+
 - For HOOKS parsing (~line 502-531): Capture `suffix_type` when stripping `!:` or `~:` prefix
 - For COMMENTS parsing (~line 555-582): Same treatment
 
@@ -61,11 +65,13 @@ Similar logic for comment suffix formatting.
 
 **File:** `home/lib/gai/work/hooks/operations.py`
 
-Add `update_hook_status_line_suffix_type()` function to transform a specific hook status line's suffix_type from "error" to "acknowledged".
+Add `update_hook_status_line_suffix_type()` function to transform a specific hook status line's suffix_type from "error"
+to "acknowledged".
 
 **File:** `home/lib/gai/work/comments/operations.py`
 
-Add `update_comment_suffix_type()` function to transform a specific comment entry's suffix_type from "error" to "acknowledged".
+Add `update_comment_suffix_type()` function to transform a specific comment entry's suffix_type from "error" to
+"acknowledged".
 
 ### Step 5: Add new method to LoopWorkflow
 
@@ -109,13 +115,13 @@ updates.extend(acknowledge_updates)
 
 ## Files to Modify
 
-| File | Changes |
-|------|---------|
-| `home/lib/gai/work/changespec.py` | Add `suffix_type` to `HookStatusLine` and `CommentEntry`; update parsing |
-| `home/lib/gai/work/hooks/operations.py` | Add `update_hook_status_line_suffix_type()`; update `_format_hooks_field()` |
-| `home/lib/gai/work/comments/operations.py` | Add `update_comment_suffix_type()`; update `_format_comments_field()` |
-| `home/lib/gai/work/loop/core.py` | Add `_acknowledge_terminal_status_markers()`; call from `_run_hooks_cycle()` |
-| `home/lib/gai/test/test_loop.py` | Add tests for new functionality |
+| File                                       | Changes                                                                      |
+| ------------------------------------------ | ---------------------------------------------------------------------------- |
+| `home/lib/gai/work/changespec.py`          | Add `suffix_type` to `HookStatusLine` and `CommentEntry`; update parsing     |
+| `home/lib/gai/work/hooks/operations.py`    | Add `update_hook_status_line_suffix_type()`; update `_format_hooks_field()`  |
+| `home/lib/gai/work/comments/operations.py` | Add `update_comment_suffix_type()`; update `_format_comments_field()`        |
+| `home/lib/gai/work/loop/core.py`           | Add `_acknowledge_terminal_status_markers()`; call from `_run_hooks_cycle()` |
+| `home/lib/gai/test/test_loop.py`           | Add tests for new functionality                                              |
 
 ---
 

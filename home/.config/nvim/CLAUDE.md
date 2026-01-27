@@ -11,6 +11,7 @@ Most plugins should be contained in **single files** in the `/lua/plugins/` dire
 3. Return a lazy.nvim plugin spec (table)
 
 **Example Structure:**
+
 ```lua
 -- PLUGIN: http://github.com/author/plugin-name
 return {
@@ -92,6 +93,7 @@ vim.keymap.set("n", "<leader>qf", "<cmd>copen<cr>", { desc = "Open quickfix wind
 ### Examples
 
 #### Basic Keymap
+
 ```lua
 -- KEYMAP: <leader>e
 vim.keymap.set(
@@ -103,6 +105,7 @@ vim.keymap.set(
 ```
 
 #### Function-based Keymap
+
 ```lua
 -- KEYMAP: <leader>qa
 vim.keymap.set("n", "<leader>qa", function()

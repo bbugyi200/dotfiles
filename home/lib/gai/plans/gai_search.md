@@ -2,7 +2,8 @@
 
 ## Overview
 
-Rename `gai work` to `gai search`, remove `-s`/`-p` options, and implement a boolean query language for full-text filtering.
+Rename `gai work` to `gai search`, remove `-s`/`-p` options, and implement a boolean query language for full-text
+filtering.
 
 ## Requirements
 
@@ -30,13 +31,13 @@ c"FooBar"                       # Case-sensitive match
 
 ### 1. `home/lib/gai/work/query/` (new package)
 
-| File | Purpose |
-|------|---------|
-| `__init__.py` | Export `parse_query`, `evaluate_query`, `QueryParseError` |
-| `types.py` | AST types: `StringMatch`, `NotExpr`, `AndExpr`, `OrExpr` |
+| File           | Purpose                                                     |
+| -------------- | ----------------------------------------------------------- |
+| `__init__.py`  | Export `parse_query`, `evaluate_query`, `QueryParseError`   |
+| `types.py`     | AST types: `StringMatch`, `NotExpr`, `AndExpr`, `OrExpr`    |
 | `tokenizer.py` | Lexer: `tokenize()`, `Token`, `TokenType`, `TokenizerError` |
-| `parser.py` | Parser: `parse_query()`, `QueryParseError` |
-| `evaluator.py` | Evaluator: `evaluate_query()`, `_get_searchable_text()` |
+| `parser.py`    | Parser: `parse_query()`, `QueryParseError`                  |
+| `evaluator.py` | Evaluator: `evaluate_query()`, `_get_searchable_text()`     |
 
 ### 2. `home/lib/gai/test/test_query.py` (new)
 
@@ -47,11 +48,13 @@ Tests for tokenizer, parser, and evaluator.
 ### 1. `home/lib/gai/main.py`
 
 **Lines 365-396 (argument parser):**
+
 - Rename `work_parser` → `search_parser`
 - Remove `-s`/`--status` and `-p`/`--project` options
 - Add required positional `query` argument
 
 **Lines 733-741 (command handler):**
+
 - Change `args.command == "work"` → `args.command == "search"`
 - Instantiate `SearchWorkflow(query=args.query, ...)`
 
@@ -78,6 +81,7 @@ Keep for `gai loop` if needed, otherwise remove. Update imports if kept.
 ## Searchable Fields
 
 `_get_searchable_text(changespec)` returns combined text from:
+
 - `name`
 - `description`
 - `status`

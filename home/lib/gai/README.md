@@ -1,6 +1,8 @@
 # GAI (Google AI - LangGraph Workflow Runner)
 
-AI-assisted change list (CL) management for Mercurial workflows. GAI provides an interactive TUI for managing ChangeSpecs, a background daemon for continuous monitoring, AI-powered workflows, and a powerful query language for filtering CLs.
+AI-assisted change list (CL) management for Mercurial workflows. GAI provides an interactive TUI for managing
+ChangeSpecs, a background daemon for continuous monitoring, AI-powered workflows, and a powerful query language for
+filtering CLs.
 
 ## Table of Contents
 
@@ -33,17 +35,17 @@ AI-assisted change list (CL) management for Mercurial workflows. GAI provides an
 
 ## CLI Commands Reference
 
-| Command | Purpose |
-|---------|---------|
-| `gai ace [query]` | Interactive TUI for managing ChangeSpecs |
-| `gai axe` | Background daemon for status monitoring |
-| `gai commit <cl_name> [file_path]` | Create Mercurial commits with metadata |
-| `gai amend [note]` | Amend commits with HISTORY tracking |
-| `gai restore [name]` | Restore reverted ChangeSpecs |
-| `gai revert <name>` | Revert and archive ChangeSpecs |
-| `gai search <query>` | Search ChangeSpecs (plain or rich output) |
-| `gai xprompt [prompt]` | Expand gai references in prompts |
-| `gai run <workflow>` | Execute workflows |
+| Command                            | Purpose                                   |
+| ---------------------------------- | ----------------------------------------- |
+| `gai ace [query]`                  | Interactive TUI for managing ChangeSpecs  |
+| `gai axe`                          | Background daemon for status monitoring   |
+| `gai commit <cl_name> [file_path]` | Create Mercurial commits with metadata    |
+| `gai amend [note]`                 | Amend commits with HISTORY tracking       |
+| `gai restore [name]`               | Restore reverted ChangeSpecs              |
+| `gai revert <name>`                | Revert and archive ChangeSpecs            |
+| `gai search <query>`               | Search ChangeSpecs (plain or rich output) |
+| `gai xprompt [prompt]`             | Expand gai references in prompts          |
+| `gai run <workflow>`               | Execute workflows                         |
 
 ### gai ace
 
@@ -59,6 +61,7 @@ gai ace -r 30                      # Refresh every 30 seconds
 ```
 
 **Options:**
+
 - `-m, --model-size {big,little}`: Override model size for all AI operations
 - `-r, --refresh-interval N`: Auto-refresh interval in seconds (default: 10, 0 to disable)
 
@@ -76,6 +79,7 @@ gai axe --zombie-timeout 3600      # Mark processes as zombie after 1 hour
 ```
 
 **Options:**
+
 - `--full-check-interval N`: Full check interval in seconds (default: 300 = 5 minutes)
 - `--hook-interval N`: Hook check interval in seconds (default: 1)
 - `-r, --max-runners N`: Maximum concurrent runners (default: 5)
@@ -186,109 +190,109 @@ The Ace TUI has three tabs:
 
 #### CLs Tab
 
-| Section | Key | Action |
-|---------|-----|--------|
-| **Navigation** | `j` / `k` | Move to next / previous CL |
-| | `< / > / ~` | Navigate to ancestor / child / sibling |
-| | `Ctrl+O / K` | Jump back / forward in history |
-| | `Ctrl+D / U` | Scroll detail panel down / up |
-| **CL Actions** | `a` | Accept proposal |
-| | `b` | Rebase CL onto parent |
-| | `C / c1-c9` | Checkout CL (workspace 1-9) |
-| | `d` | Show diff |
-| | `e` | Edit spec file |
-| | `h` | Edit hooks |
-| | `H` | Add hooks from failed targets |
-| | `M` | Mail CL |
-| | `m` | Mark/unmark current CL |
-| | `n` | Rename CL (non-Submitted/Reverted) |
-| | `R` | Rewind to prev commit (non-Submitted/Reverted) |
-| | `s` | Change status |
-| | `T / t1-t9` | Checkout + tmux (workspace 1-9) |
-| | `u` | Clear all marks |
-| | `v` | View files |
-| | `w` | Reword CL description |
-| | `Y` | Sync workspace |
-| **Fold Mode** | `z c` | Toggle commits section |
-| | `z h` | Toggle hooks section |
-| | `z m` | Toggle mentors section |
-| | `z z` | Toggle all sections |
-| **Workflows & Agents** | `r` | Run workflow |
-| | `@` | Run agent on marked CLs (or current) |
-| | `!` | Run background command |
-| | `<space>` | Run agent from current CL |
-| **Queries** | `/` | Edit search query |
-| | `0-9` | Load saved query |
-| | `^` | Previous query |
-| | `_` | Next query |
-| **Copy Mode (%)** | `%%` | Copy ChangeSpec |
-| | `%!` | Copy ChangeSpec + snapshot |
-| | `%b` | Copy bug number |
-| | `%c` | Copy CL number |
-| | `%n` | Copy CL name |
-| | `%p` | Copy project spec file |
-| | `%s` | Copy gai ace snapshot |
-| **Axe Control** | `X` | Start / stop axe (or select process) |
-| | `Q` | Stop axe and quit |
-| **General** | `Tab / Shift+Tab` | Switch tabs |
-| | `.` | Show/hide reverted CLs |
-| | `y` | Refresh |
-| | `q` | Quit |
-| | `?` | Show help |
+| Section                | Key               | Action                                         |
+| ---------------------- | ----------------- | ---------------------------------------------- |
+| **Navigation**         | `j` / `k`         | Move to next / previous CL                     |
+|                        | `< / > / ~`       | Navigate to ancestor / child / sibling         |
+|                        | `Ctrl+O / K`      | Jump back / forward in history                 |
+|                        | `Ctrl+D / U`      | Scroll detail panel down / up                  |
+| **CL Actions**         | `a`               | Accept proposal                                |
+|                        | `b`               | Rebase CL onto parent                          |
+|                        | `C / c1-c9`       | Checkout CL (workspace 1-9)                    |
+|                        | `d`               | Show diff                                      |
+|                        | `e`               | Edit spec file                                 |
+|                        | `h`               | Edit hooks                                     |
+|                        | `H`               | Add hooks from failed targets                  |
+|                        | `M`               | Mail CL                                        |
+|                        | `m`               | Mark/unmark current CL                         |
+|                        | `n`               | Rename CL (non-Submitted/Reverted)             |
+|                        | `R`               | Rewind to prev commit (non-Submitted/Reverted) |
+|                        | `s`               | Change status                                  |
+|                        | `T / t1-t9`       | Checkout + tmux (workspace 1-9)                |
+|                        | `u`               | Clear all marks                                |
+|                        | `v`               | View files                                     |
+|                        | `w`               | Reword CL description                          |
+|                        | `Y`               | Sync workspace                                 |
+| **Fold Mode**          | `z c`             | Toggle commits section                         |
+|                        | `z h`             | Toggle hooks section                           |
+|                        | `z m`             | Toggle mentors section                         |
+|                        | `z z`             | Toggle all sections                            |
+| **Workflows & Agents** | `r`               | Run workflow                                   |
+|                        | `@`               | Run agent on marked CLs (or current)           |
+|                        | `!`               | Run background command                         |
+|                        | `<space>`         | Run agent from current CL                      |
+| **Queries**            | `/`               | Edit search query                              |
+|                        | `0-9`             | Load saved query                               |
+|                        | `^`               | Previous query                                 |
+|                        | `_`               | Next query                                     |
+| **Copy Mode (%)**      | `%%`              | Copy ChangeSpec                                |
+|                        | `%!`              | Copy ChangeSpec + snapshot                     |
+|                        | `%b`              | Copy bug number                                |
+|                        | `%c`              | Copy CL number                                 |
+|                        | `%n`              | Copy CL name                                   |
+|                        | `%p`              | Copy project spec file                         |
+|                        | `%s`              | Copy gai ace snapshot                          |
+| **Axe Control**        | `X`               | Start / stop axe (or select process)           |
+|                        | `Q`               | Stop axe and quit                              |
+| **General**            | `Tab / Shift+Tab` | Switch tabs                                    |
+|                        | `.`               | Show/hide reverted CLs                         |
+|                        | `y`               | Refresh                                        |
+|                        | `q`               | Quit                                           |
+|                        | `?`               | Show help                                      |
 
 #### Agents Tab
 
-| Section | Key | Action |
-|---------|-----|--------|
-| **Navigation** | `j` / `k` | Move to next / previous agent |
-| | `Ctrl+D / U` | Scroll diff panel down / up |
-| | `Ctrl+F / B` | Scroll prompt panel down / up |
-| **Agent Actions** | `@` | Run custom agent |
-| | `!` | Run background command |
-| | `r` | Revive chat as agent |
-| | `x` | Kill / dismiss agent |
-| | `e` | Edit chat in editor |
-| | `l` | Toggle diff/prompt layout |
-| **Axe Control** | `X` | Start / stop axe (or select process) |
-| | `Q` | Stop axe and quit |
-| **General** | `Tab / Shift+Tab` | Switch tabs |
-| | `.` | Show/hide non-run agents |
-| | `%` | Copy chat to clipboard |
-| | `y` | Refresh |
-| | `q` | Quit |
-| | `?` | Show help |
+| Section           | Key               | Action                               |
+| ----------------- | ----------------- | ------------------------------------ |
+| **Navigation**    | `j` / `k`         | Move to next / previous agent        |
+|                   | `Ctrl+D / U`      | Scroll diff panel down / up          |
+|                   | `Ctrl+F / B`      | Scroll prompt panel down / up        |
+| **Agent Actions** | `@`               | Run custom agent                     |
+|                   | `!`               | Run background command               |
+|                   | `r`               | Revive chat as agent                 |
+|                   | `x`               | Kill / dismiss agent                 |
+|                   | `e`               | Edit chat in editor                  |
+|                   | `l`               | Toggle diff/prompt layout            |
+| **Axe Control**   | `X`               | Start / stop axe (or select process) |
+|                   | `Q`               | Stop axe and quit                    |
+| **General**       | `Tab / Shift+Tab` | Switch tabs                          |
+|                   | `.`               | Show/hide non-run agents             |
+|                   | `%`               | Copy chat to clipboard               |
+|                   | `y`               | Refresh                              |
+|                   | `q`               | Quit                                 |
+|                   | `?`               | Show help                            |
 
 #### Axe Tab
 
-| Section | Key | Action |
-|---------|-----|--------|
-| **Navigation** | `j` / `k` | Move to next / previous command |
-| | `g` | Scroll to top |
-| | `G` | Scroll to bottom |
-| **Background Commands** | `@` | Run agent |
-| | `!` | Run background command |
-| | `X` | Kill current command (or toggle axe) |
-| **Axe Control** | `x` | Clear output |
-| | `X` | Start / stop axe daemon |
-| | `Q` | Stop axe and quit |
-| **General** | `Tab / Shift+Tab` | Switch tabs |
-| | `%` | Copy output to clipboard |
-| | `y` | Refresh |
-| | `q` | Quit |
-| | `?` | Show help |
+| Section                 | Key               | Action                               |
+| ----------------------- | ----------------- | ------------------------------------ |
+| **Navigation**          | `j` / `k`         | Move to next / previous command      |
+|                         | `g`               | Scroll to top                        |
+|                         | `G`               | Scroll to bottom                     |
+| **Background Commands** | `@`               | Run agent                            |
+|                         | `!`               | Run background command               |
+|                         | `X`               | Kill current command (or toggle axe) |
+| **Axe Control**         | `x`               | Clear output                         |
+|                         | `X`               | Start / stop axe daemon              |
+|                         | `Q`               | Stop axe and quit                    |
+| **General**             | `Tab / Shift+Tab` | Switch tabs                          |
+|                         | `%`               | Copy output to clipboard             |
+|                         | `y`               | Refresh                              |
+|                         | `q`               | Quit                                 |
+|                         | `?`               | Show help                            |
 
 ### Status Indicators
 
 ChangeSpecs display status indicators in the format `[!@$D]`:
 
-| Indicator | Meaning | Color |
-|-----------|---------|-------|
-| `!` | Has error suffix | Red |
-| `@` | Running agent | Orange |
-| `$` | Running process | Yellow |
-| `D` | Drafted status | Cyan |
-| `*` | Ready to mail | Cyan |
-| `~` | In progress | Gray |
+| Indicator | Meaning          | Color  |
+| --------- | ---------------- | ------ |
+| `!`       | Has error suffix | Red    |
+| `@`       | Running agent    | Orange |
+| `$`       | Running process  | Yellow |
+| `D`       | Drafted status   | Cyan   |
+| `*`       | Ready to mail    | Cyan   |
+| `~`       | In progress      | Gray   |
 
 ## Axe Daemon Reference
 
@@ -322,7 +326,8 @@ All state files are stored in `~/.axe_state/`:
 
 ## ChangeSpec Format
 
-A ChangeSpec defines the metadata for a change list. See [docs/change_spec.md](docs/change_spec.md) for the full specification.
+A ChangeSpec defines the metadata for a change list. See [docs/change_spec.md](docs/change_spec.md) for the full
+specification.
 
 ### Basic Fields
 
@@ -368,11 +373,11 @@ The query language supports boolean logic, property filters, and convenient shor
 
 ### Operators
 
-| Operator | Example | Description |
-|----------|---------|-------------|
-| `AND` | `"foo" AND "bar"` | Both conditions must match |
-| `OR` | `"foo" OR "bar"` | Either condition matches |
-| `NOT` | `NOT "foo"` | Negates condition |
+| Operator | Example           | Description                |
+| -------- | ----------------- | -------------------------- |
+| `AND`    | `"foo" AND "bar"` | Both conditions must match |
+| `OR`     | `"foo" OR "bar"`  | Either condition matches   |
+| `NOT`    | `NOT "foo"`       | Negates condition          |
 
 ### String Matching
 
@@ -386,52 +391,52 @@ Quoted strings match against all searchable text:
 
 ### Property Filters
 
-| Filter | Example | Description |
-|--------|---------|-------------|
-| `status:` | `status:Drafted` | Match exact status |
-| `project:` | `project:myproj` | Match project name |
-| `name:` | `name:my_feature` | Match exact CL name |
+| Filter      | Example              | Description                     |
+| ----------- | -------------------- | ------------------------------- |
+| `status:`   | `status:Drafted`     | Match exact status              |
+| `project:`  | `project:myproj`     | Match project name              |
+| `name:`     | `name:my_feature`    | Match exact CL name             |
 | `ancestor:` | `ancestor:parent_cl` | Match CL or any parent in chain |
-| `sibling:` | `sibling:related_cl` | Match CLs in same "family" |
+| `sibling:`  | `sibling:related_cl` | Match CLs in same "family"      |
 
 ### Special Marker Shorthands
 
-| Shorthand | Meaning | Matches |
-|-----------|---------|---------|
-| `!!!` | Error suffix | CLs with any `(!:` error suffix |
-| `@@@` | Running agent | CLs with `(@:` running agent marker |
-| `$$$` | Running process | CLs with `($:` running process marker |
-| `!` | (standalone) | Same as `!!!` |
-| `@` | (standalone) | Same as `@@@` |
-| `$` | (standalone) | Same as `$$$` |
-| `*` | Any special | `(!!! OR @@@ OR $$$)` |
+| Shorthand | Meaning         | Matches                               |
+| --------- | --------------- | ------------------------------------- |
+| `!!!`     | Error suffix    | CLs with any `(!:` error suffix       |
+| `@@@`     | Running agent   | CLs with `(@:` running agent marker   |
+| `$$$`     | Running process | CLs with `($:` running process marker |
+| `!`       | (standalone)    | Same as `!!!`                         |
+| `@`       | (standalone)    | Same as `@@@`                         |
+| `$`       | (standalone)    | Same as `$$$`                         |
+| `*`       | Any special     | `(!!! OR @@@ OR $$$)`                 |
 
 ### Negation Shorthands
 
-| Shorthand | Expands To | Description |
-|-----------|------------|-------------|
-| `!!` | `NOT !!!` | No error suffix |
-| `!@` | `NOT @@@` | No running agents |
-| `!$` | `NOT $$$` | No running processes |
+| Shorthand | Expands To | Description          |
+| --------- | ---------- | -------------------- |
+| `!!`      | `NOT !!!`  | No error suffix      |
+| `!@`      | `NOT @@@`  | No running agents    |
+| `!$`      | `NOT $$$`  | No running processes |
 
 ### Status Shorthands
 
-| Shorthand | Expands To |
-|-----------|------------|
-| `%d` | `status:DRAFTED` |
-| `%m` | `status:MAILED` |
-| `%r` | `status:REVERTED` |
-| `%s` | `status:SUBMITTED` |
-| `%w` | `status:WIP` |
+| Shorthand | Expands To         |
+| --------- | ------------------ |
+| `%d`      | `status:DRAFTED`   |
+| `%m`      | `status:MAILED`    |
+| `%r`      | `status:REVERTED`  |
+| `%s`      | `status:SUBMITTED` |
+| `%w`      | `status:WIP`       |
 
 ### Property Filter Shorthands
 
-| Shorthand | Expands To | Example |
-|-----------|------------|---------|
-| `+name` | `project:name` | `+myproject` |
-| `^name` | `ancestor:name` | `^parent_cl` |
-| `~name` | `sibling:name` | `~related_cl` |
-| `&name` | `name:name` | `&my_feature` |
+| Shorthand | Expands To      | Example       |
+| --------- | --------------- | ------------- |
+| `+name`   | `project:name`  | `+myproject`  |
+| `^name`   | `ancestor:name` | `^parent_cl`  |
+| `~name`   | `sibling:name`  | `~related_cl` |
+| `&name`   | `name:name`     | `&my_feature` |
 
 ### Examples
 
@@ -544,6 +549,7 @@ snippets:
 ```
 
 Usage in prompts:
+
 ```
 Please @snippet:guidelines when reviewing this code.
 ```
@@ -566,7 +572,7 @@ mentor_profiles:
       - mentor_name: typing
         prompt: |
           Check that all functions have proper type annotations.
-        run_on_wip: true  # Run even on WIP status
+        run_on_wip: true # Run even on WIP status
 
   - profile_name: docs
     file_globs:
@@ -580,11 +586,13 @@ mentor_profiles:
 ```
 
 **Matching Criteria** (at least one required):
+
 - `file_globs`: Glob patterns for changed file paths
 - `diff_regexes`: Regex patterns to match diff content
 - `amend_note_regexes`: Regex patterns to match commit notes
 
 **Mentor Options:**
+
 - `mentor_name`: Unique identifier for the mentor
 - `prompt`: The AI prompt for this mentor
 - `run_on_wip`: Run even when status is WIP (default: false)
@@ -681,30 +689,30 @@ Suffixes indicate the state of COMMITS, HOOKS, COMMENTS, and MENTORS entries.
 
 ### Suffix Types
 
-| Suffix | Type | Meaning | Color |
-|--------|------|---------|-------|
-| `(!: msg)` | error | Error occurred | White on red |
-| `(@: msg)` | running_agent | AI agent running | White on orange |
-| `(@)` | running_agent | Agent running (no message) | White on orange |
-| `($: PID)` | running_process | Process running with PID | Brown on gold |
-| `(?$: PID)` | pending_dead_process | Process may be dead | Gold on gray |
-| `(~$: PID)` | killed_process | Process was killed | Olive on gray |
-| `(~@: msg)` | killed_agent | Agent was killed | Orange on gray |
-| `(~!: msg)` | rejected_proposal | Proposal rejected | Light red on gray |
-| `(%: msg)` | summarize_complete | Summarization done | White on teal |
-| `(entry_ref)` | entry_ref | Reference to entry | Bold pink |
+| Suffix        | Type                 | Meaning                    | Color             |
+| ------------- | -------------------- | -------------------------- | ----------------- |
+| `(!: msg)`    | error                | Error occurred             | White on red      |
+| `(@: msg)`    | running_agent        | AI agent running           | White on orange   |
+| `(@)`         | running_agent        | Agent running (no message) | White on orange   |
+| `($: PID)`    | running_process      | Process running with PID   | Brown on gold     |
+| `(?$: PID)`   | pending_dead_process | Process may be dead        | Gold on gray      |
+| `(~$: PID)`   | killed_process       | Process was killed         | Olive on gray     |
+| `(~@: msg)`   | killed_agent         | Agent was killed           | Orange on gray    |
+| `(~!: msg)`   | rejected_proposal    | Proposal rejected          | Light red on gray |
+| `(%: msg)`    | summarize_complete   | Summarization done         | White on teal     |
+| `(entry_ref)` | entry_ref            | Reference to entry         | Bold pink         |
 
 ### Query Shorthands
 
-| Pattern | Matches |
-|---------|---------|
-| `!!!` or `!` | Any entry with `(!:` error suffix |
-| `@@@` or `@` | Any entry with `(@` running agent marker |
-| `$$$` or `$` | Any entry with `($:` running process marker |
-| `*` | Any entry with error, running agent, or running process |
-| `!!` | No error suffix (`NOT !!!`) |
-| `!@` | No running agents (`NOT @@@`) |
-| `!$` | No running processes (`NOT $$$`) |
+| Pattern      | Matches                                                 |
+| ------------ | ------------------------------------------------------- |
+| `!!!` or `!` | Any entry with `(!:` error suffix                       |
+| `@@@` or `@` | Any entry with `(@` running agent marker                |
+| `$$$` or `$` | Any entry with `($:` running process marker             |
+| `*`          | Any entry with error, running agent, or running process |
+| `!!`         | No error suffix (`NOT !!!`)                             |
+| `!@`         | No running agents (`NOT @@@`)                           |
+| `!$`         | No running processes (`NOT $$$`)                        |
 
 ### Status Suffix Styling
 

@@ -1,10 +1,14 @@
-A ProjectSpec is a gai format specification for a project plan consisting of multiple CLs (change lists). The format starts with a BUG field, followed by a collection of ChangeSpecs (see change_spec.md), each separated by two blank lines.
+A ProjectSpec is a gai format specification for a project plan consisting of multiple CLs (change lists). The format
+starts with a BUG field, followed by a collection of ChangeSpecs (see change_spec.md), each separated by two blank
+lines.
 
-The ProjectSpec file is created by the `gai create-project` workflow and saved to `~/.gai/projects/<filename>/<filename>.gp`.
+The ProjectSpec file is created by the `gai create-project` workflow and saved to
+`~/.gai/projects/<filename>/<filename>.gp`.
 
 ## Format
 
-A ProjectSpec starts with a BUG field at the top, followed by one or more ChangeSpecs, each separated by two blank lines:
+A ProjectSpec starts with a BUG field at the top, followed by one or more ChangeSpecs, each separated by two blank
+lines:
 
 ```
 BUG: <BUG_ID>
@@ -32,7 +36,8 @@ STATUS: <STATUS2>
 
 ## BUG Field
 
-The BUG field is required at the very top of the ProjectSpec file, separated by two blank lines from the first ChangeSpec:
+The BUG field is required at the very top of the ProjectSpec file, separated by two blank lines from the first
+ChangeSpec:
 
 - **BUG**: Bug ID to track this project. Supports multiple formats:
   - Plain ID: `BUG: 12345`
@@ -42,7 +47,9 @@ The BUG field is required at the very top of the ProjectSpec file, separated by 
 
 Each ChangeSpec within a ProjectSpec must contain the following fields:
 
-1. **NAME**: Must start with the project filename (without .gp extension) followed by an underscore and a descriptive suffix (words separated by underscores). Format: `<BASENAME>_<descriptive_suffix>` where the suffix thoughtfully describes the CL's intent (strive for shorter names)
+1. **NAME**: Must start with the project filename (without .gp extension) followed by an underscore and a descriptive
+   suffix (words separated by underscores). Format: `<BASENAME>_<descriptive_suffix>` where the suffix thoughtfully
+   describes the CL's intent (strive for shorter names)
 2. **DESCRIPTION**:
    - First line (TITLE): A brief one-line description of the CL (2-space indented)
    - Followed by a blank line (still 2-space indented)
@@ -52,12 +59,16 @@ Each ChangeSpec within a ProjectSpec must contain the following fields:
      - High-level approach or implementation details
    - All DESCRIPTION lines must be 2-space indented
    - **DO NOT include file modification lists** - that will be handled by a different workflow
-3. **PARENT**: Either "None" (for the first CL or CLs with no dependencies) or the NAME of the parent CL that must be completed first
-4. **CL**: Must be "None" when created by the workflow. Can be updated later when the CL is created. Supports multiple formats:
+3. **PARENT**: Either "None" (for the first CL or CLs with no dependencies) or the NAME of the parent CL that must be
+   completed first
+4. **CL**: Must be "None" when created by the workflow. Can be updated later when the CL is created. Supports multiple
+   formats:
    - Plain ID: `CL: 12345`
    - Legacy format: `CL: cl/12345`
    - URL format: `CL: http://cl/12345` or `CL: https://cl/12345`
-5. **STATUS**: Must be "Blocked" (if the ChangeSpec has a PARENT) or "Not Started" (if PARENT is None) when created by the workflow (can be updated to "In Progress", "Drafted", "Mailed", or "Submitted" during tracking). A ChangeSpec should remain "Blocked" until its PARENT has reached "Drafted" status or beyond.
+5. **STATUS**: Must be "Blocked" (if the ChangeSpec has a PARENT) or "Not Started" (if PARENT is None) when created by
+   the workflow (can be updated to "In Progress", "Drafted", "Mailed", or "Submitted" during tracking). A ChangeSpec
+   should remain "Blocked" until its PARENT has reached "Drafted" status or beyond.
 
 ## Example
 
@@ -111,9 +122,12 @@ STATUS: Not Started
 
 - **BUG field**: Must be the first line of the ProjectSpec file, followed by two blank lines
 - **Blank lines between ChangeSpecs**: Each ChangeSpec must be separated by exactly two blank lines
-- **NAME field**: All ChangeSpecs in a project MUST start with `<basename>_` where basename is the project filename (without .gp), followed by a descriptive suffix (words separated by underscores, strive for shorter names)
+- **NAME field**: All ChangeSpecs in a project MUST start with `<basename>_` where basename is the project filename
+  (without .gp), followed by a descriptive suffix (words separated by underscores, strive for shorter names)
 - **CL field**: Always set to "None" when created by the workflow (updated later when CL is created)
-- **STATUS field**: Set to "Blocked" when created by the workflow if the ChangeSpec has a PARENT, otherwise "Not Started"
+- **STATUS field**: Set to "Blocked" when created by the workflow if the ChangeSpec has a PARENT, otherwise "Not
+  Started"
 - **PARENT field**: Used to establish dependencies between CLs in the project plan
 - **Filename requirement**: The filename argument to `gai create-project` must NOT include the .gp extension
-- **No file modifications**: The DESCRIPTION should NOT include specific file modification lists - that will be handled by a different workflow
+- **No file modifications**: The DESCRIPTION should NOT include specific file modification lists - that will be handled
+  by a different workflow

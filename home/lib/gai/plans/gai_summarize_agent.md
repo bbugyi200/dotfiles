@@ -19,9 +19,11 @@ prompt: |
 # Summarize Agent Implementation Plan
 
 ## Overview
+
 Add a "summarize" agent that produces concise (<=20 word) summaries for HISTORY entry headers and hook failure suffixes.
 
 ## Design Decisions
+
 - **Model size**: Large model (`model_size="big"`) for quality
 - **Header format**: Append after brackets: `[crs (ref)] Summary text`
 - **CLI output**: Print summary only to stdout
@@ -41,6 +43,7 @@ class SummarizeWorkflow(BaseWorkflow):
 ```
 
 **Prompt template:**
+
 ```
 Can you help me summarize the @<target_file> file in <=20 words (preferably <=15 or even <=10 words)? This summary will be used as <usage>.
 
@@ -127,15 +130,15 @@ else:
 
 ## Files to Create/Modify
 
-| File | Action | Description |
-|------|--------|-------------|
-| `home/lib/gai/summarize_workflow.py` | Create | Core SummarizeWorkflow class |
-| `home/lib/gai/summarize_utils.py` | Create | get_file_summary() helper |
-| `home/lib/gai/main.py` | Modify | Add `gai run summarize` CLI |
-| `home/lib/gai/work/hooks/operations.py` | Modify | Use summarize for hook failures |
-| `home/lib/gai/loop_crs_runner.py` | Modify | Add summary to CRS workflow_note |
-| `home/lib/gai/loop_fix_hook_runner.py` | Modify | Add summary to fix-hook workflow_note |
-| `home/lib/gai/test/test_summarize_workflow.py` | Create | Unit tests |
+| File                                           | Action | Description                           |
+| ---------------------------------------------- | ------ | ------------------------------------- |
+| `home/lib/gai/summarize_workflow.py`           | Create | Core SummarizeWorkflow class          |
+| `home/lib/gai/summarize_utils.py`              | Create | get_file_summary() helper             |
+| `home/lib/gai/main.py`                         | Modify | Add `gai run summarize` CLI           |
+| `home/lib/gai/work/hooks/operations.py`        | Modify | Use summarize for hook failures       |
+| `home/lib/gai/loop_crs_runner.py`              | Modify | Add summary to CRS workflow_note      |
+| `home/lib/gai/loop_fix_hook_runner.py`         | Modify | Add summary to fix-hook workflow_note |
+| `home/lib/gai/test/test_summarize_workflow.py` | Create | Unit tests                            |
 
 ---
 

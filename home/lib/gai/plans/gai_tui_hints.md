@@ -2,7 +2,8 @@
 
 ## Request
 
-Migrate the hints used for the "h" (edit hints) and "v" (view) options from the Rich-based terminal interface to the TUI used by `gai ace`. The goal was to eliminate the separate Rich console interface in favor of native Textual TUI modals.
+Migrate the hints used for the "h" (edit hints) and "v" (view) options from the Rich-based terminal interface to the TUI
+used by `gai ace`. The goal was to eliminate the separate Rich console interface in favor of native Textual TUI modals.
 
 ## User Preferences (Clarified via Questions)
 
@@ -20,19 +21,23 @@ Migrate the hints used for the "h" (edit hints) and "v" (view) options from the 
 ## Plan
 
 ### Phase 1: Create Data Types
+
 - `HintItem`: Represents a single hint (number, display text, file path, category)
 - `ViewFilesResult`: Result from view files modal (files, open_in_editor flag, user input)
 - `EditHooksResult`: Result from edit hooks modal (action type, hints to rerun/delete, test targets, hook command)
 
 ### Phase 2: Create Hint Extraction Module
+
 - Extract hint generation logic from `display.py::display_changespec()` into reusable functions
 - Move utility functions (`_is_rerun_input`, `_build_editor_args`) to shared location
 
 ### Phase 3: Create TUI Modals
+
 - `ViewFilesModal`: Shows hints, accepts numbered input, returns selected files
 - `EditHooksModal`: Shows hook hints, accepts rerun/delete/add commands
 
 ### Phase 4: Update App Actions
+
 - Modify `action_view_files()` and `action_edit_hooks()` to push modals
 - Still use `self.suspend()` for external programs (editor, bat/less)
 
@@ -40,21 +45,21 @@ Migrate the hints used for the "h" (edit hints) and "v" (view) options from the 
 
 ### New Files
 
-| File | Description |
-|------|-------------|
-| `ace/hint_types.py` | Data types: `HintItem`, `ViewFilesResult`, `EditHooksResult` |
-| `ace/hints.py` | Hint extraction and parsing utilities |
-| `ace/tui/modals/view_files_modal.py` | Modal for viewing files with hint selection |
-| `ace/tui/modals/edit_hooks_modal.py` | Modal for editing hooks |
-| `test/test_hints.py` | 27 tests for hint functions |
+| File                                 | Description                                                  |
+| ------------------------------------ | ------------------------------------------------------------ |
+| `ace/hint_types.py`                  | Data types: `HintItem`, `ViewFilesResult`, `EditHooksResult` |
+| `ace/hints.py`                       | Hint extraction and parsing utilities                        |
+| `ace/tui/modals/view_files_modal.py` | Modal for viewing files with hint selection                  |
+| `ace/tui/modals/edit_hooks_modal.py` | Modal for editing hooks                                      |
+| `test/test_hints.py`                 | 27 tests for hint functions                                  |
 
 ### Modified Files
 
-| File | Changes |
-|------|---------|
-| `ace/tui/app.py` | Updated imports; rewrote `action_view_files()` and `action_edit_hooks()` to use modals; added helper methods `_open_files_in_editor()`, `_view_files_with_pager()`, `_apply_hook_changes()`, `_handle_rerun_delete_hooks()`, `_add_test_target_hooks()`, `_add_custom_hook()` |
-| `ace/tui/modals/__init__.py` | Added exports for `EditHooksModal`, `ViewFilesModal` |
-| `ace/tui/styles.tcss` | Added CSS for new modals (container, hints display, input, buttons) |
+| File                         | Changes                                                                                                                                                                                                                                                                       |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ace/tui/app.py`             | Updated imports; rewrote `action_view_files()` and `action_edit_hooks()` to use modals; added helper methods `_open_files_in_editor()`, `_view_files_with_pager()`, `_apply_hook_changes()`, `_handle_rerun_delete_hooks()`, `_add_test_target_hooks()`, `_add_custom_hook()` |
+| `ace/tui/modals/__init__.py` | Added exports for `EditHooksModal`, `ViewFilesModal`                                                                                                                                                                                                                          |
+| `ace/tui/styles.tcss`        | Added CSS for new modals (container, hints display, input, buttons)                                                                                                                                                                                                           |
 
 ## Key Functions in `ace/hints.py`
 
@@ -83,11 +88,14 @@ def build_editor_args(editor, user_input, changespec_name, files) -> list[str]:
 
 ## Architecture Notes
 
-1. **Circular Import Resolution**: `hint_types.py` was moved to the `ace/` level (not inside `tui/modals/`) to avoid circular imports between `hints.py` and the modals.
+1. **Circular Import Resolution**: `hint_types.py` was moved to the `ace/` level (not inside `tui/modals/`) to avoid
+   circular imports between `hints.py` and the modals.
 
-2. **Still Uses suspend()**: External programs (bat/less viewer, $EDITOR) still require `self.suspend()` because they need the terminal. The modals handle hint selection only.
+2. **Still Uses suspend()**: External programs (bat/less viewer, $EDITOR) still require `self.suspend()` because they
+   need the terminal. The modals handle hint selection only.
 
-3. **Rich Text in Modals**: Textual's `Static` widget can render `rich.text.Text` objects, so the hint styling is preserved in the modals.
+3. **Rich Text in Modals**: Textual's `Static` widget can render `rich.text.Text` objects, so the hint styling is
+   preserved in the modals.
 
 ## Testing
 
