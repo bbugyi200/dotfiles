@@ -18,54 +18,20 @@ from rich.console import Console
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from ace.changespec import (
-    ChangeSpec,
-    find_all_changespecs,
-    get_base_status,
-)
-from ace.cl_status import is_parent_submitted
-from ace.comments import is_timestamp_suffix
 from ace.constants import DEFAULT_ZOMBIE_TIMEOUT_SECONDS
-from ace.query import QueryExpr, evaluate_query, parse_query
-from ace.scheduler.checks_runner import (
-    CHECK_TYPE_AUTHOR_COMMENTS,
-    CHECK_TYPE_CL_SUBMITTED,
-    CHECK_TYPE_REVIEWER_COMMENTS,
-    check_pending_checks,
-    has_pending_check,
-    start_author_comments_check,
-    start_cl_submitted_check,
-    start_reviewer_comments_check,
-)
-from ace.scheduler.comments_handler import check_comment_zombies
-from ace.scheduler.hook_checks import check_hooks
-from ace.scheduler.mentor_checks import check_mentors
-from ace.scheduler.orphan_cleanup import cleanup_orphaned_workspace_claims
-from ace.scheduler.stale_running_cleanup import cleanup_stale_running_entries
-from ace.scheduler.suffix_transforms import (
-    acknowledge_terminal_status_markers,
-    check_ready_to_mail,
-    strip_old_entry_error_markers,
-    transform_old_proposal_suffixes,
-)
-from ace.scheduler.workflows_runner import (
-    check_and_complete_workflows,
-    start_stale_workflows,
-)
-from ace.sync_cache import should_check, update_last_checked
+from ace.query import QueryExpr, parse_query
 from gai_utils import EASTERN_TZ
-from running_field import get_workspace_directory
 
+from .check_cycles import CheckCycleRunner
+from .hook_jobs import HookJobRunner
 from .runner_pool import RunnerPool
 from .state import (
     AXE_STATE_DIR,
     AxeMetrics,
     AxeStatus,
-    CycleResult,
     append_error,
     get_timestamp,
     remove_pid_file,
-    write_cycle_result,
     write_metrics,
     write_pid_file,
     write_status,
@@ -128,11 +94,20 @@ class AxeScheduler:
         self._last_full_cycle: datetime | None = None
         self._last_hook_cycle: datetime | None = None
         self._last_comment_cycle: datetime | None = None
-        self._first_cycle = True
         self._running = True
 
         # Metrics tracking
         self._metrics = AxeMetrics()
+
+        # Create helper instances for delegation
+        self._check_runner = CheckCycleRunner(self.parsed_query, self._log)
+        self._hook_runner = HookJobRunner(
+            self.runner_pool,
+            self._metrics,
+            self.zombie_timeout_seconds,
+            self.max_runners,
+            self._log,
+        )
 
     def _log(self, message: str, style: str | None = None) -> None:
         """Print a timestamped log message.
@@ -164,33 +139,6 @@ class AxeScheduler:
         # Append to log file
         with open(self._log_file_path, "a") as f:
             f.write(text)
-
-    def _get_all_changespecs(self) -> list[ChangeSpec]:
-        """Get all changespecs (unfiltered)."""
-        return find_all_changespecs()
-
-    def _get_filtered_changespecs(
-        self, all_changespecs: list[ChangeSpec] | None = None
-    ) -> list[ChangeSpec]:
-        """Get all changespecs filtered by query.
-
-        Args:
-            all_changespecs: Optional pre-fetched list of all changespecs.
-
-        Returns:
-            List of changespecs matching the query filter.
-        """
-        if all_changespecs is None:
-            all_changespecs = find_all_changespecs()
-
-        if not self.parsed_query:
-            return all_changespecs
-
-        return [
-            cs
-            for cs in all_changespecs
-            if evaluate_query(self.parsed_query, cs, all_changespecs)
-        ]
 
     def _setup_jobs(self) -> None:
         """Configure all scheduled jobs."""
@@ -279,360 +227,85 @@ class AxeScheduler:
         }
         append_error(error_info)
 
-    def _is_leaf_cl(self, changespec: ChangeSpec) -> bool:
-        """Check if a ChangeSpec is a leaf CL (no parent or parent is submitted)."""
-        return is_parent_submitted(changespec)
-
-    def _should_check_status(
-        self, changespec: ChangeSpec, bypass_cache: bool = False
-    ) -> bool:
-        """Determine if a ChangeSpec's status should be checked.
-
-        Uses sync_cache to throttle checks to minimum 5-minute intervals.
-
-        Args:
-            changespec: The ChangeSpec to check.
-            bypass_cache: If True, skip the cache check.
-
-        Returns:
-            True if the ChangeSpec should be checked, False otherwise.
-        """
-        if bypass_cache:
-            return True
-        return should_check(changespec.name)
-
     def _run_full_check_cycle(self) -> None:
         """Run full status check cycle - starts CL submitted checks only."""
-        start = time.time()
-        all_changespecs = self._get_all_changespecs()
-        filtered_changespecs = self._get_filtered_changespecs(all_changespecs)
-        updates: list[dict] = []
-
-        for changespec in filtered_changespecs:
-            # On first cycle, bypass cache for leaf CLs
-            bypass_cache = self._first_cycle and self._is_leaf_cl(changespec)
-
-            # Start CL submitted checks only
-            check_updates = self._start_cl_submitted_check(changespec, bypass_cache)
-            for update in check_updates:
-                updates.append({"changespec": changespec.name, "message": update})
-                self._log(f"* {changespec.name}: {update}", style="green bold")
-
-        self._last_full_cycle = datetime.now(EASTERN_TZ)
-        self._first_cycle = False
+        cycle_timestamp, _, updates = self._check_runner.run_full_check_cycle()
+        self._last_full_cycle = cycle_timestamp
         self._metrics.full_cycles_run += 1
         self._metrics.total_updates += len(updates)
 
-        # Write cycle result
-        duration_ms = int((time.time() - start) * 1000)
-        result = CycleResult(
-            timestamp=self._last_full_cycle.isoformat(),
-            cycle_type="full",
-            duration_ms=duration_ms,
-            changespecs_processed=len(filtered_changespecs),
-            updates=updates,
-            errors=[],
-        )
-        write_cycle_result(result)
-
-        if updates:
-            self._log(f"Full cycle complete: {len(updates)} update(s)", style="green")
-
     def _run_comment_check_cycle(self) -> None:
         """Run comment check cycle - starts reviewer/author comment checks."""
-        start = time.time()
-        all_changespecs = self._get_all_changespecs()
-        filtered_changespecs = self._get_filtered_changespecs(all_changespecs)
-        updates: list[dict] = []
-
-        for changespec in filtered_changespecs:
-            # Start comment checks (no cache throttling - has its own interval)
-            check_updates = self._start_comment_checks(changespec)
-            for update in check_updates:
-                updates.append({"changespec": changespec.name, "message": update})
-                self._log(f"* {changespec.name}: {update}", style="green bold")
-
-        self._last_comment_cycle = datetime.now(EASTERN_TZ)
+        cycle_timestamp, _, updates = self._check_runner.run_comment_check_cycle()
+        self._last_comment_cycle = cycle_timestamp
         self._metrics.total_updates += len(updates)
-
-        # Write cycle result
-        duration_ms = int((time.time() - start) * 1000)
-        result = CycleResult(
-            timestamp=self._last_comment_cycle.isoformat(),
-            cycle_type="comment",
-            duration_ms=duration_ms,
-            changespecs_processed=len(filtered_changespecs),
-            updates=updates,
-            errors=[],
-        )
-        write_cycle_result(result)
-
-        if updates:
-            self._log(
-                f"Comment cycle complete: {len(updates)} update(s)", style="green"
-            )
-
-    def _start_cl_submitted_check(
-        self, changespec: ChangeSpec, bypass_cache: bool = False
-    ) -> list[str]:
-        """Start CL submitted check for a ChangeSpec (non-blocking).
-
-        Args:
-            changespec: The ChangeSpec to check.
-            bypass_cache: If True, skip the cache check.
-
-        Returns:
-            List of update messages for checks that were started.
-        """
-        updates: list[str] = []
-
-        # Get workspace directory
-        try:
-            workspace_dir = get_workspace_directory(changespec.project_basename)
-        except RuntimeError:
-            workspace_dir = None
-
-        # Check if we should run status checks
-        if not self._should_check_status(changespec, bypass_cache):
-            return updates
-
-        # Update cache when starting checks
-        update_last_checked(changespec.name)
-
-        # Start CL submitted check if not already pending
-        if not has_pending_check(changespec, CHECK_TYPE_CL_SUBMITTED):
-            if is_parent_submitted(changespec) and changespec.cl:
-                update = start_cl_submitted_check(changespec, workspace_dir, self._log)
-                if update:
-                    updates.append(update)
-
-        return updates
-
-    def _start_comment_checks(self, changespec: ChangeSpec) -> list[str]:
-        """Start reviewer and author comment checks for a ChangeSpec (non-blocking).
-
-        Comment checks bypass the sync_cache since they have their own interval.
-
-        Args:
-            changespec: The ChangeSpec to check.
-
-        Returns:
-            List of update messages for checks that were started.
-        """
-        updates: list[str] = []
-
-        # Get workspace directory
-        try:
-            workspace_dir = get_workspace_directory(changespec.project_basename)
-        except RuntimeError:
-            workspace_dir = None
-
-        if not workspace_dir:
-            return updates
-
-        # Start reviewer comments check if conditions are met
-        if not has_pending_check(changespec, CHECK_TYPE_REVIEWER_COMMENTS):
-            if (
-                is_parent_submitted(changespec)
-                and get_base_status(changespec.status) == "Mailed"
-            ):
-                # Check if we need to start
-                existing_reviewer_entry = None
-                if changespec.comments:
-                    for entry in changespec.comments:
-                        if entry.reviewer == "critique":
-                            existing_reviewer_entry = entry
-                            break
-                should_start = existing_reviewer_entry is None or (
-                    existing_reviewer_entry.suffix is not None
-                    and not is_timestamp_suffix(existing_reviewer_entry.suffix)
-                )
-                if should_start:
-                    update = start_reviewer_comments_check(
-                        changespec, workspace_dir, self._log
-                    )
-                    if update:
-                        updates.append(update)
-
-        # Start author comments check if conditions are met
-        if not has_pending_check(changespec, CHECK_TYPE_AUTHOR_COMMENTS):
-            if get_base_status(changespec.status) in ("Drafted", "Mailed"):
-                # Skip if any [critique] entry exists
-                has_reviewer = False
-                if changespec.comments:
-                    for entry in changespec.comments:
-                        if entry.reviewer == "critique":
-                            has_reviewer = True
-                            break
-                if not has_reviewer:
-                    # Check if we need to start
-                    existing_author_entry = None
-                    if changespec.comments:
-                        for entry in changespec.comments:
-                            if entry.reviewer == "critique:me":
-                                existing_author_entry = entry
-                                break
-                    should_start = existing_author_entry is None or (
-                        existing_author_entry.suffix is not None
-                        and not is_timestamp_suffix(existing_author_entry.suffix)
-                    )
-                    if should_start:
-                        update = start_author_comments_check(
-                            changespec, workspace_dir, self._log
-                        )
-                        if update:
-                            updates.append(update)
-
-        return updates
 
     def _run_hook_checks(self) -> None:
         """Run hook completion and startup checks."""
-        self.runner_pool.reset_tick()
-        all_changespecs = self._get_all_changespecs()
-        filtered_changespecs = self._get_filtered_changespecs(all_changespecs)
-
-        for changespec in filtered_changespecs:
-            if not changespec.hooks:
-                continue
-
-            hook_updates, hooks_started = check_hooks(
-                changespec,
-                self._log,
-                self.zombie_timeout_seconds,
-                self.max_runners,
-                self.runner_pool.get_started_this_tick(),
-            )
-
-            self.runner_pool.add_started(hooks_started)
-            self._metrics.hooks_started += hooks_started
-            self._metrics.total_updates += len(hook_updates)
-
-            for update in hook_updates:
-                self._log(f"* {changespec.name}: {update}", style="green bold")
+        all_changespecs = self._check_runner.get_all_changespecs()
+        filtered_changespecs = self._check_runner.get_filtered_changespecs(
+            all_changespecs
+        )
+        self._hook_runner.run_hook_checks(filtered_changespecs)
 
     def _run_mentor_checks(self) -> None:
         """Run mentor completion and startup checks."""
-        all_changespecs = self._get_all_changespecs()
-        filtered_changespecs = self._get_filtered_changespecs(all_changespecs)
-
-        for changespec in filtered_changespecs:
-            mentor_updates, mentors_started = check_mentors(
-                changespec,
-                self._log,
-                self.zombie_timeout_seconds,
-                self.max_runners,
-                self.runner_pool.get_started_this_tick(),
-            )
-
-            self.runner_pool.add_started(mentors_started)
-            self._metrics.mentors_started += mentors_started
-            self._metrics.total_updates += len(mentor_updates)
-
-            for update in mentor_updates:
-                self._log(f"* {changespec.name}: {update}", style="green bold")
+        all_changespecs = self._check_runner.get_all_changespecs()
+        filtered_changespecs = self._check_runner.get_filtered_changespecs(
+            all_changespecs
+        )
+        self._hook_runner.run_mentor_checks(filtered_changespecs)
 
     def _run_workflow_checks(self) -> None:
         """Run CRS/fix-hook workflow checks."""
-        all_changespecs = self._get_all_changespecs()
-        filtered_changespecs = self._get_filtered_changespecs(all_changespecs)
-
-        for changespec in filtered_changespecs:
-            # Check completion of running workflows
-            completion_updates = check_and_complete_workflows(changespec, self._log)
-            self._metrics.total_updates += len(completion_updates)
-
-            for update in completion_updates:
-                self._log(f"* {changespec.name}: {update}", style="green bold")
-
-            # Start stale workflows
-            start_updates, started, _ = start_stale_workflows(
-                changespec,
-                self._log,
-                self.max_runners,
-                self.runner_pool.get_started_this_tick(),
-            )
-
-            self.runner_pool.add_started(started)
-            self._metrics.workflows_started += started
-            self._metrics.total_updates += len(start_updates)
-
-            for update in start_updates:
-                self._log(f"* {changespec.name}: {update}", style="green bold")
+        all_changespecs = self._check_runner.get_all_changespecs()
+        filtered_changespecs = self._check_runner.get_filtered_changespecs(
+            all_changespecs
+        )
+        self._hook_runner.run_workflow_checks(filtered_changespecs)
 
     def _run_pending_checks_poll(self) -> None:
         """Poll for completed background checks."""
-        all_changespecs = self._get_all_changespecs()
-        filtered_changespecs = self._get_filtered_changespecs(all_changespecs)
-
-        for changespec in filtered_changespecs:
-            updates = check_pending_checks(changespec, self._log)
-            self._metrics.total_updates += len(updates)
-
-            for update in updates:
-                self._log(f"* {changespec.name}: {update}", style="green bold")
+        all_changespecs = self._check_runner.get_all_changespecs()
+        filtered_changespecs = self._check_runner.get_filtered_changespecs(
+            all_changespecs
+        )
+        self._hook_runner.run_pending_checks_poll(filtered_changespecs)
 
     def _run_comment_zombie_checks(self) -> None:
         """Check for zombie comment entries."""
-        all_changespecs = self._get_all_changespecs()
-        filtered_changespecs = self._get_filtered_changespecs(all_changespecs)
-
-        for changespec in filtered_changespecs:
-            updates = check_comment_zombies(changespec, self.zombie_timeout_seconds)
-            if updates:
-                self._metrics.zombies_detected += len(updates)
-                self._metrics.total_updates += len(updates)
-
-                for update in updates:
-                    self._log(f"* {changespec.name}: {update}", style="yellow")
+        all_changespecs = self._check_runner.get_all_changespecs()
+        filtered_changespecs = self._check_runner.get_filtered_changespecs(
+            all_changespecs
+        )
+        self._hook_runner.run_comment_zombie_checks(filtered_changespecs)
 
     def _run_suffix_transforms(self) -> None:
         """Run suffix transformation checks."""
-        all_changespecs = self._get_all_changespecs()
-        filtered_changespecs = self._get_filtered_changespecs(all_changespecs)
-
-        for changespec in filtered_changespecs:
-            updates: list[str] = []
-
-            # Transform old proposal suffixes (!: -> ~:)
-            updates.extend(transform_old_proposal_suffixes(changespec))
-
-            # Strip error markers from old commit entry hooks
-            updates.extend(strip_old_entry_error_markers(changespec))
-
-            # Acknowledge terminal status attention markers
-            updates.extend(acknowledge_terminal_status_markers(changespec))
-
-            # Check if ChangeSpec is ready to mail
-            updates.extend(check_ready_to_mail(changespec, all_changespecs))
-
-            self._metrics.total_updates += len(updates)
-
-            for update in updates:
-                self._log(f"* {changespec.name}: {update}", style="green bold")
-
-        self._last_hook_cycle = datetime.now(EASTERN_TZ)
+        all_changespecs = self._check_runner.get_all_changespecs()
+        filtered_changespecs = self._check_runner.get_filtered_changespecs(
+            all_changespecs
+        )
+        self._last_hook_cycle = self._hook_runner.run_suffix_transforms(
+            all_changespecs, filtered_changespecs
+        )
         self._metrics.hook_cycles_run += 1
 
     def _run_orphan_cleanup(self) -> None:
         """Clean up orphaned workspace claims for reverted CLs."""
-        all_changespecs = self._get_all_changespecs()
-        released = cleanup_orphaned_workspace_claims(all_changespecs, self._log)
-        if released > 0:
-            self._metrics.total_updates += released
+        all_changespecs = self._check_runner.get_all_changespecs()
+        self._hook_runner.run_orphan_cleanup(all_changespecs)
 
     def _run_stale_running_cleanup(self) -> None:
         """Clean up stale RUNNING entries for dead processes."""
-        released = cleanup_stale_running_entries(self._log)
-        if released > 0:
-            self._metrics.stale_running_cleaned += released
-            self._metrics.total_updates += released
+        self._hook_runner.run_stale_running_cleanup()
 
     def _update_status_file(self) -> None:
         """Update status file for TUI visibility."""
         now = datetime.now(EASTERN_TZ)
         uptime = int((now - self._start_time).total_seconds())
-        all_cs = self._get_all_changespecs()
-        filtered_cs = self._get_filtered_changespecs(all_cs)
+        all_cs = self._check_runner.get_all_changespecs()
+        filtered_cs = self._check_runner.get_filtered_changespecs(all_cs)
 
         next_full = None
         if self._last_full_cycle:
@@ -707,8 +380,8 @@ class AxeScheduler:
             self._log(f"Query filter: {self.query}")
 
         # Count initial changespecs
-        initial = self._get_all_changespecs()
-        filtered = self._get_filtered_changespecs(initial)
+        initial = self._check_runner.get_all_changespecs()
+        filtered = self._check_runner.get_filtered_changespecs(initial)
         self._log(f"Monitoring {len(filtered)} ChangeSpecs")
 
         # Write initial status
