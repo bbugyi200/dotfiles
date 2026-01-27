@@ -61,9 +61,15 @@ def _build_mentor_prompt(mentor: MentorConfig) -> str:
     Returns:
         The complete prompt with xprompt expanded.
     """
-    escaped_prompt = _escape_for_xprompt(mentor.prompt.rstrip())
-    prompt_text = f'#mentor(prompt="{escaped_prompt}")'
-    return process_xprompt_references(prompt_text)
+    if mentor.xprompt is not None:
+        # New format: directly expand the xprompt reference
+        return process_xprompt_references(mentor.xprompt)
+    else:
+        # Legacy format: wrap prompt in #mentor() call
+        assert mentor.prompt is not None
+        escaped_prompt = _escape_for_xprompt(mentor.prompt.rstrip())
+        prompt_text = f'#mentor(prompt="{escaped_prompt}")'
+        return process_xprompt_references(prompt_text)
 
 
 def _find_changespec_by_name(cl_name: str) -> tuple[str | None, str | None]:

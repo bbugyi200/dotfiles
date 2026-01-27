@@ -11,8 +11,21 @@ class MentorConfig:
     """Represents a mentor configuration."""
 
     mentor_name: str
-    prompt: str
+    prompt: str | None = None  # Old format: inline prompt
+    xprompt: str | None = None  # New format: xprompt reference
     run_on_wip: bool = False  # If True, mentor runs even on WIP status
+
+    def __post_init__(self) -> None:
+        """Validate that exactly one of prompt or xprompt is provided."""
+        if self.prompt is None and self.xprompt is None:
+            raise ValueError(
+                f"MentorConfig '{self.mentor_name}' must have 'prompt' or 'xprompt'"
+            )
+        if self.prompt is not None and self.xprompt is not None:
+            raise ValueError(
+                f"MentorConfig '{self.mentor_name}' cannot have both "
+                "'prompt' and 'xprompt'"
+            )
 
 
 @dataclass
@@ -86,15 +99,49 @@ def _load_mentor_profiles() -> list[MentorProfileConfig]:
                 raise ValueError(
                     f"Each mentor in profile '{item['profile_name']}' must be a dictionary"
                 )
-            if "mentor_name" not in mentor_item or "prompt" not in mentor_item:
+
+            has_prompt = "prompt" in mentor_item
+            has_xprompt = "xprompt" in mentor_item
+            has_mentor_name = "mentor_name" in mentor_item
+
+            # Validation: must have either prompt or xprompt (but not both)
+            if not has_prompt and not has_xprompt:
                 raise ValueError(
                     f"Each mentor in profile '{item['profile_name']}' must have "
-                    "'mentor_name' and 'prompt' fields"
+                    "'prompt' or 'xprompt' field"
                 )
+            if has_prompt and has_xprompt:
+                raise ValueError(
+                    f"Mentor in profile '{item['profile_name']}' cannot have both "
+                    "'prompt' and 'xprompt' fields"
+                )
+
+            # For legacy format with prompt, mentor_name is required
+            # For xprompt format, mentor_name can be derived from xprompt
+            if has_prompt and not has_mentor_name:
+                raise ValueError(
+                    f"Mentor in profile '{item['profile_name']}' with 'prompt' "
+                    "must have 'mentor_name' field"
+                )
+
+            # Derive mentor_name from xprompt if not provided
+            # e.g., "#mentor/aaa" -> "aaa"
+            if has_xprompt and not has_mentor_name:
+                xprompt_ref = mentor_item["xprompt"]
+                # Extract the last segment after the final /
+                if "/" in xprompt_ref:
+                    mentor_name = xprompt_ref.split("/")[-1]
+                else:
+                    # Remove leading # for simple xprompts like "#foo"
+                    mentor_name = xprompt_ref.lstrip("#")
+            else:
+                mentor_name = mentor_item["mentor_name"]
+
             mentors.append(
                 MentorConfig(
-                    mentor_name=mentor_item["mentor_name"],
-                    prompt=mentor_item["prompt"],
+                    mentor_name=mentor_name,
+                    prompt=mentor_item.get("prompt"),
+                    xprompt=mentor_item.get("xprompt"),
                     run_on_wip=mentor_item.get("run_on_wip", False),
                 )
             )
