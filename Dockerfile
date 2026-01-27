@@ -27,6 +27,13 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*;
 
+### Install Node.js (for prettier)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs && \
+    npm install -g prettier && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*;
+
 ### Install bashunit
 RUN cd / && \
     curl -s https://bashunit.typeddevs.com/install.sh | bash -s bin && \
