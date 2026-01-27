@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from ...changespec import ChangeSpec
-    from ..models.agent import Agent
 
 from ...changespec import get_raw_changespec_text
 
@@ -23,17 +22,13 @@ class ClipboardMixin:
     changespecs: list[ChangeSpec]
     current_idx: int
     current_tab: TabName
-    _agents: list[Agent]
-    _axe_output: str
 
     def action_copy_tab_content(self) -> None:
         """Copy tab-specific content to clipboard based on current tab."""
         if self.current_tab == "changespecs":
             self.action_start_copy_mode()
-        elif self.current_tab == "agents":
-            self._copy_agent_chat_to_clipboard()
-        else:  # axe
-            self._copy_axe_artifacts_to_clipboard()
+        else:  # agents or axe
+            self._copy_snapshot()
 
     def action_start_copy_mode(self) -> None:
         """Start copy mode - wait for second key to determine copy action."""
@@ -200,63 +195,6 @@ class ClipboardMixin:
             return None
 
         return changespec.bug
-
-    def _copy_agent_chat_to_clipboard(self) -> None:
-        """Copy the current agent's chat to clipboard."""
-        if not self._agents:
-            self.notify("No agent to copy", severity="warning")  # type: ignore[attr-defined]
-            return
-
-        agent = self._agents[self.current_idx]
-
-        # Only completed agents have chat available
-        if agent.status not in ("NO CHANGES", "NEW CL", "NEW PROPOSAL"):
-            self.notify(  # type: ignore[attr-defined]
-                "Chat only available for completed agents", severity="warning"
-            )
-            return
-
-        # Check if response path is set
-        if not agent.response_path:
-            self.notify("No chat file available", severity="warning")  # type: ignore[attr-defined]
-            return
-
-        # Read chat content
-        content = agent.get_response_content()
-        if not content:
-            self.notify("Failed to read chat file", severity="warning")  # type: ignore[attr-defined]
-            return
-
-        if _copy_to_system_clipboard(content):
-            self.notify(f"Copied chat for: {agent.cl_name}")  # type: ignore[attr-defined]
-        else:
-            self.notify("Failed to copy to clipboard", severity="error")  # type: ignore[attr-defined]
-
-    def _copy_axe_artifacts_to_clipboard(self) -> None:
-        """Copy axe output log to clipboard."""
-        content = self._format_axe_output_for_clipboard()
-
-        if not content:
-            self.notify("No axe output to copy", severity="warning")  # type: ignore[attr-defined]
-            return
-
-        if _copy_to_system_clipboard(content):
-            self.notify("Copied axe output")  # type: ignore[attr-defined]
-        else:
-            self.notify("Failed to copy to clipboard", severity="error")  # type: ignore[attr-defined]
-
-    def _format_axe_output_for_clipboard(self) -> str:
-        """Format axe output log for clipboard.
-
-        Returns:
-            The output log content with ANSI codes stripped.
-        """
-        if not self._axe_output:
-            return ""
-
-        # Strip ANSI escape codes for clean clipboard content
-        ansi_escape = re.compile(r"\x1b\[[0-9;]*m")
-        return ansi_escape.sub("", self._axe_output)
 
     def _get_project_spec_content(self, changespec: ChangeSpec) -> str | None:
         """Read the entire project spec (.gp) file content.

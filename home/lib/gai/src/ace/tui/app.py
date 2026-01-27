@@ -144,7 +144,7 @@ class AceApp(
         Binding("x", "kill_agent", "Kill", show=False),
         Binding("l", "toggle_layout", "Layout", show=False),
         # Copy to clipboard (changespecs tab - % followed by key)
-        Binding("percent_sign", "start_copy_mode", "Copy", show=False),
+        Binding("percent_sign", "copy_tab_content", "Copy", show=False),
         # Scroll to top/bottom (Axe tab)
         Binding("g", "scroll_to_top", "Top", show=False),
         Binding("G", "scroll_to_bottom", "Bottom", show=False),

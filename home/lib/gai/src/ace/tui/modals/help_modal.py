@@ -143,7 +143,7 @@ _AGENTS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
         [
             ("Tab / Shift+Tab", "Switch tabs"),
             (".", "Show/hide non-run agents"),
-            ("%", "Copy chat to clipboard"),
+            ("%", "Copy gai ace snapshot"),
             ("y", "Refresh"),
             ("q", "Quit"),
             ("?", "Show this help"),
@@ -180,7 +180,7 @@ _AXE_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
         "General",
         [
             ("Tab / Shift+Tab", "Switch tabs"),
-            ("%", "Copy output to clipboard"),
+            ("%", "Copy gai ace snapshot"),
             ("y", "Refresh"),
             ("q", "Quit"),
             ("?", "Show this help"),
