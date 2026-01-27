@@ -270,7 +270,7 @@ class ChangeSpecMixin:
             )
         )
 
-        if self.changespecs:
+        if self.changespecs and 0 <= self.current_idx < len(self.changespecs):
             changespec = self.changespecs[self.current_idx]
             # Preserve hints if in hint mode
             if self._hint_mode_active:
