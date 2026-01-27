@@ -169,27 +169,29 @@ class BasicNavigationMixin(NavigationMixinBase):
         """Switch to the next tab (cycling: CLs -> Agents -> Axe -> CLs)."""
         self._save_current_tab_position()
         if self.current_tab == "changespecs":
-            self.current_tab = "agents"  # type: ignore[assignment]
+            # Set index BEFORE tab to avoid watcher using stale index
             self.current_idx = self._get_clamped_agents_idx()
+            self.current_tab = "agents"  # type: ignore[assignment]
         elif self.current_tab == "agents":
-            self.current_tab = "axe"  # type: ignore[assignment]
             self.current_idx = 0  # Axe has no list
+            self.current_tab = "axe"  # type: ignore[assignment]
         else:  # axe
-            self.current_tab = "changespecs"  # type: ignore[assignment]
             self.current_idx = self._get_clamped_changespecs_idx()
+            self.current_tab = "changespecs"  # type: ignore[assignment]
 
     def action_prev_tab(self) -> None:
         """Switch to the previous tab (cycling: CLs <- Agents <- Axe <- CLs)."""
         self._save_current_tab_position()
         if self.current_tab == "changespecs":
-            self.current_tab = "axe"  # type: ignore[assignment]
             self.current_idx = 0  # Axe has no list
+            self.current_tab = "axe"  # type: ignore[assignment]
         elif self.current_tab == "agents":
-            self.current_tab = "changespecs"  # type: ignore[assignment]
+            # Set index BEFORE tab to avoid watcher using stale index
             self.current_idx = self._get_clamped_changespecs_idx()
+            self.current_tab = "changespecs"  # type: ignore[assignment]
         else:  # axe
-            self.current_tab = "agents"  # type: ignore[assignment]
             self.current_idx = self._get_clamped_agents_idx()
+            self.current_tab = "agents"  # type: ignore[assignment]
 
     def _save_current_tab_position(self) -> None:
         """Save the current position before switching tabs."""
