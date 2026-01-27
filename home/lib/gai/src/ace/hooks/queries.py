@@ -642,7 +642,7 @@ def rerun_delete_hooks_by_command(
 
 
 def get_failed_hooks_file_path(changespec: "ChangeSpec") -> str | None:
-    """Find a failed hooks file path in the ChangeSpec's metahook_complete suffixes.
+    """Find the last failed hooks file path in the ChangeSpec.
 
     Iterates through all hooks with status lines, looking for any status line
     with suffix_type == "metahook_complete" that contains a path matching
@@ -652,11 +652,12 @@ def get_failed_hooks_file_path(changespec: "ChangeSpec") -> str | None:
         changespec: The ChangeSpec to search.
 
     Returns:
-        The first matching file path found, or None if not found.
+        The last matching file path found, or None if not found.
     """
     if not changespec.hooks:
         return None
 
+    result: str | None = None
     for hook in changespec.hooks:
         if not hook.status_lines:
             continue
@@ -665,11 +666,11 @@ def get_failed_hooks_file_path(changespec: "ChangeSpec") -> str | None:
             if sl.suffix:
                 match = _FAILED_HOOKS_FILE_PATTERN.search(sl.suffix)
                 if match:
-                    return match.group(0)
+                    result = match.group(0)
             # Check summary field
             if sl.summary:
                 match = _FAILED_HOOKS_FILE_PATTERN.search(sl.summary)
                 if match:
-                    return match.group(0)
+                    result = match.group(0)
 
-    return None
+    return result
