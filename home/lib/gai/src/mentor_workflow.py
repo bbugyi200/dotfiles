@@ -35,37 +35,35 @@ from shared_utils import (
 from summarize_utils import get_file_summary
 from workflow_base import BaseWorkflow
 from workflow_utils import get_cl_name_from_branch
+from xprompt import process_xprompt_references
 
 
-def _load_mentor_prompt_template() -> str:
-    """Load the mentor prompt template.
+def _escape_for_xprompt(text: str) -> str:
+    """Escape text for use in an xprompt argument string.
+
+    Escapes double quotes and backslashes.
+
+    Args:
+        text: The text to escape.
 
     Returns:
-        The prompt template content.
-
-    Raises:
-        FileNotFoundError: If template file doesn't exist.
+        The escaped text safe for use in xprompt argument.
     """
-    template_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "chats",
-        "mentor_prompt.md",
-    )
-    with open(template_path, encoding="utf-8") as f:
-        return f.read()
+    return text.replace("\\", "\\\\").replace('"', '\\"')
 
 
 def _build_mentor_prompt(mentor: MentorConfig) -> str:
-    """Build the mentor prompt by substituting the mentor's prompt into the template.
+    """Build the mentor prompt using the mentor xprompt.
 
     Args:
         mentor: The mentor configuration.
 
     Returns:
-        The complete prompt.
+        The complete prompt with xprompt expanded.
     """
-    template = _load_mentor_prompt_template()
-    return template.replace("{prompt}", mentor.prompt.rstrip())
+    escaped_prompt = _escape_for_xprompt(mentor.prompt.rstrip())
+    prompt_text = f'#mentor(prompt="{escaped_prompt}")'
+    return process_xprompt_references(prompt_text)
 
 
 def _find_changespec_by_name(cl_name: str) -> tuple[str | None, str | None]:

@@ -1,13 +1,13 @@
-"""Tests for snippet_processor internal parsing and substitution functions."""
+"""Tests for xprompt processor internal parsing and substitution functions."""
 
 import pytest
-from gemini_wrapper.snippet_processor import (
-    _expand_single_snippet,
+from xprompt.models import XPrompt
+from xprompt.processor import (
+    _expand_single_xprompt,
     _parse_args,
     _parse_named_arg,
-    _SnippetArgumentError,
-    _SnippetNotFoundError,
     _substitute_placeholders,
+    _XPromptArgumentError,
     is_jinja2_template,
 )
 
@@ -200,7 +200,7 @@ def test_substitute_placeholders_arg_overrides_default() -> None:
 
 def test_substitute_placeholders_missing_required_arg() -> None:
     """Test that missing required arg raises error."""
-    with pytest.raises(_SnippetArgumentError, match="requires argument"):
+    with pytest.raises(_XPromptArgumentError, match="requires argument"):
         _substitute_placeholders("Hello {1}!", [], {}, "test")
 
 
@@ -257,42 +257,36 @@ def test_substitute_placeholders_jinja2_conditional() -> None:
 
 def test_substitute_placeholders_jinja2_missing_var_error() -> None:
     """Test that missing required variable raises error."""
-    with pytest.raises(_SnippetArgumentError, match="template error"):
+    with pytest.raises(_XPromptArgumentError, match="template error"):
         _substitute_placeholders("Hello {{ name }}!", [], {}, "test")
 
 
-# Tests for _expand_single_snippet
+# Tests for _expand_single_xprompt
 
 
-def test_expand_single_snippet_not_found() -> None:
-    """Test that missing snippet raises error."""
-    with pytest.raises(_SnippetNotFoundError, match="not found"):
-        _expand_single_snippet("nonexistent", [], {}, {"foo": "content"})
-
-
-def test_expand_single_snippet_no_args() -> None:
-    """Test expanding snippet without arguments."""
-    snippets = {"foo": "The foo content"}
-    result = _expand_single_snippet("foo", [], {}, snippets)
+def test_expand_single_xprompt_no_args() -> None:
+    """Test expanding xprompt without arguments."""
+    xprompt = XPrompt(name="foo", content="The foo content")
+    result = _expand_single_xprompt(xprompt, [], {})
     assert result == "The foo content"
 
 
-def test_expand_single_snippet_with_positional_args() -> None:
-    """Test expanding snippet with positional arguments."""
-    snippets = {"greet": "Hello {1}!"}
-    result = _expand_single_snippet("greet", ["world"], {}, snippets)
+def test_expand_single_xprompt_with_positional_args() -> None:
+    """Test expanding xprompt with positional arguments."""
+    xprompt = XPrompt(name="greet", content="Hello {1}!")
+    result = _expand_single_xprompt(xprompt, ["world"], {})
     assert result == "Hello world!"
 
 
-def test_expand_single_snippet_with_named_args_jinja2() -> None:
-    """Test expanding Jinja2 snippet with named arguments."""
-    snippets = {"greet": "Hello {{ name }}!"}
-    result = _expand_single_snippet("greet", [], {"name": "World"}, snippets)
+def test_expand_single_xprompt_with_named_args_jinja2() -> None:
+    """Test expanding Jinja2 xprompt with named arguments."""
+    xprompt = XPrompt(name="greet", content="Hello {{ name }}!")
+    result = _expand_single_xprompt(xprompt, [], {"name": "World"})
     assert result == "Hello World!"
 
 
-def test_expand_single_snippet_mixed_args_jinja2() -> None:
-    """Test expanding Jinja2 snippet with mixed positional and named args."""
-    snippets = {"msg": "{{ _1 }} says {{ message }}"}
-    result = _expand_single_snippet("msg", ["Alice"], {"message": "hello"}, snippets)
+def test_expand_single_xprompt_mixed_args_jinja2() -> None:
+    """Test expanding Jinja2 xprompt with mixed positional and named args."""
+    xprompt = XPrompt(name="msg", content="{{ _1 }} says {{ message }}")
+    result = _expand_single_xprompt(xprompt, ["Alice"], {"message": "hello"})
     assert result == "Alice says hello"

@@ -239,13 +239,13 @@ def main() -> NoReturn:
         from gemini_wrapper import (
             format_with_prettier,
             process_command_substitution,
-            process_snippet_references,
             process_xcmd_references,
+            process_xprompt_references,
             validate_file_references,
         )
 
         prompt = args.prompt if args.prompt else sys.stdin.read()
-        prompt = process_snippet_references(prompt)
+        prompt = process_xprompt_references(prompt)
         prompt = process_command_substitution(prompt)
         prompt = process_xcmd_references(prompt)
         validate_file_references(prompt)  # Validates but doesn't modify

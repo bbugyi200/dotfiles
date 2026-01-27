@@ -423,12 +423,12 @@ PromptInputBar #prompt-escape-hint {
     padding: 0 0 0 1;
 }
 
-/* Snippet select modal styling */
-SnippetSelectModal {
+/* XPrompt select modal styling */
+XPromptSelectModal {
     align: center middle;
 }
 
-SnippetSelectModal > Container {
+XPromptSelectModal > Container {
     width: 100;
     height: 30;
     border: thick $primary;
@@ -436,60 +436,60 @@ SnippetSelectModal > Container {
     padding: 1 2;
 }
 
-SnippetSelectModal #modal-title {
+XPromptSelectModal #modal-title {
     text-style: bold;
     margin-bottom: 1;
 }
 
-SnippetSelectModal #snippet-filter-input {
+XPromptSelectModal #xprompt-filter-input {
     width: 100%;
     margin-bottom: 1;
 }
 
-SnippetSelectModal #snippet-panels {
+XPromptSelectModal #xprompt-panels {
     width: 100%;
     height: 1fr;
 }
 
-SnippetSelectModal #snippet-list-panel {
+XPromptSelectModal #xprompt-list-panel {
     width: 30;
     height: 100%;
 }
 
-SnippetSelectModal #snippet-list-label {
+XPromptSelectModal #xprompt-list-label {
     color: $text-muted;
     text-style: bold;
     height: 1;
 }
 
-SnippetSelectModal OptionList {
+XPromptSelectModal OptionList {
     height: 1fr;
     border: solid $secondary;
 }
 
-SnippetSelectModal #snippet-preview-panel {
+XPromptSelectModal #xprompt-preview-panel {
     width: 1fr;
     height: 100%;
     margin-left: 1;
 }
 
-SnippetSelectModal #snippet-preview-label {
+XPromptSelectModal #xprompt-preview-label {
     color: $text-muted;
     text-style: bold;
     height: 1;
 }
 
-SnippetSelectModal #snippet-preview-scroll {
+XPromptSelectModal #xprompt-preview-scroll {
     height: 1fr;
     border: solid $secondary;
     padding: 0 1;
 }
 
-SnippetSelectModal #snippet-preview {
+XPromptSelectModal #xprompt-preview {
     height: auto;
 }
 
-SnippetSelectModal #snippet-hints {
+XPromptSelectModal #xprompt-hints {
     height: 1;
     color: $text-muted;
     text-align: center;

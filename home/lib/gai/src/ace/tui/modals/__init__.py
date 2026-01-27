@@ -16,10 +16,10 @@ from .prompt_history_modal import (
 )
 from .query_edit_modal import QueryEditModal
 from .rename_cl_modal import RenameCLModal
-from .snippet_select_modal import SnippetSelectModal
 from .status_modal import StatusModal
 from .workflow_select_modal import WorkflowSelectModal
 from .workspace_input_modal import WorkspaceInputModal
+from .xprompt_select_modal import SnippetSelectModal, XPromptSelectModal
 
 __all__ = [
     "BugInputModal",
@@ -44,6 +44,7 @@ __all__ = [
     "SelectionItem",
     "SnippetSelectModal",
     "StatusModal",
+    "XPromptSelectModal",
     "WorkflowSelectModal",
     "WorkspaceInputModal",
 ]

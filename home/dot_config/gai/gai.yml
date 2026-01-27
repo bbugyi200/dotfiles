@@ -1,7 +1,8 @@
-# Snippets are reusable text templates that can be referenced in prompts.
-# Usage: #snippet_name or #snippet_name(arg1, arg2)
+# XPrompts are reusable text templates that can be referenced in prompts.
+# Usage: #xprompt_name or #xprompt_name(arg1, arg2)
 # Placeholders: {1}, {2} for positional args, {1:default} for optional
-snippets:
+# Or use Jinja2: {{ _1 }}, {{ name }}, {% if %}
+xprompts:
   b: "Can you help me fix the bug described by the #bug:{1} file? #noc"
   b_ab: |
     #b:{1} Refer to the 'How to add a Authorized Buyers' section of the @contentads/drx/fe/g3doc/indirect/bidders.md

@@ -1,68 +1,68 @@
-"""Snippet selection modal with filtering for the ace TUI."""
+"""XPrompt selection modal with filtering for the ace TUI."""
 
 from rich.text import Text
-from snippet_config import get_all_snippets
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Input, Label, OptionList, Static
 from textual.widgets.option_list import Option
+from xprompt import get_all_snippets
 
 from .base import FilterInput, OptionListNavigationMixin
 
 
-class SnippetSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
-    """Modal for selecting a snippet with filtering and preview."""
+class XPromptSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
+    """Modal for selecting an xprompt with filtering and preview."""
 
-    _option_list_id = "snippet-list"
+    _option_list_id = "xprompt-list"
     BINDINGS = [*OptionListNavigationMixin.NAVIGATION_BINDINGS]
 
     def __init__(self) -> None:
-        """Initialize the snippet modal."""
+        """Initialize the xprompt modal."""
         super().__init__()
-        self.snippets = get_all_snippets()
-        self._filtered_names: list[str] = sorted(self.snippets.keys())
+        self.xprompts = get_all_snippets()
+        self._filtered_names: list[str] = sorted(self.xprompts.keys())
 
     def compose(self) -> ComposeResult:
         """Compose the modal layout."""
-        with Container(id="snippet-modal-container"):
-            yield Label("Select Snippet", id="modal-title")
-            if not self.snippets:
-                yield Label("No snippets configured in ~/.config/gai/gai.yml")
+        with Container(id="xprompt-modal-container"):
+            yield Label("Select XPrompt", id="modal-title")
+            if not self.xprompts:
+                yield Label("No xprompts configured")
             else:
                 yield FilterInput(
-                    placeholder="Type to filter...", id="snippet-filter-input"
+                    placeholder="Type to filter...", id="xprompt-filter-input"
                 )
-                with Horizontal(id="snippet-panels"):
-                    with Vertical(id="snippet-list-panel"):
-                        yield Label("Snippets", id="snippet-list-label")
+                with Horizontal(id="xprompt-panels"):
+                    with Vertical(id="xprompt-list-panel"):
+                        yield Label("XPrompts", id="xprompt-list-label")
                         yield OptionList(
                             *self._create_options(self._filtered_names),
-                            id="snippet-list",
+                            id="xprompt-list",
                         )
-                    with Vertical(id="snippet-preview-panel"):
-                        yield Label("Preview", id="snippet-preview-label")
-                        with VerticalScroll(id="snippet-preview-scroll"):
-                            yield Static("", id="snippet-preview")
+                    with Vertical(id="xprompt-preview-panel"):
+                        yield Label("Preview", id="xprompt-preview-label")
+                        with VerticalScroll(id="xprompt-preview-scroll"):
+                            yield Static("", id="xprompt-preview")
                 yield Static(
                     "j/k ↑/↓ ^n/^p: navigate • Enter: select • Esc/q: cancel",
-                    id="snippet-hints",
+                    id="xprompt-hints",
                 )
 
     def _create_styled_label(self, name: str) -> Text:
-        """Create styled text for a snippet name."""
+        """Create styled text for an xprompt name."""
         text = Text()
         text.append("#", style="bold #87D7FF")  # Cyan hash
         text.append(name)
         return text
 
     def _create_options(self, names: list[str]) -> list[Option]:
-        """Create options from snippet names."""
+        """Create options from xprompt names."""
         return [Option(self._create_styled_label(name), id=name) for name in names]
 
     def _get_filtered_names(self, filter_text: str) -> list[str]:
-        """Get snippet names that match the filter text."""
-        all_names = sorted(self.snippets.keys())
+        """Get xprompt names that match the filter text."""
+        all_names = sorted(self.xprompts.keys())
         if not filter_text:
             return all_names
         filter_lower = filter_text.lower()
@@ -70,8 +70,8 @@ class SnippetSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
 
     def on_mount(self) -> None:
         """Focus the input and show initial preview on mount."""
-        if self.snippets:
-            filter_input = self.query_one("#snippet-filter-input", FilterInput)
+        if self.xprompts:
+            filter_input = self.query_one("#xprompt-filter-input", FilterInput)
             filter_input.focus()
             # Show preview for first item
             if self._filtered_names:
@@ -80,7 +80,7 @@ class SnippetSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
     def on_input_changed(self, event: Input.Changed) -> None:
         """Handle input change - update the option list."""
         self._filtered_names = self._get_filtered_names(event.value)
-        option_list = self.query_one("#snippet-list", OptionList)
+        option_list = self.query_one("#xprompt-list", OptionList)
         option_list.clear_options()
         for option in self._create_options(self._filtered_names):
             option_list.add_option(option)
@@ -95,7 +95,7 @@ class SnippetSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
         if not self._filtered_names:
             return
 
-        option_list = self.query_one("#snippet-list", OptionList)
+        option_list = self.query_one("#xprompt-list", OptionList)
         highlighted = option_list.highlighted
         if highlighted is not None and 0 <= highlighted < len(self._filtered_names):
             self.dismiss(self._filtered_names[highlighted])
@@ -116,10 +116,10 @@ class SnippetSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
             self.dismiss(str(event.option.id))
 
     def _update_preview_for_name(self, name: str) -> None:
-        """Update preview for a snippet by name."""
+        """Update preview for an xprompt by name."""
         try:
-            preview = self.query_one("#snippet-preview", Static)
-            content = self.snippets.get(name, "")
+            preview = self.query_one("#xprompt-preview", Static)
+            content = self.xprompts.get(name, "")
             preview.update(content)
         except Exception:
             pass
@@ -127,7 +127,11 @@ class SnippetSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
     def _clear_preview(self) -> None:
         """Clear the preview panel."""
         try:
-            preview = self.query_one("#snippet-preview", Static)
+            preview = self.query_one("#xprompt-preview", Static)
             preview.update("")
         except Exception:
             pass
+
+
+# Backward compatibility alias
+SnippetSelectModal = XPromptSelectModal

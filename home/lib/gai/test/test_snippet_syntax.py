@@ -1,8 +1,17 @@
-"""Tests for snippet syntax features (colon syntax and Jinja2 templates)."""
+"""Tests for xprompt syntax features (colon syntax and Jinja2 templates)."""
 
 from unittest.mock import patch
 
-from gemini_wrapper.snippet_processor import process_snippet_references
+from xprompt.models import XPrompt
+from xprompt.processor import process_xprompt_references
+
+
+def _make_xprompts(snippets: dict[str, str]) -> dict[str, XPrompt]:
+    """Helper to convert string dict to XPrompt dict for mocking."""
+    return {
+        name: XPrompt(name=name, content=content) for name, content in snippets.items()
+    }
+
 
 # Tests for colon syntax (#name:arg)
 
@@ -11,9 +20,9 @@ def test_process_snippet_colon_syntax_basic() -> None:
     """Test basic colon syntax expands like parenthesis syntax."""
     snippets = {"greet": "Hello {1}!"}
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references("#greet:world")
+        result = process_xprompt_references("#greet:world")
     assert result == "Hello world!"
 
 
@@ -21,9 +30,9 @@ def test_process_snippet_colon_syntax_numeric_arg() -> None:
     """Test colon syntax with numeric argument."""
     snippets = {"issue": "Issue #{1}"}
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references("#issue:123")
+        result = process_xprompt_references("#issue:123")
     assert result == "Issue #123"
 
 
@@ -31,9 +40,9 @@ def test_process_snippet_colon_syntax_with_dots() -> None:
     """Test colon syntax with dots in argument (e.g., filenames)."""
     snippets = {"file": "File: {1}"}
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references("#file:test.txt")
+        result = process_xprompt_references("#file:test.txt")
     assert result == "File: test.txt"
 
 
@@ -41,9 +50,9 @@ def test_process_snippet_colon_syntax_with_hyphens() -> None:
     """Test colon syntax with hyphens in argument."""
     snippets = {"tag": "Tag: {1}"}
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references("#tag:foo-bar-baz")
+        result = process_xprompt_references("#tag:foo-bar-baz")
     assert result == "Tag: foo-bar-baz"
 
 
@@ -51,9 +60,9 @@ def test_process_snippet_colon_syntax_with_underscores() -> None:
     """Test colon syntax with underscores in argument."""
     snippets = {"var": "Var: {1}"}
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references("#var:my_variable")
+        result = process_xprompt_references("#var:my_variable")
     assert result == "Var: my_variable"
 
 
@@ -61,9 +70,9 @@ def test_process_snippet_colon_syntax_terminates_at_whitespace() -> None:
     """Test colon syntax arg terminates at whitespace."""
     snippets = {"greet": "Hello {1}!"}
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references("#greet:world and more text")
+        result = process_xprompt_references("#greet:world and more text")
     assert result == "Hello world! and more text"
 
 
@@ -71,9 +80,9 @@ def test_process_snippet_colon_syntax_terminates_at_closing_paren() -> None:
     """Test colon syntax arg terminates at closing parenthesis."""
     snippets = {"foo": "FOO({1})"}
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references("(#foo:bar)")
+        result = process_xprompt_references("(#foo:bar)")
     assert result == "(FOO(bar))"
 
 
@@ -81,9 +90,9 @@ def test_process_snippet_colon_syntax_terminates_at_closing_bracket() -> None:
     """Test colon syntax arg terminates at closing bracket."""
     snippets = {"foo": "FOO[{1}]"}
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references("[#foo:bar]")
+        result = process_xprompt_references("[#foo:bar]")
     assert result == "[FOO[bar]]"
 
 
@@ -91,9 +100,9 @@ def test_process_snippet_colon_syntax_terminates_at_closing_brace() -> None:
     """Test colon syntax arg terminates at closing brace."""
     snippets = {"foo": "FOO({1})"}
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references("{#foo:bar}")
+        result = process_xprompt_references("{#foo:bar}")
     assert result == "{FOO(bar)}"
 
 
@@ -101,9 +110,9 @@ def test_process_snippet_colon_syntax_at_start_of_line() -> None:
     """Test colon syntax at start of line."""
     snippets = {"greet": "Hello {1}!"}
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references("#greet:world")
+        result = process_xprompt_references("#greet:world")
     assert result == "Hello world!"
 
 
@@ -112,9 +121,9 @@ def test_process_snippet_colon_syntax_after_newline() -> None:
     snippets = {"greet": "Hello {1}!"}
     prompt = "First line\n#greet:world"
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references(prompt)
+        result = process_xprompt_references(prompt)
     assert result == "First line\nHello world!"
 
 
@@ -122,9 +131,9 @@ def test_process_snippet_paren_syntax_still_works_with_colon() -> None:
     """Test parenthesis syntax still works alongside colon syntax."""
     snippets = {"greet": "Hello {1}!"}
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references("#greet(world)")
+        result = process_xprompt_references("#greet(world)")
     assert result == "Hello world!"
 
 
@@ -132,9 +141,9 @@ def test_process_snippet_paren_syntax_multiple_args_still_works() -> None:
     """Test parenthesis syntax with multiple args still works."""
     snippets = {"msg": "{1} says {2}"}
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references("#msg(Alice, hello)")
+        result = process_xprompt_references("#msg(Alice, hello)")
     assert result == "Alice says hello"
 
 
@@ -142,22 +151,22 @@ def test_process_snippet_colon_and_paren_in_same_prompt() -> None:
     """Test using both colon and parenthesis syntax in same prompt."""
     snippets = {"greet": "Hello {1}!", "msg": "{1} says {2}"}
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references("#greet:world and #msg(Alice, hi)")
+        result = process_xprompt_references("#greet:world and #msg(Alice, hi)")
     assert result == "Hello world! and Alice says hi"
 
 
-# Tests for Jinja2 templates with process_snippet_references
+# Tests for Jinja2 templates with process_xprompt_references
 
 
 def test_process_snippet_jinja2_named_args() -> None:
     """Test Jinja2 snippet with named arguments."""
     snippets = {"greet": "Hello {{ name }}!"}
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references("#greet(name=World)")
+        result = process_xprompt_references("#greet(name=World)")
     assert result == "Hello World!"
 
 
@@ -165,9 +174,9 @@ def test_process_snippet_jinja2_multiple_named_args() -> None:
     """Test Jinja2 snippet with multiple named arguments."""
     snippets = {"msg": "{{ sender }} says {{ message }}"}
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references("#msg(sender=Alice, message=hello)")
+        result = process_xprompt_references("#msg(sender=Alice, message=hello)")
     assert result == "Alice says hello"
 
 
@@ -175,9 +184,9 @@ def test_process_snippet_jinja2_quoted_named_args() -> None:
     """Test Jinja2 snippet with quoted named arguments containing spaces."""
     snippets = {"greet": "Hello {{ name }}!"}
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references('#greet(name="Big World")')
+        result = process_xprompt_references('#greet(name="Big World")')
     assert result == "Hello Big World!"
 
 
@@ -185,9 +194,9 @@ def test_process_snippet_jinja2_mixed_args() -> None:
     """Test Jinja2 snippet with mixed positional and named arguments."""
     snippets = {"msg": "{{ _1 }} says {{ message }}"}
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references("#msg(Alice, message=hello)")
+        result = process_xprompt_references("#msg(Alice, message=hello)")
     assert result == "Alice says hello"
 
 
@@ -195,9 +204,9 @@ def test_process_snippet_jinja2_conditional() -> None:
     """Test Jinja2 snippet with conditional."""
     snippets = {"greet": "Hello {{ name }}{% if formal %}, sir{% endif %}!"}
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references("#greet(name=Bob, formal=yes)")
+        result = process_xprompt_references("#greet(name=Bob, formal=yes)")
     assert result == "Hello Bob, sir!"
 
 
@@ -205,9 +214,9 @@ def test_process_snippet_jinja2_default_filter() -> None:
     """Test Jinja2 snippet with default filter."""
     snippets = {"greet": "Hello {{ name | default('World') }}!"}
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references("#greet()")
+        result = process_xprompt_references("#greet()")
     assert result == "Hello World!"
 
 
@@ -215,9 +224,9 @@ def test_process_snippet_jinja2_upper_filter() -> None:
     """Test Jinja2 snippet with upper filter."""
     snippets = {"shout": "{{ text | upper }}"}
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references("#shout(text=hello)")
+        result = process_xprompt_references("#shout(text=hello)")
     assert result == "HELLO"
 
 
@@ -225,9 +234,9 @@ def test_process_snippet_jinja2_colon_syntax() -> None:
     """Test Jinja2 snippet with colon syntax maps to _1."""
     snippets = {"greet": "Hello {{ _1 }}!"}
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references("#greet:World")
+        result = process_xprompt_references("#greet:World")
     assert result == "Hello World!"
 
 
@@ -238,9 +247,9 @@ def test_process_snippet_nested_jinja2() -> None:
         "outer": "Greeting: #inner(name=world)",
     }
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references("#outer()")
+        result = process_xprompt_references("#outer()")
     assert result == "Greeting: WORLD"
 
 
@@ -248,9 +257,9 @@ def test_process_snippet_legacy_still_works() -> None:
     """Test that legacy {1} placeholder syntax still works."""
     snippets = {"greet": "Hello {1}!"}
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references("#greet(World)")
+        result = process_xprompt_references("#greet(World)")
     assert result == "Hello World!"
 
 
@@ -261,9 +270,9 @@ def test_process_snippet_legacy_and_jinja2_together() -> None:
         "jinja": "Goodbye {{ name }}!",
     }
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references("#legacy(World) and #jinja(name=Universe)")
+        result = process_xprompt_references("#legacy(World) and #jinja(name=Universe)")
     assert result == "Hello World! and Goodbye Universe!"
 
 
@@ -274,9 +283,9 @@ def test_process_snippet_plus_syntax_basic() -> None:
     """Test plus syntax expands as 'true' positional argument."""
     snippets = {"enabled": "Feature: {1}"}
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references("#enabled+")
+        result = process_xprompt_references("#enabled+")
     assert result == "Feature: true"
 
 
@@ -284,9 +293,9 @@ def test_process_snippet_plus_syntax_jinja2() -> None:
     """Test plus syntax with Jinja2 template using _1."""
     snippets = {"enabled": "Feature enabled: {{ _1 }}"}
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references("#enabled+")
+        result = process_xprompt_references("#enabled+")
     assert result == "Feature enabled: true"
 
 
@@ -294,9 +303,9 @@ def test_process_snippet_plus_syntax_terminates_at_whitespace() -> None:
     """Test plus syntax terminates properly followed by text."""
     snippets = {"flag": "Flag={1}"}
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references("#flag+ and more text")
+        result = process_xprompt_references("#flag+ and more text")
     assert result == "Flag=true and more text"
 
 
@@ -308,9 +317,9 @@ def test_process_snippet_plus_and_other_syntax_in_same_prompt() -> None:
         "count": "count={1}",
     }
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result = process_snippet_references("#enabled+ #name:foo #count(42)")
+        result = process_xprompt_references("#enabled+ #name:foo #count(42)")
     assert result == "enabled=true name=foo count=42"
 
 
@@ -318,8 +327,8 @@ def test_process_snippet_plus_syntax_equivalent_to_colon_true() -> None:
     """Test that #name+ produces the same result as #name:true."""
     snippets = {"flag": "Value: {1}"}
     with patch(
-        "gemini_wrapper.snippet_processor.get_all_snippets", return_value=snippets
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
-        result_plus = process_snippet_references("#flag+")
-        result_colon = process_snippet_references("#flag:true")
+        result_plus = process_xprompt_references("#flag+")
+        result_colon = process_xprompt_references("#flag:true")
     assert result_plus == result_colon == "Value: true"

@@ -16,17 +16,19 @@ from rich_utils import (
     print_prompt_and_response,
 )
 from shared_utils import get_gai_log_file, run_bam_command
+from xprompt import (
+    is_jinja2_template,
+    render_toplevel_jinja2,
+)
+from xprompt import (
+    process_xprompt_references as process_snippet_references,
+)
 
 from .file_references import (
     format_with_prettier,
     process_command_substitution,
     process_file_references,
     process_xcmd_references,
-)
-from .snippet_processor import (
-    is_jinja2_template,
-    process_snippet_references,
-    render_toplevel_jinja2,
 )
 
 
