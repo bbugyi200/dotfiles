@@ -2,9 +2,9 @@
 name: split_spec_generator
 input:
   - name: workspace_name
-    type: string
+    type: word
   - name: diff_path
-    type: string
+    type: path
 ---
 
 # Generate Split Specification

@@ -2,7 +2,7 @@
 name: mentor
 input:
   - name: prompt
-    type: string
+    type: text
 ---
 
 ### Role

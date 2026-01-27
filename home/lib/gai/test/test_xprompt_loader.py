@@ -118,7 +118,7 @@ def test_parse_inputs_basic() -> None:
 
     assert len(inputs) == 2
     assert inputs[0].name == "foo"
-    assert inputs[0].type == InputType.STRING
+    assert inputs[0].type == InputType.LINE  # Default type
     assert inputs[1].name == "bar"
     assert inputs[1].type == InputType.INT
 
@@ -138,31 +138,35 @@ def test_parse_inputs_with_defaults() -> None:
 def test_parse_inputs_all_types() -> None:
     """Test parsing all supported types."""
     input_list = [
-        {"name": "s", "type": "string"},
+        {"name": "w", "type": "word"},
+        {"name": "l", "type": "line"},
+        {"name": "t", "type": "text"},
+        {"name": "p", "type": "path"},
         {"name": "i", "type": "int"},
         {"name": "b", "type": "bool"},
         {"name": "f", "type": "float"},
     ]
     inputs = _parse_inputs_from_front_matter(input_list)
 
-    assert inputs[0].type == InputType.STRING
-    assert inputs[1].type == InputType.INT
-    assert inputs[2].type == InputType.BOOL
-    assert inputs[3].type == InputType.FLOAT
+    assert inputs[0].type == InputType.WORD
+    assert inputs[1].type == InputType.LINE
+    assert inputs[2].type == InputType.TEXT
+    assert inputs[3].type == InputType.PATH
+    assert inputs[4].type == InputType.INT
+    assert inputs[5].type == InputType.BOOL
+    assert inputs[6].type == InputType.FLOAT
 
 
 def test_parse_inputs_type_aliases() -> None:
     """Test that type aliases are recognized."""
     input_list = [
-        {"name": "s", "type": "str"},
         {"name": "i", "type": "integer"},
         {"name": "b", "type": "boolean"},
     ]
     inputs = _parse_inputs_from_front_matter(input_list)
 
-    assert inputs[0].type == InputType.STRING
-    assert inputs[1].type == InputType.INT
-    assert inputs[2].type == InputType.BOOL
+    assert inputs[0].type == InputType.INT
+    assert inputs[1].type == InputType.BOOL
 
 
 def test_parse_inputs_skips_invalid_items() -> None:

@@ -1,5 +1,6 @@
 """XPrompt data models for typed prompt templates."""
 
+import os
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -8,7 +9,10 @@ from typing import Any
 class InputType(Enum):
     """Supported input argument types for XPrompt files."""
 
-    STRING = "string"
+    WORD = "word"  # Single word, no whitespace
+    LINE = "line"  # Single line, no newlines
+    TEXT = "text"  # Multi-line text (any content)
+    PATH = "path"  # File path (no whitespace + must exist)
     INT = "int"
     BOOL = "bool"
     FLOAT = "float"
@@ -31,7 +35,7 @@ class InputArg:
     """
 
     name: str
-    type: InputType = InputType.STRING
+    type: InputType = InputType.LINE
     default: Any = None
 
     def validate_and_convert(self, value: str) -> Any:
@@ -46,8 +50,32 @@ class InputArg:
         Raises:
             XPromptValidationError: If value cannot be converted to declared type.
         """
-        if self.type == InputType.STRING:
+        if self.type == InputType.WORD:
+            if any(c.isspace() for c in value):
+                raise XPromptValidationError(
+                    f"Argument '{self.name}' expects word (no spaces), got '{value}'"
+                )
             return value
+        elif self.type == InputType.LINE:
+            if "\n" in value:
+                raise XPromptValidationError(
+                    f"Argument '{self.name}' expects line (no newlines), "
+                    f"got value with newlines"
+                )
+            return value
+        elif self.type == InputType.TEXT:
+            return value  # No validation
+        elif self.type == InputType.PATH:
+            if any(c.isspace() for c in value):
+                raise XPromptValidationError(
+                    f"Argument '{self.name}' expects path (no spaces), got '{value}'"
+                )
+            expanded = os.path.expanduser(value)
+            if not os.path.exists(expanded):
+                raise XPromptValidationError(
+                    f"Argument '{self.name}' path does not exist: '{value}'"
+                )
+            return value  # Return original value, not expanded
         elif self.type == InputType.INT:
             try:
                 return int(value)

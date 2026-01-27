@@ -72,21 +72,23 @@ def _parse_input_type(type_str: str) -> InputType:
     """Parse an input type string to InputType enum.
 
     Args:
-        type_str: The type string (e.g., "string", "int", "bool", "float").
+        type_str: The type string (e.g., "word", "line", "text", "path", "int").
 
     Returns:
         The corresponding InputType enum value.
     """
     type_map = {
-        "string": InputType.STRING,
-        "str": InputType.STRING,
+        "word": InputType.WORD,
+        "line": InputType.LINE,
+        "text": InputType.TEXT,
+        "path": InputType.PATH,
         "int": InputType.INT,
         "integer": InputType.INT,
         "bool": InputType.BOOL,
         "boolean": InputType.BOOL,
         "float": InputType.FLOAT,
     }
-    return type_map.get(type_str.lower(), InputType.STRING)
+    return type_map.get(type_str.lower(), InputType.LINE)
 
 
 def _parse_inputs_from_front_matter(

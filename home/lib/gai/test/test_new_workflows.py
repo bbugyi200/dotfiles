@@ -1,5 +1,8 @@
 """Tests for the new simple workflows (crs)."""
 
+import os
+import tempfile
+
 from crs_workflow import CrsWorkflow, _build_crs_prompt
 
 
@@ -19,11 +22,18 @@ class TestCrsWorkflow:
 
     def test_build_crs_prompt_basic(self) -> None:
         """Test building a CRS prompt."""
-        prompt = _build_crs_prompt("/path/to/comments.json")
-        # #cl xprompt is expanded to context files section
-        assert "Context Files Related to this CL" in prompt
-        assert "@/path/to/comments.json" in prompt
-        assert "Critique" in prompt
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            f.write('{"comments": []}\n')
+            comments_file = f.name
+
+        try:
+            prompt = _build_crs_prompt(comments_file)
+            # #cl xprompt is expanded to context files section
+            assert "Context Files Related to this CL" in prompt
+            assert f"@{comments_file}" in prompt
+            assert "Critique" in prompt
+        finally:
+            os.unlink(comments_file)
 
 
 class TestCrsWorkflowAdvanced:
@@ -37,16 +47,23 @@ class TestCrsWorkflowAdvanced:
 
     def test_build_crs_prompt_with_context_directory(self) -> None:
         """Test building CRS prompt with context directory."""
-        import os
-        import tempfile
-
         with tempfile.TemporaryDirectory() as tmpdir:
-            # Create a test markdown file
+            # Create a test markdown file for context
             test_file = os.path.join(tmpdir, "context.md")
             with open(test_file, "w") as f:
                 f.write("# Test Context\n")
 
-            prompt = _build_crs_prompt("/path/to/comments.json", tmpdir)
-            # #cl xprompt is expanded to context files section
-            assert "Context Files Related to this CL" in prompt
-            assert "context.md" in prompt
+            # Create a comments file
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".json", delete=False
+            ) as f:
+                f.write('{"comments": []}\n')
+                comments_file = f.name
+
+            try:
+                prompt = _build_crs_prompt(comments_file, tmpdir)
+                # #cl xprompt is expanded to context files section
+                assert "Context Files Related to this CL" in prompt
+                assert "context.md" in prompt
+            finally:
+                os.unlink(comments_file)

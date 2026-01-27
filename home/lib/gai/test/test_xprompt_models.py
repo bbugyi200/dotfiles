@@ -1,5 +1,7 @@
 """Tests for the xprompt.models module."""
 
+from pathlib import Path
+
 import pytest
 from xprompt.models import InputArg, InputType, XPrompt, XPromptValidationError
 
@@ -8,7 +10,10 @@ from xprompt.models import InputArg, InputType, XPrompt, XPromptValidationError
 
 def test_input_type_values() -> None:
     """Test that InputType enum has expected values."""
-    assert InputType.STRING.value == "string"
+    assert InputType.WORD.value == "word"
+    assert InputType.LINE.value == "line"
+    assert InputType.TEXT.value == "text"
+    assert InputType.PATH.value == "path"
     assert InputType.INT.value == "int"
     assert InputType.BOOL.value == "bool"
     assert InputType.FLOAT.value == "float"
@@ -17,12 +22,75 @@ def test_input_type_values() -> None:
 # Tests for InputArg.validate_and_convert
 
 
-def test_input_arg_string_passthrough() -> None:
-    """Test that string type passes through unchanged."""
-    arg = InputArg(name="test", type=InputType.STRING)
+def test_input_arg_word_validation() -> None:
+    """Test that word type validates no whitespace."""
+    arg = InputArg(name="test", type=InputType.WORD)
     assert arg.validate_and_convert("hello") == "hello"
     assert arg.validate_and_convert("123") == "123"
     assert arg.validate_and_convert("") == ""
+    assert arg.validate_and_convert("hello-world_123") == "hello-world_123"
+
+
+def test_input_arg_word_rejects_whitespace() -> None:
+    """Test that word type rejects values with whitespace."""
+    arg = InputArg(name="test", type=InputType.WORD)
+    with pytest.raises(XPromptValidationError, match="expects word"):
+        arg.validate_and_convert("hello world")
+    with pytest.raises(XPromptValidationError, match="expects word"):
+        arg.validate_and_convert("hello\tworld")
+    with pytest.raises(XPromptValidationError, match="expects word"):
+        arg.validate_and_convert("hello\nworld")
+
+
+def test_input_arg_line_validation() -> None:
+    """Test that line type allows spaces but not newlines."""
+    arg = InputArg(name="test", type=InputType.LINE)
+    assert arg.validate_and_convert("hello world") == "hello world"
+    assert arg.validate_and_convert("hello\tworld") == "hello\tworld"
+    assert arg.validate_and_convert("") == ""
+
+
+def test_input_arg_line_rejects_newlines() -> None:
+    """Test that line type rejects values with newlines."""
+    arg = InputArg(name="test", type=InputType.LINE)
+    with pytest.raises(XPromptValidationError, match="expects line"):
+        arg.validate_and_convert("hello\nworld")
+    with pytest.raises(XPromptValidationError, match="expects line"):
+        arg.validate_and_convert("line1\nline2\nline3")
+
+
+def test_input_arg_text_passthrough() -> None:
+    """Test that text type passes through any content unchanged."""
+    arg = InputArg(name="test", type=InputType.TEXT)
+    assert arg.validate_and_convert("hello") == "hello"
+    assert arg.validate_and_convert("hello world") == "hello world"
+    assert arg.validate_and_convert("line1\nline2") == "line1\nline2"
+    assert arg.validate_and_convert("") == ""
+
+
+def test_input_arg_path_validation(tmp_path: Path) -> None:
+    """Test that path type validates file exists."""
+    # Create a temporary file
+    test_file = tmp_path / "test.txt"
+    test_file.write_text("test content")
+
+    arg = InputArg(name="test", type=InputType.PATH)
+    result = arg.validate_and_convert(str(test_file))
+    assert result == str(test_file)
+
+
+def test_input_arg_path_rejects_whitespace() -> None:
+    """Test that path type rejects values with whitespace."""
+    arg = InputArg(name="test", type=InputType.PATH)
+    with pytest.raises(XPromptValidationError, match="expects path"):
+        arg.validate_and_convert("/path/with spaces/file.txt")
+
+
+def test_input_arg_path_rejects_nonexistent() -> None:
+    """Test that path type rejects non-existent paths."""
+    arg = InputArg(name="test", type=InputType.PATH)
+    with pytest.raises(XPromptValidationError, match="does not exist"):
+        arg.validate_and_convert("/nonexistent/path/that/does/not/exist.txt")
 
 
 def test_input_arg_int_conversion() -> None:
@@ -80,10 +148,10 @@ def test_input_arg_bool_invalid_raises_error() -> None:
         arg.validate_and_convert("")
 
 
-def test_input_arg_default_type_is_string() -> None:
-    """Test that default type is STRING."""
+def test_input_arg_default_type_is_line() -> None:
+    """Test that default type is LINE."""
     arg = InputArg(name="test")
-    assert arg.type == InputType.STRING
+    assert arg.type == InputType.LINE
 
 
 def test_input_arg_default_is_none() -> None:
@@ -113,7 +181,7 @@ def test_xprompt_basic_construction() -> None:
 def test_xprompt_with_inputs() -> None:
     """Test XPrompt with input definitions."""
     inputs = [
-        InputArg(name="name", type=InputType.STRING),
+        InputArg(name="name", type=InputType.LINE),
         InputArg(name="count", type=InputType.INT, default=5),
     ]
     xp = XPrompt(name="test", content="Hello {{ name }}", inputs=inputs)
@@ -132,7 +200,7 @@ def test_xprompt_with_source_path() -> None:
 def test_xprompt_get_input_by_name_found() -> None:
     """Test getting input by name when it exists."""
     inputs = [
-        InputArg(name="alpha", type=InputType.STRING),
+        InputArg(name="alpha", type=InputType.LINE),
         InputArg(name="beta", type=InputType.INT),
     ]
     xp = XPrompt(name="test", content="", inputs=inputs)
@@ -145,7 +213,7 @@ def test_xprompt_get_input_by_name_found() -> None:
 
 def test_xprompt_get_input_by_name_not_found() -> None:
     """Test getting input by name when it doesn't exist."""
-    inputs = [InputArg(name="alpha", type=InputType.STRING)]
+    inputs = [InputArg(name="alpha", type=InputType.LINE)]
     xp = XPrompt(name="test", content="", inputs=inputs)
 
     result = xp.get_input_by_name("gamma")
@@ -161,7 +229,7 @@ def test_xprompt_get_input_by_name_empty_inputs() -> None:
 def test_xprompt_get_input_by_position_found() -> None:
     """Test getting input by position when it exists."""
     inputs = [
-        InputArg(name="first", type=InputType.STRING),
+        InputArg(name="first", type=InputType.LINE),
         InputArg(name="second", type=InputType.INT),
     ]
     xp = XPrompt(name="test", content="", inputs=inputs)
@@ -177,7 +245,7 @@ def test_xprompt_get_input_by_position_found() -> None:
 
 def test_xprompt_get_input_by_position_out_of_range() -> None:
     """Test getting input by position when out of range."""
-    inputs = [InputArg(name="first", type=InputType.STRING)]
+    inputs = [InputArg(name="first", type=InputType.LINE)]
     xp = XPrompt(name="test", content="", inputs=inputs)
 
     assert xp.get_input_by_position(-1) is None

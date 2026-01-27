@@ -2,9 +2,9 @@
 name: fix_hook
 input:
   - name: hook_command
-    type: string
+    type: line
   - name: output_file
-    type: string
+    type: path
 ---
 
 The command "{{ hook_command }}" is failing. The output of the last run can be found in the @{{ output_file }} file. Can

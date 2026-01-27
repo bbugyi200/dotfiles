@@ -2,9 +2,9 @@
 name: crs
 input:
   - name: critique_comments_path
-    type: string
+    type: path
   - name: context_files_section
-    type: string
+    type: text
     default: ""
 ---
 

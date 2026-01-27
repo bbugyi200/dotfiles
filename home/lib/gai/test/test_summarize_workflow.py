@@ -1,5 +1,6 @@
 """Tests for summarize_workflow module."""
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from summarize_utils import get_file_summary
@@ -11,19 +12,23 @@ from summarize_workflow import (
 
 
 # Tests for _build_summarize_prompt
-def test_build_summarize_prompt_basic() -> None:
+def test_build_summarize_prompt_basic(tmp_path: Path) -> None:
     """Test basic prompt construction."""
-    prompt = _build_summarize_prompt("/path/to/file.txt", "a hook failure message")
-    assert "@/path/to/file.txt" in prompt
+    test_file = tmp_path / "file.txt"
+    test_file.write_text("test content")
+    prompt = _build_summarize_prompt(str(test_file), "a hook failure message")
+    assert f"@{test_file}" in prompt
     assert "<=30 words" in prompt
     assert "hook failure message" in prompt
     assert "IMPORTANT" in prompt
 
 
-def test_build_summarize_prompt_with_home_path() -> None:
-    """Test prompt construction with home directory path."""
-    prompt = _build_summarize_prompt("~/file.txt", "a COMMITS entry header")
-    assert "@~/file.txt" in prompt
+def test_build_summarize_prompt_with_home_path(tmp_path: Path) -> None:
+    """Test prompt construction with file path."""
+    test_file = tmp_path / "file.txt"
+    test_file.write_text("test content")
+    prompt = _build_summarize_prompt(str(test_file), "a COMMITS entry header")
+    assert f"@{test_file}" in prompt
     assert "COMMITS entry header" in prompt
 
 
@@ -252,13 +257,16 @@ def test_extract_summary_whitespace_only() -> None:
 
 # Tests for SummarizeWorkflow.run() method
 @patch("summarize_workflow.invoke_agent")
-def test_workflow_run_success(mock_invoke: MagicMock) -> None:
+def test_workflow_run_success(mock_invoke: MagicMock, tmp_path: Path) -> None:
     """Test successful workflow run."""
+    test_file = tmp_path / "file.txt"
+    test_file.write_text("test content")
+
     mock_response = MagicMock()
     mock_response.content = "Fixed typo in config"
     mock_invoke.return_value = mock_response
 
-    workflow = SummarizeWorkflow("/path/to/file.txt", "a COMMITS entry header")
+    workflow = SummarizeWorkflow(str(test_file), "a COMMITS entry header")
     result = workflow.run()
 
     assert result is True
@@ -267,13 +275,16 @@ def test_workflow_run_success(mock_invoke: MagicMock) -> None:
 
 
 @patch("summarize_workflow.invoke_agent")
-def test_workflow_run_empty_response(mock_invoke: MagicMock) -> None:
+def test_workflow_run_empty_response(mock_invoke: MagicMock, tmp_path: Path) -> None:
     """Test workflow run with empty response."""
+    test_file = tmp_path / "file.txt"
+    test_file.write_text("test content")
+
     mock_response = MagicMock()
     mock_response.content = ""
     mock_invoke.return_value = mock_response
 
-    workflow = SummarizeWorkflow("/path/to/file.txt", "a COMMITS entry header")
+    workflow = SummarizeWorkflow(str(test_file), "a COMMITS entry header")
     result = workflow.run()
 
     assert result is False
@@ -281,15 +292,18 @@ def test_workflow_run_empty_response(mock_invoke: MagicMock) -> None:
 
 
 @patch("summarize_workflow.invoke_agent")
-def test_workflow_run_with_artifacts_dir(mock_invoke: MagicMock) -> None:
+def test_workflow_run_with_artifacts_dir(
+    mock_invoke: MagicMock, tmp_path: Path
+) -> None:
     """Test workflow run passes artifacts_dir to invoke_agent."""
+    test_file = tmp_path / "file.txt"
+    test_file.write_text("test content")
+
     mock_response = MagicMock()
     mock_response.content = "Fixed typo"
     mock_invoke.return_value = mock_response
 
-    workflow = SummarizeWorkflow(
-        "/path/to/file.txt", "a test", artifacts_dir="/artifacts"
-    )
+    workflow = SummarizeWorkflow(str(test_file), "a test", artifacts_dir="/artifacts")
     workflow.run()
 
     mock_invoke.assert_called_once()
@@ -298,13 +312,16 @@ def test_workflow_run_with_artifacts_dir(mock_invoke: MagicMock) -> None:
 
 
 @patch("summarize_workflow.invoke_agent")
-def test_workflow_run_strips_preamble(mock_invoke: MagicMock) -> None:
+def test_workflow_run_strips_preamble(mock_invoke: MagicMock, tmp_path: Path) -> None:
     """Test workflow run strips preamble from response."""
+    test_file = tmp_path / "file.txt"
+    test_file.write_text("test content")
+
     mock_response = MagicMock()
     mock_response.content = "Here is the summary: Fixed typo"
     mock_invoke.return_value = mock_response
 
-    workflow = SummarizeWorkflow("/path/to/file.txt", "a test")
+    workflow = SummarizeWorkflow(str(test_file), "a test")
     result = workflow.run()
 
     assert result is True
