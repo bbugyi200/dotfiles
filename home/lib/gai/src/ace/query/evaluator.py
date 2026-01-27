@@ -367,24 +367,24 @@ def _evaluate(
         raise TypeError(f"Unknown expression type: {type(expr)}")
 
 
-def query_explicitly_targets_reverted(
+def query_explicitly_targets_terminal(
     expr: QueryExpr,
     all_changespecs: list[ChangeSpec] | None = None,
 ) -> bool:
-    """Check if query explicitly references reverted ChangeSpecs.
+    """Check if query explicitly references terminal status ChangeSpecs.
 
     This is used to determine whether to auto-disable the hide_reverted filter.
-    The query targets reverted if:
-    - It contains status:reverted (case-insensitive)
-    - It contains name:<reverted_spec_name> where the spec has Reverted status
-    - It contains ancestor:<reverted_spec_name> where the spec has Reverted status
+    The query targets terminal statuses if:
+    - It contains status:reverted or status:archived (case-insensitive)
+    - It contains name:<spec_name> where the spec has Reverted/Archived status
+    - It contains ancestor:<spec_name> where the spec has Reverted/Archived status
 
     Args:
         expr: The parsed query expression.
         all_changespecs: List of all ChangeSpecs for name/ancestor lookups.
 
     Returns:
-        True if the query explicitly targets reverted ChangeSpecs.
+        True if the query explicitly targets terminal status ChangeSpecs.
     """
     # Build name -> status map for quick lookup
     status_map: dict[str, str] = {}
@@ -393,28 +393,32 @@ def query_explicitly_targets_reverted(
             status_map[cs.name.lower()] = _get_base_status(cs.status)
 
     def _check_expr(e: QueryExpr) -> bool:
-        """Recursively check if expression targets reverted."""
+        """Recursively check if expression targets terminal statuses."""
         if isinstance(e, PropertyMatch):
-            if e.key == "status" and e.value.lower() == "reverted":
+            if e.key == "status" and e.value.lower() in ("reverted", "archived"):
                 return True
             if e.key in ("name", "ancestor", "sibling"):
-                # Check if the referenced spec is reverted
+                # Check if the referenced spec is terminal
                 ref_status = status_map.get(e.value.lower(), "")
-                if ref_status == "Reverted":
+                if ref_status in ("Reverted", "Archived"):
                     return True
             return False
         elif isinstance(e, NotExpr):
-            # NOT expressions don't count as "targeting" reverted
+            # NOT expressions don't count as "targeting" terminal
             return False
         elif isinstance(e, AndExpr):
             return any(_check_expr(op) for op in e.operands)
         elif isinstance(e, OrExpr):
             return any(_check_expr(op) for op in e.operands)
         else:
-            # StringMatch doesn't target reverted specifically
+            # StringMatch doesn't target terminal specifically
             return False
 
     return _check_expr(expr)
+
+
+# Backward compatibility alias
+query_explicitly_targets_reverted = query_explicitly_targets_terminal
 
 
 def evaluate_query(

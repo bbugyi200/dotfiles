@@ -113,6 +113,7 @@ syn match GaiProjectStatusDrafted "^STATUS:\s*Drafted$" contains=GaiProjectStatu
 syn match GaiProjectStatusMailed "^STATUS:\s*Mailed" contains=GaiProjectStatusKey
 syn match GaiProjectStatusSubmitted "^STATUS:\s*Submitted" contains=GaiProjectStatusKey
 syn match GaiProjectStatusReverted "^STATUS:\s*Reverted" contains=GaiProjectStatusKey
+syn match GaiProjectStatusArchived "^STATUS:\s*Archived" contains=GaiProjectStatusKey
 
 " STATUS key pattern (matched within STATUS lines)
 syn match GaiProjectStatusKey "^STATUS:" contained
@@ -123,6 +124,7 @@ highlight GaiProjectStatusDrafted gui=bold guifg=#87D700
 highlight GaiProjectStatusMailed gui=bold guifg=#00D787
 highlight GaiProjectStatusSubmitted gui=bold guifg=#00AF00
 highlight GaiProjectStatusReverted gui=bold guifg=#808080
+highlight GaiProjectStatusArchived gui=bold guifg=#606060
 " READY TO MAIL suffix - use same red background as other error suffixes
 highlight GaiProjectStatusReadyToMail gui=bold guifg=#87D700
 highlight GaiProjectReadyToMailSuffix gui=bold guifg=#FFFFFF guibg=#AF0000

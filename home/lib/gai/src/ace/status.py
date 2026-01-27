@@ -10,6 +10,9 @@ from status_state_machine import VALID_STATUSES
 # Status that triggers revert workflow
 STATUS_REVERTED = "Reverted"
 
+# Status that triggers archive workflow
+STATUS_ARCHIVED = "Archived"
+
 
 def get_available_statuses(current_status: str) -> list[str]:
     """Get list of available statuses for selection.

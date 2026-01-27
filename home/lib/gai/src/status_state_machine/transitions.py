@@ -462,6 +462,48 @@ def _handle_reverted_transition(
     return (True, old_status, None)
 
 
+def _handle_archived_transition(
+    project_file: str,
+    changespec_name: str,
+    old_status: str,
+    new_status: str,
+    lines: list[str],
+    validate: bool,
+) -> tuple[bool, str | None, str | None]:
+    """Handle transition to Archived status.
+
+    Returns:
+        Tuple of (success, old_status, error_msg)
+    """
+    if validate and not is_valid_transition(old_status, new_status):
+        error_msg = (
+            f"Invalid status transition for '{changespec_name}': "
+            f"'{old_status}' -> '{new_status}'. "
+            f"Allowed transitions from '{old_status}': "
+            f"{VALID_TRANSITIONS.get(old_status, [])}"
+        )
+        logger.error(error_msg)
+        return (False, old_status, error_msg)
+
+    # Perform transition to Archived
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_msg = (
+        f"[{timestamp}] Transitioning {changespec_name}: "
+        f"'{old_status}' -> '{new_status}'"
+    )
+    if not validate:
+        log_msg += " (validation skipped)"
+    logger.info(log_msg)
+
+    updated_content = apply_status_update(lines, changespec_name, new_status)
+    write_changespec_atomic(
+        project_file,
+        updated_content,
+        f"Update STATUS to {new_status} for {changespec_name}",
+    )
+    return (True, old_status, None)
+
+
 def transition_changespec_status(
     project_file: str,
     changespec_name: str,
@@ -512,15 +554,20 @@ def transition_changespec_status(
             )
             result = (success, old_st, err)
 
-        elif new_status not in ("WIP", "Reverted"):
+        elif new_status not in ("WIP", "Reverted", "Archived"):
             success, old_st, err, suffix_strip_info = _handle_non_wip_transition(
                 project_file, changespec_name, old_status, new_status, lines, validate
             )
             result = (success, old_st, err)
 
-        else:
-            # new_status == "Reverted"
+        elif new_status == "Reverted":
             result = _handle_reverted_transition(
+                project_file, changespec_name, old_status, new_status, lines, validate
+            )
+
+        else:
+            # new_status == "Archived"
+            result = _handle_archived_transition(
                 project_file, changespec_name, old_status, new_status, lines, validate
             )
 

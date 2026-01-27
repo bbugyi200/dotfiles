@@ -164,7 +164,7 @@ def _strip_terminal_status_markers(changespec: ChangeSpec) -> list[str]:
     updates: list[str] = []
 
     # Only process terminal statuses
-    if changespec.status not in ("Reverted", "Submitted"):
+    if changespec.status not in ("Reverted", "Submitted", "Archived"):
         return updates
 
     # Process HISTORY entries with error or running_agent suffix

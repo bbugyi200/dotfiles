@@ -576,7 +576,7 @@ def start_stale_workflows(
     started: list[str] = []
 
     # Don't start workflows for terminal statuses
-    if changespec.status in ("Reverted", "Submitted"):
+    if changespec.status in ("Reverted", "Submitted", "Archived"):
         return updates, 0, started
 
     # Check global concurrency limit before starting any workflows

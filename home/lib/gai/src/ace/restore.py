@@ -194,10 +194,10 @@ def _clear_hook_status_lines_for_last_history(
 def restore_changespec(
     changespec: ChangeSpec, console: Console | None = None
 ) -> tuple[bool, str | None]:
-    """Restore a reverted ChangeSpec by re-applying its diff and creating a new CL.
+    """Restore a reverted or archived ChangeSpec by re-applying its diff and creating a new CL.
 
     This function:
-    1. Validates that the ChangeSpec has "Reverted" status
+    1. Validates that the ChangeSpec has "Reverted" or "Archived" status
     2. Renames the ChangeSpec to remove the __<N> suffix
     3. Runs bb_hg_update to either p4head or the parent
     4. Runs hg import --no-commit to apply the stashed diff
@@ -210,9 +210,12 @@ def restore_changespec(
     Returns:
         Tuple of (success, error_message)
     """
-    # Validate status is "Reverted"
-    if changespec.status != "Reverted":
-        return (False, f"ChangeSpec status is '{changespec.status}', not 'Reverted'")
+    # Validate status is "Reverted" or "Archived"
+    if changespec.status not in ("Reverted", "Archived"):
+        return (
+            False,
+            f"ChangeSpec status is '{changespec.status}', not 'Reverted' or 'Archived'",
+        )
 
     # Get workspace directory
     workspace_dir = get_workspace_directory_for_changespec(changespec)
@@ -265,10 +268,13 @@ def restore_changespec(
     if console:
         console.print(f"[green]Updated to: {update_target}[/green]")
 
-    # Check for diff file
+    # Check for diff file in reverted or archived directory
     diff_file = Path.home() / ".gai" / "reverted" / f"{changespec.name}.diff"
     if not diff_file.exists():
-        return (False, f"Diff file not found: {diff_file}")
+        # Try archived directory
+        diff_file = Path.home() / ".gai" / "archived" / f"{changespec.name}.diff"
+    if not diff_file.exists():
+        return (False, "Diff file not found in reverted or archived directory")
 
     if console:
         console.print(f"[cyan]Importing diff: {diff_file}[/cyan]")

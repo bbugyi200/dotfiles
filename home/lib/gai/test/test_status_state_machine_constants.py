@@ -16,6 +16,7 @@ def test_valid_statuses_defined() -> None:
         "Mailed",
         "Submitted",
         "Reverted",
+        "Archived",
     ]
     assert VALID_STATUSES == expected_statuses
 
@@ -105,3 +106,10 @@ def test_is_valid_transition_mailed_cannot_go_back() -> None:
     """Test that Mailed cannot transition back to Drafted or WIP."""
     assert is_valid_transition("Mailed", "Drafted") is False
     assert is_valid_transition("Mailed", "WIP") is False
+
+
+def test_is_valid_transition_invalid_from_archived() -> None:
+    """Test that transitions from 'Archived' (terminal state) are invalid."""
+    assert is_valid_transition("Archived", "Mailed") is False
+    assert is_valid_transition("Archived", "Drafted") is False
+    assert is_valid_transition("Archived", "WIP") is False

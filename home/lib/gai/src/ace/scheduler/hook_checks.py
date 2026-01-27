@@ -115,9 +115,9 @@ def check_hooks(
     if not changespec.hooks:
         return updates, hooks_started
 
-    # For terminal statuses (Reverted, Submitted), we still check completion
+    # For terminal statuses (Reverted, Submitted, Archived), we still check completion
     # of RUNNING hooks, but we don't start new hooks
-    is_terminal_status = changespec.status in ("Reverted", "Submitted")
+    is_terminal_status = changespec.status in ("Reverted", "Submitted", "Archived")
 
     # Get all non-historical entry IDs (current + proposals with same number)
     # e.g., if HISTORY has (1), (2), (3), (3a) -> returns ["3", "3a"]

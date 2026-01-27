@@ -179,7 +179,7 @@ def start_stale_hooks(
         return updates, started_hooks, 0
 
     # Don't run hooks for terminal statuses
-    if changespec.status in ("Reverted", "Submitted"):
+    if changespec.status in ("Reverted", "Submitted", "Archived"):
         return updates, started_hooks, 0
 
     # Check if this entry is a proposal

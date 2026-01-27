@@ -58,8 +58,9 @@ class BaseActionsMixin:
             transition_changespec_status,
         )
 
+        from ...archive import archive_changespec
         from ...revert import revert_changespec
-        from ...status import STATUS_REVERTED
+        from ...status import STATUS_ARCHIVED, STATUS_REVERTED
 
         # Special handling for "Reverted" status
         if new_status == STATUS_REVERTED:
@@ -75,6 +76,23 @@ class BaseActionsMixin:
 
             if not success:
                 self.notify(f"Error reverting: {error_msg}", severity="error")  # type: ignore[attr-defined]
+            self._reload_and_reposition()  # type: ignore[attr-defined]
+            return
+
+        # Special handling for "Archived" status
+        if new_status == STATUS_ARCHIVED:
+            # Need to suspend for archive workflow
+            def run_archive() -> tuple[bool, str | None]:
+                from rich.console import Console
+
+                console = Console()
+                return archive_changespec(changespec, console)
+
+            with self.suspend():  # type: ignore[attr-defined]
+                success, error_msg = run_archive()
+
+            if not success:
+                self.notify(f"Error archiving: {error_msg}", severity="error")  # type: ignore[attr-defined]
             self._reload_and_reposition()  # type: ignore[attr-defined]
             return
 
@@ -297,9 +315,9 @@ class BaseActionsMixin:
 
         # Validate status
         base_status = get_base_status(changespec.status)
-        if base_status in ("Reverted", "Submitted"):
+        if base_status in ("Reverted", "Submitted", "Archived"):
             self.notify(  # type: ignore[attr-defined]
-                "Tmux not available for Reverted/Submitted ChangeSpecs",
+                "Tmux not available for Reverted/Submitted/Archived ChangeSpecs",
                 severity="warning",
             )
             return
@@ -378,9 +396,9 @@ class BaseActionsMixin:
 
         # Validate status
         base_status = get_base_status(changespec.status)
-        if base_status in ("Reverted", "Submitted"):
+        if base_status in ("Reverted", "Submitted", "Archived"):
             self.notify(  # type: ignore[attr-defined]
-                "Checkout not available for Reverted/Submitted ChangeSpecs",
+                "Checkout not available for Reverted/Submitted/Archived ChangeSpecs",
                 severity="warning",
             )
             return

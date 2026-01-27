@@ -36,6 +36,7 @@ VALID_STATUSES = [
     "Mailed",
     "Submitted",
     "Reverted",
+    "Archived",
 ]
 
 
@@ -49,6 +50,8 @@ VALID_TRANSITIONS: dict[str, list[str]] = {
     "Submitted": [],
     # Reverted is terminal
     "Reverted": [],
+    # Archived is terminal
+    "Archived": [],
 }
 
 

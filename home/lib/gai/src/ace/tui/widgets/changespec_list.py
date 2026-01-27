@@ -80,6 +80,8 @@ def _get_status_indicator(changespec: ChangeSpec) -> tuple[str, str]:
             return f"{running_prefix}{process_prefix}S", "#FFAF00"
         elif status.startswith("Reverted"):
             return f"{running_prefix}{process_prefix}X", "#FFAF00"
+        elif status.startswith("Archived"):
+            return f"{running_prefix}{process_prefix}A", "#FFAF00"
         return f"{running_prefix}{process_prefix}W", "#FFAF00"
 
     # Running processes get yellow color (when no error, no running_agent)
@@ -96,6 +98,8 @@ def _get_status_indicator(changespec: ChangeSpec) -> tuple[str, str]:
             return f"{process_prefix}S", "#FFD700"  # Yellow for running process
         elif status.startswith("Reverted"):
             return f"{process_prefix}X", "#FFD700"  # Yellow for running process
+        elif status.startswith("Archived"):
+            return f"{process_prefix}A", "#FFD700"  # Yellow for running process
         return f"{process_prefix}W", "#FFD700"  # Yellow for running process
 
     # Check for READY TO MAIL (no running, no error)
@@ -113,6 +117,8 @@ def _get_status_indicator(changespec: ChangeSpec) -> tuple[str, str]:
         return "S", "#00AF00"  # Dark green
     elif status.startswith("Reverted"):
         return "X", "#808080"  # Gray
+    elif status.startswith("Archived"):
+        return "A", "#606060"  # Darker gray
 
     return "W", "#FFD700"  # WIP - gold
 

@@ -27,6 +27,7 @@ def get_status_color(status: str) -> str:
         "Mailed": "#00D787",
         "Submitted": "#00AF00",
         "Reverted": "#808080",
+        "Archived": "#606060",
     }
     return status_colors.get(base_status, "#FFFFFF")
 

@@ -63,7 +63,7 @@ class ChangeSpecMixin:
     def _filter_changespecs(self, changespecs: list[ChangeSpec]) -> list[ChangeSpec]:
         """Filter changespecs using the parsed query and hide_reverted setting."""
         from ...changespec import get_base_status
-        from ...query import evaluate_query, query_explicitly_targets_reverted
+        from ...query import evaluate_query, query_explicitly_targets_terminal
 
         # First apply the query filter
         result = [
@@ -72,15 +72,16 @@ class ChangeSpecMixin:
             if evaluate_query(self.parsed_query, cs, changespecs)
         ]
 
-        # Check if we should filter out reverted (only if hide_reverted is True
-        # AND query doesn't explicitly target reverted)
+        # Check if we should filter out terminal statuses (Reverted/Archived)
+        # (only if hide_reverted is True AND query doesn't explicitly target them)
         self._hidden_reverted_count = 0
-        if self.hide_reverted and not query_explicitly_targets_reverted(
+        if self.hide_reverted and not query_explicitly_targets_terminal(
             self.parsed_query, changespecs
         ):
             filtered: list[ChangeSpec] = []
             for cs in result:
-                if get_base_status(cs.status) == "Reverted":
+                base_status = get_base_status(cs.status)
+                if base_status in ("Reverted", "Archived"):
                     self._hidden_reverted_count += 1
                 else:
                     filtered.append(cs)

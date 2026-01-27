@@ -48,9 +48,9 @@ class SyncMixin:
 
         # Validate status
         base_status = get_base_status(changespec.status)
-        if base_status in ("Reverted", "Submitted"):
+        if base_status in ("Reverted", "Submitted", "Archived"):
             self.notify(  # type: ignore[attr-defined]
-                "Sync not available for Reverted/Submitted ChangeSpecs",
+                "Sync not available for Reverted/Submitted/Archived ChangeSpecs",
                 severity="warning",
             )
             return

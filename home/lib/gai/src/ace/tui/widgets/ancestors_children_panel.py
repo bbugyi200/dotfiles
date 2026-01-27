@@ -22,6 +22,8 @@ def _get_simple_status_indicator(status: str) -> tuple[str, str]:
         return "S", "#00AF00"
     elif status.startswith("Reverted"):
         return "X", "#808080"
+    elif status.startswith("Archived"):
+        return "A", "#606060"
     return "W", "#FFD700"  # WIP - gold
 
 
@@ -137,8 +139,11 @@ class AncestorsChildrenPanel(Static):
 
             if parent_lower in name_map:
                 parent_cs = name_map[parent_lower]
-                # Check if we should hide this reverted ancestor
-                if hide_reverted and parent_cs.status.startswith("Reverted"):
+                # Check if we should hide this terminal status ancestor
+                if hide_reverted and (
+                    parent_cs.status.startswith("Reverted")
+                    or parent_cs.status.startswith("Archived")
+                ):
                     self._hidden_reverted_count += 1
                     # Continue traversal but don't add to display list
                     current = parent_cs
@@ -192,8 +197,10 @@ class AncestorsChildrenPanel(Static):
             if strip_reverted_suffix(cs.name).lower() != base_name:
                 continue  # Different base name
 
-            # Check if we should hide this reverted sibling
-            if hide_reverted and cs.status.startswith("Reverted"):
+            # Check if we should hide this terminal status sibling
+            if hide_reverted and (
+                cs.status.startswith("Reverted") or cs.status.startswith("Archived")
+            ):
                 self._hidden_reverted_sibling_count += 1
                 continue
 
@@ -278,12 +285,12 @@ class AncestorsChildrenPanel(Static):
         if not child_names:
             return []
 
-        # Filter out reverted children if hide_reverted is True
+        # Filter out terminal status children if hide_reverted is True
         if hide_reverted:
             filtered_names: list[str] = []
             for name in child_names:
                 status = status_map.get(name.lower(), "WIP")
-                if status.startswith("Reverted"):
+                if status.startswith("Reverted") or status.startswith("Archived"):
                     self._hidden_reverted_count += 1
                 else:
                     filtered_names.append(name)
@@ -303,7 +310,10 @@ class AncestorsChildrenPanel(Static):
                 grandchildren_names = [
                     n
                     for n in grandchildren_names
-                    if not status_map.get(n.lower(), "WIP").startswith("Reverted")
+                    if not (
+                        status_map.get(n.lower(), "WIP").startswith("Reverted")
+                        or status_map.get(n.lower(), "WIP").startswith("Archived")
+                    )
                 ]
             is_leaf = len(grandchildren_names) == 0
             if is_leaf:
@@ -329,7 +339,10 @@ class AncestorsChildrenPanel(Static):
                 visible_grandchildren = [
                     n
                     for n in grandchildren_names
-                    if not status_map.get(n.lower(), "WIP").startswith("Reverted")
+                    if not (
+                        status_map.get(n.lower(), "WIP").startswith("Reverted")
+                        or status_map.get(n.lower(), "WIP").startswith("Archived")
+                    )
                 ]
             is_leaf = len(visible_grandchildren) == 0
 
