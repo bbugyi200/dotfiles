@@ -8,6 +8,7 @@ PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 PYTHON_PATTERN='^home/lib/.*\.py$'
 LUA_PATTERN='^(home/dot_config/nvim|tests/nvim|home/lib)/.*\.lua$'
 BASH_PATTERN='^(home/lib/bugyi\.sh|tests/bash/bugyi_test\.sh)$'
+MD_PATTERN='\.md$'
 
 # Session-unique marker file to avoid duplicate commit prompts
 if [ -n "$TMUX_PANE" ]; then
@@ -74,6 +75,7 @@ function run() {
     local has_python_changes=false
     local has_lua_changes=false
     local has_bash_changes=false
+    local has_md_changes=false
 
     if has_changes_matching "$PYTHON_PATTERN"; then
         has_python_changes=true
@@ -83,6 +85,9 @@ function run() {
     fi
     if has_changes_matching "$BASH_PATTERN"; then
         has_bash_changes=true
+    fi
+    if has_changes_matching "$MD_PATTERN"; then
+        has_md_changes=true
     fi
 
     # Collect errors
@@ -141,6 +146,14 @@ function run() {
         print_cmd_to_user "make test-bash"
         if ! output=$(make test-bash 2>&1); then
             errors+="make test-bash FAILED:\n$output\n\n"
+        fi
+    fi
+
+    # Run markdown linter if markdown files changed
+    if [ "$has_md_changes" = true ]; then
+        print_cmd_to_user "make lint-md"
+        if ! output=$(make lint-md 2>&1); then
+            errors+="make lint-md FAILED:\n$output\n\n"
         fi
     fi
 
