@@ -23,7 +23,6 @@ from running_field import (
     update_running_field_cl_name,
 )
 from status_state_machine import (
-    reset_changespec_cl,
     transition_changespec_status,
     update_parent_references_atomic,
 )
@@ -420,11 +419,8 @@ def archive_changespec(
         if not success:
             return (False, f"Failed to update status: {error}")
 
-        # Reset CL to None
-        reset_changespec_cl(changespec.file_path, new_name)
-
         if console:
-            console.print("[green]Status updated to Archived, CL removed[/green]")
+            console.print("[green]Status updated to Archived[/green]")
 
         return (True, None)
 

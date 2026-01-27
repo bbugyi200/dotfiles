@@ -206,11 +206,10 @@ def test_archive_changespec_succeeds_with_terminal_children() -> None:
                                         "ace.archive.transition_changespec_status",
                                         return_value=(True, "Mailed", None, []),
                                     ):
-                                        with patch("ace.archive.reset_changespec_cl"):
-                                            with patch("ace.archive.release_workspace"):
-                                                success, error = archive_changespec(
-                                                    parent, console
-                                                )
+                                        with patch("ace.archive.release_workspace"):
+                                            success, error = archive_changespec(
+                                                parent, console
+                                            )
 
     assert success is True
     assert error is None
@@ -250,11 +249,10 @@ def test_archive_changespec_claims_workspace_100_plus() -> None:
                                         "ace.archive.transition_changespec_status",
                                         return_value=(True, "Mailed", None, []),
                                     ):
-                                        with patch("ace.archive.reset_changespec_cl"):
-                                            with patch("ace.archive.release_workspace"):
-                                                success, _error = archive_changespec(
-                                                    changespec, console
-                                                )
+                                        with patch("ace.archive.release_workspace"):
+                                            success, _error = archive_changespec(
+                                                changespec, console
+                                            )
 
     assert success is True
     mock_get_ws.assert_called_once_with(changespec.file_path)
