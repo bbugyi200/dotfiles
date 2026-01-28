@@ -429,8 +429,8 @@ XPromptSelectModal {
 }
 
 XPromptSelectModal > Container {
-    width: 100;
-    height: 30;
+    width: 90%;
+    height: 80%;
     border: thick $primary;
     background: $surface;
     padding: 1 2;
@@ -452,7 +452,7 @@ XPromptSelectModal #xprompt-panels {
 }
 
 XPromptSelectModal #xprompt-list-panel {
-    width: 30;
+    width: 40;
     height: 100%;
 }
 

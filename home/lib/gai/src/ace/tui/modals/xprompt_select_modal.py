@@ -1,5 +1,6 @@
 """XPrompt selection modal with filtering for the ace TUI."""
 
+from rich.markdown import Markdown
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical, VerticalScroll
@@ -15,7 +16,11 @@ class XPromptSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
     """Modal for selecting an xprompt with filtering and preview."""
 
     _option_list_id = "xprompt-list"
-    BINDINGS = [*OptionListNavigationMixin.NAVIGATION_BINDINGS]
+    BINDINGS = [
+        *OptionListNavigationMixin.NAVIGATION_BINDINGS,
+        ("ctrl+d", "scroll_down", "Scroll down"),
+        ("ctrl+u", "scroll_up", "Scroll up"),
+    ]
 
     def __init__(self) -> None:
         """Initialize the xprompt modal."""
@@ -45,7 +50,7 @@ class XPromptSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
                         with VerticalScroll(id="xprompt-preview-scroll"):
                             yield Static("", id="xprompt-preview")
                 yield Static(
-                    "j/k ↑/↓ ^n/^p: navigate • Enter: select • Esc/q: cancel",
+                    "j/k ↑/↓: navigate • ^d/^u: scroll preview • Enter: select • Esc/q: cancel",
                     id="xprompt-hints",
                 )
 
@@ -115,12 +120,23 @@ class XPromptSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
         if event.option and event.option.id:
             self.dismiss(str(event.option.id))
 
+    def action_scroll_down(self) -> None:
+        """Scroll preview panel down (half page)."""
+        scroll = self.query_one("#xprompt-preview-scroll", VerticalScroll)
+        scroll.scroll_relative(y=10)
+
+    def action_scroll_up(self) -> None:
+        """Scroll preview panel up (half page)."""
+        scroll = self.query_one("#xprompt-preview-scroll", VerticalScroll)
+        scroll.scroll_relative(y=-10)
+
     def _update_preview_for_name(self, name: str) -> None:
         """Update preview for an xprompt by name."""
         try:
             preview = self.query_one("#xprompt-preview", Static)
             content = self.xprompts.get(name, "")
-            preview.update(content)
+            # Render as markdown for syntax highlighting
+            preview.update(Markdown(content))
         except Exception:
             pass
 
