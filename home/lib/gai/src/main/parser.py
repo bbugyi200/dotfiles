@@ -292,48 +292,6 @@ def create_parser() -> argparse.ArgumentParser:
         required=False,
     )
 
-    # --- run crs ---
-    crs_parser = subparsers.add_parser(
-        "crs",
-        help="Address Critique change request comments on a CL",
-    )
-    # Options for 'run crs' (keep sorted alphabetically by long option name)
-    crs_parser.add_argument(
-        "-D",
-        "--context-file-directory",
-        help="Optional directory containing markdown files to add to the agent prompt (defaults to ~/.gai/projects/<PROJECT>/context/ where <PROJECT> is from workspace_name)",
-    )
-
-    # --- run fix-hook ---
-    fix_hook_parser = subparsers.add_parser(
-        "fix-hook",
-        help="Fix a failing hook command using AI assistance",
-    )
-    fix_hook_parser.add_argument(
-        "hook_output_file",
-        help="Path to the file containing the hook command output",
-    )
-    fix_hook_parser.add_argument(
-        "hook_command",
-        help="The hook command string that is failing",
-    )
-
-    # --- run mentor ---
-    mentor_parser = subparsers.add_parser(
-        "mentor",
-        help="Run a mentor agent on a CL to enforce specific coding standards",
-    )
-    mentor_parser.add_argument(
-        "mentor_spec",
-        help="Profile and mentor name in format 'profile:mentor' (e.g., 'code:comments')",
-    )
-    # Options for 'run mentor' (keep sorted alphabetically by long option name)
-    mentor_parser.add_argument(
-        "--cl",
-        dest="cl_name",
-        help="CL name to work on (defaults to output of 'branch_name' command)",
-    )
-
     # --- run split ---
     split_parser = subparsers.add_parser(
         "split",
@@ -357,20 +315,6 @@ def create_parser() -> argparse.ArgumentParser:
         "--yolo",
         action="store_true",
         help="Auto-approve all prompts (spec approval and CL revert).",
-    )
-
-    # --- run summarize ---
-    summarize_parser = subparsers.add_parser(
-        "summarize",
-        help="Summarize a file in <=20 words",
-    )
-    summarize_parser.add_argument(
-        "target_file",
-        help="Path to the file to summarize",
-    )
-    summarize_parser.add_argument(
-        "usage",
-        help="Description of how the summary will be used (e.g., 'a commit message header')",
     )
 
     # --- xprompt ---

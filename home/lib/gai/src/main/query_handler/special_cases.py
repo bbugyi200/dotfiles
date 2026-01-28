@@ -102,13 +102,7 @@ def handle_run_special_cases(args_after_run: list[str]) -> bool:
     # Handle direct query (not a known workflow, contains spaces)
     if args_after_run:
         potential_query = args_after_run[0]
-        known_workflows = {
-            "crs",
-            "fix-hook",
-            "mentor",
-            "split",
-            "summarize",
-        }
+        known_workflows = {"split"}
         if potential_query not in known_workflows and (
             " " in potential_query or potential_query.startswith("#")
         ):
