@@ -138,8 +138,11 @@ class CrsWorkflow(BaseWorkflow):
             # Use provided timestamp to ensure artifacts match agent suffix
             # Convert timestamp: YYmmdd_HHMMSS -> YYYYmmddHHMMSS
             artifacts_timestamp = f"20{self._timestamp[:6]}{self._timestamp[7:]}"
-            result = run_shell_command("workspace_name", capture_output=True)
-            project_name = result.stdout.strip()
+            if self.context_file_directory:
+                project_name = Path(self.context_file_directory).parent.name
+            else:
+                result = run_shell_command("workspace_name", capture_output=True)
+                project_name = result.stdout.strip()
             artifacts_dir = os.path.expanduser(
                 f"~/.gai/projects/{project_name}/artifacts/crs/{artifacts_timestamp}"
             )
