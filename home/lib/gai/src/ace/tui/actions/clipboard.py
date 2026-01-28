@@ -263,18 +263,40 @@ class ClipboardMixin:
 
     def _copy_axe_output(self) -> None:
         """Copy visible command output from the AXE tab (%o)."""
+        from textual.containers import VerticalScroll
+
         from ..bgcmd import read_slot_output_tail
 
         if self._axe_current_view == "axe":
-            output = self._axe_output
+            full_output = self._axe_output
             source = "Axe Output"
         else:
             slot = self._axe_current_view
-            output = read_slot_output_tail(slot, 1000)
+            full_output = read_slot_output_tail(slot, 10000)
             source = f"Command #{slot} Output"
 
-        if not output or not output.strip():
+        if not full_output or not full_output.strip():
             self.notify("No output to copy", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        # Get visible region from scroll widget
+        try:
+            scroll = self.query_one("#axe-output-scroll", VerticalScroll)  # type: ignore[attr-defined]
+            scroll_y = int(scroll.scroll_y)
+            visible_height = scroll.scrollable_content_region.height
+
+            # Split output into lines and extract visible portion
+            all_lines = full_output.split("\n")
+            start_line = scroll_y
+            end_line = start_line + visible_height
+            visible_lines = all_lines[start_line:end_line]
+            output = "\n".join(visible_lines)
+        except Exception:
+            # Fallback to full output if we can't get scroll info
+            output = full_output
+
+        if not output.strip():
+            self.notify("No visible output to copy", severity="warning")  # type: ignore[attr-defined]
             return
 
         # Format with header and code block
