@@ -99,7 +99,13 @@ class _AgentPromptPanel(Static):
         # New CL Name (for NEW CL agents)
         if agent.new_cl_name:
             header_text.append("New CL Name: ", style="bold #87D7FF")
-            header_text.append(f"{agent.new_cl_name}\n", style="#00D7AF bold")
+            header_text.append(f"{agent.new_cl_name}", style="#00D7AF bold")
+            if agent.new_cl_url:
+                cl_id = agent.new_cl_url.removeprefix("http://cl/")
+                header_text.append(" (")
+                header_text.append(f"http://cl/{cl_id}", style="bold underline #569CD6")
+                header_text.append(")")
+            header_text.append("\n")
 
         # Proposal ID (for NEW PROPOSAL agents)
         if agent.proposal_id:

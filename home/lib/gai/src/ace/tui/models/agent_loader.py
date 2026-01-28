@@ -204,6 +204,11 @@ def _load_agents_from_running_field(
                     # Use artifacts_timestamp as raw_suffix for prompt lookup
                     raw_suffix=claim.artifacts_timestamp,
                     new_cl_name=claim.new_cl_name,
+                    new_cl_url=(
+                        cl_by_cl_name.get(claim.new_cl_name)
+                        if claim.new_cl_name
+                        else None
+                    ),
                     bug=bug_by_cl_name.get(cl_name),
                     cl_num=cl_by_cl_name.get(cl_name),
                 )
@@ -432,6 +437,11 @@ def _load_done_agents(
                         response_path=data.get("response_path"),
                         diff_path=data.get("diff_path"),
                         new_cl_name=data.get("new_cl_name"),
+                        new_cl_url=(
+                            cl_by_cl_name.get(data.get("new_cl_name"))
+                            if data.get("new_cl_name")
+                            else None
+                        ),
                         proposal_id=data.get("proposal_id"),
                         workspace_num=data.get("workspace_num"),
                         bug=bug_by_cl_name.get(cl_name),

@@ -51,6 +51,9 @@ class Agent:
     # New CL name for NEW CL agents
     new_cl_name: str | None = None
 
+    # CL URL for newly created ChangeSpec
+    new_cl_url: str | None = None
+
     # Proposal ID for NEW PROPOSAL agents
     proposal_id: str | None = None
 
