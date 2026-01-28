@@ -304,12 +304,12 @@ class ChangeSpecDetail(Static):
         # CL field (only display if present)
         if changespec.cl:
             text.append("CL: ", style="bold #87D7FF")
-            text.append(f"{changespec.cl}\n", style="bold #5FD7FF")
+            text.append(f"{changespec.cl}\n", style="bold underline #569CD6")
 
         # BUG field (only display if present)
         if changespec.bug:
             text.append("BUG: ", style="bold #87D7FF")
-            text.append(f"{changespec.bug}\n", style="#FFD700")
+            text.append(f"{changespec.bug}\n", style="bold underline #569CD6")
 
         # STATUS field
         text.append("STATUS: ", style="bold #87D7FF")

@@ -76,7 +76,7 @@ class _AgentPromptPanel(Static):
         header_text.append(f"{agent.cl_name}", style="#00D7AF")
         if agent.cl_num:
             cl_id = agent.cl_num.removeprefix("http://cl/")
-            header_text.append(f" (http://cl/{cl_id})", style="#FFD700")
+            header_text.append(f" (http://cl/{cl_id})", style="bold underline #569CD6")
         header_text.append("\n")
 
         # Workspace (if available)
@@ -107,7 +107,7 @@ class _AgentPromptPanel(Static):
         # BUG field (if available)
         if agent.bug:
             header_text.append("BUG: ", style="bold #87D7FF")
-            header_text.append(f"{agent.bug}\n", style="#FFD700")
+            header_text.append(f"{agent.bug}\n", style="bold underline #569CD6")
 
         # Timestamp (when agent started)
         header_text.append("Timestamp: ", style="bold #87D7FF")

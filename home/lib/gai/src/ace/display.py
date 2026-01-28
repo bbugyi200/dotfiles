@@ -33,7 +33,7 @@ def display_changespec(
     Color scheme from gaiproject.vim:
     - Field keys (NAME:, DESCRIPTION:, etc.): bold #87D7FF (cyan)
     - NAME/PARENT values: bold #00D7AF (cyan-green)
-    - CL values: bold #5FD7FF (light cyan)
+    - CL values: bold underline #569CD6 (standard URL blue)
     - DESCRIPTION values: #D7D7AF (tan/beige)
     - STATUS values: status-specific colors
     - TEST TARGETS: bold #AFD75F (green)
@@ -105,12 +105,12 @@ def display_changespec(
     # CL field (only display if present)
     if changespec.cl:
         text.append("CL: ", style="bold #87D7FF")
-        text.append(f"{changespec.cl}\n", style="bold #5FD7FF")
+        text.append(f"{changespec.cl}\n", style="bold underline #569CD6")
 
     # BUG field (only display if present)
     if changespec.bug:
         text.append("BUG: ", style="bold #87D7FF")
-        text.append(f"{changespec.bug}\n", style="#FFD700")
+        text.append(f"{changespec.bug}\n", style="bold underline #569CD6")
 
     # STATUS field
     text.append("STATUS: ", style="bold #87D7FF")

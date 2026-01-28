@@ -220,7 +220,7 @@ class ChangeSpecList(OptionList):
 
         # CL number if present
         if changespec.cl:
-            text.append(f" ({changespec.cl})", style="#5FD7FF dim")
+            text.append(f" ({changespec.cl})", style="#569CD6 dim")
 
         return Option(text, id=changespec.name)
 
