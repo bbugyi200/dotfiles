@@ -123,12 +123,14 @@ class ClipboardMixin:
         Returns:
             True if key was handled, False otherwise.
         """
-        if key == "o":  # %o
+        if key == "o":  # %o - visible output
             self._copy_axe_output()
+        elif key == "O":  # %O - full output
+            self._copy_axe_full_output()
         elif key == "s":  # %s
             self._copy_snapshot()
         else:
-            self.notify("Unknown copy key (axe: o, s)", severity="warning")  # type: ignore[attr-defined]
+            self.notify("Unknown copy key (axe: o, O, s)", severity="warning")  # type: ignore[attr-defined]
             return False
         return True
 
@@ -300,6 +302,31 @@ class ClipboardMixin:
             return
 
         # Format with header and code block
+        contents = [(source, output.strip())]
+        final_content = _format_multi_copy_content(contents)
+
+        if _copy_to_system_clipboard(final_content):
+            lines = len(output.strip().split("\n"))
+            self.notify(f"Copied: {source} ({lines} lines)")  # type: ignore[attr-defined]
+        else:
+            self.notify("Failed to copy to clipboard", severity="error")  # type: ignore[attr-defined]
+
+    def _copy_axe_full_output(self) -> None:
+        """Copy full command output from the AXE tab (%O)."""
+        from ..bgcmd import read_slot_output_tail
+
+        if self._axe_current_view == "axe":
+            output = self._axe_output
+            source = "Axe Output (Full)"
+        else:
+            slot = self._axe_current_view
+            output = read_slot_output_tail(slot, 10000)  # Get more for full copy
+            source = f"Command #{slot} Output (Full)"
+
+        if not output or not output.strip():
+            self.notify("No output to copy", severity="warning")  # type: ignore[attr-defined]
+            return
+
         contents = [(source, output.strip())]
         final_content = _format_multi_copy_content(contents)
 

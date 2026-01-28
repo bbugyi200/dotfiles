@@ -177,7 +177,8 @@ _AXE_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
     (
         "Copy Mode (%)",
         [
-            ("%o", "Copy command output"),
+            ("%o", "Copy visible output"),
+            ("%O", "Copy full output"),
             ("%s", "Copy gai ace snapshot"),
         ],
     ),

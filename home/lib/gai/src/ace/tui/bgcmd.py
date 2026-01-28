@@ -193,12 +193,12 @@ def mark_slot_finished(slot: int) -> None:
         _write_info(slot, info)
 
 
-def read_slot_output_tail(slot: int, lines: int = 1000) -> str:
+def read_slot_output_tail(slot: int, lines: int = 500) -> str:
     """Read the last N lines of a slot's output log.
 
     Args:
         slot: Slot number (1-9).
-        lines: Number of lines to read (default: 1000).
+        lines: Number of lines to read (default: 500).
 
     Returns:
         String containing the last N lines.

@@ -390,7 +390,7 @@ class AxeMixin:
             self._axe_metrics = None
 
         # Load output log (always, for display even when stopped)
-        self._axe_output = read_output_log_tail(1000)
+        self._axe_output = read_output_log_tail(500)
 
         # Also load bgcmd state
         self._load_bgcmd_state()
@@ -507,7 +507,7 @@ class AxeMixin:
                     mark_slot_finished(slot)
                     info = get_slot_info(slot)  # Reload to get updated info
 
-                output = read_slot_output_tail(slot, 1000)
+                output = read_slot_output_tail(slot, 500)
 
                 axe_info.update_bgcmd_status(slot, info, running)
                 axe_dashboard.update_bgcmd_display(
