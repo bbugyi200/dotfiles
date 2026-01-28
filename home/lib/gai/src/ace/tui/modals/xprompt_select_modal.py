@@ -1,6 +1,6 @@
 """XPrompt selection modal with filtering for the ace TUI."""
 
-from rich.markdown import Markdown
+from rich.syntax import Syntax
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical, VerticalScroll
@@ -123,20 +123,23 @@ class XPromptSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
     def action_scroll_down(self) -> None:
         """Scroll preview panel down (half page)."""
         scroll = self.query_one("#xprompt-preview-scroll", VerticalScroll)
-        scroll.scroll_relative(y=10)
+        height = scroll.scrollable_content_region.height
+        scroll.scroll_relative(y=height // 2, animate=False)
 
     def action_scroll_up(self) -> None:
         """Scroll preview panel up (half page)."""
         scroll = self.query_one("#xprompt-preview-scroll", VerticalScroll)
-        scroll.scroll_relative(y=-10)
+        height = scroll.scrollable_content_region.height
+        scroll.scroll_relative(y=-(height // 2), animate=False)
 
     def _update_preview_for_name(self, name: str) -> None:
         """Update preview for an xprompt by name."""
         try:
             preview = self.query_one("#xprompt-preview", Static)
             content = self.xprompts.get(name, "")
-            # Render as markdown for syntax highlighting
-            preview.update(Markdown(content))
+            # Show raw content with markdown syntax highlighting
+            syntax = Syntax(content, "markdown", theme="monokai", word_wrap=True)
+            preview.update(syntax)
         except Exception:
             pass
 
