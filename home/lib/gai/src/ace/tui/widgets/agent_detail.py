@@ -76,7 +76,9 @@ class _AgentPromptPanel(Static):
         header_text.append(f"{agent.cl_name}", style="#00D7AF")
         if agent.cl_num:
             cl_id = agent.cl_num.removeprefix("http://cl/")
-            header_text.append(f" (http://cl/{cl_id})", style="bold underline #569CD6")
+            header_text.append(" (")
+            header_text.append(f"http://cl/{cl_id}", style="bold underline #569CD6")
+            header_text.append(")")
         header_text.append("\n")
 
         # Workspace (if available)
