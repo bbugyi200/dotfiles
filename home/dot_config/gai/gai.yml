@@ -98,7 +98,6 @@ xprompts:
   noc: "You should make the necessary file changes, but should NOT create/amend a CL."
   nocl: "#noc #cl"
   scuba: "Make sure all related tests pass, except for some scuba diff tests, which are expected to fail."
-  # Mentor xprompts - namespaced under mentor/
   mentor/aaa: |
     #mentor([[
       Can you help me enforce the AAA (arrange, act, assert) test method structure? In particular, find and fix Any test
@@ -187,3 +186,5 @@ xprompts:
       Can you help me ensure that the changes made by this CL adhere to the guidelines outlined in the
       @contentads/drx/fe/client/g3doc/drx_ui_style.md document?
     ]])
+  reporting: |
+    Refer to the `contentads/drx/reporting/g3doc/**/*.md` files for documentation on how the reporting stack works.
