@@ -1,5 +1,7 @@
 """XPrompt selection modal with filtering for the ace TUI."""
 
+from __future__ import annotations
+
 from rich.syntax import Syntax
 from rich.text import Text
 from textual.app import ComposeResult
@@ -9,18 +11,43 @@ from textual.widgets import Input, Label, OptionList, Static
 from textual.widgets.option_list import Option
 from xprompt import get_all_snippets
 
-from .base import FilterInput, OptionListNavigationMixin
+from .base import OptionListNavigationMixin
+
+
+class _XPromptFilterInput(Input):
+    """Custom input for XPrompt modal with scroll key bindings."""
+
+    BINDINGS = [
+        ("ctrl+f", "cursor_right", "Forward"),
+        ("ctrl+b", "cursor_left", "Backward"),
+        ("ctrl+d", "scroll_preview_down", "Scroll Down"),
+        ("ctrl+u", "scroll_preview_up_or_clear", "Scroll Up/Clear"),
+    ]
+
+    def action_scroll_preview_down(self) -> None:
+        """Scroll the preview panel down."""
+        modal = self.screen
+        if isinstance(modal, XPromptSelectModal):
+            modal.scroll_preview_down()
+
+    def action_scroll_preview_up_or_clear(self) -> None:
+        """Scroll preview up, or clear input if already at top."""
+        modal = self.screen
+        if isinstance(modal, XPromptSelectModal):
+            scroll = modal.query_one("#xprompt-preview-scroll", VerticalScroll)
+            if scroll.scroll_y > 0:
+                modal.scroll_preview_up()
+            elif self.cursor_position > 0:
+                # At top - clear line (unix line discard behavior)
+                self.value = self.value[self.cursor_position :]
+                self.cursor_position = 0
 
 
 class XPromptSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
     """Modal for selecting an xprompt with filtering and preview."""
 
     _option_list_id = "xprompt-list"
-    BINDINGS = [
-        *OptionListNavigationMixin.NAVIGATION_BINDINGS,
-        ("ctrl+d", "scroll_down", "Scroll down"),
-        ("ctrl+u", "scroll_up", "Scroll up"),
-    ]
+    BINDINGS = [*OptionListNavigationMixin.NAVIGATION_BINDINGS]
 
     def __init__(self) -> None:
         """Initialize the xprompt modal."""
@@ -35,7 +62,7 @@ class XPromptSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
             if not self.xprompts:
                 yield Label("No xprompts configured")
             else:
-                yield FilterInput(
+                yield _XPromptFilterInput(
                     placeholder="Type to filter...", id="xprompt-filter-input"
                 )
                 with Horizontal(id="xprompt-panels"):
@@ -76,7 +103,7 @@ class XPromptSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
     def on_mount(self) -> None:
         """Focus the input and show initial preview on mount."""
         if self.xprompts:
-            filter_input = self.query_one("#xprompt-filter-input", FilterInput)
+            filter_input = self.query_one("#xprompt-filter-input", _XPromptFilterInput)
             filter_input.focus()
             # Show preview for first item
             if self._filtered_names:
@@ -120,13 +147,13 @@ class XPromptSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
         if event.option and event.option.id:
             self.dismiss(str(event.option.id))
 
-    def action_scroll_down(self) -> None:
+    def scroll_preview_down(self) -> None:
         """Scroll preview panel down (half page)."""
         scroll = self.query_one("#xprompt-preview-scroll", VerticalScroll)
         height = scroll.scrollable_content_region.height
         scroll.scroll_relative(y=height // 2, animate=False)
 
-    def action_scroll_up(self) -> None:
+    def scroll_preview_up(self) -> None:
         """Scroll preview panel up (half page)."""
         scroll = self.query_one("#xprompt-preview-scroll", VerticalScroll)
         height = scroll.scrollable_content_region.height
