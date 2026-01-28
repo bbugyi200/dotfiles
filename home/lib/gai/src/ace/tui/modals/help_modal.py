@@ -132,6 +132,13 @@ _AGENTS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
         ],
     ),
     (
+        "Copy Mode (%)",
+        [
+            ("%c", "Copy chat file path"),
+            ("%s", "Copy gai ace snapshot"),
+        ],
+    ),
+    (
         "Axe Control",
         [
             ("X", "Start / stop axe (or select process)"),
@@ -143,7 +150,6 @@ _AGENTS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
         [
             ("Tab / Shift+Tab", "Switch tabs"),
             (".", "Show/hide non-run agents"),
-            ("%", "Copy gai ace snapshot"),
             ("y", "Refresh"),
             ("q", "Quit"),
             ("?", "Show this help"),
@@ -169,6 +175,13 @@ _AXE_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
         ],
     ),
     (
+        "Copy Mode (%)",
+        [
+            ("%o", "Copy command output"),
+            ("%s", "Copy gai ace snapshot"),
+        ],
+    ),
+    (
         "Axe Control",
         [
             ("x", "Clear output"),
@@ -180,7 +193,6 @@ _AXE_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
         "General",
         [
             ("Tab / Shift+Tab", "Switch tabs"),
-            ("%", "Copy gai ace snapshot"),
             ("y", "Refresh"),
             ("q", "Quit"),
             ("?", "Show this help"),

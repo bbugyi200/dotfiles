@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 import sys
@@ -9,10 +10,12 @@ from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from ...changespec import ChangeSpec
+    from ..models import Agent
 
 from ...changespec import get_raw_changespec_text
 
 TabName = Literal["changespecs", "agents", "axe"]
+AxeViewType = Literal["axe"] | int
 
 
 class ClipboardMixin:
@@ -22,20 +25,17 @@ class ClipboardMixin:
     changespecs: list[ChangeSpec]
     current_idx: int
     current_tab: TabName
+    _agents: list[Agent]
+    _axe_current_view: AxeViewType
+    _axe_output: str
 
     def action_copy_tab_content(self) -> None:
         """Copy tab-specific content to clipboard based on current tab."""
-        if self.current_tab == "changespecs":
-            self.action_start_copy_mode()
-        else:  # agents or axe
-            self._copy_snapshot()
+        self.action_start_copy_mode()
 
     def action_start_copy_mode(self) -> None:
         """Start copy mode - wait for second key to determine copy action."""
-        if self.current_tab != "changespecs":
-            return
-
-        if not self.changespecs:
+        if self.current_tab == "changespecs" and not self.changespecs:
             self.notify("No ChangeSpec to copy", severity="warning")  # type: ignore[attr-defined]
             return
 
@@ -52,9 +52,26 @@ class ClipboardMixin:
         """
         self._copy_mode_active = False  # type: ignore[attr-defined]
 
-        if self.current_tab != "changespecs":
-            return False
+        if key == "escape":
+            # Cancel copy mode silently
+            return True
 
+        if self.current_tab == "changespecs":
+            return self._handle_changespecs_copy_key(key)
+        elif self.current_tab == "agents":
+            return self._handle_agents_copy_key(key)
+        else:  # axe
+            return self._handle_axe_copy_key(key)
+
+    def _handle_changespecs_copy_key(self, key: str) -> bool:
+        """Handle copy key for changespecs tab.
+
+        Args:
+            key: The key pressed after %.
+
+        Returns:
+            True if key was handled, False otherwise.
+        """
         if not self.changespecs:
             return False
 
@@ -72,11 +89,46 @@ class ClipboardMixin:
             self._copy_project_spec()
         elif key == "s":  # %s
             self._copy_snapshot()
-        elif key == "escape":
-            # Cancel copy mode silently
-            return True
         else:
-            self.notify("Unknown copy key", severity="warning")  # type: ignore[attr-defined]
+            self.notify(  # type: ignore[attr-defined]
+                "Unknown copy key (CLs: %, !, b, c, n, p, s)", severity="warning"
+            )
+            return False
+        return True
+
+    def _handle_agents_copy_key(self, key: str) -> bool:
+        """Handle copy key for agents tab.
+
+        Args:
+            key: The key pressed after %.
+
+        Returns:
+            True if key was handled, False otherwise.
+        """
+        if key == "c":  # %c
+            self._copy_chat_path()
+        elif key == "s":  # %s
+            self._copy_snapshot()
+        else:
+            self.notify("Unknown copy key (agents: c, s)", severity="warning")  # type: ignore[attr-defined]
+            return False
+        return True
+
+    def _handle_axe_copy_key(self, key: str) -> bool:
+        """Handle copy key for axe tab.
+
+        Args:
+            key: The key pressed after %.
+
+        Returns:
+            True if key was handled, False otherwise.
+        """
+        if key == "o":  # %o
+            self._copy_axe_output()
+        elif key == "s":  # %s
+            self._copy_snapshot()
+        else:
+            self.notify("Unknown copy key (axe: o, s)", severity="warning")  # type: ignore[attr-defined]
             return False
         return True
 
@@ -178,6 +230,60 @@ class ClipboardMixin:
 
         if _copy_to_system_clipboard(final_content):
             self.notify("Copied: Snapshot")  # type: ignore[attr-defined]
+        else:
+            self.notify("Failed to copy to clipboard", severity="error")  # type: ignore[attr-defined]
+
+    def _copy_chat_path(self) -> None:
+        """Copy the chat file path of the selected agent (%c on agents tab)."""
+        if not self._agents:
+            self.notify("No agents available", severity="warning")  # type: ignore[attr-defined]
+            return
+        if self.current_idx < 0 or self.current_idx >= len(self._agents):
+            self.notify("No agent selected", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        agent = self._agents[self.current_idx]
+        if agent.response_path is None:
+            self.notify("Selected agent has no chat file", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        # Convert to use ~ for home directory
+        chat_path = agent.response_path
+        home = os.path.expanduser("~")
+        if chat_path.startswith(home):
+            chat_path = "~" + chat_path[len(home) :]
+
+        if _copy_to_system_clipboard(chat_path):
+            display_path = (
+                chat_path if len(chat_path) <= 50 else "..." + chat_path[-47:]
+            )
+            self.notify(f"Copied: {display_path}")  # type: ignore[attr-defined]
+        else:
+            self.notify("Failed to copy to clipboard", severity="error")  # type: ignore[attr-defined]
+
+    def _copy_axe_output(self) -> None:
+        """Copy visible command output from the AXE tab (%o)."""
+        from ..bgcmd import read_slot_output_tail
+
+        if self._axe_current_view == "axe":
+            output = self._axe_output
+            source = "Axe Output"
+        else:
+            slot = self._axe_current_view
+            output = read_slot_output_tail(slot, 1000)
+            source = f"Command #{slot} Output"
+
+        if not output or not output.strip():
+            self.notify("No output to copy", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        # Format with header and code block
+        contents = [(source, output.strip())]
+        final_content = _format_multi_copy_content(contents)
+
+        if _copy_to_system_clipboard(final_content):
+            lines = len(output.strip().split("\n"))
+            self.notify(f"Copied: {source} ({lines} lines)")  # type: ignore[attr-defined]
         else:
             self.notify("Failed to copy to clipboard", severity="error")  # type: ignore[attr-defined]
 
