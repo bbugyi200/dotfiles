@@ -2,7 +2,8 @@
 
 import re
 
-from xprompt.processor import _XPROMPT_PATTERN
+from xprompt.models import InputArg, InputType, XPrompt
+from xprompt.processor import _XPROMPT_PATTERN, _validate_and_convert_args
 
 
 def test_xprompt_pattern_simple_name() -> None:
@@ -132,3 +133,74 @@ def test_xprompt_pattern_not_trailing_slash() -> None:
     assert match is not None
     # Should only match #foo, the trailing slash is not valid namespace
     assert match.group(1) == "foo"
+
+
+def test_validate_and_convert_args_positional_to_named() -> None:
+    """Test that positional args are mapped to named args using input definitions.
+
+    When an xprompt has YAML frontmatter with input definitions like:
+        input:
+          - name: prompt
+            type: text
+
+    And a positional argument is passed like #xprompt([[text]]), the text
+    should be accessible both as _1 (positional) and as the named variable
+    'prompt' defined in the input specification.
+    """
+    xprompt = XPrompt(
+        name="mentor",
+        content="{{ prompt }}",
+        inputs=[InputArg(name="prompt", type=InputType.TEXT)],
+    )
+    positional_args = ["This is my prompt text"]
+    named_args: dict[str, str] = {}
+
+    conv_positional, conv_named = _validate_and_convert_args(
+        xprompt, positional_args, named_args
+    )
+
+    # The positional arg should be in both lists
+    assert conv_positional == ["This is my prompt text"]
+    # The positional arg should also be mapped to the named arg 'prompt'
+    assert conv_named == {"prompt": "This is my prompt text"}
+
+
+def test_validate_and_convert_args_multiple_positional_to_named() -> None:
+    """Test that multiple positional args are mapped to their respective names."""
+    xprompt = XPrompt(
+        name="test",
+        content="{{ first }} and {{ second }}",
+        inputs=[
+            InputArg(name="first", type=InputType.LINE),
+            InputArg(name="second", type=InputType.LINE),
+        ],
+    )
+    positional_args = ["value1", "value2"]
+    named_args: dict[str, str] = {}
+
+    conv_positional, conv_named = _validate_and_convert_args(
+        xprompt, positional_args, named_args
+    )
+
+    assert conv_positional == ["value1", "value2"]
+    assert conv_named == {"first": "value1", "second": "value2"}
+
+
+def test_validate_and_convert_args_explicit_named_arg_not_overwritten() -> None:
+    """Test that explicit named args take precedence over positional mapping."""
+    xprompt = XPrompt(
+        name="test",
+        content="{{ prompt }}",
+        inputs=[InputArg(name="prompt", type=InputType.TEXT)],
+    )
+    # Both a positional and a named arg provided for the same input
+    positional_args = ["positional value"]
+    named_args = {"prompt": "explicit named value"}
+
+    conv_positional, conv_named = _validate_and_convert_args(
+        xprompt, positional_args, named_args
+    )
+
+    # Positional still maps to named, but then named_args processing overwrites
+    assert conv_positional == ["positional value"]
+    assert conv_named == {"prompt": "explicit named value"}

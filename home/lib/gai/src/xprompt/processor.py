@@ -313,7 +313,10 @@ def _validate_and_convert_args(
         input_def = xprompt.get_input_by_position(i)
         if input_def:
             try:
-                converted_positional.append(input_def.validate_and_convert(value))
+                converted_value = input_def.validate_and_convert(value)
+                converted_positional.append(converted_value)
+                # Map positional arg to named arg using input definition name
+                converted_named[input_def.name] = converted_value
                 used_input_names.add(input_def.name)
             except XPromptValidationError as e:
                 raise _XPromptArgumentError(
