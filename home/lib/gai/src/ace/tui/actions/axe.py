@@ -17,6 +17,7 @@ from axe.state import (
     read_metrics,
     read_output_log_tail,
 )
+from commit_utils import run_bb_hg_clean
 from running_field import get_workspace_directory
 
 from ..bgcmd import (
@@ -143,52 +144,65 @@ class AxeMixin:
             if result is None:
                 return
 
-            # Extract project name
+            # Extract project name and optional CL name
             if isinstance(result, str):
                 project = result
+                cl_name = None
             else:
                 project = result.project_name
+                cl_name = result.cl_name
 
             # Show workspace input modal
-            self._show_workspace_input(slot, project)
+            self._show_workspace_input(slot, project, cl_name)
 
         self.push_screen(ProjectSelectModal(), on_project_selected)  # type: ignore[attr-defined]
 
-    def _show_workspace_input(self, slot: int, project: str) -> None:
+    def _show_workspace_input(
+        self, slot: int, project: str, cl_name: str | None = None
+    ) -> None:
         """Show the workspace input modal.
 
         Args:
             slot: Slot number to use.
             project: Project name.
+            cl_name: Optional CL name to checkout before running command.
         """
         from ..modals import WorkspaceInputModal
 
         def on_workspace_entered(workspace_num: int | None) -> None:
             if workspace_num is None:
                 return
-            self._show_command_input(slot, project, workspace_num)
+            self._show_command_input(slot, project, workspace_num, cl_name)
 
         self.push_screen(WorkspaceInputModal(), on_workspace_entered)  # type: ignore[attr-defined]
 
-    def _show_command_input(self, slot: int, project: str, workspace_num: int) -> None:
+    def _show_command_input(
+        self, slot: int, project: str, workspace_num: int, cl_name: str | None = None
+    ) -> None:
         """Show the command input modal.
 
         Args:
             slot: Slot number to use.
             project: Project name.
             workspace_num: Workspace number.
+            cl_name: Optional CL name to checkout before running command.
         """
         from ..modals import CommandInputModal
 
         def on_command_entered(command: str | None) -> None:
             if command is None:
                 return
-            self._start_bgcmd(slot, command, project, workspace_num)
+            self._start_bgcmd(slot, command, project, workspace_num, cl_name)
 
         self.push_screen(CommandInputModal(project, workspace_num), on_command_entered)  # type: ignore[attr-defined]
 
     def _start_bgcmd(
-        self, slot: int, command: str, project: str, workspace_num: int
+        self,
+        slot: int,
+        command: str,
+        project: str,
+        workspace_num: int,
+        cl_name: str | None = None,
     ) -> None:
         """Start a background command.
 
@@ -197,12 +211,47 @@ class AxeMixin:
             command: Shell command to run.
             project: Project name.
             workspace_num: Workspace number.
+            cl_name: Optional CL name to checkout before running command.
         """
+        import subprocess
+
         try:
             workspace_dir = get_workspace_directory(project, workspace_num)
         except RuntimeError as e:
             self.notify(f"Failed to get workspace: {e}", severity="error")  # type: ignore[attr-defined]
             return
+
+        # If a CL was selected, checkout that CL first
+        if cl_name is not None:
+            # Clean workspace first (save uncommitted changes)
+            clean_success, clean_error = run_bb_hg_clean(
+                workspace_dir, f"{cl_name}-bgcmd"
+            )
+            if not clean_success:
+                self.notify(  # type: ignore[attr-defined]
+                    f"Warning: bb_hg_clean failed: {clean_error}", severity="warning"
+                )
+
+            # Checkout the CL
+            try:
+                result = subprocess.run(
+                    ["bb_hg_update", cl_name],
+                    cwd=workspace_dir,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    timeout=300,
+                )
+                if result.returncode != 0:
+                    error = (result.stderr or result.stdout).strip()
+                    self.notify(f"bb_hg_update failed: {error}", severity="error")  # type: ignore[attr-defined]
+                    return
+            except subprocess.TimeoutExpired:
+                self.notify("bb_hg_update timed out", severity="error")  # type: ignore[attr-defined]
+                return
+            except FileNotFoundError:
+                self.notify("bb_hg_update command not found", severity="error")  # type: ignore[attr-defined]
+                return
 
         pid = start_background_command(
             slot=slot,
