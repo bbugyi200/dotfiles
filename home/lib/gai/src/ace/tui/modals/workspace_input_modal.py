@@ -36,7 +36,7 @@ class WorkspaceInputModal(ModalScreen[int | None]):
         with Container():
             yield Label("Enter Workspace Number", id="modal-title")
             yield Label(
-                "Enter workspace number (1-9). Press Enter to confirm.",
+                "Enter workspace number (1-99). Press Enter to confirm.",
                 id="workspace-hint",
             )
             yield _WorkspaceInput(
@@ -61,10 +61,10 @@ class WorkspaceInputModal(ModalScreen[int | None]):
 
         try:
             workspace_num = int(value)
-            if 1 <= workspace_num <= 9:
+            if 1 <= workspace_num <= 99:
                 self.dismiss(workspace_num)
             else:
-                self.notify("Workspace must be between 1 and 9", severity="error")
+                self.notify("Workspace must be between 1 and 99", severity="error")
         except ValueError:
             self.notify("Please enter a valid number", severity="error")
 
