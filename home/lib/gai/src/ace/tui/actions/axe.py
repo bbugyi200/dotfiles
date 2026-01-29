@@ -201,7 +201,9 @@ class AxeMixin:
                 return
             self._show_command_input(slot, project, workspace_num, cl_name)
 
-        self.push_screen(WorkspaceInputModal(), on_workspace_entered)  # type: ignore[attr-defined]
+        self.push_screen(  # type: ignore[attr-defined]
+            WorkspaceInputModal(default_workspace=10), on_workspace_entered
+        )
 
     def _show_command_input(
         self, slot: int, project: str, workspace_num: int, cl_name: str | None = None
