@@ -72,7 +72,7 @@ mentor_profiles:
 # Or use Jinja2: {{ _1 }}, {{ name }}, {% if %}
 xprompts:
   b: "Can you help me fix the bug described by the #bug:{1} file? #noc"
-  b_ab: |
+  b/ab: |
     #b:{1} Refer to the 'How to add a Authorized Buyers' section of the @contentads/drx/fe/g3doc/indirect/bidders.md
     file to help you with this. #clref:852317975
   bug: "#(bug_desc: bugged show '{1}')"
