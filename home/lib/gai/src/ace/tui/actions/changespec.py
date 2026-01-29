@@ -30,6 +30,7 @@ class ChangeSpecMixin:
     marked_indices: set[int]
     _hint_mode_active: bool
     _hint_mode_hints_for: str | None
+    _leader_mode_active: bool
     _hint_mappings: dict[int, str]
     _hook_hint_to_idx: dict[int, int]
     _hint_to_entry_id: dict[int, str]
@@ -310,14 +311,19 @@ class ChangeSpecMixin:
                 self._hidden_reverted_count
                 + ancestors_panel.get_hidden_reverted_count()
             )
-            footer_widget.update_bindings(
-                changespec,
-                hidden_reverted_count=total_hidden,
-                hide_reverted=self.hide_reverted,
-            )
+            # Preserve leader mode footer if active
+            if getattr(self, "_leader_mode_active", False):
+                footer_widget.update_leader_bindings()
+            else:
+                footer_widget.update_bindings(
+                    changespec,
+                    hidden_reverted_count=total_hidden,
+                    hide_reverted=self.hide_reverted,
+                )
         else:
             detail_widget.show_empty(self.canonical_query_string)  # type: ignore[attr-defined]
-            footer_widget.show_empty()
+            if not getattr(self, "_leader_mode_active", False):
+                footer_widget.show_empty()
             ancestors_panel.clear()
             self._ancestor_keys = {}
             self._children_keys = {}
