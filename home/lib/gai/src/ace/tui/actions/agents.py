@@ -350,26 +350,22 @@ class AgentsMixin:
             self._agents = all_agents
 
         # Calculate the new index
-        new_idx = self._agents_last_idx  # Start with saved position
+        # Use current_idx when on agents tab, otherwise use saved _agents_last_idx
+        saved_idx = self.current_idx if on_agents_tab else self._agents_last_idx
 
         if selected_identity is not None:
             # Try to restore selection by identity
             for idx, agent in enumerate(self._agents):
                 if agent.identity == selected_identity:
-                    new_idx = idx
+                    saved_idx = idx
                     break
-            else:
-                # Agent no longer in list - clamp saved position to bounds
-                if self._agents:
-                    new_idx = min(self._agents_last_idx, len(self._agents) - 1)
-                else:
-                    new_idx = 0
+            # If agent not found, saved_idx remains at the original position
+
+        # Clamp to valid bounds
+        if self._agents:
+            new_idx = min(saved_idx, len(self._agents) - 1)
         else:
-            # No previous selection - clamp to bounds
-            if self._agents:
-                new_idx = min(self._agents_last_idx, len(self._agents) - 1)
-            else:
-                new_idx = 0
+            new_idx = 0
 
         # Only modify current_idx if we're on the agents tab
         # Otherwise, update the saved position for when user switches to agents tab
