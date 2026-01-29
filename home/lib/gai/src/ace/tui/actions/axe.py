@@ -221,9 +221,38 @@ class AxeMixin:
         def on_command_entered(command: str | None) -> None:
             if command is None:
                 return
+            if command == ".":
+                # User wants to see command history
+                self._show_command_history(slot, project, workspace_num, cl_name)
+            else:
+                self._start_bgcmd(slot, command, project, workspace_num, cl_name)
+
+        self.push_screen(  # type: ignore[attr-defined]
+            CommandInputModal(project, workspace_num, cl_name), on_command_entered
+        )
+
+    def _show_command_history(
+        self, slot: int, project: str, workspace_num: int, cl_name: str | None = None
+    ) -> None:
+        """Show the command history modal.
+
+        Args:
+            slot: Slot number to use.
+            project: Project name.
+            workspace_num: Workspace number.
+            cl_name: Optional CL name for sorting priority.
+        """
+        from ..modals import CommandHistoryModal
+
+        def on_history_selected(command: str | None) -> None:
+            if command is None:
+                return
             self._start_bgcmd(slot, command, project, workspace_num, cl_name)
 
-        self.push_screen(CommandInputModal(project, workspace_num), on_command_entered)  # type: ignore[attr-defined]
+        self.push_screen(  # type: ignore[attr-defined]
+            CommandHistoryModal(current_cl=cl_name, current_project=project),
+            on_history_selected,
+        )
 
     def _start_bgcmd(
         self,
@@ -293,6 +322,11 @@ class AxeMixin:
         if pid is None:
             self.notify("Failed to start background command", severity="error")  # type: ignore[attr-defined]
             return
+
+        # Save to command history
+        from command_history import add_or_update_command
+
+        add_or_update_command(command, project, cl_name)
 
         # Reload state and switch to the new view
         self._load_bgcmd_state()

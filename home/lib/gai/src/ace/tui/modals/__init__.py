@@ -3,6 +3,7 @@
 from .bug_input_modal import BugInputModal, BugInputResult
 from .chat_select_modal import ChatFileItem, ChatSelectModal
 from .cl_name_input_modal import CLNameAction, CLNameInputModal, CLNameResult
+from .command_history_modal import CommandHistoryModal
 from .command_input_modal import CommandInputModal
 from .confirm_kill_modal import ConfirmKillModal
 from .help_modal import HelpModal
@@ -29,6 +30,7 @@ __all__ = [
     "CLNameAction",
     "CLNameInputModal",
     "CLNameResult",
+    "CommandHistoryModal",
     "CommandInputModal",
     "ConfirmKillModal",
     "HelpModal",

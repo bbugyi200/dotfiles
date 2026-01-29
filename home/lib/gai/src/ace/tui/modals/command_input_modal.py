@@ -24,31 +24,37 @@ class CommandInputModal(ModalScreen[str | None]):
         ("escape", "cancel", "Cancel"),
     ]
 
-    def __init__(self, project: str, workspace_num: int) -> None:
+    def __init__(
+        self, project: str, workspace_num: int, cl_name: str | None = None
+    ) -> None:
         """Initialize the command input modal.
 
         Args:
             project: Project name for display.
             workspace_num: Workspace number for display.
+            cl_name: Optional CL name for display.
         """
         super().__init__()
         self._project = project
         self._workspace_num = workspace_num
+        self._cl_name = cl_name
 
     def compose(self) -> ComposeResult:
         """Compose the modal layout."""
         with Container():
             yield Label("Enter Command", id="modal-title")
-            yield Label(
-                f"Project: {self._project} | Workspace: {self._workspace_num}",
-                id="command-context",
-            )
+            # Build context line
+            context = f"Project: {self._project}"
+            if self._cl_name:
+                context += f" | CL: {self._cl_name}"
+            context += f" | Workspace: {self._workspace_num}"
+            yield Label(context, id="command-context")
             yield Label(
                 "Enter shell command to run in background. Press Enter to start.",
                 id="command-hint",
             )
             yield _CommandInput(
-                placeholder="e.g., make test, npm run build, ./run.sh",
+                placeholder="e.g., make test (type . for history)",
                 id="command-input",
             )
 
@@ -58,9 +64,15 @@ class CommandInputModal(ModalScreen[str | None]):
         command_input.focus()
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
-        """Handle Enter key in input."""
+        """Handle Enter key in input.
+
+        If the user enters ".", return it to trigger history modal.
+        """
         command = event.value.strip()
-        if command:
+        if command == ".":
+            # Signal to show command history
+            self.dismiss(".")
+        elif command:
             self.dismiss(command)
         else:
             self.notify("Please enter a command", severity="error")
