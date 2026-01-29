@@ -208,7 +208,7 @@ class AxeMixin:
     def _show_command_input(
         self, slot: int, project: str, workspace_num: int, cl_name: str | None = None
     ) -> None:
-        """Show the command input modal.
+        """Show the command input/history modal.
 
         Args:
             slot: Slot number to use.
@@ -216,42 +216,16 @@ class AxeMixin:
             workspace_num: Workspace number.
             cl_name: Optional CL name to checkout before running command.
         """
-        from ..modals import CommandInputModal
-
-        def on_command_entered(command: str | None) -> None:
-            if command is None:
-                return
-            if command == ".":
-                # User wants to see command history
-                self._show_command_history(slot, project, workspace_num, cl_name)
-            else:
-                self._start_bgcmd(slot, command, project, workspace_num, cl_name)
-
-        self.push_screen(  # type: ignore[attr-defined]
-            CommandInputModal(project, workspace_num, cl_name), on_command_entered
-        )
-
-    def _show_command_history(
-        self, slot: int, project: str, workspace_num: int, cl_name: str | None = None
-    ) -> None:
-        """Show the command history modal.
-
-        Args:
-            slot: Slot number to use.
-            project: Project name.
-            workspace_num: Workspace number.
-            cl_name: Optional CL name for sorting priority.
-        """
         from ..modals import CommandHistoryModal
 
-        def on_history_selected(command: str | None) -> None:
+        def on_command_selected(command: str | None) -> None:
             if command is None:
                 return
             self._start_bgcmd(slot, command, project, workspace_num, cl_name)
 
         self.push_screen(  # type: ignore[attr-defined]
             CommandHistoryModal(current_cl=cl_name, current_project=project),
-            on_history_selected,
+            on_command_selected,
         )
 
     def _start_bgcmd(

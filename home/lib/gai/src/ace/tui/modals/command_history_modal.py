@@ -87,33 +87,31 @@ class CommandHistoryModal(OptionListNavigationMixin, ModalScreen[str | None]):
     def compose(self) -> ComposeResult:
         """Compose the modal layout."""
         with Container(id="command-history-modal-container"):
-            yield Label("Select Command from History", id="modal-title")
-            if not self._all_items:
-                yield Label("No command history found.")
-            else:
-                # Header showing sort context
-                header_text = self._get_header_text()
-                yield Static(header_text, id="command-history-header")
+            yield Label("Run Command", id="modal-title")
+            # Header showing sort context
+            header_text = self._get_header_text()
+            yield Static(header_text, id="command-history-header")
 
-                yield FilterInput(
-                    placeholder="Type to filter...", id="command-history-filter-input"
-                )
-                with Horizontal(id="command-history-panels"):
-                    with Vertical(id="command-history-list-panel"):
-                        yield Label("History", id="command-history-list-label")
-                        yield OptionList(
-                            *self._create_options(self._filtered_items),
-                            id="command-history-list",
-                        )
-                    with Vertical(id="command-history-preview-panel"):
-                        yield Label("Details", id="command-history-preview-label")
-                        with VerticalScroll(id="command-history-preview-scroll"):
-                            yield Static("", id="command-history-preview")
-                            yield Static("", id="command-history-metadata")
-                yield Static(
-                    "j/k arrow ^n/^p: navigate | Enter: submit | Esc/q: cancel",
-                    id="command-history-hints",
-                )
+            yield FilterInput(
+                placeholder="Type to filter or enter new command...",
+                id="command-history-filter-input",
+            )
+            with Horizontal(id="command-history-panels"):
+                with Vertical(id="command-history-list-panel"):
+                    yield Label("History", id="command-history-list-label")
+                    yield OptionList(
+                        *self._create_options(self._filtered_items),
+                        id="command-history-list",
+                    )
+                with Vertical(id="command-history-preview-panel"):
+                    yield Label("Details", id="command-history-preview-label")
+                    with VerticalScroll(id="command-history-preview-scroll"):
+                        yield Static("", id="command-history-preview")
+                        yield Static("", id="command-history-metadata")
+            yield Static(
+                "j/k ^n/^p: navigate | Enter: submit selected or typed | Esc/q: cancel",
+                id="command-history-hints",
+            )
 
     def _get_header_text(self) -> Text:
         """Get header text showing sort context."""
@@ -187,12 +185,11 @@ class CommandHistoryModal(OptionListNavigationMixin, ModalScreen[str | None]):
 
     def on_mount(self) -> None:
         """Focus the input and show initial preview on mount."""
-        if self._all_items:
-            filter_input = self.query_one("#command-history-filter-input", FilterInput)
-            filter_input.focus()
-            # Show preview for first item
-            if self._filtered_items:
-                self._update_preview(self._filtered_items[0])
+        filter_input = self.query_one("#command-history-filter-input", FilterInput)
+        filter_input.focus()
+        # Show preview for first item if history exists
+        if self._filtered_items:
+            self._update_preview(self._filtered_items[0])
 
     def on_input_changed(self, event: Input.Changed) -> None:
         """Handle input change - update the option list."""
@@ -207,11 +204,19 @@ class CommandHistoryModal(OptionListNavigationMixin, ModalScreen[str | None]):
         else:
             self._clear_preview()
 
-    def on_input_submitted(self, _event: Input.Submitted) -> None:
-        """Handle Enter key in input - select and submit directly."""
-        command = self._get_selected_command()
-        if command:
-            self.dismiss(command)
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        """Handle Enter key - submit selected command or typed text."""
+        # If there's a selected history item, use that
+        if self._filtered_items:
+            command = self._get_selected_command()
+            if command:
+                self.dismiss(command)
+                return
+
+        # Otherwise, submit the typed text as a new command
+        typed_text = event.value.strip()
+        if typed_text:
+            self.dismiss(typed_text)
 
     def on_option_list_option_highlighted(
         self, event: OptionList.OptionHighlighted

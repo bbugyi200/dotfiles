@@ -54,7 +54,7 @@ class CommandInputModal(ModalScreen[str | None]):
                 id="command-hint",
             )
             yield _CommandInput(
-                placeholder="e.g., make test (type . for history)",
+                placeholder="e.g., make test",
                 id="command-input",
             )
 
@@ -64,15 +64,9 @@ class CommandInputModal(ModalScreen[str | None]):
         command_input.focus()
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
-        """Handle Enter key in input.
-
-        If the user enters ".", return it to trigger history modal.
-        """
+        """Handle Enter key in input."""
         command = event.value.strip()
-        if command == ".":
-            # Signal to show command history
-            self.dismiss(".")
-        elif command:
+        if command:
             self.dismiss(command)
         else:
             self.notify("Please enter a command", severity="error")
