@@ -197,7 +197,7 @@ class KeybindingFooter(Horizontal):
     def update_leader_bindings(self) -> None:
         """Update bindings to show leader mode options."""
         bindings = [
-            ("<space>", "run agent (quick)"),
+            ("<space>", "run agent"),
             ("!", "run cmd (CL)"),
             ("Esc", "cancel"),
         ]

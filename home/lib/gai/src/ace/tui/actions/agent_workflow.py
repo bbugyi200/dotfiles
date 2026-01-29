@@ -54,14 +54,14 @@ class AgentWorkflowMixin(AgentLaunchMixin):
     _bulk_changespecs: list[ChangeSpec] | None = None
 
     def action_start_agent_from_changespec(self) -> None:
-        """Start agent from current ChangeSpec (CLs tab only, bound to R)."""
+        """Start agent from current ChangeSpec (CLs tab only, bound to space)."""
         if self.current_tab != "changespecs":
             return
 
         if self.marked_indices:
             self._start_agents_from_marked()
         else:
-            self._start_agent_from_changespec()
+            self._start_agent_from_changespec_quick()
 
     def action_start_leader_mode(self) -> None:
         """Enter leader mode for quick shortcuts (CLs tab only, bound to ,)."""
@@ -89,7 +89,7 @@ class AgentWorkflowMixin(AgentLaunchMixin):
             return True
 
         if key == "space":
-            self._start_agent_from_changespec_quick()
+            self._start_agent_from_changespec()
             return True
 
         if key == "exclamation_mark":
