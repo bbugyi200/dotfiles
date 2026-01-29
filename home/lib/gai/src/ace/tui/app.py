@@ -162,6 +162,8 @@ class AceApp(
         Binding("~", "start_sibling_mode", "Sibling", show=False),
         # Hide/show reverted
         Binding("full_stop", "toggle_hide_reverted", "Toggle Reverted", show=False),
+        # Leader mode (for quick shortcuts)
+        Binding("comma", "start_leader_mode", "Leader", show=False),
     ]
 
     # Reactive properties
@@ -224,6 +226,9 @@ class AceApp(
 
         # Copy mode state (for % key sub-commands)
         self._copy_mode_active: bool = False
+
+        # Leader mode state (for , key sub-commands)
+        self._leader_mode_active: bool = False
 
         # Ancestor/child/sibling navigation state
         self._ancestor_mode_active: bool = False

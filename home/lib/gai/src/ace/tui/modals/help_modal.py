@@ -72,6 +72,13 @@ _CLS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
         ],
     ),
     (
+        "Leader Mode (,)",
+        [
+            (",<space>", "Run agent (skip CL name prompt)"),
+            (",!", "Run command (use current CL)"),
+        ],
+    ),
+    (
         "Queries",
         [
             ("/", "Edit search query"),

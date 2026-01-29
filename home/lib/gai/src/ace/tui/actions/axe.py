@@ -59,6 +59,7 @@ class AxeMixin:
     _axe_metrics: AxeMetrics | None
     _axe_output: str
     _axe_pinned_to_bottom: bool
+    _leader_mode_active: bool
 
     # Background command state
     _axe_current_view: AxeViewType
@@ -156,6 +157,32 @@ class AxeMixin:
             self._show_workspace_input(slot, project, cl_name)
 
         self.push_screen(ProjectSelectModal(), on_project_selected)  # type: ignore[attr-defined]
+
+    def _start_bgcmd_from_changespec(self) -> None:
+        """Start background command from current ChangeSpec (CLs tab only).
+
+        This is the quick version triggered from leader mode that skips
+        ProjectSelectModal, using the current ChangeSpec's project and CL name.
+        """
+        if self.current_tab != "changespecs":
+            return
+
+        if not self.changespecs:
+            self.notify("No ChangeSpecs available", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        # Check for available slot
+        slot = find_first_available_slot()
+        if slot is None:
+            self.notify("Maximum background commands reached", severity="error")  # type: ignore[attr-defined]
+            return
+
+        changespec = self.changespecs[self.current_idx]
+        project = changespec.project_basename
+        cl_name = changespec.name
+
+        # Go directly to workspace input, skipping ProjectSelectModal
+        self._show_workspace_input(slot, project, cl_name)
 
     def _show_workspace_input(
         self, slot: int, project: str, cl_name: str | None = None

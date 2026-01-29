@@ -194,6 +194,20 @@ class KeybindingFooter(Horizontal):
             ("x", "clear"),
         ]
 
+    def update_leader_bindings(self) -> None:
+        """Update bindings to show leader mode options."""
+        bindings = [
+            ("<space>", "run agent (quick)"),
+            ("!", "run cmd (CL)"),
+            ("Esc", "cancel"),
+        ]
+        text = self._format_bindings(bindings)
+        # Add leader mode indicator prefix
+        prefix = Text()
+        prefix.append("LEADER ", style="bold #FFD700")
+        prefix.append_text(text)
+        self._update_display(prefix)
+
     def _compute_agent_bindings(
         self,
         agent: "Agent | None",

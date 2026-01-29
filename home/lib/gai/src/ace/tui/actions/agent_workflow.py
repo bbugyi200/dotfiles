@@ -46,6 +46,7 @@ class AgentWorkflowMixin(AgentLaunchMixin):
     current_tab: TabName
     marked_indices: set[int]
     _agents: list[Agent]
+    _leader_mode_active: bool
 
     # State for prompt input
     _prompt_context: _PromptContext | None = None
@@ -61,6 +62,76 @@ class AgentWorkflowMixin(AgentLaunchMixin):
             self._start_agents_from_marked()
         else:
             self._start_agent_from_changespec()
+
+    def action_start_leader_mode(self) -> None:
+        """Enter leader mode for quick shortcuts (CLs tab only, bound to ,)."""
+        if self.current_tab != "changespecs":
+            return
+
+        self._leader_mode_active = True
+        self._update_leader_footer()
+
+    def _handle_leader_key(self, key: str) -> bool:
+        """Handle a key press in leader mode.
+
+        Args:
+            key: The key that was pressed.
+
+        Returns:
+            True if the key was handled, False otherwise.
+        """
+        # Always exit leader mode
+        self._leader_mode_active = False
+
+        if key == "escape":
+            # Cancel silently and restore footer
+            self._refresh_display()  # type: ignore[attr-defined]
+            return True
+
+        if key == "space":
+            self._start_agent_from_changespec_quick()
+            return True
+
+        if key == "exclamation_mark":
+            self._start_bgcmd_from_changespec()  # type: ignore[attr-defined]
+            return True
+
+        # Unknown key - just exit mode and restore footer
+        self._refresh_display()  # type: ignore[attr-defined]
+        return True
+
+    def _start_agent_from_changespec_quick(self) -> None:
+        """Start agent from current ChangeSpec without CL name modal.
+
+        This is the quick version that skips CLNameInputModal entirely,
+        going directly to the prompt input bar.
+        """
+        if not self.changespecs:
+            self.notify("No ChangeSpecs available", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        changespec = self.changespecs[self.current_idx]
+        project_name = changespec.project_basename
+        cl_name = changespec.name
+
+        # Go directly to prompt input bar, skipping CLNameInputModal
+        self._show_prompt_input_bar(
+            project_name,
+            cl_name=cl_name,
+            update_target=cl_name,
+            new_cl_name=None,  # Key difference: no new CL name
+            history_sort_key=cl_name,
+        )
+
+    def _update_leader_footer(self) -> None:
+        """Update the footer to show leader mode bindings."""
+        from ..widgets import KeybindingFooter
+
+        try:
+            footer = self.query_one("#keybinding-footer", KeybindingFooter)  # type: ignore[attr-defined]
+            footer.update_leader_bindings()
+        except Exception:
+            pass
 
     def action_start_custom_agent(self) -> None:
         """Start a custom agent by selecting project or CL (works on all tabs)."""
