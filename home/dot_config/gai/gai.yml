@@ -8,7 +8,6 @@ metahooks:
     output_regex: "[1-9]\\d* failed,"
 
 # Mentor profiles define which mentors to apply to which files.
-# Each profile contains its mentor definitions inline.
 mentor_profiles:
   - profile_name: aaa
     mentors:
