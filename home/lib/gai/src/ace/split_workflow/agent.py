@@ -1,8 +1,8 @@
 """Agent and prompt building functions for the split workflow."""
 
-import re
 from typing import Literal
 
+import yaml  # type: ignore[import-untyped]
 from chat_history import list_chat_histories, load_chat_history, save_chat_history
 from gai_utils import generate_timestamp
 from gemini_wrapper import GeminiCommandWrapper
@@ -18,7 +18,11 @@ from split_spec import (
     topological_sort_entries,
     validate_split_spec,
 )
-from xprompt import process_xprompt_references
+from xprompt import (
+    OutputValidationError,
+    extract_structured_content,
+    process_xprompt_references,
+)
 
 from .spec import archive_spec_file, edit_spec_content
 
@@ -57,29 +61,6 @@ def _build_spec_generator_prompt(
     escaped_diff = _escape_for_xprompt(diff_path)
     prompt_text = f'#split_spec_generator(workspace_name="{escaped_workspace}", diff_path="{escaped_diff}")'
     return process_xprompt_references(prompt_text)
-
-
-def _extract_yaml_from_response(response: str) -> str:
-    """Extract YAML content from agent response.
-
-    The agent may wrap the YAML in markdown code fences. This function
-    extracts the raw YAML content.
-
-    Args:
-        response: The agent response text.
-
-    Returns:
-        The extracted YAML content.
-    """
-    # Try to extract from markdown code fences
-    yaml_pattern = r"```(?:ya?ml)?\s*\n(.*?)```"
-    match = re.search(yaml_pattern, response, re.DOTALL)
-    if match:
-        return match.group(1).strip()
-
-    # If no code fence, assume the whole response is YAML
-    # But strip any leading/trailing whitespace
-    return response.strip()
 
 
 def _prompt_for_spec_action(
@@ -158,7 +139,6 @@ def generate_spec_with_agent(
         workflow_tag=workflow_tag,
         artifacts_dir=artifacts_dir,
         workflow="split",
-        skip_output_validation=True,  # Split workflow has its own validation with user interaction
     )
 
     # Track conversation for reruns
@@ -183,8 +163,14 @@ def generate_spec_with_agent(
             timestamp=start_timestamp,
         )
 
-        # Extract YAML from response
-        yaml_content = _extract_yaml_from_response(response_text)
+        # Extract structured content from response
+        try:
+            data, _ = extract_structured_content(response_text)
+            # Convert back to YAML for display
+            yaml_content = yaml.dump(data, default_flow_style=False)
+        except OutputValidationError:
+            # Fallback to raw response if extraction fails
+            yaml_content = response_text.strip()
 
         # Try to parse and validate
         try:
@@ -201,12 +187,10 @@ def generate_spec_with_agent(
             console.print("[yellow]The agent will be asked to fix this.[/yellow]")
 
             # Add error feedback and retry
-            error_prompt = f"""The generated YAML was invalid: {e}
+            error_prompt = f"""The generated output was invalid: {e}
 
 Please fix the issue and regenerate the split specification.
-Remember:
-- All 'name' values must be prefixed with `{workspace_name}_`
-- Output ONLY valid YAML, no markdown fences or explanations"""
+Remember: All 'name' values must be prefixed with `{workspace_name}_`"""
 
             messages.append(response)
             messages.append(HumanMessage(content=error_prompt))
@@ -217,7 +201,6 @@ Remember:
                 workflow_tag=workflow_tag,
                 artifacts_dir=artifacts_dir,
                 workflow="split",
-                skip_output_validation=True,
             )
             continue
 
@@ -289,8 +272,7 @@ Remember:
 # Requirements
 
 1. All 'name' field values MUST be prefixed with `{workspace_name}_`
-2. Output ONLY valid YAML - no explanation, no markdown code fences, just raw YAML
-3. PRIORITIZE PARALLEL CLs - only use `parent` when there is a TRUE dependency
+2. PRIORITIZE PARALLEL CLs - only use `parent` when there is a TRUE dependency
 
 Please regenerate the split specification incorporating the user's feedback."""
             else:
@@ -312,8 +294,7 @@ You previously generated a split specification for a CL, but the user has reques
 
 ## Requirements
 1. All 'name' field values MUST be prefixed with `{workspace_name}_`
-2. Output ONLY valid YAML - no explanation, no markdown code fences, just raw YAML
-3. PRIORITIZE PARALLEL CLs - only use `parent` when there is a TRUE dependency
+2. PRIORITIZE PARALLEL CLs - only use `parent` when there is a TRUE dependency
 
 Please regenerate the split specification incorporating the user's feedback."""
 
@@ -326,7 +307,6 @@ Please regenerate the split specification incorporating the user's feedback."""
                 workflow_tag=workflow_tag,
                 artifacts_dir=artifacts_dir,
                 workflow="split",
-                skip_output_validation=True,
             )
 
 

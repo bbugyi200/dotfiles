@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, patch
 
 from ace.changespec import ChangeSpec
 from ace.split_workflow import SplitWorkflow
-from ace.split_workflow.agent import _extract_yaml_from_response
 from ace.split_workflow.spec import archive_spec_file
 from ace.split_workflow.utils import (
     get_editor,
@@ -155,47 +154,3 @@ def test_split_workflow_description_property() -> None:
     """Test SplitWorkflow.description property."""
     workflow = SplitWorkflow(name=None, spec_path=None, create_spec=True)
     assert workflow.description == "Split a CL into multiple smaller CLs"
-
-
-def test_extract_yaml_from_response_with_code_fence() -> None:
-    """Test extracting YAML from markdown code fence."""
-    response = """Here is the split specification:
-
-```yaml
-- name: test_cl
-  description: Test description
-```
-
-That's the spec."""
-    result = _extract_yaml_from_response(response)
-    assert result == "- name: test_cl\n  description: Test description"
-
-
-def test_extract_yaml_from_response_with_yml_fence() -> None:
-    """Test extracting YAML from yml code fence."""
-    response = """```yml
-- name: my_change
-  description: My change
-```"""
-    result = _extract_yaml_from_response(response)
-    assert result == "- name: my_change\n  description: My change"
-
-
-def test_extract_yaml_from_response_no_fence() -> None:
-    """Test extracting YAML when no code fence is present."""
-    response = """- name: plain_yaml
-  description: No fence here"""
-    result = _extract_yaml_from_response(response)
-    assert result == "- name: plain_yaml\n  description: No fence here"
-
-
-def test_extract_yaml_from_response_strips_whitespace() -> None:
-    """Test that whitespace is stripped from response."""
-    response = """
-
-  - name: whitespace_test
-    description: Has whitespace
-
-  """
-    result = _extract_yaml_from_response(response)
-    assert result.startswith("- name: whitespace_test")
