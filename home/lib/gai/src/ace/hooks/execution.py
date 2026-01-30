@@ -458,13 +458,14 @@ while [ $attempt -le $MAX_RETRIES ]; do
     tmp_output=$(mktemp)
     trap "rm -f '$tmp_output'" EXIT
 
-    ( {actual_command} ) > "$tmp_output" 2>&1
-    exit_code=$?
+    # Stream output in real-time while also capturing for retry inspection
+    ( {actual_command} ) 2>&1 | tee "$tmp_output"
+    exit_code=${{PIPESTATUS[0]}}  # Get command's exit code, not tee's
 
     if [ $exit_code -ne 0 ] && [ $attempt -lt $MAX_RETRIES ] && is_retriable "$tmp_output"; then
+        echo ""
         echo "=== RETRY ATTEMPT $attempt/$MAX_RETRIES ==="
-        echo "Detected retriable error. Waiting ${{RETRY_DELAY}}s before retry..."
-        cat "$tmp_output"
+        echo "Detected retriable error (output shown above). Waiting ${{RETRY_DELAY}}s before retry..."
         echo ""
         echo "=== WAITING ${{RETRY_DELAY}}s ==="
         rm -f "$tmp_output"
@@ -472,9 +473,9 @@ while [ $attempt -le $MAX_RETRIES ]; do
         attempt=$((attempt + 1))
     else
         if [ $attempt -gt 1 ]; then
-            echo "=== FINAL ATTEMPT ($attempt/$MAX_RETRIES) ==="
+            echo ""
+            echo "=== FINAL ATTEMPT ($attempt/$MAX_RETRIES) COMPLETE ==="
         fi
-        cat "$tmp_output"
         rm -f "$tmp_output"
         break
     fi
