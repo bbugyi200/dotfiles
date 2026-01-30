@@ -3,7 +3,10 @@
 import os
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .output_schema import OutputSchema
 
 
 class InputType(Enum):
@@ -114,12 +117,14 @@ class XPrompt:
         content: The template content (may contain Jinja2 or legacy placeholders).
         inputs: List of input argument definitions from YAML front matter.
         source_path: File path or "config" indicating where this xprompt was loaded from.
+        output: Output schema definition for validation (optional).
     """
 
     name: str
     content: str
     inputs: list[InputArg] = field(default_factory=list)
     source_path: str | None = None
+    output: "OutputSchema | None" = None
 
     def get_input_by_name(self, name: str) -> InputArg | None:
         """Get an input argument definition by name.

@@ -132,6 +132,18 @@ def main():
     parser.add_argument(
         "directory", type=Path, help="Directory to search for Python files"
     )
+    parser.add_argument(
+        "--exclude",
+        "-e",
+        action="append",
+        default=[],
+        metavar="SYMBOL",
+        help=(
+            "Exclude a symbol from the unused check. Can be specified multiple times. "
+            "Useful for symbols accessed via registry patterns, decorators, or other "
+            "indirect mechanisms that pyvision cannot detect."
+        ),
+    )
     args = parser.parse_args()
 
     if not args.directory.is_dir():
@@ -200,9 +212,15 @@ def main():
             print(f"  {symbol_name} in {file_path}", file=sys.stderr)
         return 1
 
+    # Build exclude set
+    exclude_set = set(args.exclude)
+
     # Search for usage of each symbol
     unused_symbols = []
     for symbol_name, def_files in all_symbols.items():
+        # Skip excluded symbols
+        if symbol_name in exclude_set:
+            continue
         if not _search_function_usage(symbol_name, python_files):
             unused_symbols.append((symbol_name, def_files))
 

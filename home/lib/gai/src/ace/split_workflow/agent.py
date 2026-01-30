@@ -18,7 +18,12 @@ from split_spec import (
     topological_sort_entries,
     validate_split_spec,
 )
-from xprompt import process_xprompt_references
+from xprompt import (
+    get_all_xprompts,
+    inject_format_instructions,
+    process_xprompt_references,
+    validate_output,
+)
 
 from .spec import archive_spec_file, edit_spec_content
 
@@ -56,7 +61,15 @@ def _build_spec_generator_prompt(
     escaped_workspace = _escape_for_xprompt(workspace_name)
     escaped_diff = _escape_for_xprompt(diff_path)
     prompt_text = f'#split_spec_generator(workspace_name="{escaped_workspace}", diff_path="{escaped_diff}")'
-    return process_xprompt_references(prompt_text)
+    prompt = process_xprompt_references(prompt_text)
+
+    # Inject format instructions from the xprompt's output schema
+    xprompts = get_all_xprompts()
+    if "split_spec_generator" in xprompts:
+        xprompt = xprompts["split_spec_generator"]
+        prompt = inject_format_instructions(prompt, xprompt.output)
+
+    return prompt
 
 
 def _extract_yaml_from_response(response: str) -> str:
@@ -185,22 +198,20 @@ def generate_spec_with_agent(
         # Extract YAML from response
         yaml_content = _extract_yaml_from_response(response_text)
 
-        # Try to parse and validate
-        try:
-            spec = parse_split_spec(yaml_content)
-            is_valid, error = validate_split_spec(spec)
-            if not is_valid:
-                raise ValueError(error)
-            print_status(
-                f"Valid spec generated with {len(spec.entries)} entries.",
-                "success",
-            )
-        except ValueError as e:
-            console.print(f"[red]Invalid spec: {e}[/red]")
+        # Get output schema from xprompt for validation
+        xprompts = get_all_xprompts()
+        output_schema = None
+        if "split_spec_generator" in xprompts:
+            output_schema = xprompts["split_spec_generator"].output
+
+        # Try to parse and validate using output schema
+        is_valid, error = validate_output(yaml_content, output_schema)
+        if not is_valid:
+            console.print(f"[red]Invalid spec: {error}[/red]")
             console.print("[yellow]The agent will be asked to fix this.[/yellow]")
 
             # Add error feedback and retry
-            error_prompt = f"""The generated YAML was invalid: {e}
+            error_prompt = f"""The generated YAML was invalid: {error}
 
 Please fix the issue and regenerate the split specification.
 Remember:
@@ -218,6 +229,13 @@ Remember:
                 workflow="split",
             )
             continue
+
+        # Parse the spec to get entry count for status message
+        spec = parse_split_spec(yaml_content)
+        print_status(
+            f"Valid spec generated with {len(spec.entries)} entries.",
+            "success",
+        )
 
         # Show the spec YAML to user
         console.print("\n[bold]Generated Split Specification:[/bold]")
