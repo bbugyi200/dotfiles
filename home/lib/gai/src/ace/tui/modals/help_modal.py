@@ -123,6 +123,7 @@ _AGENTS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
         "Navigation",
         [
             ("j / k", "Move to next / previous agent"),
+            ("g / G", "Scroll diff panel to top / bottom"),
             ("Ctrl+D / U", "Scroll diff panel down / up"),
             ("Ctrl+F / B", "Scroll prompt panel down / up"),
         ],

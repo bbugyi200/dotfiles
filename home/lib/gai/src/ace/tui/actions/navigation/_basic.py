@@ -133,23 +133,28 @@ class BasicNavigationMixin(NavigationMixinBase):
             scroll_container.scroll_relative(y=-height, animate=False)  # Full page
 
     def action_scroll_to_top(self) -> None:
-        """Scroll to the top of the current scrollable area (Axe tab)."""
-        if self.current_tab != "axe":
-            return
-        self._axe_pinned_to_bottom = False
-        scroll_container = self.query_one("#axe-output-scroll", VerticalScroll)  # type: ignore[attr-defined]
-        scroll_container.scroll_home(animate=False)
+        """Scroll to the top of the current scrollable area."""
+        if self.current_tab == "axe":
+            self._axe_pinned_to_bottom = False
+            scroll_container = self.query_one("#axe-output-scroll", VerticalScroll)  # type: ignore[attr-defined]
+            scroll_container.scroll_home(animate=False)
+        elif self.current_tab == "agents":
+            scroll_container = self.query_one("#agent-diff-scroll", VerticalScroll)  # type: ignore[attr-defined]
+            scroll_container.scroll_home(animate=False)
 
     def action_scroll_to_bottom(self) -> None:
-        """Scroll to the bottom of the current scrollable area (Axe tab).
+        """Scroll to the bottom of the current scrollable area.
 
-        Also pins the scroll to bottom so auto-refresh keeps showing latest output.
+        On Axe tab, also pins the scroll to bottom so auto-refresh keeps
+        showing latest output.
         """
-        if self.current_tab != "axe":
-            return
-        self._axe_pinned_to_bottom = True
-        scroll_container = self.query_one("#axe-output-scroll", VerticalScroll)  # type: ignore[attr-defined]
-        scroll_container.scroll_end(animate=False)
+        if self.current_tab == "axe":
+            self._axe_pinned_to_bottom = True
+            scroll_container = self.query_one("#axe-output-scroll", VerticalScroll)  # type: ignore[attr-defined]
+            scroll_container.scroll_end(animate=False)
+        elif self.current_tab == "agents":
+            scroll_container = self.query_one("#agent-diff-scroll", VerticalScroll)  # type: ignore[attr-defined]
+            scroll_container.scroll_end(animate=False)
 
     # --- Tab Switching Actions ---
 
