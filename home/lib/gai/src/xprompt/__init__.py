@@ -8,8 +8,16 @@ This module provides a replacement for the legacy snippet system, adding:
 """
 
 from .loader import get_all_snippets, get_all_xprompts
-from .models import InputArg, InputType, XPrompt, XPromptValidationError
+from .models import InputArg, InputType, OutputSpec, XPrompt, XPromptValidationError
+from .output_validation import (
+    OutputValidationError,
+    extract_structured_content,
+    generate_format_instructions,
+    validate_against_schema,
+    validate_response,
+)
 from .processor import (
+    get_primary_output_schema,
     is_jinja2_template,
     process_snippet_references,
     process_xprompt_references,
@@ -20,12 +28,20 @@ __all__ = [
     # Models
     "InputArg",
     "InputType",
+    "OutputSpec",
     "XPrompt",
     "XPromptValidationError",
+    # Output validation
+    "OutputValidationError",
+    "extract_structured_content",
+    "generate_format_instructions",
+    "validate_against_schema",
+    "validate_response",
     # Loader
     "get_all_snippets",
     "get_all_xprompts",
     # Processor
+    "get_primary_output_schema",
     "is_jinja2_template",
     "process_snippet_references",
     "process_xprompt_references",

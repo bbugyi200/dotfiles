@@ -1,4 +1,5 @@
 jinja2
+jsonschema
 langgraph
 langchain-core
 rich

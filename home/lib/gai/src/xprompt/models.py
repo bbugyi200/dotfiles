@@ -18,6 +18,19 @@ class InputType(Enum):
     FLOAT = "float"
 
 
+@dataclass
+class OutputSpec:
+    """Output specification for validating agent responses.
+
+    Attributes:
+        type: The output format type (e.g., "json_schema").
+        schema: The schema definition (e.g., JSON Schema dict for json_schema type).
+    """
+
+    type: str
+    schema: dict[str, Any]
+
+
 class XPromptValidationError(Exception):
     """Raised when input validation fails."""
 
@@ -114,12 +127,14 @@ class XPrompt:
         content: The template content (may contain Jinja2 or legacy placeholders).
         inputs: List of input argument definitions from YAML front matter.
         source_path: File path or "config" indicating where this xprompt was loaded from.
+        output: Optional output specification for validating agent responses.
     """
 
     name: str
     content: str
     inputs: list[InputArg] = field(default_factory=list)
     source_path: str | None = None
+    output: OutputSpec | None = None
 
     def get_input_by_name(self, name: str) -> InputArg | None:
         """Get an input argument definition by name.

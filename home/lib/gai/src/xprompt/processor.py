@@ -8,7 +8,7 @@ from jinja2 import BaseLoader, Environment, StrictUndefined, TemplateError
 from rich_utils import print_status
 
 from .loader import get_all_xprompts
-from .models import XPrompt, XPromptValidationError
+from .models import OutputSpec, XPrompt, XPromptValidationError
 
 
 class _XPromptError(Exception):
@@ -71,6 +71,38 @@ _XPROMPT_PATTERN = (
     r"#([a-zA-Z_][a-zA-Z0-9_]*(?:/[a-zA-Z_][a-zA-Z0-9_]*)*)"  # Group 1: xprompt name with optional namespace
     r"(?:(\()|:([a-zA-Z0-9_.-]+)|(\+))?"  # Group 2: open paren OR Group 3: colon arg OR Group 4: plus
 )
+
+
+def get_primary_output_schema(prompt: str) -> OutputSpec | None:
+    """Find the first xprompt with an output schema in the original prompt.
+
+    This function scans the prompt text (before expansion) for xprompt references
+    and returns the output specification from the first one that has an output
+    field defined. This is used to determine the expected output format for the
+    entire prompt.
+
+    Args:
+        prompt: The original prompt text (before xprompt expansion).
+
+    Returns:
+        The OutputSpec from the first xprompt with an output field, or None
+        if no xprompts have output specifications.
+    """
+    xprompts = get_all_xprompts()
+    if not xprompts or "#" not in prompt:
+        return None
+
+    # Find all xprompt references in order
+    matches = list(re.finditer(_XPROMPT_PATTERN, prompt, re.MULTILINE))
+
+    for match in matches:
+        name = match.group(1)
+        if name in xprompts:
+            xprompt = xprompts[name]
+            if xprompt.output is not None:
+                return xprompt.output
+
+    return None
 
 
 def _find_matching_paren_for_args(text: str, start: int) -> int | None:

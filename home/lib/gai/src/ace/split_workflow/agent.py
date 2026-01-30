@@ -158,6 +158,7 @@ def generate_spec_with_agent(
         workflow_tag=workflow_tag,
         artifacts_dir=artifacts_dir,
         workflow="split",
+        skip_output_validation=True,  # Split workflow has its own validation with user interaction
     )
 
     # Track conversation for reruns
@@ -216,6 +217,7 @@ Remember:
                 workflow_tag=workflow_tag,
                 artifacts_dir=artifacts_dir,
                 workflow="split",
+                skip_output_validation=True,
             )
             continue
 
@@ -324,6 +326,7 @@ Please regenerate the split specification incorporating the user's feedback."""
                 workflow_tag=workflow_tag,
                 artifacts_dir=artifacts_dir,
                 workflow="split",
+                skip_output_validation=True,
             )
 
 

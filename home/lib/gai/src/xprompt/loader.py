@@ -6,7 +6,7 @@ from typing import Any
 
 import yaml  # type: ignore[import-untyped]
 
-from .models import InputArg, InputType, XPrompt
+from .models import InputArg, InputType, OutputSpec, XPrompt
 
 
 def _get_config_path() -> str:
@@ -125,6 +125,32 @@ def _parse_inputs_from_front_matter(
     return inputs
 
 
+def _parse_output_from_front_matter(
+    output_data: dict[str, Any] | None,
+) -> OutputSpec | None:
+    """Parse output specification from front matter.
+
+    Args:
+        output_data: The output dict from YAML front matter.
+
+    Returns:
+        OutputSpec object if valid output specification found, None otherwise.
+    """
+    if not output_data or not isinstance(output_data, dict):
+        return None
+
+    output_type = output_data.get("type")
+    schema = output_data.get("schema")
+
+    if not output_type or not isinstance(output_type, str):
+        return None
+
+    if not schema or not isinstance(schema, dict):
+        return None
+
+    return OutputSpec(type=output_type, schema=schema)
+
+
 def _load_xprompt_from_file(file_path: Path) -> XPrompt | None:
     """Load a single xprompt from a markdown file.
 
@@ -152,11 +178,17 @@ def _load_xprompt_from_file(file_path: Path) -> XPrompt | None:
     if front_matter and "input" in front_matter:
         inputs = _parse_inputs_from_front_matter(front_matter["input"])
 
+    # Parse output specification if present
+    output: OutputSpec | None = None
+    if front_matter and "output" in front_matter:
+        output = _parse_output_from_front_matter(front_matter["output"])
+
     return XPrompt(
         name=name,
         content=body,
         inputs=inputs,
         source_path=str(file_path),
+        output=output,
     )
 
 
