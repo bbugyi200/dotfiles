@@ -17,11 +17,11 @@ from rich_utils import (
 )
 from shared_utils import get_gai_log_file, run_bam_command
 from xprompt import (
+    inject_format_instructions,
     is_jinja2_template,
+    process_xprompt_references_with_metadata,
     render_toplevel_jinja2,
-)
-from xprompt import (
-    process_xprompt_references as process_snippet_references,
+    validate_output,
 )
 
 from .file_references import (
@@ -316,8 +316,15 @@ class GeminiCommandWrapper:
         if not query:
             return AIMessage(content="No query found in messages")
 
-        # Process snippet references in the prompt (expand #name patterns)
-        query = process_snippet_references(query)
+        # Process xprompt references in the prompt (expand #name patterns)
+        expansion_result = process_xprompt_references_with_metadata(query)
+        query = expansion_result.expanded_prompt
+
+        # Inject format instructions if output schema defined
+        if expansion_result.primary_xprompt and expansion_result.primary_xprompt.output:
+            query = inject_format_instructions(
+                query, expansion_result.primary_xprompt.output
+            )
 
         # Process command substitution in the prompt (expand $(cmd) patterns)
         query = process_command_substitution(query)
@@ -449,6 +456,19 @@ class GeminiCommandWrapper:
                 )
 
             response_content = response_content.strip()
+
+            # Validate output if schema defined
+            if (
+                expansion_result.primary_xprompt
+                and expansion_result.primary_xprompt.output
+            ):
+                is_valid, error = validate_output(
+                    response_content, expansion_result.primary_xprompt.output
+                )
+                if not is_valid and not self.suppress_output:
+                    from rich.console import Console
+
+                    Console().print(f"[yellow]⚠ Output validation: {error}[/yellow]")
 
             # Play audio notification for agent reply (only if not suppressed)
             if not self.suppress_output:
