@@ -3,12 +3,7 @@
 import re
 
 from xprompt.models import InputArg, InputType, XPrompt
-from xprompt.output_schema import OutputSchema, OutputType
-from xprompt.processor import (
-    _XPROMPT_PATTERN,
-    _validate_and_convert_args,
-    process_xprompt_references_with_metadata,
-)
+from xprompt.processor import _XPROMPT_PATTERN, _validate_and_convert_args
 
 
 def test_xprompt_pattern_simple_name() -> None:
@@ -209,86 +204,3 @@ def test_validate_and_convert_args_explicit_named_arg_not_overwritten() -> None:
     # Positional still maps to named, but then named_args processing overwrites
     assert conv_positional == ["positional value"]
     assert conv_named == {"prompt": "explicit named value"}
-
-
-def test_process_xprompt_references_with_metadata_no_xprompts() -> None:
-    """Test that no xprompts returns None as primary_xprompt."""
-    result = process_xprompt_references_with_metadata(
-        "Hello world, no xprompts here", xprompts={}
-    )
-    assert result.expanded_prompt == "Hello world, no xprompts here"
-    assert result.primary_xprompt is None
-
-
-def test_process_xprompt_references_with_metadata_no_hash() -> None:
-    """Test that prompts without # return early."""
-    result = process_xprompt_references_with_metadata(
-        "Hello world", xprompts={"foo": XPrompt(name="foo", content="bar")}
-    )
-    assert result.expanded_prompt == "Hello world"
-    assert result.primary_xprompt is None
-
-
-def test_process_xprompt_references_with_metadata_single_xprompt() -> None:
-    """Test that single xprompt is captured as primary."""
-    xprompts = {"greeting": XPrompt(name="greeting", content="Hello from xprompt!")}
-    result = process_xprompt_references_with_metadata("#greeting", xprompts=xprompts)
-    assert result.expanded_prompt == "Hello from xprompt!"
-    assert result.primary_xprompt is not None
-    assert result.primary_xprompt.name == "greeting"
-
-
-def test_process_xprompt_references_with_metadata_nested_xprompts() -> None:
-    """Test that outermost xprompt is captured as primary for nested xprompts."""
-    xprompts = {
-        "outer": XPrompt(name="outer", content="Outer contains: #inner"),
-        "inner": XPrompt(name="inner", content="Inner content"),
-    }
-    result = process_xprompt_references_with_metadata("#outer", xprompts=xprompts)
-    assert result.expanded_prompt == "Outer contains: Inner content"
-    # The outermost xprompt should be captured as primary
-    assert result.primary_xprompt is not None
-    assert result.primary_xprompt.name == "outer"
-
-
-def test_process_xprompt_references_with_metadata_unknown_xprompt() -> None:
-    """Test that unknown xprompts are not expanded and primary is None."""
-    xprompts = {"known": XPrompt(name="known", content="Known content")}
-    result = process_xprompt_references_with_metadata(
-        "#unknown_xprompt", xprompts=xprompts
-    )
-    assert result.expanded_prompt == "#unknown_xprompt"
-    assert result.primary_xprompt is None
-
-
-def test_process_xprompt_references_with_metadata_with_output_schema() -> None:
-    """Test that primary xprompt with output schema is accessible."""
-    output_schema = OutputSchema(type=OutputType.YAML_SCHEMA, validator="test")
-    xprompts = {
-        "with_output": XPrompt(
-            name="with_output",
-            content="Generate YAML",
-            output=output_schema,
-        )
-    }
-    result = process_xprompt_references_with_metadata("#with_output", xprompts=xprompts)
-    assert result.expanded_prompt == "Generate YAML"
-    assert result.primary_xprompt is not None
-    assert result.primary_xprompt.output is not None
-    assert result.primary_xprompt.output.type == OutputType.YAML_SCHEMA
-
-
-def test_process_xprompt_references_with_metadata_first_in_forward_order() -> None:
-    """Test that when multiple xprompts in prompt, first one in forward order is primary."""
-    xprompts = {
-        "first": XPrompt(name="first", content="First content"),
-        "second": XPrompt(name="second", content="Second content"),
-    }
-    result = process_xprompt_references_with_metadata(
-        "#first and #second", xprompts=xprompts
-    )
-    assert "First content" in result.expanded_prompt
-    assert "Second content" in result.expanded_prompt
-    # The first xprompt in forward order should be primary
-    assert result.primary_xprompt is not None
-    assert result.primary_xprompt.name == "first"

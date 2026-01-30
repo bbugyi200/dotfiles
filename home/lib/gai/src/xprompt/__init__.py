@@ -17,11 +17,9 @@ from .output_processing import (
 )
 from .output_schema import OutputSchema, OutputType
 from .processor import (
-    XPromptExpansionResult,
     is_jinja2_template,
     process_snippet_references,
     process_xprompt_references,
-    process_xprompt_references_with_metadata,
     render_toplevel_jinja2,
 )
 
@@ -42,10 +40,8 @@ __all__ = [
     "get_all_snippets",
     "get_all_xprompts",
     # Processor
-    "XPromptExpansionResult",
     "is_jinja2_template",
     "process_snippet_references",
     "process_xprompt_references",
-    "process_xprompt_references_with_metadata",
     "render_toplevel_jinja2",
 ]

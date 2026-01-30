@@ -2,7 +2,6 @@
 
 import re
 import sys
-from dataclasses import dataclass
 from typing import Any
 
 from jinja2 import BaseLoader, Environment, StrictUndefined, TemplateError
@@ -10,20 +9,6 @@ from rich_utils import print_status
 
 from .loader import get_all_xprompts
 from .models import XPrompt, XPromptValidationError
-
-
-@dataclass
-class XPromptExpansionResult:
-    """Result of xprompt expansion with metadata.
-
-    Attributes:
-        expanded_prompt: The fully expanded prompt text.
-        primary_xprompt: The first/outermost xprompt expanded (for output validation),
-            or None if no xprompts were expanded.
-    """
-
-    expanded_prompt: str
-    primary_xprompt: XPrompt | None
 
 
 class _XPromptError(Exception):
@@ -515,39 +500,42 @@ def _expand_single_xprompt(
     )
 
 
-def process_xprompt_references_with_metadata(
-    prompt: str,
-    xprompts: dict[str, XPrompt] | None = None,
-) -> XPromptExpansionResult:
-    """Process xprompt references and return expansion with metadata.
+def process_xprompt_references(prompt: str) -> str:
+    """Process xprompt references in the prompt.
 
-    This is the core implementation that tracks which xprompts were expanded.
-    The primary_xprompt in the result is the first xprompt matched in the
-    first iteration (the outermost/user-invoked xprompt).
+    Expands all #xprompt_name and #xprompt_name(arg1, arg2) patterns
+    with their corresponding content from files or config.
+
+    Supports:
+    - Simple xprompts: #foo
+    - XPrompts with positional args: #bar(arg1, arg2)
+    - XPrompts with named args: #bar(name=value, other="text")
+    - Mixed args: #bar(pos1, name=value)
+    - Text block args: #bar([[multi-line content]])
+    - Colon syntax for single arg: #foo:arg
+    - Plus syntax (equivalent to :true): #foo+
+    - Legacy placeholders: {1}, {2}, {1:default}
+    - Jinja2 templates: {{ name }}, {% if %}, etc.
+    - Recursive expansion (xprompts can reference other xprompts)
 
     Args:
-        prompt: The prompt text to process.
-        xprompts: Optional pre-loaded xprompts dict. If None, loads from config.
+        prompt: The prompt text to process
 
     Returns:
-        XPromptExpansionResult with expanded prompt and primary xprompt metadata.
+        The transformed prompt with xprompts expanded
 
     Raises:
-        SystemExit: If any xprompt processing error occurs.
+        SystemExit: If any xprompt processing error occurs
     """
-    if xprompts is None:
-        xprompts = get_all_xprompts()
-
+    xprompts = get_all_xprompts()
     if not xprompts:
-        return XPromptExpansionResult(expanded_prompt=prompt, primary_xprompt=None)
+        return prompt  # No xprompts defined
 
     # Check if there are any potential xprompt references
     if "#" not in prompt:
-        return XPromptExpansionResult(expanded_prompt=prompt, primary_xprompt=None)
+        return prompt
 
-    primary_xprompt: XPrompt | None = None
     iteration = 0
-
     while iteration < _MAX_EXPANSION_ITERATIONS:
         # Find all xprompt references
         matches = list(re.finditer(_XPROMPT_PATTERN, prompt, re.MULTILINE))
@@ -576,17 +564,6 @@ def process_xprompt_references_with_metadata(
                     continue
 
                 xprompt = xprompts[name]
-
-                # On first iteration, capture the first known xprompt as primary
-                # (we process in reverse order, so this is actually the first one
-                # in the original prompt text order)
-                if iteration == 0 and primary_xprompt is None:
-                    # Find the first xprompt in forward order
-                    for fwd_match in matches:
-                        fwd_name = fwd_match.group(1)
-                        if fwd_name in xprompts:
-                            primary_xprompt = xprompts[fwd_name]
-                            break
 
                 # Extract arguments from parenthesis, colon, or plus syntax
                 # Group 2: open paren marker, Group 3: colon arg, Group 4: plus
@@ -644,41 +621,7 @@ def process_xprompt_references_with_metadata(
         )
         sys.exit(1)
 
-    return XPromptExpansionResult(
-        expanded_prompt=prompt,
-        primary_xprompt=primary_xprompt,
-    )
-
-
-def process_xprompt_references(prompt: str) -> str:
-    """Process xprompt references in the prompt.
-
-    Expands all #xprompt_name and #xprompt_name(arg1, arg2) patterns
-    with their corresponding content from files or config.
-
-    Supports:
-    - Simple xprompts: #foo
-    - XPrompts with positional args: #bar(arg1, arg2)
-    - XPrompts with named args: #bar(name=value, other="text")
-    - Mixed args: #bar(pos1, name=value)
-    - Text block args: #bar([[multi-line content]])
-    - Colon syntax for single arg: #foo:arg
-    - Plus syntax (equivalent to :true): #foo+
-    - Legacy placeholders: {1}, {2}, {1:default}
-    - Jinja2 templates: {{ name }}, {% if %}, etc.
-    - Recursive expansion (xprompts can reference other xprompts)
-
-    Args:
-        prompt: The prompt text to process
-
-    Returns:
-        The transformed prompt with xprompts expanded
-
-    Raises:
-        SystemExit: If any xprompt processing error occurs
-    """
-    result = process_xprompt_references_with_metadata(prompt)
-    return result.expanded_prompt
+    return prompt
 
 
 # Backward compatibility alias
