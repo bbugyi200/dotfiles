@@ -7,7 +7,6 @@ from typing import Any
 import yaml  # type: ignore[import-untyped]
 
 from .models import InputArg, InputType, XPrompt
-from .output_schema import OutputSchema, OutputType
 
 
 def _get_config_path() -> str:
@@ -126,62 +125,6 @@ def _parse_inputs_from_front_matter(
     return inputs
 
 
-def _parse_output_type(type_str: str) -> OutputType | None:
-    """Parse an output type string to OutputType enum.
-
-    Args:
-        type_str: The type string (e.g., "yaml_schema").
-
-    Returns:
-        The corresponding OutputType enum value, or None if unrecognized.
-    """
-    type_map = {
-        "yaml_schema": OutputType.YAML_SCHEMA,
-        "yaml": OutputType.YAML_SCHEMA,  # Alias
-    }
-    return type_map.get(type_str.lower())
-
-
-def _parse_output_from_front_matter(
-    output_dict: dict[str, Any] | None,
-) -> OutputSchema | None:
-    """Parse output schema definition from front matter.
-
-    Args:
-        output_dict: The output dict from YAML front matter.
-
-    Returns:
-        OutputSchema object if valid, None otherwise.
-    """
-    if not output_dict or not isinstance(output_dict, dict):
-        return None
-
-    # Type is required
-    type_str = output_dict.get("type")
-    if not type_str or not isinstance(type_str, str):
-        return None
-
-    output_type = _parse_output_type(type_str)
-    if output_type is None:
-        return None
-
-    # Validator is optional
-    validator = output_dict.get("validator")
-    if validator is not None and not isinstance(validator, str):
-        validator = None
-
-    # Format instructions are optional
-    format_instructions = output_dict.get("format_instructions")
-    if format_instructions is not None and not isinstance(format_instructions, str):
-        format_instructions = None
-
-    return OutputSchema(
-        type=output_type,
-        validator=validator,
-        format_instructions=format_instructions,
-    )
-
-
 def _load_xprompt_from_file(file_path: Path) -> XPrompt | None:
     """Load a single xprompt from a markdown file.
 
@@ -209,17 +152,11 @@ def _load_xprompt_from_file(file_path: Path) -> XPrompt | None:
     if front_matter and "input" in front_matter:
         inputs = _parse_inputs_from_front_matter(front_matter["input"])
 
-    # Parse output schema if present
-    output: OutputSchema | None = None
-    if front_matter and "output" in front_matter:
-        output = _parse_output_from_front_matter(front_matter["output"])
-
     return XPrompt(
         name=name,
         content=body,
         inputs=inputs,
         source_path=str(file_path),
-        output=output,
     )
 
 
