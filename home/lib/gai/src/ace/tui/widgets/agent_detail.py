@@ -497,12 +497,7 @@ class _AgentDiffPanel(Static):
             )
 
             if result.returncode == 0 and result.stdout.strip():
-                # Limit output size to avoid UI issues
-                output = result.stdout
-                max_chars = 10000
-                if len(output) > max_chars:
-                    output = output[:max_chars] + "\n... (truncated)"
-                return output
+                return result.stdout
             return None
 
         except subprocess.TimeoutExpired:
@@ -531,10 +526,6 @@ class _AgentDiffPanel(Static):
         try:
             with open(expanded_path, encoding="utf-8") as f:
                 diff_content = f.read()
-                # Truncate if too long
-                max_chars = 10000
-                if len(diff_content) > max_chars:
-                    diff_content = diff_content[:max_chars] + "\n... (truncated)"
         except Exception:
             text = Text("Could not read diff file.\n", style="dim italic")
             self.update(text)
