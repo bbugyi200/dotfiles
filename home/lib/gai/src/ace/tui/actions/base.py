@@ -246,11 +246,11 @@ class BaseActionsMixin:
             self.notify("CL is not set", severity="warning")  # type: ignore[attr-defined]
             return
 
-        # Validate status is Drafted or Mailed
+        # Validate status is WIP, Drafted, or Mailed
         base_status = get_base_status(changespec.status)
-        if base_status not in ("Drafted", "Mailed"):
+        if base_status not in ("WIP", "Drafted", "Mailed"):
             self.notify(  # type: ignore[attr-defined]
-                "Reword is only available for Drafted or Mailed ChangeSpecs",
+                "Reword is only available for WIP, Drafted, or Mailed ChangeSpecs",
                 severity="warning",
             )
             return

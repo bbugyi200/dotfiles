@@ -286,9 +286,9 @@ class KeybindingFooter(Horizontal):
 
         base_status = get_base_status(changespec.status)
 
-        # Reword (only if CL exists AND status is Drafted or Mailed)
+        # Reword (only if CL exists AND status is WIP, Drafted, or Mailed)
         if changespec.cl is not None:
-            if base_status in ("Drafted", "Mailed"):
+            if base_status in ("WIP", "Drafted", "Mailed"):
                 bindings.append(("w", "reword"))
 
         # Mail (only if READY TO MAIL)
