@@ -18,6 +18,16 @@ class InputType(Enum):
     FLOAT = "float"
 
 
+class OutputType(Enum):
+    """Supported output field types for XPrompt output schemas."""
+
+    WORD = "word"  # Single word, no whitespace
+    LINE = "line"  # Single line, no newlines
+    TEXT = "text"  # Multi-line text (any content)
+    PATH = "path"  # File path (no whitespace, existence not checked)
+    STRING = "string"  # Raw JSON Schema string (no validation)
+
+
 @dataclass
 class OutputSpec:
     """Output specification for validating agent responses.

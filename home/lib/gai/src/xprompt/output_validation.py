@@ -1,12 +1,13 @@
 """Output validation utilities for XPrompt responses."""
 
+import copy
 import json
 import re
 from typing import Any
 
 from jsonschema import ValidationError, validate  # type: ignore[import-untyped]
 
-from .models import OutputSpec
+from .models import OutputSpec, OutputType
 
 
 class OutputValidationError(Exception):
@@ -79,21 +80,182 @@ def extract_structured_content(response: str) -> tuple[Any, str]:
     )
 
 
-def validate_against_schema(
-    data: Any, schema: dict[str, Any]
-) -> tuple[bool, str | None]:
-    """Validate data against a JSON Schema.
+# Set of semantic output types that map to JSON Schema "string"
+_SEMANTIC_OUTPUT_TYPES = {t.value for t in OutputType}
+
+
+def _validate_semantic_type(
+    value: Any, output_type: str, field_path: str
+) -> str | None:
+    """Validate a value against a semantic output type.
+
+    Args:
+        value: The value to validate.
+        output_type: The semantic type (word, line, text, path, string).
+        field_path: The JSON path to this field for error messages.
+
+    Returns:
+        Error message if invalid, None if valid.
+    """
+    if not isinstance(value, str):
+        return None  # Only validate strings
+
+    if output_type == OutputType.WORD.value:
+        if any(c.isspace() for c in value):
+            truncated = value[:50] + "..." if len(value) > 50 else value
+            return f"At {field_path}: expected word (no spaces), got '{truncated}'"
+    elif output_type == OutputType.LINE.value:
+        if "\n" in value:
+            return f"At {field_path}: expected line (no newlines)"
+    elif output_type == OutputType.PATH.value:
+        if any(c.isspace() for c in value):
+            truncated = value[:50] + "..." if len(value) > 50 else value
+            return f"At {field_path}: expected path (no spaces), got '{truncated}'"
+    # text and string have no validation
+    return None
+
+
+def _convert_semantic_schema_to_json_schema(
+    schema: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, str]]:
+    """Convert semantic types in a schema to JSON Schema string types.
+
+    Args:
+        schema: The schema potentially containing semantic types.
+
+    Returns:
+        Tuple of (converted_schema, type_map) where type_map maps JSON paths
+        to their original semantic types.
+    """
+    converted = copy.deepcopy(schema)
+    type_map: dict[str, str] = {}
+
+    def _convert_recursive(node: Any, path: str) -> None:
+        if not isinstance(node, dict):
+            return
+
+        # Check if this node has a semantic type
+        if "type" in node and node["type"] in _SEMANTIC_OUTPUT_TYPES:
+            type_map[path] = node["type"]
+            node["type"] = "string"
+
+        # Recurse into properties
+        if "properties" in node and isinstance(node["properties"], dict):
+            for prop_name, prop_schema in node["properties"].items():
+                prop_path = f"{path}.{prop_name}" if path else prop_name
+                _convert_recursive(prop_schema, prop_path)
+
+        # Recurse into items (for arrays)
+        if "items" in node:
+            items = node["items"]
+            if isinstance(items, dict):
+                items_path = f"{path}[]" if path else "[]"
+                _convert_recursive(items, items_path)
+            elif isinstance(items, list):
+                for i, item in enumerate(items):
+                    items_path = f"{path}[{i}]" if path else f"[{i}]"
+                    _convert_recursive(item, items_path)
+
+        # Recurse into additionalProperties
+        if "additionalProperties" in node and isinstance(
+            node["additionalProperties"], dict
+        ):
+            ap_path = f"{path}.*" if path else "*"
+            _convert_recursive(node["additionalProperties"], ap_path)
+
+        # Recurse into anyOf, oneOf, allOf
+        for key in ("anyOf", "oneOf", "allOf"):
+            if key in node and isinstance(node[key], list):
+                for i, sub_schema in enumerate(node[key]):
+                    _convert_recursive(sub_schema, path)
+
+    _convert_recursive(converted, "")
+    return converted, type_map
+
+
+def _validate_semantic_types_recursive(
+    data: Any,
+    schema: dict[str, Any],
+    type_map: dict[str, str],
+    path: str,
+) -> list[str]:
+    """Walk parsed data and schema together to validate semantic types.
 
     Args:
         data: The parsed data to validate.
-        schema: The JSON Schema to validate against.
+        schema: The original schema (before conversion).
+        type_map: Map of JSON paths to semantic types.
+        path: Current path in the data structure.
+
+    Returns:
+        List of error messages for any semantic type violations.
+    """
+    errors: list[str] = []
+
+    # Check if this path has a semantic type
+    if path in type_map:
+        error = _validate_semantic_type(data, type_map[path], path or "root")
+        if error:
+            errors.append(error)
+
+    if isinstance(data, dict):
+        properties = schema.get("properties", {})
+        for key, value in data.items():
+            child_path = f"{path}.{key}" if path else key
+            if key in properties:
+                errors.extend(
+                    _validate_semantic_types_recursive(
+                        value, properties[key], type_map, child_path
+                    )
+                )
+            else:
+                # Check additionalProperties
+                ap = schema.get("additionalProperties")
+                if isinstance(ap, dict):
+                    ap_path = f"{path}.*" if path else "*"
+                    if ap_path in type_map:
+                        error = _validate_semantic_type(
+                            value, type_map[ap_path], child_path
+                        )
+                        if error:
+                            errors.append(error)
+
+    elif isinstance(data, list):
+        items_schema = schema.get("items", {})
+        if isinstance(items_schema, dict):
+            items_path = f"{path}[]" if path else "[]"
+            for item in data:
+                errors.extend(
+                    _validate_semantic_types_recursive(
+                        item, items_schema, type_map, items_path
+                    )
+                )
+
+    return errors
+
+
+def validate_against_schema(
+    data: Any, schema: dict[str, Any]
+) -> tuple[bool, str | None]:
+    """Validate data against a JSON Schema with semantic type support.
+
+    Supports semantic output types (word, line, text, path) in addition to
+    standard JSON Schema types. Semantic types are converted to "string" for
+    JSON Schema validation, then validated separately.
+
+    Args:
+        data: The parsed data to validate.
+        schema: The JSON Schema to validate against (may contain semantic types).
 
     Returns:
         Tuple of (is_valid, error_message). error_message is None if valid.
     """
+    # Convert semantic types to JSON Schema string types
+    converted_schema, type_map = _convert_semantic_schema_to_json_schema(schema)
+
+    # First, validate with standard JSON Schema
     try:
-        validate(instance=data, schema=schema)
-        return True, None
+        validate(instance=data, schema=converted_schema)
     except ValidationError as e:
         # Build a helpful error message
         path = " -> ".join(str(p) for p in e.absolute_path) if e.absolute_path else ""
@@ -102,6 +264,56 @@ def validate_against_schema(
         else:
             error_msg = e.message
         return False, error_msg
+
+    # Then, validate semantic types
+    if type_map:
+        semantic_errors = _validate_semantic_types_recursive(data, schema, type_map, "")
+        if semantic_errors:
+            return False, semantic_errors[0]  # Return first error
+
+    return True, None
+
+
+def _extract_semantic_type_hints(schema: Any, path: str = "") -> list[str]:
+    """Extract semantic type hints from a schema for format instructions.
+
+    Args:
+        schema: The schema to extract hints from (may be non-dict in recursive calls).
+        path: Current path in the schema.
+
+    Returns:
+        List of hint strings describing semantic type constraints.
+    """
+    hints: list[str] = []
+
+    if not isinstance(schema, dict):
+        return hints
+
+    # Check if this node has a semantic type
+    type_val = schema.get("type", "")
+    if type_val in _SEMANTIC_OUTPUT_TYPES and type_val != OutputType.STRING.value:
+        field_desc = path if path else "root"
+        if type_val == OutputType.WORD.value:
+            hints.append(f"- `{field_desc}`: must be a single word (no spaces)")
+        elif type_val == OutputType.LINE.value:
+            hints.append(f"- `{field_desc}`: must be a single line (no newlines)")
+        elif type_val == OutputType.PATH.value:
+            hints.append(f"- `{field_desc}`: must be a valid path (no spaces)")
+        elif type_val == OutputType.TEXT.value:
+            pass  # No constraint to describe
+
+    # Recurse into properties
+    if "properties" in schema and isinstance(schema["properties"], dict):
+        for prop_name, prop_schema in schema["properties"].items():
+            prop_path = f"{path}.{prop_name}" if path else prop_name
+            hints.extend(_extract_semantic_type_hints(prop_schema, prop_path))
+
+    # Recurse into items (for arrays)
+    if "items" in schema and isinstance(schema["items"], dict):
+        items_path = f"{path}[]" if path else "items"
+        hints.extend(_extract_semantic_type_hints(schema["items"], items_path))
+
+    return hints
 
 
 def generate_format_instructions(output_spec: OutputSpec) -> str:
@@ -118,6 +330,17 @@ def generate_format_instructions(output_spec: OutputSpec) -> str:
 
     schema_str = json.dumps(output_spec.schema, indent=2)
 
+    # Extract semantic type hints
+    semantic_hints = _extract_semantic_type_hints(output_spec.schema)
+    semantic_section = ""
+    if semantic_hints:
+        hints_text = "\n".join(semantic_hints)
+        semantic_section = f"""
+
+FIELD CONSTRAINTS:
+{hints_text}
+"""
+
     instructions = f"""
 
 ---
@@ -128,7 +351,7 @@ Your response MUST be valid JSON that conforms to the following JSON Schema:
 ```json
 {schema_str}
 ```
-
+{semantic_section}
 IMPORTANT:
 - Output ONLY the JSON data, wrapped in a code fence (```json ... ```)
 - Do NOT include any explanation or commentary before or after the JSON

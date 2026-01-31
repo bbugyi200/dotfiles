@@ -16,11 +16,11 @@ output:
         - description
       properties:
         name:
-          type: string
+          type: word
         description:
-          type: string
+          type: text
         parent:
-          type: string
+          type: word
 ---
 
 # Generate Split Specification
