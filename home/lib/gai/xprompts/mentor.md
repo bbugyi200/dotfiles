@@ -20,6 +20,6 @@ input:
 
 ### Review Focus
 
-${prompt}
+{{ prompt }}
 
 #cl

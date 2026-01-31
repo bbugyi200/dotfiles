@@ -195,7 +195,7 @@ input:
   - name: arg1
     type: string
 ---
-Hello ${arg1}!"""
+Hello {{ arg1 }}!"""
 
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".md", delete=False, encoding="utf-8"
@@ -210,7 +210,7 @@ Hello ${arg1}!"""
         assert xprompt.name == "my_prompt"
         assert len(xprompt.inputs) == 1
         assert xprompt.inputs[0].name == "arg1"
-        assert "Hello ${arg1}" in xprompt.content
+        assert "Hello {{ arg1 }}" in xprompt.content
         assert xprompt.source_path == str(temp_path)
     finally:
         temp_path.unlink()

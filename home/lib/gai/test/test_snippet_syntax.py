@@ -162,7 +162,7 @@ def test_process_snippet_colon_and_paren_in_same_prompt() -> None:
 
 def test_process_snippet_jinja2_named_args() -> None:
     """Test Jinja2 snippet with named arguments."""
-    snippets = {"greet": "Hello ${name}!"}
+    snippets = {"greet": "Hello {{ name }}!"}
     with patch(
         "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
@@ -172,7 +172,7 @@ def test_process_snippet_jinja2_named_args() -> None:
 
 def test_process_snippet_jinja2_multiple_named_args() -> None:
     """Test Jinja2 snippet with multiple named arguments."""
-    snippets = {"msg": "${sender} says ${message}"}
+    snippets = {"msg": "{{ sender }} says {{ message }}"}
     with patch(
         "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
@@ -182,7 +182,7 @@ def test_process_snippet_jinja2_multiple_named_args() -> None:
 
 def test_process_snippet_jinja2_quoted_named_args() -> None:
     """Test Jinja2 snippet with quoted named arguments containing spaces."""
-    snippets = {"greet": "Hello ${name}!"}
+    snippets = {"greet": "Hello {{ name }}!"}
     with patch(
         "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
@@ -192,7 +192,7 @@ def test_process_snippet_jinja2_quoted_named_args() -> None:
 
 def test_process_snippet_jinja2_mixed_args() -> None:
     """Test Jinja2 snippet with mixed positional and named arguments."""
-    snippets = {"msg": "${_1} says ${message}"}
+    snippets = {"msg": "{{ _1 }} says {{ message }}"}
     with patch(
         "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
@@ -202,7 +202,7 @@ def test_process_snippet_jinja2_mixed_args() -> None:
 
 def test_process_snippet_jinja2_conditional() -> None:
     """Test Jinja2 snippet with conditional."""
-    snippets = {"greet": "Hello ${name}{% if formal %}, sir{% endif %}!"}
+    snippets = {"greet": "Hello {{ name }}{% if formal %}, sir{% endif %}!"}
     with patch(
         "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
@@ -212,7 +212,7 @@ def test_process_snippet_jinja2_conditional() -> None:
 
 def test_process_snippet_jinja2_default_filter() -> None:
     """Test Jinja2 snippet with default filter."""
-    snippets = {"greet": "Hello ${name | default('World')}!"}
+    snippets = {"greet": "Hello {{ name | default('World') }}!"}
     with patch(
         "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
@@ -222,7 +222,7 @@ def test_process_snippet_jinja2_default_filter() -> None:
 
 def test_process_snippet_jinja2_upper_filter() -> None:
     """Test Jinja2 snippet with upper filter."""
-    snippets = {"shout": "${text | upper}"}
+    snippets = {"shout": "{{ text | upper }}"}
     with patch(
         "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
@@ -232,7 +232,7 @@ def test_process_snippet_jinja2_upper_filter() -> None:
 
 def test_process_snippet_jinja2_colon_syntax() -> None:
     """Test Jinja2 snippet with colon syntax maps to _1."""
-    snippets = {"greet": "Hello ${_1}!"}
+    snippets = {"greet": "Hello {{ _1 }}!"}
     with patch(
         "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
@@ -243,7 +243,7 @@ def test_process_snippet_jinja2_colon_syntax() -> None:
 def test_process_snippet_nested_jinja2() -> None:
     """Test nested Jinja2 snippets."""
     snippets = {
-        "inner": "${name | upper}",
+        "inner": "{{ name | upper }}",
         "outer": "Greeting: #inner(name=world)",
     }
     with patch(
@@ -267,7 +267,7 @@ def test_process_snippet_legacy_and_jinja2_together() -> None:
     """Test that legacy and Jinja2 snippets can coexist."""
     snippets = {
         "legacy": "Hello {1}!",
-        "jinja": "Goodbye ${name}!",
+        "jinja": "Goodbye {{ name }}!",
     }
     with patch(
         "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
@@ -291,7 +291,7 @@ def test_process_snippet_plus_syntax_basic() -> None:
 
 def test_process_snippet_plus_syntax_jinja2() -> None:
     """Test plus syntax with Jinja2 template using _1."""
-    snippets = {"enabled": "Feature enabled: ${_1}"}
+    snippets = {"enabled": "Feature enabled: {{ _1 }}"}
     with patch(
         "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
     ):
