@@ -6,7 +6,7 @@ from .cl_name_input_modal import CLNameAction, CLNameInputModal, CLNameResult
 from .command_history_modal import CommandHistoryModal
 from .command_input_modal import CommandInputModal
 from .confirm_kill_modal import ConfirmKillModal
-from .help_modal import HelpModal
+from .help_modal import HelpModal, TabName
 from .parent_select_modal import ParentSelectModal
 from .process_select_modal import ProcessSelection, ProcessSelectModal
 from .project_select_modal import ProjectSelectModal, SelectionItem
@@ -46,6 +46,7 @@ __all__ = [
     "SelectionItem",
     "SnippetSelectModal",
     "StatusModal",
+    "TabName",
     "XPromptSelectModal",
     "WorkflowSelectModal",
     "WorkspaceInputModal",
