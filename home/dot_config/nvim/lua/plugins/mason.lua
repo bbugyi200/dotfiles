@@ -28,6 +28,7 @@ return {
 				"lua_ls",
 				"ruff",
 				"vimls",
+				"yamlls",
 			},
 		},
 	},

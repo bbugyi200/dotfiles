@@ -1,0 +1,111 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GAI Configuration",
+  "description": "Configuration schema for gai.yml files",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "metahooks": {
+      "type": "array",
+      "description": "Metahooks intercept failing hooks before the summarize agent runs",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "hook_command", "output_regex"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Unique identifier for this metahook"
+          },
+          "hook_command": {
+            "type": "string",
+            "description": "The command that this metahook intercepts"
+          },
+          "output_regex": {
+            "type": "string",
+            "description": "Regex pattern to match in the hook output"
+          }
+        }
+      }
+    },
+    "mentor_profiles": {
+      "type": "array",
+      "description": "Mentor profiles define which mentors to apply to which files",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["profile_name", "mentors"],
+        "anyOf": [
+          { "required": ["file_globs"] },
+          { "required": ["diff_regexes"] },
+          { "required": ["amend_note_regexes"] }
+        ],
+        "properties": {
+          "profile_name": {
+            "type": "string",
+            "description": "Unique name for this mentor profile"
+          },
+          "mentors": {
+            "type": "array",
+            "description": "List of mentors to apply",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "oneOf": [
+                { "required": ["xprompt"] },
+                { "required": ["prompt", "mentor_name"] }
+              ],
+              "properties": {
+                "xprompt": {
+                  "type": "string",
+                  "description": "Reference to an xprompt (e.g., #mentor/aaa)"
+                },
+                "prompt": {
+                  "type": "string",
+                  "description": "Inline prompt text for the mentor"
+                },
+                "mentor_name": {
+                  "type": "string",
+                  "description": "Name for the mentor (required when using prompt)"
+                },
+                "run_on_wip": {
+                  "type": "boolean",
+                  "description": "Whether to run this mentor on WIP commits",
+                  "default": false
+                }
+              }
+            }
+          },
+          "file_globs": {
+            "type": "array",
+            "description": "Glob patterns to match files for this profile",
+            "items": {
+              "type": "string"
+            }
+          },
+          "diff_regexes": {
+            "type": "array",
+            "description": "Regex patterns to match in the diff output",
+            "items": {
+              "type": "string"
+            }
+          },
+          "amend_note_regexes": {
+            "type": "array",
+            "description": "Regex patterns to match in the amend note",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "xprompts": {
+      "type": "object",
+      "description": "Reusable text templates that can be referenced in prompts",
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  }
+}

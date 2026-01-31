@@ -39,6 +39,7 @@ return {
 					"sql",
 					"textproto",
 					"txt",
+					"yaml",
 				}
 
 				configs.ciderlsp = {
@@ -147,6 +148,22 @@ return {
 				cmd = { "vim-language-server", "--stdio" },
 				filetypes = { "vim" },
 				root_dir = cfg.util.root_pattern("vimrc", ".vimrc", "package.json", ".git"),
+			})
+
+			-- yaml-language-server
+			cfg.yamlls.setup({
+				settings = {
+					yaml = {
+						schemas = {
+							[vim.fn.expand("~/.config/gai/gai.schema.json")] = "gai.yml",
+						},
+						validate = true,
+						schemaStore = {
+							enable = true,
+							url = "https://www.schemastore.org/api/json/catalog.json",
+						},
+					},
+				},
 			})
 		end,
 	},
