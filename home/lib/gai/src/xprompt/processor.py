@@ -58,6 +58,14 @@ def _process_text_block(value: str) -> str:
 # Maximum number of expansion iterations to prevent infinite loops
 _MAX_EXPANSION_ITERATIONS = 100
 
+# Pattern to match shorthand syntax: #name: text (at beginning of line)
+# Note: The space after colon distinguishes from existing #name:arg syntax
+_SHORTHAND_PATTERN = re.compile(
+    r"(?:^|(?<=\n))"  # Must be at start of string or after newline
+    r"#([a-zA-Z_][a-zA-Z0-9_]*(?:/[a-zA-Z_][a-zA-Z0-9_]*)*)"  # Group 1: name
+    r": "  # Colon followed by space
+)
+
 # Pattern to match xprompt references: #name, #name(, #name:arg, or #name+
 # Must be at start of string, after whitespace, or after certain punctuation
 # Note: No space allowed after # (to avoid matching markdown headings)
@@ -103,6 +111,44 @@ def get_primary_output_schema(prompt: str) -> OutputSpec | None:
                 return xprompt.output
 
     return None
+
+
+def _find_shorthand_text_end(prompt: str, start: int) -> int:
+    """Find the end of shorthand text (at \\n\\n or end of string)."""
+    blank_line_pos = prompt.find("\n\n", start)
+    if blank_line_pos == -1:
+        return len(prompt)
+    return blank_line_pos
+
+
+def _preprocess_shorthand_syntax(prompt: str, xprompt_names: set[str]) -> str:
+    """Convert shorthand #name: text syntax to #name([[text]]) format."""
+    matches = list(re.finditer(_SHORTHAND_PATTERN, prompt))
+
+    for match in reversed(matches):  # Process last-to-first to preserve positions
+        name = match.group(1)
+        if name not in xprompt_names:
+            continue
+
+        text_start = match.end()
+        text_end = _find_shorthand_text_end(prompt, text_start)
+        text = prompt[text_start:text_end].rstrip()
+
+        # Format for [[...]] with 2-space indent on continuation lines
+        lines = text.split("\n")
+        formatted_lines = [lines[0]]
+        for line in lines[1:]:
+            if line.strip() == "":
+                formatted_lines.append("")
+            else:
+                formatted_lines.append("  " + line)
+
+        text_block_content = "\n".join(formatted_lines)
+        replacement = f"#{name}([[{text_block_content}]])"
+
+        prompt = prompt[: match.start()] + replacement + prompt[text_end:]
+
+    return prompt
 
 
 def _find_matching_paren_for_args(text: str, start: int) -> int | None:
@@ -566,6 +612,9 @@ def process_xprompt_references(prompt: str) -> str:
     # Check if there are any potential xprompt references
     if "#" not in prompt:
         return prompt
+
+    # Pre-process shorthand syntax (#name: text -> #name([[text]]))
+    prompt = _preprocess_shorthand_syntax(prompt, set(xprompts.keys()))
 
     iteration = 0
     while iteration < _MAX_EXPANSION_ITERATIONS:

@@ -98,92 +98,68 @@ xprompts:
   nocl: "#noc #cl"
   scuba: "Make sure all related tests pass, except for some scuba diff tests, which are expected to fail."
   mentor/aaa: |
-    #mentor([[
-      Can you help me enforce the AAA (arrange, act, assert) test method structure? In particular, find and fix Any test
-      method modified by this CL that does NOT structure its statements using the Arrange, Act, Assert pattern. There
-      should NEVER be a blank line that breaks up one of these sections. Use comments if necessary to separate different
-      parts of each section, but NEVER specify the section name using a comment (ex: '# Act'). When no section has more
-      than 1 top-level (ex: not nested in a lambda expression block) statement, no blank lines are necessary. Otherwise,
-      the sections should ALWAYS be separated by a blank line.
-    ]])
+    #mentor: Can you help me enforce the AAA (arrange, act, assert) test method structure? In particular, find and fix Any test
+    method modified by this CL that does NOT structure its statements using the Arrange, Act, Assert pattern. There
+    should NEVER be a blank line that breaks up one of these sections. Use comments if necessary to separate different
+    parts of each section, but NEVER specify the section name using a comment (ex: '# Act'). When no section has more
+    than 1 top-level (ex: not nested in a lambda expression block) statement, no blank lines are necessary. Otherwise,
+    the sections should ALWAYS be separated by a blank line.
   mentor/comments: |
-    #mentor([[
-      Can you help me ensure that all code changes in this CL follow best practices for code comments? Specifically,
-      ensure that:
-        + All public fields, functions, classes, and methods have clear and concise doc comments that follow best
-          practices for the language they are written in. EXCEPTIONS:
-            - Getters and setters do not need doc comments unless they have non-trivial logic.
-            - If the best you can do is restate the name of the field, function, class, or method in the comment, then
-              no comment is necessary.
-        + We are critical about the comments we add — avoid redundant comments that simply restate what the code does.
-    ]])
+    #mentor: Can you help me ensure that all code changes in this CL follow best practices for code comments? Specifically,
+    ensure that:
+      + All public fields, functions, classes, and methods have clear and concise doc comments that follow best
+        practices for the language they are written in. EXCEPTIONS:
+          - Getters and setters do not need doc comments unless they have non-trivial logic.
+          - If the best you can do is restate the name of the field, function, class, or method in the comment, then
+            no comment is necessary.
+      + We are critical about the comments we add — avoid redundant comments that simply restate what the code does.
   mentor/shared_code: |
-    #mentor([[
-      Can you help me identify any code that is duplicated across multiple files in this CL? You should use your
-      CodeSearch tool to search for duplication and/or existing shared utilities across the codebase (related to the
-      changes made in this CL). If you find any, please refactor the code to factor out a new shared utility / use the
-      existing shared utility.
-    ]])
+    #mentor: Can you help me identify any code that is duplicated across multiple files in this CL? You should use your
+    CodeSearch tool to search for duplication and/or existing shared utilities across the codebase (related to the
+    changes made in this CL). If you find any, please refactor the code to factor out a new shared utility / use the
+    existing shared utility.
   mentor/sound_tests: |
-    #mentor([[
-      Can you help me ensure that the changes made in this CL have proper test coverage? Specifically, you should
-      verify that:
-        + New logic comes with new or strengthened tests (or a clear justification for why existing tests are
-          sufficient).
-        + in the case of bug fixes, regressions are actively guarded against, not "accidentally avoided": include at
-          least one test that would have failed before the change.
-    ]])
+    #mentor: Can you help me ensure that the changes made in this CL have proper test coverage? Specifically, you should
+    verify that:
+      + New logic comes with new or strengthened tests (or a clear justification for why existing tests are
+        sufficient).
+      + in the case of bug fixes, regressions are actively guarded against, not "accidentally avoided": include at
+        least one test that would have failed before the change.
   mentor/symbol_names: |
-    #mentor([[
-      Can you help me ensure that all classes, methods, functions, variables, and fields modified by this CL have clear
-      and descriptive names that follow best practices for the language they are written in?
-    ]])
+    #mentor: Can you help me ensure that all classes, methods, functions, variables, and fields modified by this CL have clear
+    and descriptive names that follow best practices for the language they are written in?
   mentor/vision: |
-    #mentor([[
-      Can you help me check all code modified by this CL to ensure that the visibility modifiers (ex: public / private /
-      protected for Java or just a leading underscore for private Dart symbols) of all classes, methods, and fields
-      modified in this CL are appropriate? Make sure that no class, method, or field is more visible than it needs to
-      be. For example, if a method is only used within its own class, it should be marked as private instead of public
-      or protected. Dead code (unused public functionality that was added by this CL) should also be removed.
-    ]])
+    #mentor: Can you help me check all code modified by this CL to ensure that the visibility modifiers (ex: public / private /
+    protected for Java or just a leading underscore for private Dart symbols) of all classes, methods, and fields
+    modified in this CL are appropriate? Make sure that no class, method, or field is more visible than it needs to
+    be. For example, if a method is only used within its own class, it should be marked as private instead of public
+    or protected. Dead code (unused public functionality that was added by this CL) should also be removed.
   mentor/complete: |
     {% set chat_val = "#chat" -%}
     {%- set chat_clause = ", the initial conversation with Gemini that resulted in the creation of this CL (shown in the " ~ chat_val ~ " file)," if chat_val != "@" else "" -%}
-    #mentor([[
-      Can you help me ensure that this feature is functonally complete based off of the CL description (shown in the
-      CL description file below){{ chat_clause }} and the file changes that have been made so far (shown in the diff file below)? Do
-      NOT consider test completeness (we have other mentors for that).
-    ]])
+    #mentor: Can you help me ensure that this feature is functonally complete based off of the CL description (shown in the
+    CL description file below){{ chat_clause }} and the file changes that have been made so far (shown in the diff file below)? Do
+    NOT consider test completeness (we have other mentors for that).
   mentor/g3doc: |
-    #mentor([[
-      Can you help me ensure that markdown file changes in this CL adhere to the g3doc best practices outlined in
-      the @corp/g3doc/docs/reference/style.md file?
-    ]])
+    #mentor: Can you help me ensure that markdown file changes in this CL adhere to the g3doc best practices outlined in
+    the @corp/g3doc/docs/reference/style.md file?
   mentor/i18n: |
-    #mentor([[
-      Can you help me ensure that all user-facing strings introduced or modified in this CL are properly
-      internationalized? Make sure that we favor performing internationalization directly in templates (see
-      @third_party/dart_src/angular/g3doc/dev/i18n.md) instead of in Dart code files for short, simple strings.
-    ]])
+    #mentor: Can you help me ensure that all user-facing strings introduced or modified in this CL are properly
+    internationalized? Make sure that we favor performing internationalization directly in templates (see
+    @third_party/dart_src/angular/g3doc/dev/i18n.md) instead of in Dart code files for short, simple strings.
   mentor/pubfeat: |
-    #mentor([[
-      Can you ensure that if this CL adds a new #feat that the value we used for the 'id' field is equal to the
-      output of the `branch_number` command and that the value we used for the 'rollout_bug_id' field is equal to
-      the output of the `cl_bug` command?
-    ]])
+    #mentor: Can you ensure that if this CL adds a new #feat that the value we used for the 'id' field is equal to the
+    output of the `branch_number` command and that the value we used for the 'rollout_bug_id' field is equal to
+    the output of the `cl_bug` command?
   mentor/sql: |
-    #mentor([[
-      Can you help me ensure that the SQL files added by this CL have file paths of the form
-      `configs/storage/f1/data_changes/gfp-f1-prod/input/*.sql` OR `configs/storage/f1/data_changes/gfp-f1-prod/input/gfp-f1-<team>/*.sql`,
-      where `<team>` is the name of a team/domain (check to see which subdirectories exist)? We are only allowed to
-      use the latter form when that subdirectory contains a README.md file that lists the name of the SQL table we
-      are modifying; however, if that is the case, then you MUST use the latter form. You should also ensure that
-      this CL adheres to the best practices described in the @contentads/gfp/agave/g3doc/modify/data_change.md file.
-    ]])
+    #mentor: Can you help me ensure that the SQL files added by this CL have file paths of the form
+    `configs/storage/f1/data_changes/gfp-f1-prod/input/*.sql` OR `configs/storage/f1/data_changes/gfp-f1-prod/input/gfp-f1-<team>/*.sql`,
+    where `<team>` is the name of a team/domain (check to see which subdirectories exist)? We are only allowed to
+    use the latter form when that subdirectory contains a README.md file that lists the name of the SQL table we
+    are modifying; however, if that is the case, then you MUST use the latter form. You should also ensure that
+    this CL adheres to the best practices described in the @contentads/gfp/agave/g3doc/modify/data_change.md file.
   mentor/ui: |
-    #mentor([[
-      Can you help me ensure that the changes made by this CL adhere to the guidelines outlined in the
-      @contentads/drx/fe/client/g3doc/drx_ui_style.md document?
-    ]])
+    #mentor: Can you help me ensure that the changes made by this CL adhere to the guidelines outlined in the
+    @contentads/drx/fe/client/g3doc/drx_ui_style.md document?
   reporting: |
     Refer to the `contentads/drx/reporting/g3doc/**/*.md` files for documentation on how the reporting stack works.
