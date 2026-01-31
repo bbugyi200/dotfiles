@@ -154,9 +154,20 @@ class SplitWorkflow(BaseWorkflow):
         project_file, workspace_num, workspace_dir = (
             get_project_file_and_workspace_info(workspace_name)
         )
+
+        # Create artifacts directory early to get timestamp for workspace claim
+        # This allows the TUI to find and display the prompt file
+        artifacts_dir = create_artifacts_directory("split")
+        artifacts_timestamp = os.path.basename(artifacts_dir)
+
         if project_file and workspace_num:
             claim_success = claim_workspace(
-                project_file, workspace_num, "split", os.getpid(), cl_name
+                project_file,
+                workspace_num,
+                "split",
+                os.getpid(),
+                cl_name,
+                artifacts_timestamp=artifacts_timestamp,
             )
             if not claim_success:
                 print_status("Failed to claim workspace", "error")
@@ -177,6 +188,7 @@ class SplitWorkflow(BaseWorkflow):
                 bug=bug,
                 workspace_name=workspace_name,
                 yolo=self._yolo,
+                artifacts_dir=artifacts_dir,
             )
         finally:
             # Always release the workspace when done
@@ -193,6 +205,7 @@ class SplitWorkflow(BaseWorkflow):
         bug: str,
         workspace_name: str,
         yolo: bool,
+        artifacts_dir: str,
     ) -> bool:
         """Execute the main split workflow logic.
 
@@ -200,6 +213,7 @@ class SplitWorkflow(BaseWorkflow):
 
         Args:
             yolo: If True, auto-approve all prompts without user interaction.
+            artifacts_dir: Path to the artifacts directory (created in run()).
 
         Returns:
             True if successful, False otherwise.
@@ -213,9 +227,7 @@ class SplitWorkflow(BaseWorkflow):
             default_parent = "p4head"
         print_status(f"Default parent: {default_parent}", "info")
 
-        # Create artifacts directory early (needed for agent-based generation)
-        artifacts_dir = create_artifacts_directory("split")
-        print_status(f"Created artifacts directory: {artifacts_dir}", "success")
+        print_status(f"Using artifacts directory: {artifacts_dir}", "success")
 
         # Initialize the gai.md log
         initialize_gai_log(artifacts_dir, "split", workflow_tag)
