@@ -13,7 +13,7 @@ input:
   - name: note
     type: line
   - name: processing_order
-    type: line
+    type: text
 ---
 
 Can you help me replicate the changes shown in the @{{ diff_path }} file EXACTLY by splitting the changes across
