@@ -74,9 +74,9 @@ def handle_reword(self: "WorkflowContext", changespec: ChangeSpec) -> None:
 
     # Validate status (strip any suffix like "READY TO MAIL")
     base_status = get_base_status(changespec.status)
-    if base_status not in ("Drafted", "Mailed"):
+    if base_status not in ("WIP", "Drafted", "Mailed"):
         self.console.print(
-            "[yellow]reword option only available for Drafted or Mailed ChangeSpecs[/yellow]"
+            "[yellow]reword option only available for WIP, Drafted, or Mailed ChangeSpecs[/yellow]"
         )
         return
 
