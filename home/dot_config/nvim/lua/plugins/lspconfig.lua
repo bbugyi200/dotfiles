@@ -151,20 +151,22 @@ return {
 			})
 
 			-- yaml-language-server
-			cfg.yamlls.setup({
-				settings = {
-					yaml = {
-						schemas = {
-							[vim.fn.expand("~/.config/gai/gai.schema.json")] = "gai.yml",
-						},
-						validate = true,
-						schemaStore = {
-							enable = true,
-							url = "https://www.schemastore.org/api/json/catalog.json",
+			if vim.fn.executable("yaml-language-server") == 1 then
+				cfg.yamlls.setup({
+					settings = {
+						yaml = {
+							schemas = {
+								[vim.fn.expand("~/.config/gai/gai.schema.json")] = "gai.yml",
+							},
+							validate = true,
+							schemaStore = {
+								enable = true,
+								url = "https://www.schemastore.org/api/json/catalog.json",
+							},
 						},
 					},
-				},
-			})
+				})
+			end
 		end,
 	},
 }
