@@ -1,19 +1,22 @@
 """Beautiful help modal for the ace TUI."""
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, cast
 
 from rich.text import Text
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.containers import Container, Horizontal, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Static
+
+if TYPE_CHECKING:
+    from ..app import AceApp
 
 from ...query_history import load_query_history
 from ...saved_queries import KEY_ORDER, load_saved_queries
 from ..widgets.changespec_detail import build_query_text
 
-if TYPE_CHECKING:
-    TabName = Literal["changespecs", "agents", "axe"]
+TabName = Literal["changespecs", "agents", "axe"]
 
 # Box dimensions for consistent formatting
 _BOX_WIDTH = 57  # Total box width in characters
@@ -232,6 +235,20 @@ class HelpModal(ModalScreen[None]):
         ("question_mark", "close", "Close"),
         ("ctrl+d", "scroll_down", "Scroll down"),
         ("ctrl+u", "scroll_up", "Scroll up"),
+        # Saved query keybindings (CLs tab only)
+        Binding("1", "load_query_1", "Load Q1", show=False),
+        Binding("2", "load_query_2", "Load Q2", show=False),
+        Binding("3", "load_query_3", "Load Q3", show=False),
+        Binding("4", "load_query_4", "Load Q4", show=False),
+        Binding("5", "load_query_5", "Load Q5", show=False),
+        Binding("6", "load_query_6", "Load Q6", show=False),
+        Binding("7", "load_query_7", "Load Q7", show=False),
+        Binding("8", "load_query_8", "Load Q8", show=False),
+        Binding("9", "load_query_9", "Load Q9", show=False),
+        Binding("0", "load_query_0", "Load Q0", show=False),
+        # Query history navigation (CLs tab only)
+        Binding("circumflex_accent", "go_prev_query", "Prev Query", show=False),
+        Binding("underscore", "go_next_query", "Next Query", show=False),
     ]
 
     def __init__(
@@ -612,3 +629,91 @@ class HelpModal(ModalScreen[None]):
         scroll = self.query_one("#help-content-scroll", VerticalScroll)
         height = scroll.scrollable_content_region.height
         scroll.scroll_relative(y=-(height // 2), animate=False)
+
+    # --- Saved query actions (CLs tab only) ---
+
+    def action_load_query_1(self) -> None:
+        """Load saved query 1 and close modal."""
+        if self._current_tab != "changespecs":
+            return
+        self.dismiss(None)
+        cast("AceApp", self.app).action_load_saved_query_1()
+
+    def action_load_query_2(self) -> None:
+        """Load saved query 2 and close modal."""
+        if self._current_tab != "changespecs":
+            return
+        self.dismiss(None)
+        cast("AceApp", self.app).action_load_saved_query_2()
+
+    def action_load_query_3(self) -> None:
+        """Load saved query 3 and close modal."""
+        if self._current_tab != "changespecs":
+            return
+        self.dismiss(None)
+        cast("AceApp", self.app).action_load_saved_query_3()
+
+    def action_load_query_4(self) -> None:
+        """Load saved query 4 and close modal."""
+        if self._current_tab != "changespecs":
+            return
+        self.dismiss(None)
+        cast("AceApp", self.app).action_load_saved_query_4()
+
+    def action_load_query_5(self) -> None:
+        """Load saved query 5 and close modal."""
+        if self._current_tab != "changespecs":
+            return
+        self.dismiss(None)
+        cast("AceApp", self.app).action_load_saved_query_5()
+
+    def action_load_query_6(self) -> None:
+        """Load saved query 6 and close modal."""
+        if self._current_tab != "changespecs":
+            return
+        self.dismiss(None)
+        cast("AceApp", self.app).action_load_saved_query_6()
+
+    def action_load_query_7(self) -> None:
+        """Load saved query 7 and close modal."""
+        if self._current_tab != "changespecs":
+            return
+        self.dismiss(None)
+        cast("AceApp", self.app).action_load_saved_query_7()
+
+    def action_load_query_8(self) -> None:
+        """Load saved query 8 and close modal."""
+        if self._current_tab != "changespecs":
+            return
+        self.dismiss(None)
+        cast("AceApp", self.app).action_load_saved_query_8()
+
+    def action_load_query_9(self) -> None:
+        """Load saved query 9 and close modal."""
+        if self._current_tab != "changespecs":
+            return
+        self.dismiss(None)
+        cast("AceApp", self.app).action_load_saved_query_9()
+
+    def action_load_query_0(self) -> None:
+        """Load saved query 0 and close modal."""
+        if self._current_tab != "changespecs":
+            return
+        self.dismiss(None)
+        cast("AceApp", self.app).action_load_saved_query_0()
+
+    # --- Query history navigation actions (CLs tab only) ---
+
+    def action_go_prev_query(self) -> None:
+        """Navigate to previous query and close modal."""
+        if self._current_tab != "changespecs":
+            return
+        self.dismiss(None)
+        cast("AceApp", self.app).action_prev_query()
+
+    def action_go_next_query(self) -> None:
+        """Navigate to next query and close modal."""
+        if self._current_tab != "changespecs":
+            return
+        self.dismiss(None)
+        cast("AceApp", self.app).action_next_query()
