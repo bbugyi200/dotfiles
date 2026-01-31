@@ -45,7 +45,7 @@ Refer to the following files for guidance:
    - Example: `{{ workspace_name }}_add_logging`, `{{ workspace_name }}_refactor_utils`
 
 2. Each entry should have:
-   - `name`: The CL name (with {{ workspace_name }}\_ prefix)
+   - `name`: The CL name (with `{{ workspace_name }}_` prefix)
    - `description`: A clear, concise description following the CL description guidelines
    - `parent`: (optional) The name of the parent CL if this builds on another split CL
 
