@@ -152,13 +152,6 @@ class _AgentPromptPanel(Static):
 
                 response_content = agent.get_response_content()
                 if response_content:
-                    # Truncate if too long
-                    max_chars = 10000
-                    if len(response_content) > max_chars:
-                        response_content = (
-                            response_content[:max_chars] + "\n\n... (truncated)"
-                        )
-
                     response_syntax = Syntax(
                         response_content,
                         "markdown",
@@ -203,12 +196,7 @@ class _AgentPromptPanel(Static):
 
         try:
             with open(prompt_files[0], encoding="utf-8") as f:
-                content = f.read()
-                # Truncate if too long
-                max_chars = 10000
-                if len(content) > max_chars:
-                    content = content[:max_chars] + "\n\n... (truncated)"
-                return content
+                return f.read()
         except Exception:
             return None
 
