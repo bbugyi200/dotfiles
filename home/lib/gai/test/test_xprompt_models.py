@@ -184,7 +184,7 @@ def test_xprompt_with_inputs() -> None:
         InputArg(name="name", type=InputType.LINE),
         InputArg(name="count", type=InputType.INT, default=5),
     ]
-    xp = XPrompt(name="test", content="Hello {{ name }}", inputs=inputs)
+    xp = XPrompt(name="test", content="Hello ${name}", inputs=inputs)
     assert len(xp.inputs) == 2
     assert xp.inputs[0].name == "name"
     assert xp.inputs[1].name == "count"

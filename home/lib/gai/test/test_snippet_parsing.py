@@ -133,7 +133,7 @@ def testparse_args_named_with_equals_in_quotes() -> None:
 
 def testis_jinja2_template_variable() -> None:
     """Test detection of Jinja2 variable syntax."""
-    assert is_jinja2_template("Hello {{ name }}!") is True
+    assert is_jinja2_template("Hello ${name}!") is True
 
 
 def testis_jinja2_template_control() -> None:
@@ -155,7 +155,7 @@ def testis_jinja2_template_legacy() -> None:
 def testis_jinja2_template_multiline() -> None:
     """Test detection in multiline content."""
     content = """Line 1
-    {{ var }}
+    ${var}
     Line 3"""
     assert is_jinja2_template(content) is True
 
@@ -216,37 +216,33 @@ def testsubstitute_placeholders_mixed_required_and_optional() -> None:
 
 def testsubstitute_placeholders_jinja2_simple_variable() -> None:
     """Test Jinja2 variable substitution with named arg."""
-    result = substitute_placeholders("Hello {{ name }}!", [], {"name": "World"}, "test")
+    result = substitute_placeholders("Hello ${name}!", [], {"name": "World"}, "test")
     assert result == "Hello World!"
 
 
 def testsubstitute_placeholders_jinja2_positional_as_underscore() -> None:
     """Test that positional args are available as _1, _2, etc."""
-    result = substitute_placeholders(
-        "{{ _1 }} says {{ _2 }}", ["Alice", "hello"], {}, "test"
-    )
+    result = substitute_placeholders("${_1} says ${_2}", ["Alice", "hello"], {}, "test")
     assert result == "Alice says hello"
 
 
 def testsubstitute_placeholders_jinja2_filter() -> None:
     """Test Jinja2 filter usage."""
-    result = substitute_placeholders(
-        "{{ name | upper }}", [], {"name": "hello"}, "test"
-    )
+    result = substitute_placeholders("${name | upper}", [], {"name": "hello"}, "test")
     assert result == "HELLO"
 
 
 def testsubstitute_placeholders_jinja2_default_filter() -> None:
     """Test Jinja2 default filter for optional args."""
     result = substitute_placeholders(
-        "Hello {{ name | default('World') }}!", [], {}, "test"
+        "Hello ${name | default('World')}!", [], {}, "test"
     )
     assert result == "Hello World!"
 
 
 def testsubstitute_placeholders_jinja2_conditional() -> None:
     """Test Jinja2 conditional logic."""
-    content = "Hello {{ name }}{% if formal %}, sir{% endif %}!"
+    content = "Hello ${name}{% if formal %}, sir{% endif %}!"
     result = substitute_placeholders(
         content, [], {"name": "Bob", "formal": "true"}, "test"
     )
@@ -257,7 +253,7 @@ def testsubstitute_placeholders_jinja2_conditional() -> None:
 def testsubstitute_placeholders_jinja2_missing_var_error() -> None:
     """Test that missing required variable raises error."""
     with pytest.raises(XPromptArgumentError, match="template error"):
-        substitute_placeholders("Hello {{ name }}!", [], {}, "test")
+        substitute_placeholders("Hello ${name}!", [], {}, "test")
 
 
 # Tests for _expand_single_xprompt
@@ -279,14 +275,14 @@ def test_expand_single_xprompt_with_positional_args() -> None:
 
 def test_expand_single_xprompt_with_named_args_jinja2() -> None:
     """Test expanding Jinja2 xprompt with named arguments."""
-    xprompt = XPrompt(name="greet", content="Hello {{ name }}!")
+    xprompt = XPrompt(name="greet", content="Hello ${name}!")
     result = _expand_single_xprompt(xprompt, [], {"name": "World"})
     assert result == "Hello World!"
 
 
 def test_expand_single_xprompt_mixed_args_jinja2() -> None:
     """Test expanding Jinja2 xprompt with mixed positional and named args."""
-    xprompt = XPrompt(name="msg", content="{{ _1 }} says {{ message }}")
+    xprompt = XPrompt(name="msg", content="${_1} says ${message}")
     result = _expand_single_xprompt(xprompt, ["Alice"], {"message": "hello"})
     assert result == "Alice says hello"
 

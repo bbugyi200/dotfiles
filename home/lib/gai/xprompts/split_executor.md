@@ -16,12 +16,12 @@ input:
     type: text
 ---
 
-Can you help me replicate the changes shown in the @{{ diff_path }} file EXACTLY by splitting the changes across
-multiple new CLs (specified below)?
+Can you help me replicate the changes shown in the @${diff_path} file EXACTLY by splitting the changes across multiple
+new CLs (specified below)?
 
 ## Split Specification
 
-{{ spec_markdown }}
+${spec_markdown}
 
 ## Instructions
 
@@ -29,7 +29,7 @@ For each entry in the split specification (process in the order shown - parents 
 
 1. **Navigate to the parent CL:**
    - If `parent` is specified in the entry: run `bb_hg_update <parent>`
-   - Otherwise: run `bb_hg_update {{ default_parent }}`
+   - Otherwise: run `bb_hg_update ${default_parent}`
 
 2. **Make the file changes for this CL based on its description.**
    - Analyze the original diff and determine which changes belong to this CL
@@ -38,10 +38,10 @@ For each entry in the split specification (process in the order shown - parents 
 
 3. **Create the description file** at `bb/gai/<name>_desc.txt` with the description from the spec.
 
-4. **Run:** `gai commit {{ bug_flag }}-n "{{ note }}" <name> bb/gai/<name>_desc.txt`
+4. **Run:** `gai commit ${bug_flag}-n "${note}" <name> bb/gai/<name>_desc.txt`
 
 5. **Repeat** for the next entry.
 
 ## Processing Order
 
-Process the entries in this order (parents before children): {{ processing_order }}
+Process the entries in this order (parents before children): ${processing_order}

@@ -18,12 +18,12 @@ def is_jinja2_template(content: str) -> bool:
     """Detect if content uses Jinja2 syntax.
 
     Returns True if the content contains Jinja2 markers:
-    - {{ ... }} for variable interpolation
+    - ${...} for variable interpolation
     - {% ... %} for control structures
     - {# ... #} for comments
     """
     return bool(
-        re.search(r"\{\{.*?\}\}", content, re.DOTALL)
+        re.search(r"\$\{.*?\}", content, re.DOTALL)
         or re.search(r"\{%.*?%\}", content, re.DOTALL)
         or re.search(r"\{#.*?#\}", content, re.DOTALL)
     )
@@ -37,6 +37,8 @@ def _get_jinja_env() -> Environment:
             loader=BaseLoader(),
             undefined=StrictUndefined,
             autoescape=False,
+            variable_start_string="${",
+            variable_end_string="}",
         )
     return _jinja_env
 

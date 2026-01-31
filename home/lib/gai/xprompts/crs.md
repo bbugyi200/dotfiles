@@ -14,6 +14,6 @@ you make align with the overall goal of this CL! Make the necessary file changes
 #cl
 
 <!-- prettier-ignore -->
-+ @{{ critique_comments_path }} - Unresolved Critique comments left on this CL (these are the comments you should address!)
++ @${critique_comments_path} - Unresolved Critique comments left on this CL (these are the comments you should address!)
 {% if context_files_section %}
-{{ context_files_section }}{% endif %}
+${context_files_section}{% endif %}
