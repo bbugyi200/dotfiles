@@ -21,6 +21,8 @@ from split_spec import (
 from xprompt import (
     OutputValidationError,
     extract_structured_content,
+    generate_format_instructions,
+    get_primary_output_schema,
     process_xprompt_references,
 )
 
@@ -60,7 +62,20 @@ def _build_spec_generator_prompt(
     escaped_workspace = _escape_for_xprompt(workspace_name)
     escaped_diff = _escape_for_xprompt(diff_path)
     prompt_text = f'#split_spec_generator(workspace_name="{escaped_workspace}", diff_path="{escaped_diff}")'
-    return process_xprompt_references(prompt_text)
+
+    # Get output schema BEFORE expansion (same pattern as wrapper.py:331-332)
+    output_spec = get_primary_output_schema(prompt_text)
+
+    # Expand the xprompt
+    expanded = process_xprompt_references(prompt_text)
+
+    # Append format instructions if we have an output schema (same pattern as wrapper.py:352-355)
+    if output_spec is not None:
+        format_instructions = generate_format_instructions(output_spec)
+        if format_instructions:
+            expanded = expanded + format_instructions
+
+    return expanded
 
 
 def _prompt_for_spec_action(
@@ -184,25 +199,8 @@ def generate_spec_with_agent(
             )
         except ValueError as e:
             console.print(f"[red]Invalid spec: {e}[/red]")
-            console.print("[yellow]The agent will be asked to fix this.[/yellow]")
-
-            # Add error feedback and retry
-            error_prompt = f"""The generated output was invalid: {e}
-
-Please fix the issue and regenerate the split specification.
-Remember: All 'name' values must be prefixed with `{workspace_name}_`"""
-
-            messages.append(response)
-            messages.append(HumanMessage(content=error_prompt))
-            iteration += 1
-            model.set_logging_context(
-                agent_type="split-spec-generator",
-                iteration=iteration,
-                workflow_tag=workflow_tag,
-                artifacts_dir=artifacts_dir,
-                workflow="split",
-            )
-            continue
+            print_status("Split spec generation failed due to invalid output.", "error")
+            return None
 
         # Show the spec YAML to user
         console.print("\n[bold]Generated Split Specification:[/bold]")
