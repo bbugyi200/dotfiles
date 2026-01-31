@@ -1,5 +1,6 @@
 """Core query execution logic."""
 
+import json
 import os
 
 from change_actions import (
@@ -7,11 +8,17 @@ from change_actions import (
     prompt_for_change_action,
 )
 from chat_history import save_chat_history
+from gai_utils import run_shell_command
 from rich.console import Console
 from running_field import claim_workspace, release_workspace
 from shared_utils import (
     create_artifacts_directory,
     generate_workflow_tag,
+)
+from xprompt import (
+    OutputValidationError,
+    get_primary_output_schema,
+    validate_response,
 )
 
 from ..utils import ensure_project_file_and_get_workspace_num
@@ -185,8 +192,42 @@ def run_query(
         console = Console()
         target_dir = os.getcwd()
 
-        # Prepare and save chat history BEFORE prompting so we have chat_path
         response_content = ensure_str_content(ai_result.content)
+
+        # Check if this query uses an xprompt with output validation
+        # Use original query (not full_prompt) to detect output spec
+        output_spec = get_primary_output_schema(query)
+        if output_spec is not None:
+            try:
+                parsed_data, validation_error = validate_response(
+                    response_content, output_spec
+                )
+                if validation_error is None:
+                    # Valid output - print nicely formatted JSON and exit
+                    console.print("\n[green]Output validated successfully:[/green]")
+                    console.print_json(json.dumps(parsed_data, indent=2))
+
+                    # Still save chat history for record-keeping
+                    saved_path = save_chat_history(
+                        prompt=query,
+                        response=response_content,
+                        workflow="run",
+                        previous_history=previous_history,
+                        timestamp=shared_timestamp,
+                    )
+                    print(f"\nChat history saved to: {saved_path}")
+                    return  # Early exit - skip CL creation and prompting
+                else:
+                    # Validation failed - print error and exit
+                    console.print(
+                        f"\n[red]Output validation failed: {validation_error}[/red]"
+                    )
+                    return
+            except OutputValidationError as e:
+                console.print(f"\n[red]Could not parse output: {e.message}[/red]")
+                return
+
+        # Prepare and save chat history BEFORE prompting so we have chat_path
         saved_path = save_chat_history(
             prompt=query,
             response=response_content,
@@ -195,23 +236,31 @@ def run_query(
             timestamp=shared_timestamp,
         )
 
-        # Auto-create WIP CL after query completes
+        # Auto-create WIP CL only if there are file changes
         from workflow_utils import get_project_from_workspace
 
         project_name = get_project_from_workspace()
         if project_name:
-            success, auto_cl_name = _auto_create_wip_cl(
-                chat_path=saved_path,
-                project=project_name,
-                shared_timestamp=shared_timestamp,
-                end_timestamp=end_timestamp,
-                custom_name=commit_name,
-                custom_message=commit_message,
+            # Check for local changes first
+            changes_result = run_shell_command(
+                "branch_local_changes", capture_output=True
             )
-            if success:
-                console.print(f"[cyan]Created WIP CL: {auto_cl_name}[/cyan]")
-            else:
-                console.print("[yellow]Warning: Failed to auto-create WIP CL[/yellow]")
+            if changes_result.stdout.strip():
+                success, auto_cl_name = _auto_create_wip_cl(
+                    chat_path=saved_path,
+                    project=project_name,
+                    shared_timestamp=shared_timestamp,
+                    end_timestamp=end_timestamp,
+                    custom_name=commit_name,
+                    custom_message=commit_message,
+                )
+                if success:
+                    console.print(f"[cyan]Created WIP CL: {auto_cl_name}[/cyan]")
+                else:
+                    console.print(
+                        "[yellow]Warning: Failed to auto-create WIP CL[/yellow]"
+                    )
+            # If no changes, silently skip CL creation
 
         prompt_result = prompt_for_change_action(
             console,
