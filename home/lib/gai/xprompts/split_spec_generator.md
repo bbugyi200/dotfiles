@@ -25,8 +25,8 @@ output:
 
 # Generate Split Specification
 
-You need to analyze the changes in a CL and generate a YAML split specification that divides the work into multiple
-smaller, focused CLs.
+You need to analyze the changes in a CL and generate a split specification that divides the work into multiple smaller,
+focused CLs.
 
 ## Original Diff
 
