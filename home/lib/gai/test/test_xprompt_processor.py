@@ -2,14 +2,14 @@
 
 import re
 
-from xprompt.models import InputArg, InputType, XPrompt
-from xprompt.processor import (
-    _SHORTHAND_PATTERN,
-    _XPROMPT_PATTERN,
+from xprompt._jinja import validate_and_convert_args
+from xprompt._parsing import (
+    SHORTHAND_PATTERN,
     _find_shorthand_text_end,
-    _preprocess_shorthand_syntax,
-    _validate_and_convert_args,
+    preprocess_shorthand_syntax,
 )
+from xprompt.models import InputArg, InputType, XPrompt
+from xprompt.processor import _XPROMPT_PATTERN
 
 
 def test_xprompt_pattern_simple_name() -> None:
@@ -141,7 +141,7 @@ def test_xprompt_pattern_not_trailing_slash() -> None:
     assert match.group(1) == "foo"
 
 
-def test_validate_and_convert_args_positional_to_named() -> None:
+def testvalidate_and_convert_args_positional_to_named() -> None:
     """Test that positional args are mapped to named args using input definitions.
 
     When an xprompt has YAML frontmatter with input definitions like:
@@ -161,7 +161,7 @@ def test_validate_and_convert_args_positional_to_named() -> None:
     positional_args = ["This is my prompt text"]
     named_args: dict[str, str] = {}
 
-    conv_positional, conv_named = _validate_and_convert_args(
+    conv_positional, conv_named = validate_and_convert_args(
         xprompt, positional_args, named_args
     )
 
@@ -171,7 +171,7 @@ def test_validate_and_convert_args_positional_to_named() -> None:
     assert conv_named == {"prompt": "This is my prompt text"}
 
 
-def test_validate_and_convert_args_multiple_positional_to_named() -> None:
+def testvalidate_and_convert_args_multiple_positional_to_named() -> None:
     """Test that multiple positional args are mapped to their respective names."""
     xprompt = XPrompt(
         name="test",
@@ -184,7 +184,7 @@ def test_validate_and_convert_args_multiple_positional_to_named() -> None:
     positional_args = ["value1", "value2"]
     named_args: dict[str, str] = {}
 
-    conv_positional, conv_named = _validate_and_convert_args(
+    conv_positional, conv_named = validate_and_convert_args(
         xprompt, positional_args, named_args
     )
 
@@ -192,7 +192,7 @@ def test_validate_and_convert_args_multiple_positional_to_named() -> None:
     assert conv_named == {"first": "value1", "second": "value2"}
 
 
-def test_validate_and_convert_args_explicit_named_arg_not_overwritten() -> None:
+def testvalidate_and_convert_args_explicit_named_arg_not_overwritten() -> None:
     """Test that explicit named args take precedence over positional mapping."""
     xprompt = XPrompt(
         name="test",
@@ -203,7 +203,7 @@ def test_validate_and_convert_args_explicit_named_arg_not_overwritten() -> None:
     positional_args = ["positional value"]
     named_args = {"prompt": "explicit named value"}
 
-    conv_positional, conv_named = _validate_and_convert_args(
+    conv_positional, conv_named = validate_and_convert_args(
         xprompt, positional_args, named_args
     )
 
@@ -217,39 +217,39 @@ def test_validate_and_convert_args_explicit_named_arg_not_overwritten() -> None:
 
 def test_shorthand_pattern_at_start_of_string() -> None:
     """Test that shorthand pattern matches at start of string."""
-    match = re.search(_SHORTHAND_PATTERN, "#foo: some text")
+    match = re.search(SHORTHAND_PATTERN, "#foo: some text")
     assert match is not None
     assert match.group(1) == "foo"
 
 
 def test_shorthand_pattern_after_newline() -> None:
     """Test that shorthand pattern matches after newline."""
-    match = re.search(_SHORTHAND_PATTERN, "prefix\n#bar: text here")
+    match = re.search(SHORTHAND_PATTERN, "prefix\n#bar: text here")
     assert match is not None
     assert match.group(1) == "bar"
 
 
 def test_shorthand_pattern_namespaced() -> None:
     """Test that shorthand pattern matches namespaced xprompts."""
-    match = re.search(_SHORTHAND_PATTERN, "#mentor/aaa: some text")
+    match = re.search(SHORTHAND_PATTERN, "#mentor/aaa: some text")
     assert match is not None
     assert match.group(1) == "mentor/aaa"
 
 
 def test_shorthand_pattern_not_mid_line() -> None:
     """Test that shorthand pattern doesn't match mid-line."""
-    match = re.search(_SHORTHAND_PATTERN, "text #foo: bar")
+    match = re.search(SHORTHAND_PATTERN, "text #foo: bar")
     assert match is None
 
 
 def test_shorthand_pattern_requires_space_after_colon() -> None:
     """Test that pattern requires space after colon (distinguishes from :arg)."""
     # Without space - should not match shorthand pattern
-    match = re.search(_SHORTHAND_PATTERN, "#foo:bar")
+    match = re.search(SHORTHAND_PATTERN, "#foo:bar")
     assert match is None
 
 
-def test_find_shorthand_text_end_at_blank_line() -> None:
+def testfind_shorthand_text_end_at_blank_line() -> None:
     """Test finding end at blank line."""
     prompt = "some text here\n\nmore text"
     end = _find_shorthand_text_end(prompt, 0)
@@ -257,7 +257,7 @@ def test_find_shorthand_text_end_at_blank_line() -> None:
     assert prompt[end : end + 2] == "\n\n"
 
 
-def test_find_shorthand_text_end_at_eof() -> None:
+def testfind_shorthand_text_end_at_eof() -> None:
     """Test finding end at end of string."""
     prompt = "no blank line here"
     end = _find_shorthand_text_end(prompt, 0)
@@ -267,49 +267,49 @@ def test_find_shorthand_text_end_at_eof() -> None:
 def test_preprocess_shorthand_single_line() -> None:
     """Test preprocessing single-line shorthand."""
     prompt = "#foo: simple text"
-    result = _preprocess_shorthand_syntax(prompt, {"foo"})
+    result = preprocess_shorthand_syntax(prompt, {"foo"})
     assert result == "#foo([[simple text]])"
 
 
 def test_preprocess_shorthand_multiline_until_blank() -> None:
     """Test preprocessing multi-line shorthand until blank line."""
     prompt = "#foo: line one\nline two\n\nother text"
-    result = _preprocess_shorthand_syntax(prompt, {"foo"})
+    result = preprocess_shorthand_syntax(prompt, {"foo"})
     assert result == "#foo([[line one\n  line two]])\n\nother text"
 
 
 def test_preprocess_shorthand_multiline_until_eof() -> None:
     """Test preprocessing multi-line shorthand until end of string."""
     prompt = "#foo: line one\nline two\nline three"
-    result = _preprocess_shorthand_syntax(prompt, {"foo"})
+    result = preprocess_shorthand_syntax(prompt, {"foo"})
     assert result == "#foo([[line one\n  line two\n  line three]])"
 
 
 def test_preprocess_shorthand_unknown_name_unchanged() -> None:
     """Test that unknown xprompt names are not processed."""
     prompt = "#unknown: some text"
-    result = _preprocess_shorthand_syntax(prompt, {"foo", "bar"})
+    result = preprocess_shorthand_syntax(prompt, {"foo", "bar"})
     assert result == "#unknown: some text"
 
 
 def test_preprocess_shorthand_namespaced() -> None:
     """Test preprocessing namespaced xprompt shorthand."""
     prompt = "#mentor/aaa: review this code"
-    result = _preprocess_shorthand_syntax(prompt, {"mentor/aaa"})
+    result = preprocess_shorthand_syntax(prompt, {"mentor/aaa"})
     assert result == "#mentor/aaa([[review this code]])"
 
 
 def test_preprocess_shorthand_multiple_in_prompt() -> None:
     """Test preprocessing multiple shorthands in one prompt."""
     prompt = "#foo: text one\n\n#bar: text two"
-    result = _preprocess_shorthand_syntax(prompt, {"foo", "bar"})
+    result = preprocess_shorthand_syntax(prompt, {"foo", "bar"})
     assert result == "#foo([[text one]])\n\n#bar([[text two]])"
 
 
 def test_preprocess_shorthand_not_at_line_start() -> None:
     """Test that shorthand mid-line is not processed."""
     prompt = "Use #foo: inline"
-    result = _preprocess_shorthand_syntax(prompt, {"foo"})
+    result = preprocess_shorthand_syntax(prompt, {"foo"})
     # Should remain unchanged because #foo: is not at line start
     assert result == "Use #foo: inline"
 
@@ -318,6 +318,6 @@ def test_preprocess_shorthand_preserves_trailing_content() -> None:
     """Test that content after blank line terminator is preserved."""
     # \n\n terminates the shorthand, third \n and "more text" are preserved
     prompt = "#foo: line one\n\n\nmore text"
-    result = _preprocess_shorthand_syntax(prompt, {"foo"})
+    result = preprocess_shorthand_syntax(prompt, {"foo"})
     # Should end at first \n\n, keeping the trailing \n before "more text"
     assert result == "#foo([[line one]])\n\n\nmore text"

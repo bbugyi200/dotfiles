@@ -1,0 +1,262 @@
+"""Argument parsing, text block processing, and shorthand syntax."""
+
+import re
+
+from ._exceptions import XPromptArgumentError
+
+
+def _process_text_block(value: str) -> str:
+    """Process a value that may be a text block [[...]].
+
+    Strips mandatory 2-space indentation from each line.
+    Raises error if indentation is missing.
+    """
+    if not (value.startswith("[[") and value.endswith("]]")):
+        return value
+
+    content = value[2:-2]  # Remove [[ and ]]
+    lines = content.split("\n")
+
+    processed_lines: list[str] = []
+    for i, line in enumerate(lines):
+        if i == 0:
+            # First line after [[ - strip leading whitespace
+            processed_lines.append(line.lstrip())
+        elif line.strip() == "":
+            # Empty line - preserve as empty
+            processed_lines.append("")
+        else:
+            # Strip exactly 2 spaces from beginning
+            if line.startswith("  "):
+                processed_lines.append(line[2:])
+            else:
+                raise XPromptArgumentError(
+                    f"Text block line must start with 2 spaces: {line!r}"
+                )
+
+    return "\n".join(processed_lines).strip()
+
+
+# Pattern to match shorthand syntax: #name: text (at beginning of line)
+# Note: The space after colon distinguishes from existing #name:arg syntax
+SHORTHAND_PATTERN = re.compile(
+    r"(?:^|(?<=\n))"  # Must be at start of string or after newline
+    r"#([a-zA-Z_][a-zA-Z0-9_]*(?:/[a-zA-Z_][a-zA-Z0-9_]*)*)"  # Group 1: name
+    r": "  # Colon followed by space
+)
+
+
+def _find_shorthand_text_end(prompt: str, start: int) -> int:
+    """Find the end of shorthand text (at \\n\\n or end of string)."""
+    blank_line_pos = prompt.find("\n\n", start)
+    if blank_line_pos == -1:
+        return len(prompt)
+    return blank_line_pos
+
+
+def preprocess_shorthand_syntax(prompt: str, xprompt_names: set[str]) -> str:
+    """Convert shorthand #name: text syntax to #name([[text]]) format."""
+    matches = list(re.finditer(SHORTHAND_PATTERN, prompt))
+
+    for match in reversed(matches):  # Process last-to-first to preserve positions
+        name = match.group(1)
+        if name not in xprompt_names:
+            continue
+
+        text_start = match.end()
+        text_end = _find_shorthand_text_end(prompt, text_start)
+        text = prompt[text_start:text_end].rstrip()
+
+        # Format for [[...]] with 2-space indent on continuation lines
+        lines = text.split("\n")
+        formatted_lines = [lines[0]]
+        for line in lines[1:]:
+            if line.strip() == "":
+                formatted_lines.append("")
+            else:
+                formatted_lines.append("  " + line)
+
+        text_block_content = "\n".join(formatted_lines)
+        replacement = f"#{name}([[{text_block_content}]])"
+
+        prompt = prompt[: match.start()] + replacement + prompt[text_end:]
+
+    return prompt
+
+
+def find_matching_paren_for_args(text: str, start: int) -> int | None:
+    """Find the matching ) for an opening ( at position start.
+
+    Respects quoted strings ("..." and '...'), text blocks ([[...]]),
+    and nested parentheses.
+
+    Args:
+        text: The full text to search.
+        start: Position of the opening '(' character.
+
+    Returns:
+        Position of the matching ')' or None if not found.
+    """
+    if start >= len(text) or text[start] != "(":
+        return None
+
+    depth = 1
+    in_quotes = False
+    quote_char = ""
+    in_text_block = False
+    i = start + 1
+
+    while i < len(text):
+        # Check for text block start
+        if not in_quotes and not in_text_block and text[i : i + 2] == "[[":
+            in_text_block = True
+            i += 2
+            continue
+        # Check for text block end
+        if in_text_block and text[i : i + 2] == "]]":
+            in_text_block = False
+            i += 2
+            continue
+
+        char = text[i]
+
+        if in_text_block:
+            i += 1
+            continue
+
+        if char in ('"', "'") and not in_quotes:
+            in_quotes = True
+            quote_char = char
+        elif char == quote_char and in_quotes:
+            in_quotes = False
+            quote_char = ""
+        elif not in_quotes:
+            if char == "(":
+                depth += 1
+            elif char == ")":
+                depth -= 1
+                if depth == 0:
+                    return i
+
+        i += 1
+
+    return None
+
+
+def _parse_named_arg(token: str) -> tuple[str | None, str]:
+    """Parse a single token to extract name=value if present.
+
+    Returns (name, value) if named arg, or (None, token) if positional.
+    Handles quoted strings and text blocks [[...]].
+    """
+    in_quotes = False
+    quote_char = ""
+    in_text_block = False
+    i = 0
+
+    while i < len(token):
+        char = token[i]
+        # Check for text block start
+        if not in_quotes and not in_text_block and token[i : i + 2] == "[[":
+            in_text_block = True
+            i += 2
+            continue
+        # Check for text block end
+        if in_text_block and token[i : i + 2] == "]]":
+            in_text_block = False
+            i += 2
+            continue
+        if char in ('"', "'") and not in_quotes and not in_text_block:
+            in_quotes = True
+            quote_char = char
+        elif char == quote_char and in_quotes:
+            in_quotes = False
+            quote_char = ""
+        elif char == "=" and not in_quotes and not in_text_block:
+            name = token[:i].strip()
+            value = token[i + 1 :].strip()
+            # Strip quotes from value if present
+            if len(value) >= 2 and value[0] in ('"', "'") and value[-1] == value[0]:
+                value = value[1:-1]
+            # Process text blocks
+            value = _process_text_block(value)
+            return name, value
+        i += 1
+
+    return None, token
+
+
+def parse_args(args_str: str) -> tuple[list[str], dict[str, str]]:
+    """Parse argument string into positional and named arguments.
+
+    Handles quoted strings and text blocks [[...]] that may contain commas or equals.
+    Named args use syntax: name=value or name="value with spaces" or name=[[text block]]
+
+    Args:
+        args_str: The argument string (e.g., "arg1, name=value" or 'hello, "world"')
+
+    Returns:
+        Tuple of (positional_args, named_args).
+    """
+    if not args_str.strip():
+        return [], {}
+
+    # First tokenize by comma, respecting quotes and text blocks
+    tokens: list[str] = []
+    current_token = ""
+    in_quotes = False
+    quote_char = ""
+    in_text_block = False
+    i = 0
+
+    while i < len(args_str):
+        char = args_str[i]
+        # Check for text block start
+        if not in_quotes and not in_text_block and args_str[i : i + 2] == "[[":
+            in_text_block = True
+            current_token += "[["
+            i += 2
+            continue
+        # Check for text block end
+        if in_text_block and args_str[i : i + 2] == "]]":
+            in_text_block = False
+            current_token += "]]"
+            i += 2
+            continue
+        if char in ('"', "'") and not in_quotes and not in_text_block:
+            in_quotes = True
+            quote_char = char
+            current_token += char
+        elif char == quote_char and in_quotes:
+            in_quotes = False
+            quote_char = ""
+            current_token += char
+        elif char == "," and not in_quotes and not in_text_block:
+            if current_token.strip():
+                tokens.append(current_token.strip())
+            current_token = ""
+        else:
+            current_token += char
+        i += 1
+
+    # Don't forget the last token
+    if current_token.strip():
+        tokens.append(current_token.strip())
+
+    # Now parse each token as positional or named
+    positional: list[str] = []
+    named: dict[str, str] = {}
+
+    for token in tokens:
+        name, value = _parse_named_arg(token)
+        if name is not None:
+            named[name] = value
+        else:
+            # Strip quotes from positional args too
+            if len(value) >= 2 and value[0] in ('"', "'") and value[-1] == value[0]:
+                value = value[1:-1]
+            # Process text blocks for positional args
+            value = _process_text_block(value)
+            positional.append(value)
+
+    return positional, named
