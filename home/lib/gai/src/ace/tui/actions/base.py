@@ -52,7 +52,7 @@ class BaseActionsMixin:
 
     def _apply_status_change(self, changespec: ChangeSpec, new_status: str) -> None:
         """Apply a status change to a ChangeSpec."""
-        from gai_utils import has_suffix
+        from gai_utils import has_suffix, strip_reverted_suffix
         from status_state_machine import (
             remove_ready_to_mail_suffix,
             transition_changespec_status,
@@ -93,6 +93,62 @@ class BaseActionsMixin:
 
             if not success:
                 self.notify(f"Error archiving: {error_msg}", severity="error")  # type: ignore[attr-defined]
+            self._reload_and_reposition()  # type: ignore[attr-defined]
+            return
+
+        # Special handling for transitioning FROM "Reverted" status
+        if changespec.status == STATUS_REVERTED and new_status in ("WIP", "Drafted"):
+            from ...restore import restore_changespec
+
+            def run_restore() -> tuple[bool, str | None]:
+                from rich.console import Console
+
+                console = Console()
+                return restore_changespec(changespec, console)
+
+            with self.suspend():  # type: ignore[attr-defined]
+                success, error_msg = run_restore()
+
+            if not success:
+                self.notify(f"Error restoring: {error_msg}", severity="error")  # type: ignore[attr-defined]
+                self._reload_and_reposition()  # type: ignore[attr-defined]
+                return
+
+            # restore_changespec sets status to WIP; if target is Drafted, transition again
+            if new_status == "Drafted":
+                # Need to find the new name (restore strips suffix, gai commit adds it back)
+                from ...changespec import parse_project_file
+
+                base_name = strip_reverted_suffix(changespec.name)
+                changespecs = parse_project_file(changespec.file_path)
+                restored_cs = next(
+                    (
+                        cs
+                        for cs in changespecs
+                        if strip_reverted_suffix(cs.name) == base_name
+                        and cs.status == "WIP"
+                    ),
+                    None,
+                )
+                if restored_cs:
+                    success, _, error_msg, _ = transition_changespec_status(
+                        changespec.file_path,
+                        restored_cs.name,
+                        "Drafted",
+                        validate=False,
+                    )
+                    if not success:
+                        self.notify(  # type: ignore[attr-defined]
+                            f"Error transitioning to Drafted: {error_msg}",
+                            severity="error",
+                        )
+                    else:
+                        self.notify("Restored and drafted ChangeSpec")  # type: ignore[attr-defined]
+                else:
+                    self.notify("Restored ChangeSpec to WIP")  # type: ignore[attr-defined]
+            else:
+                self.notify("Restored ChangeSpec")  # type: ignore[attr-defined]
+
             self._reload_and_reposition()  # type: ignore[attr-defined]
             return
 
