@@ -8,7 +8,7 @@ config:
 input:
   - name: cl_name
     type: word
-    default: ""  # Empty means use current branch
+    default: "" # Empty means use current branch
 
 steps:
   # Step 1: Setup - navigate to CL and gather metadata
