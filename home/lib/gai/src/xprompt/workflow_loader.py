@@ -14,6 +14,7 @@ from xprompt.loader import (
 )
 from xprompt.models import InputArg, OutputSpec
 from xprompt.workflow_models import (
+    LoopConfig,
     Workflow,
     WorkflowConfig,
     WorkflowStep,
@@ -130,6 +131,75 @@ def _parse_workflow_step(
 
     hitl = bool(step_data.get("hitl", False))
 
+    # Parse control flow fields
+    condition = step_data.get("if")
+    for_loop = step_data.get("for")
+    repeat_data = step_data.get("repeat")
+    while_data = step_data.get("while")
+    join = step_data.get("join")
+
+    # Validate mutual exclusivity of loop types
+    loop_types = [for_loop, repeat_data, while_data]
+    num_loop_types = sum(1 for t in loop_types if t)
+    if num_loop_types > 1:
+        raise WorkflowValidationError(
+            f"Step '{name}' can only have one of 'for', 'repeat', or 'while' fields"
+        )
+
+    # Parse for: loop (dict of {var: expression})
+    parsed_for_loop: dict[str, str] | None = None
+    if for_loop:
+        if not isinstance(for_loop, dict):
+            raise WorkflowValidationError(
+                f"Step '{name}' 'for' field must be a dict mapping variable names "
+                "to list expressions"
+            )
+        parsed_for_loop = {str(k): str(v) for k, v in for_loop.items()}
+
+    # Parse repeat: config
+    repeat_config: LoopConfig | None = None
+    if repeat_data:
+        if not isinstance(repeat_data, dict):
+            raise WorkflowValidationError(
+                f"Step '{name}' 'repeat' field must be a dict with 'until' key"
+            )
+        until_cond = repeat_data.get("until")
+        if not until_cond:
+            raise WorkflowValidationError(
+                f"Step '{name}' 'repeat' field requires 'until' condition"
+            )
+        max_iter = int(repeat_data.get("max", 100))
+        repeat_config = LoopConfig(condition=str(until_cond), max_iterations=max_iter)
+
+    # Parse while: config
+    while_config: LoopConfig | None = None
+    if while_data:
+        if isinstance(while_data, str):
+            # Short form: while: "{{ condition }}"
+            while_config = LoopConfig(condition=while_data, max_iterations=100)
+        elif isinstance(while_data, dict):
+            # Long form: while: {condition: "...", max: N}
+            while_cond = while_data.get("condition")
+            if not while_cond:
+                raise WorkflowValidationError(
+                    f"Step '{name}' 'while' field requires 'condition' key"
+                )
+            max_iter = int(while_data.get("max", 100))
+            while_config = LoopConfig(
+                condition=str(while_cond), max_iterations=max_iter
+            )
+        else:
+            raise WorkflowValidationError(
+                f"Step '{name}' 'while' field must be a string or dict"
+            )
+
+    # Validate join: mode
+    valid_join_modes = {"array", "text", "object", "lastOf"}
+    if join and str(join) not in valid_join_modes:
+        raise WorkflowValidationError(
+            f"Step '{name}' 'join' must be one of: {', '.join(sorted(valid_join_modes))}"
+        )
+
     return WorkflowStep(
         name=name,
         agent=str(agent) if agent else None,
@@ -138,6 +208,11 @@ def _parse_workflow_step(
         prompt=str(prompt) if prompt else None,
         output=output,
         hitl=hitl,
+        condition=str(condition) if condition else None,
+        for_loop=parsed_for_loop,
+        repeat_config=repeat_config,
+        while_config=while_config,
+        join=str(join) if join else None,
     )
 
 
@@ -148,6 +223,8 @@ def _validate_workflow_variables(workflow: Workflow) -> None:
     1. All input args are used by at least one step
     2. All step outputs are used by at least one subsequent step
     3. No undefined variable references
+    4. Loop variable references within for: steps
+    5. Self-references allowed in repeat:/while: conditions
 
     Args:
         workflow: The workflow to validate.
@@ -155,6 +232,8 @@ def _validate_workflow_variables(workflow: Workflow) -> None:
     Raises:
         WorkflowValidationError: If validation fails.
     """
+    import re
+
     input_names = {inp.name for inp in workflow.inputs}
     step_names = {step.name for step in workflow.steps}
 
@@ -167,13 +246,15 @@ def _validate_workflow_variables(workflow: Workflow) -> None:
     # Track output usage (outputs from each step)
     output_usage: dict[str, bool] = {}
 
-    for i, step in enumerate(workflow.steps):
+    for step in workflow.steps:
+        # Get loop variables for this step (available within for: loops)
+        loop_vars: set[str] = set()
+        if step.for_loop:
+            loop_vars = set(step.for_loop.keys())
+
         # Check variable references in prompt, bash, or python
         content = step.prompt or step.bash or step.python
         if content:
-            # Find Jinja2 variable references: {{ var }} and {{ step.var }}
-            import re
-
             # Match {{ var }} and {{ step.output }}
             refs = re.findall(
                 r"\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)?)\s*",
@@ -183,25 +264,63 @@ def _validate_workflow_variables(workflow: Workflow) -> None:
             for ref in refs:
                 if "." in ref:
                     # Step output reference like "setup.cl_name"
-                    step_name, _ = ref.split(".", 1)
-                    if step_name not in step_names:
+                    step_ref_name, _ = ref.split(".", 1)
+                    if step_ref_name not in step_names:
                         raise WorkflowValidationError(
-                            f"Step '{step.name}' references undefined step '{step_name}'"
+                            f"Step '{step.name}' references undefined step "
+                            f"'{step_ref_name}'"
                         )
-                    if step_name not in defined_vars:
+                    if step_ref_name not in defined_vars:
                         raise WorkflowValidationError(
-                            f"Step '{step.name}' references step '{step_name}' before it executes"
+                            f"Step '{step.name}' references step '{step_ref_name}' "
+                            "before it executes"
                         )
-                    if step_name in output_usage:
-                        output_usage[step_name] = True
+                    if step_ref_name in output_usage:
+                        output_usage[step_ref_name] = True
                 else:
                     # Direct variable reference
                     if ref in input_names:
                         input_usage[ref] = True
+                    elif ref in loop_vars:
+                        # Loop variable - valid within for: step
+                        pass
                     elif ref not in defined_vars and ref not in ("tojson",):
                         # tojson is a Jinja2 filter, not a variable
                         # Check if it could be a Jinja filter or builtin
                         pass  # Allow for now, will fail at runtime if truly undefined
+
+        # Validate if: condition references
+        if step.condition:
+            _validate_condition_refs(
+                step.condition, step.name, step_names, defined_vars, loop_vars
+            )
+
+        # Validate for: loop expressions
+        if step.for_loop:
+            for expr in step.for_loop.values():
+                _validate_condition_refs(
+                    expr, step.name, step_names, defined_vars, set()
+                )
+
+        # Validate repeat:/until: condition (self-reference allowed)
+        if step.repeat_config:
+            _validate_condition_refs(
+                step.repeat_config.condition,
+                step.name,
+                step_names,
+                defined_vars | {step.name},  # Allow self-reference
+                loop_vars,
+            )
+
+        # Validate while: condition (self-reference allowed)
+        if step.while_config:
+            _validate_condition_refs(
+                step.while_config.condition,
+                step.name,
+                step_names,
+                defined_vars | {step.name},  # Allow self-reference
+                loop_vars,
+            )
 
         # After this step executes, its outputs become available
         if step.output:
@@ -210,6 +329,52 @@ def _validate_workflow_variables(workflow: Workflow) -> None:
 
     # Warn about unused inputs (but don't error - they might be used in nested xprompts)
     # Warn about unused outputs (but don't error - final step output might be workflow result)
+
+
+def _validate_condition_refs(
+    content: str,
+    step_name: str,
+    step_names: set[str],
+    defined_vars: set[str],
+    loop_vars: set[str],
+) -> None:
+    """Validate variable references in a condition expression.
+
+    Args:
+        content: The condition expression to validate.
+        step_name: Name of the step containing this condition.
+        step_names: Set of all step names in the workflow.
+        defined_vars: Set of currently defined variable names.
+        loop_vars: Set of loop variable names available in this context.
+
+    Raises:
+        WorkflowValidationError: If invalid references found.
+    """
+    import re
+
+    refs = re.findall(
+        r"\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)?)\s*",
+        content,
+    )
+
+    for ref in refs:
+        if "." in ref:
+            step_ref_name, _ = ref.split(".", 1)
+            if step_ref_name not in step_names:
+                raise WorkflowValidationError(
+                    f"Step '{step_name}' condition references undefined step "
+                    f"'{step_ref_name}'"
+                )
+            if step_ref_name not in defined_vars:
+                raise WorkflowValidationError(
+                    f"Step '{step_name}' condition references step '{step_ref_name}' "
+                    "before it executes"
+                )
+        else:
+            # Direct variable reference - allowed if in loop_vars or known filters
+            if ref not in loop_vars and ref not in ("tojson", "not", "and", "or"):
+                # Allow for now, will fail at runtime if truly undefined
+                pass
 
 
 def _load_workflow_from_file(file_path: Path) -> Workflow | None:

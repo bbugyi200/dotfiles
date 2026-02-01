@@ -15,6 +15,20 @@ class StepStatus(Enum):
     WAITING_HITL = "waiting_hitl"
     COMPLETED = "completed"
     FAILED = "failed"
+    SKIPPED = "skipped"
+
+
+@dataclass
+class LoopConfig:
+    """Configuration for repeat:/until: and while: loops.
+
+    Attributes:
+        condition: Jinja2 condition expression (until: for repeat, condition: for while).
+        max_iterations: Maximum iterations before raising error (default: 100).
+    """
+
+    condition: str
+    max_iterations: int = 100
 
 
 @dataclass
@@ -29,6 +43,11 @@ class WorkflowStep:
         prompt: Prompt template for agent steps (supports Jinja2 and xprompt refs).
         output: Output specification for validation.
         hitl: Whether to require human-in-the-loop approval.
+        condition: if: condition (Jinja2 expression) - step skipped if false.
+        for_loop: for: loop config {var: expression} for iteration over lists.
+        repeat_config: repeat: loop config with until: condition.
+        while_config: while: loop config with condition: to check before iterations.
+        join: How to collect iteration results (array, text, object, lastOf).
     """
 
     name: str
@@ -38,6 +57,11 @@ class WorkflowStep:
     prompt: str | None = None
     output: OutputSpec | None = None
     hitl: bool = False
+    condition: str | None = None
+    for_loop: dict[str, str] | None = None
+    repeat_config: LoopConfig | None = None
+    while_config: LoopConfig | None = None
+    join: str | None = None
 
     def is_agent_step(self) -> bool:
         """Return True if this is an agent step."""
