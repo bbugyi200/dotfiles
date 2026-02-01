@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import yaml  # type: ignore[import-untyped]
 from gai_utils import EASTERN_TZ, run_shell_command
 from rich_utils import (
     print_file_operation,
@@ -15,6 +16,33 @@ from rich_utils import (
 
 # LangGraph configuration
 LANGGRAPH_RECURSION_LIMIT = 100
+
+
+def _str_literal_representer(dumper: yaml.SafeDumper, data: str) -> yaml.ScalarNode:
+    """Represent multi-line strings with literal block style."""
+    if "\n" in data:
+        return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data)
+
+
+class _LiteralBlockDumper(yaml.SafeDumper):
+    """YAML Dumper that uses literal block style for multi-line strings."""
+
+    pass
+
+
+_LiteralBlockDumper.add_representer(str, _str_literal_representer)
+
+
+def dump_yaml(data: Any, sort_keys: bool = True) -> str:
+    """Dump data to YAML with proper multi-line string handling.
+
+    Uses literal block style (|) for multi-line strings to preserve
+    exact newline formatting.
+    """
+    return yaml.dump(
+        data, default_flow_style=False, sort_keys=sort_keys, Dumper=_LiteralBlockDumper
+    )
 
 
 @dataclass

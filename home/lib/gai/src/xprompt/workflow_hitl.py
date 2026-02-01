@@ -8,6 +8,7 @@ from typing import Any
 import yaml  # type: ignore[import-untyped]
 from rich.console import Console
 from rich.syntax import Syntax
+from shared_utils import dump_yaml
 
 from xprompt.workflow_executor import HITLResult
 
@@ -50,9 +51,7 @@ class CLIHITLHandler:
         if isinstance(output, dict):
             # Unwrap _data if present for cleaner display
             display_data = output.get("_data", output)
-            output_str = yaml.dump(
-                display_data, default_flow_style=False, sort_keys=False
-            )
+            output_str = dump_yaml(display_data, sort_keys=False)
             syntax = Syntax(output_str, "yaml", theme="monokai", line_numbers=True)
             self.console.print(syntax)
         else:
@@ -110,7 +109,7 @@ class CLIHITLHandler:
         data = output.get("_data", output) if isinstance(output, dict) else output
 
         # Convert to YAML
-        yaml_content = yaml.dump(data, default_flow_style=False, sort_keys=False)
+        yaml_content = dump_yaml(data, sort_keys=False)
 
         # Create temp file
         fd, temp_path = tempfile.mkstemp(suffix=".yml", prefix="workflow_edit_")

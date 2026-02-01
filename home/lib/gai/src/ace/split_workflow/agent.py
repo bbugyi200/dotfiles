@@ -2,7 +2,6 @@
 
 from typing import Literal
 
-import yaml  # type: ignore[import-untyped]
 from chat_history import list_chat_histories, load_chat_history, save_chat_history
 from gai_utils import generate_timestamp
 from gemini_wrapper import GeminiCommandWrapper
@@ -10,7 +9,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from rich.console import Console
 from rich.syntax import Syntax
 from rich_utils import print_status
-from shared_utils import ensure_str_content
+from shared_utils import dump_yaml, ensure_str_content
 from split_spec import (
     SplitSpec,
     format_split_spec_as_markdown,
@@ -182,7 +181,7 @@ def generate_spec_with_agent(
         try:
             data, _ = extract_structured_content(response_text)
             # Convert back to YAML for display
-            yaml_content = yaml.dump(data, default_flow_style=False)
+            yaml_content = dump_yaml(data)
         except OutputValidationError:
             # Fallback to raw response if extraction fails
             yaml_content = response_text.strip()
