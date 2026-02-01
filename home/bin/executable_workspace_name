@@ -1,0 +1,3 @@
+#!/bin/bash
+
+pwd | xargs dirname | xargs basename | sd '_\d$' ''
