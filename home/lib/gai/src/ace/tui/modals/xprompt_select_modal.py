@@ -9,7 +9,8 @@ from textual.containers import Container, Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Input, Label, OptionList, Static
 from textual.widgets.option_list import Option
-from xprompt import get_all_snippets
+from xprompt import get_all_snippets, get_all_workflows
+from xprompt.workflow_models import Workflow
 
 from .base import OptionListNavigationMixin
 
@@ -53,13 +54,49 @@ class XPromptSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
         """Initialize the xprompt modal."""
         super().__init__()
         self.xprompts = get_all_snippets()
-        self._filtered_names: list[str] = sorted(self.xprompts.keys())
+        self.workflows = get_all_workflows()
+        # Build unified items dict: name -> (content/preview, type)
+        self._all_items: dict[str, tuple[str, str]] = {}
+        for name, content in self.xprompts.items():
+            self._all_items[name] = (content, "xprompt")
+        for name, workflow in self.workflows.items():
+            preview = self._create_workflow_preview(workflow)
+            self._all_items[name] = (preview, "workflow")
+        self._filtered_names: list[str] = sorted(self._all_items.keys())
+
+    def _create_workflow_preview(self, workflow: Workflow) -> str:
+        """Create a preview string for a workflow.
+
+        Args:
+            workflow: The Workflow object.
+
+        Returns:
+            A preview string showing workflow details.
+        """
+        lines: list[str] = []
+        lines.append(f"# Workflow: {workflow.name}")
+        lines.append("")
+
+        if workflow.inputs:
+            lines.append("## Inputs")
+            for inp in workflow.inputs:
+                default_str = f" (default: {inp.default})" if inp.default else ""
+                lines.append(f"- **{inp.name}**: {inp.type.value}{default_str}")
+            lines.append("")
+
+        lines.append("## Steps")
+        for i, step in enumerate(workflow.steps, 1):
+            step_type = "agent" if step.agent else "bash"
+            step_label = step.agent if step.agent else step.bash
+            lines.append(f"{i}. [{step_type}] {step.name}: {step_label}")
+
+        return "\n".join(lines)
 
     def compose(self) -> ComposeResult:
         """Compose the modal layout."""
         with Container(id="xprompt-modal-container"):
             yield Label("Select XPrompt", id="modal-title")
-            if not self.xprompts:
+            if not self._all_items:
                 yield Label("No xprompts configured")
             else:
                 yield _XPromptFilterInput(
@@ -82,10 +119,16 @@ class XPromptSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
                 )
 
     def _create_styled_label(self, name: str) -> Text:
-        """Create styled text for an xprompt name."""
+        """Create styled text for an xprompt or workflow name."""
         text = Text()
-        text.append("#", style="bold #87D7FF")  # Cyan hash
-        text.append(name)
+        item_type = self._all_items.get(name, ("", "xprompt"))[1]
+        if item_type == "workflow":
+            text.append("⚙ ", style="bold #FFD700")  # Gold gear for workflows
+            text.append("#", style="bold #87D7FF")  # Cyan hash
+            text.append(name)
+        else:
+            text.append("#", style="bold #87D7FF")  # Cyan hash
+            text.append(name)
         return text
 
     def _create_options(self, names: list[str]) -> list[Option]:
@@ -93,8 +136,8 @@ class XPromptSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
         return [Option(self._create_styled_label(name), id=name) for name in names]
 
     def _get_filtered_names(self, filter_text: str) -> list[str]:
-        """Get xprompt names that match the filter text."""
-        all_names = sorted(self.xprompts.keys())
+        """Get xprompt and workflow names that match the filter text."""
+        all_names = sorted(self._all_items.keys())
         if not filter_text:
             return all_names
         filter_lower = filter_text.lower()
@@ -102,7 +145,7 @@ class XPromptSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
 
     def on_mount(self) -> None:
         """Focus the input and show initial preview on mount."""
-        if self.xprompts:
+        if self._all_items:
             filter_input = self.query_one("#xprompt-filter-input", _XPromptFilterInput)
             filter_input.focus()
             # Show preview for first item
@@ -160,10 +203,14 @@ class XPromptSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
         scroll.scroll_relative(y=-(height // 2), animate=False)
 
     def _update_preview_for_name(self, name: str) -> None:
-        """Update preview for an xprompt by name."""
+        """Update preview for an xprompt or workflow by name."""
         try:
             preview = self.query_one("#xprompt-preview", Static)
-            content = self.xprompts.get(name, "")
+            item = self._all_items.get(name)
+            if item:
+                content, _ = item
+            else:
+                content = ""
             # Show raw content with markdown syntax highlighting
             syntax = Syntax(content, "markdown", theme="monokai", word_wrap=True)
             preview.update(syntax)

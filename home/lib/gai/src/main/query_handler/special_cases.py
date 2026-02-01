@@ -99,13 +99,50 @@ def handle_run_special_cases(args_after_run: list[str]) -> bool:
         )
         sys.exit(0)
 
+    # Handle #workflow_name syntax (e.g., gai run "#split")
+    if args_after_run:
+        potential_query = args_after_run[0]
+        if potential_query.startswith("#"):
+            workflow_ref = potential_query[1:]  # Strip the #
+            # Extract workflow name (handle #split(args) syntax too)
+            if "(" in workflow_ref:
+                workflow_name = workflow_ref.split("(")[0]
+            else:
+                workflow_name = workflow_ref
+
+            from xprompt import execute_workflow, get_all_workflows
+
+            workflows = get_all_workflows()
+            if workflow_name in workflows:
+                # Parse args if present
+                positional_args: list[str] = []
+                named_args: dict[str, str] = {}
+                if "(" in workflow_ref and workflow_ref.endswith(")"):
+                    args_str = workflow_ref[len(workflow_name) + 1 : -1]
+                    if args_str:
+                        # Simple arg parsing - split on comma
+                        for arg in args_str.split(","):
+                            arg = arg.strip()
+                            if "=" in arg:
+                                key, value = arg.split("=", 1)
+                                named_args[key.strip()] = value.strip()
+                            else:
+                                positional_args.append(arg)
+                try:
+                    execute_workflow(workflow_name, positional_args, named_args)
+                    sys.exit(0)
+                except Exception as e:
+                    print(f"Workflow error: {e}")
+                    sys.exit(1)
+
     # Handle direct query (not a known workflow, contains spaces)
     if args_after_run:
         potential_query = args_after_run[0]
-        known_workflows = {"split"}
-        if potential_query not in known_workflows and (
-            " " in potential_query or potential_query.startswith("#")
-        ):
+        # Get known workflows dynamically
+        from xprompt import get_all_workflows
+
+        known_workflows = set(get_all_workflows().keys())
+        if potential_query not in known_workflows and " " in potential_query:
             run_query(potential_query)
             sys.exit(0)
 
