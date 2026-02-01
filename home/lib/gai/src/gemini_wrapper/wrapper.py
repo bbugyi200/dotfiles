@@ -31,7 +31,6 @@ from .file_references import (
     format_with_prettier,
     process_command_substitution,
     process_file_references,
-    process_xcmd_references,
 )
 
 
@@ -334,9 +333,6 @@ class GeminiCommandWrapper:
 
         # Process command substitution in the prompt (expand $(cmd) patterns)
         query = process_command_substitution(query)
-
-        # Process xcmd references in the prompt (expand #(filename: cmd) patterns)
-        query = process_xcmd_references(query)
 
         # Process file references in the prompt (copy absolute paths to bb/gai/context/ and update prompt)
         # In home mode, just expand tilde paths without copying files

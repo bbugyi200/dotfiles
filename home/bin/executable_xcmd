@@ -1,0 +1,45 @@
+#!/bin/bash
+
+set -e
+
+if [[ $# -lt 2 ]]; then
+  echo "Usage: xcmd <name> <command...>" >&2
+  exit 1
+fi
+
+name="$1"
+shift
+cmd="$*"
+
+# Generate timestamp suffix (-YYmmdd_HHMMSS)
+timestamp=$(date +"%y%m%d_%H%M%S")
+
+# Extract extension if present, default to .txt
+if [[ "$name" =~ \.([a-zA-Z0-9]+)$ ]]; then
+  ext="${BASH_REMATCH[1]}"
+  base="${name%.*}"
+else
+  ext="txt"
+  base="$name"
+fi
+
+filename="${base}-${timestamp}.${ext}"
+
+# Create output directory
+mkdir -p bb/gai/xcmds
+
+# Execute command and capture output
+output=$(eval "$cmd" 2>&1) || exit 0
+[[ -z "${output// /}" ]] && exit 0
+
+# Write output file with metadata header
+output_file="bb/gai/xcmds/${filename}"
+{
+  echo "# Generated from command: $cmd"
+  echo "# Timestamp: $(date '+%Y-%m-%d %H:%M:%S')"
+  echo ""
+  printf '%s' "$output"
+} > "$output_file"
+
+# Print file path (WITHOUT @ prefix)
+echo "$output_file"

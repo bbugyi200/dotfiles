@@ -81,28 +81,27 @@ xprompts:
       file to help you with this. #clref:852317975
   bug:
     input: { bug_id: int }
-    content: "#(bug_desc: bugged show '{{ bug_id }}')"
+    content: "#x(bug_desc, bugged show '{{ bug_id }}')"
   cl:
     input: { include_chat: { type: bool, default: false } }
     content: |
       ### Context Files Related to this CL
-      + #(cl_changes.diff: hg pdiff $(branch_changes | grep -v -E 'png$|fingerprint$') | perl -nE 'print s{google3/}{}gr'): Contains a diff of the changes made by the current CL.
-      + #(cl_desc: cl_desc --short): Contains the current CL's change description.
+      + #x(cl_changes.diff, hg pdiff $(branch_changes | grep -v -E 'png$|fingerprint$') | perl -nE 'print s{google3/}{}gr'): Contains a diff of the changes made by the current CL.
+      + #x(cl_desc, cl_desc --short): Contains the current CL's change description.
       {%- if include_chat %}
       + #chat: Contains the initial conversation with Gemini that resulted in the creation of this CL.
       {%- endif %}
   clr:
     input: { cl_id: int }
-    content: "cl/{{ cl_id }} (see the #(cl_desc_and_diff: p4 diff -c '{{ cl_id }}') file)"
+    content: "cl/{{ cl_id }} (see the #x(cl_desc_and_diff.diff, p4 diff -c '{{ cl_id }}') file)"
   clref:
     input: { cl_id: int }
     content: "Use #clr:{{ cl_id }} as a reference."
   newfeat:
-    input: { feat_name: word, usage: text }
+    input: { feat_name: word, usage: line }
     content: |
       Can you help me add a new #feat named {{ feat_name }} to the java/com/google/ads/publisher/domain/entity/feature/publisher_features.textproto file?
       This publisher feature will be used to {{ usage }}. #noc
-
   # Simple xprompts (no arguments) remain as strings
   chat: "@$(gai_first_commit_chat)"
   duck: "@$(printf '%s\\n' ~/bb/duckie/* | sort | tail -n 1)"
@@ -179,3 +178,6 @@ xprompts:
     @contentads/drx/fe/client/g3doc/drx_ui_style.md document?
   reporting: |
     Refer to the `contentads/drx/reporting/g3doc/**/*.md` files for documentation on how the reporting stack works.
+  x:
+    input: { name: word, cmd: line }
+    content: "@$(xcmd {{ name }} {{ cmd }})"

@@ -6,7 +6,6 @@ import shutil
 import subprocess
 import sys
 from dataclasses import dataclass, field
-from datetime import datetime
 from pathlib import Path
 
 from rich_utils import (
@@ -245,9 +244,6 @@ def process_file_references(prompt: str, *, is_home_mode: bool = False) -> str:
     Raises:
         SystemExit: If any referenced file starts with '..', does not exist, or is duplicated
     """
-    import shutil
-    from pathlib import Path
-
     parsed = _parse_file_refs(prompt)
 
     # Validate and exit on errors (skip context_dir check in home mode since we don't use it)
@@ -351,17 +347,13 @@ def process_file_references(prompt: str, *, is_home_mode: bool = False) -> str:
     return modified_prompt
 
 
-# --- xcmd processing (#(filename: command) syntax) ---
+# --- Command substitution processing ($(cmd) syntax) ---
 
-# Pattern to match #(filename: command)
-# Captures: group(1) = filename (before colon), group(2) = command (after colon)
-_XCMD_PATTERN = r"#\(([^:]+):\s*([^)]+)\)"
-
-# Command cache for xcmd processing to avoid duplicate executions
-_xcmd_cache: dict[str, tuple[str | None, bool]] = {}
+# Command cache for command substitution processing to avoid duplicate executions
+_cmd_cache: dict[str, tuple[str | None, bool]] = {}
 
 
-def _execute_xcmd_cached(cmd: str) -> tuple[str | None, bool]:
+def _execute_cmd_cached(cmd: str) -> tuple[str | None, bool]:
     """
     Execute a command with caching to avoid duplicate runs.
 
@@ -371,8 +363,8 @@ def _execute_xcmd_cached(cmd: str) -> tuple[str | None, bool]:
     Returns:
         Tuple of (output, success) where output is stdout and success is True if exit code was 0
     """
-    if cmd in _xcmd_cache:
-        return _xcmd_cache[cmd]
+    if cmd in _cmd_cache:
+        return _cmd_cache[cmd]
 
     try:
         result = subprocess.run(
@@ -384,116 +376,11 @@ def _execute_xcmd_cached(cmd: str) -> tuple[str | None, bool]:
         )
         output = result.stdout
         success = result.returncode == 0
-        _xcmd_cache[cmd] = (output, success)
+        _cmd_cache[cmd] = (output, success)
         return output, success
     except Exception:
-        _xcmd_cache[cmd] = (None, False)
+        _cmd_cache[cmd] = (None, False)
         return None, False
-
-
-def _process_xcmd_substitution(filename: str) -> str:
-    """
-    Process command substitution $(cmd) in filename.
-
-    Args:
-        filename: The filename that may contain $(cmd) patterns
-
-    Returns:
-        The filename with command substitutions expanded
-    """
-
-    def _replace_cmd(match: re.Match[str]) -> str:
-        cmd = match.group(1)
-        output, success = _execute_xcmd_cached(cmd)
-        if success and output:
-            return output.strip()
-        return ""
-
-    return re.sub(r"\$\(([^)]+)\)", _replace_cmd, filename)
-
-
-def process_xcmd_references(prompt: str) -> str:
-    """
-    Process #(filename: command) references in the prompt.
-
-    Executes shell commands and stores their output in bb/gai/xcmds/,
-    replacing the pattern with @-prefixed file references.
-
-    Args:
-        prompt: The prompt text to process
-
-    Returns:
-        The transformed prompt with #(filename: cmd) replaced by @file references
-    """
-    # Quick check before regex matching
-    if "#(" not in prompt:
-        return prompt
-
-    # Find all matches
-    matches = list(re.finditer(_XCMD_PATTERN, prompt))
-    if not matches:
-        return prompt
-
-    # Track generated filenames to avoid collisions within this call
-    generated_filenames: dict[str, int] = {}
-
-    # Process from last to first to preserve string positions
-    for match in reversed(matches):
-        filename = match.group(1).strip()
-        cmd = match.group(2).strip()
-
-        # Process command substitution in filename (e.g., $(date +%Y%m%d))
-        processed_filename = _process_xcmd_substitution(filename)
-
-        # Execute command (cached)
-        output, success = _execute_xcmd_cached(cmd)
-
-        if not success or not output or not output.strip():
-            # Command failed or empty output - remove pattern from prompt
-            prompt = prompt[: match.start()] + prompt[match.end() :]
-            continue
-
-        # Generate timestamp suffix (format: -YYmmdd_HHMMSS)
-        timestamp_suffix = datetime.now().strftime("-%y%m%d_%H%M%S")
-
-        # Add timestamp suffix before extension
-        if ext_match := re.search(r"\.\w+$", processed_filename):
-            ext = ext_match.group()
-            base = processed_filename[: ext_match.start()]
-            base_with_timestamp = f"{base}{timestamp_suffix}"
-        else:
-            base_with_timestamp = f"{processed_filename}{timestamp_suffix}"
-            ext = ".txt"
-
-        # Handle filename collisions with counter (like process_file_references)
-        count = generated_filenames.get(base_with_timestamp, 0)
-        generated_filenames[base_with_timestamp] = count + 1
-
-        if count == 0:
-            processed_filename = f"{base_with_timestamp}{ext}"
-        else:
-            processed_filename = f"{base_with_timestamp}_{count}{ext}"
-
-        # Create output directory
-        xcmds_dir = Path("bb/gai/xcmds")
-        xcmds_dir.mkdir(parents=True, exist_ok=True)
-
-        # Write output file with metadata header
-        output_file = xcmds_dir / processed_filename
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        with output_file.open("w") as f:
-            f.write(f"# Generated from command: {cmd}\n")
-            f.write(f"# Timestamp: {timestamp}\n\n")
-            f.write(output)
-
-        # Replace pattern with @file reference
-        replacement = f"@{output_file}"
-        prompt = prompt[: match.start()] + replacement + prompt[match.end() :]
-
-    return prompt
-
-
-# --- Command substitution processing ($(cmd) syntax) ---
 
 
 def _find_matching_paren(text: str, start: int) -> int:
@@ -595,7 +482,7 @@ def process_command_substitution(prompt: str) -> str:
     # Process from end to start to preserve string positions
     for start, end, command in reversed(substitutions):
         # Execute command using the cached executor
-        output, success = _execute_xcmd_cached(command)
+        output, success = _execute_cmd_cached(command)
 
         if success and output:
             replacement = output.strip()
