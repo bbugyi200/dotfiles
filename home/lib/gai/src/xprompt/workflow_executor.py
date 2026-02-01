@@ -2,14 +2,17 @@
 
 import json
 import os
-import re
 import subprocess
 import sys
 from datetime import datetime
-from typing import Any, Protocol
+from typing import Any
 
-from jinja2 import Environment, StrictUndefined
-
+from xprompt.workflow_executor_types import HITLHandler, HITLResult
+from xprompt.workflow_executor_utils import (
+    create_jinja_env,
+    parse_bash_output,
+    render_template,
+)
 from xprompt.workflow_models import (
     LoopConfig,
     StepState,
@@ -20,120 +23,8 @@ from xprompt.workflow_models import (
     WorkflowStep,
 )
 
-
-class HITLHandler(Protocol):
-    """Protocol for human-in-the-loop handlers."""
-
-    def prompt(
-        self,
-        step_name: str,
-        step_type: str,
-        output: Any,
-    ) -> "HITLResult":
-        """Prompt the user for action on step output.
-
-        Args:
-            step_name: Name of the step being reviewed.
-            step_type: Either "agent" or "bash".
-            output: The step's output data.
-
-        Returns:
-            HITLResult indicating the user's decision.
-        """
-        ...
-
-
-class HITLResult:
-    """Result of a HITL prompt."""
-
-    def __init__(
-        self,
-        action: str,
-        feedback: str | None = None,
-        approved: bool = False,
-        edited_output: Any = None,
-    ) -> None:
-        """Initialize HITL result.
-
-        Args:
-            action: One of "accept", "edit", "reject", "rerun", or "feedback".
-            feedback: User feedback text (for "feedback" action).
-            approved: Whether the user approved (for confirmation prompts).
-            edited_output: Edited data from user (for "edit" action).
-        """
-        self.action = action
-        self.feedback = feedback
-        self.approved = approved
-        self.edited_output = edited_output
-
-
-def _create_jinja_env() -> Environment:
-    """Create a Jinja2 environment for template rendering."""
-    env = Environment(undefined=StrictUndefined)
-    # Add tojson filter
-    env.filters["tojson"] = json.dumps
-    return env
-
-
-def _render_template(template: str, context: dict[str, Any]) -> str:
-    """Render a Jinja2 template with the given context.
-
-    Args:
-        template: The template string with {{ var }} placeholders.
-        context: Dictionary of variable values.
-
-    Returns:
-        The rendered template string.
-    """
-    env = _create_jinja_env()
-    jinja_template = env.from_string(template)
-    return jinja_template.render(context)
-
-
-def _parse_bash_output(output: str) -> dict[str, Any]:
-    """Parse bash command output into a dictionary.
-
-    Supports three formats:
-    1. JSON: {"key": "value", ...}
-    2. Key=Value: Each line is key=value
-    3. Positional: Each line is a value (keys must be inferred from schema)
-
-    Args:
-        output: The command output string.
-
-    Returns:
-        Dictionary of parsed values.
-    """
-    output = output.strip()
-
-    # Try JSON first
-    if output.startswith("{") or output.startswith("["):
-        try:
-            return json.loads(output)
-        except json.JSONDecodeError:
-            pass
-
-    # Try key=value format
-    result: dict[str, Any] = {}
-    lines = output.split("\n")
-
-    for line in lines:
-        line = line.strip()
-        if not line:
-            continue
-
-        # Check for key=value pattern
-        match = re.match(r"^([a-zA-Z_][a-zA-Z0-9_]*)=(.*)$", line)
-        if match:
-            key, value = match.groups()
-            result[key] = value
-        else:
-            # If we find a line without =, treat whole output as text
-            # This handles multi-line values
-            if not result:
-                return {"_output": output}
-
-    return result
+# Re-export for backward compatibility
+__all__ = ["WorkflowExecutor", "HITLHandler", "HITLResult"]
 
 
 class WorkflowExecutor:
@@ -262,7 +153,7 @@ class WorkflowExecutor:
         Returns:
             True if condition evaluates to truthy, False otherwise.
         """
-        env = _create_jinja_env()
+        env = create_jinja_env()
         try:
             template = env.from_string(condition)
             result = template.render(self.context)
@@ -293,7 +184,7 @@ class WorkflowExecutor:
         lists: list[list[Any]] = []
 
         for expr in for_loop.values():
-            env = _create_jinja_env()
+            env = create_jinja_env()
             # Use compile_expression to get the actual value, not string rendering
             # This handles cases where the context has actual Python lists
             compiled = env.compile_expression(
@@ -559,7 +450,7 @@ class WorkflowExecutor:
             raise WorkflowExecutionError(f"Agent step '{step.name}' has no prompt")
 
         # Render prompt with Jinja2 context
-        rendered_prompt = _render_template(step.prompt, self.context)
+        rendered_prompt = render_template(step.prompt, self.context)
 
         # Get output schema before expansion
         output_spec = get_primary_output_schema(rendered_prompt)
@@ -660,7 +551,7 @@ class WorkflowExecutor:
             raise WorkflowExecutionError(f"Bash step '{step.name}' has no command")
 
         # Render command with Jinja2 context
-        rendered_command = _render_template(step.bash, self.context)
+        rendered_command = render_template(step.bash, self.context)
 
         # Execute command
         try:
@@ -685,7 +576,7 @@ class WorkflowExecutor:
             raise WorkflowExecutionError(f"Bash step '{step.name}' failed: {error_msg}")
 
         # Parse output
-        output = _parse_bash_output(result.stdout)
+        output = parse_bash_output(result.stdout)
 
         # Validate output against schema if specified
         if step.output and step.output.schema:
@@ -739,7 +630,7 @@ class WorkflowExecutor:
             raise WorkflowExecutionError(f"Python step '{step.name}' has no code")
 
         # Render code with Jinja2 context
-        rendered_code = _render_template(step.python, self.context)
+        rendered_code = render_template(step.python, self.context)
 
         # Execute python code using the same interpreter
         try:
@@ -765,7 +656,7 @@ class WorkflowExecutor:
             )
 
         # Parse output (same formats as bash: JSON, key=value, plain text)
-        output = _parse_bash_output(result.stdout)
+        output = parse_bash_output(result.stdout)
 
         # Validate output against schema if specified
         if step.output and step.output.schema:

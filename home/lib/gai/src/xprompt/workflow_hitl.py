@@ -10,7 +10,7 @@ from rich.console import Console
 from rich.syntax import Syntax
 from shared_utils import dump_yaml
 
-from xprompt.workflow_executor import HITLResult
+from xprompt.workflow_executor_types import HITLResult
 
 
 class CLIHITLHandler:

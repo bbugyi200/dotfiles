@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from xprompt import HITLHandler, HITLResult, WorkflowExecutor
 from xprompt.models import OutputSpec
-from xprompt.workflow_executor import _parse_bash_output
+from xprompt.workflow_executor_utils import parse_bash_output
 from xprompt.workflow_models import Workflow, WorkflowExecutionError, WorkflowStep
 
 
@@ -458,28 +458,28 @@ class TestPythonStepExecution:
 
 
 class TestParseBashOutput:
-    """Tests for _parse_bash_output function."""
+    """Tests for parse_bash_output function."""
 
     def test_parse_json_object(self) -> None:
         """Test parsing JSON object output."""
         output = '{"key": "value", "num": 123}'
-        result = _parse_bash_output(output)
+        result = parse_bash_output(output)
         assert result == {"key": "value", "num": 123}
 
     def test_parse_json_array(self) -> None:
         """Test parsing JSON array output."""
         output = "[1, 2, 3]"
-        result = _parse_bash_output(output)
+        result = parse_bash_output(output)
         assert result == [1, 2, 3]
 
     def test_parse_key_value(self) -> None:
         """Test parsing key=value output."""
         output = "key1=value1\nkey2=value2"
-        result = _parse_bash_output(output)
+        result = parse_bash_output(output)
         assert result == {"key1": "value1", "key2": "value2"}
 
     def test_parse_plain_text(self) -> None:
         """Test parsing plain text output."""
         output = "Just some plain text"
-        result = _parse_bash_output(output)
+        result = parse_bash_output(output)
         assert result == {"_output": "Just some plain text"}
