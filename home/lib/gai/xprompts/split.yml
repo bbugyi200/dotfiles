@@ -98,11 +98,11 @@ steps:
       mkdir -p "$HOME/.gai/splits"
       echo "$spec_json" | python3 -c "import sys,json,yaml; yaml.dump(json.load(sys.stdin), sys.stdout)" > "$archive_path"
 
-      # Format and sort (pass JSON via stdin to avoid escaping issues)
-      echo "$spec_json" | python3 << 'PYTHON'
+      # Format and sort (pass JSON via env var since heredoc takes stdin precedence)
+      SPEC_JSON="$spec_json" python3 << 'PYTHON'
       import json
-      import sys
-      spec = json.load(sys.stdin)
+      import os
+      spec = json.loads(os.environ['SPEC_JSON'])
       # Handle _data wrapper if present (arrays get wrapped by workflow executor)
       if isinstance(spec, dict) and '_data' in spec:
           spec = spec['_data']

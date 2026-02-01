@@ -393,6 +393,18 @@ class WorkflowExecutor:
         # Parse output
         output = _parse_bash_output(result.stdout)
 
+        # Validate output against schema if specified
+        if step.output and step.output.schema:
+            from .output_validation import validate_against_schema
+
+            is_valid, validation_err = validate_against_schema(
+                output, step.output.schema
+            )
+            if not is_valid:
+                raise WorkflowExecutionError(
+                    f"Bash step '{step.name}' output validation failed: {validation_err}"
+                )
+
         # HITL review if required
         if step.hitl and self.hitl_handler:
             step_state.status = StepStatus.WAITING_HITL
