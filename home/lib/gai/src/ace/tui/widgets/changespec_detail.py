@@ -49,26 +49,32 @@ class SearchQueryPanel(Static):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the search query panel."""
         super().__init__(**kwargs)
+        self._query_string: str = ""
 
     def update_query(self, query_string: str) -> None:
-        """Update the displayed query with optional saved query indicator.
+        """Update the stored query and trigger a refresh.
 
         Args:
             query_string: The current search query string.
         """
+        self._query_string = query_string
+        self.refresh()
+
+    def render(self) -> Text:
+        """Render the search query panel with proper right-alignment."""
         from ...saved_queries import load_saved_queries
 
         # Build left side content
         text = Text()
         text.append("Search Query ", style="dim italic #87D7FF")
         text.append("» ", style="dim #808080")
-        text.append_text(build_query_text(query_string))
+        text.append_text(build_query_text(self._query_string))
 
         # Check for saved query match
         saved_queries = load_saved_queries()
         matched_slot: str | None = None
         for slot, saved_query in saved_queries.items():
-            if saved_query == query_string:
+            if saved_query == self._query_string:
                 matched_slot = slot
                 break
 
@@ -81,21 +87,15 @@ class SearchQueryPanel(Static):
             )  # Black on gold badge
 
             # Calculate padding for right-alignment
-            # Panel has border (2) + padding (2) = 4 chars less usable
             left_len = len(text.plain)
             indicator_len = len(indicator.plain)
-
-            # Use widget width if available, else estimate
-            try:
-                available_width = self.size.width - 4  # border + padding
-            except Exception:
-                available_width = 80  # fallback
-
+            # Subtract 2 for left/right padding (padding: 0 1)
+            available_width = self.size.width - 2
             padding = max(1, available_width - left_len - indicator_len)
             text.append(" " * padding)
             text.append_text(indicator)
 
-        self.update(text)
+        return text
 
 
 class ChangeSpecDetail(Static):
