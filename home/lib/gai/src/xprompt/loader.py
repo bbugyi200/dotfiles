@@ -438,6 +438,19 @@ def _load_xprompts_from_files() -> dict[str, XPrompt]:
 def _load_xprompts_from_config() -> dict[str, XPrompt]:
     """Load xprompts from gai.yml configuration file.
 
+    Supports both simple string format and structured dict format:
+
+    Simple format:
+        xprompts:
+          foo: "Content here"
+
+    Structured format (with inputs):
+        xprompts:
+          bar:
+            input: {name: word, count: {type: int, default: 0}}
+            content: "Hello {{ name }}, count is {{ count }}"
+            output: {result: text}  # optional
+
     Returns:
         Dictionary mapping xprompt name to XPrompt object.
     """
@@ -461,15 +474,31 @@ def _load_xprompts_from_config() -> dict[str, XPrompt]:
     if not isinstance(config_data, dict):
         return {}
 
-    for name, content in config_data.items():
-        if not isinstance(name, str) or not isinstance(content, str):
+    for name, value in config_data.items():
+        if not isinstance(name, str):
+            continue
+
+        if isinstance(value, str):
+            # Simple string content (no arguments)
+            content = value
+            inputs: list[InputArg] = []
+            output: OutputSpec | None = None
+        elif isinstance(value, dict):
+            # Structured xprompt with input/content
+            content = value.get("content", "")
+            if not isinstance(content, str):
+                continue
+            inputs = _parse_inputs_from_front_matter(value.get("input"))
+            output = parse_output_from_front_matter(value.get("output"))
+        else:
             continue
 
         xprompts[name] = XPrompt(
             name=name,
             content=content,
-            inputs=[],  # Config-based xprompts don't have typed inputs
+            inputs=inputs,
             source_path="config",
+            output=output,
         )
 
     return xprompts

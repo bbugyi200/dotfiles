@@ -277,7 +277,7 @@ def test_load_xprompts_from_config_basic() -> None:
     yaml_content = """
 xprompts:
   foo: "Foo content"
-  bar: "Bar content with {1}"
+  bar: "Bar content"
 """
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".yml", delete=False, encoding="utf-8"
@@ -290,8 +290,104 @@ xprompts:
 
     assert len(xprompts) == 2
     assert xprompts["foo"].content == "Foo content"
-    assert xprompts["bar"].content == "Bar content with {1}"
+    assert xprompts["bar"].content == "Bar content"
     assert xprompts["foo"].source_path == "config"
+
+    Path(config_path).unlink()
+
+
+def test_load_xprompts_from_config_structured_with_inputs() -> None:
+    """Test loading structured xprompts with input/content from config."""
+    yaml_content = """
+xprompts:
+  simple: "Simple content"
+  with_input:
+    input: { name: word, count: { type: int, default: 0 } }
+    content: "Hello {{ name }}, count={{ count }}"
+"""
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yml", delete=False, encoding="utf-8"
+    ) as f:
+        f.write(yaml_content)
+        config_path = f.name
+
+    with patch("xprompt.loader._get_config_path", return_value=config_path):
+        xprompts = _load_xprompts_from_config()
+
+    assert len(xprompts) == 2
+
+    # Simple xprompt
+    assert xprompts["simple"].content == "Simple content"
+    assert xprompts["simple"].inputs == []
+
+    # Structured xprompt with inputs
+    assert xprompts["with_input"].content == "Hello {{ name }}, count={{ count }}"
+    assert len(xprompts["with_input"].inputs) == 2
+
+    names = [i.name for i in xprompts["with_input"].inputs]
+    assert "name" in names
+    assert "count" in names
+
+    name_input = next(i for i in xprompts["with_input"].inputs if i.name == "name")
+    assert name_input.type == InputType.WORD
+    assert name_input.default is None
+
+    count_input = next(i for i in xprompts["with_input"].inputs if i.name == "count")
+    assert count_input.type == InputType.INT
+    assert count_input.default == 0
+
+    Path(config_path).unlink()
+
+
+def test_load_xprompts_from_config_structured_with_output() -> None:
+    """Test loading structured xprompts with output spec from config."""
+    yaml_content = """
+xprompts:
+  with_output:
+    input: { query: line }
+    content: "Search for {{ query }}"
+    output: { result: text, score: int }
+"""
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yml", delete=False, encoding="utf-8"
+    ) as f:
+        f.write(yaml_content)
+        config_path = f.name
+
+    with patch("xprompt.loader._get_config_path", return_value=config_path):
+        xprompts = _load_xprompts_from_config()
+
+    assert len(xprompts) == 1
+    xp = xprompts["with_output"]
+    assert xp.content == "Search for {{ query }}"
+    assert len(xp.inputs) == 1
+    assert xp.inputs[0].name == "query"
+    assert xp.output is not None
+    assert xp.output.type == "json_schema"
+    assert "properties" in xp.output.schema
+
+    Path(config_path).unlink()
+
+
+def test_load_xprompts_from_config_structured_content_only() -> None:
+    """Test loading structured xprompt with only content field."""
+    yaml_content = """
+xprompts:
+  content_only:
+    content: "Just content, no inputs"
+"""
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yml", delete=False, encoding="utf-8"
+    ) as f:
+        f.write(yaml_content)
+        config_path = f.name
+
+    with patch("xprompt.loader._get_config_path", return_value=config_path):
+        xprompts = _load_xprompts_from_config()
+
+    assert len(xprompts) == 1
+    assert xprompts["content_only"].content == "Just content, no inputs"
+    assert xprompts["content_only"].inputs == []
 
     Path(config_path).unlink()
 
