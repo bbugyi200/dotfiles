@@ -1,26 +1,7 @@
 ---
 name: split_spec_generator
-input:
-  - name: workspace_name
-    type: word
-  - name: diff_path
-    type: path
-output:
-  type: json_schema
-  schema:
-    type: array
-    items:
-      type: object
-      required:
-        - name
-        - description
-      properties:
-        name:
-          type: word
-        description:
-          type: text
-        parent:
-          type: word
+input: { workspace_name: word, diff_path: path }
+output: [{ name: word, description: text, parent: 'word = ""' }]
 ---
 
 # Generate Split Specification

@@ -1,10 +1,6 @@
 ---
 name: fix_hook
-input:
-  - name: hook_command
-    type: line
-  - name: output_file
-    type: path
+input: { hook_command: line, output_file: path }
 ---
 
 The command "{{ hook_command }}" is failing. The output of the last run can be found in the @{{ output_file }} file. Can

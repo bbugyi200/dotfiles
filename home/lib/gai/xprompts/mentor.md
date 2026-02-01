@@ -1,8 +1,6 @@
 ---
 name: mentor
-input:
-  - name: prompt
-    type: text
+input: { prompt: text }
 ---
 
 ### Role

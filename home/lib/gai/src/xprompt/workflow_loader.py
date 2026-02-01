@@ -10,6 +10,7 @@ from xprompt.loader import (
     get_xprompt_search_paths,
     parse_input_type,
     parse_output_from_front_matter,
+    parse_shortform_inputs,
 )
 from xprompt.models import InputArg, OutputSpec
 from xprompt.workflow_models import (
@@ -39,20 +40,31 @@ def _parse_workflow_config(config_data: dict[str, Any] | None) -> WorkflowConfig
     )
 
 
-def _parse_workflow_inputs(input_list: list[dict[str, Any]] | None) -> list[InputArg]:
+def _parse_workflow_inputs(
+    input_data: list[dict[str, Any]] | dict[str, str] | None,
+) -> list[InputArg]:
     """Parse input definitions from workflow YAML.
 
+    Supports both longform (list of dicts) and shortform (dict) syntax.
+
     Args:
-        input_list: List of input dicts from YAML.
+        input_data: Either a list of input dicts (longform) or a dict (shortform).
+            Longform: [{"name": "foo", "type": "word", "default": ""}]
+            Shortform: {"foo": "word", "bar": "line = \"\""}
 
     Returns:
         List of InputArg objects.
     """
-    if not input_list:
+    if not input_data:
         return []
 
+    # Handle shortform dict syntax
+    if isinstance(input_data, dict):
+        return parse_shortform_inputs(input_data)
+
+    # Handle longform list syntax
     inputs: list[InputArg] = []
-    for item in input_list:
+    for item in input_data:
         if not isinstance(item, dict) or "name" not in item:
             continue
 

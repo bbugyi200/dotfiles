@@ -5,30 +5,14 @@ config:
   create_artifacts: true
   log_workflow: true
 
-input:
-  - name: cl_name
-    type: word
-    default: "" # Empty means use current branch
+input: {cl_name: 'word = ""'}
 
 steps:
   # Step 1: Setup - navigate to CL and gather metadata
   - name: setup
     bash: |
       gai_split_setup{% if cl_name %} --cl-name "{{ cl_name }}"{% endif %}
-    output:
-      type: json_schema
-      schema:
-        properties:
-          cl_name:
-            type: word
-          diff_path:
-            type: path
-          bug:
-            type: line
-          workspace_name:
-            type: word
-          default_parent:
-            type: word
+    output: {cl_name: word, diff_path: path, bug: line, workspace_name: word, default_parent: word}
 
   # Step 2: Generate split spec (agent with HITL)
   - name: generate_spec
@@ -38,38 +22,14 @@ steps:
         workspace_name="{{ setup.workspace_name }}",
         diff_path="{{ setup.diff_path }}"
       )
-    output:
-      type: json_schema
-      schema:
-        type: array
-        items:
-          type: object
-          required:
-            - name
-            - description
-          properties:
-            name:
-              type: word
-            description:
-              type: text
-            parent:
-              type: word
+    output: [{name: word, description: text, parent: 'word = ""'}]
     hitl: true
 
   # Step 3: Format spec and navigate to parent
   - name: prepare_execute
     bash: |
       gai_split_prepare_execute --spec '{{ generate_spec | tojson }}' --cl-name "{{ setup.cl_name }}" --default-parent "{{ setup.default_parent }}"
-    output:
-      type: json_schema
-      schema:
-        properties:
-          archive_path:
-            type: path
-          spec_markdown:
-            type: text
-          processing_order:
-            type: text
+    output: {archive_path: path, spec_markdown: text, processing_order: text}
 
   # Step 4: Execute split (agent)
   - name: execute_split
@@ -88,12 +48,7 @@ steps:
   - name: revert_prompt
     bash: |
       echo "message=Revert the original CL '{{ setup.cl_name }}'?"
-    output:
-      type: json_schema
-      schema:
-        properties:
-          message:
-            type: text
+    output: {message: text}
     hitl: true
 
   # Step 6: Execute revert if approved
@@ -114,9 +69,4 @@ steps:
               print("reverted=false")
       else:
           print("reverted=skipped")
-    output:
-      type: json_schema
-      schema:
-        properties:
-          reverted:
-            type: word
+    output: {reverted: word}

@@ -1,6 +1,7 @@
 """XPrompt discovery and loading from files and configuration."""
 
 import os
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -94,22 +95,191 @@ def parse_input_type(type_str: str) -> InputType:
     return type_map.get(type_str.lower(), InputType.LINE)
 
 
-def _parse_inputs_from_front_matter(
-    input_list: list[dict[str, Any]] | None,
-) -> list[InputArg]:
-    """Parse input definitions from front matter.
+def _parse_shortform_input_value(value: str) -> tuple[str, Any]:
+    """Parse shortform input value like 'type = default' into (type, default).
 
     Args:
-        input_list: List of input dicts from YAML front matter.
+        value: The value string, e.g., "word", "line = \"\"", "int = 0".
+
+    Returns:
+        Tuple of (type_str, default_value). default_value is None if no default.
+    """
+    # Check for default value pattern: "type = value"
+    match = re.match(r"^(\w+)\s*=\s*(.+)$", value.strip())
+    if not match:
+        # No default value
+        return value.strip(), None
+
+    type_str = match.group(1)
+    default_str = match.group(2).strip()
+
+    # Parse the default value
+    # Handle quoted strings
+    if (default_str.startswith('"') and default_str.endswith('"')) or (
+        default_str.startswith("'") and default_str.endswith("'")
+    ):
+        return type_str, default_str[1:-1]
+
+    # Handle booleans
+    if default_str.lower() in ("true", "false"):
+        return type_str, default_str.lower() == "true"
+
+    # Handle integers
+    try:
+        return type_str, int(default_str)
+    except ValueError:
+        pass
+
+    # Handle floats
+    try:
+        return type_str, float(default_str)
+    except ValueError:
+        pass
+
+    # Return as string
+    return type_str, default_str
+
+
+def parse_shortform_inputs(input_dict: dict[str, str]) -> list[InputArg]:
+    """Parse shortform input dict to list of InputArg.
+
+    Args:
+        input_dict: Dict mapping name to "type" or "type = default".
+            Example: {"diff_path": "path", "bug_flag": "line = \"\""}
 
     Returns:
         List of InputArg objects.
     """
-    if not input_list:
+    inputs: list[InputArg] = []
+    for name, value in input_dict.items():
+        type_str, default = _parse_shortform_input_value(str(value))
+        inputs.append(
+            InputArg(
+                name=name,
+                type=parse_input_type(type_str),
+                default=default,
+            )
+        )
+    return inputs
+
+
+def _normalize_schema_properties(schema: dict[str, Any]) -> dict[str, Any]:
+    """Expand shortform properties in a schema to standard JSON Schema format.
+
+    Converts shortform like {"name": {"type": "word"}} to proper nested format.
+    This handles both top-level properties and nested array items.
+
+    Args:
+        schema: The schema dict to normalize.
+
+    Returns:
+        Normalized schema dict.
+    """
+    if not isinstance(schema, dict):
+        return schema
+
+    result = dict(schema)
+
+    # Handle properties
+    if "properties" in result:
+        result["properties"] = {
+            name: _normalize_schema_properties(prop)
+            for name, prop in result["properties"].items()
+        }
+
+    # Handle array items
+    if "items" in result:
+        result["items"] = _normalize_schema_properties(result["items"])
+
+    return result
+
+
+def _parse_shortform_output(output_data: dict[str, Any] | list[Any]) -> OutputSpec:
+    """Convert shortform output syntax to OutputSpec.
+
+    Shortform dict: {field: type} → OutputSpec with json_schema type
+    Shortform list: [{field: type}] → OutputSpec with array schema
+
+    Args:
+        output_data: Either a dict like {"name": "word", "desc": "text"}
+            or a list like [{"name": "word", "desc": "text = \"\""}].
+
+    Returns:
+        OutputSpec object.
+    """
+    if isinstance(output_data, list):
+        # Array of objects syntax: [{name: word, desc: text = ""}]
+        if not output_data:
+            return OutputSpec(type="json_schema", schema={"type": "array", "items": {}})
+
+        item_spec = output_data[0]
+        if not isinstance(item_spec, dict):
+            return OutputSpec(type="json_schema", schema={"type": "array", "items": {}})
+
+        properties: dict[str, dict[str, str]] = {}
+        required: list[str] = []
+
+        for field_name, field_value in item_spec.items():
+            type_str, default = _parse_shortform_input_value(str(field_value))
+            properties[field_name] = {"type": type_str}
+            # Fields without defaults are required
+            if default is None:
+                required.append(field_name)
+
+        items_schema: dict[str, Any] = {
+            "type": "object",
+            "properties": properties,
+        }
+        if required:
+            items_schema["required"] = required
+
+        return OutputSpec(
+            type="json_schema",
+            schema={
+                "type": "array",
+                "items": items_schema,
+            },
+        )
+    else:
+        # Object syntax: {name: word, desc: text}
+        properties = {}
+        for field_name, field_value in output_data.items():
+            type_str, _ = _parse_shortform_input_value(str(field_value))
+            properties[field_name] = {"type": type_str}
+
+        return OutputSpec(
+            type="json_schema",
+            schema={
+                "properties": properties,
+            },
+        )
+
+
+def _parse_inputs_from_front_matter(
+    input_data: list[dict[str, Any]] | dict[str, str] | None,
+) -> list[InputArg]:
+    """Parse input definitions from front matter.
+
+    Supports both longform (list of dicts) and shortform (dict) syntax.
+
+    Args:
+        input_data: Either a list of input dicts (longform) or a dict (shortform).
+            Longform: [{"name": "foo", "type": "word", "default": ""}]
+            Shortform: {"foo": "word", "bar": "line = \"\""}
+
+    Returns:
+        List of InputArg objects.
+    """
+    if not input_data:
         return []
 
+    # Handle shortform dict syntax
+    if isinstance(input_data, dict):
+        return parse_shortform_inputs(input_data)
+
+    # Handle longform list syntax
     inputs: list[InputArg] = []
-    for item in input_list:
+    for item in input_data:
         if not isinstance(item, dict) or "name" not in item:
             continue
 
@@ -129,29 +299,54 @@ def _parse_inputs_from_front_matter(
 
 
 def parse_output_from_front_matter(
-    output_data: dict[str, Any] | None,
+    output_data: dict[str, Any] | list[Any] | None,
 ) -> OutputSpec | None:
     """Parse output specification from front matter.
 
+    Supports both longform and shortform syntax.
+
+    Longform:
+        output:
+          type: json_schema
+          schema:
+            properties:
+              name: {type: word}
+
+    Shortform (object):
+        output: {name: word, desc: text}
+
+    Shortform (array):
+        output: [{name: word, desc: text = ""}]
+
     Args:
-        output_data: The output dict from YAML front matter.
+        output_data: The output data from YAML front matter.
 
     Returns:
         OutputSpec object if valid output specification found, None otherwise.
     """
-    if not output_data or not isinstance(output_data, dict):
+    if not output_data:
         return None
 
+    # Handle shortform list syntax: [{name: word, desc: text}]
+    if isinstance(output_data, list):
+        return _parse_shortform_output(output_data)
+
+    # Check if this is longform (has 'type' and 'schema' keys) or shortform
     output_type = output_data.get("type")
     schema = output_data.get("schema")
 
-    if not output_type or not isinstance(output_type, str):
-        return None
+    # Longform: has both 'type' and 'schema' keys, and 'type' is a string like "json_schema"
+    if (
+        output_type
+        and isinstance(output_type, str)
+        and schema
+        and isinstance(schema, dict)
+    ):
+        return OutputSpec(type=output_type, schema=schema)
 
-    if not schema or not isinstance(schema, dict):
-        return None
-
-    return OutputSpec(type=output_type, schema=schema)
+    # Shortform dict: {name: word, desc: text}
+    # If 'type' is present but not a known longform type, treat as shortform
+    return _parse_shortform_output(output_data)
 
 
 def _load_xprompt_from_file(file_path: Path) -> XPrompt | None:

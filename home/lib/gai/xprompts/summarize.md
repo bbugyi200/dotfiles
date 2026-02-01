@@ -1,10 +1,6 @@
 ---
 name: summarize
-input:
-  - name: target_file
-    type: path
-  - name: usage
-    type: line
+input: { target_file: path, usage: line }
 ---
 
 Can you help me summarize the @{{ target_file }} file in <=30 words (preferably <=25 or even <=15 words)? This summary

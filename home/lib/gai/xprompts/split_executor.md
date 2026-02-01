@@ -1,19 +1,14 @@
 ---
 name: split_executor
 input:
-  - name: diff_path
-    type: path
-  - name: spec_markdown
-    type: text
-  - name: default_parent
-    type: word
-  - name: bug_flag
-    type: line
-    default: ""
-  - name: note
-    type: line
-  - name: processing_order
-    type: text
+  {
+    diff_path: path,
+    spec_markdown: text,
+    default_parent: word,
+    bug_flag: 'line = ""',
+    note: line,
+    processing_order: text,
+  }
 ---
 
 Can you help me replicate the changes shown in the @{{ diff_path }} file EXACTLY by splitting the changes across
