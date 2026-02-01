@@ -1,6 +1,6 @@
 ---
 name: crs
-input: { critique_comments_path: path, context_files_section: 'text = ""' }
+input: { critique_comments_path: path, context_files_section: { type: text, default: "" } }
 ---
 
 Can you help me address the Critique comments? Read all of the files below VERY carefully to make sure that the changes

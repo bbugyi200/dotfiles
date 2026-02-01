@@ -1,7 +1,7 @@
 """XPrompt discovery and loading from files and configuration."""
 
 import os
-import re
+from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -95,64 +95,40 @@ def parse_input_type(type_str: str) -> InputType:
     return type_map.get(type_str.lower(), InputType.LINE)
 
 
-def _parse_shortform_input_value(value: str) -> tuple[str, Any]:
-    """Parse shortform input value like 'type = default' into (type, default).
+def _parse_shortform_input_value(value: str | dict[str, Any]) -> tuple[str, Any]:
+    """Parse shortform input value into (type, default).
 
     Args:
-        value: The value string, e.g., "word", "line = \"\"", "int = 0".
+        value: Either a type string (e.g., "word") or a dict with 'type' and
+            optional 'default' keys (e.g., {"type": "line", "default": ""}).
 
     Returns:
         Tuple of (type_str, default_value). default_value is None if no default.
     """
-    # Check for default value pattern: "type = value"
-    match = re.match(r"^(\w+)\s*=\s*(.+)$", value.strip())
-    if not match:
-        # No default value
-        return value.strip(), None
+    if isinstance(value, dict):
+        type_str = str(value.get("type", "line"))
+        default = value.get("default")
+        return type_str, default
 
-    type_str = match.group(1)
-    default_str = match.group(2).strip()
-
-    # Parse the default value
-    # Handle quoted strings
-    if (default_str.startswith('"') and default_str.endswith('"')) or (
-        default_str.startswith("'") and default_str.endswith("'")
-    ):
-        return type_str, default_str[1:-1]
-
-    # Handle booleans
-    if default_str.lower() in ("true", "false"):
-        return type_str, default_str.lower() == "true"
-
-    # Handle integers
-    try:
-        return type_str, int(default_str)
-    except ValueError:
-        pass
-
-    # Handle floats
-    try:
-        return type_str, float(default_str)
-    except ValueError:
-        pass
-
-    # Return as string
-    return type_str, default_str
+    # Simple string type without default
+    return str(value).strip(), None
 
 
-def parse_shortform_inputs(input_dict: dict[str, str]) -> list[InputArg]:
+def parse_shortform_inputs(
+    input_dict: Mapping[str, str | dict[str, Any]],
+) -> list[InputArg]:
     """Parse shortform input dict to list of InputArg.
 
     Args:
-        input_dict: Dict mapping name to "type" or "type = default".
-            Example: {"diff_path": "path", "bug_flag": "line = \"\""}
+        input_dict: Dict mapping name to type string or dict with type/default.
+            Example: {"diff_path": "path", "bug_flag": {"type": "line", "default": ""}}
 
     Returns:
         List of InputArg objects.
     """
     inputs: list[InputArg] = []
     for name, value in input_dict.items():
-        type_str, default = _parse_shortform_input_value(str(value))
+        type_str, default = _parse_shortform_input_value(value)
         inputs.append(
             InputArg(
                 name=name,
@@ -202,13 +178,13 @@ def _parse_shortform_output(output_data: dict[str, Any] | list[Any]) -> OutputSp
 
     Args:
         output_data: Either a dict like {"name": "word", "desc": "text"}
-            or a list like [{"name": "word", "desc": "text = \"\""}].
+            or a list like [{"name": "word", "desc": {"type": "text", "default": ""}}].
 
     Returns:
         OutputSpec object.
     """
     if isinstance(output_data, list):
-        # Array of objects syntax: [{name: word, desc: text = ""}]
+        # Array of objects syntax: [{name: word, desc: {type: text, default: ""}}]
         if not output_data:
             return OutputSpec(type="json_schema", schema={"type": "array", "items": {}})
 
@@ -220,7 +196,7 @@ def _parse_shortform_output(output_data: dict[str, Any] | list[Any]) -> OutputSp
         required: list[str] = []
 
         for field_name, field_value in item_spec.items():
-            type_str, default = _parse_shortform_input_value(str(field_value))
+            type_str, default = _parse_shortform_input_value(field_value)
             properties[field_name] = {"type": type_str}
             # Fields without defaults are required
             if default is None:
@@ -244,7 +220,7 @@ def _parse_shortform_output(output_data: dict[str, Any] | list[Any]) -> OutputSp
         # Object syntax: {name: word, desc: text}
         properties = {}
         for field_name, field_value in output_data.items():
-            type_str, _ = _parse_shortform_input_value(str(field_value))
+            type_str, _ = _parse_shortform_input_value(field_value)
             properties[field_name] = {"type": type_str}
 
         return OutputSpec(
@@ -256,7 +232,7 @@ def _parse_shortform_output(output_data: dict[str, Any] | list[Any]) -> OutputSp
 
 
 def _parse_inputs_from_front_matter(
-    input_data: list[dict[str, Any]] | dict[str, str] | None,
+    input_data: list[dict[str, Any]] | dict[str, str | dict[str, Any]] | None,
 ) -> list[InputArg]:
     """Parse input definitions from front matter.
 
@@ -265,7 +241,7 @@ def _parse_inputs_from_front_matter(
     Args:
         input_data: Either a list of input dicts (longform) or a dict (shortform).
             Longform: [{"name": "foo", "type": "word", "default": ""}]
-            Shortform: {"foo": "word", "bar": "line = \"\""}
+            Shortform: {"foo": "word", "bar": {"type": "line", "default": ""}}
 
     Returns:
         List of InputArg objects.

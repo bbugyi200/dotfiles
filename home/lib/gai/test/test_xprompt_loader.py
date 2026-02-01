@@ -402,55 +402,64 @@ def test_parse_shortform_input_value_simple_type() -> None:
     assert default is None
 
 
-def test_parse_shortform_input_value_empty_string_default() -> None:
-    """Test parsing type with empty string default."""
-    type_str, default = _parse_shortform_input_value('line = ""')
+def test_parse_shortform_input_value_dict_with_empty_string_default() -> None:
+    """Test parsing dict with empty string default."""
+    type_str, default = _parse_shortform_input_value({"type": "line", "default": ""})
     assert type_str == "line"
     assert default == ""
 
 
-def test_parse_shortform_input_value_quoted_string() -> None:
-    """Test parsing type with quoted string default."""
-    type_str, default = _parse_shortform_input_value('text = "hello world"')
+def test_parse_shortform_input_value_dict_with_string_default() -> None:
+    """Test parsing dict with string default."""
+    type_str, default = _parse_shortform_input_value(
+        {"type": "text", "default": "hello world"}
+    )
     assert type_str == "text"
     assert default == "hello world"
 
 
-def test_parse_shortform_input_value_int_default() -> None:
-    """Test parsing type with integer default."""
-    type_str, default = _parse_shortform_input_value("int = 42")
+def test_parse_shortform_input_value_dict_with_int_default() -> None:
+    """Test parsing dict with integer default."""
+    type_str, default = _parse_shortform_input_value({"type": "int", "default": 42})
     assert type_str == "int"
     assert default == 42
     assert isinstance(default, int)
 
 
-def test_parse_shortform_input_value_negative_int() -> None:
-    """Test parsing type with negative integer default."""
-    type_str, default = _parse_shortform_input_value("int = -5")
+def test_parse_shortform_input_value_dict_with_negative_int() -> None:
+    """Test parsing dict with negative integer default."""
+    type_str, default = _parse_shortform_input_value({"type": "int", "default": -5})
     assert type_str == "int"
     assert default == -5
 
 
-def test_parse_shortform_input_value_float_default() -> None:
-    """Test parsing type with float default."""
-    type_str, default = _parse_shortform_input_value("float = 3.14")
+def test_parse_shortform_input_value_dict_with_float_default() -> None:
+    """Test parsing dict with float default."""
+    type_str, default = _parse_shortform_input_value({"type": "float", "default": 3.14})
     assert type_str == "float"
     assert default == 3.14
     assert isinstance(default, float)
 
 
-def test_parse_shortform_input_value_bool_true() -> None:
-    """Test parsing type with boolean true default."""
-    type_str, default = _parse_shortform_input_value("bool = true")
+def test_parse_shortform_input_value_dict_with_bool_true() -> None:
+    """Test parsing dict with boolean true default."""
+    type_str, default = _parse_shortform_input_value({"type": "bool", "default": True})
     assert type_str == "bool"
     assert default is True
 
 
-def test_parse_shortform_input_value_bool_false() -> None:
-    """Test parsing type with boolean false default."""
-    type_str, default = _parse_shortform_input_value("bool = false")
+def test_parse_shortform_input_value_dict_with_bool_false() -> None:
+    """Test parsing dict with boolean false default."""
+    type_str, default = _parse_shortform_input_value({"type": "bool", "default": False})
     assert type_str == "bool"
     assert default is False
+
+
+def test_parse_shortform_input_value_dict_without_default() -> None:
+    """Test parsing dict without default key."""
+    type_str, default = _parse_shortform_input_value({"type": "word"})
+    assert type_str == "word"
+    assert default is None
 
 
 def testparse_shortform_inputs_basic() -> None:
@@ -477,8 +486,8 @@ def testparse_shortform_inputs_with_defaults() -> None:
     inputs = parse_shortform_inputs(
         {
             "path": "path",
-            "flag": 'line = ""',
-            "count": "int = 0",
+            "flag": {"type": "line", "default": ""},
+            "count": {"type": "int", "default": 0},
         }
     )
     assert len(inputs) == 3
@@ -513,7 +522,7 @@ def test_parse_shortform_output_array_with_required() -> None:
             {
                 "name": "word",
                 "description": "text",
-                "parent": 'word = ""',
+                "parent": {"type": "word", "default": ""},
             }
         ]
     )
@@ -539,7 +548,7 @@ def test_parse_inputs_from_front_matter_shortform() -> None:
     inputs = _parse_inputs_from_front_matter(
         {
             "foo": "word",
-            "bar": 'line = ""',
+            "bar": {"type": "line", "default": ""},
         }
     )
     assert len(inputs) == 2

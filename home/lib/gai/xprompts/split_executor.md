@@ -5,7 +5,7 @@ input:
     diff_path: path,
     spec_markdown: text,
     default_parent: word,
-    bug_flag: 'line = ""',
+    bug_flag: { type: line, default: "" },
     note: line,
     processing_order: text,
   }

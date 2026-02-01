@@ -5,7 +5,7 @@ config:
   create_artifacts: true
   log_workflow: true
 
-input: {cl_name: 'word = ""'}
+input: {cl_name: {type: word, default: ""}}
 
 steps:
   # Step 1: Setup - navigate to CL and gather metadata
@@ -22,7 +22,7 @@ steps:
         workspace_name="{{ setup.workspace_name }}",
         diff_path="{{ setup.diff_path }}"
       )
-    output: [{name: word, description: text, parent: 'word = ""'}]
+    output: [{name: word, description: text, parent: {type: word, default: ""}}]
     hitl: true
 
   # Step 3: Format spec and navigate to parent

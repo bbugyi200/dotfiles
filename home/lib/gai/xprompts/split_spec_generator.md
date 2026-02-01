@@ -1,7 +1,7 @@
 ---
 name: split_spec_generator
 input: { workspace_name: word, diff_path: path }
-output: [{ name: word, description: text, parent: 'word = ""' }]
+output: [{ name: word, description: text, parent: { type: word, default: "" } }]
 ---
 
 # Generate Split Specification
