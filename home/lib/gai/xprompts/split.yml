@@ -88,9 +88,9 @@ steps:
     bash: |
       # Read JSON using heredoc (safe for any characters including single quotes)
       spec_json=$(cat <<'ENDJSON'
-{{ generate_spec | tojson }}
-ENDJSON
-)
+      {{ generate_spec | tojson }}
+      ENDJSON
+      )
 
       # Archive spec
       timestamp=$(date +%Y%m%d_%H%M%S)
@@ -100,35 +100,35 @@ ENDJSON
 
       # Format and sort (pass JSON via stdin to avoid escaping issues)
       echo "$spec_json" | python3 << 'PYTHON'
-import json
-import sys
-spec = json.load(sys.stdin)
-# Handle _data wrapper if present (arrays get wrapped by workflow executor)
-if isinstance(spec, dict) and '_data' in spec:
-    spec = spec['_data']
+      import json
+      import sys
+      spec = json.load(sys.stdin)
+      # Handle _data wrapper if present (arrays get wrapped by workflow executor)
+      if isinstance(spec, dict) and '_data' in spec:
+          spec = spec['_data']
 
-# Topological sort
-result, seen = [], set()
-def visit(name):
-    if name in seen: return
-    seen.add(name)
-    entry = next((e for e in spec if e['name'] == name), None)
-    if entry and entry.get('parent'):
-        p = next((e for e in spec if e['name'] == entry['parent']), None)
-        if p: visit(p['name'])
-    if entry: result.append(entry)
-for e in spec: visit(e['name'])
+      # Topological sort
+      result, seen = [], set()
+      def visit(name):
+          if name in seen: return
+          seen.add(name)
+          entry = next((e for e in spec if e['name'] == name), None)
+          if entry and entry.get('parent'):
+              p = next((e for e in spec if e['name'] == entry['parent']), None)
+              if p: visit(p['name'])
+          if entry: result.append(entry)
+      for e in spec: visit(e['name'])
 
-# Output markdown
-md = '\n'.join(f"- **{e['name']}**: {e['description']}" +
-               (f" (parent: {e['parent']})" if e.get('parent') else '')
-               for e in result)
-order = '\n'.join(f"{i+1}. {e['name']}" +
-                  (f" (parent: {e['parent']})" if e.get('parent') else '')
-                  for i, e in enumerate(result))
-print(f"spec_markdown={md}")
-print(f"processing_order={order}")
-PYTHON
+      # Output markdown
+      md = '\n'.join(f"- **{e['name']}**: {e['description']}" +
+                     (f" (parent: {e['parent']})" if e.get('parent') else '')
+                     for e in result)
+      order = '\n'.join(f"{i+1}. {e['name']}" +
+                        (f" (parent: {e['parent']})" if e.get('parent') else '')
+                        for i, e in enumerate(result))
+      print(f"spec_markdown={md}")
+      print(f"processing_order={order}")
+      PYTHON
 
       echo "archive_path=$archive_path"
 
