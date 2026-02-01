@@ -5,9 +5,15 @@ This module provides a replacement for the legacy snippet system, adding:
 - Multiple discovery locations with priority ordering
 - Type validation for input arguments
 - Backward compatibility with existing #name(args) syntax
+- YAML workflow support for multi-step agent workflows
 """
 
-from .loader import get_all_snippets, get_all_xprompts
+from .loader import (
+    get_all_snippets,
+    get_all_workflows,
+    get_all_xprompts,
+    get_xprompt_or_workflow,
+)
 from .models import InputArg, InputType, OutputSpec, XPrompt, XPromptValidationError
 from .output_validation import (
     OutputValidationError,
@@ -17,11 +23,26 @@ from .output_validation import (
     validate_response,
 )
 from .processor import (
+    execute_workflow,
     get_primary_output_schema,
     is_jinja2_template,
+    is_workflow_reference,
     process_snippet_references,
     process_xprompt_references,
     render_toplevel_jinja2,
+)
+from .workflow_executor import HITLHandler, HITLResult, WorkflowExecutor
+from .workflow_hitl import CLIHITLHandler
+from .workflow_models import (
+    StepState,
+    StepStatus,
+    Workflow,
+    WorkflowConfig,
+    WorkflowError,
+    WorkflowExecutionError,
+    WorkflowState,
+    WorkflowStep,
+    WorkflowValidationError,
 )
 
 __all__ = [
@@ -39,11 +60,30 @@ __all__ = [
     "validate_response",
     # Loader
     "get_all_snippets",
+    "get_all_workflows",
     "get_all_xprompts",
+    "get_xprompt_or_workflow",
     # Processor
+    "execute_workflow",
     "get_primary_output_schema",
     "is_jinja2_template",
+    "is_workflow_reference",
     "process_snippet_references",
     "process_xprompt_references",
     "render_toplevel_jinja2",
+    # Workflow models
+    "StepState",
+    "StepStatus",
+    "Workflow",
+    "WorkflowConfig",
+    "WorkflowError",
+    "WorkflowExecutionError",
+    "WorkflowExecutor",
+    "WorkflowState",
+    "WorkflowStep",
+    "WorkflowValidationError",
+    # Workflow execution
+    "CLIHITLHandler",
+    "HITLHandler",
+    "HITLResult",
 ]

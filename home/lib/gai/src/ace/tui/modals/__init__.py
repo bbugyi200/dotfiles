@@ -18,6 +18,7 @@ from .prompt_history_modal import (
 from .query_edit_modal import QueryEditModal
 from .rename_cl_modal import RenameCLModal
 from .status_modal import StatusModal
+from .workflow_hitl_modal import WorkflowHITLInput, WorkflowHITLModal
 from .workflow_select_modal import WorkflowSelectModal
 from .workspace_input_modal import WorkspaceInputModal
 from .xprompt_select_modal import SnippetSelectModal, XPromptSelectModal
@@ -48,6 +49,8 @@ __all__ = [
     "StatusModal",
     "TabName",
     "XPromptSelectModal",
+    "WorkflowHITLInput",
+    "WorkflowHITLModal",
     "WorkflowSelectModal",
     "WorkspaceInputModal",
 ]

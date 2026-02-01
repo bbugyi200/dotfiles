@@ -101,6 +101,8 @@ class AgentsMixin:
             self._kill_mentor_agent(agent)
         elif agent.agent_type == AgentType.CRS:
             self._kill_crs_agent(agent)
+        elif agent.agent_type == AgentType.WORKFLOW:
+            self._kill_workflow_agent(agent)
         else:
             self.notify(  # type: ignore[attr-defined]
                 f"Unknown agent type: {agent.agent_type}", severity="error"
@@ -260,6 +262,33 @@ class AgentsMixin:
                         agent.project_file, agent.cl_name, updated_comments
                     )
                 break
+
+    def _kill_workflow_agent(self, agent: Agent) -> None:
+        """Kill a workflow agent.
+
+        Workflow agents don't have PIDs in the traditional sense.
+        This dismisses the workflow state.
+
+        Args:
+            agent: The workflow agent to kill/dismiss.
+        """
+        from pathlib import Path
+
+        # For workflow agents, we just remove the workflow state file
+        if agent.raw_suffix is None:
+            self.notify("Cannot dismiss workflow: no artifact path", severity="error")  # type: ignore[attr-defined]
+            return
+
+        # The raw_suffix for workflow agents is the artifacts_dir path
+        state_file = Path(agent.raw_suffix) / "workflow_state.json"
+        if state_file.exists():
+            try:
+                state_file.unlink()
+                self.notify(f"Dismissed workflow for {agent.cl_name}")  # type: ignore[attr-defined]
+            except OSError as e:
+                self.notify(f"Failed to dismiss workflow: {e}", severity="error")  # type: ignore[attr-defined]
+        else:
+            self.notify("Workflow state file not found", severity="warning")  # type: ignore[attr-defined]
 
     def _dismiss_done_agent(self, agent: Agent) -> None:
         """Dismiss a DONE or REVIVED agent.

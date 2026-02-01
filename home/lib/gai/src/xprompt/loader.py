@@ -2,11 +2,14 @@
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml  # type: ignore[import-untyped]
 
 from .models import InputArg, InputType, OutputSpec, XPrompt
+
+if TYPE_CHECKING:
+    from xprompt.workflow_models import Workflow
 
 
 def _get_config_path() -> str:
@@ -14,7 +17,7 @@ def _get_config_path() -> str:
     return os.path.expanduser("~/.config/gai/gai.yml")
 
 
-def _get_gai_package_xprompts_dir() -> Path:
+def get_gai_package_xprompts_dir() -> Path:
     """Get the path to the internal gai xprompts directory."""
     # This file is in src/xprompt/loader.py
     # xprompts dir is at <package>/xprompts/
@@ -68,7 +71,7 @@ def _parse_yaml_front_matter(content: str) -> tuple[dict[str, Any] | None, str]:
     return front_matter, body
 
 
-def _parse_input_type(type_str: str) -> InputType:
+def parse_input_type(type_str: str) -> InputType:
     """Parse an input type string to InputType enum.
 
     Args:
@@ -117,7 +120,7 @@ def _parse_inputs_from_front_matter(
         inputs.append(
             InputArg(
                 name=name,
-                type=_parse_input_type(type_str),
+                type=parse_input_type(type_str),
                 default=default,
             )
         )
@@ -125,7 +128,7 @@ def _parse_inputs_from_front_matter(
     return inputs
 
 
-def _parse_output_from_front_matter(
+def parse_output_from_front_matter(
     output_data: dict[str, Any] | None,
 ) -> OutputSpec | None:
     """Parse output specification from front matter.
@@ -181,7 +184,7 @@ def _load_xprompt_from_file(file_path: Path) -> XPrompt | None:
     # Parse output specification if present
     output: OutputSpec | None = None
     if front_matter and "output" in front_matter:
-        output = _parse_output_from_front_matter(front_matter["output"])
+        output = parse_output_from_front_matter(front_matter["output"])
 
     return XPrompt(
         name=name,
@@ -192,7 +195,7 @@ def _load_xprompt_from_file(file_path: Path) -> XPrompt | None:
     )
 
 
-def _get_xprompt_search_paths() -> list[Path]:
+def get_xprompt_search_paths() -> list[Path]:
     """Get the ordered list of directories to search for xprompt files.
 
     Priority order (first wins on name conflict):
@@ -225,7 +228,7 @@ def _discover_xprompt_files() -> list[tuple[Path, int]]:
     Returns:
         List of (file_path, priority) tuples, where lower priority wins.
     """
-    search_paths = _get_xprompt_search_paths()
+    search_paths = get_xprompt_search_paths()
     results: list[tuple[Path, int]] = []
 
     for priority, search_dir in enumerate(search_paths):
@@ -316,7 +319,7 @@ def _load_xprompts_from_internal() -> dict[str, XPrompt]:
     Returns:
         Dictionary mapping xprompt name to XPrompt object.
     """
-    internal_dir = _get_gai_package_xprompts_dir()
+    internal_dir = get_gai_package_xprompts_dir()
 
     if not internal_dir.is_dir():
         return {}
@@ -372,3 +375,42 @@ def get_all_snippets() -> dict[str, str]:
     """
     xprompts = get_all_xprompts()
     return {name: xp.content for name, xp in xprompts.items()}
+
+
+def get_all_workflows() -> dict[str, "Workflow"]:
+    """Get all workflows from all sources, respecting priority order.
+
+    This is a wrapper around workflow_loader.get_all_workflows() to provide
+    a unified interface in the loader module.
+
+    Returns:
+        Dictionary mapping workflow name to Workflow object.
+    """
+    from xprompt.workflow_loader import get_all_workflows as _get_all_workflows
+
+    return _get_all_workflows()
+
+
+def get_xprompt_or_workflow(name: str) -> "XPrompt | Workflow | None":
+    """Look up an xprompt or workflow by name.
+
+    Checks xprompts first, then workflows. This allows the same #name(args)
+    syntax to work for both.
+
+    Args:
+        name: The name to look up.
+
+    Returns:
+        XPrompt or Workflow object if found, None otherwise.
+    """
+    # Check xprompts first
+    xprompts = get_all_xprompts()
+    if name in xprompts:
+        return xprompts[name]
+
+    # Check workflows
+    workflows = get_all_workflows()
+    if name in workflows:
+        return workflows[name]
+
+    return None

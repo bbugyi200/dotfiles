@@ -65,6 +65,11 @@ class _AgentPromptPanel(Static):
         Args:
             agent: The Agent to display.
         """
+        # Check if this is a workflow agent - display workflow-specific info
+        if agent.agent_type == AgentType.WORKFLOW:
+            self._update_workflow_display(agent)
+            return
+
         header_text = Text()
 
         # Header - AGENT DETAILS
@@ -199,6 +204,52 @@ class _AgentPromptPanel(Static):
                 return f.read()
         except Exception:
             return None
+
+    def _update_workflow_display(self, agent: Agent) -> None:
+        """Update display for a workflow agent.
+
+        Args:
+            agent: The workflow agent to display.
+        """
+        header_text = Text()
+
+        # Header - WORKFLOW DETAILS
+        header_text.append("WORKFLOW DETAILS\n", style="bold #D7AF5F underline")
+        header_text.append("\n")
+
+        # Workflow name (stored in workflow field)
+        header_text.append("Workflow: ", style="bold #87D7FF")
+        header_text.append(f"{agent.workflow or 'unknown'}\n", style="#AF87D7 bold")
+
+        # ChangeSpec name
+        header_text.append("ChangeSpec: ", style="bold #87D7FF")
+        header_text.append(f"{agent.cl_name}\n", style="#00D7AF")
+
+        # Status
+        header_text.append("Status: ", style="bold #87D7FF")
+        status_style = {
+            "RUNNING": "#87D7FF",
+            "WAITING INPUT": "#FFAF5F",
+            "COMPLETED": "#5FD75F",
+            "FAILED": "#FF5F5F",
+        }.get(agent.status, "#D7D7FF")
+        header_text.append(f"{agent.status}\n", style=status_style)
+
+        # Timestamp
+        header_text.append("Timestamp: ", style="bold #87D7FF")
+        header_text.append(f"{agent.start_time_display}\n", style="#D7D7FF")
+
+        # Note about workflow step progress
+        header_text.append("\n")
+        header_text.append("─" * 50 + "\n", style="dim")
+        header_text.append("\n")
+        header_text.append("WORKFLOW STEPS\n", style="bold #D7AF5F underline")
+        header_text.append("\n")
+        header_text.append(
+            "Step details are available in workflow_state.json\n", style="dim italic"
+        )
+
+        self.update(header_text)
 
     def show_empty(self) -> None:
         """Show empty state."""

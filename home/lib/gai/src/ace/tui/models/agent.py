@@ -15,6 +15,7 @@ class AgentType(Enum):
     SUMMARIZE = "summarize"  # Summarize-hook agents (HOOKS)
     MENTOR = "mentor"  # Mentor agents (MENTORS)
     CRS = "crs"  # Comment Resolution System (COMMENTS)
+    WORKFLOW = "workflow"  # Multi-step YAML workflows
 
 
 @dataclass

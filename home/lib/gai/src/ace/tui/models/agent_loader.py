@@ -13,6 +13,7 @@ from ...changespec import (
 )
 from ...hooks.processes import is_process_running
 from .agent import Agent, AgentType
+from .workflow import WorkflowEntry
 
 
 def _extract_timestamp_str_from_suffix(suffix: str | None) -> str | None:
@@ -454,6 +455,108 @@ def _load_done_agents(
     return agents
 
 
+def _load_workflow_states() -> list[WorkflowEntry]:
+    """Load running/completed workflows from workflow_state.json marker files.
+
+    Scans ~/.gai/projects/*/artifacts/workflow-*/*/workflow_state.json for workflows.
+
+    Returns:
+        List of WorkflowEntry objects.
+    """
+    from xprompt import StepState, StepStatus
+
+    entries: list[WorkflowEntry] = []
+    projects_dir = Path.home() / ".gai" / "projects"
+
+    if not projects_dir.exists():
+        return entries
+
+    for project_dir in projects_dir.iterdir():
+        if not project_dir.is_dir():
+            continue
+
+        artifacts_dir = project_dir / "artifacts"
+        if not artifacts_dir.exists():
+            continue
+
+        # Look for workflow-* directories
+        for workflow_dir in artifacts_dir.iterdir():
+            if not workflow_dir.is_dir():
+                continue
+            if not workflow_dir.name.startswith("workflow-"):
+                continue
+
+            # Look for timestamp directories with workflow_state.json
+            for timestamp_dir in workflow_dir.iterdir():
+                if not timestamp_dir.is_dir():
+                    continue
+
+                state_file = timestamp_dir / "workflow_state.json"
+                if not state_file.exists():
+                    continue
+
+                try:
+                    with open(state_file, encoding="utf-8") as f:
+                        data = json.load(f)
+
+                    # Parse timestamp from directory name
+                    start_time = _parse_timestamp_14_digit(timestamp_dir.name)
+                    if start_time is None:
+                        # Try ISO format from state file
+                        iso_time = data.get("start_time")
+                        if iso_time:
+                            try:
+                                start_time = datetime.fromisoformat(iso_time)
+                            except ValueError:
+                                pass
+
+                    # Map status string to display status
+                    status = data.get("status", "running")
+                    if status == "waiting_hitl":
+                        display_status = "WAITING INPUT"
+                    elif status == "completed":
+                        display_status = "COMPLETED"
+                    elif status == "failed":
+                        display_status = "FAILED"
+                    else:
+                        display_status = "RUNNING"
+
+                    # Parse step states
+                    steps: list[StepState] = []
+                    for step_data in data.get("steps", []):
+                        step_status = StepStatus(step_data.get("status", "pending"))
+                        steps.append(
+                            StepState(
+                                name=step_data.get("name", ""),
+                                status=step_status,
+                                output=step_data.get("output"),
+                                error=step_data.get("error"),
+                            )
+                        )
+
+                    # Build project file path
+                    project_name = project_dir.name
+                    project_file = str(project_dir / f"{project_name}.gp")
+
+                    entries.append(
+                        WorkflowEntry(
+                            workflow_name=data.get("workflow_name", "unknown"),
+                            cl_name=data.get("context", {}).get("cl_name", "unknown"),
+                            project_file=project_file,
+                            status=display_status,
+                            current_step=data.get("current_step_index", 0),
+                            total_steps=len(steps),
+                            steps=steps,
+                            start_time=start_time,
+                            artifacts_dir=str(timestamp_dir),
+                        )
+                    )
+                except Exception:
+                    continue
+
+    return entries
+
+
 def _load_running_home_agents() -> list[Agent]:
     """Load running home mode agents from running.json marker files.
 
@@ -516,6 +619,23 @@ def _load_running_home_agents() -> list[Agent]:
             continue
 
     return agents
+
+
+def load_all_workflows() -> list[WorkflowEntry]:
+    """Load all workflow entries from workflow_state.json files.
+
+    Returns:
+        List of WorkflowEntry objects sorted by start time (most recent first).
+    """
+    workflows = _load_workflow_states()
+
+    # Sort by start time (most recent first)
+    workflows_with_time = [w for w in workflows if w.start_time is not None]
+    workflows_without_time = [w for w in workflows if w.start_time is None]
+
+    workflows_with_time.sort(key=lambda w: w.start_time, reverse=True)  # type: ignore
+
+    return workflows_with_time + workflows_without_time
 
 
 def load_all_agents() -> list[Agent]:

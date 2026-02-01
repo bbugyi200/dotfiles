@@ -17,7 +17,7 @@ from ._parsing import (
     parse_args,
     preprocess_shorthand_syntax,
 )
-from .loader import get_all_xprompts
+from .loader import get_all_workflows, get_all_xprompts
 from .models import OutputSpec, XPrompt
 
 # Maximum number of expansion iterations to prevent infinite loops
@@ -234,10 +234,105 @@ def process_snippet_references(prompt: str) -> str:
     return process_xprompt_references(prompt)
 
 
+def is_workflow_reference(name: str) -> bool:
+    """Check if a name refers to a workflow.
+
+    Args:
+        name: The xprompt/workflow name to check.
+
+    Returns:
+        True if the name matches a workflow, False otherwise.
+    """
+    workflows = get_all_workflows()
+    return name in workflows
+
+
+def execute_workflow(
+    name: str,
+    positional_args: list[str],
+    named_args: dict[str, str],
+    artifacts_dir: str | None = None,
+) -> str:
+    """Execute a workflow and return its final output.
+
+    Args:
+        name: The workflow name.
+        positional_args: Positional arguments.
+        named_args: Named arguments.
+        artifacts_dir: Optional directory for workflow artifacts.
+
+    Returns:
+        The workflow's final output as a string.
+
+    Raises:
+        WorkflowExecutionError: If workflow execution fails.
+    """
+    import json
+    import os
+    import tempfile
+
+    from .workflow_executor import WorkflowExecutor
+    from .workflow_hitl import CLIHITLHandler
+    from .workflow_models import WorkflowExecutionError
+
+    workflows = get_all_workflows()
+    if name not in workflows:
+        raise WorkflowExecutionError(f"Workflow '{name}' not found")
+
+    workflow = workflows[name]
+
+    # Build args dict from positional and named args
+    args: dict[str, str] = dict(named_args)
+
+    # Map positional args to input names
+    for i, value in enumerate(positional_args):
+        if i < len(workflow.inputs):
+            input_arg = workflow.inputs[i]
+            if input_arg.name not in args:
+                args[input_arg.name] = value
+
+    # Apply defaults for missing args
+    for input_arg in workflow.inputs:
+        if input_arg.name not in args and input_arg.default is not None:
+            args[input_arg.name] = str(input_arg.default)
+
+    # Use provided artifacts_dir or create a temp directory
+    if artifacts_dir is None:
+        artifacts_dir = tempfile.mkdtemp(prefix=f"workflow-{name}-")
+    else:
+        os.makedirs(artifacts_dir, exist_ok=True)
+
+    # Create HITL handler
+    hitl_handler = CLIHITLHandler()
+
+    # Create and run executor
+    executor = WorkflowExecutor(
+        workflow=workflow,
+        args=args,
+        artifacts_dir=artifacts_dir,
+        hitl_handler=hitl_handler,
+    )
+
+    success = executor.execute()
+
+    if not success:
+        raise WorkflowExecutionError(f"Workflow '{name}' was rejected or failed")
+
+    # Return the final step's output as formatted string
+    if executor.state.steps:
+        last_step = executor.state.steps[-1]
+        if last_step.output:
+            return json.dumps(last_step.output, indent=2)
+
+    return ""
+
+
 # Re-export public functions from _jinja for backward compatibility
 __all__ = [
+    "execute_workflow",
     "get_primary_output_schema",
     "is_jinja2_template",
+    "is_workflow_reference",
     "process_snippet_references",
     "process_xprompt_references",
     "render_toplevel_jinja2",

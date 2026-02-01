@@ -1,0 +1,190 @@
+name: split
+# Workflow-level configuration for automatic resource management
+config:
+  claim_workspace: true
+  create_artifacts: true
+  log_workflow: true
+
+input:
+  - name: cl_name
+    type: word
+    default: ""  # Empty means use current branch
+
+steps:
+  # Step 1: Setup - navigate to CL and gather metadata
+  - name: setup
+    bash: |
+      cl_name="{{ cl_name }}"
+      [ -z "$cl_name" ] && cl_name=$(branch_name)
+
+      # Validate no children
+      python3 -c "
+      from ace.changespec import find_all_changespecs
+      cs_list = find_all_changespecs()
+      children = [cs for cs in cs_list if cs.parent == '$cl_name' and cs.status != 'Reverted']
+      if children:
+          print('error=Cannot split: CL has child CLs')
+          exit(1)
+      # Get default parent
+      target = next((cs for cs in cs_list if cs.name == '$cl_name'), None)
+      parent = target.parent if target and target.parent else 'p4head'
+      print(f'default_parent={parent}')
+      "
+
+      # Navigate and save diff
+      bb_hg_clean "$cl_name-split-nav"
+      bb_hg_update "$cl_name"
+      mkdir -p bb/gai
+      diff_path="bb/gai/$cl_name.diff"
+      branch_diff > "$diff_path"
+
+      echo "cl_name=$cl_name"
+      echo "diff_path=$diff_path"
+      echo "bug=$(branch_bug)"
+      echo "workspace_name=$(workspace_name)"
+    output:
+      type: json_schema
+      schema:
+        properties:
+          cl_name:
+            type: word
+          diff_path:
+            type: path
+          bug:
+            type: line
+          workspace_name:
+            type: word
+          default_parent:
+            type: word
+
+  # Step 2: Generate split spec (agent with HITL)
+  - name: generate_spec
+    agent: split_spec_generator
+    prompt: |
+      #split_spec_generator(
+        workspace_name="{{ setup.workspace_name }}",
+        diff_path="{{ setup.diff_path }}"
+      )
+    output:
+      type: json_schema
+      schema:
+        type: array
+        items:
+          type: object
+          required:
+            - name
+            - description
+          properties:
+            name:
+              type: word
+            description:
+              type: text
+            parent:
+              type: word
+    hitl: true
+
+  # Step 3: Format spec and navigate to parent
+  - name: prepare_execution
+    bash: |
+      spec_json='{{ generate_spec | tojson }}'
+
+      # Archive spec
+      timestamp=$(date +%Y%m%d_%H%M%S)
+      archive_path="$HOME/.gai/splits/{{ setup.cl_name }}-$timestamp.yml"
+      mkdir -p "$HOME/.gai/splits"
+      echo "$spec_json" | python3 -c "import sys,json,yaml; yaml.dump(json.load(sys.stdin), sys.stdout)" > "$archive_path"
+
+      # Format and sort
+      python3 << 'PYTHON'
+      import json
+      spec = json.loads('''{{ generate_spec | tojson }}''')
+
+      # Topological sort
+      result, seen = [], set()
+      def visit(name):
+          if name in seen: return
+          seen.add(name)
+          entry = next((e for e in spec if e['name'] == name), None)
+          if entry and entry.get('parent'):
+              p = next((e for e in spec if e['name'] == entry['parent']), None)
+              if p: visit(p['name'])
+          if entry: result.append(entry)
+      for e in spec: visit(e['name'])
+
+      # Output markdown
+      md = '\n'.join(f"- **{e['name']}**: {e['description']}" +
+                     (f" (parent: {e['parent']})" if e.get('parent') else '')
+                     for e in result)
+      order = '\n'.join(f"{i+1}. {e['name']}" +
+                        (f" (parent: {e['parent']})" if e.get('parent') else '')
+                        for i, e in enumerate(result))
+      print(f"spec_markdown={md}")
+      print(f"processing_order={order}")
+      PYTHON
+
+      echo "archive_path=$archive_path"
+
+      # Navigate to parent
+      bb_hg_clean "{{ setup.cl_name }}-split-parent"
+      bb_hg_update "{{ setup.default_parent }}"
+    output:
+      type: json_schema
+      schema:
+        properties:
+          archive_path:
+            type: path
+          spec_markdown:
+            type: text
+          processing_order:
+            type: text
+
+  # Step 4: Execute split (agent)
+  - name: execute_split
+    agent: split_executor
+    prompt: |
+      #split_executor(
+        diff_path="{{ setup.diff_path }}",
+        spec_markdown="{{ prepare_execution.spec_markdown }}",
+        default_parent="{{ setup.default_parent }}",
+        bug_flag="{{ '-b ' + setup.bug if setup.bug else '' }}",
+        note="Split from {{ setup.cl_name }} ({{ prepare_execution.archive_path }})",
+        processing_order="{{ prepare_execution.processing_order }}"
+      )
+
+  # Step 5: Prompt to revert original CL (HITL)
+  - name: revert_prompt
+    bash: |
+      echo "message=Revert the original CL '{{ setup.cl_name }}'?"
+    output:
+      type: json_schema
+      schema:
+        properties:
+          message:
+            type: text
+    hitl: true
+
+  # Step 6: Execute revert if approved
+  - name: execute_revert
+    bash: |
+      # revert_prompt.approved is set by HITL handler
+      if [ "{{ revert_prompt.approved }}" = "true" ]; then
+        python3 -c "
+        from ace.changespec import find_all_changespecs
+        from ace.revert import revert_changespec
+        from rich.console import Console
+        cs = next((c for c in find_all_changespecs() if c.name == '{{ setup.cl_name }}'), None)
+        if cs:
+            success, _ = revert_changespec(cs, Console())
+            print('reverted=' + ('true' if success else 'false'))
+        else:
+            print('reverted=false')
+        "
+      else
+        echo "reverted=skipped"
+      fi
+    output:
+      type: json_schema
+      schema:
+        properties:
+          reverted:
+            type: word
