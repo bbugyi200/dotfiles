@@ -103,7 +103,7 @@ steps:
     hitl: true
 
   # Step 3: Format spec and navigate to parent
-  - name: prepare_execution
+  - name: prepare_execute
     python: |
       import json
       import subprocess
@@ -192,11 +192,11 @@ steps:
     prompt: |
       #split_executor(
         diff_path="{{ setup.diff_path }}",
-        spec_markdown="{{ prepare_execution.spec_markdown }}",
+        spec_markdown="{{ prepare_execute.spec_markdown }}",
         default_parent="{{ setup.default_parent }}",
         bug_flag="{{ '-b ' + setup.bug if setup.bug else '' }}",
-        note="Split from {{ setup.cl_name }} ({{ prepare_execution.archive_path }})",
-        processing_order="{{ prepare_execution.processing_order }}"
+        note="Split from {{ setup.cl_name }} ({{ prepare_execute.archive_path }})",
+        processing_order="{{ prepare_execute.processing_order }}"
       )
 
   # Step 5: Prompt to revert original CL (HITL)
