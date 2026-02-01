@@ -9,7 +9,7 @@ from ace.tui.models.agent_loader import load_all_agents
 def test_load_all_agents_empty() -> None:
     """Test load_all_agents with no project files."""
     with (
-        patch("ace.tui.models.agent_loader._get_all_project_files", return_value=[]),
+        patch("ace.tui.models.agent_loader.get_all_project_files", return_value=[]),
         patch("ace.tui.models.agent_loader.find_all_changespecs", return_value=[]),
     ):
         agents = load_all_agents()
@@ -25,11 +25,11 @@ def test_load_all_agents_with_running_claims() -> None:
 
     with (
         patch(
-            "ace.tui.models.agent_loader._get_all_project_files",
+            "ace.tui.models.agent_loader.get_all_project_files",
             return_value=["/tmp/test.gp"],
         ),
         patch(
-            "ace.tui.models.agent_loader.get_claimed_workspaces",
+            "ace.tui.models._loaders.get_claimed_workspaces",
             return_value=[mock_claim],
         ),
         patch("ace.tui.models.agent_loader.find_all_changespecs", return_value=[]),
@@ -57,11 +57,11 @@ def test_load_all_agents_sorting() -> None:
 
     with (
         patch(
-            "ace.tui.models.agent_loader._get_all_project_files",
+            "ace.tui.models.agent_loader.get_all_project_files",
             return_value=["/tmp/test.gp"],
         ),
         patch(
-            "ace.tui.models.agent_loader.get_claimed_workspaces",
+            "ace.tui.models._loaders.get_claimed_workspaces",
             return_value=[mock_claim1, mock_claim2],
         ),
         patch("ace.tui.models.agent_loader.find_all_changespecs", return_value=[]),
@@ -102,7 +102,7 @@ def test_load_all_agents_with_hook_agents() -> None:
 
     with (
         patch(
-            "ace.tui.models.agent_loader._get_all_project_files",
+            "ace.tui.models.agent_loader.get_all_project_files",
             return_value=[],
         ),
         patch(
@@ -150,7 +150,7 @@ def test_load_all_agents_with_summarize_agents() -> None:
 
     with (
         patch(
-            "ace.tui.models.agent_loader._get_all_project_files",
+            "ace.tui.models.agent_loader.get_all_project_files",
             return_value=[],
         ),
         patch(
@@ -198,7 +198,7 @@ def test_load_all_agents_with_mentor_agents() -> None:
 
     with (
         patch(
-            "ace.tui.models.agent_loader._get_all_project_files",
+            "ace.tui.models.agent_loader.get_all_project_files",
             return_value=[],
         ),
         patch(
@@ -243,7 +243,7 @@ def test_load_all_agents_with_crs_agents() -> None:
 
     with (
         patch(
-            "ace.tui.models.agent_loader._get_all_project_files",
+            "ace.tui.models.agent_loader.get_all_project_files",
             return_value=[],
         ),
         patch(
@@ -269,11 +269,11 @@ def test_load_all_agents_filters_hook_processes() -> None:
 
     with (
         patch(
-            "ace.tui.models.agent_loader._get_all_project_files",
+            "ace.tui.models.agent_loader.get_all_project_files",
             return_value=["/tmp/test.gp"],
         ),
         patch(
-            "ace.tui.models.agent_loader.get_claimed_workspaces",
+            "ace.tui.models._loaders.get_claimed_workspaces",
             return_value=[mock_claim],
         ),
         patch("ace.tui.models.agent_loader.find_all_changespecs", return_value=[]),
@@ -295,11 +295,11 @@ def test_load_all_agents_includes_axe_fix_hook() -> None:
 
     with (
         patch(
-            "ace.tui.models.agent_loader._get_all_project_files",
+            "ace.tui.models.agent_loader.get_all_project_files",
             return_value=["/tmp/test.gp"],
         ),
         patch(
-            "ace.tui.models.agent_loader.get_claimed_workspaces",
+            "ace.tui.models._loaders.get_claimed_workspaces",
             return_value=[mock_claim],
         ),
         patch("ace.tui.models.agent_loader.find_all_changespecs", return_value=[]),
@@ -353,11 +353,11 @@ def test_load_all_agents_deduplicates_by_timestamp() -> None:
 
     with (
         patch(
-            "ace.tui.models.agent_loader._get_all_project_files",
+            "ace.tui.models.agent_loader.get_all_project_files",
             return_value=["/tmp/test.gp"],
         ),
         patch(
-            "ace.tui.models.agent_loader.get_claimed_workspaces",
+            "ace.tui.models._loaders.get_claimed_workspaces",
             return_value=[mock_claim],
         ),
         patch(
@@ -419,11 +419,11 @@ def test_load_all_agents_dedup_preserves_workspace_num() -> None:
 
     with (
         patch(
-            "ace.tui.models.agent_loader._get_all_project_files",
+            "ace.tui.models.agent_loader.get_all_project_files",
             return_value=["/tmp/test.gp"],
         ),
         patch(
-            "ace.tui.models.agent_loader.get_claimed_workspaces",
+            "ace.tui.models._loaders.get_claimed_workspaces",
             return_value=[mock_claim],
         ),
         patch(
@@ -482,11 +482,11 @@ def test_load_all_agents_dedup_mentor_by_timestamp() -> None:
 
     with (
         patch(
-            "ace.tui.models.agent_loader._get_all_project_files",
+            "ace.tui.models.agent_loader.get_all_project_files",
             return_value=["/tmp/test.gp"],
         ),
         patch(
-            "ace.tui.models.agent_loader.get_claimed_workspaces",
+            "ace.tui.models._loaders.get_claimed_workspaces",
             return_value=[mock_claim],
         ),
         patch(
