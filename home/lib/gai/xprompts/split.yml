@@ -13,54 +13,8 @@ input:
 steps:
   # Step 1: Setup - navigate to CL and gather metadata
   - name: setup
-    python: |
-      import os
-      import subprocess
-
-      from ace.changespec import find_all_changespecs
-
-      cl_name = "{{ cl_name }}"
-      if not cl_name:
-          cl_name = subprocess.run(
-              ["branch_name"], capture_output=True, text=True, check=True
-          ).stdout.strip()
-
-      # Validate no children
-      cs_list = find_all_changespecs()
-      children = [
-          cs for cs in cs_list if cs.parent == cl_name and cs.status != "Reverted"
-      ]
-      if children:
-          print("error=Cannot split: CL has child CLs")
-          exit(1)
-
-      # Get default parent
-      target = next((cs for cs in cs_list if cs.name == cl_name), None)
-      default_parent = target.parent if target and target.parent else "p4head"
-
-      # Navigate and save diff
-      subprocess.run(["bb_hg_clean", f"{cl_name}-split-nav"], check=True)
-      subprocess.run(["bb_hg_update", cl_name], check=True)
-      os.makedirs("bb/gai", exist_ok=True)
-      diff_path = f"bb/gai/{cl_name}.diff"
-      with open(diff_path, "w") as f:
-          result = subprocess.run(
-              ["branch_diff"], capture_output=True, text=True, check=True
-          )
-          f.write(result.stdout)
-
-      bug = subprocess.run(
-          ["branch_bug"], capture_output=True, text=True, check=True
-      ).stdout.strip()
-      workspace = subprocess.run(
-          ["workspace_name"], capture_output=True, text=True, check=True
-      ).stdout.strip()
-
-      print(f"cl_name={cl_name}")
-      print(f"diff_path={diff_path}")
-      print(f"bug={bug}")
-      print(f"workspace_name={workspace}")
-      print(f"default_parent={default_parent}")
+    bash: |
+      gai_split_setup{% if cl_name %} --cl-name "{{ cl_name }}"{% endif %}
     output:
       type: json_schema
       schema:
@@ -104,77 +58,8 @@ steps:
 
   # Step 3: Format spec and navigate to parent
   - name: prepare_execute
-    python: |
-      import json
-      import subprocess
-      from datetime import datetime
-      from pathlib import Path
-      from typing import Any
-
-      import yaml
-
-      spec: Any = {{ generate_spec | tojson }}
-      # Handle _data wrapper if present (arrays get wrapped by workflow executor)
-      if isinstance(spec, dict) and "_data" in spec:
-          spec = spec["_data"]
-
-      # Archive spec
-      timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-      archive_dir = Path.home() / ".gai" / "splits"
-      archive_dir.mkdir(parents=True, exist_ok=True)
-      archive_path = archive_dir / f"{{ setup.cl_name }}-{timestamp}.yml"
-      with open(archive_path, "w") as f:
-          yaml.dump(spec, f)
-
-      # Topological sort
-      result: list[dict[str, Any]] = []
-      seen: set[str] = set()
-
-      def visit(name: str) -> None:
-          if name in seen:
-              return
-          seen.add(name)
-          entry = next((e for e in spec if e["name"] == name), None)
-          if entry and entry.get("parent"):
-              p = next((e for e in spec if e["name"] == entry["parent"]), None)
-              if p:
-                  visit(p["name"])
-          if entry:
-              result.append(entry)
-
-      for e in spec:
-          visit(e["name"])
-
-      # Format markdown
-      md_lines = []
-      order_lines = []
-      for i, e in enumerate(result):
-          parent_suffix = f" (parent: {e['parent']})" if e.get("parent") else ""
-          md_lines.append(f"- **{e['name']}**: {e['description']}{parent_suffix}")
-          order_lines.append(f"{i+1}. {e['name']}{parent_suffix}")
-
-      # Navigate to parent (suppress output to preserve JSON)
-      subprocess.run(
-          ["bb_hg_clean", "{{ setup.cl_name }}-split-parent"],
-          capture_output=True,
-          check=True,
-      )
-      subprocess.run(
-          ["bb_hg_update", "{{ setup.default_parent }}"],
-          capture_output=True,
-          check=True,
-      )
-
-      # Output as JSON (parser handles this correctly for multiline values)
-      print(
-          json.dumps(
-              {
-                  "spec_markdown": "\n".join(md_lines),
-                  "processing_order": "\n".join(order_lines),
-                  "archive_path": str(archive_path),
-              }
-          )
-      )
+    bash: |
+      gai_split_prepare_execute --spec '{{ generate_spec | tojson }}' --cl-name "{{ setup.cl_name }}" --default-parent "{{ setup.default_parent }}"
     output:
       type: json_schema
       schema:
