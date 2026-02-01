@@ -99,7 +99,8 @@ steps:
       echo "$spec_json" | python3 -c "import sys,json,yaml; yaml.dump(json.load(sys.stdin), sys.stdout)" > "$archive_path"
 
       # Format and sort (pass JSON via env var since heredoc takes stdin precedence)
-      SPEC_JSON="$spec_json" python3 << 'PYTHON'
+      # Output as JSON so multiline values are preserved by the parser
+      SPEC_JSON="$spec_json" ARCHIVE_PATH="$archive_path" python3 << 'PYTHON'
       import json
       import os
       spec = json.loads(os.environ['SPEC_JSON'])
@@ -126,11 +127,14 @@ steps:
       order = '\n'.join(f"{i+1}. {e['name']}" +
                         (f" (parent: {e['parent']})" if e.get('parent') else '')
                         for i, e in enumerate(result))
-      print(f"spec_markdown={md}")
-      print(f"processing_order={order}")
-      PYTHON
 
-      echo "archive_path=$archive_path"
+      # Output as JSON (parser handles this correctly for multiline values)
+      print(json.dumps({
+          "spec_markdown": md,
+          "processing_order": order,
+          "archive_path": os.environ['ARCHIVE_PATH']
+      }))
+      PYTHON
 
       # Navigate to parent
       bb_hg_clean "{{ setup.cl_name }}-split-parent"
