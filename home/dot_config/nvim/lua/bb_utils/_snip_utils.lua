@@ -140,6 +140,11 @@ function M.get_markdown_snippets()
 				{ i(1), d(2, M.get_visual()) }
 			)
 		),
+		-- SNIPPET: cout
+		s(
+			{ trig = "cout", desc = "See the command output below for reference." },
+			{ t("See the command output below for reference.") }
+		),
 		-- SNIPPET: cps
 		s(
 			{ trig = "cps", desc = "Context / Problem / Solution" },
