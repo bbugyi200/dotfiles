@@ -20,7 +20,7 @@ def test_kill_process_group_success() -> None:
 
     app = MockApp()
 
-    with patch("ace.tui.actions.agents.os.killpg") as mock_killpg:
+    with patch("ace.tui.actions.agents._killing.os.killpg") as mock_killpg:
         result = app._kill_process_group(12345)
         mock_killpg.assert_called_once_with(12345, 15)  # signal.SIGTERM = 15
         assert result is True
@@ -39,7 +39,9 @@ def test_kill_process_group_process_already_dead() -> None:
 
     app = MockApp()
 
-    with patch("ace.tui.actions.agents.os.killpg", side_effect=ProcessLookupError):
+    with patch(
+        "ace.tui.actions.agents._killing.os.killpg", side_effect=ProcessLookupError
+    ):
         result = app._kill_process_group(12345)
         assert result is True  # Still considered success
 
@@ -57,7 +59,9 @@ def test_kill_process_group_permission_error() -> None:
 
     app = MockApp()
 
-    with patch("ace.tui.actions.agents.os.killpg", side_effect=PermissionError):
+    with patch(
+        "ace.tui.actions.agents._killing.os.killpg", side_effect=PermissionError
+    ):
         result = app._kill_process_group(12345)
         assert result is False  # Permission error is a failure
         assert len(app._notifications) == 1
@@ -90,7 +94,7 @@ def test_kill_running_agent_releases_workspace() -> None:
     )
 
     with (
-        patch("ace.tui.actions.agents.os.killpg") as mock_killpg,
+        patch("ace.tui.actions.agents._killing.os.killpg") as mock_killpg,
         patch("running_field.release_workspace") as mock_release,
     ):
         app._kill_running_agent(agent)
@@ -150,7 +154,7 @@ def test_kill_hook_agent_marks_as_killed() -> None:
     )
 
     with (
-        patch("ace.tui.actions.agents.os.killpg") as mock_killpg,
+        patch("ace.tui.actions.agents._killing.os.killpg") as mock_killpg,
         patch("ace.changespec.parse_project_file", return_value=[mock_cs]),
         patch("ace.hooks.processes.mark_hook_agents_as_killed") as mock_mark,
         patch("ace.hooks.update_changespec_hooks_field") as mock_update,
@@ -217,7 +221,7 @@ def test_kill_mentor_agent_marks_as_killed() -> None:
     )
 
     with (
-        patch("ace.tui.actions.agents.os.killpg") as mock_killpg,
+        patch("ace.tui.actions.agents._killing.os.killpg") as mock_killpg,
         patch("ace.changespec.parse_project_file", return_value=[mock_cs]),
         patch("ace.hooks.processes.mark_mentor_agents_as_killed") as mock_mark,
         patch("ace.mentors.update_changespec_mentors_field") as mock_update,
@@ -278,7 +282,7 @@ def test_kill_crs_agent_marks_as_killed() -> None:
     )
 
     with (
-        patch("ace.tui.actions.agents.os.killpg") as mock_killpg,
+        patch("ace.tui.actions.agents._killing.os.killpg") as mock_killpg,
         patch("ace.changespec.parse_project_file", return_value=[mock_cs]),
         patch("ace.comments.operations.mark_comment_agents_as_killed") as mock_mark,
         patch("ace.comments.update_changespec_comments_field") as mock_update,
@@ -315,6 +319,6 @@ def test_kill_agent_with_no_pid() -> None:
         pid=None,  # No PID
     )
 
-    with patch("ace.tui.actions.agents.os.killpg") as mock_killpg:
+    with patch("ace.tui.actions.agents._killing.os.killpg") as mock_killpg:
         app._kill_hook_agent(agent)
         mock_killpg.assert_not_called()
