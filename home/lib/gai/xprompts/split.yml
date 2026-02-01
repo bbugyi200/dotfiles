@@ -136,9 +136,9 @@ steps:
       }))
       PYTHON
 
-      # Navigate to parent
-      bb_hg_clean "{{ setup.cl_name }}-split-parent"
-      bb_hg_update "{{ setup.default_parent }}"
+      # Navigate to parent (suppress output to preserve JSON)
+      bb_hg_clean "{{ setup.cl_name }}-split-parent" >/dev/null 2>&1
+      bb_hg_update "{{ setup.default_parent }}" >/dev/null 2>&1
     output:
       type: json_schema
       schema:
