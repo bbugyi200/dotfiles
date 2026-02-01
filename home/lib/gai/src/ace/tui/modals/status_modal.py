@@ -24,15 +24,23 @@ class StatusModal(OptionListNavigationMixin, ModalScreen[str | None]):
     _option_list_id = "status-list"
     BINDINGS = [*OptionListNavigationMixin.NAVIGATION_BINDINGS]
 
-    def __init__(self, current_status: str) -> None:
+    def __init__(
+        self, current_status: str, available_statuses: list[str] | None = None
+    ) -> None:
         """Initialize the status modal.
 
         Args:
             current_status: The current status value
+            available_statuses: Optional list of statuses to show. If None,
+                computes from current_status.
         """
         super().__init__()
         self.current_status = current_status
-        self.available_statuses = get_available_statuses(current_status)
+        self.available_statuses = (
+            available_statuses
+            if available_statuses is not None
+            else get_available_statuses(current_status)
+        )
 
     def compose(self) -> ComposeResult:
         """Compose the modal layout."""

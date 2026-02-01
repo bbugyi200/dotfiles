@@ -92,8 +92,11 @@ class MarkingMixin:
             if new_status:
                 self._apply_bulk_status_change(marked_specs, new_status)
 
-        # Use first marked spec for modal display
-        self.push_screen(StatusModal(marked_specs[0].status), on_dismiss)  # type: ignore[attr-defined]
+        # Use first marked spec for modal display, but pass common statuses
+        self.push_screen(  # type: ignore[attr-defined]
+            StatusModal(marked_specs[0].status, list(common_statuses)),
+            on_dismiss,
+        )
 
     def _apply_bulk_status_change(
         self, changespecs: list[ChangeSpec], new_status: str
