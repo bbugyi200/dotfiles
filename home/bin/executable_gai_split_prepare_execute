@@ -111,7 +111,7 @@ def main() -> None:
             {
                 "spec_markdown": "\n".join(md_lines),
                 "processing_order": "\n".join(order_lines),
-                "archive_path": str(archive_path),
+                "archive_path": str(archive_path).replace(str(Path.home()), "~"),
             }
         )
     )
