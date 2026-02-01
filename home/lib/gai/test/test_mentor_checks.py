@@ -542,7 +542,7 @@ def test_get_matching_profiles_for_entry_excludes_old_mentored_commits(
     # Create a mock profile that matches "[mentor:complete]" in amend note
     mock_profile = MagicMock()
     mock_profile.profile_name = "feature"
-    mock_profile.mentors = [MentorConfig(mentor_name="complete", xprompt="Test prompt")]
+    mock_profile.mentors = [MentorConfig(mentor_name="complete", prompt="Test prompt")]
     mock_profile.file_globs = []
     mock_profile.diff_regexes = []
     mock_profile.amend_note_regexes = [r"\[mentor:complete\]"]
@@ -591,7 +591,7 @@ def test_get_matching_profiles_for_entry_includes_latest_with_partial_coverage(
     mock_profile_code = MagicMock()
     mock_profile_code.profile_name = "code"
     mock_profile_code.mentors = [
-        MentorConfig(mentor_name="vision", xprompt="Test prompt")
+        MentorConfig(mentor_name="vision", prompt="Test prompt")
     ]
     mock_profile_code.file_globs = []
     mock_profile_code.diff_regexes = []
@@ -600,7 +600,7 @@ def test_get_matching_profiles_for_entry_includes_latest_with_partial_coverage(
     mock_profile_feature = MagicMock()
     mock_profile_feature.profile_name = "feature"
     mock_profile_feature.mentors = [
-        MentorConfig(mentor_name="complete", xprompt="Test prompt")
+        MentorConfig(mentor_name="complete", prompt="Test prompt")
     ]
     mock_profile_feature.file_globs = []
     mock_profile_feature.diff_regexes = []

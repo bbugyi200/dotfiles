@@ -21,7 +21,7 @@ mentor_profiles:
   - profile_name: profile1
     mentors:
       - mentor_name: m1
-        xprompt: Prompt 1.
+        prompt: Prompt 1.
     file_globs:
       - "*.txt"
 """
@@ -47,15 +47,15 @@ mentor_profiles:
   - profile_name: test_profile
     mentors:
       - mentor_name: mentor1
-        xprompt: Prompt 1.
+        prompt: Prompt 1.
       - mentor_name: mentor2
-        xprompt: Prompt 2.
+        prompt: Prompt 2.
     file_globs:
       - "*.py"
   - profile_name: other_profile
     mentors:
       - mentor_name: mentor3
-        xprompt: Prompt 3.
+        prompt: Prompt 3.
     file_globs:
       - "*.txt"
 """
@@ -77,7 +77,7 @@ mentor_profiles:
   - profile_name: existing_profile
     mentors:
       - mentor_name: mentor1
-        xprompt: Prompt 1.
+        prompt: Prompt 1.
     file_globs:
       - "*.py"
 """
@@ -98,9 +98,9 @@ def test_get_mentor_profile_by_name_config_error() -> None:
 def test_get_mentor_from_profile_found() -> None:
     """Test getting a mentor from a profile when it exists."""
     mentors = [
-        MentorConfig(mentor_name="mentor1", xprompt="Prompt 1"),
-        MentorConfig(mentor_name="mentor2", xprompt="Prompt 2"),
-        MentorConfig(mentor_name="mentor3", xprompt="Prompt 3", run_on_wip=True),
+        MentorConfig(mentor_name="mentor1", prompt="Prompt 1"),
+        MentorConfig(mentor_name="mentor2", prompt="Prompt 2"),
+        MentorConfig(mentor_name="mentor3", prompt="Prompt 3", run_on_wip=True),
     ]
     profile = MentorProfileConfig(
         profile_name="test_profile",
@@ -112,15 +112,15 @@ def test_get_mentor_from_profile_found() -> None:
 
     assert mentor is not None
     assert mentor.mentor_name == "mentor2"
-    assert mentor.xprompt == "Prompt 2"
+    assert mentor.prompt == "Prompt 2"
     assert mentor.run_on_wip is False
 
 
 def test_get_mentor_from_profile_not_found() -> None:
     """Test getting a mentor from a profile when it doesn't exist."""
     mentors = [
-        MentorConfig(mentor_name="mentor1", xprompt="Prompt 1"),
-        MentorConfig(mentor_name="mentor2", xprompt="Prompt 2"),
+        MentorConfig(mentor_name="mentor1", prompt="Prompt 1"),
+        MentorConfig(mentor_name="mentor2", prompt="Prompt 2"),
     ]
     profile = MentorProfileConfig(
         profile_name="test_profile",
@@ -137,9 +137,9 @@ def test_get_mentor_from_profile_with_run_on_wip() -> None:
     """Test getting a mentor with run_on_wip=True from a profile."""
     mentors = [
         MentorConfig(
-            mentor_name="quick_mentor", xprompt="Quick review", run_on_wip=True
+            mentor_name="quick_mentor", prompt="Quick review", run_on_wip=True
         ),
-        MentorConfig(mentor_name="full_mentor", xprompt="Full review"),
+        MentorConfig(mentor_name="full_mentor", prompt="Full review"),
     ]
     profile = MentorProfileConfig(
         profile_name="test_profile",
@@ -157,8 +157,8 @@ def test_get_mentor_from_profile_with_run_on_wip() -> None:
 def test__get_wip_mentor_count_no_wip_mentors() -> None:
     """Test _get_wip_mentor_count when no mentors have run_on_wip=True."""
     mentors = [
-        MentorConfig(mentor_name="mentor1", xprompt="Prompt 1"),
-        MentorConfig(mentor_name="mentor2", xprompt="Prompt 2"),
+        MentorConfig(mentor_name="mentor1", prompt="Prompt 1"),
+        MentorConfig(mentor_name="mentor2", prompt="Prompt 2"),
     ]
     profile = MentorProfileConfig(
         profile_name="test_profile",
@@ -173,9 +173,9 @@ def test__get_wip_mentor_count_no_wip_mentors() -> None:
 def test__get_wip_mentor_count_some_wip_mentors() -> None:
     """Test _get_wip_mentor_count when some mentors have run_on_wip=True."""
     mentors = [
-        MentorConfig(mentor_name="quick", xprompt="Quick review", run_on_wip=True),
-        MentorConfig(mentor_name="full", xprompt="Full review"),
-        MentorConfig(mentor_name="deep", xprompt="Deep review", run_on_wip=True),
+        MentorConfig(mentor_name="quick", prompt="Quick review", run_on_wip=True),
+        MentorConfig(mentor_name="full", prompt="Full review"),
+        MentorConfig(mentor_name="deep", prompt="Deep review", run_on_wip=True),
     ]
     profile = MentorProfileConfig(
         profile_name="test_profile",
@@ -190,8 +190,8 @@ def test__get_wip_mentor_count_some_wip_mentors() -> None:
 def test__get_wip_mentor_count_all_wip_mentors() -> None:
     """Test _get_wip_mentor_count when all mentors have run_on_wip=True."""
     mentors = [
-        MentorConfig(mentor_name="quick", xprompt="Quick review", run_on_wip=True),
-        MentorConfig(mentor_name="full", xprompt="Full review", run_on_wip=True),
+        MentorConfig(mentor_name="quick", prompt="Quick review", run_on_wip=True),
+        MentorConfig(mentor_name="full", prompt="Full review", run_on_wip=True),
     ]
     profile = MentorProfileConfig(
         profile_name="test_profile",
@@ -210,10 +210,10 @@ mentor_profiles:
   - profile_name: test_profile
     mentors:
       - mentor_name: quick
-        xprompt: Quick review.
+        prompt: Quick review.
         run_on_wip: true
       - mentor_name: full
-        xprompt: Full review.
+        prompt: Full review.
     file_globs:
       - "*.py"
 """
@@ -230,9 +230,9 @@ mentor_profiles:
   - profile_name: test_profile
     mentors:
       - mentor_name: full
-        xprompt: Full review.
+        prompt: Full review.
       - mentor_name: detailed
-        xprompt: Detailed review.
+        prompt: Detailed review.
     file_globs:
       - "*.py"
 """

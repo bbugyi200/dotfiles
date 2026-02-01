@@ -39,15 +39,15 @@ from xprompt import process_xprompt_references
 
 
 def _build_mentor_prompt(mentor: MentorConfig) -> str:
-    """Build the mentor prompt using the mentor xprompt.
+    """Build the mentor prompt using the mentor prompt.
 
     Args:
         mentor: The mentor configuration.
 
     Returns:
-        The complete prompt with xprompt expanded.
+        The complete prompt with xprompt references expanded.
     """
-    return process_xprompt_references(mentor.xprompt)
+    return process_xprompt_references(mentor.prompt)
 
 
 def _find_changespec_by_name(cl_name: str) -> tuple[str | None, str | None]:

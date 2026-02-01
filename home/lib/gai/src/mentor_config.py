@@ -11,7 +11,7 @@ class MentorConfig:
     """Represents a mentor configuration."""
 
     mentor_name: str
-    xprompt: str
+    prompt: str
     run_on_wip: bool = False  # If True, mentor runs even on WIP status
 
 
@@ -87,29 +87,29 @@ def _load_mentor_profiles() -> list[MentorProfileConfig]:
                     f"Each mentor in profile '{item['profile_name']}' must be a dictionary"
                 )
 
-            if "xprompt" not in mentor_item:
+            if "prompt" not in mentor_item:
                 raise ValueError(
                     f"Each mentor in profile '{item['profile_name']}' must have "
-                    "'xprompt' field"
+                    "'prompt' field"
                 )
 
-            # Derive mentor_name from xprompt if not provided
+            # Derive mentor_name from prompt if not provided
             # e.g., "#mentor/aaa" -> "aaa"
             if "mentor_name" not in mentor_item:
-                xprompt_ref = mentor_item["xprompt"]
+                prompt_ref = mentor_item["prompt"]
                 # Extract the last segment after the final /
-                if "/" in xprompt_ref:
-                    mentor_name = xprompt_ref.split("/")[-1]
+                if "/" in prompt_ref:
+                    mentor_name = prompt_ref.split("/")[-1]
                 else:
-                    # Remove leading # for simple xprompts like "#foo"
-                    mentor_name = xprompt_ref.lstrip("#")
+                    # Remove leading # for simple prompts like "#foo"
+                    mentor_name = prompt_ref.lstrip("#")
             else:
                 mentor_name = mentor_item["mentor_name"]
 
             mentors.append(
                 MentorConfig(
                     mentor_name=mentor_name,
-                    xprompt=mentor_item["xprompt"],
+                    prompt=mentor_item["prompt"],
                     run_on_wip=mentor_item.get("run_on_wip", False),
                 )
             )

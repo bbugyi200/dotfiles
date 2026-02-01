@@ -11,56 +11,56 @@ metahooks:
 mentor_profiles:
   - profile_name: aaa
     mentors:
-      - xprompt: "#mentor/aaa"
+      - prompt: "#mentor/aaa"
     file_globs:
       - "javatests/**/*.java"
       - "**/test*.dart"
   - profile_name: code
     mentors:
-      - xprompt: "#mentor/comments"
-      - xprompt: "#mentor/shared_code"
-      - xprompt: "#mentor/sound_tests"
+      - prompt: "#mentor/comments"
+      - prompt: "#mentor/shared_code"
+      - prompt: "#mentor/sound_tests"
         run_on_wip: true
-      - xprompt: "#mentor/symbol_names"
-      - xprompt: "#mentor/vision"
+      - prompt: "#mentor/symbol_names"
+      - prompt: "#mentor/vision"
     file_globs:
       - "**/*.java"
       - "**/*.dart"
       - "**/*.acx.html"
   - profile_name: complete
     mentors:
-      - xprompt: "#mentor/complete"
+      - prompt: "#mentor/complete"
         run_on_wip: true
     amend_note_regexes:
       - "Initial Commit"
       - "\\[mentor:complete\\]"
   - profile_name: g3doc
     mentors:
-      - xprompt: "#mentor/g3doc"
+      - prompt: "#mentor/g3doc"
         run_on_wip: true
     file_globs:
       - "**/*.md"
   - profile_name: i18n
     mentors:
-      - xprompt: "#mentor/i18n"
+      - prompt: "#mentor/i18n"
     file_globs:
       - "**/*.dart"
       - "**/*.acx.html"
   - profile_name: pubfeat
     mentors:
-      - xprompt: "#mentor/pubfeat"
+      - prompt: "#mentor/pubfeat"
         run_on_wip: true
     file_globs:
       - "**/publisher_features.textproto"
   - profile_name: sql
     mentors:
-      - xprompt: "#mentor/sql"
+      - prompt: "#mentor/sql"
         run_on_wip: true
     file_globs:
       - "**/*.sql"
   - profile_name: ui
     mentors:
-      - xprompt: "#mentor/ui"
+      - prompt: "#mentor/ui"
     file_globs:
       - "**/*.dart"
       - "**/*.acx.html"
