@@ -157,6 +157,7 @@ return {
 						yaml = {
 							schemas = {
 								[vim.fn.expand("~/.config/gai/gai.schema.json")] = "gai.yml",
+								[vim.fn.expand("~/lib/gai/xprompts/workflow.schema.json")] = "*/xprompts/*.yml",
 							},
 							validate = true,
 							schemaStore = {
