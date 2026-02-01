@@ -91,15 +91,19 @@ def _parse_workflow_step(
 
     agent = step_data.get("agent")
     bash = step_data.get("bash")
+    python = step_data.get("python")
 
-    # Validate mutually exclusive fields
-    if agent and bash:
+    # Validate mutually exclusive fields - must have exactly one of agent, bash, python
+    step_types = [agent, bash, python]
+    num_step_types = sum(1 for t in step_types if t)
+
+    if num_step_types > 1:
         raise WorkflowValidationError(
-            f"Step '{name}' cannot have both 'agent' and 'bash' fields"
+            f"Step '{name}' can only have one of 'agent', 'bash', or 'python' fields"
         )
-    if not agent and not bash:
+    if num_step_types == 0:
         raise WorkflowValidationError(
-            f"Step '{name}' must have either 'agent' or 'bash' field"
+            f"Step '{name}' must have one of 'agent', 'bash', or 'python' field"
         )
 
     prompt = step_data.get("prompt")
@@ -118,6 +122,7 @@ def _parse_workflow_step(
         name=name,
         agent=str(agent) if agent else None,
         bash=str(bash) if bash else None,
+        python=str(python) if python else None,
         prompt=str(prompt) if prompt else None,
         output=output,
         hitl=hitl,
@@ -151,8 +156,8 @@ def _validate_workflow_variables(workflow: Workflow) -> None:
     output_usage: dict[str, bool] = {}
 
     for i, step in enumerate(workflow.steps):
-        # Check variable references in prompt or bash command
-        content = step.prompt if step.prompt else step.bash
+        # Check variable references in prompt, bash, or python
+        content = step.prompt or step.bash or step.python
         if content:
             # Find Jinja2 variable references: {{ var }} and {{ step.var }}
             import re

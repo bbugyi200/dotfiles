@@ -177,23 +177,22 @@ steps:
 
   # Step 6: Execute revert if approved
   - name: execute_revert
-    bash: |
+    python: |
       # revert_prompt.approved is set by HITL handler
-      if [ "{{ revert_prompt.approved }}" = "true" ]; then
-        python3 -c "
-        from ace.changespec import find_all_changespecs
-        from ace.revert import revert_changespec
-        from rich.console import Console
-        cs = next((c for c in find_all_changespecs() if c.name == '{{ setup.cl_name }}'), None)
-        if cs:
-            success, _ = revert_changespec(cs, Console())
-            print('reverted=' + ('true' if success else 'false'))
-        else:
-            print('reverted=false')
-        "
-      else
-        echo "reverted=skipped"
-      fi
+      approved = {{ revert_prompt.approved | tojson }}
+      if approved:
+          from ace.changespec import find_all_changespecs
+          from ace.revert import revert_changespec
+          from rich.console import Console
+
+          cs = next((c for c in find_all_changespecs() if c.name == "{{ setup.cl_name }}"), None)
+          if cs:
+              success, _ = revert_changespec(cs, Console())
+              print("reverted=" + ("true" if success else "false"))
+          else:
+              print("reverted=false")
+      else:
+          print("reverted=skipped")
     output:
       type: json_schema
       schema:

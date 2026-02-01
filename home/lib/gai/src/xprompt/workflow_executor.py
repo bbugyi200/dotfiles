@@ -4,6 +4,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 from datetime import datetime
 from typing import Any, Protocol
 
@@ -212,6 +213,8 @@ class WorkflowExecutor:
             try:
                 if step.is_agent_step():
                     success = self._execute_agent_step(step, step_state)
+                elif step.is_python_step():
+                    success = self._execute_python_step(step, step_state)
                 else:
                     success = self._execute_bash_step(step, step_state)
 
@@ -412,6 +415,87 @@ class WorkflowExecutor:
             self._save_state()
 
             result_hitl = self.hitl_handler.prompt(step.name, "bash", output)
+
+            if result_hitl.action == "reject":
+                return False
+            elif result_hitl.action == "accept":
+                # Set approved flag in output for subsequent steps
+                output["approved"] = True
+            # Future: handle rerun
+
+        # Store output in context under step name
+        step_state.output = output
+        self.context[step.name] = output
+        self.state.context = dict(self.context)
+
+        return True
+
+    def _execute_python_step(
+        self,
+        step: WorkflowStep,
+        step_state: StepState,
+    ) -> bool:
+        """Execute a python step.
+
+        Args:
+            step: The workflow step definition.
+            step_state: The runtime state for this step.
+
+        Returns:
+            True if step succeeded, False if rejected by user.
+        """
+        if not step.python:
+            raise WorkflowExecutionError(f"Python step '{step.name}' has no code")
+
+        # Render code with Jinja2 context
+        rendered_code = _render_template(step.python, self.context)
+
+        # Execute python code using the same interpreter
+        try:
+            result = subprocess.run(
+                [sys.executable, "-c", rendered_code],
+                capture_output=True,
+                text=True,
+                cwd=os.getcwd(),
+            )
+        except Exception as e:
+            raise WorkflowExecutionError(
+                f"Failed to execute python step '{step.name}': {e}"
+            ) from e
+
+        if result.returncode != 0:
+            error_msg = (
+                result.stderr.strip()
+                if result.stderr
+                else f"Exit code {result.returncode}"
+            )
+            raise WorkflowExecutionError(
+                f"Python step '{step.name}' failed: {error_msg}"
+            )
+
+        # Parse output (same formats as bash: JSON, key=value, plain text)
+        output = _parse_bash_output(result.stdout)
+
+        # Validate output against schema if specified
+        if step.output and step.output.schema:
+            from .output_validation import validate_against_schema
+
+            is_valid, validation_err = validate_against_schema(
+                output, step.output.schema
+            )
+            if not is_valid:
+                raise WorkflowExecutionError(
+                    f"Python step '{step.name}' output validation failed: "
+                    f"{validation_err}"
+                )
+
+        # HITL review if required
+        if step.hitl and self.hitl_handler:
+            step_state.status = StepStatus.WAITING_HITL
+            self.state.status = "waiting_hitl"
+            self._save_state()
+
+            result_hitl = self.hitl_handler.prompt(step.name, "python", output)
 
             if result_hitl.action == "reject":
                 return False

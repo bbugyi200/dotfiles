@@ -70,11 +70,15 @@
           },
           "agent": {
             "type": "string",
-            "description": "XPrompt name to invoke (mutually exclusive with bash)"
+            "description": "XPrompt name to invoke (mutually exclusive with bash/python)"
           },
           "bash": {
             "type": "string",
-            "description": "Bash command to execute (mutually exclusive with agent)"
+            "description": "Bash command to execute (mutually exclusive with agent/python)"
+          },
+          "python": {
+            "type": "string",
+            "description": "Python code to execute (mutually exclusive with agent/bash)"
           },
           "prompt": {
             "type": "string",
@@ -137,13 +141,28 @@
           {
             "required": ["agent"],
             "not": {
-              "required": ["bash"]
+              "anyOf": [
+                { "required": ["bash"] },
+                { "required": ["python"] }
+              ]
             }
           },
           {
             "required": ["bash"],
             "not": {
-              "required": ["agent"]
+              "anyOf": [
+                { "required": ["agent"] },
+                { "required": ["python"] }
+              ]
+            }
+          },
+          {
+            "required": ["python"],
+            "not": {
+              "anyOf": [
+                { "required": ["agent"] },
+                { "required": ["bash"] }
+              ]
             }
           }
         ]

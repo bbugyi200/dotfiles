@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from xprompt import HITLHandler, HITLResult, WorkflowExecutor
 from xprompt.models import OutputSpec
+from xprompt.workflow_executor import _parse_bash_output
 from xprompt.workflow_models import Workflow, WorkflowExecutionError, WorkflowStep
 
 
@@ -288,3 +289,197 @@ class TestWorkflowExecutorValidation:
 
                 # Workflow should fail because user rejected
                 assert result is False
+
+
+class TestPythonStepExecution:
+    """Tests for Python step execution."""
+
+    def test_python_step_key_value_output(self) -> None:
+        """Test Python step with key=value output format."""
+        step = WorkflowStep(
+            name="python_step",
+            python='print("key1=value1")\nprint("key2=value2")',
+        )
+        workflow = _create_test_workflow(steps=[step])
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            executor = WorkflowExecutor(
+                workflow=workflow,
+                args={},
+                artifacts_dir=tmpdir,
+            )
+
+            result = executor.execute()
+
+            assert result is True
+            assert executor.context["python_step"]["key1"] == "value1"
+            assert executor.context["python_step"]["key2"] == "value2"
+
+    def test_python_step_json_output(self) -> None:
+        """Test Python step with JSON output format."""
+        step = WorkflowStep(
+            name="python_step",
+            python='import json; print(json.dumps({"name": "test", "count": 42}))',
+        )
+        workflow = _create_test_workflow(steps=[step])
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            executor = WorkflowExecutor(
+                workflow=workflow,
+                args={},
+                artifacts_dir=tmpdir,
+            )
+
+            result = executor.execute()
+
+            assert result is True
+            assert executor.context["python_step"]["name"] == "test"
+            assert executor.context["python_step"]["count"] == 42
+
+    def test_python_step_with_jinja_context(self) -> None:
+        """Test Python step can access Jinja2 context variables."""
+        step = WorkflowStep(
+            name="python_step",
+            python='print("result={{ input_value }}_processed")',
+        )
+        workflow = _create_test_workflow(steps=[step])
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            executor = WorkflowExecutor(
+                workflow=workflow,
+                args={"input_value": "hello"},
+                artifacts_dir=tmpdir,
+            )
+
+            result = executor.execute()
+
+            assert result is True
+            assert executor.context["python_step"]["result"] == "hello_processed"
+
+    def test_python_step_validation_error(self) -> None:
+        """Test Python step raises error when validation fails."""
+        step = WorkflowStep(
+            name="python_step",
+            python='print("wrong_key=value")',
+            output=OutputSpec(
+                type="json_schema",
+                schema={
+                    "type": "object",
+                    "properties": {"required_key": {"type": "string"}},
+                    "required": ["required_key"],
+                },
+            ),
+        )
+        workflow = _create_test_workflow(steps=[step])
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            executor = WorkflowExecutor(
+                workflow=workflow,
+                args={},
+                artifacts_dir=tmpdir,
+            )
+
+            with pytest.raises(WorkflowExecutionError) as exc_info:
+                executor.execute()
+
+            assert "output validation failed" in str(exc_info.value)
+
+    def test_python_step_nonzero_exit_raises_error(self) -> None:
+        """Test Python step raises error on non-zero exit code."""
+        step = WorkflowStep(
+            name="python_step",
+            python='import sys; print("error=something failed", file=sys.stderr); sys.exit(1)',
+        )
+        workflow = _create_test_workflow(steps=[step])
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            executor = WorkflowExecutor(
+                workflow=workflow,
+                args={},
+                artifacts_dir=tmpdir,
+            )
+
+            with pytest.raises(WorkflowExecutionError) as exc_info:
+                executor.execute()
+
+            assert "Python step 'python_step' failed" in str(exc_info.value)
+
+    def test_python_step_with_hitl_accept(self) -> None:
+        """Test Python step with HITL that accepts."""
+        step = WorkflowStep(
+            name="python_step",
+            python='print("status=ready")',
+            hitl=True,
+        )
+        workflow = _create_test_workflow(steps=[step])
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mock_handler = _create_mock_hitl_handler(action="accept")
+
+            executor = WorkflowExecutor(
+                workflow=workflow,
+                args={},
+                artifacts_dir=tmpdir,
+                hitl_handler=mock_handler,
+            )
+
+            result = executor.execute()
+
+            assert result is True
+            assert mock_handler.prompt.called  # type: ignore[attr-defined]
+            # Check that HITL was called with "python" step type
+            call_args = mock_handler.prompt.call_args  # type: ignore[attr-defined]
+            assert call_args[0][1] == "python"
+            # Output should have approved flag set
+            assert executor.context["python_step"]["approved"] is True
+
+    def test_python_step_with_hitl_reject(self) -> None:
+        """Test Python step with HITL that rejects."""
+        step = WorkflowStep(
+            name="python_step",
+            python='print("status=ready")',
+            hitl=True,
+        )
+        workflow = _create_test_workflow(steps=[step])
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mock_handler = _create_mock_hitl_handler(action="reject")
+
+            executor = WorkflowExecutor(
+                workflow=workflow,
+                args={},
+                artifacts_dir=tmpdir,
+                hitl_handler=mock_handler,
+            )
+
+            result = executor.execute()
+
+            assert result is False
+
+
+class TestParseBashOutput:
+    """Tests for _parse_bash_output function."""
+
+    def test_parse_json_object(self) -> None:
+        """Test parsing JSON object output."""
+        output = '{"key": "value", "num": 123}'
+        result = _parse_bash_output(output)
+        assert result == {"key": "value", "num": 123}
+
+    def test_parse_json_array(self) -> None:
+        """Test parsing JSON array output."""
+        output = "[1, 2, 3]"
+        result = _parse_bash_output(output)
+        assert result == [1, 2, 3]
+
+    def test_parse_key_value(self) -> None:
+        """Test parsing key=value output."""
+        output = "key1=value1\nkey2=value2"
+        result = _parse_bash_output(output)
+        assert result == {"key1": "value1", "key2": "value2"}
+
+    def test_parse_plain_text(self) -> None:
+        """Test parsing plain text output."""
+        output = "Just some plain text"
+        result = _parse_bash_output(output)
+        assert result == {"_output": "Just some plain text"}
