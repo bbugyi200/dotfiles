@@ -9,7 +9,6 @@ from xprompt.loader import (
     _load_xprompts_from_config,
     _parse_inputs_from_front_matter,
     _parse_yaml_front_matter,
-    get_all_snippets,
     get_all_xprompts,
 )
 from xprompt.models import InputType
@@ -293,51 +292,6 @@ xprompts:
     Path(config_path).unlink()
 
 
-def test_load_xprompts_from_config_legacy_snippets_key() -> None:
-    """Test loading from legacy 'snippets' key."""
-    yaml_content = """
-snippets:
-  legacy: "Legacy snippet content"
-"""
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".yml", delete=False, encoding="utf-8"
-    ) as f:
-        f.write(yaml_content)
-        config_path = f.name
-
-    with patch("xprompt.loader._get_config_path", return_value=config_path):
-        xprompts = _load_xprompts_from_config()
-
-    assert "legacy" in xprompts
-    assert xprompts["legacy"].content == "Legacy snippet content"
-
-    Path(config_path).unlink()
-
-
-def test_load_xprompts_from_config_xprompts_overrides_snippets() -> None:
-    """Test that xprompts key takes priority over snippets."""
-    yaml_content = """
-xprompts:
-  foo: "From xprompts"
-snippets:
-  foo: "From snippets"
-  bar: "Only in snippets"
-"""
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".yml", delete=False, encoding="utf-8"
-    ) as f:
-        f.write(yaml_content)
-        config_path = f.name
-
-    with patch("xprompt.loader._get_config_path", return_value=config_path):
-        xprompts = _load_xprompts_from_config()
-
-    assert xprompts["foo"].content == "From xprompts"
-    assert xprompts["bar"].content == "Only in snippets"
-
-    Path(config_path).unlink()
-
-
 def test_load_xprompts_from_config_missing_file() -> None:
     """Test that missing config file returns empty dict."""
     with patch("xprompt.loader._get_config_path", return_value="/nonexistent/path.yml"):
@@ -366,35 +320,7 @@ mentor_profiles:
     Path(config_path).unlink()
 
 
-# Tests for get_all_xprompts and get_all_snippets
-
-
-def test_get_all_snippets_backward_compatibility() -> None:
-    """Test that get_all_snippets returns name->content dict."""
-    yaml_content = """
-xprompts:
-  foo: "Foo content"
-  bar: "Bar content"
-"""
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".yml", delete=False, encoding="utf-8"
-    ) as f:
-        f.write(yaml_content)
-        config_path = f.name
-
-    # Mock both config path and file discovery to isolate the test
-    with (
-        patch("xprompt.loader._get_config_path", return_value=config_path),
-        patch("xprompt.loader._load_xprompts_from_files", return_value={}),
-        patch("xprompt.loader._load_xprompts_from_internal", return_value={}),
-    ):
-        snippets = get_all_snippets()
-
-    assert isinstance(snippets, dict)
-    assert snippets["foo"] == "Foo content"
-    assert snippets["bar"] == "Bar content"
-
-    Path(config_path).unlink()
+# Tests for get_all_xprompts
 
 
 def test_get_all_xprompts_merges_sources() -> None:

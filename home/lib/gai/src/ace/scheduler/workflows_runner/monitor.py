@@ -57,11 +57,8 @@ def get_running_crs_workflows(changespec: ChangeSpec) -> list[tuple[str, str]]:
     if changespec.comments:
         for entry in changespec.comments:
             if entry.reviewer in ("critique", "critique:me") and entry.suffix:
-                # Check for new format: crs-YYmmdd_HHMMSS
-                if re.match(r"^crs-\d{6}_\d{6}$", entry.suffix):
-                    running.append((entry.reviewer, entry.suffix))
-                # Legacy format: YYmmdd_HHMMSS (13 chars with underscore)
-                elif re.match(r"^\d{6}_\d{6}$", entry.suffix):
+                # Format: crs-<PID>-YYmmdd_HHMMSS
+                if re.match(r"^crs-\d+-\d{6}_\d{6}$", entry.suffix):
                     running.append((entry.reviewer, entry.suffix))
     return running
 
@@ -90,37 +87,13 @@ def get_running_fix_hook_workflows(
                 # Check for suffix_type to ensure it's a running agent
                 if sl.suffix_type != "running_agent":
                     continue
-                # Check for new format with PID: fix_hook-<PID>-YYmmdd_HHMMSS
+                # Format with PID: fix_hook-<PID>-YYmmdd_HHMMSS
                 pid_match = re.match(r"^fix_hook-\d+-(\d{6}_\d{6})$", sl.suffix)
                 if pid_match:
                     running.append(
                         (
                             hook.command,
                             pid_match.group(1),
-                            sl.commit_entry_num,
-                            sl.summary,
-                        )
-                    )
-                    continue
-                # Check for format without PID: fix_hook-YYmmdd_HHMMSS
-                no_pid_match = re.match(r"^fix_hook-(\d{6}_\d{6})$", sl.suffix)
-                if no_pid_match:
-                    running.append(
-                        (
-                            hook.command,
-                            no_pid_match.group(1),
-                            sl.commit_entry_num,
-                            sl.summary,
-                        )
-                    )
-                    continue
-                # Legacy format: YYmmdd_HHMMSS (13 chars with underscore)
-                legacy_match = re.match(r"^(\d{6}_\d{6})$", sl.suffix)
-                if legacy_match:
-                    running.append(
-                        (
-                            hook.command,
-                            legacy_match.group(1),
                             sl.commit_entry_num,
                             sl.summary,
                         )
@@ -152,17 +125,10 @@ def get_running_summarize_hook_workflows(
                 # Check for suffix_type to ensure it's a running agent
                 if sl.suffix_type != "running_agent":
                     continue
-                # Check for new format with PID: summarize_hook-<PID>-YYmmdd_HHMMSS
+                # Format with PID: summarize_hook-<PID>-YYmmdd_HHMMSS
                 pid_match = re.match(r"^summarize_hook-\d+-(\d{6}_\d{6})$", sl.suffix)
                 if pid_match:
                     running.append(
                         (hook.command, pid_match.group(1), sl.commit_entry_num)
-                    )
-                    continue
-                # Check for format without PID: summarize_hook-YYmmdd_HHMMSS
-                no_pid_match = re.match(r"^summarize_hook-(\d{6}_\d{6})$", sl.suffix)
-                if no_pid_match:
-                    running.append(
-                        (hook.command, no_pid_match.group(1), sl.commit_entry_num)
                     )
     return running

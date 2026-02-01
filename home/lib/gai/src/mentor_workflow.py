@@ -38,20 +38,6 @@ from workflow_utils import get_cl_name_from_branch
 from xprompt import process_xprompt_references
 
 
-def _escape_for_xprompt(text: str) -> str:
-    """Escape text for use in an xprompt argument string.
-
-    Escapes double quotes and backslashes.
-
-    Args:
-        text: The text to escape.
-
-    Returns:
-        The escaped text safe for use in xprompt argument.
-    """
-    return text.replace("\\", "\\\\").replace('"', '\\"')
-
-
 def _build_mentor_prompt(mentor: MentorConfig) -> str:
     """Build the mentor prompt using the mentor xprompt.
 
@@ -61,15 +47,7 @@ def _build_mentor_prompt(mentor: MentorConfig) -> str:
     Returns:
         The complete prompt with xprompt expanded.
     """
-    if mentor.xprompt is not None:
-        # New format: directly expand the xprompt reference
-        return process_xprompt_references(mentor.xprompt)
-    else:
-        # Legacy format: wrap prompt in #mentor() call
-        assert mentor.prompt is not None
-        escaped_prompt = _escape_for_xprompt(mentor.prompt.rstrip())
-        prompt_text = f'#mentor(prompt="{escaped_prompt}")'
-        return process_xprompt_references(prompt_text)
+    return process_xprompt_references(mentor.xprompt)
 
 
 def _find_changespec_by_name(cl_name: str) -> tuple[str | None, str | None]:

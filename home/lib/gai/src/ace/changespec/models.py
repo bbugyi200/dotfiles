@@ -40,7 +40,7 @@ def is_running_agent_suffix(suffix: str | None) -> bool:
     """
     if suffix is None:
         return False
-    # New format with PID: <agent>-<PID>-YYmmdd_HHMMSS (e.g., fix_hook-12345-251230_151429)
+    # Format with PID: <agent>-<PID>-YYmmdd_HHMMSS (e.g., fix_hook-12345-251230_151429)
     # Split by "-" and check for: agent, PID (digits), timestamp (13 chars with "_" at pos 6)
     if "-" in suffix:
         parts = suffix.split("-")
@@ -49,17 +49,6 @@ def is_running_agent_suffix(suffix: str | None) -> bool:
             pid = parts[-2]
             if pid.isdigit() and len(ts) == 13 and ts[6] == "_":
                 return True
-        # Legacy format with agent prefix: <agent>-YYmmdd_HHMMSS (e.g., fix_hook-251230_151429)
-        if len(parts) == 2:
-            agent, ts = parts
-            if agent and len(ts) == 13 and ts[6] == "_":
-                return True
-    # Legacy format: 13 chars with underscore at position 6 (YYmmdd_HHMMSS)
-    if len(suffix) == 13 and suffix[6] == "_":
-        return True
-    # Older legacy format: 12 digits (YYmmddHHMMSS)
-    if len(suffix) == 12 and suffix.isdigit():
-        return True
     return False
 
 
@@ -333,25 +322,6 @@ class HookEntry:
                 return sl
         return None
 
-    # Backward-compatible properties that delegate to latest_status_line
-    @property
-    def timestamp(self) -> str | None:
-        """Get timestamp from the latest status line (backward compatibility)."""
-        sl = self.latest_status_line
-        return sl.timestamp if sl else None
-
-    @property
-    def status(self) -> str | None:
-        """Get status from the latest status line (backward compatibility)."""
-        sl = self.latest_status_line
-        return sl.status if sl else None
-
-    @property
-    def duration(self) -> str | None:
-        """Get duration from the latest status line (backward compatibility)."""
-        sl = self.latest_status_line
-        return sl.duration if sl else None
-
 
 @dataclass
 class MentorStatusLine:
@@ -363,7 +333,6 @@ class MentorStatusLine:
       | [YYmmdd_HHMMSS] <profile>:<mentor> - FAILED - (XhYmZs)
 
     The timestamp prefix links to the chat file at ~/.gai/chats/*.md.
-    Timestamp is optional for backward compatibility with older entries.
 
     When RUNNING:
       - suffix format: mentor_<name>-<PID>-YYmmdd_HHMMSS
@@ -381,7 +350,7 @@ class MentorStatusLine:
     profile_name: str  # The mentor profile name
     mentor_name: str  # The mentor name within the profile
     status: str  # RUNNING, PASSED, FAILED
-    timestamp: str | None = None  # YYmmdd_HHMMSS format, for linking to chat files
+    timestamp: str  # YYmmdd_HHMMSS format, for linking to chat files
     duration: str | None = None  # e.g., "0h2m15s" when complete
     suffix: str | None = (
         None  # e.g., "mentor_complete-12345-251230_151429" when running

@@ -21,11 +21,9 @@ from xprompt import (
     generate_format_instructions,
     get_primary_output_schema,
     is_jinja2_template,
+    process_xprompt_references,
     render_toplevel_jinja2,
     validate_response,
-)
-from xprompt import (
-    process_xprompt_references as process_snippet_references,
 )
 from xprompt.models import OutputSpec
 
@@ -331,8 +329,8 @@ class GeminiCommandWrapper:
         if not self.skip_output_validation:
             output_spec = get_primary_output_schema(query)
 
-        # Process snippet references in the prompt (expand #name patterns)
-        query = process_snippet_references(query)
+        # Process xprompt references in the prompt (expand #name patterns)
+        query = process_xprompt_references(query)
 
         # Process command substitution in the prompt (expand $(cmd) patterns)
         query = process_command_substitution(query)

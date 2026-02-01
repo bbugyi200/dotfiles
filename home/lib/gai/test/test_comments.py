@@ -6,19 +6,18 @@ from pathlib import Path
 from ace.changespec import ChangeSpec, CommentEntry
 from ace.comments import (
     comment_needs_crs,
-    generate_comments_timestamp,
     get_comments_file_path,
     is_comments_suffix_stale,
     is_timestamp_suffix,
 )
 from ace.constants import DEFAULT_ZOMBIE_TIMEOUT_SECONDS
 from ace.display_helpers import get_status_color, is_suffix_timestamp
-from gai_utils import get_gai_directory
+from gai_utils import generate_timestamp, get_gai_directory
 
 
-def test_generate_comments_timestamp_format() -> None:
-    """Test that generate_comments_timestamp returns correct format."""
-    timestamp = generate_comments_timestamp()
+def test_generate_timestamp_format() -> None:
+    """Test that generate_timestamp returns correct format."""
+    timestamp = generate_timestamp()
 
     # Should be YYmmdd_HHMMSS format (13 chars with underscore at position 6)
     assert len(timestamp) == 13
@@ -66,7 +65,7 @@ def test_is_timestamp_suffix_invalid() -> None:
 def test_is_comments_suffix_stale_fresh() -> None:
     """Test is_comments_suffix_stale returns False for fresh timestamp."""
     # Use a timestamp from now - should not be stale
-    fresh_timestamp = generate_comments_timestamp()
+    fresh_timestamp = generate_timestamp()
     assert is_comments_suffix_stale(fresh_timestamp) is False
 
 
@@ -225,9 +224,9 @@ def test_displayis_suffix_timestamp_new_format() -> None:
     assert is_suffix_timestamp("241226_120000") is True
 
 
-def test_displayis_suffix_timestamp_legacy_format() -> None:
-    """Test is_suffix_timestamp with legacy format YYmmddHHMMSS."""
-    assert is_suffix_timestamp("241226120000") is True
+def test_displayis_suffix_timestamp_legacy_format_rejected() -> None:
+    """Test is_suffix_timestamp rejects legacy format YYmmddHHMMSS (no longer supported)."""
+    assert is_suffix_timestamp("241226120000") is False
 
 
 def test_displayis_suffix_timestamp_invalid() -> None:

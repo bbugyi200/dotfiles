@@ -19,7 +19,6 @@ from status_state_machine import transition_changespec_status
 from ..changespec import ChangeSpec, CommentEntry, is_plain_suffix
 from ..cl_status import is_parent_submitted
 from ..comments import (
-    generate_comments_timestamp,
     get_comments_file_path,
     is_timestamp_suffix,
     remove_comment_entry,
@@ -454,7 +453,7 @@ def _handle_reviewer_comments_completion(
     if has_comments:
         # If no existing entry, create a new one with the comments file
         if existing_reviewer_entry is None:
-            timestamp = generate_comments_timestamp()
+            timestamp = generate_timestamp()
             file_path = get_comments_file_path(changespec.name, "critique", timestamp)
 
             # Save output to file
@@ -537,7 +536,7 @@ def _handle_author_comments_completion(
     if has_comments:
         # If no existing entry, create a new one with the comments file
         if existing_author_entry is None:
-            timestamp = generate_comments_timestamp()
+            timestamp = generate_timestamp()
             file_path = get_comments_file_path(
                 changespec.name, "critique_me", timestamp
             )

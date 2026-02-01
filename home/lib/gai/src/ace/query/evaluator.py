@@ -417,10 +417,6 @@ def query_explicitly_targets_terminal(
     return _check_expr(expr)
 
 
-# Backward compatibility alias
-query_explicitly_targets_reverted = query_explicitly_targets_terminal
-
-
 def evaluate_query(
     query: QueryExpr,
     changespec: ChangeSpec,

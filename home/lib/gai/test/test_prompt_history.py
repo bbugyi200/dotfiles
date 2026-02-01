@@ -29,6 +29,7 @@ def test_save_and_load_prompt(tmp_path: Path) -> None:
             branch_or_workspace="main",
             timestamp="251231_143052",
             last_used="251231_143052",
+            workspace="test_workspace",
         )
         assert _save_prompt_history([entry])
         result = _load_prompt_history()
@@ -47,12 +48,14 @@ def test_save_multiple_prompts(tmp_path: Path) -> None:
                 branch_or_workspace="main",
                 timestamp="251231_143052",
                 last_used="251231_143052",
+                workspace="test_workspace",
             ),
             PromptEntry(
                 text="prompt 2",
                 branch_or_workspace="feature",
                 timestamp="251231_143053",
                 last_used="251231_143053",
+                workspace="test_workspace",
             ),
         ]
         assert _save_prompt_history(entries)
@@ -91,6 +94,7 @@ def test_add_duplicate_updates_timestamp(tmp_path: Path) -> None:
             branch_or_workspace="main",
             timestamp="251231_100000",
             last_used="251231_100000",
+            workspace="test_workspace",
         )
         _save_prompt_history([initial_entry])
 
@@ -303,30 +307,30 @@ def test_handles_corrupt_json(tmp_path: Path) -> None:
 def test_handles_missing_fields_in_json(tmp_path: Path) -> None:
     """Test that JSON entries with missing fields are filtered out."""
     test_file = tmp_path / "prompt_history.json"
+    # Both entries are missing workspace field, so both should be filtered out
     test_file.write_text(
-        '{"prompts": [{"text": "valid", "branch_or_workspace": "main", '
+        '{"prompts": [{"text": "missing_workspace", "branch_or_workspace": "main", '
         '"timestamp": "251231_143052", "last_used": "251231_143052"}, '
         '{"text": "missing_fields"}]}'
     )
     with patch("prompt_history._PROMPT_HISTORY_FILE", test_file):
         result = _load_prompt_history()
-        assert len(result) == 1
-        assert result[0].text == "valid"
+        # Both entries are missing required workspace field
+        assert len(result) == 0
 
 
-def test_load_handles_missing_workspace_field(tmp_path: Path) -> None:
-    """Test that old entries without workspace field default to empty string."""
+def test_load_filters_entries_missing_workspace(tmp_path: Path) -> None:
+    """Test that entries without workspace field are filtered out."""
     test_file = tmp_path / "prompt_history.json"
-    # Old format without workspace field
+    # Entry without workspace field should be filtered out
     test_file.write_text(
         '{"prompts": [{"text": "old prompt", "branch_or_workspace": "main", '
         '"timestamp": "251231_143052", "last_used": "251231_143052"}]}'
     )
     with patch("prompt_history._PROMPT_HISTORY_FILE", test_file):
         result = _load_prompt_history()
-        assert len(result) == 1
-        assert result[0].text == "old prompt"
-        assert result[0].workspace == ""  # Should default to empty string
+        # Entry missing workspace field should be filtered out
+        assert len(result) == 0
 
 
 def test_save_creates_parent_directory(tmp_path: Path) -> None:

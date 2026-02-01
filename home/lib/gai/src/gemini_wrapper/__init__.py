@@ -1,9 +1,7 @@
 """Gemini wrapper module for invoking Gemini agents."""
 
-# Import from new xprompt module
 from xprompt import (
     is_jinja2_template,
-    process_snippet_references,
     process_xprompt_references,
     render_toplevel_jinja2,
 )
@@ -22,7 +20,6 @@ __all__ = [
     "invoke_agent",
     "is_jinja2_template",
     "process_command_substitution",
-    "process_snippet_references",
     "process_xprompt_references",
     "process_xcmd_references",
     "render_toplevel_jinja2",

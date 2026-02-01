@@ -43,15 +43,13 @@ def get_hook_file_age_seconds_from_timestamp(timestamp: str) -> float | None:
     """Get the age of a hook run based on its timestamp.
 
     Args:
-        timestamp: The timestamp in YYmmdd_HHMMSS or YYmmddHHMMSS format.
+        timestamp: The timestamp in YYmmdd_HHMMSS format.
 
     Returns:
         Age in seconds, or None if timestamp can't be parsed.
     """
     try:
-        # Remove underscore if present for parsing (supports both old and new formats)
-        clean_timestamp = timestamp.replace("_", "")
-        hook_time = datetime.strptime(clean_timestamp, "%y%m%d%H%M%S")
+        hook_time = datetime.strptime(timestamp, "%y%m%d_%H%M%S")
         hook_time = hook_time.replace(tzinfo=EASTERN_TZ)
         now = datetime.now(EASTERN_TZ)
         return (now - hook_time).total_seconds()
@@ -70,10 +68,11 @@ def get_hook_age_seconds(hook: HookEntry) -> float | None:
     Returns:
         Age in seconds, or None if no timestamp available.
     """
-    if not hook.timestamp:
+    latest = hook.latest_status_line
+    if not latest or not latest.timestamp:
         return None
 
-    return get_hook_file_age_seconds_from_timestamp(hook.timestamp)
+    return get_hook_file_age_seconds_from_timestamp(latest.timestamp)
 
 
 def calculate_duration_from_timestamps(
@@ -82,19 +81,16 @@ def calculate_duration_from_timestamps(
     """Calculate duration in seconds between two timestamps.
 
     Args:
-        start_timestamp: Start timestamp in YYmmdd_HHMMSS or YYmmddHHMMSS format.
-        end_timestamp: End timestamp in YYmmdd_HHMMSS or YYmmddHHMMSS format.
+        start_timestamp: Start timestamp in YYmmdd_HHMMSS format.
+        end_timestamp: End timestamp in YYmmdd_HHMMSS format.
 
     Returns:
         Duration in seconds, or None if timestamps can't be parsed.
     """
     try:
-        # Remove underscore if present for parsing (supports both old and new formats)
-        clean_start = start_timestamp.replace("_", "")
-        clean_end = end_timestamp.replace("_", "")
-        start_time = datetime.strptime(clean_start, "%y%m%d%H%M%S")
+        start_time = datetime.strptime(start_timestamp, "%y%m%d_%H%M%S")
         start_time = start_time.replace(tzinfo=EASTERN_TZ)
-        end_time = datetime.strptime(clean_end, "%y%m%d%H%M%S")
+        end_time = datetime.strptime(end_timestamp, "%y%m%d_%H%M%S")
         end_time = end_time.replace(tzinfo=EASTERN_TZ)
         return (end_time - start_time).total_seconds()
     except (ValueError, TypeError):
@@ -102,7 +98,7 @@ def calculate_duration_from_timestamps(
 
 
 def is_timestamp_suffix(suffix: str | None) -> bool:
-    """Check if a suffix is a timestamp format (YYmmdd_HHMMSS or YYmmddHHMMSS).
+    """Check if a suffix is a timestamp format (YYmmdd_HHMMSS).
 
     Args:
         suffix: The suffix value from a HookStatusLine.
@@ -112,17 +108,10 @@ def is_timestamp_suffix(suffix: str | None) -> bool:
     """
     if suffix is None or is_error_suffix(suffix):
         return False
-    # New format: 13 chars with underscore at position 6
+    # Format: 13 chars with underscore at position 6
     if len(suffix) == 13 and suffix[6] == "_":
         try:
             datetime.strptime(suffix, "%y%m%d_%H%M%S")
-            return True
-        except ValueError:
-            pass
-    # Legacy format: 12 digits
-    elif len(suffix) == 12 and suffix.isdigit():
-        try:
-            datetime.strptime(suffix, "%y%m%d%H%M%S")
             return True
         except ValueError:
             pass
@@ -145,11 +134,9 @@ def is_suffix_stale(
     Returns:
         True if the suffix is a timestamp that is older than the timeout.
     """
-    if not is_timestamp_suffix(suffix):
+    if not is_timestamp_suffix(suffix) or suffix is None:
         return False
-    # Remove underscore for parsing if present
-    clean_suffix = suffix.replace("_", "") if suffix else ""
-    age = get_hook_file_age_seconds_from_timestamp(clean_suffix)
+    age = get_hook_file_age_seconds_from_timestamp(suffix)
     return age is not None and age > zombie_timeout_seconds
 
 

@@ -95,7 +95,11 @@ def _create_test_target_hook(test_target: str) -> HookEntry:
 def get_failing_test_target_hooks(hooks: list[HookEntry]) -> list[HookEntry]:
     """Get all test target hooks that have FAILED status."""
     return [
-        hook for hook in hooks if _is_test_target_hook(hook) and hook.status == "FAILED"
+        hook
+        for hook in hooks
+        if _is_test_target_hook(hook)
+        and hook.latest_status_line
+        and hook.latest_status_line.status == "FAILED"
     ]
 
 
@@ -127,7 +131,8 @@ def get_failing_hooks_for_fix(hooks: list[HookEntry]) -> list[HookEntry]:
     """
     result: list[HookEntry] = []
     for hook in hooks:
-        if hook.status != "FAILED":
+        latest = hook.latest_status_line
+        if not latest or latest.status != "FAILED":
             continue
         if hook.skip_fix_hook:
             continue
@@ -323,7 +328,8 @@ def clear_failed_test_target_hook_status(
     """Clear the most recent status of all FAILED test target hooks."""
     updated_hooks = []
     for hook in hooks:
-        if _is_test_target_hook(hook) and hook.status == "FAILED":
+        latest = hook.latest_status_line
+        if _is_test_target_hook(hook) and latest and latest.status == "FAILED":
             if hook.status_lines:
                 latest_sl = hook.latest_status_line
                 if latest_sl and latest_sl.status == "FAILED":

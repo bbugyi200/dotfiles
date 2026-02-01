@@ -196,6 +196,7 @@ def test_kill_mentor_agent_marks_as_killed() -> None:
     )
 
     mock_status_line = MentorStatusLine(
+        timestamp="251231_120000",
         profile_name="profile1",
         mentor_name="mentor1",
         status="RUNNING",

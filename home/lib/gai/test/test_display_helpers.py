@@ -243,10 +243,10 @@ def test_is_suffix_timestamp_new_format() -> None:
     assert is_suffix_timestamp("250101_235959") is True
 
 
-def test_is_suffix_timestamp_legacy_format() -> None:
-    """Test is_suffix_timestamp returns True for 12-digit format."""
-    assert is_suffix_timestamp("241225120000") is True
-    assert is_suffix_timestamp("250101235959") is True
+def test_is_suffix_timestamp_legacy_format_rejected() -> None:
+    """Test is_suffix_timestamp returns False for 12-digit format (no longer supported)."""
+    assert is_suffix_timestamp("241225120000") is False
+    assert is_suffix_timestamp("250101235959") is False
 
 
 def test_is_suffix_timestamp_invalid() -> None:

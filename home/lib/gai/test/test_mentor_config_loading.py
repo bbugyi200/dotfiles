@@ -12,15 +12,15 @@ mentor_profiles:
   - profile_name: profile1
     mentors:
       - mentor_name: mentor1
-        prompt: Prompt 1.
+        xprompt: Prompt 1.
       - mentor_name: mentor2
-        prompt: Prompt 2.
+        xprompt: Prompt 2.
     file_globs:
       - "*.py"
   - profile_name: profile2
     mentors:
       - mentor_name: mentor3
-        prompt: Prompt 3.
+        xprompt: Prompt 3.
     diff_regexes:
       - "TODO:"
 """
@@ -31,7 +31,7 @@ mentor_profiles:
     assert profiles[0].profile_name == "profile1"
     assert len(profiles[0].mentors) == 2
     assert profiles[0].mentors[0].mentor_name == "mentor1"
-    assert profiles[0].mentors[0].prompt == "Prompt 1."
+    assert profiles[0].mentors[0].xprompt == "Prompt 1."
     assert profiles[0].mentors[1].mentor_name == "mentor2"
     assert profiles[0].file_globs == ["*.py"]
     assert profiles[1].profile_name == "profile2"
@@ -57,12 +57,12 @@ mentor_profiles:
   - profile_name: test_profile
     mentors:
       - mentor_name: quick_mentor
-        prompt: Quick review.
+        xprompt: Quick review.
         run_on_wip: true
       - mentor_name: full_mentor
-        prompt: Full review.
+        xprompt: Full review.
       - mentor_name: detailed_mentor
-        prompt: Detailed review.
+        xprompt: Detailed review.
         run_on_wip: false
     file_globs:
       - "*.py"
@@ -95,33 +95,35 @@ mentor_profiles:
             _load_mentor_profiles()
 
 
-def test_load_mentor_profiles_mentor_missing_name() -> None:
-    """Test loading raises ValueError when mentor with prompt is missing name field."""
+def test_load_mentor_profiles_mentor_name_derived_from_xprompt() -> None:
+    """Test mentor_name is derived from xprompt when not provided."""
     yaml_content = """
 mentor_profiles:
   - profile_name: profile1
     mentors:
-      - prompt: No name provided
+      - xprompt: "#simple_mentor"
     file_globs:
       - "*.py"
 """
     with mentor_config_from_yaml(yaml_content):
-        with pytest.raises(ValueError, match="must have 'mentor_name' field"):
-            _load_mentor_profiles()
+        # xprompt without mentor_name should derive name from xprompt
+        profiles = _load_mentor_profiles()
+        # "#simple_mentor" -> "simple_mentor" (strips leading #)
+        assert profiles[0].mentors[0].mentor_name == "simple_mentor"
 
 
-def test_load_mentor_profiles_mentor_missing_prompt() -> None:
-    """Test loading raises ValueError when mentor is missing prompt and xprompt."""
+def test_load_mentor_profiles_mentor_missing_xprompt() -> None:
+    """Test loading raises ValueError when mentor is missing xprompt."""
     yaml_content = """
 mentor_profiles:
   - profile_name: profile1
     mentors:
-      - mentor_name: mentor_without_prompt
+      - mentor_name: mentor_without_xprompt
     file_globs:
       - "*.py"
 """
     with mentor_config_from_yaml(yaml_content):
-        with pytest.raises(ValueError, match="must have 'prompt' or 'xprompt' field"):
+        with pytest.raises(ValueError, match="must have 'xprompt' field"):
             _load_mentor_profiles()
 
 
@@ -196,7 +198,6 @@ mentor_profiles:
     # mentor_name should be derived from xprompt
     assert profiles[0].mentors[0].mentor_name == "aaa"
     assert profiles[0].mentors[0].xprompt == "#mentor/aaa"
-    assert profiles[0].mentors[0].prompt is None
     assert profiles[0].mentors[0].run_on_wip is False
     assert profiles[0].mentors[1].mentor_name == "bbb"
     assert profiles[0].mentors[1].xprompt == "#mentor/bbb"
@@ -239,14 +240,14 @@ mentor_profiles:
     assert profiles[0].mentors[0].xprompt == "#foo"
 
 
-def test_load_mentor_profiles_mixed_formats() -> None:
-    """Test loading mentor profiles with mixed prompt and xprompt formats."""
+def test_load_mentor_profiles_multiple_xprompts() -> None:
+    """Test loading mentor profiles with multiple xprompts."""
     yaml_content = """
 mentor_profiles:
   - profile_name: test_profile
     mentors:
-      - mentor_name: legacy
-        prompt: "Legacy prompt text"
+      - mentor_name: first
+        xprompt: "First prompt text"
       - xprompt: "#mentor/new"
     file_globs:
       - "*.py"
@@ -255,11 +256,9 @@ mentor_profiles:
         profiles = _load_mentor_profiles()
 
     assert len(profiles[0].mentors) == 2
-    # Legacy format
-    assert profiles[0].mentors[0].mentor_name == "legacy"
-    assert profiles[0].mentors[0].prompt == "Legacy prompt text"
-    assert profiles[0].mentors[0].xprompt is None
-    # New format
+    # First mentor with explicit name
+    assert profiles[0].mentors[0].mentor_name == "first"
+    assert profiles[0].mentors[0].xprompt == "First prompt text"
+    # Second mentor with name derived from xprompt
     assert profiles[0].mentors[1].mentor_name == "new"
-    assert profiles[0].mentors[1].prompt is None
     assert profiles[0].mentors[1].xprompt == "#mentor/new"

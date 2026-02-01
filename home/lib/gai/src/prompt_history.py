@@ -21,7 +21,7 @@ class PromptEntry:
     branch_or_workspace: str
     timestamp: str
     last_used: str
-    workspace: str = ""  # Workspace name, default empty for backward compatibility
+    workspace: str
 
 
 def _get_current_branch_or_workspace() -> str:
@@ -68,7 +68,7 @@ def _load_prompt_history() -> list[PromptEntry]:
                 branch_or_workspace=p["branch_or_workspace"],
                 timestamp=p["timestamp"],
                 last_used=p["last_used"],
-                workspace=p.get("workspace", ""),  # Default empty for old entries
+                workspace=p["workspace"],
             )
             for p in prompts
             if isinstance(p, dict)
@@ -76,6 +76,7 @@ def _load_prompt_history() -> list[PromptEntry]:
             and "branch_or_workspace" in p
             and "timestamp" in p
             and "last_used" in p
+            and "workspace" in p
         ]
     except (OSError, json.JSONDecodeError, KeyError):
         return []

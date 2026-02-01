@@ -22,9 +22,9 @@ def test_format_profile_with_count_wip_filters_total() -> None:
     mock_profile = MentorProfileConfig(
         profile_name="test_profile",
         mentors=[
-            MentorConfig(mentor_name="m1", prompt="p1", run_on_wip=True),
-            MentorConfig(mentor_name="m2", prompt="p2", run_on_wip=False),
-            MentorConfig(mentor_name="m3", prompt="p3", run_on_wip=False),
+            MentorConfig(mentor_name="m1", xprompt="p1", run_on_wip=True),
+            MentorConfig(mentor_name="m2", xprompt="p2", run_on_wip=False),
+            MentorConfig(mentor_name="m3", xprompt="p3", run_on_wip=False),
         ],
         file_globs=["*.py"],
     )
@@ -53,9 +53,9 @@ def test_format_profile_with_count_wip_filters_started() -> None:
     mock_profile = MentorProfileConfig(
         profile_name="test_profile",
         mentors=[
-            MentorConfig(mentor_name="quick", prompt="p1", run_on_wip=True),
-            MentorConfig(mentor_name="full", prompt="p2", run_on_wip=False),
-            MentorConfig(mentor_name="detailed", prompt="p3", run_on_wip=False),
+            MentorConfig(mentor_name="quick", xprompt="p1", run_on_wip=True),
+            MentorConfig(mentor_name="full", xprompt="p2", run_on_wip=False),
+            MentorConfig(mentor_name="detailed", xprompt="p3", run_on_wip=False),
         ],
         file_globs=["*.py"],
     )
@@ -68,11 +68,13 @@ def test_format_profile_with_count_wip_filters_started() -> None:
     # Status lines for 2 mentors (1 with run_on_wip, 1 without)
     status_lines = [
         MentorStatusLine(
+            timestamp="251231_120000",
             profile_name="test_profile",
             mentor_name="quick",
             status="RUNNING",
         ),
         MentorStatusLine(
+            timestamp="251231_120000",
             profile_name="test_profile",
             mentor_name="full",
             status="RUNNING",
@@ -102,12 +104,12 @@ def test_format_mentors_field_wip_hides_non_wip_profiles() -> None:
     profiles = {
         "profile_a": MentorProfileConfig(
             profile_name="profile_a",
-            mentors=[MentorConfig(mentor_name="m1", prompt="p1", run_on_wip=True)],
+            mentors=[MentorConfig(mentor_name="m1", xprompt="p1", run_on_wip=True)],
             file_globs=["*.py"],
         ),
         "profile_b": MentorProfileConfig(
             profile_name="profile_b",
-            mentors=[MentorConfig(mentor_name="m2", prompt="p2", run_on_wip=False)],
+            mentors=[MentorConfig(mentor_name="m2", xprompt="p2", run_on_wip=False)],
             file_globs=["*.js"],
         ),
     }
@@ -149,7 +151,7 @@ def test_format_mentors_field_wip_skips_entry_with_no_wip_profiles() -> None:
     profiles = {
         "profile_a": MentorProfileConfig(
             profile_name="profile_a",
-            mentors=[MentorConfig(mentor_name="m1", prompt="p1", run_on_wip=False)],
+            mentors=[MentorConfig(mentor_name="m1", xprompt="p1", run_on_wip=False)],
             file_globs=["*.py"],
         ),
     }
@@ -179,12 +181,12 @@ def test_format_mentors_field_non_wip_shows_all_profiles() -> None:
     profiles = {
         "profile_a": MentorProfileConfig(
             profile_name="profile_a",
-            mentors=[MentorConfig(mentor_name="m1", prompt="p1", run_on_wip=True)],
+            mentors=[MentorConfig(mentor_name="m1", xprompt="p1", run_on_wip=True)],
             file_globs=["*.py"],
         ),
         "profile_b": MentorProfileConfig(
             profile_name="profile_b",
-            mentors=[MentorConfig(mentor_name="m2", prompt="p2", run_on_wip=False)],
+            mentors=[MentorConfig(mentor_name="m2", xprompt="p2", run_on_wip=False)],
             file_globs=["*.js"],
         ),
     }

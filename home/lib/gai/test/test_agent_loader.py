@@ -172,6 +172,7 @@ def test_load_all_agents_with_mentor_agents() -> None:
     from ace.changespec import ChangeSpec, MentorEntry, MentorStatusLine
 
     mock_status_line = MentorStatusLine(
+        timestamp="251231_120000",
         profile_name="profile1",
         mentor_name="mentor1",
         status="RUNNING",
@@ -456,6 +457,7 @@ def test_load_all_agents_dedup_mentor_by_timestamp() -> None:
 
     # Create MENTORS entry with different subprocess PID but same timestamp
     mock_status_line = MentorStatusLine(
+        timestamp="251231_120000",
         profile_name="profile1",
         mentor_name="mentor1",
         status="RUNNING",

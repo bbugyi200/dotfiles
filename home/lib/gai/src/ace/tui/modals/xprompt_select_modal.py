@@ -9,7 +9,7 @@ from textual.containers import Container, Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Input, Label, OptionList, Static
 from textual.widgets.option_list import Option
-from xprompt import get_all_snippets, get_all_workflows
+from xprompt import get_all_workflows, get_all_xprompts
 from xprompt.workflow_models import Workflow
 
 from .base import OptionListNavigationMixin
@@ -53,12 +53,12 @@ class XPromptSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
     def __init__(self) -> None:
         """Initialize the xprompt modal."""
         super().__init__()
-        self.xprompts = get_all_snippets()
+        self.xprompts = get_all_xprompts()
         self.workflows = get_all_workflows()
         # Build unified items dict: name -> (content/preview, type)
         self._all_items: dict[str, tuple[str, str]] = {}
-        for name, content in self.xprompts.items():
-            self._all_items[name] = (content, "xprompt")
+        for name, xprompt in self.xprompts.items():
+            self._all_items[name] = (xprompt.content, "xprompt")
         for name, workflow in self.workflows.items():
             preview = self._create_workflow_preview(workflow)
             self._all_items[name] = (preview, "workflow")
@@ -224,7 +224,3 @@ class XPromptSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
             preview.update("")
         except Exception:
             pass
-
-
-# Backward compatibility alias
-SnippetSelectModal = XPromptSelectModal

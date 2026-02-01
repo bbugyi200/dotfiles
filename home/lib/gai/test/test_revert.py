@@ -268,6 +268,7 @@ def test_revert_changespec_releases_mentor_workspace() -> None:
             profiles=[],
             status_lines=[
                 MentorStatusLine(
+                    timestamp="251231_120000",
                     profile_name="code",
                     mentor_name="complete",
                     status="RUNNING",

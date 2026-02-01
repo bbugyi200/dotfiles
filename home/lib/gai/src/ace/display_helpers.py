@@ -41,13 +41,8 @@ def is_suffix_timestamp(suffix: str) -> bool:
     Returns:
         True if the suffix looks like a timestamp, False otherwise.
     """
-    # New format: 13 chars with underscore at position 6 (YYmmdd_HHMMSS)
-    if len(suffix) == 13 and suffix[6] == "_":
-        return True
-    # Legacy format: 12 digits (YYmmddHHMMSS)
-    if len(suffix) == 12 and suffix.isdigit():
-        return True
-    return False
+    # Format: 13 chars with underscore at position 6 (YYmmdd_HHMMSS)
+    return len(suffix) == 13 and suffix[6] == "_"
 
 
 def is_entry_ref_suffix(suffix: str | None) -> bool:

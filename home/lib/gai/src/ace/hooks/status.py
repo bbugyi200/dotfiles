@@ -125,7 +125,8 @@ def is_hook_zombie(
     Returns:
         True if the hook is a zombie, False otherwise.
     """
-    if hook.status != "RUNNING":
+    latest = hook.latest_status_line
+    if not latest or latest.status != "RUNNING":
         return False
 
     age = get_hook_age_seconds(hook)
@@ -169,7 +170,10 @@ def has_running_hooks(hooks: list[HookEntry] | None) -> bool:
     if not hooks:
         return False
 
-    return any(hook.status == "RUNNING" for hook in hooks)
+    return any(
+        hook.latest_status_line and hook.latest_status_line.status == "RUNNING"
+        for hook in hooks
+    )
 
 
 def entry_has_running_hooks(hooks: list[HookEntry] | None, entry_id: str) -> bool:

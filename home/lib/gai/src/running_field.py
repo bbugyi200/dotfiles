@@ -52,20 +52,13 @@ class _WorkspaceClaim:
     def from_line(line: str) -> "_WorkspaceClaim | None":
         """Parse a RUNNING field line into a _WorkspaceClaim.
 
-        New format (PID second, required):
+        Format (PID second, required):
         - #<N> | <PID> | <WORKFLOW> | <CL_NAME>
         - #<N> | <PID> | <WORKFLOW> | <CL_NAME> | <TIMESTAMP>
         - #<N> | <PID> | <WORKFLOW> | <CL_NAME> | <TIMESTAMP> | <NEW_CL_NAME>
 
-        Legacy format (PID fourth, for backwards compatibility):
-        - #<N> | <WORKFLOW> | <CL_NAME> | <PID>
-        - #<N> | <WORKFLOW> | <CL_NAME> | <PID> | <TIMESTAMP>
-        - #<N> | <WORKFLOW> | <CL_NAME> | <PID> | <TIMESTAMP> | <NEW_CL_NAME>
-
         Note: Returns None for entries without a PID (PID is required).
         """
-        # Try new format first: #N | PID | WORKFLOW | CL_NAME | TIMESTAMP | NEW_CL_NAME
-        # PID is required (must be digits)
         match = re.match(
             r"^\s*#(\d+)\s*\|\s*(\d+)\s*\|\s*(\S+)\s*\|\s*([^|]*?)"
             r"(?:\s*\|\s*(\d{6}_\d{6}))?(?:\s*\|\s*([^|]+))?$",
@@ -76,29 +69,6 @@ class _WorkspaceClaim:
             pid = int(match.group(2))
             workflow = match.group(3)
             cl_name = match.group(4).strip() or None
-            artifacts_timestamp = match.group(5) if match.group(5) else None
-            new_cl_name = match.group(6).strip() if match.group(6) else None
-            return _WorkspaceClaim(
-                workspace_num=workspace_num,
-                workflow=workflow,
-                cl_name=cl_name,
-                pid=pid,
-                artifacts_timestamp=artifacts_timestamp,
-                new_cl_name=new_cl_name,
-            )
-
-        # Try legacy format: #N | WORKFLOW | CL_NAME | PID | TIMESTAMP | NEW_CL_NAME
-        # PID is required for valid entries
-        match = re.match(
-            r"^\s*#(\d+)\s*\|\s*(\S+)\s*\|\s*([^|]*?)"
-            r"\s*\|\s*(\d+)(?:\s*\|\s*(\d{6}_\d{6}))?(?:\s*\|\s*([^|]+))?$",
-            line,
-        )
-        if match:
-            workspace_num = int(match.group(1))
-            workflow = match.group(2)
-            cl_name = match.group(3).strip() or None
-            pid = int(match.group(4))
             artifacts_timestamp = match.group(5) if match.group(5) else None
             new_cl_name = match.group(6).strip() if match.group(6) else None
             return _WorkspaceClaim(

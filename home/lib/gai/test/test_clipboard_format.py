@@ -327,6 +327,7 @@ def test_format_changespec_mentors_with_status_lines() -> None:
             profiles=["test_profile"],
             status_lines=[
                 MentorStatusLine(
+                    timestamp="251231_120000",
                     profile_name="test_profile",
                     mentor_name="test_mentor",
                     status="PASSED",
@@ -348,10 +349,10 @@ def test_format_changespec_mentors_status_with_timestamp() -> None:
             profiles=["test_profile"],
             status_lines=[
                 MentorStatusLine(
+                    timestamp="240601_123456",
                     profile_name="test_profile",
                     mentor_name="test_mentor",
                     status="RUNNING",
-                    timestamp="240601_123456",
                 ),
             ],
         ),
@@ -369,6 +370,7 @@ def test_format_changespec_mentors_status_with_suffix() -> None:
             profiles=["test_profile"],
             status_lines=[
                 MentorStatusLine(
+                    timestamp="251231_120000",
                     profile_name="test_profile",
                     mentor_name="test_mentor",
                     status="RUNNING",
@@ -607,6 +609,7 @@ def test_format_changespec_mentors_error_suffix() -> None:
             profiles=["test_profile"],
             status_lines=[
                 MentorStatusLine(
+                    timestamp="251231_120000",
                     profile_name="test_profile",
                     mentor_name="test_mentor",
                     status="FAILED",

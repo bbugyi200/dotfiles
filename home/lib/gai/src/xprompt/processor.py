@@ -225,15 +225,6 @@ def process_xprompt_references(prompt: str) -> str:
     return prompt
 
 
-# Backward compatibility alias
-def process_snippet_references(prompt: str) -> str:
-    """Legacy alias for process_xprompt_references.
-
-    Deprecated: Use process_xprompt_references instead.
-    """
-    return process_xprompt_references(prompt)
-
-
 def is_workflow_reference(name: str) -> bool:
     """Check if a name refers to a workflow.
 
@@ -327,13 +318,11 @@ def execute_workflow(
     return ""
 
 
-# Re-export public functions from _jinja for backward compatibility
 __all__ = [
     "execute_workflow",
     "get_primary_output_schema",
     "is_jinja2_template",
     "is_workflow_reference",
-    "process_snippet_references",
     "process_xprompt_references",
     "render_toplevel_jinja2",
 ]

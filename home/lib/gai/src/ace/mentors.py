@@ -1,5 +1,6 @@
 """Mentor field operations - writing and updating MENTORS entries."""
 
+from gai_utils import generate_timestamp as gen_timestamp
 from status_state_machine import remove_workspace_suffix
 
 from .changespec import (
@@ -431,12 +432,12 @@ def set_mentor_status(
                 existing_status_line.suffix_type = suffix_type
                 existing_status_line.duration = duration
             else:
-                # Create new status line
+                # Create new status line (generate timestamp if not provided)
                 new_status_line = MentorStatusLine(
                     profile_name=profile_name,
                     mentor_name=mentor_name,
                     status=status,
-                    timestamp=timestamp,
+                    timestamp=timestamp if timestamp else gen_timestamp(),
                     duration=duration,
                     suffix=suffix,
                     suffix_type=suffix_type,

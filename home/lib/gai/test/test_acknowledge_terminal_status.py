@@ -1,4 +1,4 @@
-"""Tests for acknowledge_terminal_status_markers in suffix transforms."""
+"""Tests for strip_terminal_status_markers in suffix transforms."""
 
 from unittest.mock import patch
 
@@ -9,11 +9,11 @@ from ace.changespec import (
     HookEntry,
     HookStatusLine,
 )
-from ace.scheduler.suffix_transforms import acknowledge_terminal_status_markers
+from ace.scheduler.suffix_transforms import strip_terminal_status_markers
 
 
-def test_acknowledge_terminal_status_markers_skips_non_terminal() -> None:
-    """Test acknowledge_terminal_status_markers skips non-terminal status."""
+def test_strip_terminal_status_markers_skips_non_terminal() -> None:
+    """Test strip_terminal_status_markers skips non-terminal status."""
     cs = ChangeSpec(
         name="test",
         description="Test",
@@ -34,13 +34,13 @@ def test_acknowledge_terminal_status_markers_skips_non_terminal() -> None:
         ],
     )
 
-    result = acknowledge_terminal_status_markers(cs)
+    result = strip_terminal_status_markers(cs)
 
     assert result == []
 
 
-def test_acknowledge_terminal_status_markers_skips_drafted() -> None:
-    """Test acknowledge_terminal_status_markers skips Drafted status."""
+def test_strip_terminal_status_markers_skips_drafted() -> None:
+    """Test strip_terminal_status_markers skips Drafted status."""
     cs = ChangeSpec(
         name="test",
         description="Test",
@@ -61,13 +61,13 @@ def test_acknowledge_terminal_status_markers_skips_drafted() -> None:
         ],
     )
 
-    result = acknowledge_terminal_status_markers(cs)
+    result = strip_terminal_status_markers(cs)
 
     assert result == []
 
 
-def test_acknowledge_terminal_status_markers_processes_submitted() -> None:
-    """Test acknowledge_terminal_status_markers processes Submitted status."""
+def test_strip_terminal_status_markers_processes_submitted() -> None:
+    """Test strip_terminal_status_markers processes Submitted status."""
     cs = ChangeSpec(
         name="test",
         description="Test",
@@ -91,14 +91,14 @@ def test_acknowledge_terminal_status_markers_processes_submitted() -> None:
     with patch(
         "ace.scheduler.suffix_transforms.update_commit_entry_suffix", return_value=True
     ):
-        result = acknowledge_terminal_status_markers(cs)
+        result = strip_terminal_status_markers(cs)
 
     assert len(result) == 1
     assert "Cleared HISTORY" in result[0]
 
 
-def test_acknowledge_terminal_status_markers_processes_reverted() -> None:
-    """Test acknowledge_terminal_status_markers processes Reverted status."""
+def test_strip_terminal_status_markers_processes_reverted() -> None:
+    """Test strip_terminal_status_markers processes Reverted status."""
     cs = ChangeSpec(
         name="test",
         description="Test",
@@ -122,14 +122,14 @@ def test_acknowledge_terminal_status_markers_processes_reverted() -> None:
     with patch(
         "ace.scheduler.suffix_transforms.update_commit_entry_suffix", return_value=True
     ):
-        result = acknowledge_terminal_status_markers(cs)
+        result = strip_terminal_status_markers(cs)
 
     assert len(result) == 1
     assert "Cleared HISTORY" in result[0]
 
 
-def test_acknowledge_terminal_status_markers_skips_plain_suffix() -> None:
-    """Test acknowledge_terminal_status_markers skips plain suffixes (only strips error)."""
+def test_strip_terminal_status_markers_skips_plain_suffix() -> None:
+    """Test strip_terminal_status_markers skips plain suffixes (only strips error)."""
     cs = ChangeSpec(
         name="test",
         description="Test",
@@ -150,13 +150,13 @@ def test_acknowledge_terminal_status_markers_skips_plain_suffix() -> None:
         ],
     )
 
-    result = acknowledge_terminal_status_markers(cs)
+    result = strip_terminal_status_markers(cs)
 
     assert result == []
 
 
-def test_acknowledge_terminal_status_markers_processes_hooks() -> None:
-    """Test acknowledge_terminal_status_markers converts hook error suffixes to plain."""
+def test_strip_terminal_status_markers_processes_hooks() -> None:
+    """Test strip_terminal_status_markers converts hook error suffixes to plain."""
     hook = HookEntry(
         command="test_cmd",
         status_lines=[
@@ -186,14 +186,14 @@ def test_acknowledge_terminal_status_markers_processes_hooks() -> None:
         "ace.scheduler.suffix_transforms.update_changespec_hooks_field",
         return_value=True,
     ):
-        result = acknowledge_terminal_status_markers(cs)
+        result = strip_terminal_status_markers(cs)
 
     assert len(result) == 1
     assert "Stripped error marker from HOOK" in result[0]
 
 
-def test_acknowledge_terminal_status_markers_processes_comments() -> None:
-    """Test acknowledge_terminal_status_markers processes comment error suffixes."""
+def test_strip_terminal_status_markers_processes_comments() -> None:
+    """Test strip_terminal_status_markers processes comment error suffixes."""
     comment = CommentEntry(
         reviewer="reviewer",
         file_path="~/.gai/comments/test.json",
@@ -216,14 +216,14 @@ def test_acknowledge_terminal_status_markers_processes_comments() -> None:
     with patch(
         "ace.scheduler.suffix_transforms.clear_comment_suffix", return_value=True
     ):
-        result = acknowledge_terminal_status_markers(cs)
+        result = strip_terminal_status_markers(cs)
 
     assert len(result) == 1
     assert "Cleared COMMENT" in result[0]
 
 
-def test_acknowledge_terminal_status_markers_processes_history_running_agent() -> None:
-    """Test acknowledge_terminal_status_markers processes running_agent suffixes."""
+def test_strip_terminal_status_markers_processes_history_running_agent() -> None:
+    """Test strip_terminal_status_markers processes running_agent suffixes."""
     cs = ChangeSpec(
         name="test",
         description="Test",
@@ -247,14 +247,14 @@ def test_acknowledge_terminal_status_markers_processes_history_running_agent() -
     with patch(
         "ace.scheduler.suffix_transforms.update_commit_entry_suffix", return_value=True
     ):
-        result = acknowledge_terminal_status_markers(cs)
+        result = strip_terminal_status_markers(cs)
 
     assert len(result) == 1
     assert "Cleared HISTORY" in result[0]
 
 
-def test_acknowledge_terminal_status_markers_processes_hooks_running_agent() -> None:
-    """Test acknowledge_terminal_status_markers converts running_agent to killed_agent."""
+def test_strip_terminal_status_markers_processes_hooks_running_agent() -> None:
+    """Test strip_terminal_status_markers converts running_agent to killed_agent."""
     hook = HookEntry(
         command="test_cmd",
         status_lines=[
@@ -284,17 +284,15 @@ def test_acknowledge_terminal_status_markers_processes_hooks_running_agent() -> 
         "ace.scheduler.suffix_transforms.update_changespec_hooks_field",
         return_value=True,
     ):
-        result = acknowledge_terminal_status_markers(cs)
+        result = strip_terminal_status_markers(cs)
 
     assert len(result) == 1
     assert "Converted HOOK" in result[0]
     assert "to killed_agent" in result[0]
 
 
-def test_acknowledge_terminal_status_markers_processes_hooks_empty_running_agent() -> (
-    None
-):
-    """Test acknowledge_terminal_status_markers converts empty running_agent to killed_agent."""
+def test_strip_terminal_status_markers_processes_hooks_empty_running_agent() -> None:
+    """Test strip_terminal_status_markers converts empty running_agent to killed_agent."""
     hook = HookEntry(
         command="test_cmd",
         status_lines=[
@@ -324,15 +322,15 @@ def test_acknowledge_terminal_status_markers_processes_hooks_empty_running_agent
         "ace.scheduler.suffix_transforms.update_changespec_hooks_field",
         return_value=True,
     ):
-        result = acknowledge_terminal_status_markers(cs)
+        result = strip_terminal_status_markers(cs)
 
     assert len(result) == 1
     assert "Converted HOOK" in result[0]
     assert "to killed_agent" in result[0]
 
 
-def test_acknowledge_terminal_status_markers_processes_comments_running_agent() -> None:
-    """Test acknowledge_terminal_status_markers processes comment running_agent suffixes."""
+def test_strip_terminal_status_markers_processes_comments_running_agent() -> None:
+    """Test strip_terminal_status_markers processes comment running_agent suffixes."""
     comment = CommentEntry(
         reviewer="reviewer",
         file_path="~/.gai/comments/test.json",
@@ -355,7 +353,7 @@ def test_acknowledge_terminal_status_markers_processes_comments_running_agent() 
     with patch(
         "ace.scheduler.suffix_transforms.clear_comment_suffix", return_value=True
     ):
-        result = acknowledge_terminal_status_markers(cs)
+        result = strip_terminal_status_markers(cs)
 
     assert len(result) == 1
     assert "Cleared COMMENT" in result[0]

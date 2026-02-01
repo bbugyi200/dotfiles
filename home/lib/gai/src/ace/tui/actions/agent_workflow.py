@@ -562,18 +562,18 @@ class AgentWorkflowMixin(AgentLaunchMixin):
         if not isinstance(event, PromptInputBar.SnippetRequested):
             return
 
-        from ..modals import SnippetSelectModal
+        from ..modals import XPromptSelectModal
 
-        def on_snippet_select(result: str | None) -> None:
+        def on_xprompt_select(result: str | None) -> None:
             if result:
-                # Insert snippet name into the input bar
+                # Insert xprompt name into the input bar
                 try:
                     bar = self.query_one("#prompt-input-bar", PromptInputBar)  # type: ignore[attr-defined]
                     bar.insert_snippet(result)
                 except Exception:
                     pass
 
-        self.push_screen(SnippetSelectModal(), on_snippet_select)  # type: ignore[attr-defined]
+        self.push_screen(XPromptSelectModal(), on_xprompt_select)  # type: ignore[attr-defined]
 
     def _open_editor_for_agent_prompt(self, initial_content: str = "") -> str | None:
         """Suspend TUI and open editor for prompt input.

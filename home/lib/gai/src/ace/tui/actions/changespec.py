@@ -244,7 +244,7 @@ class ChangeSpecMixin:
 
     def _refresh_display(self) -> None:
         """Refresh the display with current state."""
-        from ...query import query_explicitly_targets_reverted
+        from ...query import query_explicitly_targets_terminal
         from ..widgets import (
             AncestorsChildrenPanel,
             ChangeSpecDetail,
@@ -267,7 +267,7 @@ class ChangeSpecMixin:
         # Calculate effective hide_reverted (disabled if query targets reverted)
         effective_hide_reverted = (
             self.hide_reverted
-            and not query_explicitly_targets_reverted(
+            and not query_explicitly_targets_terminal(
                 self.parsed_query, self._all_changespecs
             )
         )

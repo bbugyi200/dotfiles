@@ -231,15 +231,14 @@ def parse_mentors_line(
     elif line.startswith("      | "):
         # This is a status line (6-space + "| " prefixed)
         # Pattern: [timestamp] <profile>:<mentor> - STATUS - (suffix)
-        # Timestamp is optional for backward compatibility
         status_content = stripped[2:]  # Skip "| " prefix
         mentor_status_match = re.match(
-            r"^(?:\[(\d{6}_\d{6})\]\s+)?([^:]+):(\S+)\s+-\s+(RUNNING|PASSED|FAILED)"
+            r"^\[(\d{6}_\d{6})\]\s+([^:]+):(\S+)\s+-\s+(RUNNING|PASSED|FAILED)"
             r"(?:\s+-\s+\(([^)]+)\))?$",
             status_content,
         )
         if mentor_status_match and current_mentor_entry is not None:
-            timestamp_val = mentor_status_match.group(1)  # Optional
+            timestamp_val = mentor_status_match.group(1)
             profile_name = mentor_status_match.group(2)
             mentor_name = mentor_status_match.group(3)
             status_val = mentor_status_match.group(4)

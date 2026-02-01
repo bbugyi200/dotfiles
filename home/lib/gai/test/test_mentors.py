@@ -40,16 +40,19 @@ def test_format_profile_with_count_with_status_lines() -> None:
     # Create status lines that reference the profile
     status_lines = [
         MentorStatusLine(
+            timestamp="251231_120000",
             profile_name="test_profile",
             mentor_name="mentor1",
             status="RUNNING",
         ),
         MentorStatusLine(
+            timestamp="251231_120000",
             profile_name="test_profile",
             mentor_name="mentor2",
             status="PASSED",
         ),
         MentorStatusLine(
+            timestamp="251231_120000",
             profile_name="other_profile",
             mentor_name="mentor3",
             status="PASSED",
@@ -87,12 +90,14 @@ def test_format_mentors_field_with_status_lines() -> None:
         profiles=["feature"],
         status_lines=[
             MentorStatusLine(
+                timestamp="251231_120000",
                 profile_name="feature",
                 mentor_name="complete",
                 status="PASSED",
                 duration="1h2m3s",
             ),
             MentorStatusLine(
+                timestamp="251231_120000",
                 profile_name="feature",
                 mentor_name="soundness",
                 status="RUNNING",
@@ -121,18 +126,18 @@ def test_format_mentors_field_running_no_timestamp_prefix() -> None:
         profiles=["feature"],
         status_lines=[
             MentorStatusLine(
+                timestamp="260107_141615",
                 profile_name="feature",
                 mentor_name="complete",
                 status="RUNNING",
-                timestamp="260107_141615",
                 suffix="mentor_complete-12345-260107_141615",
                 suffix_type="running_agent",
             ),
             MentorStatusLine(
+                timestamp="260107_140027",
                 profile_name="feature",
                 mentor_name="soundness",
                 status="PASSED",
-                timestamp="260107_140027",
                 duration="5m30s",
             ),
         ],
@@ -155,6 +160,7 @@ def test_format_mentors_field_with_error_suffix() -> None:
         profiles=["test"],
         status_lines=[
             MentorStatusLine(
+                timestamp="251231_120000",
                 profile_name="test",
                 mentor_name="complete",
                 status="FAILED",
@@ -336,6 +342,7 @@ def test_format_mentors_field_with_plain_suffix() -> None:
         profiles=["test"],
         status_lines=[
             MentorStatusLine(
+                timestamp="251231_120000",
                 profile_name="test",
                 mentor_name="complete",
                 status="PASSED",

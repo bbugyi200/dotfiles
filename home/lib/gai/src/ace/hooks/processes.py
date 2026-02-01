@@ -452,6 +452,7 @@ def mark_mentor_agents_as_killed(
                     profile_name=sl.profile_name,
                     mentor_name=sl.mentor_name,
                     status=sl.status,
+                    timestamp=sl.timestamp,
                     duration=sl.duration,
                     suffix=sl.suffix,
                     suffix_type="killed_agent",

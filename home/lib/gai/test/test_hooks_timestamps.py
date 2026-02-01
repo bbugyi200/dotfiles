@@ -17,10 +17,10 @@ def test_is_timestamp_suffix_new_format() -> None:
     assert is_timestamp_suffix("250101_235959") is True
 
 
-def test_is_timestamp_suffix_old_format() -> None:
-    """Test is_timestamp_suffix returns True for YYmmddHHMMSS format."""
-    assert is_timestamp_suffix("241225120000") is True
-    assert is_timestamp_suffix("250101235959") is True
+def test_is_timestamp_suffix_old_format_rejected() -> None:
+    """Test is_timestamp_suffix returns False for old YYmmddHHMMSS format (no longer supported)."""
+    assert is_timestamp_suffix("241225120000") is False
+    assert is_timestamp_suffix("250101235959") is False
 
 
 def test_is_timestamp_suffix_proposal_id() -> None:
@@ -68,7 +68,7 @@ def test_generate_timestamp_format() -> None:
     assert ts[7:].isdigit()
 
 
-# Tests for backward compatible timestamp parsing
+# Tests for timestamp parsing
 def test_calculate_duration_from_timestamps_new_format() -> None:
     """Test calculate_duration_from_timestamps handles new format with underscore."""
     # 1 hour apart
@@ -76,21 +76,11 @@ def test_calculate_duration_from_timestamps_new_format() -> None:
     assert duration == 3600.0
 
 
-def test_calculate_duration_from_timestamps_old_format() -> None:
-    """Test calculate_duration_from_timestamps handles old format without underscore."""
-    # 1 hour apart
+def test_calculate_duration_from_timestamps_old_format_fails() -> None:
+    """Test calculate_duration_from_timestamps fails for old format without underscore."""
+    # Old format no longer supported
     duration = calculate_duration_from_timestamps("241225120000", "241225130000")
-    assert duration == 3600.0
-
-
-def test_calculate_duration_from_timestamps_mixed_formats() -> None:
-    """Test calculate_duration_from_timestamps handles mixed formats."""
-    # Old start, new end
-    duration = calculate_duration_from_timestamps("241225120000", "241225_130000")
-    assert duration == 3600.0
-    # New start, old end
-    duration = calculate_duration_from_timestamps("241225_120000", "241225130000")
-    assert duration == 3600.0
+    assert duration is None
 
 
 # Tests for HookEntry prefix properties

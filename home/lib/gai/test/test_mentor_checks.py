@@ -125,7 +125,10 @@ def test_get_started_mentors_different_entry_id() -> None:
                 profiles=["code"],
                 status_lines=[
                     MentorStatusLine(
-                        profile_name="code", mentor_name="dead_code", status="PASSED"
+                        timestamp="251231_120000",
+                        profile_name="code",
+                        mentor_name="dead_code",
+                        status="PASSED",
                     )
                 ],
             )
@@ -144,7 +147,10 @@ def test_get_started_mentors_single() -> None:
                 profiles=["code"],
                 status_lines=[
                     MentorStatusLine(
-                        profile_name="code", mentor_name="dead_code", status="RUNNING"
+                        timestamp="251231_120000",
+                        profile_name="code",
+                        mentor_name="dead_code",
+                        status="RUNNING",
                     )
                 ],
             )
@@ -162,10 +168,16 @@ def test_get_started_mentors_multiple() -> None:
                 profiles=["code"],
                 status_lines=[
                     MentorStatusLine(
-                        profile_name="code", mentor_name="dead_code", status="PASSED"
+                        timestamp="251231_120000",
+                        profile_name="code",
+                        mentor_name="dead_code",
+                        status="PASSED",
                     ),
                     MentorStatusLine(
-                        profile_name="code", mentor_name="shared_code", status="RUNNING"
+                        timestamp="251231_120000",
+                        profile_name="code",
+                        mentor_name="shared_code",
+                        status="RUNNING",
                     ),
                 ],
             )
@@ -186,10 +198,16 @@ def test_get_started_mentors_multiple_profiles() -> None:
                 profiles=["code", "tests"],
                 status_lines=[
                     MentorStatusLine(
-                        profile_name="code", mentor_name="dead_code", status="PASSED"
+                        timestamp="251231_120000",
+                        profile_name="code",
+                        mentor_name="dead_code",
+                        status="PASSED",
                     ),
                     MentorStatusLine(
-                        profile_name="tests", mentor_name="coverage", status="RUNNING"
+                        timestamp="251231_120000",
+                        profile_name="tests",
+                        mentor_name="coverage",
+                        status="RUNNING",
                     ),
                 ],
             )
@@ -524,7 +542,7 @@ def test_get_matching_profiles_for_entry_excludes_old_mentored_commits(
     # Create a mock profile that matches "[mentor:complete]" in amend note
     mock_profile = MagicMock()
     mock_profile.profile_name = "feature"
-    mock_profile.mentors = [MentorConfig(mentor_name="complete", prompt="Test prompt")]
+    mock_profile.mentors = [MentorConfig(mentor_name="complete", xprompt="Test prompt")]
     mock_profile.file_globs = []
     mock_profile.diff_regexes = []
     mock_profile.amend_note_regexes = [r"\[mentor:complete\]"]
@@ -573,7 +591,7 @@ def test_get_matching_profiles_for_entry_includes_latest_with_partial_coverage(
     mock_profile_code = MagicMock()
     mock_profile_code.profile_name = "code"
     mock_profile_code.mentors = [
-        MentorConfig(mentor_name="vision", prompt="Test prompt")
+        MentorConfig(mentor_name="vision", xprompt="Test prompt")
     ]
     mock_profile_code.file_globs = []
     mock_profile_code.diff_regexes = []
@@ -582,7 +600,7 @@ def test_get_matching_profiles_for_entry_includes_latest_with_partial_coverage(
     mock_profile_feature = MagicMock()
     mock_profile_feature.profile_name = "feature"
     mock_profile_feature.mentors = [
-        MentorConfig(mentor_name="complete", prompt="Test prompt")
+        MentorConfig(mentor_name="complete", xprompt="Test prompt")
     ]
     mock_profile_feature.file_globs = []
     mock_profile_feature.diff_regexes = []

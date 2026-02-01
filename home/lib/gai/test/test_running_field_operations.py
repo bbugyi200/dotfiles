@@ -104,24 +104,11 @@ def test_workspace_claim_from_line_legacy_format_no_pid_no_cl_returns_none() -> 
     assert claim is None
 
 
-def test_workspace_claim_from_line_legacy_format_with_pid() -> None:
-    """Test parsing legacy format with PID (fourth field)."""
+def test_workspace_claim_from_line_legacy_format_with_pid_returns_none() -> None:
+    """Test parsing legacy format with PID (fourth field) returns None (no longer supported)."""
     claim = _WorkspaceClaim.from_line("  #2 | crs | my_change | 12345")
-    assert claim is not None
-    assert claim.workspace_num == 2
-    assert claim.workflow == "crs"
-    assert claim.cl_name == "my_change"
-    assert claim.pid == 12345
-
-
-def test_workspace_claim_from_line_legacy_format_with_pid_no_cl_name() -> None:
-    """Test parsing legacy format with PID but no cl_name."""
-    claim = _WorkspaceClaim.from_line("  #3 | run |  | 54321")
-    assert claim is not None
-    assert claim.workspace_num == 3
-    assert claim.workflow == "run"
-    assert claim.cl_name is None
-    assert claim.pid == 54321
+    # Legacy format with PID in fourth position is no longer supported
+    assert claim is None
 
 
 def test_workspace_claim_from_line_invalid() -> None:

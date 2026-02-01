@@ -149,7 +149,7 @@ def strip_old_entry_error_markers(changespec: ChangeSpec) -> list[str]:
     return updates
 
 
-def _strip_terminal_status_markers(changespec: ChangeSpec) -> list[str]:
+def strip_terminal_status_markers(changespec: ChangeSpec) -> list[str]:
     """Strip error suffixes for terminal status ChangeSpecs.
 
     For ChangeSpecs with STATUS = "Reverted" or "Submitted", removes all
@@ -262,10 +262,6 @@ def _strip_terminal_status_markers(changespec: ChangeSpec) -> list[str]:
                     )
 
     return updates
-
-
-# Keep old function name as alias for backward compatibility
-acknowledge_terminal_status_markers = _strip_terminal_status_markers
 
 
 def check_ready_to_mail(

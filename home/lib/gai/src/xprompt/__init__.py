@@ -9,7 +9,6 @@ This module provides a replacement for the legacy snippet system, adding:
 """
 
 from .loader import (
-    get_all_snippets,
     get_all_workflows,
     get_all_xprompts,
     get_xprompt_or_workflow,
@@ -27,7 +26,6 @@ from .processor import (
     get_primary_output_schema,
     is_jinja2_template,
     is_workflow_reference,
-    process_snippet_references,
     process_xprompt_references,
     render_toplevel_jinja2,
 )
@@ -59,7 +57,6 @@ __all__ = [
     "validate_against_schema",
     "validate_response",
     # Loader
-    "get_all_snippets",
     "get_all_workflows",
     "get_all_xprompts",
     "get_xprompt_or_workflow",
@@ -68,7 +65,6 @@ __all__ = [
     "get_primary_output_schema",
     "is_jinja2_template",
     "is_workflow_reference",
-    "process_snippet_references",
     "process_xprompt_references",
     "render_toplevel_jinja2",
     # Workflow models

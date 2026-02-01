@@ -15,9 +15,9 @@ from ace.scheduler.mentor_checks import check_mentors
 from ace.scheduler.orphan_cleanup import cleanup_orphaned_workspace_claims
 from ace.scheduler.stale_running_cleanup import cleanup_stale_running_entries
 from ace.scheduler.suffix_transforms import (
-    acknowledge_terminal_status_markers,
     check_ready_to_mail,
     strip_old_entry_error_markers,
+    strip_terminal_status_markers,
     transform_old_proposal_suffixes,
 )
 from ace.scheduler.workflows_runner import (
@@ -196,7 +196,7 @@ class HookJobRunner:
             updates.extend(strip_old_entry_error_markers(changespec))
 
             # Acknowledge terminal status attention markers
-            updates.extend(acknowledge_terminal_status_markers(changespec))
+            updates.extend(strip_terminal_status_markers(changespec))
 
             # Check if ChangeSpec is ready to mail
             updates.extend(check_ready_to_mail(changespec, all_changespecs))

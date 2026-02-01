@@ -163,8 +163,9 @@ def handle_run_fix_hook_workflow(
     # Build a list of failing hooks with output paths
     hooks_with_output: list[tuple[str, str]] = []  # (command, output_path)
     for hook in failing_hooks:
-        if hook.timestamp:
-            output_path = get_hook_output_path(changespec.name, hook.timestamp)
+        latest = hook.latest_status_line
+        if latest and latest.timestamp:
+            output_path = get_hook_output_path(changespec.name, latest.timestamp)
             hooks_with_output.append((hook.command, output_path))
 
     if not hooks_with_output:

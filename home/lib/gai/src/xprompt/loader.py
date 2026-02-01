@@ -267,8 +267,6 @@ def _load_xprompts_from_files() -> dict[str, XPrompt]:
 def _load_xprompts_from_config() -> dict[str, XPrompt]:
     """Load xprompts from gai.yml configuration file.
 
-    Supports both 'xprompts' and legacy 'snippets' keys.
-
     Returns:
         Dictionary mapping xprompt name to XPrompt object.
     """
@@ -288,27 +286,20 @@ def _load_xprompts_from_config() -> dict[str, XPrompt]:
 
     xprompts: dict[str, XPrompt] = {}
 
-    # Check both 'xprompts' and 'snippets' keys (xprompts takes priority)
-    for key in ("xprompts", "snippets"):
-        if key not in data:
+    config_data = data.get("xprompts")
+    if not isinstance(config_data, dict):
+        return {}
+
+    for name, content in config_data.items():
+        if not isinstance(name, str) or not isinstance(content, str):
             continue
 
-        config_data = data[key]
-        if not isinstance(config_data, dict):
-            continue
-
-        for name, content in config_data.items():
-            if not isinstance(name, str) or not isinstance(content, str):
-                continue
-
-            # Only add if not already present (xprompts overrides snippets)
-            if name not in xprompts:
-                xprompts[name] = XPrompt(
-                    name=name,
-                    content=content,
-                    inputs=[],  # Config-based xprompts don't have typed inputs
-                    source_path="config",
-                )
+        xprompts[name] = XPrompt(
+            name=name,
+            content=content,
+            inputs=[],  # Config-based xprompts don't have typed inputs
+            source_path="config",
+        )
 
     return xprompts
 
@@ -363,18 +354,6 @@ def get_all_xprompts() -> dict[str, XPrompt]:
     all_xprompts.update(file_xprompts)
 
     return all_xprompts
-
-
-def get_all_snippets() -> dict[str, str]:
-    """Legacy compatibility function: get all xprompts as simple name->content dict.
-
-    This is a drop-in replacement for snippet_config.get_all_snippets().
-
-    Returns:
-        Dictionary mapping xprompt name to content string.
-    """
-    xprompts = get_all_xprompts()
-    return {name: xp.content for name, xp in xprompts.items()}
 
 
 def get_all_workflows() -> dict[str, "Workflow"]:

@@ -39,37 +39,39 @@ def test_hook_entry_all_fields() -> None:
     """Test HookEntry with all fields via status_lines."""
     entry = _make_hook(
         command="flake8 src",
-        timestamp="240601123456",
+        timestamp="240601_123456",
         status="PASSED",
         duration="1m23s",
     )
     assert entry.command == "flake8 src"
-    assert entry.timestamp == "240601123456"
-    assert entry.status == "PASSED"
-    assert entry.duration == "1m23s"
+    sl = entry.latest_status_line
+    assert sl is not None
+    assert sl.timestamp == "240601_123456"
+    assert sl.status == "PASSED"
+    assert sl.duration == "1m23s"
 
 
 def test_hook_entry_minimal() -> None:
     """Test HookEntry with only command (never run)."""
     entry = HookEntry(command="mypy src")
     assert entry.command == "mypy src"
-    assert entry.timestamp is None
-    assert entry.status is None
-    assert entry.duration is None
+    assert entry.latest_status_line is None
 
 
 def test_hook_entry_running() -> None:
     """Test HookEntry in RUNNING state (no duration)."""
     entry = _make_hook(
         command="pytest src",
-        timestamp="240601123456",
+        timestamp="240601_123456",
         status="RUNNING",
         duration=None,
     )
     assert entry.command == "pytest src"
-    assert entry.timestamp == "240601123456"
-    assert entry.status == "RUNNING"
-    assert entry.duration is None
+    sl = entry.latest_status_line
+    assert sl is not None
+    assert sl.timestamp == "240601_123456"
+    assert sl.status == "RUNNING"
+    assert sl.duration is None
 
 
 # Tests for HOOKS field parsing
@@ -97,21 +99,23 @@ def test_parse_changespec_with_hooks() -> None:
 
     # Check first hook (PASSED with duration)
     assert changespec.hooks[0].command == "flake8 src"
-    assert changespec.hooks[0].timestamp == "240601_123456"
-    assert changespec.hooks[0].status == "PASSED"
-    assert changespec.hooks[0].duration == "1m23s"
+    sl0 = changespec.hooks[0].latest_status_line
+    assert sl0 is not None
+    assert sl0.timestamp == "240601_123456"
+    assert sl0.status == "PASSED"
+    assert sl0.duration == "1m23s"
 
     # Check second hook (RUNNING, no duration)
     assert changespec.hooks[1].command == "mypy src"
-    assert changespec.hooks[1].timestamp == "240601_123456"
-    assert changespec.hooks[1].status == "RUNNING"
-    assert changespec.hooks[1].duration is None
+    sl1 = changespec.hooks[1].latest_status_line
+    assert sl1 is not None
+    assert sl1.timestamp == "240601_123456"
+    assert sl1.status == "RUNNING"
+    assert sl1.duration is None
 
     # Check third hook (never run)
     assert changespec.hooks[2].command == "pylint src"
-    assert changespec.hooks[2].timestamp is None
-    assert changespec.hooks[2].status is None
-    assert changespec.hooks[2].duration is None
+    assert changespec.hooks[2].latest_status_line is None
 
 
 def test_parse_changespec_without_hooks() -> None:
@@ -147,8 +151,10 @@ def test_parse_changespec_hooks_with_failed_status() -> None:
     assert changespec.hooks is not None
     assert len(changespec.hooks) == 1
     assert changespec.hooks[0].command == "pytest src"
-    assert changespec.hooks[0].status == "FAILED"
-    assert changespec.hooks[0].duration == "5m30s"
+    sl = changespec.hooks[0].latest_status_line
+    assert sl is not None
+    assert sl.status == "FAILED"
+    assert sl.duration == "5m30s"
 
 
 def test_parse_changespec_hooks_with_dead_status() -> None:
@@ -168,8 +174,10 @@ def test_parse_changespec_hooks_with_dead_status() -> None:
     assert changespec.hooks is not None
     assert len(changespec.hooks) == 1
     assert changespec.hooks[0].command == "pytest src"
-    assert changespec.hooks[0].status == "DEAD"
-    assert changespec.hooks[0].duration == "24h0m"
+    sl = changespec.hooks[0].latest_status_line
+    assert sl is not None
+    assert sl.status == "DEAD"
+    assert sl.duration == "24h0m"
 
 
 # Tests for hook utility functions
@@ -209,38 +217,40 @@ def test_format_duration_fractional() -> None:
 # Tests for calculate_duration_from_timestamps
 def test_calculate_duration_from_timestamps_basic() -> None:
     """Test calculating duration between two timestamps."""
-    # 1 minute apart
-    start = "240601120000"  # 12:00:00
-    end = "240601120100"  # 12:01:00
+    # 1 minute apart (new format with underscore)
+    start = "240601_120000"  # 12:00:00
+    end = "240601_120100"  # 12:01:00
     assert calculate_duration_from_timestamps(start, end) == 60.0
 
 
 def test_calculate_duration_from_timestamps_hours() -> None:
     """Test calculating duration with hours difference."""
-    start = "240601120000"  # 12:00:00
-    end = "240601140000"  # 14:00:00
+    start = "240601_120000"  # 12:00:00
+    end = "240601_140000"  # 14:00:00
     assert calculate_duration_from_timestamps(start, end) == 7200.0  # 2 hours
 
 
 def test_calculate_duration_from_timestamps_complex() -> None:
     """Test calculating duration with hours, minutes, and seconds."""
-    start = "240601120000"  # 12:00:00
-    end = "240601132345"  # 13:23:45
+    start = "240601_120000"  # 12:00:00
+    end = "240601_132345"  # 13:23:45
     # 1h 23m 45s = 3600 + 1380 + 45 = 5025 seconds
     assert calculate_duration_from_timestamps(start, end) == 5025.0
 
 
 def test_calculate_duration_from_timestamps_same() -> None:
     """Test calculating duration when timestamps are the same."""
-    timestamp = "240601120000"
+    timestamp = "240601_120000"
     assert calculate_duration_from_timestamps(timestamp, timestamp) == 0.0
 
 
 def test_calculate_duration_from_timestamps_invalid() -> None:
     """Test that invalid timestamps return None."""
-    assert calculate_duration_from_timestamps("invalid", "240601120000") is None
-    assert calculate_duration_from_timestamps("240601120000", "invalid") is None
+    assert calculate_duration_from_timestamps("invalid", "240601_120000") is None
+    assert calculate_duration_from_timestamps("240601_120000", "invalid") is None
     assert calculate_duration_from_timestamps("", "") is None
+    # Legacy format (no underscore) no longer supported
+    assert calculate_duration_from_timestamps("240601120000", "240601120100") is None
 
 
 # Tests for parse_commit_entry_id

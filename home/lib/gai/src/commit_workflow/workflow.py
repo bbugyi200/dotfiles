@@ -4,7 +4,6 @@ import os
 import sys
 import tempfile
 
-from ace.constants import REQUIRED_CHANGESPEC_HOOKS
 from commit_utils import add_commit_entry, get_next_commit_number, save_diff
 from rich_utils import print_status
 from shared_utils import run_shell_command
@@ -18,7 +17,6 @@ from .branch_info import (
 )
 from .changespec_operations import (
     add_changespec_to_project_file,
-    ensure_required_hooks,
     update_existing_changespec,
 )
 from .changespec_queries import changespec_exists, project_file_exists
@@ -267,11 +265,6 @@ class CommitWorkflow(BaseWorkflow):
                 if update_existing_changespec(project, full_name, cl_url):
                     print_status(
                         f"ChangeSpec '{full_name}' updated successfully.", "success"
-                    )
-                    # Ensure required hooks are present (backward compatibility)
-                    project_file = get_project_file_path(project)
-                    ensure_required_hooks(
-                        project_file, full_name, REQUIRED_CHANGESPEC_HOOKS
                     )
                 else:
                     print_status("Failed to update existing ChangeSpec.", "warning")
