@@ -135,33 +135,108 @@
             "type": "boolean",
             "description": "Whether to require human-in-the-loop approval",
             "default": false
+          },
+          "if": {
+            "type": "string",
+            "description": "Jinja2 condition expression - step is skipped if false"
+          },
+          "for": {
+            "type": "object",
+            "description": "Loop iteration - maps variable names to list expressions",
+            "additionalProperties": {
+              "type": "string",
+              "description": "Jinja2 expression that resolves to a list"
+            }
+          },
+          "repeat": {
+            "type": "object",
+            "description": "Repeat-until loop configuration",
+            "required": ["until"],
+            "additionalProperties": false,
+            "properties": {
+              "until": {
+                "type": "string",
+                "description": "Jinja2 condition - loop stops when this becomes true"
+              },
+              "max": {
+                "type": "integer",
+                "description": "Maximum iterations before raising error",
+                "default": 100,
+                "minimum": 1
+              }
+            }
+          },
+          "while": {
+            "oneOf": [
+              {
+                "type": "string",
+                "description": "Jinja2 condition - loop continues while true (short form)"
+              },
+              {
+                "type": "object",
+                "description": "While loop configuration (long form)",
+                "required": ["condition"],
+                "additionalProperties": false,
+                "properties": {
+                  "condition": {
+                    "type": "string",
+                    "description": "Jinja2 condition - loop continues while true"
+                  },
+                  "max": {
+                    "type": "integer",
+                    "description": "Maximum iterations before raising error",
+                    "default": 100,
+                    "minimum": 1
+                  }
+                }
+              }
+            ]
+          },
+          "join": {
+            "type": "string",
+            "description": "How to collect iteration results",
+            "enum": ["array", "text", "object", "lastOf"],
+            "default": "array"
           }
         },
-        "oneOf": [
+        "allOf": [
           {
-            "required": ["agent"],
-            "not": {
-              "anyOf": [
-                { "required": ["bash"] },
-                { "required": ["python"] }
-              ]
-            }
+            "oneOf": [
+              {
+                "required": ["agent"],
+                "not": {
+                  "anyOf": [
+                    { "required": ["bash"] },
+                    { "required": ["python"] }
+                  ]
+                }
+              },
+              {
+                "required": ["bash"],
+                "not": {
+                  "anyOf": [
+                    { "required": ["agent"] },
+                    { "required": ["python"] }
+                  ]
+                }
+              },
+              {
+                "required": ["python"],
+                "not": {
+                  "anyOf": [
+                    { "required": ["agent"] },
+                    { "required": ["bash"] }
+                  ]
+                }
+              }
+            ]
           },
           {
-            "required": ["bash"],
             "not": {
               "anyOf": [
-                { "required": ["agent"] },
-                { "required": ["python"] }
-              ]
-            }
-          },
-          {
-            "required": ["python"],
-            "not": {
-              "anyOf": [
-                { "required": ["agent"] },
-                { "required": ["bash"] }
+                { "required": ["for", "repeat"] },
+                { "required": ["for", "while"] },
+                { "required": ["repeat", "while"] }
               ]
             }
           }
