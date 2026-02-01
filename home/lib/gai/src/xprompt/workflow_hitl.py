@@ -1,8 +1,11 @@
 """CLI human-in-the-loop handler for workflow execution."""
 
-import json
+import os
+import subprocess
+import tempfile
 from typing import Any
 
+import yaml  # type: ignore[import-untyped]
 from rich.console import Console
 from rich.syntax import Syntax
 
@@ -45,8 +48,12 @@ class CLIHITLHandler:
 
         # Format and display output
         if isinstance(output, dict):
-            output_str = json.dumps(output, indent=2)
-            syntax = Syntax(output_str, "json", theme="monokai", line_numbers=True)
+            # Unwrap _data if present for cleaner display
+            display_data = output.get("_data", output)
+            output_str = yaml.dump(
+                display_data, default_flow_style=False, sort_keys=False
+            )
+            syntax = Syntax(output_str, "yaml", theme="monokai", line_numbers=True)
             self.console.print(syntax)
         else:
             self.console.print(str(output))
@@ -75,7 +82,12 @@ class CLIHITLHandler:
         elif response.lower() == "x":
             return HITLResult(action="reject", approved=False)
         elif response.lower() == "e" and step_type == "agent":
-            return HITLResult(action="edit")
+            edited_output = self._edit_output(output)
+            if edited_output is not None:
+                return HITLResult(action="edit", edited_output=edited_output)
+            else:
+                # User cancelled edit, treat as reject
+                return HITLResult(action="reject")
         elif response.lower() == "r" and step_type == "bash":
             return HITLResult(action="rerun")
         elif response and step_type == "agent":
@@ -84,3 +96,49 @@ class CLIHITLHandler:
         else:
             # Default to accept for empty input
             return HITLResult(action="accept", approved=True)
+
+    def _edit_output(self, output: Any) -> Any | None:
+        """Open output in editor for user modification.
+
+        Args:
+            output: The output dict to edit.
+
+        Returns:
+            Edited output as dict, or None if cancelled.
+        """
+        # Unwrap _data if present
+        data = output.get("_data", output) if isinstance(output, dict) else output
+
+        # Convert to YAML
+        yaml_content = yaml.dump(data, default_flow_style=False, sort_keys=False)
+
+        # Create temp file
+        fd, temp_path = tempfile.mkstemp(suffix=".yml", prefix="workflow_edit_")
+        os.close(fd)
+
+        with open(temp_path, "w", encoding="utf-8") as f:
+            f.write(yaml_content)
+
+        # Open in editor
+        editor = os.environ.get("EDITOR", "nvim")
+        subprocess.run([editor, temp_path], check=False)
+
+        # Read edited content
+        with open(temp_path, encoding="utf-8") as f:
+            edited_content = f.read()
+
+        os.unlink(temp_path)
+
+        if not edited_content.strip():
+            return None
+
+        # Parse YAML back to dict/list
+        try:
+            edited_data = yaml.safe_load(edited_content)
+            # Re-wrap in _data if original was wrapped
+            if isinstance(output, dict) and "_data" in output:
+                return {"_data": edited_data}
+            return edited_data
+        except yaml.YAMLError as e:
+            self.console.print(f"[red]Invalid YAML: {e}[/red]")
+            return None

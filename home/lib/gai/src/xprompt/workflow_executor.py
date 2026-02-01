@@ -49,6 +49,7 @@ class HITLResult:
         action: str,
         feedback: str | None = None,
         approved: bool = False,
+        edited_output: Any = None,
     ) -> None:
         """Initialize HITL result.
 
@@ -56,10 +57,12 @@ class HITLResult:
             action: One of "accept", "edit", "reject", "rerun", or "feedback".
             feedback: User feedback text (for "feedback" action).
             approved: Whether the user approved (for confirmation prompts).
+            edited_output: Edited data from user (for "edit" action).
         """
         self.action = action
         self.feedback = feedback
         self.approved = approved
+        self.edited_output = edited_output
 
 
 def _create_jinja_env() -> Environment:
@@ -309,7 +312,11 @@ class WorkflowExecutor:
                 return False
             elif result.action == "accept":
                 pass  # Continue with output as-is
-            # Future: handle edit, feedback for regeneration
+            elif result.action == "edit":
+                if result.edited_output is not None:
+                    output = result.edited_output
+                # Continue with edited output
+            # Future: handle feedback for regeneration
 
         # Store output in context under step name
         step_state.output = output
