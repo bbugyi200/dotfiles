@@ -44,4 +44,6 @@ For each entry in the split specification (process in the order shown - parents 
 
 ## Processing Order
 
-Process the entries in this order (parents before children): {{ processing_order }}
+Process the entries in this order (parents before children):
+
+{{ processing_order }}
