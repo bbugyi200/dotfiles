@@ -13,35 +13,54 @@ input:
 steps:
   # Step 1: Setup - navigate to CL and gather metadata
   - name: setup
-    bash: |
-      cl_name="{{ cl_name }}"
-      [ -z "$cl_name" ] && cl_name=$(branch_name)
+    python: |
+      import os
+      import subprocess
+
+      from ace.changespec import find_all_changespecs
+
+      cl_name = "{{ cl_name }}"
+      if not cl_name:
+          cl_name = subprocess.run(
+              ["branch_name"], capture_output=True, text=True, check=True
+          ).stdout.strip()
 
       # Validate no children
-      python3 -c "
-      from ace.changespec import find_all_changespecs
       cs_list = find_all_changespecs()
-      children = [cs for cs in cs_list if cs.parent == '$cl_name' and cs.status != 'Reverted']
+      children = [
+          cs for cs in cs_list if cs.parent == cl_name and cs.status != "Reverted"
+      ]
       if children:
-          print('error=Cannot split: CL has child CLs')
+          print("error=Cannot split: CL has child CLs")
           exit(1)
+
       # Get default parent
-      target = next((cs for cs in cs_list if cs.name == '$cl_name'), None)
-      parent = target.parent if target and target.parent else 'p4head'
-      print(f'default_parent={parent}')
-      "
+      target = next((cs for cs in cs_list if cs.name == cl_name), None)
+      default_parent = target.parent if target and target.parent else "p4head"
 
       # Navigate and save diff
-      bb_hg_clean "$cl_name-split-nav"
-      bb_hg_update "$cl_name"
-      mkdir -p bb/gai
-      diff_path="bb/gai/$cl_name.diff"
-      branch_diff > "$diff_path"
+      subprocess.run(["bb_hg_clean", f"{cl_name}-split-nav"], check=True)
+      subprocess.run(["bb_hg_update", cl_name], check=True)
+      os.makedirs("bb/gai", exist_ok=True)
+      diff_path = f"bb/gai/{cl_name}.diff"
+      with open(diff_path, "w") as f:
+          result = subprocess.run(
+              ["branch_diff"], capture_output=True, text=True, check=True
+          )
+          f.write(result.stdout)
 
-      echo "cl_name=$cl_name"
-      echo "diff_path=$diff_path"
-      echo "bug=$(branch_bug)"
-      echo "workspace_name=$(workspace_name)"
+      bug = subprocess.run(
+          ["branch_bug"], capture_output=True, text=True, check=True
+      ).stdout.strip()
+      workspace = subprocess.run(
+          ["workspace_name"], capture_output=True, text=True, check=True
+      ).stdout.strip()
+
+      print(f"cl_name={cl_name}")
+      print(f"diff_path={diff_path}")
+      print(f"bug={bug}")
+      print(f"workspace_name={workspace}")
+      print(f"default_parent={default_parent}")
     output:
       type: json_schema
       schema:
@@ -85,60 +104,77 @@ steps:
 
   # Step 3: Format spec and navigate to parent
   - name: prepare_execution
-    bash: |
-      # Read JSON using heredoc (safe for any characters including single quotes)
-      spec_json=$(cat <<'ENDJSON'
-      {{ generate_spec | tojson }}
-      ENDJSON
-      )
+    python: |
+      import json
+      import subprocess
+      from datetime import datetime
+      from pathlib import Path
+      from typing import Any
+
+      import yaml
+
+      spec: Any = {{ generate_spec | tojson }}
+      # Handle _data wrapper if present (arrays get wrapped by workflow executor)
+      if isinstance(spec, dict) and "_data" in spec:
+          spec = spec["_data"]
 
       # Archive spec
-      timestamp=$(date +%Y%m%d_%H%M%S)
-      archive_path="$HOME/.gai/splits/{{ setup.cl_name }}-$timestamp.yml"
-      mkdir -p "$HOME/.gai/splits"
-      echo "$spec_json" | python3 -c "import sys,json,yaml; yaml.dump(json.load(sys.stdin), sys.stdout)" > "$archive_path"
-
-      # Format and sort (pass JSON via env var since heredoc takes stdin precedence)
-      # Output as JSON so multiline values are preserved by the parser
-      SPEC_JSON="$spec_json" ARCHIVE_PATH="$archive_path" python3 << 'PYTHON'
-      import json
-      import os
-      spec = json.loads(os.environ['SPEC_JSON'])
-      # Handle _data wrapper if present (arrays get wrapped by workflow executor)
-      if isinstance(spec, dict) and '_data' in spec:
-          spec = spec['_data']
+      timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+      archive_dir = Path.home() / ".gai" / "splits"
+      archive_dir.mkdir(parents=True, exist_ok=True)
+      archive_path = archive_dir / f"{{ setup.cl_name }}-{timestamp}.yml"
+      with open(archive_path, "w") as f:
+          yaml.dump(spec, f)
 
       # Topological sort
-      result, seen = [], set()
-      def visit(name):
-          if name in seen: return
+      result: list[dict[str, Any]] = []
+      seen: set[str] = set()
+
+      def visit(name: str) -> None:
+          if name in seen:
+              return
           seen.add(name)
-          entry = next((e for e in spec if e['name'] == name), None)
-          if entry and entry.get('parent'):
-              p = next((e for e in spec if e['name'] == entry['parent']), None)
-              if p: visit(p['name'])
-          if entry: result.append(entry)
-      for e in spec: visit(e['name'])
+          entry = next((e for e in spec if e["name"] == name), None)
+          if entry and entry.get("parent"):
+              p = next((e for e in spec if e["name"] == entry["parent"]), None)
+              if p:
+                  visit(p["name"])
+          if entry:
+              result.append(entry)
 
-      # Output markdown
-      md = '\n'.join(f"- **{e['name']}**: {e['description']}" +
-                     (f" (parent: {e['parent']})" if e.get('parent') else '')
-                     for e in result)
-      order = '\n'.join(f"{i+1}. {e['name']}" +
-                        (f" (parent: {e['parent']})" if e.get('parent') else '')
-                        for i, e in enumerate(result))
+      for e in spec:
+          visit(e["name"])
 
-      # Output as JSON (parser handles this correctly for multiline values)
-      print(json.dumps({
-          "spec_markdown": md,
-          "processing_order": order,
-          "archive_path": os.environ['ARCHIVE_PATH']
-      }))
-      PYTHON
+      # Format markdown
+      md_lines = []
+      order_lines = []
+      for i, e in enumerate(result):
+          parent_suffix = f" (parent: {e['parent']})" if e.get("parent") else ""
+          md_lines.append(f"- **{e['name']}**: {e['description']}{parent_suffix}")
+          order_lines.append(f"{i+1}. {e['name']}{parent_suffix}")
 
       # Navigate to parent (suppress output to preserve JSON)
-      bb_hg_clean "{{ setup.cl_name }}-split-parent" >/dev/null 2>&1
-      bb_hg_update "{{ setup.default_parent }}" >/dev/null 2>&1
+      subprocess.run(
+          ["bb_hg_clean", "{{ setup.cl_name }}-split-parent"],
+          capture_output=True,
+          check=True,
+      )
+      subprocess.run(
+          ["bb_hg_update", "{{ setup.default_parent }}"],
+          capture_output=True,
+          check=True,
+      )
+
+      # Output as JSON (parser handles this correctly for multiline values)
+      print(
+          json.dumps(
+              {
+                  "spec_markdown": "\n".join(md_lines),
+                  "processing_order": "\n".join(order_lines),
+                  "archive_path": str(archive_path),
+              }
+          )
+      )
     output:
       type: json_schema
       schema:
