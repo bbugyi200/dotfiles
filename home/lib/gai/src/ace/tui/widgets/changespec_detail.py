@@ -79,12 +79,9 @@ class SearchQueryPanel(Static):
                 break
 
         if matched_slot is not None:
-            # Build beautiful indicator: ★ Q{slot}
+            # Build indicator matching help modal style: [slot]
             indicator = Text()
-            indicator.append("★ ", style="bold #FF6B6B")  # Coral star
-            indicator.append(
-                f"Q{matched_slot}", style="bold black on #FFD700"
-            )  # Black on gold badge
+            indicator.append(f"[{matched_slot}]", style="bold #00FF00")
 
             # Calculate padding for right-alignment
             left_len = len(text.plain)
