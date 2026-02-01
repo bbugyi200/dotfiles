@@ -319,6 +319,7 @@ class ChangeSpecMixin:
                     changespec,
                     hidden_reverted_count=total_hidden,
                     hide_reverted=self.hide_reverted,
+                    marked_count=len(self.marked_indices),
                 )
         else:
             detail_widget.show_empty(self.canonical_query_string)  # type: ignore[attr-defined]

@@ -129,6 +129,7 @@ class KeybindingFooter(Horizontal):
         changespec: ChangeSpec,
         hidden_reverted_count: int = 0,
         hide_reverted: bool = True,
+        marked_count: int = 0,
     ) -> None:
         """Update bindings based on current context.
 
@@ -136,9 +137,10 @@ class KeybindingFooter(Horizontal):
             changespec: Current ChangeSpec
             hidden_reverted_count: Number of hidden reverted ChangeSpecs
             hide_reverted: Whether reverted CLs are currently hidden
+            marked_count: Number of marked ChangeSpecs
         """
         bindings = self._compute_available_bindings(
-            changespec, hidden_reverted_count, hide_reverted
+            changespec, hidden_reverted_count, hide_reverted, marked_count
         )
         text = self._format_bindings(bindings)
         self._update_display(text)
@@ -260,6 +262,7 @@ class KeybindingFooter(Horizontal):
         changespec: ChangeSpec,
         hidden_reverted_count: int = 0,
         hide_reverted: bool = True,
+        marked_count: int = 0,
     ) -> list[tuple[str, str]]:
         """Compute available bindings based on current context.
 
@@ -267,6 +270,7 @@ class KeybindingFooter(Horizontal):
             changespec: Current ChangeSpec
             hidden_reverted_count: Number of hidden reverted ChangeSpecs
             hide_reverted: Whether reverted CLs are currently hidden
+            marked_count: Number of marked ChangeSpecs
 
         Returns:
             List of (key, label) tuples
@@ -335,6 +339,10 @@ class KeybindingFooter(Horizontal):
 
         # Status change
         bindings.append(("s", "status"))
+
+        # Bulk status change (only show when marks exist)
+        if marked_count > 0:
+            bindings.append(("S", f"bulk status ({marked_count})"))
 
         # View files
         bindings.append(("v", "view"))
