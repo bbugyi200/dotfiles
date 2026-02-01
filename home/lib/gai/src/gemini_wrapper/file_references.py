@@ -633,6 +633,8 @@ def format_with_prettier(text: str) -> str:
             text=True,
             check=True,
         )
-        return result.stdout
+        # Unescape underscores that prettier escaped for markdown safety.
+        # This preserves literal underscores in filenames and identifiers.
+        return result.stdout.replace(r"\_", "_")
     except subprocess.CalledProcessError:
         return text
