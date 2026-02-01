@@ -257,7 +257,9 @@ class WorkflowExecutor:
             generate_format_instructions,
             get_primary_output_schema,
             process_xprompt_references,
+            validate_response,
         )
+        from xprompt.output_validation import OutputValidationError
 
         if not step.prompt:
             raise WorkflowExecutionError(f"Agent step '{step.name}' has no prompt")
@@ -286,9 +288,24 @@ class WorkflowExecutor:
         )
         response_text = ensure_str_content(response.content)
 
-        # Parse output
+        # Parse and validate output
         output: dict[str, Any] = {}
-        if step.output:
+        validation_error: str | None = None
+
+        if step.output and output_spec is not None:
+            try:
+                data, validation_error = validate_response(response_text, output_spec)
+                if isinstance(data, dict):
+                    output = data
+                else:
+                    output = {"_data": data}
+                if validation_error:
+                    output["_validation_error"] = validation_error
+            except OutputValidationError as e:
+                # Could not parse JSON/YAML at all
+                output = {"_raw": response_text, "_validation_error": e.message}
+                validation_error = e.message
+        elif step.output:
             try:
                 data, _ = extract_structured_content(response_text)
                 if isinstance(data, dict):
@@ -299,6 +316,12 @@ class WorkflowExecutor:
                 output = {"_raw": response_text}
         else:
             output = {"_raw": response_text}
+
+        # Fail if validation error and no HITL to handle it
+        if validation_error and not (step.hitl and self.hitl_handler):
+            raise WorkflowExecutionError(
+                f"Step '{step.name}' output validation failed: {validation_error}"
+            )
 
         # HITL review if required
         if step.hitl and self.hitl_handler:
