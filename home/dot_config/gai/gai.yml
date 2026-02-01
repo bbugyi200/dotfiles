@@ -72,15 +72,15 @@ mentor_profiles:
 xprompts:
   # XPrompts with arguments use dict with input/content
   b:
-    input: { bug_file: path }
-    content: "Can you help me fix the bug described by the #bug:{{ bug_file }} file? #noc"
+    input: { bug_id: int }
+    content: "Can you help me fix the bug described by the #bug:{{ bug_id }} file? #noc"
   b/ab:
-    input: { bug_file: path }
+    input: { bug_id: int }
     content: |
-      #b:{{ bug_file }} Refer to the 'How to add a Authorized Buyers' section of the @contentads/drx/fe/g3doc/indirect/bidders.md
+      #b:{{ bug_id }} Refer to the 'How to add a Authorized Buyers' section of the @contentads/drx/fe/g3doc/indirect/bidders.md
       file to help you with this. #clref:852317975
   bug:
-    input: { bug_id: line }
+    input: { bug_id: int }
     content: "#(bug_desc: bugged show '{{ bug_id }}')"
   cl:
     input: { include_chat: { type: bool, default: false } }
@@ -92,11 +92,11 @@ xprompts:
       + #chat: Contains the initial conversation with Gemini that resulted in the creation of this CL.
       {%- endif %}
   clr:
-    input: { cl_number: line }
-    content: "cl/{{ cl_number }} (see the #(cl_desc_and_diff: p4 diff -c '{{ cl_number }}') file)"
+    input: { cl_id: int }
+    content: "cl/{{ cl_id }} (see the #(cl_desc_and_diff: p4 diff -c '{{ cl_id }}') file)"
   clref:
-    input: { cl_number: line }
-    content: "Use #clr:{{ cl_number }} as a reference."
+    input: { cl_id: int }
+    content: "Use #clr:{{ cl_id }} as a reference."
   newfeat:
     input: { feat_name: word, usage: text }
     content: |
