@@ -285,38 +285,6 @@ def create_parser() -> argparse.ArgumentParser:
         help="Resume a previous conversation. Optionally specify history file basename or path (defaults to most recent).",
     )
 
-    # Workflow subparsers under 'run' (keep sorted alphabetically)
-    subparsers = run_parser.add_subparsers(
-        dest="workflow",
-        help="Available workflows. Or pass a quoted string with spaces to execute a query directly.",
-        required=False,
-    )
-
-    # --- run split ---
-    split_parser = subparsers.add_parser(
-        "split",
-        help="Split a CL into multiple smaller CLs based on a SplitSpec",
-    )
-    split_parser.add_argument(
-        "name",
-        nargs="?",
-        help="NAME of the ChangeSpec to split (defaults to current branch name)",
-    )
-    # Options for 'run split' (keep sorted alphabetically by long option name)
-    split_parser.add_argument(
-        "-s",
-        "--spec",
-        nargs="?",
-        const="",  # Allows -s without argument
-        help="Path to SplitSpec YAML file. If -s is provided without a path, opens editor to create one.",
-    )
-    split_parser.add_argument(
-        "-y",
-        "--yolo",
-        action="store_true",
-        help="Auto-approve all prompts (spec approval and CL revert).",
-    )
-
     # --- xprompt ---
     xprompt_parser = top_level_subparsers.add_parser(
         "xprompt",

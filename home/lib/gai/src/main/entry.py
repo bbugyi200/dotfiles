@@ -12,7 +12,7 @@ from .cl_handler import (
     handle_revert_command,
 )
 from .parser import create_parser
-from .query_handler import handle_run_special_cases, handle_run_workflows
+from .query_handler import handle_run_special_cases
 
 
 def main() -> NoReturn:
@@ -251,13 +251,8 @@ def main() -> NoReturn:
         print(format_with_prettier(prompt), end="")
         sys.exit(0)
 
-    # --- run workflows ---
-    if args.command != "run":
-        print(f"Unknown command: {args.command}")
-        sys.exit(1)
-
-    # Workflow handlers under 'run'
-    handle_run_workflows(args)
+    print(f"Unknown command: {args.command}")
+    sys.exit(1)
 
 
 if __name__ == "__main__":
