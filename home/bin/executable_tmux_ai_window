@@ -19,14 +19,9 @@ fi
 # Create a unique channel for this window's cleanup signal
 channel="ai-cleanup-$$"
 
-# Background: wait for signal from the window, then run cleanup
-{
-    tmux wait-for "$channel"
-    sleep 0.1
-    tm-fix-layout
-    tm-renumber-ai-windows
-} &
-disown
+# Run waiter in tmux's background (-b flag)
+# This keeps the process alive as a tmux-managed job, avoiding orphaning issues
+tmux run-shell -b "tmux wait-for '$channel' && sleep 0.1 && tm-fix-layout && tm-renumber-ai-windows"
 
 # Create window - when claude exits, signal the channel before window closes
 tmux new-window -n "$window_name" "cd ~/.local/share/chezmoi && claude --dangerously-skip-permissions; tmux wait-for -S '$channel'"
