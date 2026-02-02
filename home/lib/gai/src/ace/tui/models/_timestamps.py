@@ -76,7 +76,7 @@ def parse_timestamp_from_suffix(suffix: str | None) -> datetime | None:
     return None
 
 
-def parse_timestamp_13_char(timestamp_str: str) -> datetime | None:
+def _parse_timestamp_13_char(timestamp_str: str) -> datetime | None:
     """Parse a 13-character timestamp string (YYmmdd_HHMMSS).
 
     Args:
@@ -104,11 +104,11 @@ def parse_timestamp_from_workflow_name(workflow: str | None) -> datetime | None:
     """
     ts_str = extract_timestamp_from_workflow(workflow)
     if ts_str:
-        return parse_timestamp_13_char(ts_str)
+        return _parse_timestamp_13_char(ts_str)
     return None
 
 
-def parse_timestamp_14_digit(timestamp_str: str) -> datetime | None:
+def parse_timestamp_14_digit(timestamp_str: str | None) -> datetime | None:
     """Parse a 14-digit timestamp string (YYYYmmddHHMMSS).
 
     Args:
@@ -117,9 +117,31 @@ def parse_timestamp_14_digit(timestamp_str: str) -> datetime | None:
     Returns:
         Parsed datetime, or None if parsing fails.
     """
-    if len(timestamp_str) != 14 or not timestamp_str.isdigit():
+    if timestamp_str is None or len(timestamp_str) != 14 or not timestamp_str.isdigit():
         return None
     try:
         return datetime.strptime(timestamp_str, "%Y%m%d%H%M%S")
     except ValueError:
         return None
+
+
+def normalize_to_14_digit(ts: str | None) -> str | None:
+    """Normalize timestamp to 14-digit format (YYYYmmddHHMMSS).
+
+    Accepts both:
+    - 14-digit format: YYYYmmddHHMMSS (returned as-is)
+    - 13-char format: YYmmdd_HHMMSS (converted to 14-digit)
+
+    Args:
+        ts: Timestamp string in either format.
+
+    Returns:
+        Timestamp in 14-digit format, or None if invalid format.
+    """
+    if ts is None:
+        return None
+    if len(ts) == 14 and ts.isdigit():
+        return ts
+    if len(ts) == 13 and ts[6] == "_":
+        return f"20{ts[:6]}{ts[7:]}"
+    return None

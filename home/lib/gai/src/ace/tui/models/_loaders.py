@@ -9,7 +9,7 @@ from running_field import get_claimed_workspaces
 from ...changespec import ChangeSpec, extract_pid_from_agent_suffix
 from ...hooks.processes import is_process_running
 from ._timestamps import (
-    parse_timestamp_13_char,
+    normalize_to_14_digit,
     parse_timestamp_14_digit,
     parse_timestamp_from_suffix,
     parse_timestamp_from_workflow_name,
@@ -69,23 +69,42 @@ def load_agents_from_running_field(
             if claim.workflow and claim.workflow.startswith("axe(hooks)"):
                 continue
 
+            # Detect workflow claims: workflow field starts with "workflow("
+            is_workflow_claim = (
+                claim.workflow
+                and claim.workflow.startswith("workflow(")
+                and claim.workflow.endswith(")")
+            )
+
+            if is_workflow_claim:
+                # Extract workflow name from "workflow(name)"
+                workflow_name = claim.workflow[9:-1]
+                agent_type = AgentType.WORKFLOW
+            else:
+                workflow_name = claim.workflow
+                agent_type = AgentType.RUNNING
+
+            # Normalize timestamp (handles both 13-char and 14-digit formats)
+            normalized_ts = normalize_to_14_digit(claim.artifacts_timestamp)
+            start_time = (
+                parse_timestamp_14_digit(normalized_ts)
+                if normalized_ts
+                else parse_timestamp_from_workflow_name(claim.workflow)
+            )
+
             cl_name = claim.cl_name or "unknown"
             agents.append(
                 Agent(
-                    agent_type=AgentType.RUNNING,
+                    agent_type=agent_type,
                     cl_name=cl_name,
                     project_file=project_file,
                     status="RUNNING",
-                    start_time=(
-                        parse_timestamp_13_char(claim.artifacts_timestamp)
-                        if claim.artifacts_timestamp
-                        else parse_timestamp_from_workflow_name(claim.workflow)
-                    ),
+                    start_time=start_time,
                     workspace_num=claim.workspace_num,
-                    workflow=claim.workflow,
+                    workflow=workflow_name,
                     pid=claim.pid,
-                    # Use artifacts_timestamp as raw_suffix for prompt lookup
-                    raw_suffix=claim.artifacts_timestamp,
+                    # Use normalized timestamp as raw_suffix for prompt lookup
+                    raw_suffix=normalized_ts,
                     new_cl_name=claim.new_cl_name,
                     new_cl_url=(
                         cl_by_cl_name.get(claim.new_cl_name)

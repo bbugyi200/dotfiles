@@ -115,6 +115,11 @@ class Agent:
         """Unique identifier for this agent instance."""
         return (self.agent_type, self.cl_name, self.raw_suffix)
 
+    @property
+    def is_workflow_child(self) -> bool:
+        """Check if this agent is a child step of a workflow."""
+        return self.parent_workflow is not None or self.parent_timestamp is not None
+
     def get_artifacts_dir(self) -> str | None:
         """Get the artifacts directory path for this agent.
 

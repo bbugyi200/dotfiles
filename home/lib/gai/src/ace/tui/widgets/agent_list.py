@@ -9,27 +9,6 @@ from textual.widgets.option_list import Option
 
 from ..models.agent import Agent, AgentType
 
-
-def _calculate_entry_display_width(agent: Agent) -> int:
-    """Calculate display width of an Agent entry in terminal cells.
-
-    Args:
-        agent: The Agent to measure
-
-    Returns:
-        Width in terminal cells
-    """
-    # Format: "[icon] [{display_type}] {cl_name} ({status}) - #{workspace_num}"
-    parts = []
-    if agent.status in _DISMISSIBLE_STATUSES:
-        parts.append(f"{_DONE_ICON} ")
-    parts.extend([f"[{agent.display_type}] ", agent.cl_name, " ", f"({agent.status})"])
-    if agent.workspace_num is not None:
-        parts.append(f" - #{agent.workspace_num}")
-    text = Text("".join(parts))
-    return text.cell_len
-
-
 # Color mapping for agent types
 _AGENT_TYPE_COLORS: dict[AgentType, str] = {
     AgentType.RUNNING: "#87AFFF",  # Blue
@@ -50,6 +29,32 @@ _DISMISSIBLE_STATUSES = (
     "COMPLETED",
     "FAILED",
 )
+
+# Indentation prefix for workflow child agents
+_CHILD_INDENT = "  └─ "
+
+
+def _calculate_entry_display_width(agent: Agent) -> int:
+    """Calculate display width of an Agent entry in terminal cells.
+
+    Args:
+        agent: The Agent to measure
+
+    Returns:
+        Width in terminal cells
+    """
+    # Format: "[indent][icon] [{display_type}] {cl_name} ({status}) - #{workspace_num}"
+    parts = []
+    # Add indentation for workflow children
+    if agent.is_workflow_child:
+        parts.append(_CHILD_INDENT)
+    if agent.status in _DISMISSIBLE_STATUSES:
+        parts.append(f"{_DONE_ICON} ")
+    parts.extend([f"[{agent.display_type}] ", agent.cl_name, " ", f"({agent.status})"])
+    if agent.workspace_num is not None:
+        parts.append(f" - #{agent.workspace_num}")
+    text = Text("".join(parts))
+    return text.cell_len
 
 
 class AgentList(OptionList):
@@ -122,6 +127,10 @@ class AgentList(OptionList):
             An Option for the OptionList
         """
         text = Text()
+
+        # Indentation for workflow child agents
+        if agent.is_workflow_child:
+            text.append(_CHILD_INDENT, style="dim #808080")
 
         # Done icon for dismissible agents
         if agent.status in _DISMISSIBLE_STATUSES:
