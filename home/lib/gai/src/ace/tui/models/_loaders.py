@@ -486,6 +486,40 @@ def load_running_home_agents() -> list[Agent]:
     return agents
 
 
+def load_workflow_agents() -> list[Agent]:
+    """Load workflow entries as Agent objects for display in Agents tab.
+
+    Converts WorkflowEntry objects from load_workflow_states() to Agent objects
+    so they can be displayed alongside other agents.
+
+    Returns:
+        List of Agent objects with agent_type=AgentType.WORKFLOW.
+    """
+    entries = load_workflow_states()
+    agents: list[Agent] = []
+
+    for entry in entries:
+        # Extract timestamp from artifacts_dir path for raw_suffix
+        # artifacts_dir format: ~/.gai/projects/<project>/artifacts/workflow-<name>/<timestamp>
+        raw_suffix = None
+        if entry.artifacts_dir:
+            raw_suffix = Path(entry.artifacts_dir).name
+
+        agents.append(
+            Agent(
+                agent_type=AgentType.WORKFLOW,
+                cl_name=entry.workflow_name,
+                project_file=entry.project_file,
+                status=entry.status,
+                start_time=entry.start_time,
+                workflow=entry.workflow_name,
+                raw_suffix=raw_suffix,
+            )
+        )
+
+    return agents
+
+
 def load_workflow_agent_steps() -> list[Agent]:
     """Load agent step entries from workflow agent_step_*.json marker files.
 

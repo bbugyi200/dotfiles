@@ -42,7 +42,14 @@ _AGENT_TYPE_COLORS: dict[AgentType, str] = {
 
 # Icon for dismissible (completed) agents
 _DONE_ICON = "✘"
-_DISMISSIBLE_STATUSES = ("NO CHANGES", "NEW CL", "NEW PROPOSAL", "REVIVED")
+_DISMISSIBLE_STATUSES = (
+    "NO CHANGES",
+    "NEW CL",
+    "NEW PROPOSAL",
+    "REVIVED",
+    "COMPLETED",
+    "FAILED",
+)
 
 
 class AgentList(OptionList):

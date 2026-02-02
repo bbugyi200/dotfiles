@@ -243,6 +243,8 @@ def execute_workflow(
     positional_args: list[str],
     named_args: dict[str, str],
     artifacts_dir: str | None = None,
+    *,
+    silent: bool = False,
 ) -> str:
     """Execute a workflow and return its final output.
 
@@ -251,6 +253,8 @@ def execute_workflow(
         positional_args: Positional arguments.
         named_args: Named arguments.
         artifacts_dir: Optional directory for workflow artifacts.
+        silent: If True, disable console output and use auto-approve for HITL.
+            Use this when running workflows from non-interactive contexts (e.g., TUI).
 
     Returns:
         The workflow's final output as a string.
@@ -263,7 +267,7 @@ def execute_workflow(
     import tempfile
 
     from .workflow_executor import WorkflowExecutor
-    from .workflow_hitl import CLIHITLHandler
+    from .workflow_hitl import CLIHITLHandler, TUIHITLHandler
     from .workflow_models import WorkflowExecutionError
     from .workflow_output import WorkflowOutputHandler
 
@@ -294,9 +298,14 @@ def execute_workflow(
     else:
         os.makedirs(artifacts_dir, exist_ok=True)
 
-    # Create handlers
-    hitl_handler = CLIHITLHandler()
-    output_handler = WorkflowOutputHandler()
+    # Create handlers based on silent mode
+    hitl_handler: TUIHITLHandler | CLIHITLHandler
+    if silent:
+        hitl_handler = TUIHITLHandler(artifacts_dir)
+        output_handler = None
+    else:
+        hitl_handler = CLIHITLHandler()
+        output_handler = WorkflowOutputHandler()
 
     # Create and run executor
     executor = WorkflowExecutor(

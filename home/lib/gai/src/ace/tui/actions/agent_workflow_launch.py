@@ -303,6 +303,9 @@ class AgentLaunchMixin:
         Returns:
             True if workflow was executed, False if not a valid workflow reference.
         """
+        from datetime import datetime
+        from pathlib import Path
+
         from xprompt import execute_workflow, get_all_workflows
 
         workflow_ref = prompt[1:]  # Strip the #
@@ -332,13 +335,32 @@ class AgentLaunchMixin:
                     else:
                         positional_args.append(arg)
 
+        # Create proper artifacts directory for workflow state persistence
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        artifacts_dir = (
+            Path.home()
+            / ".gai"
+            / "projects"
+            / "home"
+            / "artifacts"
+            / f"workflow-{workflow_name}"
+            / timestamp
+        )
+        artifacts_dir.mkdir(parents=True, exist_ok=True)
+
         try:
             # Execute workflow in background thread to not block TUI
             import threading
 
             def run_workflow() -> None:
                 try:
-                    execute_workflow(workflow_name, positional_args, named_args)
+                    execute_workflow(
+                        workflow_name,
+                        positional_args,
+                        named_args,
+                        artifacts_dir=str(artifacts_dir),
+                        silent=True,
+                    )
                 except Exception as e:
                     # Can't easily notify from background thread, so just log
                     import logging

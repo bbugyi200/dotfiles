@@ -230,15 +230,19 @@ class AgentKillingMixin:
             self.notify("Workflow state file not found", severity="warning")  # type: ignore[attr-defined]
 
     def _dismiss_done_agent(self, agent: Agent) -> None:
-        """Dismiss a DONE or REVIVED agent.
+        """Dismiss a DONE, REVIVED, or completed workflow agent.
 
         For REVIVED agents: removes from _revived_agents list and saves.
+        For workflow agents: removes the workflow artifacts directory.
         For other agents: removes the done.json file.
 
         Args:
-            agent: The DONE or REVIVED agent to dismiss.
+            agent: The DONE, REVIVED, or completed agent to dismiss.
         """
+        import shutil
         from pathlib import Path
+
+        from ...models.agent import AgentType
 
         # Handle REVIVED agents differently
         if agent.status == "REVIVED":
@@ -261,7 +265,31 @@ class AgentKillingMixin:
         project_path = Path(agent.project_file)
         project_name = project_path.parent.name
 
-        # Build path to done.json
+        # Handle workflow agents - delete entire workflow artifacts directory
+        if agent.agent_type == AgentType.WORKFLOW:
+            workflow_dir = (
+                Path.home()
+                / ".gai"
+                / "projects"
+                / project_name
+                / "artifacts"
+                / f"workflow-{agent.workflow}"
+                / agent.raw_suffix
+            )
+            try:
+                if workflow_dir.exists():
+                    shutil.rmtree(workflow_dir)
+                    self.notify(f"Dismissed workflow {agent.workflow}")  # type: ignore[attr-defined]
+                else:
+                    self.notify("Workflow already dismissed", severity="warning")  # type: ignore[attr-defined]
+            except Exception as e:
+                self.notify(f"Error dismissing workflow: {e}", severity="error")  # type: ignore[attr-defined]
+                return
+
+            self._load_agents()  # type: ignore[attr-defined]
+            return
+
+        # Build path to done.json for ace-run agents
         done_path = (
             Path.home()
             / ".gai"

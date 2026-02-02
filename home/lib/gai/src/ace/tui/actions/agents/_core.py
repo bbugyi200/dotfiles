@@ -18,7 +18,14 @@ from ....changespec import ChangeSpec
 TabName = Literal["changespecs", "agents", "axe"]
 
 # Statuses that indicate an agent is dismissable (shows "x dismiss" in footer)
-DISMISSABLE_STATUSES = {"NO CHANGES", "NEW CL", "NEW PROPOSAL", "REVIVED"}
+DISMISSABLE_STATUSES = {
+    "NO CHANGES",
+    "NEW CL",
+    "NEW PROPOSAL",
+    "REVIVED",
+    "COMPLETED",
+    "FAILED",
+}
 
 
 def _is_always_visible(agent: Agent) -> bool:
@@ -72,7 +79,7 @@ class AgentsMixinCore(
         agent = self._agents[self.current_idx]
 
         # Handle completed/revived agents with dismiss (no confirmation needed)
-        if agent.status in ("NO CHANGES", "NEW CL", "NEW PROPOSAL", "REVIVED"):
+        if agent.status in DISMISSABLE_STATUSES:
             self._dismiss_done_agent(agent)
             return
 
@@ -276,3 +283,96 @@ class AgentsMixinCore(
             return
 
         agent_detail.toggle_layout()
+
+    def _answer_workflow_hitl(self, agent: Agent) -> None:
+        """Answer a workflow HITL prompt.
+
+        Reads the hitl_request.json file, shows a modal with options,
+        and writes the response to hitl_response.json.
+
+        Args:
+            agent: The workflow agent with WAITING INPUT status.
+        """
+        import json
+        from pathlib import Path
+
+        from ...modals import WorkflowHITLInput, WorkflowHITLModal
+        from ...models.agent import AgentType
+
+        if agent.agent_type != AgentType.WORKFLOW:
+            self.notify("Not a workflow agent", severity="error")  # type: ignore[attr-defined]
+            return
+
+        if agent.raw_suffix is None:
+            self.notify("Cannot find workflow artifacts", severity="error")  # type: ignore[attr-defined]
+            return
+
+        # Extract project name from project_file
+        project_path = Path(agent.project_file)
+        project_name = project_path.parent.name
+
+        # Build path to hitl_request.json
+        artifacts_dir = (
+            Path.home()
+            / ".gai"
+            / "projects"
+            / project_name
+            / "artifacts"
+            / f"workflow-{agent.workflow}"
+            / agent.raw_suffix
+        )
+        request_path = artifacts_dir / "hitl_request.json"
+
+        if not request_path.exists():
+            self.notify("No HITL request found", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        # Read the request file
+        try:
+            with open(request_path, encoding="utf-8") as f:
+                request_data = json.load(f)
+        except Exception as e:
+            self.notify(f"Error reading HITL request: {e}", severity="error")  # type: ignore[attr-defined]
+            return
+
+        # Create input data for modal
+        input_data = WorkflowHITLInput(
+            step_name=request_data.get("step_name", "unknown"),
+            step_type=request_data.get("step_type", "agent"),
+            output=request_data.get("output", {}),
+            workflow_name=agent.workflow or "unknown",
+        )
+
+        # Show the HITL modal
+        def on_dismiss(result: object) -> None:
+            from xprompt import HITLResult
+
+            if result is None:
+                return
+
+            # Verify result is HITLResult
+            if not isinstance(result, HITLResult):
+                return
+
+            # Write response file
+            response_path = artifacts_dir / "hitl_response.json"
+            response_data = {
+                "action": result.action,
+                "approved": result.approved,
+            }
+            if result.edited_output is not None:
+                response_data["edited_output"] = result.edited_output
+            if result.feedback is not None:
+                response_data["feedback"] = result.feedback
+
+            try:
+                with open(response_path, "w", encoding="utf-8") as f:
+                    json.dump(response_data, f, indent=2, default=str)
+                self.notify(f"Sent {result.action} response")  # type: ignore[attr-defined]
+            except Exception as e:
+                self.notify(f"Error writing response: {e}", severity="error")  # type: ignore[attr-defined]
+
+            # Refresh agents after a short delay to pick up status change
+            self.call_later(self._load_agents)  # type: ignore[attr-defined]
+
+        self.push_screen(WorkflowHITLModal(input_data), on_dismiss)  # type: ignore[attr-defined]

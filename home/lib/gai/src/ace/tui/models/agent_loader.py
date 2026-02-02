@@ -13,6 +13,7 @@ from ._loaders import (
     load_done_agents,
     load_running_home_agents,
     load_workflow_agent_steps,
+    load_workflow_agents,
     load_workflow_states,
 )
 from ._timestamps import (
@@ -86,7 +87,10 @@ def load_all_agents() -> list[Agent]:
     # 1b. Load running home mode agents (from running.json markers)
     agents.extend(load_running_home_agents())
 
-    # 1c. Load workflow agent steps (individual agent steps within workflows)
+    # 1c. Load workflow entries as agents
+    agents.extend(load_workflow_agents())
+
+    # 1d. Load workflow agent steps (individual agent steps within workflows)
     workflow_agent_steps = load_workflow_agent_steps()
 
     # 2. Load from each ChangeSpec's fields

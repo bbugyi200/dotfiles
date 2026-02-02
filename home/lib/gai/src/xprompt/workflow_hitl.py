@@ -1,8 +1,10 @@
 """CLI human-in-the-loop handler for workflow execution."""
 
+import json
 import os
 import subprocess
 import tempfile
+import time
 from typing import Any
 
 import yaml  # type: ignore[import-untyped]
@@ -11,6 +13,99 @@ from rich.syntax import Syntax
 from shared_utils import dump_yaml
 
 from xprompt.workflow_executor_types import HITLResult
+
+# Poll interval for TUI HITL handler (seconds)
+_TUI_HITL_POLL_INTERVAL = 0.5
+# Timeout for TUI HITL handler (seconds) - 1 hour
+_TUI_HITL_TIMEOUT = 3600
+
+
+class TUIHITLHandler:
+    """HITL handler for TUI contexts that uses file-based communication.
+
+    This handler writes a request file and blocks waiting for a response file,
+    allowing the TUI to present the HITL options to the user asynchronously.
+    """
+
+    def __init__(self, artifacts_dir: str) -> None:
+        """Initialize the TUI HITL handler.
+
+        Args:
+            artifacts_dir: Directory for workflow artifacts where HITL files are written.
+        """
+        self.artifacts_dir = artifacts_dir
+
+    def prompt(
+        self,
+        step_name: str,
+        step_type: str,
+        output: Any,
+    ) -> HITLResult:
+        """Write HITL request and block waiting for response.
+
+        Args:
+            step_name: Name of the step being reviewed.
+            step_type: Either "agent" or "bash".
+            output: The step's output data.
+
+        Returns:
+            HITLResult based on the user's response from the TUI.
+        """
+        request_path = os.path.join(self.artifacts_dir, "hitl_request.json")
+        response_path = os.path.join(self.artifacts_dir, "hitl_response.json")
+
+        # Clean up any stale response file
+        if os.path.exists(response_path):
+            os.unlink(response_path)
+
+        # Write the request file
+        request_data = {
+            "step_name": step_name,
+            "step_type": step_type,
+            "output": output,
+        }
+        with open(request_path, "w", encoding="utf-8") as f:
+            json.dump(request_data, f, indent=2, default=str)
+
+        # Poll for response file
+        start_time = time.time()
+        while time.time() - start_time < _TUI_HITL_TIMEOUT:
+            if os.path.exists(response_path):
+                try:
+                    with open(response_path, encoding="utf-8") as f:
+                        response_data = json.load(f)
+
+                    # Clean up request file after reading response
+                    if os.path.exists(request_path):
+                        os.unlink(request_path)
+                    os.unlink(response_path)
+
+                    # Parse response into HITLResult
+                    action = response_data.get("action", "reject")
+                    if action == "accept":
+                        return HITLResult(action="accept", approved=True)
+                    elif action == "reject":
+                        return HITLResult(action="reject", approved=False)
+                    elif action == "edit":
+                        edited_output = response_data.get("edited_output")
+                        return HITLResult(action="edit", edited_output=edited_output)
+                    elif action == "feedback":
+                        feedback = response_data.get("feedback", "")
+                        return HITLResult(action="feedback", feedback=feedback)
+                    elif action == "rerun":
+                        return HITLResult(action="rerun")
+                    else:
+                        return HITLResult(action="reject", approved=False)
+                except (json.JSONDecodeError, OSError):
+                    # Response file exists but couldn't be read, wait and retry
+                    pass
+
+            time.sleep(_TUI_HITL_POLL_INTERVAL)
+
+        # Timeout - clean up and reject
+        if os.path.exists(request_path):
+            os.unlink(request_path)
+        return HITLResult(action="reject", approved=False)
 
 
 class CLIHITLHandler:
