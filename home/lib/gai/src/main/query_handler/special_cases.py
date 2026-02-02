@@ -110,7 +110,11 @@ def handle_run_special_cases(args_after_run: list[str]) -> bool:
             else:
                 workflow_name = workflow_ref
 
-            from xprompt import execute_workflow, get_all_workflows
+            from xprompt import (
+                execute_workflow,
+                get_all_workflows,
+                get_all_xprompts,
+            )
 
             workflows = get_all_workflows()
             if workflow_name in workflows:
@@ -134,6 +138,13 @@ def handle_run_special_cases(args_after_run: list[str]) -> bool:
                 except Exception as e:
                     print(f"Workflow error: {e}")
                     sys.exit(1)
+
+            # If not a workflow, check if it's an xprompt
+            xprompts = get_all_xprompts()
+            if workflow_name in xprompts:
+                # Pass the original #query to run_query for expansion
+                run_query(potential_query)
+                sys.exit(0)
 
     # Handle direct query (not a known workflow, contains spaces)
     if args_after_run:
