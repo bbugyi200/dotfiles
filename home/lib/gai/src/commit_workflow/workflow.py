@@ -12,14 +12,12 @@ from workflow_utils import get_initial_hooks_for_changespec, get_project_file_pa
 
 from .branch_info import (
     get_cl_number,
-    get_existing_changespec_description,
     get_parent_branch_name,
 )
 from .changespec_operations import (
     add_changespec_to_project_file,
-    update_existing_changespec,
 )
-from .changespec_queries import changespec_exists, project_file_exists
+from .changespec_queries import get_blocking_exact_match_changespec, project_file_exists
 from .cl_formatting import format_cl_description
 from .editor_utils import open_editor_for_commit_message
 from .project_file_utils import create_project_file
@@ -126,29 +124,20 @@ class CommitWorkflow(BaseWorkflow):
         if not self.cl_name.startswith(f"{project}_"):
             full_name = f"{project}_{self.cl_name}"
 
-        # Check for conflicts with non-WIP/non-Reverted ChangeSpecs
-        from .changespec_queries import get_conflicting_changespec
-
-        conflict = get_conflicting_changespec(project, full_name)
-        if conflict:
-            conflict_name, conflict_status = conflict
+        # Check for blocking ChangeSpec with exact name match (Drafted/Mailed status)
+        blocking = get_blocking_exact_match_changespec(project, full_name)
+        if blocking:
+            blocking_name, blocking_status = blocking
             print_status(
-                f"Cannot create CL '{self.cl_name}': conflicts with existing "
-                f"ChangeSpec '{conflict_name}' (status: {conflict_status}). "
-                f"Only WIP or Reverted ChangeSpecs can have the same base name.",
+                f"Cannot create CL '{self.cl_name}': ChangeSpec '{blocking_name}' "
+                f"already exists with status '{blocking_status}'. "
+                f"A new ChangeSpec with a suffixed name will NOT be created when "
+                f"an exact match exists with Drafted or Mailed status.",
                 "error",
             )
             return False
 
-        # Check if ChangeSpec already exists (for restore workflow)
-        existing_changespec = changespec_exists(project, full_name)
-        existing_description = None
-        if existing_changespec:
-            existing_description = get_existing_changespec_description(
-                project, full_name
-            )
-
-        # Get file path - either from argument, message, existing ChangeSpec, or editor
+        # Get file path - either from argument, message, or editor
         file_path = self._file_path
         if file_path is None:
             if self._message:
@@ -157,13 +146,6 @@ class CommitWorkflow(BaseWorkflow):
                 with os.fdopen(fd, "w", encoding="utf-8") as f:
                     f.write(self._message)
                 self._temp_file_created = True
-            elif existing_description:
-                # Use description from existing ChangeSpec
-                fd, file_path = tempfile.mkstemp(suffix=".txt", prefix="gai_commit_")
-                with os.fdopen(fd, "w", encoding="utf-8") as f:
-                    f.write(existing_description)
-                self._temp_file_created = True
-                print_status("Using description from existing ChangeSpec.", "info")
             else:
                 file_path = open_editor_for_commit_message()
                 if file_path is None:
@@ -180,13 +162,6 @@ class CommitWorkflow(BaseWorkflow):
 
         # Get parent branch name BEFORE creating the commit
         parent_branch = get_parent_branch_name()
-
-        # Determine what to do with ChangeSpec after commit
-        # - If ChangeSpec exists: update it
-        # - If project file exists but no ChangeSpec: add new ChangeSpec
-        # - If project file doesn't exist: create it and add new ChangeSpec
-        should_update_changespec = existing_changespec
-        should_add_changespec = not existing_changespec
 
         # Save the diff before committing (for COMMITS entry)
         print_status("Saving diff before commit...", "progress")
@@ -252,69 +227,57 @@ class CommitWorkflow(BaseWorkflow):
             self._cleanup_temp_file(file_path)
             return False
 
-        # Handle ChangeSpec updates
+        # Handle ChangeSpec creation (always create new)
         cl_number = get_cl_number()
         if cl_number:
             cl_url = f"http://cl/{cl_number}"
 
-            if should_update_changespec:
-                # Update existing ChangeSpec's STATUS and CL fields
-                print_status(
-                    f"Updating existing ChangeSpec '{full_name}'...", "progress"
-                )
-                if update_existing_changespec(project, full_name, cl_url):
-                    print_status(
-                        f"ChangeSpec '{full_name}' updated successfully.", "success"
+            # Create project file if it doesn't exist
+            if not project_file_exists(project):
+                create_project_file(project)
+
+            # Get all initial hooks (required + test targets) in a single call
+            print_status("Gathering hooks for new ChangeSpec...", "progress")
+            initial_hooks = get_initial_hooks_for_changespec()
+
+            # Add new ChangeSpec to project file (with all hooks atomically)
+            print_status(
+                f"Adding ChangeSpec to project file for {project}...", "progress"
+            )
+            # Format bug as URL for ChangeSpec (use bug or fixed_bug, whichever is set)
+            bug_url = f"http://b/{bug}" if bug else None
+            fixed_bug_url = f"http://b/{fixed_bug}" if fixed_bug else None
+            suffixed_name = add_changespec_to_project_file(
+                project=project,
+                cl_name=full_name,
+                description=original_description,
+                parent=parent_branch,
+                cl_url=cl_url,
+                initial_hooks=initial_hooks,
+                bug=bug_url or fixed_bug_url,
+            )
+            if suffixed_name:
+                # Rename the CL to match the suffixed ChangeSpec name
+                if suffixed_name != full_name:
+                    rename_result = run_shell_command(
+                        f'bb_hg_rename "{suffixed_name}"', capture_output=True
                     )
-                else:
-                    print_status("Failed to update existing ChangeSpec.", "warning")
-            elif should_add_changespec:
-                # Create project file if it doesn't exist
-                if not project_file_exists(project):
-                    create_project_file(project)
-
-                # Get all initial hooks (required + test targets) in a single call
-                print_status("Gathering hooks for new ChangeSpec...", "progress")
-                initial_hooks = get_initial_hooks_for_changespec()
-
-                # Add new ChangeSpec to project file (with all hooks atomically)
-                print_status(
-                    f"Adding ChangeSpec to project file for {project}...", "progress"
-                )
-                # Format bug as URL for ChangeSpec (use bug or fixed_bug, whichever is set)
-                bug_url = f"http://b/{bug}" if bug else None
-                fixed_bug_url = f"http://b/{fixed_bug}" if fixed_bug else None
-                suffixed_name = add_changespec_to_project_file(
-                    project=project,
-                    cl_name=full_name,
-                    description=original_description,
-                    parent=parent_branch,
-                    cl_url=cl_url,
-                    initial_hooks=initial_hooks,
-                    bug=bug_url or fixed_bug_url,
-                )
-                if suffixed_name:
-                    # Rename the CL to match the suffixed ChangeSpec name
-                    if suffixed_name != full_name:
-                        rename_result = run_shell_command(
-                            f'bb_hg_rename "{suffixed_name}"', capture_output=True
+                    if rename_result.returncode != 0:
+                        print_status(
+                            f"Warning: Failed to rename CL: {rename_result.stderr}",
+                            "warning",
                         )
-                        if rename_result.returncode != 0:
-                            print_status(
-                                f"Warning: Failed to rename CL: {rename_result.stderr}",
-                                "warning",
-                            )
 
-                    print_status(
-                        f"ChangeSpec '{suffixed_name}' added to project file.",
-                        "success",
-                    )
-                    # Update full_name to use suffixed version for subsequent operations
-                    full_name = suffixed_name
-                else:
-                    print_status("Failed to add ChangeSpec to project file.", "warning")
+                print_status(
+                    f"ChangeSpec '{suffixed_name}' added to project file.",
+                    "success",
+                )
+                # Update full_name to use suffixed version for subsequent operations
+                full_name = suffixed_name
+            else:
+                print_status("Failed to add ChangeSpec to project file.", "warning")
         else:
-            print_status("Could not get CL number for ChangeSpec update.", "warning")
+            print_status("Could not get CL number for ChangeSpec creation.", "warning")
 
         # Add initial COMMITS entry (only if no existing history entries)
         project_file = get_project_file_path(project)

@@ -1,47 +1,8 @@
 """Functions for manipulating ChangeSpec files."""
 
-import os
-
 from ace.changespec import changespec_lock, write_changespec_atomic
 from rich_utils import print_status
 from workflow_utils import get_project_file_path
-
-
-def update_existing_changespec(project: str, cl_name: str, cl_url: str) -> bool:
-    """Update an existing ChangeSpec's STATUS and CL fields.
-
-    Args:
-        project: Project name.
-        cl_name: CL name to update.
-        cl_url: New CL URL.
-
-    Returns:
-        True if update succeeded, False otherwise.
-    """
-    import sys as _sys
-
-    _sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-    from status_state_machine import (
-        transition_changespec_status,
-        update_changespec_cl_atomic,
-    )
-
-    project_file = get_project_file_path(project)
-    if not os.path.isfile(project_file):
-        return False
-
-    try:
-        # Update CL field
-        update_changespec_cl_atomic(project_file, cl_name, cl_url)
-
-        # Update STATUS to "WIP"
-        success, _, _, _ = transition_changespec_status(
-            project_file, cl_name, "WIP", validate=False
-        )
-        return success
-    except Exception as e:
-        print_status(f"Failed to update existing ChangeSpec: {e}", "warning")
-        return False
 
 
 def _find_changespec_end_line(lines: list[str], changespec_name: str) -> int | None:
