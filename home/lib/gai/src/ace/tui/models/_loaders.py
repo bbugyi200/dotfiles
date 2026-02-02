@@ -531,7 +531,7 @@ def load_workflow_agents() -> list[Agent]:
         agents.append(
             Agent(
                 agent_type=AgentType.WORKFLOW,
-                cl_name=entry.workflow_name,
+                cl_name=entry.cl_name,
                 project_file=entry.project_file,
                 status=entry.status,
                 start_time=entry.start_time,

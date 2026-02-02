@@ -167,6 +167,38 @@ def load_all_agents() -> list[Agent]:
 
     agents = final_agents
 
+    # Deduplicate workflow entries from RUNNING field vs workflow_state.json
+    # Both sources use the same timestamp (raw_suffix) as identifier
+    workflow_state_agents: dict[str, Agent] = {}  # key = raw_suffix
+    running_field_workflows: dict[str, Agent] = {}  # key = raw_suffix
+
+    for agent in agents:
+        if agent.agent_type == AgentType.WORKFLOW and agent.raw_suffix:
+            if agent.status == "RUNNING":
+                # From RUNNING field (always status="RUNNING")
+                running_field_workflows[agent.raw_suffix] = agent
+            else:
+                # From workflow_state.json (has accurate status)
+                workflow_state_agents[agent.raw_suffix] = agent
+
+    # Merge: keep workflow_state entries, copy workspace_num from RUNNING entries
+    for suffix, ws_agent in workflow_state_agents.items():
+        if suffix in running_field_workflows:
+            rf_agent = running_field_workflows[suffix]
+            if ws_agent.workspace_num is None:
+                ws_agent.workspace_num = rf_agent.workspace_num
+
+    # Remove RUNNING field duplicates that have a workflow_state counterpart
+    agents = [
+        a
+        for a in agents
+        if not (
+            a.agent_type == AgentType.WORKFLOW
+            and a.status == "RUNNING"
+            and a.raw_suffix in workflow_state_agents
+        )
+    ]
+
     # Sort by start time (most recent first), with None times at end
     def sort_key(a: Agent) -> tuple[bool, datetime]:
         if a.start_time is None:
