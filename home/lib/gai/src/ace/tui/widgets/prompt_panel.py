@@ -1,6 +1,8 @@
 """Agent prompt panel widget for the ace TUI."""
 
+import json
 from pathlib import Path
+from typing import Any
 
 from rich.console import Group
 from rich.syntax import Syntax
@@ -193,19 +195,152 @@ class AgentPromptPanel(Static):
         header_text.append("Timestamp: ", style="bold #87D7FF")
         header_text.append(f"{agent.start_time_display}\n", style="#D7D7FF")
 
-        # Note about workflow step progress
+        # Separator
         header_text.append("\n")
         header_text.append("─" * 50 + "\n", style="dim")
         header_text.append("\n")
         header_text.append("WORKFLOW STEPS\n", style="bold #D7AF5F underline")
         header_text.append("\n")
-        header_text.append(
-            "Step details are available in workflow_state.json\n", style="dim italic"
-        )
 
-        self.update(header_text)
+        # Load and format workflow steps from workflow_state.json
+        steps_content = self._load_workflow_steps(agent)
+        if steps_content:
+            # Render as YAML with syntax highlighting
+            steps_syntax = Syntax(
+                steps_content,
+                "yaml",
+                theme="monokai",
+                word_wrap=True,
+            )
+            self.update(Group(header_text, steps_syntax))
+        else:
+            header_text.append("No workflow state found.\n", style="dim italic")
+            self.update(header_text)
+
+    def _load_workflow_steps(self, agent: Agent) -> str | None:
+        """Load and format workflow steps from workflow_state.json.
+
+        Args:
+            agent: The workflow agent.
+
+        Returns:
+            Formatted string of step details, or None if not found.
+        """
+        artifacts_dir = agent.get_artifacts_dir()
+        if artifacts_dir is None:
+            return None
+
+        state_file = Path(artifacts_dir) / "workflow_state.json"
+        if not state_file.exists():
+            return None
+
+        try:
+            with open(state_file, encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            return None
+
+        steps = data.get("steps", [])
+        if not steps:
+            return None
+
+        return self._format_workflow_steps(steps, data.get("context", {}))
+
+    def _format_workflow_steps(
+        self, steps: list[dict[str, Any]], _context: dict[str, Any]
+    ) -> str:
+        """Format workflow steps for display.
+
+        Args:
+            steps: List of step state dictionaries from workflow_state.json.
+            _context: The workflow context with variables (unused, for future use).
+
+        Returns:
+            Formatted string for display.
+        """
+        lines: list[str] = []
+        total_steps = len(steps)
+
+        for i, step in enumerate(steps):
+            step_name = step.get("name", "unknown")
+            status = step.get("status", "pending")
+            output = step.get("output")
+            error = step.get("error")
+
+            # Step header
+            status_indicator = _get_status_indicator(status)
+            lines.append(f"Step {i + 1}/{total_steps}: {step_name} {status_indicator}")
+            lines.append("-" * 40)
+
+            # Status
+            lines.append(f"  Status: {status}")
+
+            # Error (if any)
+            if error:
+                lines.append(f"  Error: {error}")
+
+            # Output (if any)
+            if output:
+                output_str = _format_output(output)
+                lines.append("  Output:")
+                for line in output_str.splitlines():
+                    lines.append(f"    {line}")
+
+            lines.append("")
+
+        return "\n".join(lines)
 
     def show_empty(self) -> None:
         """Show empty state."""
         text = Text("No agent selected", style="dim italic")
         self.update(text)
+
+
+def _get_status_indicator(status: str) -> str:
+    """Get a status indicator emoji/symbol.
+
+    Args:
+        status: The status string.
+
+    Returns:
+        A status indicator character.
+    """
+    indicators = {
+        "completed": "[OK]",
+        "in_progress": "[...]",
+        "pending": "[ ]",
+        "skipped": "[SKIP]",
+        "failed": "[FAIL]",
+        "waiting_hitl": "[WAIT]",
+    }
+    return indicators.get(status, f"[{status}]")
+
+
+def _format_output(output: Any) -> str:
+    """Format step output for display.
+
+    Args:
+        output: The output data (dict, list, or primitive).
+
+    Returns:
+        Formatted string representation.
+    """
+    if output is None:
+        return "(none)"
+
+    if isinstance(output, dict):
+        # Unwrap _data or _raw if present
+        display_data = output.get("_data", output.get("_raw", output))
+        if isinstance(display_data, str):
+            return display_data
+        try:
+            return json.dumps(display_data, indent=2, default=str)
+        except Exception:
+            return str(display_data)
+    elif isinstance(output, list):
+        try:
+            return json.dumps(output, indent=2, default=str)
+        except Exception:
+            return str(output)
+    else:
+        return str(output)

@@ -684,7 +684,32 @@ class WorkflowExecutor:
         self.context[step.name] = output
         self.state.context = dict(self.context)
 
+        # Save agent step marker for TUI visibility
+        self._save_agent_step_marker(step.name, step_state)
+
         return True
+
+    def _save_agent_step_marker(self, step_name: str, step_state: StepState) -> None:
+        """Save a marker file for agent steps to track them in the TUI.
+
+        Args:
+            step_name: Name of the agent step.
+            step_state: The runtime state for this step.
+        """
+        marker_path = os.path.join(self.artifacts_dir, f"agent_step_{step_name}.json")
+        marker_data = {
+            "workflow_name": self.workflow.name,
+            "step_name": step_name,
+            "status": step_state.status.value,
+            "output": step_state.output,
+            "artifacts_dir": self.artifacts_dir,
+        }
+        try:
+            with open(marker_path, "w", encoding="utf-8") as f:
+                json.dump(marker_data, f, indent=2, default=str)
+        except Exception:
+            # Non-critical - just for TUI visibility
+            pass
 
     def _execute_bash_step(
         self,

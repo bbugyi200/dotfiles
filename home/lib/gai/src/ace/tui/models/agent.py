@@ -64,6 +64,12 @@ class Agent:
     # CL number for agents with associated CL
     cl_num: str | None = None
 
+    # Parent workflow name for agent steps within workflows
+    parent_workflow: str | None = None
+
+    # Parent timestamp for agent steps (links to parent workflow entry)
+    parent_timestamp: str | None = None
+
     @property
     def display_type(self) -> str:
         """Human-readable agent type for display."""

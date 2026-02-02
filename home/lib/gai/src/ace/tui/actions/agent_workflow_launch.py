@@ -41,6 +41,15 @@ class AgentLaunchMixin:
             self._launch_bulk_agents(prompt)
             return
 
+        # Check for workflow reference (e.g., #test_workflow or #split(arg1, arg2))
+        if prompt.startswith("#"):
+            workflow_result = self._try_execute_workflow(prompt)
+            if workflow_result:
+                # Workflow executed successfully
+                self._prompt_context = None
+                self.call_later(self._load_agents)  # type: ignore[attr-defined]
+                return
+
         ctx = self._prompt_context
         self._prompt_context = None
 
@@ -284,3 +293,62 @@ class AgentLaunchMixin:
                 except subprocess.TimeoutExpired:
                     process.kill()
                 return
+
+    def _try_execute_workflow(self, prompt: str) -> bool:
+        """Try to execute a workflow reference.
+
+        Args:
+            prompt: The prompt starting with # (e.g., "#test_workflow" or "#split(arg)").
+
+        Returns:
+            True if workflow was executed, False if not a valid workflow reference.
+        """
+        from xprompt import execute_workflow, get_all_workflows
+
+        workflow_ref = prompt[1:]  # Strip the #
+
+        # Extract workflow name (handle #split(args) syntax)
+        if "(" in workflow_ref:
+            workflow_name = workflow_ref.split("(")[0]
+        else:
+            workflow_name = workflow_ref
+
+        workflows = get_all_workflows()
+        if workflow_name not in workflows:
+            return False
+
+        # Parse args if present
+        positional_args: list[str] = []
+        named_args: dict[str, str] = {}
+        if "(" in workflow_ref and workflow_ref.endswith(")"):
+            args_str = workflow_ref[len(workflow_name) + 1 : -1]
+            if args_str:
+                # Simple arg parsing - split on comma
+                for arg in args_str.split(","):
+                    arg = arg.strip()
+                    if "=" in arg:
+                        key, value = arg.split("=", 1)
+                        named_args[key.strip()] = value.strip()
+                    else:
+                        positional_args.append(arg)
+
+        try:
+            # Execute workflow in background thread to not block TUI
+            import threading
+
+            def run_workflow() -> None:
+                try:
+                    execute_workflow(workflow_name, positional_args, named_args)
+                except Exception as e:
+                    # Can't easily notify from background thread, so just log
+                    import logging
+
+                    logging.error(f"Workflow '{workflow_name}' failed: {e}")
+
+            thread = threading.Thread(target=run_workflow, daemon=True)
+            thread.start()
+            self.notify(f"Workflow '{workflow_name}' started")  # type: ignore[attr-defined]
+            return True
+        except Exception as e:
+            self.notify(f"Workflow error: {e}", severity="error")  # type: ignore[attr-defined]
+            return False

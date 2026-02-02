@@ -12,6 +12,7 @@ from ._loaders import (
     load_agents_from_running_field,
     load_done_agents,
     load_running_home_agents,
+    load_workflow_agent_steps,
     load_workflow_states,
 )
 from ._timestamps import (
@@ -84,6 +85,9 @@ def load_all_agents() -> list[Agent]:
 
     # 1b. Load running home mode agents (from running.json markers)
     agents.extend(load_running_home_agents())
+
+    # 1c. Load workflow agent steps (individual agent steps within workflows)
+    workflow_agent_steps = load_workflow_agent_steps()
 
     # 2. Load from each ChangeSpec's fields
     for cs in all_changespecs:
@@ -177,4 +181,24 @@ def load_all_agents() -> list[Agent]:
     # Sort with-time by start_time descending (most recent first)
     agents_with_time.sort(key=lambda a: a.start_time, reverse=True)  # type: ignore
 
-    return agents_with_time + agents_without_time
+    sorted_agents = agents_with_time + agents_without_time
+
+    # Insert workflow agent steps immediately after their parent workflows
+    if workflow_agent_steps:
+        result: list[Agent] = []
+        for agent in sorted_agents:
+            result.append(agent)
+            # Check if any agent steps belong to this agent (matching workflow+timestamp)
+            if agent.agent_type == AgentType.WORKFLOW or (
+                agent.workflow and agent.workflow.startswith("workflow-")
+            ):
+                # Find matching agent steps by timestamp
+                matching_steps = [
+                    step
+                    for step in workflow_agent_steps
+                    if step.parent_timestamp == agent.raw_suffix
+                ]
+                result.extend(matching_steps)
+        return result
+
+    return sorted_agents

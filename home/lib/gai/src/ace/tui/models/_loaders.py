@@ -484,3 +484,84 @@ def load_running_home_agents() -> list[Agent]:
             continue
 
     return agents
+
+
+def load_workflow_agent_steps() -> list[Agent]:
+    """Load agent step entries from workflow agent_step_*.json marker files.
+
+    Scans ~/.gai/projects/*/artifacts/workflow-*/*/agent_step_*.json for agent steps.
+
+    Returns:
+        List of Agent objects with agent_type=AgentType.WORKFLOW representing
+        individual agent steps within workflows.
+    """
+    agents: list[Agent] = []
+    projects_dir = Path.home() / ".gai" / "projects"
+
+    if not projects_dir.exists():
+        return agents
+
+    for project_dir in projects_dir.iterdir():
+        if not project_dir.is_dir():
+            continue
+
+        artifacts_dir = project_dir / "artifacts"
+        if not artifacts_dir.exists():
+            continue
+
+        # Look for workflow-* directories
+        for workflow_dir in artifacts_dir.iterdir():
+            if not workflow_dir.is_dir():
+                continue
+            if not workflow_dir.name.startswith("workflow-"):
+                continue
+
+            # Look for timestamp directories with agent_step_*.json files
+            for timestamp_dir in workflow_dir.iterdir():
+                if not timestamp_dir.is_dir():
+                    continue
+
+                # Find all agent step marker files
+                for marker_file in timestamp_dir.glob("agent_step_*.json"):
+                    try:
+                        with open(marker_file, encoding="utf-8") as f:
+                            data = json.load(f)
+
+                        # Parse timestamp from directory name
+                        start_time = parse_timestamp_14_digit(timestamp_dir.name)
+
+                        # Build project file path
+                        project_name = project_dir.name
+                        project_file = str(project_dir / f"{project_name}.gp")
+
+                        # Map status to display string
+                        status = data.get("status", "completed")
+                        if status == "completed":
+                            display_status = "COMPLETED"
+                        elif status == "in_progress":
+                            display_status = "RUNNING"
+                        elif status == "failed":
+                            display_status = "FAILED"
+                        else:
+                            display_status = status.upper()
+
+                        workflow_name = data.get("workflow_name", "unknown")
+                        step_name = data.get("step_name", "unknown")
+
+                        agents.append(
+                            Agent(
+                                agent_type=AgentType.WORKFLOW,
+                                cl_name=f"  └─ {step_name}",
+                                project_file=project_file,
+                                status=display_status,
+                                start_time=start_time,
+                                workflow=workflow_name,
+                                raw_suffix=timestamp_dir.name,
+                                parent_workflow=workflow_name,
+                                parent_timestamp=timestamp_dir.name,
+                            )
+                        )
+                    except Exception:
+                        continue
+
+    return agents

@@ -37,6 +37,7 @@ _AGENT_TYPE_COLORS: dict[AgentType, str] = {
     AgentType.SUMMARIZE: "#D7AF5F",  # Gold
     AgentType.MENTOR: "#AF87D7",  # Purple
     AgentType.CRS: "#00D787",  # Cyan-green
+    AgentType.WORKFLOW: "#FF87D7",  # Pink for workflow agent steps
 }
 
 # Icon for dismissible (completed) agents
@@ -139,6 +140,10 @@ class AgentList(OptionList):
             text.append(agent.status, style="bold #AF87D7")  # Purple
         elif agent.status == "REVIVED":
             text.append(agent.status, style="bold #D7AF5F")  # Gold/amber
+        elif agent.status == "COMPLETED":
+            text.append(agent.status, style="bold #5FD75F")  # Green
+        elif agent.status == "FAILED":
+            text.append(agent.status, style="bold #FF5F5F")  # Red
         else:
             text.append(agent.status, style="dim")
         text.append(")", style="dim")
