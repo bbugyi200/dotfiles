@@ -458,26 +458,32 @@ class AgentLaunchMixin:
             "axe_run_workflow_runner.py",
         )
 
-        # Launch subprocess
+        # Build output log path
+        output_path = os.path.join(artifacts_dir, "workflow.log")
+
+        # Launch subprocess with output redirection
         try:
-            process = subprocess.Popen(
-                [
-                    "python3",
-                    runner_script,
-                    workflow_name,
-                    json.dumps(positional_args),
-                    json.dumps(named_args),
-                    ctx.project_file,  # type: ignore[attr-defined]
-                    ctx.workspace_dir,  # type: ignore[attr-defined]
-                    str(ctx.workspace_num),  # type: ignore[attr-defined]
-                    artifacts_dir,
-                    ctx.update_target or "",  # type: ignore[attr-defined]
-                    "",  # not home mode
-                ],
-                cwd=ctx.workspace_dir,  # type: ignore[attr-defined]
-                start_new_session=True,  # Detach from TUI process
-                env=os.environ,
-            )
+            with open(output_path, "w") as output_file:
+                process = subprocess.Popen(
+                    [
+                        "python3",
+                        runner_script,
+                        workflow_name,
+                        json.dumps(positional_args),
+                        json.dumps(named_args),
+                        ctx.project_file,  # type: ignore[attr-defined]
+                        ctx.workspace_dir,  # type: ignore[attr-defined]
+                        str(ctx.workspace_num),  # type: ignore[attr-defined]
+                        artifacts_dir,
+                        ctx.update_target or "",  # type: ignore[attr-defined]
+                        "",  # not home mode
+                    ],
+                    cwd=ctx.workspace_dir,  # type: ignore[attr-defined]
+                    stdout=output_file,
+                    stderr=subprocess.STDOUT,
+                    start_new_session=True,  # Detach from TUI process
+                    env=os.environ,
+                )
         except Exception as e:
             self.notify(f"Failed to start workflow: {e}", severity="error")  # type: ignore[attr-defined]
             return False
