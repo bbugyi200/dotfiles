@@ -399,6 +399,7 @@ class AgentsMixinCore(
             step_type=request_data.get("step_type", "agent"),
             output=request_data.get("output", {}),
             workflow_name=agent.workflow or "unknown",
+            has_output=request_data.get("has_output", False),
         )
 
         # Show the HITL modal

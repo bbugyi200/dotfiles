@@ -11,6 +11,8 @@ class HITLHandler(Protocol):
         step_name: str,
         step_type: str,
         output: Any,
+        *,
+        has_output: bool = False,
     ) -> "HITLResult":
         """Prompt the user for action on step output.
 
@@ -18,6 +20,7 @@ class HITLHandler(Protocol):
             step_name: Name of the step being reviewed.
             step_type: Either "agent" or "bash".
             output: The step's output data.
+            has_output: Whether the step has an output field defined.
 
         Returns:
             HITLResult indicating the user's decision.

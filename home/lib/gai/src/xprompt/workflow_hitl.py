@@ -40,6 +40,8 @@ class TUIHITLHandler:
         step_name: str,
         step_type: str,
         output: Any,
+        *,
+        has_output: bool = False,
     ) -> HITLResult:
         """Write HITL request and block waiting for response.
 
@@ -47,6 +49,7 @@ class TUIHITLHandler:
             step_name: Name of the step being reviewed.
             step_type: Either "agent" or "bash".
             output: The step's output data.
+            has_output: Whether the step has an output field defined.
 
         Returns:
             HITLResult based on the user's response from the TUI.
@@ -63,6 +66,7 @@ class TUIHITLHandler:
             "step_name": step_name,
             "step_type": step_type,
             "output": output,
+            "has_output": has_output,
         }
         with open(request_path, "w", encoding="utf-8") as f:
             json.dump(request_data, f, indent=2, default=str)
@@ -124,6 +128,8 @@ class CLIHITLHandler:
         step_name: str,
         step_type: str,
         output: Any,
+        *,
+        has_output: bool = False,
     ) -> HITLResult:
         """Prompt the user for action on step output.
 
@@ -131,6 +137,7 @@ class CLIHITLHandler:
             step_name: Name of the step being reviewed.
             step_type: Either "agent" or "bash".
             output: The step's output data.
+            has_output: Whether the step has an output field defined.
 
         Returns:
             HITLResult indicating the user's decision.
@@ -159,10 +166,16 @@ class CLIHITLHandler:
         self.console.print("[bold cyan]What would you like to do?[/bold cyan]")
         self.console.print("  [green]a[/green] - Accept and continue")
 
-        if step_type == "agent":
+        # Edit option available for agent steps, or bash/python with output field
+        can_edit = step_type == "agent" or (
+            step_type in ("bash", "python") and has_output
+        )
+        if can_edit:
             self.console.print("  [yellow]e[/yellow] - Edit the output")
+
+        if step_type == "agent":
             self.console.print("  [blue]<text>[/blue] - Provide feedback to regenerate")
-        elif step_type == "bash":
+        elif step_type in ("bash", "python"):
             self.console.print("  [yellow]r[/yellow] - Re-run the command")
 
         self.console.print("  [red]x[/red] - Reject and abort workflow")
@@ -175,14 +188,14 @@ class CLIHITLHandler:
             return HITLResult(action="accept", approved=True)
         elif response.lower() == "x":
             return HITLResult(action="reject", approved=False)
-        elif response.lower() == "e" and step_type == "agent":
+        elif response.lower() == "e" and can_edit:
             edited_output = self._edit_output(output)
             if edited_output is not None:
                 return HITLResult(action="edit", edited_output=edited_output)
             else:
                 # User cancelled edit, treat as reject
                 return HITLResult(action="reject")
-        elif response.lower() == "r" and step_type == "bash":
+        elif response.lower() == "r" and step_type in ("bash", "python"):
             return HITLResult(action="rerun")
         elif response and step_type == "agent":
             # Treat any other input as feedback for regeneration

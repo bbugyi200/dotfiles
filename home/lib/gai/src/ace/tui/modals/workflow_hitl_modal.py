@@ -17,9 +17,10 @@ class WorkflowHITLInput:
     """Input data for the HITL modal."""
 
     step_name: str
-    step_type: str  # "agent" or "bash"
+    step_type: str  # "agent", "bash", or "python"
     output: Any
     workflow_name: str
+    has_output: bool = False  # Whether step has output field defined
 
 
 class WorkflowHITLModal(ModalScreen[HITLResult | None]):
@@ -68,10 +69,15 @@ class WorkflowHITLModal(ModalScreen[HITLResult | None]):
                 yield Static(syntax, id="output-content")
 
             # Action hints
+            # Edit option for agent steps, or bash/python with output field
+            can_edit = self.input_data.step_type == "agent" or (
+                self.input_data.step_type in ("bash", "python")
+                and self.input_data.has_output
+            )
             action_hints = "[green]a[/green]=Accept  [red]x[/red]=Reject"
-            if self.input_data.step_type == "agent":
+            if can_edit:
                 action_hints += "  [yellow]e[/yellow]=Edit"
-            elif self.input_data.step_type == "bash":
+            if self.input_data.step_type in ("bash", "python"):
                 action_hints += "  [yellow]r[/yellow]=Rerun"
 
             yield Label(action_hints, id="action-hints")
@@ -80,9 +86,9 @@ class WorkflowHITLModal(ModalScreen[HITLResult | None]):
             with Horizontal(id="button-row"):
                 yield Button("Accept (a)", id="accept-btn", variant="success")
                 yield Button("Reject (x)", id="reject-btn", variant="error")
-                if self.input_data.step_type == "agent":
+                if can_edit:
                     yield Button("Edit (e)", id="edit-btn", variant="warning")
-                elif self.input_data.step_type == "bash":
+                if self.input_data.step_type in ("bash", "python"):
                     yield Button("Rerun (r)", id="rerun-btn", variant="warning")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -109,11 +115,15 @@ class WorkflowHITLModal(ModalScreen[HITLResult | None]):
         self.dismiss(HITLResult(action="reject", approved=False))
 
     def action_edit(self) -> None:
-        """Edit the step output (agent steps only)."""
-        if self.input_data.step_type == "agent":
+        """Edit the step output (agent steps or bash/python with output field)."""
+        can_edit = self.input_data.step_type == "agent" or (
+            self.input_data.step_type in ("bash", "python")
+            and self.input_data.has_output
+        )
+        if can_edit:
             self.dismiss(HITLResult(action="edit"))
 
     def action_rerun(self) -> None:
-        """Rerun the step (bash steps only)."""
-        if self.input_data.step_type == "bash":
+        """Rerun the step (bash/python steps only)."""
+        if self.input_data.step_type in ("bash", "python"):
             self.dismiss(HITLResult(action="rerun"))

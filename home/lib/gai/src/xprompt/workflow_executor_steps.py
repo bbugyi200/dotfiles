@@ -149,7 +149,9 @@ class StepMixin:
             self.state.status = "waiting_hitl"
             self._save_state()
 
-            result = self.hitl_handler.prompt(step.name, "agent", output)
+            result = self.hitl_handler.prompt(
+                step.name, "agent", output, has_output=step.output is not None
+            )
 
             if result.action == "reject":
                 return False
@@ -234,13 +236,19 @@ class StepMixin:
             self.state.status = "waiting_hitl"
             self._save_state()
 
-            result_hitl = self.hitl_handler.prompt(step.name, "bash", output)
+            result_hitl = self.hitl_handler.prompt(
+                step.name, "bash", output, has_output=step.output is not None
+            )
 
             if result_hitl.action == "reject":
                 return False
             elif result_hitl.action == "accept":
                 # Set approved flag in output for subsequent steps
                 output["approved"] = True
+            elif result_hitl.action == "edit":
+                if result_hitl.edited_output is not None:
+                    output = result_hitl.edited_output
+                # Continue with edited output
             # Future: handle rerun
 
         # Store output in context under step name
@@ -315,13 +323,19 @@ class StepMixin:
             self.state.status = "waiting_hitl"
             self._save_state()
 
-            result_hitl = self.hitl_handler.prompt(step.name, "python", output)
+            result_hitl = self.hitl_handler.prompt(
+                step.name, "python", output, has_output=step.output is not None
+            )
 
             if result_hitl.action == "reject":
                 return False
             elif result_hitl.action == "accept":
                 # Set approved flag in output for subsequent steps
                 output["approved"] = True
+            elif result_hitl.action == "edit":
+                if result_hitl.edited_output is not None:
+                    output = result_hitl.edited_output
+                # Continue with edited output
             # Future: handle rerun
 
         # Store output in context under step name
