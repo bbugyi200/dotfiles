@@ -17,6 +17,8 @@ from ..changespec import (
     ChangeSpec,
     HookEntry,
     HookStatusLine,
+    MentorEntry,
+    MentorStatusLine,
     all_hooks_passed_for_entries,
     get_base_status,
     get_current_and_proposal_entry_ids,
@@ -27,6 +29,7 @@ from ..changespec import (
 )
 from ..comments import clear_comment_suffix
 from ..hooks import update_changespec_hooks_field, update_hook_status_line_suffix_type
+from ..mentors import update_changespec_mentors_field
 
 
 def transform_old_proposal_suffixes(changespec: ChangeSpec) -> list[str]:
@@ -260,6 +263,53 @@ def strip_terminal_status_markers(changespec: ChangeSpec) -> list[str]:
                     updates.append(
                         f"Cleared COMMENT [{comment.reviewer}] suffix: {comment.suffix}"
                     )
+
+    # Process MENTORS entries with running_agent suffix_type
+    if changespec.mentors:
+        mentors_to_update: list[MentorEntry] = []
+        mentor_updates: list[str] = []
+
+        for mentor_entry in changespec.mentors:
+            if mentor_entry.status_lines:
+                updated_mentor_status_lines: list[MentorStatusLine] = []
+                for msl in mentor_entry.status_lines:
+                    if msl.suffix_type == "running_agent" and msl.suffix is not None:
+                        # Convert running_agent (@:) to killed_agent (~@:)
+                        updated_mentor_status_lines.append(
+                            MentorStatusLine(
+                                profile_name=msl.profile_name,
+                                mentor_name=msl.mentor_name,
+                                status=msl.status,
+                                timestamp=msl.timestamp,
+                                duration=msl.duration,
+                                suffix=msl.suffix,
+                                suffix_type="killed_agent",
+                            )
+                        )
+                        mentor_updates.append(
+                            f"Converted MENTOR '{msl.profile_name}:{msl.mentor_name}' "
+                            f"({mentor_entry.entry_id}) to killed_agent: {msl.suffix}"
+                        )
+                    else:
+                        updated_mentor_status_lines.append(msl)
+                mentors_to_update.append(
+                    MentorEntry(
+                        entry_id=mentor_entry.entry_id,
+                        profiles=mentor_entry.profiles,
+                        status_lines=updated_mentor_status_lines,
+                    )
+                )
+            else:
+                mentors_to_update.append(mentor_entry)
+
+        if mentor_updates:
+            success = update_changespec_mentors_field(
+                changespec.file_path,
+                changespec.name,
+                mentors_to_update,
+            )
+            if success:
+                updates.extend(mentor_updates)
 
     return updates
 

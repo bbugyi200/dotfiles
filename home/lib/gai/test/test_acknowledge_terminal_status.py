@@ -8,6 +8,8 @@ from ace.changespec import (
     CommitEntry,
     HookEntry,
     HookStatusLine,
+    MentorEntry,
+    MentorStatusLine,
 )
 from ace.scheduler.suffix_transforms import strip_terminal_status_markers
 
@@ -357,3 +359,78 @@ def test_strip_terminal_status_markers_processes_comments_running_agent() -> Non
 
     assert len(result) == 1
     assert "Cleared COMMENT" in result[0]
+
+
+def test_strip_terminal_status_markers_processes_mentors_running_agent() -> None:
+    """Test strip_terminal_status_markers converts mentor running_agent to killed_agent."""
+    mentor = MentorEntry(
+        entry_id="1",
+        profiles=["default"],
+        status_lines=[
+            MentorStatusLine(
+                profile_name="default",
+                mentor_name="test_mentor",
+                status="RUNNING",
+                timestamp="241226_120000",
+                suffix="mentor_test-12345-241226_120000",
+                suffix_type="running_agent",
+            )
+        ],
+    )
+    cs = ChangeSpec(
+        name="test",
+        description="Test",
+        parent=None,
+        cl="123",
+        status="Submitted",  # Terminal
+        test_targets=None,
+        kickstart=None,
+        file_path="/tmp/test.gp",
+        line_number=1,
+        mentors=[mentor],
+    )
+
+    with patch(
+        "ace.scheduler.suffix_transforms.update_changespec_mentors_field",
+        return_value=True,
+    ):
+        result = strip_terminal_status_markers(cs)
+
+    assert len(result) == 1
+    assert "Converted MENTOR" in result[0]
+    assert "to killed_agent" in result[0]
+
+
+def test_strip_terminal_status_markers_skips_mentors_without_running_agent() -> None:
+    """Test strip_terminal_status_markers skips mentor entries without running_agent."""
+    mentor = MentorEntry(
+        entry_id="1",
+        profiles=["default"],
+        status_lines=[
+            MentorStatusLine(
+                profile_name="default",
+                mentor_name="test_mentor",
+                status="PASSED",
+                timestamp="241226_120000",
+                duration="0h5m30s",
+                suffix=None,
+                suffix_type=None,
+            )
+        ],
+    )
+    cs = ChangeSpec(
+        name="test",
+        description="Test",
+        parent=None,
+        cl="123",
+        status="Submitted",  # Terminal
+        test_targets=None,
+        kickstart=None,
+        file_path="/tmp/test.gp",
+        line_number=1,
+        mentors=[mentor],
+    )
+
+    result = strip_terminal_status_markers(cs)
+
+    assert result == []
