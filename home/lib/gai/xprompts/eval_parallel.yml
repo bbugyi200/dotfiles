@@ -105,10 +105,14 @@ steps:
     for: {i: "[1, 2]"}
     parallel:
       - name: sub_a
-        bash: 'echo "iteration={{ i }},task=a"'
+        bash: |
+          echo "iteration={{ i }}"
+          echo "task=a"
         output: {iteration: int, task: word}
       - name: sub_b
-        bash: 'echo "iteration={{ i }},task=b"'
+        bash: |
+          echo "iteration={{ i }}"
+          echo "task=b"
         output: {iteration: int, task: word}
 
   # 12. Verify for+parallel (should have 2 iterations, each with object results)
