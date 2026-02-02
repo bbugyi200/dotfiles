@@ -12,8 +12,16 @@ from mentor_config import (
 )
 from status_state_machine import remove_workspace_suffix
 
-from ..changespec import ChangeSpec, CommitEntry
+from ..changespec import (
+    ChangeSpec,
+    CommitEntry,
+    MentorEntry,
+    MentorStatusLine,
+    extract_pid_from_agent_suffix,
+)
 from ..display_helpers import is_entry_ref_suffix
+from ..hooks.processes import is_process_running
+from ..mentors import update_changespec_mentors_field
 
 # Type alias for logging callback
 LogCallback = Callable[[str, str | None], None]
@@ -455,7 +463,7 @@ def _check_mentor_completion(
 ) -> list[str]:
     """Check completion status of running mentors.
 
-    Phase 1 of mentor checking: check if any RUNNING mentors have completed.
+    Detects mentor processes that are no longer running and marks them as killed.
 
     Args:
         changespec: The ChangeSpec to check.
@@ -465,14 +473,65 @@ def _check_mentor_completion(
     Returns:
         List of update messages.
     """
+    del zombie_timeout_seconds  # Unused for now
+
     updates: list[str] = []
 
     if not changespec.mentors:
         return updates
 
-    # For now, mentor completion is handled by the background runner
-    # which updates the status directly when it finishes.
-    # This function could be extended to detect zombie mentors.
+    mentors_to_update: list[MentorEntry] = []
+    mentor_updates: list[str] = []
+
+    for entry in changespec.mentors:
+        if not entry.status_lines:
+            mentors_to_update.append(entry)
+            continue
+
+        updated_status_lines: list[MentorStatusLine] = []
+        for msl in entry.status_lines:
+            if msl.suffix_type == "running_agent" and msl.suffix:
+                pid = extract_pid_from_agent_suffix(msl.suffix)
+                if pid is not None and not is_process_running(pid):
+                    # Process is dead - mark as killed
+                    updated_status_lines.append(
+                        MentorStatusLine(
+                            profile_name=msl.profile_name,
+                            mentor_name=msl.mentor_name,
+                            status="DEAD",
+                            timestamp=msl.timestamp,
+                            duration=msl.duration,
+                            suffix=msl.suffix,
+                            suffix_type="killed_agent",
+                        )
+                    )
+                    mentor_updates.append(
+                        f"Marked dead MENTOR '{msl.profile_name}:{msl.mentor_name}' "
+                        f"({entry.entry_id}) - PID {pid} not running"
+                    )
+                else:
+                    updated_status_lines.append(msl)
+            else:
+                updated_status_lines.append(msl)
+
+        mentors_to_update.append(
+            MentorEntry(
+                entry_id=entry.entry_id,
+                profiles=entry.profiles,
+                status_lines=updated_status_lines,
+            )
+        )
+
+    if mentor_updates:
+        success = update_changespec_mentors_field(
+            changespec.file_path,
+            changespec.name,
+            mentors_to_update,
+        )
+        if success:
+            updates.extend(mentor_updates)
+            for msg in mentor_updates:
+                log(msg, "cyan")
 
     return updates
 
