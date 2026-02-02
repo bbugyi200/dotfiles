@@ -39,7 +39,10 @@ def _is_always_visible(agent: Agent) -> bool:
     """
     from ...models.agent import AgentType
 
-    return agent.agent_type == AgentType.RUNNING or agent.status in DISMISSABLE_STATUSES
+    return (
+        agent.agent_type in (AgentType.RUNNING, AgentType.WORKFLOW)
+        or agent.status in DISMISSABLE_STATUSES
+    )
 
 
 class AgentsMixinCore(
