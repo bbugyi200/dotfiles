@@ -145,6 +145,12 @@ class Agent:
                 workflow_name = "mentor"
         elif self.agent_type == AgentType.CRS:
             workflow_name = "crs"
+        elif self.agent_type == AgentType.WORKFLOW:
+            # Workflow artifacts: workflow-{name}
+            if self.workflow:
+                workflow_name = f"workflow-{self.workflow}"
+            else:
+                return None
         else:
             return None
 
