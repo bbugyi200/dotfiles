@@ -265,6 +265,7 @@ def execute_workflow(
     from .workflow_executor import WorkflowExecutor
     from .workflow_hitl import CLIHITLHandler
     from .workflow_models import WorkflowExecutionError
+    from .workflow_output import WorkflowOutputHandler
 
     workflows = get_all_workflows()
     if name not in workflows:
@@ -293,8 +294,9 @@ def execute_workflow(
     else:
         os.makedirs(artifacts_dir, exist_ok=True)
 
-    # Create HITL handler
+    # Create handlers
     hitl_handler = CLIHITLHandler()
+    output_handler = WorkflowOutputHandler()
 
     # Create and run executor
     executor = WorkflowExecutor(
@@ -302,6 +304,7 @@ def execute_workflow(
         args=args,
         artifacts_dir=artifacts_dir,
         hitl_handler=hitl_handler,
+        output_handler=output_handler,
     )
 
     success = executor.execute()

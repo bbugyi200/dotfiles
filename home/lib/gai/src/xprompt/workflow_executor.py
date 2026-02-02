@@ -4,8 +4,9 @@ import json
 import os
 import subprocess
 import sys
+import time
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from xprompt.workflow_executor_types import HITLHandler, HITLResult
 from xprompt.workflow_executor_utils import (
@@ -23,6 +24,12 @@ from xprompt.workflow_models import (
     WorkflowStep,
 )
 
+if TYPE_CHECKING:
+    from xprompt.workflow_output import WorkflowOutputHandler
+
+# Import LoopInfo unconditionally since it's used at runtime
+from xprompt.workflow_output import LoopInfo
+
 # Re-export for backward compatibility
 __all__ = ["WorkflowExecutor", "HITLHandler", "HITLResult"]
 
@@ -36,6 +43,7 @@ class WorkflowExecutor:
         args: dict[str, Any],
         artifacts_dir: str,
         hitl_handler: HITLHandler | None = None,
+        output_handler: "WorkflowOutputHandler | None" = None,
     ) -> None:
         """Initialize the workflow executor.
 
@@ -44,11 +52,13 @@ class WorkflowExecutor:
             args: Input arguments matching workflow.inputs.
             artifacts_dir: Directory for workflow artifacts.
             hitl_handler: Optional handler for HITL prompts.
+            output_handler: Optional handler for verbose output display.
         """
         self.workflow = workflow
         self.context: dict[str, Any] = dict(args)
         self.artifacts_dir = artifacts_dir
         self.hitl_handler = hitl_handler
+        self.output_handler = output_handler
 
         # Initialize state
         self.state = WorkflowState(
@@ -95,19 +105,61 @@ class WorkflowExecutor:
             True if workflow completed successfully, False otherwise.
         """
         self._save_state()
+        total_steps = len(self.workflow.steps)
+
+        # Notify workflow start
+        if self.output_handler:
+            self.output_handler.on_workflow_start(
+                self.workflow.name,
+                dict(self.context),
+                total_steps,
+            )
 
         for i, step in enumerate(self.workflow.steps):
             self.state.current_step_index = i
             step_state = self.state.steps[i]
+            step_start_time = time.time()
+
+            # Determine step type for display
+            step_type = self._get_step_type(step)
 
             # Evaluate if: condition
-            if step.condition and not self._evaluate_condition(step.condition):
-                step_state.status = StepStatus.SKIPPED
-                self._save_state()
-                continue
+            condition_result: bool | None = None
+            if step.condition:
+                condition_result = self._evaluate_condition(step.condition)
+                if not condition_result:
+                    step_state.status = StepStatus.SKIPPED
+                    self._save_state()
+                    # Notify step skipped
+                    if self.output_handler:
+                        self.output_handler.on_step_start(
+                            step.name,
+                            step_type,
+                            i,
+                            total_steps,
+                            condition=step.condition,
+                            condition_result=condition_result,
+                        )
+                        self.output_handler.on_step_skip(
+                            step.name, reason="condition false"
+                        )
+                    continue
 
             step_state.status = StepStatus.IN_PROGRESS
             self._save_state()
+
+            # Notify step start
+            if self.output_handler:
+                loop_info = self._get_loop_info(step)
+                self.output_handler.on_step_start(
+                    step.name,
+                    step_type,
+                    i,
+                    total_steps,
+                    condition=step.condition,
+                    condition_result=condition_result,
+                    loop_info=loop_info,
+                )
 
             try:
                 # Handle control flow constructs
@@ -128,21 +180,89 @@ class WorkflowExecutor:
                     step_state.status = StepStatus.FAILED
                     self.state.status = "failed"
                     self._save_state()
+                    if self.output_handler:
+                        self.output_handler.on_workflow_failed(
+                            f"Step '{step.name}' failed"
+                        )
                     return False
 
                 step_state.status = StepStatus.COMPLETED
                 self._save_state()
+
+                # Notify step complete
+                if self.output_handler:
+                    duration = time.time() - step_start_time
+                    self.output_handler.on_step_complete(
+                        step.name,
+                        step_state.output,
+                        duration=duration,
+                    )
 
             except Exception as e:
                 step_state.status = StepStatus.FAILED
                 step_state.error = str(e)
                 self.state.status = "failed"
                 self._save_state()
+                if self.output_handler:
+                    self.output_handler.on_workflow_failed(str(e))
                 raise WorkflowExecutionError(f"Step '{step.name}' failed: {e}") from e
 
         self.state.status = "completed"
         self._save_state()
+
+        # Notify workflow complete
+        if self.output_handler:
+            final_output = None
+            if self.state.steps:
+                final_output = self.state.steps[-1].output
+            self.output_handler.on_workflow_complete(final_output)
+
         return True
+
+    def _get_step_type(self, step: WorkflowStep) -> str:
+        """Get the display type for a step.
+
+        Args:
+            step: The workflow step.
+
+        Returns:
+            String type identifier (agent, bash, python).
+        """
+        if step.is_agent_step():
+            return "agent"
+        elif step.is_python_step():
+            return "python"
+        else:
+            return "bash"
+
+    def _get_loop_info(self, step: WorkflowStep) -> LoopInfo | None:
+        """Get loop information for a step.
+
+        Args:
+            step: The workflow step.
+
+        Returns:
+            LoopInfo if step has a loop, None otherwise.
+        """
+        if step.for_loop:
+            # Resolve the loop items to show count
+            try:
+                _, lists = self._resolve_for_lists(step.for_loop)
+                items = lists[0] if lists else []
+            except Exception:
+                items = []
+            return LoopInfo(loop_type="for", items=items)
+        elif step.repeat_config:
+            return LoopInfo(
+                loop_type="repeat",
+                max_iterations=step.repeat_config.max_iterations,
+            )
+        elif step.while_config:
+            return LoopInfo(
+                loop_type="while",
+                max_iterations=step.while_config.max_iterations,
+            )
+        return None
 
     def _evaluate_condition(self, condition: str) -> bool:
         """Evaluate a Jinja2 condition expression.
@@ -294,8 +414,19 @@ class WorkflowExecutor:
         for iteration_idx in range(num_iterations):
             # Build iteration context with loop variables
             iteration_context = dict(self.context)
+            loop_vars: dict[str, Any] = {}
             for var_idx, var_name in enumerate(var_names):
                 iteration_context[var_name] = lists[var_idx][iteration_idx]
+                loop_vars[var_name] = lists[var_idx][iteration_idx]
+
+            # Notify iteration start
+            if self.output_handler:
+                self.output_handler.on_step_iteration(
+                    step.name,
+                    iteration_idx + 1,
+                    num_iterations,
+                    loop_vars,
+                )
 
             # Temporarily update context for this iteration
             original_context = self.context
@@ -352,7 +483,7 @@ class WorkflowExecutor:
 
         config: LoopConfig = step.repeat_config
 
-        for _ in range(config.max_iterations):
+        for iteration_idx in range(config.max_iterations):
             # Execute the step
             if step.is_agent_step():
                 success = self._execute_agent_step(step, step_state)
@@ -365,7 +496,18 @@ class WorkflowExecutor:
                 return False
 
             # Check until: condition after execution
-            if self._evaluate_condition(config.condition):
+            condition_result = self._evaluate_condition(config.condition)
+
+            # Notify iteration complete
+            if self.output_handler:
+                self.output_handler.on_repeat_iteration(
+                    step.name,
+                    iteration_idx + 1,
+                    config.max_iterations,
+                    condition_result,
+                )
+
+            if condition_result:
                 return True
 
         # Max iterations reached without condition becoming true
@@ -397,7 +539,7 @@ class WorkflowExecutor:
 
         config: LoopConfig = step.while_config
 
-        for _ in range(config.max_iterations):
+        for iteration_idx in range(config.max_iterations):
             # Execute the step first
             if step.is_agent_step():
                 success = self._execute_agent_step(step, step_state)
@@ -410,7 +552,18 @@ class WorkflowExecutor:
                 return False
 
             # Check while: condition after execution (for next iteration)
-            if not self._evaluate_condition(config.condition):
+            condition_result = self._evaluate_condition(config.condition)
+
+            # Notify iteration complete
+            if self.output_handler:
+                self.output_handler.on_repeat_iteration(
+                    step.name,
+                    iteration_idx + 1,
+                    config.max_iterations,
+                    condition_result,
+                )
+
+            if not condition_result:
                 # Condition is false, stop looping
                 return True
 

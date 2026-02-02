@@ -42,6 +42,7 @@ from .workflow_models import (
     WorkflowStep,
     WorkflowValidationError,
 )
+from .workflow_output import LoopInfo, WorkflowOutputHandler
 
 __all__ = [
     # Models
@@ -82,4 +83,7 @@ __all__ = [
     "CLIHITLHandler",
     "HITLHandler",
     "HITLResult",
+    # Workflow output
+    "LoopInfo",
+    "WorkflowOutputHandler",
 ]
