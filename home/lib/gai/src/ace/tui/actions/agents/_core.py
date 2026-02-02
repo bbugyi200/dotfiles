@@ -87,7 +87,8 @@ class AgentsMixinCore(
             return
 
         if agent.pid is None:
-            self.notify("Agent has no PID", severity="warning")  # type: ignore[attr-defined]
+            # No process to kill - just dismiss the agent
+            self._dismiss_done_agent(agent)
             return
 
         # Build description for confirmation dialog
