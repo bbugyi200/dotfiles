@@ -1,10 +1,12 @@
 name: split
 
+input: { num_cls: { type: line, default: "multiple" } }
+
 steps:
   # Step 1: Setup - gather metadata from current branch
   - name: setup
     bash: gai_split_setup
-    output: {cl_name: word, diff_path: path, bug: line, workspace_name: word, default_parent: word}
+    output: { cl_name: word, diff_path: path, bug: line, workspace_name: word, default_parent: word }
 
   # Step 2: Generate split spec (agent with HITL)
   - name: generate_spec
@@ -13,14 +15,14 @@ steps:
         workspace_name="{{ setup.workspace_name }}",
         diff_path="{{ setup.diff_path }}"
       )
-    output: [{name: word, description: text, parent: {type: word, default: ""}}]
+    output: [{ name: word, description: text, parent: { type: word, default: "" } }]
     hitl: true
 
   # Step 3: Format spec and navigate to parent
   - name: prepare_execute
     bash: |
       gai_split_prepare_execute --spec '{{ generate_spec | tojson }}' --cl-name "{{ setup.cl_name }}" --default-parent "{{ setup.default_parent }}"
-    output: {archive_path: path, spec_markdown: text, processing_order: text}
+    output: { archive_path: path, spec_markdown: text, processing_order: text }
 
   # Step 4: Execute split (agent)
   - name: execute_split
@@ -38,7 +40,7 @@ steps:
   - name: revert_prompt
     bash: |
       echo "message=Revert the original CL '{{ setup.cl_name }}'?"
-    output: {message: text}
+    output: { message: text }
     hitl: true
 
   # Step 6: Execute revert if approved
@@ -59,4 +61,4 @@ steps:
               print("reverted=false")
       else:
           print("reverted=skipped")
-    output: {reverted: word}
+    output: { reverted: word }
