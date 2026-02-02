@@ -53,8 +53,9 @@ def main() -> None:
     default_parent = target.parent if target and target.parent else "p4head"
 
     # Navigate and save diff
-    subprocess.run(["bb_hg_clean", f"{cl_name}-split-nav"], check=True)
-    subprocess.run(["bb_hg_update", cl_name], check=True)
+    # Capture output to prevent polluting stdout with informational messages
+    subprocess.run(["bb_hg_clean", f"{cl_name}-split-nav"], check=True, capture_output=True)
+    subprocess.run(["bb_hg_update", cl_name], check=True, capture_output=True)
     os.makedirs("bb/gai", exist_ok=True)
     diff_path = f"bb/gai/{cl_name}.diff"
     with open(diff_path, "w") as f:
