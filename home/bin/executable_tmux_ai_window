@@ -16,5 +16,17 @@ else
     window_name="ai${n}"
 fi
 
-# Run Claude, then cleanup on exit (background + disown so it runs after window closes)
-tmux new-window -n "$window_name" "cd ~/.local/share/chezmoi && claude --dangerously-skip-permissions; { sleep 0.1 && tm-fix-layout && tm-renumber-ai-windows; } & disown"
+# Create a unique channel for this window's cleanup signal
+channel="ai-cleanup-$$"
+
+# Background: wait for signal from the window, then run cleanup
+{
+    tmux wait-for "$channel"
+    sleep 0.1
+    tm-fix-layout
+    tm-renumber-ai-windows
+} &
+disown
+
+# Create window - when claude exits, signal the channel before window closes
+tmux new-window -n "$window_name" "cd ~/.local/share/chezmoi && claude --dangerously-skip-permissions; tmux wait-for -S '$channel'"
