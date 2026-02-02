@@ -1,17 +1,9 @@
 name: split
-# Workflow-level configuration for automatic resource management
-config:
-  claim_workspace: true
-  create_artifacts: true
-  log_workflow: true
-
-input: {cl_name: {type: word, default: ""}}
 
 steps:
-  # Step 1: Setup - navigate to CL and gather metadata
+  # Step 1: Setup - gather metadata from current branch
   - name: setup
-    bash: |
-      gai_split_setup{% if cl_name %} --cl-name "{{ cl_name }}"{% endif %}
+    bash: gai_split_setup
     output: {cl_name: word, diff_path: path, bug: line, workspace_name: word, default_parent: word}
 
   # Step 2: Generate split spec (agent with HITL)

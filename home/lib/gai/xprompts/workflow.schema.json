@@ -10,28 +10,6 @@
       "type": "string",
       "description": "Workflow identifier (used in #name syntax)"
     },
-    "config": {
-      "type": "object",
-      "description": "Configuration options for automatic workflow resource management",
-      "additionalProperties": false,
-      "properties": {
-        "claim_workspace": {
-          "type": "boolean",
-          "description": "Auto-manage workspace claiming/releasing",
-          "default": false
-        },
-        "create_artifacts": {
-          "type": "boolean",
-          "description": "Auto-create artifacts directory",
-          "default": false
-        },
-        "log_workflow": {
-          "type": "boolean",
-          "description": "Auto-initialize/finalize gai.md log",
-          "default": false
-        }
-      }
-    },
     "input": {
       "type": "array",
       "description": "List of input argument definitions",

@@ -16,29 +16,9 @@ from xprompt.models import InputArg, OutputSpec
 from xprompt.workflow_models import (
     LoopConfig,
     Workflow,
-    WorkflowConfig,
     WorkflowStep,
     WorkflowValidationError,
 )
-
-
-def _parse_workflow_config(config_data: dict[str, Any] | None) -> WorkflowConfig:
-    """Parse workflow configuration from YAML.
-
-    Args:
-        config_data: The config dict from YAML.
-
-    Returns:
-        WorkflowConfig object.
-    """
-    if not config_data or not isinstance(config_data, dict):
-        return WorkflowConfig()
-
-    return WorkflowConfig(
-        claim_workspace=bool(config_data.get("claim_workspace", False)),
-        create_artifacts=bool(config_data.get("create_artifacts", False)),
-        log_workflow=bool(config_data.get("log_workflow", False)),
-    )
 
 
 def _parse_workflow_inputs(
@@ -400,9 +380,6 @@ def _load_workflow_from_file(file_path: Path) -> Workflow | None:
     if not name:
         name = file_path.stem  # Filename without extension
 
-    # Parse config
-    config = _parse_workflow_config(data.get("config"))
-
     # Parse inputs
     inputs = _parse_workflow_inputs(data.get("input"))
 
@@ -428,7 +405,6 @@ def _load_workflow_from_file(file_path: Path) -> Workflow | None:
         name=str(name),
         inputs=inputs,
         steps=steps,
-        config=config,
         source_path=str(file_path),
     )
 

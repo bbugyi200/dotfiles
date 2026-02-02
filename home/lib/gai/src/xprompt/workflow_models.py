@@ -77,21 +77,6 @@ class WorkflowStep:
 
 
 @dataclass
-class WorkflowConfig:
-    """Configuration options for automatic workflow resource management.
-
-    Attributes:
-        claim_workspace: Auto-manage workspace claiming/releasing.
-        create_artifacts: Auto-create artifacts directory.
-        log_workflow: Auto-initialize/finalize gai.md log.
-    """
-
-    claim_workspace: bool = False
-    create_artifacts: bool = False
-    log_workflow: bool = False
-
-
-@dataclass
 class Workflow:
     """A multi-step agent workflow definition.
 
@@ -99,14 +84,12 @@ class Workflow:
         name: Workflow identifier (used in #name syntax).
         inputs: List of input argument definitions.
         steps: Ordered list of workflow steps to execute.
-        config: Automatic resource management configuration.
         source_path: File path where workflow was loaded from.
     """
 
     name: str
     inputs: list[InputArg] = field(default_factory=list)
     steps: list[WorkflowStep] = field(default_factory=list)
-    config: WorkflowConfig = field(default_factory=WorkflowConfig)
     source_path: str | None = None
 
     def get_input_by_name(self, name: str) -> InputArg | None:
