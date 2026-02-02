@@ -303,10 +303,7 @@ class AgentLaunchMixin:
         Returns:
             True if workflow was executed, False if not a valid workflow reference.
         """
-        from datetime import datetime
-        from pathlib import Path
-
-        from xprompt import execute_workflow, get_all_workflows
+        from xprompt import get_all_workflows
 
         workflow_ref = prompt[1:]  # Strip the #
 
@@ -334,6 +331,46 @@ class AgentLaunchMixin:
                         named_args[key.strip()] = value.strip()
                     else:
                         positional_args.append(arg)
+
+        # Check if we have changespec context (not home mode)
+        ctx = self._prompt_context
+        has_changespec_context = (
+            ctx is not None
+            and not getattr(ctx, "is_home_mode", True)
+            and ctx.project_file  # type: ignore[attr-defined]
+        )
+
+        if has_changespec_context:
+            # Launch as subprocess with workspace claiming
+            return self._launch_workflow_subprocess(
+                workflow_name, positional_args, named_args
+            )
+
+        # Original behavior: daemon thread for home mode or no context
+        return self._execute_workflow_in_thread(
+            workflow_name, positional_args, named_args
+        )
+
+    def _execute_workflow_in_thread(
+        self,
+        workflow_name: str,
+        positional_args: list[str],
+        named_args: dict[str, str],
+    ) -> bool:
+        """Execute workflow in a daemon thread (for home mode).
+
+        Args:
+            workflow_name: Name of the workflow to execute.
+            positional_args: Positional arguments for the workflow.
+            named_args: Named arguments for the workflow.
+
+        Returns:
+            True if workflow was started, False on error.
+        """
+        from datetime import datetime
+        from pathlib import Path
+
+        from xprompt import execute_workflow
 
         # Create proper artifacts directory for workflow state persistence
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -374,3 +411,94 @@ class AgentLaunchMixin:
         except Exception as e:
             self.notify(f"Workflow error: {e}", severity="error")  # type: ignore[attr-defined]
             return False
+
+    def _launch_workflow_subprocess(
+        self,
+        workflow_name: str,
+        positional_args: list[str],
+        named_args: dict[str, str],
+    ) -> bool:
+        """Launch workflow as subprocess with workspace claiming.
+
+        Args:
+            workflow_name: Name of the workflow to execute.
+            positional_args: Positional arguments for the workflow.
+            named_args: Named arguments for the workflow.
+
+        Returns:
+            True if workflow was started, False on error.
+        """
+        import json
+        import subprocess
+        from datetime import datetime
+
+        from running_field import claim_workspace
+
+        ctx = self._prompt_context
+        if ctx is None:
+            self.notify("No prompt context", severity="error")  # type: ignore[attr-defined]
+            return False
+
+        # Build artifacts directory using project context
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        project_name = os.path.basename(os.path.dirname(ctx.project_file))  # type: ignore[attr-defined]
+        artifacts_dir = os.path.expanduser(
+            f"~/.gai/projects/{project_name}/artifacts/workflow-{workflow_name}/{timestamp}"
+        )
+        os.makedirs(artifacts_dir, exist_ok=True)
+
+        # Build runner script path
+        # From src/ace/tui/actions/ we need 4 dirname calls to get to src/
+        runner_script = os.path.join(
+            os.path.dirname(
+                os.path.dirname(
+                    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                )
+            ),
+            "axe_run_workflow_runner.py",
+        )
+
+        # Launch subprocess
+        try:
+            process = subprocess.Popen(
+                [
+                    "python3",
+                    runner_script,
+                    workflow_name,
+                    json.dumps(positional_args),
+                    json.dumps(named_args),
+                    ctx.project_file,  # type: ignore[attr-defined]
+                    ctx.workspace_dir,  # type: ignore[attr-defined]
+                    str(ctx.workspace_num),  # type: ignore[attr-defined]
+                    artifacts_dir,
+                    ctx.update_target or "",  # type: ignore[attr-defined]
+                    "",  # not home mode
+                ],
+                cwd=ctx.workspace_dir,  # type: ignore[attr-defined]
+                start_new_session=True,  # Detach from TUI process
+                env=os.environ,
+            )
+        except Exception as e:
+            self.notify(f"Failed to start workflow: {e}", severity="error")  # type: ignore[attr-defined]
+            return False
+
+        # Claim workspace with subprocess PID
+        workflow_field_name = f"workflow({workflow_name})"
+        if not claim_workspace(
+            ctx.project_file,  # type: ignore[attr-defined]
+            ctx.workspace_num,  # type: ignore[attr-defined]
+            workflow_field_name,
+            process.pid,
+            ctx.display_name,  # type: ignore[attr-defined]
+            artifacts_timestamp=timestamp,
+        ):
+            self.notify("Failed to claim workspace", severity="error")  # type: ignore[attr-defined]
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+            return False
+
+        self.notify(f"Workflow '{workflow_name}' started")  # type: ignore[attr-defined]
+        return True
