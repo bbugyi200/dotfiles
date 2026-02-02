@@ -288,6 +288,60 @@ class AgentsMixinCore(
 
         agent_detail.toggle_layout()
 
+    def _edit_hitl_output(self, output: object) -> object | None:
+        """Open HITL output in editor for user modification.
+
+        Args:
+            output: The output data to edit.
+
+        Returns:
+            The edited data, or None if cancelled/error.
+        """
+        import os
+        import subprocess
+        import tempfile
+
+        import yaml  # type: ignore[import-untyped]
+        from shared_utils import dump_yaml
+
+        # Unwrap _data if present
+        data = output.get("_data", output) if isinstance(output, dict) else output
+
+        # Convert to YAML
+        yaml_content = dump_yaml(data, sort_keys=False)
+
+        # Create temp file
+        fd, temp_path = tempfile.mkstemp(suffix=".yml", prefix="workflow_edit_")
+        os.close(fd)
+
+        with open(temp_path, "w", encoding="utf-8") as f:
+            f.write(yaml_content)
+
+        # Open in editor with TUI suspended
+        editor = os.environ.get("EDITOR", "nvim")
+        with self.suspend():  # type: ignore[attr-defined]
+            subprocess.run([editor, temp_path], check=False)
+
+        # Read edited content
+        with open(temp_path, encoding="utf-8") as f:
+            edited_content = f.read()
+
+        os.unlink(temp_path)
+
+        if not edited_content.strip():
+            return None
+
+        # Parse YAML back to dict
+        try:
+            edited_data = yaml.safe_load(edited_content)
+            # Re-wrap in _data if original was wrapped
+            if isinstance(output, dict) and "_data" in output:
+                return {"_data": edited_data}
+            return edited_data
+        except yaml.YAMLError as e:
+            self.notify(f"Invalid YAML: {e}", severity="error")  # type: ignore[attr-defined]
+            return None
+
     def _answer_workflow_hitl(self, agent: Agent) -> None:
         """Answer a workflow HITL prompt.
 
@@ -357,6 +411,15 @@ class AgentsMixinCore(
             # Verify result is HITLResult
             if not isinstance(result, HITLResult):
                 return
+
+            # Handle edit action - open editor in TUI process
+            if result.action == "edit":
+                edited_output = self._edit_hitl_output(request_data.get("output", {}))
+                if edited_output is not None:
+                    result = HITLResult(action="edit", edited_output=edited_output)
+                else:
+                    # User cancelled or error - abort
+                    return
 
             # Write response file
             response_path = artifacts_dir / "hitl_response.json"

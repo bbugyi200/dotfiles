@@ -1,9 +1,9 @@
 """Workflow HITL modal for the ace TUI."""
 
-import json
 from dataclasses import dataclass
 from typing import Any
 
+from shared_utils import dump_yaml
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, ScrollableContainer
 from textual.screen import ModalScreen
@@ -57,7 +57,10 @@ class WorkflowHITLModal(ModalScreen[HITLResult | None]):
             # Output preview
             with ScrollableContainer(id="output-preview"):
                 if isinstance(self.input_data.output, dict):
-                    output_str = json.dumps(self.input_data.output, indent=2)
+                    display_data = self.input_data.output.get(
+                        "_data", self.input_data.output
+                    )
+                    output_str = dump_yaml(display_data, sort_keys=False)
                 else:
                     output_str = str(self.input_data.output)
                 yield Static(output_str, id="output-content")
