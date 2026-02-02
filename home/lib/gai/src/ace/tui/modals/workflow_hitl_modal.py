@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from typing import Any
 
+from rich.syntax import Syntax
 from shared_utils import dump_yaml
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, ScrollableContainer
@@ -63,7 +64,8 @@ class WorkflowHITLModal(ModalScreen[HITLResult | None]):
                     output_str = dump_yaml(display_data, sort_keys=False)
                 else:
                     output_str = str(self.input_data.output)
-                yield Static(output_str, id="output-content")
+                syntax = Syntax(output_str, "yaml", theme="monokai", word_wrap=True)
+                yield Static(syntax, id="output-content")
 
             # Action hints
             action_hints = "[green]a[/green]=Accept  [red]x[/red]=Reject"
