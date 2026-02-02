@@ -167,36 +167,30 @@ def load_all_agents() -> list[Agent]:
 
     agents = final_agents
 
-    # Deduplicate workflow entries from RUNNING field vs workflow_state.json
-    # Both sources use the same timestamp (raw_suffix) as identifier
-    workflow_state_agents: dict[str, Agent] = {}  # key = raw_suffix
-    running_field_workflows: dict[str, Agent] = {}  # key = raw_suffix
-
+    # Deduplicate workflow entries: match by raw_suffix (timestamp)
+    # Prefer workflow_state.json entries (accurate status), but copy
+    # workspace_num and cl_name from RUNNING field entries
+    seen_suffixes: dict[str, Agent] = {}
     for agent in agents:
         if agent.agent_type == AgentType.WORKFLOW and agent.raw_suffix:
-            if agent.status == "RUNNING":
-                # From RUNNING field (always status="RUNNING")
-                running_field_workflows[agent.raw_suffix] = agent
+            if agent.raw_suffix in seen_suffixes:
+                existing = seen_suffixes[agent.raw_suffix]
+                # Copy workspace_num from RUNNING field entry
+                if existing.workspace_num is None and agent.workspace_num is not None:
+                    existing.workspace_num = agent.workspace_num
+                # Copy cl_name if existing has "unknown"
+                if existing.cl_name == "unknown" and agent.cl_name != "unknown":
+                    existing.cl_name = agent.cl_name
             else:
-                # From workflow_state.json (has accurate status)
-                workflow_state_agents[agent.raw_suffix] = agent
+                seen_suffixes[agent.raw_suffix] = agent
 
-    # Merge: keep workflow_state entries, copy workspace_num from RUNNING entries
-    for suffix, ws_agent in workflow_state_agents.items():
-        if suffix in running_field_workflows:
-            rf_agent = running_field_workflows[suffix]
-            if ws_agent.workspace_num is None:
-                ws_agent.workspace_num = rf_agent.workspace_num
-
-    # Remove RUNNING field duplicates that have a workflow_state counterpart
+    # Filter out duplicates
     agents = [
         a
         for a in agents
-        if not (
-            a.agent_type == AgentType.WORKFLOW
-            and a.status == "RUNNING"
-            and a.raw_suffix in workflow_state_agents
-        )
+        if a.agent_type != AgentType.WORKFLOW
+        or a.raw_suffix not in seen_suffixes
+        or seen_suffixes.get(a.raw_suffix) is a
     ]
 
     # Sort by start time (most recent first), with None times at end

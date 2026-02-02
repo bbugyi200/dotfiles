@@ -99,6 +99,10 @@ class StepMixin:
             if format_instructions:
                 expanded_prompt += format_instructions
 
+        # Save initial marker to show step is running in TUI
+        step_state.status = StepStatus.IN_PROGRESS
+        self._save_agent_step_marker(step.name, step_state)
+
         # Invoke agent
         response = invoke_agent(
             expanded_prompt,

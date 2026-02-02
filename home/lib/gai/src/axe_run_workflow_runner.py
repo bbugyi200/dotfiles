@@ -142,10 +142,14 @@ def main() -> None:
         # Execute the workflow
         from xprompt import execute_workflow
 
+        # Inject cl_name into named_args so it's available in workflow context
+        workflow_named_args = dict(named_args)
+        workflow_named_args["cl_name"] = cl_name
+
         execute_workflow(
             workflow_name,
             positional_args,
-            named_args,
+            workflow_named_args,
             artifacts_dir=artifacts_dir,
             silent=True,
         )
