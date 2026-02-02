@@ -306,3 +306,174 @@ xprompts:
     assert xprompts["test"].content == "From file"
 
     Path(config_path).unlink()
+
+
+# Tests for _load_xprompts_from_project
+
+
+def _load_xprompts_from_project_with_base(
+    project: str, base_config_dir: Path
+) -> dict[str, XPrompt]:
+    """Helper to test project loading with a custom base directory.
+
+    This replicates the logic of _load_xprompts_from_project but allows
+    specifying a custom base directory for testing.
+    """
+    project_dir = base_config_dir / ".config" / "gai" / "xprompts" / project
+    if not project_dir.is_dir():
+        return {}
+
+    xprompts: dict[str, XPrompt] = {}
+    for md_file in project_dir.glob("*.md"):
+        if md_file.is_file():
+            xprompt = _load_xprompt_from_file(md_file)
+            if xprompt:
+                namespaced_name = f"{project}/{xprompt.name}"
+                xprompts[namespaced_name] = XPrompt(
+                    name=namespaced_name,
+                    content=xprompt.content,
+                    inputs=xprompt.inputs,
+                    source_path=xprompt.source_path,
+                    output=xprompt.output,
+                )
+    return xprompts
+
+
+def test_load_xprompts_from_project_basic() -> None:
+    """Test loading xprompts from a project-specific directory."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        project_dir = Path(tmp_dir) / ".config" / "gai" / "xprompts" / "testproj"
+        project_dir.mkdir(parents=True)
+
+        # Create an xprompt file
+        (project_dir / "my_prompt.md").write_text("Project-specific content")
+
+        xprompts = _load_xprompts_from_project_with_base("testproj", Path(tmp_dir))
+
+        assert len(xprompts) == 1
+        assert "testproj/my_prompt" in xprompts
+        assert xprompts["testproj/my_prompt"].content == "Project-specific content"
+        assert xprompts["testproj/my_prompt"].name == "testproj/my_prompt"
+
+
+def test_load_xprompts_from_project_nonexistent_dir() -> None:
+    """Test that nonexistent project directory returns empty dict."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        xprompts = _load_xprompts_from_project_with_base(
+            "nonexistent_project", Path(tmp_dir)
+        )
+        assert xprompts == {}
+
+
+def test_load_xprompts_from_project_preserves_front_matter() -> None:
+    """Test that project xprompts preserve front matter including inputs."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        project_dir = Path(tmp_dir) / ".config" / "gai" / "xprompts" / "myproj"
+        project_dir.mkdir(parents=True)
+
+        content = """---
+name: custom_name
+input:
+  - name: arg1
+    type: word
+---
+Hello {{ arg1 }}!"""
+        (project_dir / "test_prompt.md").write_text(content)
+
+        xprompts = _load_xprompts_from_project_with_base("myproj", Path(tmp_dir))
+
+        assert len(xprompts) == 1
+        # Name should be namespaced (project/name_from_front_matter)
+        assert "myproj/custom_name" in xprompts
+        xp = xprompts["myproj/custom_name"]
+        assert xp.name == "myproj/custom_name"
+        assert len(xp.inputs) == 1
+        assert xp.inputs[0].name == "arg1"
+        assert "Hello {{ arg1 }}" in xp.content
+
+
+def test_get_all_xprompts_with_project_includes_project_xprompts() -> None:
+    """Test that get_all_xprompts with project param includes project xprompts."""
+    project_xprompt = XPrompt(name="testproj/proj_prompt", content="Project content")
+
+    with (
+        patch("xprompt.loader._get_config_path", return_value="/nonexistent/path.yml"),
+        patch("xprompt.loader._load_xprompts_from_files", return_value={}),
+        patch("xprompt.loader._load_xprompts_from_internal", return_value={}),
+        patch(
+            "xprompt.loader._load_xprompts_from_project",
+            return_value={"testproj/proj_prompt": project_xprompt},
+        ),
+    ):
+        xprompts = get_all_xprompts(project="testproj")
+
+    assert "testproj/proj_prompt" in xprompts
+    assert xprompts["testproj/proj_prompt"].content == "Project content"
+
+
+def test_get_all_xprompts_without_project_excludes_project_xprompts() -> None:
+    """Test that get_all_xprompts without project param doesn't load project xprompts."""
+    with (
+        patch("xprompt.loader._get_config_path", return_value="/nonexistent/path.yml"),
+        patch("xprompt.loader._load_xprompts_from_files", return_value={}),
+        patch("xprompt.loader._load_xprompts_from_internal", return_value={}),
+        patch("xprompt.loader._load_xprompts_from_project") as mock_load_project,
+    ):
+        get_all_xprompts()  # No project param
+
+    # Should not have called _load_xprompts_from_project
+    mock_load_project.assert_not_called()
+
+
+def test_get_all_xprompts_file_overrides_project() -> None:
+    """Test that file-based xprompts override project xprompts."""
+    project_xprompt = XPrompt(name="test", content="From project")
+    file_xprompt = XPrompt(name="test", content="From file")
+
+    with (
+        patch("xprompt.loader._get_config_path", return_value="/nonexistent/path.yml"),
+        patch(
+            "xprompt.loader._load_xprompts_from_files",
+            return_value={"test": file_xprompt},
+        ),
+        patch("xprompt.loader._load_xprompts_from_internal", return_value={}),
+        patch(
+            "xprompt.loader._load_xprompts_from_project",
+            return_value={"test": project_xprompt},
+        ),
+    ):
+        xprompts = get_all_xprompts(project="testproj")
+
+    # File-based should win
+    assert xprompts["test"].content == "From file"
+
+
+def test_get_all_xprompts_project_overrides_config() -> None:
+    """Test that project xprompts override config xprompts."""
+    yaml_content = """
+xprompts:
+  test: "From config"
+"""
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yml", delete=False, encoding="utf-8"
+    ) as f:
+        f.write(yaml_content)
+        config_path = f.name
+
+    project_xprompt = XPrompt(name="test", content="From project")
+
+    with (
+        patch("xprompt.loader._get_config_path", return_value=config_path),
+        patch("xprompt.loader._load_xprompts_from_files", return_value={}),
+        patch("xprompt.loader._load_xprompts_from_internal", return_value={}),
+        patch(
+            "xprompt.loader._load_xprompts_from_project",
+            return_value={"test": project_xprompt},
+        ),
+    ):
+        xprompts = get_all_xprompts(project="testproj")
+
+    # Project should win over config
+    assert xprompts["test"].content == "From project"
+
+    Path(config_path).unlink()

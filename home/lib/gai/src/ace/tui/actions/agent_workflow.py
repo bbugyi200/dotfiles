@@ -573,7 +573,9 @@ class AgentWorkflowMixin(AgentLaunchMixin):
                 except Exception:
                     pass
 
-        self.push_screen(XPromptSelectModal(), on_xprompt_select)  # type: ignore[attr-defined]
+        # Get project from prompt context if available
+        project = self._prompt_context.project_name if self._prompt_context else None
+        self.push_screen(XPromptSelectModal(project=project), on_xprompt_select)  # type: ignore[attr-defined]
 
     def _open_editor_for_agent_prompt(self, initial_content: str = "") -> str | None:
         """Suspend TUI and open editor for prompt input.

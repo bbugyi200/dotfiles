@@ -525,7 +525,40 @@ def _load_xprompts_from_internal() -> dict[str, XPrompt]:
     return xprompts
 
 
-def get_all_xprompts() -> dict[str, XPrompt]:
+def _load_xprompts_from_project(project: str) -> dict[str, XPrompt]:
+    """Load xprompts from a project-specific directory.
+
+    Loads xprompts from ~/.config/gai/xprompts/{project}/*.md and namespaces
+    them with the project name (e.g., bar.md → foo/bar for project 'foo').
+
+    Args:
+        project: The project name to load xprompts for.
+
+    Returns:
+        Dictionary mapping namespaced xprompt name to XPrompt object.
+        Returns empty dict if directory doesn't exist.
+    """
+    project_dir = Path.home() / ".config" / "gai" / "xprompts" / project
+    if not project_dir.is_dir():
+        return {}
+
+    xprompts: dict[str, XPrompt] = {}
+    for md_file in project_dir.glob("*.md"):
+        if md_file.is_file():
+            xprompt = _load_xprompt_from_file(md_file)
+            if xprompt:
+                namespaced_name = f"{project}/{xprompt.name}"
+                xprompts[namespaced_name] = XPrompt(
+                    name=namespaced_name,
+                    content=xprompt.content,
+                    inputs=xprompt.inputs,
+                    source_path=xprompt.source_path,
+                    output=xprompt.output,
+                )
+    return xprompts
+
+
+def get_all_xprompts(project: str | None = None) -> dict[str, XPrompt]:
     """Get all xprompts from all sources, respecting priority order.
 
     Priority order (first wins on name conflict):
@@ -533,8 +566,12 @@ def get_all_xprompts() -> dict[str, XPrompt]:
     2. xprompts/*.md (CWD, non-hidden)
     3. ~/.xprompts/*.md (home, hidden)
     4. ~/xprompts/*.md (home, non-hidden)
-    5. gai.yml xprompts:/snippets: section
-    6. <gai_package>/xprompts/*.md (internal)
+    5. ~/.config/gai/xprompts/{project}/*.md (project-specific, if project given)
+    6. gai.yml xprompts:/snippets: section
+    7. <gai_package>/xprompts/*.md (internal)
+
+    Args:
+        project: Optional project name to include project-specific xprompts.
 
     Returns:
         Dictionary mapping xprompt name to XPrompt object.
@@ -542,12 +579,17 @@ def get_all_xprompts() -> dict[str, XPrompt]:
     # Start with lowest priority and let higher priority override
     all_xprompts: dict[str, XPrompt] = {}
 
-    # 6. Internal xprompts (lowest priority)
+    # 7. Internal xprompts (lowest priority)
     all_xprompts.update(_load_xprompts_from_internal())
 
-    # 5. Config-based xprompts
+    # 6. Config-based xprompts
     config_xprompts = _load_xprompts_from_config()
     all_xprompts.update(config_xprompts)
+
+    # 5. Project-specific xprompts (if project provided)
+    if project:
+        project_xprompts = _load_xprompts_from_project(project)
+        all_xprompts.update(project_xprompts)
 
     # 1-4. File-based xprompts (highest priority) - already sorted
     file_xprompts = _load_xprompts_from_files()
@@ -570,7 +612,9 @@ def get_all_workflows() -> dict[str, "Workflow"]:
     return _get_all_workflows()
 
 
-def get_xprompt_or_workflow(name: str) -> "XPrompt | Workflow | None":
+def get_xprompt_or_workflow(
+    name: str, project: str | None = None
+) -> "XPrompt | Workflow | None":
     """Look up an xprompt or workflow by name.
 
     Checks xprompts first, then workflows. This allows the same #name(args)
@@ -578,12 +622,13 @@ def get_xprompt_or_workflow(name: str) -> "XPrompt | Workflow | None":
 
     Args:
         name: The name to look up.
+        project: Optional project name to include project-specific xprompts.
 
     Returns:
         XPrompt or Workflow object if found, None otherwise.
     """
     # Check xprompts first
-    xprompts = get_all_xprompts()
+    xprompts = get_all_xprompts(project=project)
     if name in xprompts:
         return xprompts[name]
 

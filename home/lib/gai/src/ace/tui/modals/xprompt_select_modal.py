@@ -50,10 +50,14 @@ class XPromptSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
     _option_list_id = "xprompt-list"
     BINDINGS = [*OptionListNavigationMixin.NAVIGATION_BINDINGS]
 
-    def __init__(self) -> None:
-        """Initialize the xprompt modal."""
+    def __init__(self, project: str | None = None) -> None:
+        """Initialize the xprompt modal.
+
+        Args:
+            project: Optional project name to include project-specific xprompts.
+        """
         super().__init__()
-        self.xprompts = get_all_xprompts()
+        self.xprompts = get_all_xprompts(project=project)
         self.workflows = get_all_workflows()
         # Build unified items dict: name -> (content/preview, type)
         self._all_items: dict[str, tuple[str, str]] = {}
