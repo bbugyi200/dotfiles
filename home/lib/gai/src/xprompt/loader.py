@@ -260,7 +260,7 @@ def _parse_inputs_from_front_matter(
             continue
 
         name = str(item["name"])
-        type_str = str(item.get("type", "string"))
+        type_str = str(item.get("type", "line"))
         default = item.get("default")
 
         inputs.append(

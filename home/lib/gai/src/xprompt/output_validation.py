@@ -91,7 +91,7 @@ def _validate_semantic_type(
 
     Args:
         value: The value to validate.
-        output_type: The semantic type (word, line, text, path, string).
+        output_type: The semantic type (word, line, text, path).
         field_path: The JSON path to this field for error messages.
 
     Returns:
@@ -111,14 +111,25 @@ def _validate_semantic_type(
         if any(c.isspace() for c in value):
             truncated = value[:50] + "..." if len(value) > 50 else value
             return f"At {field_path}: expected path (no spaces), got '{truncated}'"
-    # text and string have no validation
+    # text has no validation
     return None
+
+
+_SEMANTIC_TO_JSON_SCHEMA_TYPE = {
+    "word": "string",
+    "line": "string",
+    "text": "string",
+    "path": "string",
+    "bool": "boolean",
+    "int": "integer",
+    "float": "number",
+}
 
 
 def _convert_semantic_schema_to_json_schema(
     schema: dict[str, Any],
 ) -> tuple[dict[str, Any], dict[str, str]]:
-    """Convert semantic types in a schema to JSON Schema string types.
+    """Convert semantic types in a schema to JSON Schema types.
 
     Args:
         schema: The schema potentially containing semantic types.
@@ -137,7 +148,7 @@ def _convert_semantic_schema_to_json_schema(
         # Check if this node has a semantic type
         if "type" in node and node["type"] in _SEMANTIC_OUTPUT_TYPES:
             type_map[path] = node["type"]
-            node["type"] = "string"
+            node["type"] = _SEMANTIC_TO_JSON_SCHEMA_TYPE.get(node["type"], node["type"])
 
         # Recurse into properties
         if "properties" in node and isinstance(node["properties"], dict):
@@ -234,14 +245,74 @@ def _validate_semantic_types_recursive(
     return errors
 
 
+def _convert_data_types(
+    data: Any, schema: dict[str, Any], type_map: dict[str, str], path: str = ""
+) -> Any:
+    """Convert string data values to appropriate types based on semantic types.
+
+    Args:
+        data: The data to convert (may be modified in place for dicts/lists).
+        schema: The schema with semantic types.
+        type_map: Map of JSON paths to semantic types.
+        path: Current path in the data structure.
+
+    Returns:
+        Converted data (may be the same object or a new one).
+    """
+    # Check if this path has a type that needs conversion
+    if path in type_map and isinstance(data, str):
+        semantic_type = type_map[path]
+        if semantic_type == "bool":
+            lower_val = data.lower()
+            if lower_val in ("true", "1", "yes", "on"):
+                return True
+            elif lower_val in ("false", "0", "no", "off"):
+                return False
+        elif semantic_type == "int":
+            try:
+                return int(data)
+            except ValueError:
+                pass
+        elif semantic_type == "float":
+            try:
+                return float(data)
+            except ValueError:
+                pass
+
+    if isinstance(data, dict):
+        properties = schema.get("properties", {})
+        for key in list(data.keys()):
+            child_path = f"{path}.{key}" if path else key
+            if key in properties:
+                data[key] = _convert_data_types(
+                    data[key], properties[key], type_map, child_path
+                )
+            else:
+                # Check additionalProperties
+                ap = schema.get("additionalProperties")
+                if isinstance(ap, dict):
+                    ap_path = f"{path}.*" if path else "*"
+                    data[key] = _convert_data_types(data[key], ap, type_map, ap_path)
+
+    elif isinstance(data, list):
+        items_schema = schema.get("items", {})
+        if isinstance(items_schema, dict):
+            items_path = f"{path}[]" if path else "[]"
+            for i, item in enumerate(data):
+                data[i] = _convert_data_types(item, items_schema, type_map, items_path)
+
+    return data
+
+
 def validate_against_schema(
     data: Any, schema: dict[str, Any]
 ) -> tuple[bool, str | None]:
     """Validate data against a JSON Schema with semantic type support.
 
-    Supports semantic output types (word, line, text, path) in addition to
-    standard JSON Schema types. Semantic types are converted to "string" for
-    JSON Schema validation, then validated separately.
+    Supports semantic output types (word, line, text, path, bool, int, float) in
+    addition to standard JSON Schema types. Semantic types are converted to JSON
+    Schema types for validation, and string data values are converted to the
+    appropriate types (bool, int, float) before validation.
 
     Args:
         data: The parsed data to validate.
@@ -250,10 +321,14 @@ def validate_against_schema(
     Returns:
         Tuple of (is_valid, error_message). error_message is None if valid.
     """
-    # Convert semantic types to JSON Schema string types
+    # Convert semantic types to JSON Schema types
     converted_schema, type_map = _convert_semantic_schema_to_json_schema(schema)
 
-    # First, validate with standard JSON Schema
+    # Convert string data to appropriate types based on semantic types
+    if type_map:
+        data = _convert_data_types(data, schema, type_map, "")
+
+    # Validate with standard JSON Schema
     try:
         validate(instance=data, schema=converted_schema)
     except ValidationError as e:
@@ -265,7 +340,7 @@ def validate_against_schema(
             error_msg = e.message
         return False, error_msg
 
-    # Then, validate semantic types
+    # Then, validate semantic types (for string constraints like word, line, path)
     if type_map:
         semantic_errors = _validate_semantic_types_recursive(data, schema, type_map, "")
         if semantic_errors:
@@ -291,7 +366,7 @@ def _extract_semantic_type_hints(schema: Any, path: str = "") -> list[str]:
 
     # Check if this node has a semantic type
     type_val = schema.get("type", "")
-    if type_val in _SEMANTIC_OUTPUT_TYPES and type_val != OutputType.STRING.value:
+    if type_val in _SEMANTIC_OUTPUT_TYPES:
         field_desc = path if path else "root"
         if type_val == OutputType.WORD.value:
             hints.append(f"- `{field_desc}`: must be a single word (no spaces)")
@@ -299,8 +374,7 @@ def _extract_semantic_type_hints(schema: Any, path: str = "") -> list[str]:
             hints.append(f"- `{field_desc}`: must be a single line (no newlines)")
         elif type_val == OutputType.PATH.value:
             hints.append(f"- `{field_desc}`: must be a valid path (no spaces)")
-        elif type_val == OutputType.TEXT.value:
-            pass  # No constraint to describe
+        # text, bool, int, float have no special constraints to describe
 
     # Recurse into properties
     if "properties" in schema and isinstance(schema["properties"], dict):

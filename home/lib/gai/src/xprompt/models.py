@@ -25,7 +25,9 @@ class OutputType(Enum):
     LINE = "line"  # Single line, no newlines
     TEXT = "text"  # Multi-line text (any content)
     PATH = "path"  # File path (no whitespace, existence not checked)
-    STRING = "string"  # Raw JSON Schema string (no validation)
+    BOOL = "bool"  # Boolean value
+    INT = "int"  # Integer value
+    FLOAT = "float"  # Floating point value
 
 
 @dataclass
