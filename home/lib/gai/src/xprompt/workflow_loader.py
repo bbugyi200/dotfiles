@@ -15,6 +15,7 @@ from xprompt.loader import (
 from xprompt.models import InputArg, InputType, OutputSpec
 from xprompt.workflow_models import (
     LoopConfig,
+    ParallelConfig,
     Workflow,
     WorkflowStep,
     WorkflowValidationError,
@@ -67,12 +68,14 @@ def _parse_workflow_inputs(
 def _parse_workflow_step(
     step_data: dict[str, Any],
     index: int,
+    is_nested: bool = False,
 ) -> WorkflowStep:
     """Parse a single workflow step from YAML.
 
     Args:
         step_data: The step dict from YAML.
         index: The step index (used for default name).
+        is_nested: If True, this step is nested within a parallel: block.
 
     Returns:
         WorkflowStep object.
@@ -85,18 +88,21 @@ def _parse_workflow_step(
     agent = step_data.get("agent")
     bash = step_data.get("bash")
     python = step_data.get("python")
+    parallel_data = step_data.get("parallel")
 
-    # Validate mutually exclusive fields - must have exactly one of agent, bash, python
-    step_types = [agent, bash, python]
+    # Validate mutually exclusive fields - must have exactly one of agent, bash, python, parallel
+    step_types = [agent, bash, python, parallel_data]
     num_step_types = sum(1 for t in step_types if t)
 
     if num_step_types > 1:
         raise WorkflowValidationError(
-            f"Step '{name}' can only have one of 'agent', 'bash', or 'python' fields"
+            f"Step '{name}' can only have one of 'agent', 'bash', 'python', "
+            "or 'parallel' fields"
         )
     if num_step_types == 0:
         raise WorkflowValidationError(
-            f"Step '{name}' must have one of 'agent', 'bash', or 'python' field"
+            f"Step '{name}' must have one of 'agent', 'bash', 'python', "
+            "or 'parallel' field"
         )
 
     # Parse output specification
@@ -105,22 +111,39 @@ def _parse_workflow_step(
     if output_data:
         output = parse_output_from_front_matter(output_data)
 
-    hitl = bool(step_data.get("hitl", False))
-
     # Parse control flow fields
     condition = step_data.get("if")
     for_loop = step_data.get("for")
     repeat_data = step_data.get("repeat")
     while_data = step_data.get("while")
     join = step_data.get("join")
+    hitl = bool(step_data.get("hitl", False))
 
-    # Validate mutual exclusivity of loop types
+    # Validate mutual exclusivity of loop types (for, repeat, while)
     loop_types = [for_loop, repeat_data, while_data]
     num_loop_types = sum(1 for t in loop_types if t)
     if num_loop_types > 1:
         raise WorkflowValidationError(
             f"Step '{name}' can only have one of 'for', 'repeat', or 'while' fields"
         )
+
+    # Validate parallel: cannot combine with repeat: or while:
+    if parallel_data and (repeat_data or while_data):
+        raise WorkflowValidationError(
+            f"Step '{name}' cannot combine 'parallel' with 'repeat' or 'while'"
+        )
+
+    # Validate nested step restrictions
+    if is_nested:
+        if for_loop or repeat_data or while_data or parallel_data:
+            raise WorkflowValidationError(
+                f"Nested step '{name}' cannot have 'for', 'repeat', 'while', "
+                "or 'parallel' fields"
+            )
+        if hitl:
+            raise WorkflowValidationError(
+                f"Nested step '{name}' cannot have 'hitl: true'"
+            )
 
     # Parse for: loop (dict of {var: expression})
     parsed_for_loop: dict[str, str] | None = None
@@ -176,6 +199,39 @@ def _parse_workflow_step(
             f"Step '{name}' 'join' must be one of: {', '.join(sorted(valid_join_modes))}"
         )
 
+    # Parse parallel: config
+    parallel_config: ParallelConfig | None = None
+    if parallel_data:
+        if not isinstance(parallel_data, list):
+            raise WorkflowValidationError(
+                f"Step '{name}' 'parallel' field must be a list of steps"
+            )
+        if len(parallel_data) < 2:
+            raise WorkflowValidationError(
+                f"Step '{name}' 'parallel' field requires at least 2 steps"
+            )
+
+        # Collect nested step names to check for uniqueness
+        nested_step_names: set[str] = set()
+        nested_steps: list[WorkflowStep] = []
+
+        for nested_idx, nested_data in enumerate(parallel_data):
+            if not isinstance(nested_data, dict):
+                raise WorkflowValidationError(
+                    f"Step '{name}' parallel item {nested_idx} must be a dict"
+                )
+            nested_step = _parse_workflow_step(nested_data, nested_idx, is_nested=True)
+
+            # Check for duplicate step names within parallel block
+            if nested_step.name in nested_step_names:
+                raise WorkflowValidationError(
+                    f"Step '{name}' has duplicate nested step name: '{nested_step.name}'"
+                )
+            nested_step_names.add(nested_step.name)
+            nested_steps.append(nested_step)
+
+        parallel_config = ParallelConfig(steps=nested_steps)
+
     return WorkflowStep(
         name=name,
         agent=str(agent) if agent else None,
@@ -187,6 +243,7 @@ def _parse_workflow_step(
         for_loop=parsed_for_loop,
         repeat_config=repeat_config,
         while_config=while_config,
+        parallel_config=parallel_config,
         join=str(join) if join else None,
     )
 

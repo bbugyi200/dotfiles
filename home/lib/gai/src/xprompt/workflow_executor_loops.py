@@ -1,11 +1,14 @@
 """Loop handling mixin for workflow execution."""
 
+import copy
 import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING, Any
 
 from xprompt.workflow_executor_utils import create_jinja_env
 from xprompt.workflow_models import (
     LoopConfig,
+    ParallelConfig,
     StepState,
     WorkflowExecutionError,
     WorkflowStep,
@@ -28,6 +31,7 @@ class LoopMixin:
         - _execute_agent_step(step, step_state) -> bool
         - _execute_python_step(step, step_state) -> bool
         - _execute_bash_step(step, step_state) -> bool
+        - _execute_single_nested_step(nested_step, context_copy) -> tuple
 
     NOTE: This class must come AFTER _StepMixin in the MRO so that the step
     execution methods are properly resolved from _StepMixin.
@@ -44,6 +48,7 @@ class LoopMixin:
     _execute_agent_step: Any  # (step, step_state) -> bool
     _execute_python_step: Any  # (step, step_state) -> bool
     _execute_bash_step: Any  # (step, step_state) -> bool
+    _execute_single_nested_step: Any  # (nested_step, context_copy) -> tuple
 
     def _resolve_for_lists(
         self, for_loop: dict[str, str]
@@ -332,3 +337,103 @@ class LoopMixin:
             f"Step '{step.name}' while loop exceeded max iterations "
             f"({config.max_iterations}) with condition still true"
         )
+
+    def _execute_for_parallel_step(
+        self,
+        step: WorkflowStep,
+        step_state: StepState,
+    ) -> bool:
+        """Execute a step with for: + parallel: combination.
+
+        The outer for: loop iterates sequentially, and for each iteration,
+        all parallel: steps run concurrently.
+
+        Args:
+            step: The workflow step definition.
+            step_state: The runtime state for this step.
+
+        Returns:
+            True if all iterations and parallel steps succeeded, False otherwise.
+        """
+        if not step.for_loop or not step.parallel_config:
+            return False
+
+        var_names, lists = self._resolve_for_lists(step.for_loop)
+        if not lists or not lists[0]:
+            # Empty list - store empty result and continue
+            step_state.output = self._collect_results([], step.join)
+            self.context[step.name] = step_state.output
+            self.state.context = dict(self.context)
+            return True
+
+        config: ParallelConfig = step.parallel_config
+        nested_steps = config.steps
+        num_iterations = len(lists[0])
+
+        all_results: list[dict[str, Any]] = []
+
+        for iteration_idx in range(num_iterations):
+            # Build iteration context with loop variables
+            iteration_context = dict(self.context)
+            loop_vars: dict[str, Any] = {}
+            for var_idx, var_name in enumerate(var_names):
+                iteration_context[var_name] = lists[var_idx][iteration_idx]
+                loop_vars[var_name] = lists[var_idx][iteration_idx]
+
+            # Notify iteration start
+            if self.output_handler:
+                self.output_handler.on_step_iteration(
+                    step.name,
+                    iteration_idx + 1,
+                    num_iterations,
+                    loop_vars,
+                )
+
+            # Execute all nested steps in parallel for this iteration
+            iteration_results: dict[str, dict[str, Any]] = {}
+            errors: list[str] = []
+
+            with ThreadPoolExecutor(max_workers=len(nested_steps)) as executor:
+                # Create deep copies of iteration context for each parallel step
+                futures = {
+                    executor.submit(
+                        self._execute_single_nested_step,
+                        nested_step,
+                        copy.deepcopy(iteration_context),
+                    ): nested_step.name
+                    for nested_step in nested_steps
+                }
+
+                for future in as_completed(futures):
+                    step_name_result, output, error = future.result()
+
+                    if error:
+                        errors.append(error)
+                        if config.fail_fast:
+                            for f in futures:
+                                f.cancel()
+                            break
+                    elif output is not None:
+                        iteration_results[step_name_result] = output
+
+            # Check for failures
+            if errors:
+                step_state.error = "; ".join(errors)
+                raise WorkflowExecutionError(
+                    f"Parallel step '{step.name}' failed in iteration "
+                    f"{iteration_idx + 1}: {step_state.error}"
+                )
+
+            # Merge parallel results for this iteration
+            # Each iteration produces a dict with results from each parallel step
+            all_results.append(iteration_results)
+
+        # Combine all iteration results based on join mode
+        join_mode = step.join or "array"
+        combined = self._collect_results(all_results, join_mode)
+
+        step_state.output = combined
+        self.context[step.name] = combined
+        self.state.context = dict(self.context)
+
+        return True

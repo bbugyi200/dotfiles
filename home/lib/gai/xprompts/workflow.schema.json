@@ -171,6 +171,47 @@
             "description": "How to collect iteration results",
             "enum": ["array", "text", "object", "lastOf"],
             "default": "array"
+          },
+          "parallel": {
+            "type": "array",
+            "description": "List of steps to run in parallel (mutually exclusive with agent/bash/python)",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "description": "Nested step within parallel block",
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Step identifier (must be unique within parallel block)"
+                },
+                "agent": {
+                  "type": "string",
+                  "description": "Prompt template for agent steps"
+                },
+                "bash": {
+                  "type": "string",
+                  "description": "Bash command to execute"
+                },
+                "python": {
+                  "type": "string",
+                  "description": "Python code to execute"
+                },
+                "output": {
+                  "type": "object",
+                  "description": "Output specification for validating step responses"
+                },
+                "if": {
+                  "type": "string",
+                  "description": "Jinja2 condition expression - step is skipped if false"
+                }
+              },
+              "oneOf": [
+                { "required": ["agent"] },
+                { "required": ["bash"] },
+                { "required": ["python"] }
+              ]
+            }
           }
         },
         "allOf": [
@@ -181,7 +222,8 @@
                 "not": {
                   "anyOf": [
                     { "required": ["bash"] },
-                    { "required": ["python"] }
+                    { "required": ["python"] },
+                    { "required": ["parallel"] }
                   ]
                 }
               },
@@ -190,7 +232,8 @@
                 "not": {
                   "anyOf": [
                     { "required": ["agent"] },
-                    { "required": ["python"] }
+                    { "required": ["python"] },
+                    { "required": ["parallel"] }
                   ]
                 }
               },
@@ -199,7 +242,18 @@
                 "not": {
                   "anyOf": [
                     { "required": ["agent"] },
-                    { "required": ["bash"] }
+                    { "required": ["bash"] },
+                    { "required": ["parallel"] }
+                  ]
+                }
+              },
+              {
+                "required": ["parallel"],
+                "not": {
+                  "anyOf": [
+                    { "required": ["agent"] },
+                    { "required": ["bash"] },
+                    { "required": ["python"] }
                   ]
                 }
               }
@@ -210,7 +264,9 @@
               "anyOf": [
                 { "required": ["for", "repeat"] },
                 { "required": ["for", "while"] },
-                { "required": ["repeat", "while"] }
+                { "required": ["repeat", "while"] },
+                { "required": ["parallel", "repeat"] },
+                { "required": ["parallel", "while"] }
               ]
             }
           }

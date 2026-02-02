@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from xprompt.workflow_executor_loops import LoopMixin
+from xprompt.workflow_executor_parallel import ParallelMixin
 from xprompt.workflow_executor_steps import StepMixin
 from xprompt.workflow_executor_types import HITLHandler, HITLResult
 from xprompt.workflow_executor_utils import create_jinja_env
@@ -29,7 +30,7 @@ from xprompt.workflow_output import LoopInfo
 __all__ = ["WorkflowExecutor", "HITLHandler", "HITLResult"]
 
 
-class WorkflowExecutor(StepMixin, LoopMixin):
+class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
     """Executes workflow steps sequentially with context accumulation."""
 
     def __init__(
@@ -184,12 +185,16 @@ class WorkflowExecutor(StepMixin, LoopMixin):
 
             try:
                 # Handle control flow constructs
-                if step.for_loop:
+                if step.for_loop and step.parallel_config:
+                    success = self._execute_for_parallel_step(step, step_state)
+                elif step.for_loop:
                     success = self._execute_for_step(step, step_state)
                 elif step.repeat_config:
                     success = self._execute_repeat_step(step, step_state)
                 elif step.while_config:
                     success = self._execute_while_step(step, step_state)
+                elif step.parallel_config:
+                    success = self._execute_parallel_step(step, step_state)
                 elif step.is_agent_step():
                     success = self._execute_agent_step(step, step_state)
                 elif step.is_python_step():
@@ -247,9 +252,11 @@ class WorkflowExecutor(StepMixin, LoopMixin):
             step: The workflow step.
 
         Returns:
-            String type identifier (agent, bash, python).
+            String type identifier (agent, bash, python, parallel).
         """
-        if step.is_agent_step():
+        if step.is_parallel_step():
+            return "parallel"
+        elif step.is_agent_step():
             return "agent"
         elif step.is_python_step():
             return "python"
@@ -283,6 +290,10 @@ class WorkflowExecutor(StepMixin, LoopMixin):
                 loop_type="while",
                 max_iterations=step.while_config.max_iterations,
             )
+        elif step.parallel_config:
+            # Return parallel info - items are the nested step names
+            nested_names = [s.name for s in step.parallel_config.steps]
+            return LoopInfo(loop_type="parallel", items=nested_names)
         return None
 
     def _evaluate_condition(self, condition: str) -> bool:

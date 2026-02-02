@@ -193,6 +193,70 @@ class WorkflowOutputHandler:
             f"  [dim]Iteration {iteration}/{max_iterations}[/dim] -> [{result_style}]{condition_result}[/{result_style}]"
         )
 
+    def on_parallel_start(
+        self,
+        step_name: str,
+        nested_step_names: list[str],
+    ) -> None:
+        """Called when parallel execution begins.
+
+        Args:
+            step_name: Name of the parent parallel step.
+            nested_step_names: Names of the steps that will run in parallel.
+        """
+        steps_str = ", ".join(nested_step_names)
+        self.console.print(
+            f"  [cyan]Parallel:[/cyan] Running {len(nested_step_names)} steps: {steps_str}"
+        )
+
+    def on_parallel_step_complete(
+        self,
+        _parent_step_name: str,
+        nested_step_name: str,
+        output: Any,
+        error: str | None,
+    ) -> None:
+        """Called when a nested step within a parallel block completes.
+
+        Args:
+            _parent_step_name: Name of the parent parallel step (unused).
+            nested_step_name: Name of the completed nested step.
+            output: The step's output (or None on failure).
+            error: Error message if failed, None on success.
+        """
+        if error:
+            self.console.print(f"    [red]✗ {nested_step_name}:[/red] {error}")
+        else:
+            output_preview = _format_value(output) if output else "(no output)"
+            if len(output_preview) > 50:
+                output_preview = output_preview[:47] + "..."
+            self.console.print(
+                f"    [green]✓ {nested_step_name}:[/green] {output_preview}"
+            )
+
+    def on_parallel_complete(
+        self,
+        _step_name: str,
+        combined_output: Any,
+        errors: list[str] | None,
+    ) -> None:
+        """Called when all parallel steps complete.
+
+        Args:
+            _step_name: Name of the parallel step (unused).
+            combined_output: The combined output from all parallel steps.
+            errors: List of error messages if any steps failed.
+        """
+        if errors:
+            self.console.print(f"  [red]Parallel failed: {len(errors)} error(s)[/red]")
+        else:
+            num_results = (
+                len(combined_output) if isinstance(combined_output, dict) else 0
+            )
+            self.console.print(
+                f"  [green]Parallel complete: {num_results} results[/green]"
+            )
+
     def on_workflow_complete(
         self,
         _final_output: Any,

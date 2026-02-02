@@ -32,21 +32,35 @@ class LoopConfig:
 
 
 @dataclass
+class ParallelConfig:
+    """Configuration for parallel step execution.
+
+    Attributes:
+        steps: List of workflow steps to execute in parallel.
+        fail_fast: If True, cancel remaining steps on first failure.
+    """
+
+    steps: list["WorkflowStep"]
+    fail_fast: bool = True
+
+
+@dataclass
 class WorkflowStep:
     """Definition of a single step in a workflow.
 
     Attributes:
         name: Step identifier (defaults to step_{index} if not specified).
         agent: Prompt template for agent steps (supports Jinja2 and xprompt refs).
-            Mutually exclusive with bash/python.
-        bash: Bash command to execute (mutually exclusive with agent/python).
-        python: Python code to execute (mutually exclusive with agent/bash).
+            Mutually exclusive with bash/python/parallel.
+        bash: Bash command to execute (mutually exclusive with agent/python/parallel).
+        python: Python code to execute (mutually exclusive with agent/bash/parallel).
         output: Output specification for validation.
         hitl: Whether to require human-in-the-loop approval.
         condition: if: condition (Jinja2 expression) - step skipped if false.
         for_loop: for: loop config {var: expression} for iteration over lists.
         repeat_config: repeat: loop config with until: condition.
         while_config: while: loop config with condition: to check before iterations.
+        parallel_config: parallel: config for running nested steps concurrently.
         join: How to collect iteration results (array, text, object, lastOf).
     """
 
@@ -60,6 +74,7 @@ class WorkflowStep:
     for_loop: dict[str, str] | None = None
     repeat_config: LoopConfig | None = None
     while_config: LoopConfig | None = None
+    parallel_config: ParallelConfig | None = None
     join: str | None = None
 
     def is_agent_step(self) -> bool:
@@ -73,6 +88,10 @@ class WorkflowStep:
     def is_python_step(self) -> bool:
         """Return True if this is a python step."""
         return self.python is not None
+
+    def is_parallel_step(self) -> bool:
+        """Return True if this is a parallel step."""
+        return self.parallel_config is not None
 
 
 @dataclass
