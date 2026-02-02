@@ -204,8 +204,8 @@ function M.get_markdown_snippets()
 		s({ trig = "gsn", desc = "`gai ace` snapshot" }, { t("(see the `gai ace` snapshot below)") }),
 		-- SNIPPET: gtab
 		s(
-			{ trig = "gtab", desc = "on the <tab> tab of the `gai ace` TUI" },
-			{ t('on the "'), i(1, "CLs"), t('" tab of the `gai ace` TUI') }
+			{ trig = "gtab", desc = "the <tab> tab of the `gai ace` TUI" },
+			{ t('the "'), i(1, "CLs"), t('" tab of the `gai ace` TUI') }
 		),
 		-- SNIPPET: gtu
 		s({ trig = "gtu", desc = "the `gai ace` TUI" }, { t("the `gai ace` TUI") }),
