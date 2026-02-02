@@ -207,6 +207,8 @@ function M.get_markdown_snippets()
 			{ trig = "gtab", desc = "on the <tab> tab of the `gai ace` TUI" },
 			{ t('on the "'), i(1, "CLs"), t('" tab of the `gai ace` TUI') }
 		),
+		-- SNIPPET: gtu
+		s({ trig = "gtu", desc = "the `gai ace` TUI" }, { t("the `gai ace` TUI") }),
 		-- SNIPPET: help
 		s({ trig = "help", desc = "Can you help me...?" }, { t("Can you help me "), i(1), t("?") }),
 		-- SNIPPET: helpp
