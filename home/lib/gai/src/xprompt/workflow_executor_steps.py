@@ -79,11 +79,13 @@ class StepMixin:
         )
         from xprompt.output_validation import OutputValidationError
 
-        if not step.prompt:
-            raise WorkflowExecutionError(f"Agent step '{step.name}' has no prompt")
+        if not step.agent:
+            raise WorkflowExecutionError(
+                f"Agent step '{step.name}' has no agent prompt"
+            )
 
         # Render prompt with Jinja2 context
-        rendered_prompt = render_template(step.prompt, self.context)
+        rendered_prompt = render_template(step.agent, self.context)
 
         # Get output schema before expansion
         output_spec = get_primary_output_schema(rendered_prompt)

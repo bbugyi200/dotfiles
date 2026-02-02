@@ -48,7 +48,7 @@
           },
           "agent": {
             "type": "string",
-            "description": "XPrompt name to invoke (mutually exclusive with bash/python)"
+            "description": "Prompt template for agent steps (supports Jinja2 and xprompt refs). Mutually exclusive with bash/python."
           },
           "bash": {
             "type": "string",
@@ -57,10 +57,6 @@
           "python": {
             "type": "string",
             "description": "Python code to execute (mutually exclusive with agent/bash)"
-          },
-          "prompt": {
-            "type": "string",
-            "description": "Prompt template for agent steps (supports Jinja2 and xprompt refs)"
           },
           "output": {
             "type": "object",

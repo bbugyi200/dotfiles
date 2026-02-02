@@ -86,8 +86,18 @@ class XPromptSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
 
         lines.append("## Steps")
         for i, step in enumerate(workflow.steps, 1):
-            step_type = "agent" if step.agent else "bash"
-            step_label = step.agent if step.agent else step.bash
+            if step.agent:
+                step_type = "agent"
+                step_label = step.agent.split("\n")[0][:50]  # First line, truncated
+            elif step.bash:
+                step_type = "bash"
+                step_label = step.bash
+            elif step.python:
+                step_type = "python"
+                step_label = step.python
+            else:
+                step_type = "unknown"
+                step_label = "?"
             lines.append(f"{i}. [{step_type}] {step.name}: {step_label}")
 
         return "\n".join(lines)

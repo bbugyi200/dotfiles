@@ -99,10 +99,6 @@ def _parse_workflow_step(
             f"Step '{name}' must have one of 'agent', 'bash', or 'python' field"
         )
 
-    prompt = step_data.get("prompt")
-    if agent and not prompt:
-        raise WorkflowValidationError(f"Agent step '{name}' requires a 'prompt' field")
-
     # Parse output specification
     output: OutputSpec | None = None
     output_data = step_data.get("output")
@@ -185,7 +181,6 @@ def _parse_workflow_step(
         agent=str(agent) if agent else None,
         bash=str(bash) if bash else None,
         python=str(python) if python else None,
-        prompt=str(prompt) if prompt else None,
         output=output,
         hitl=hitl,
         condition=str(condition) if condition else None,
@@ -232,8 +227,8 @@ def _validate_workflow_variables(workflow: Workflow) -> None:
         if step.for_loop:
             loop_vars = set(step.for_loop.keys())
 
-        # Check variable references in prompt, bash, or python
-        content = step.prompt or step.bash or step.python
+        # Check variable references in agent, bash, or python
+        content = step.agent or step.bash or step.python
         if content:
             # Match {{ var }} and {{ step.output }}
             refs = re.findall(

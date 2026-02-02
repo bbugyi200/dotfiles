@@ -37,10 +37,10 @@ class WorkflowStep:
 
     Attributes:
         name: Step identifier (defaults to step_{index} if not specified).
-        agent: XPrompt name to invoke (mutually exclusive with bash/python).
+        agent: Prompt template for agent steps (supports Jinja2 and xprompt refs).
+            Mutually exclusive with bash/python.
         bash: Bash command to execute (mutually exclusive with agent/python).
         python: Python code to execute (mutually exclusive with agent/bash).
-        prompt: Prompt template for agent steps (supports Jinja2 and xprompt refs).
         output: Output specification for validation.
         hitl: Whether to require human-in-the-loop approval.
         condition: if: condition (Jinja2 expression) - step skipped if false.
@@ -54,7 +54,6 @@ class WorkflowStep:
     agent: str | None = None
     bash: str | None = None
     python: str | None = None
-    prompt: str | None = None
     output: OutputSpec | None = None
     hitl: bool = False
     condition: str | None = None

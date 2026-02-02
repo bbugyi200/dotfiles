@@ -8,8 +8,7 @@ steps:
 
   # Step 2: Generate split spec (agent with HITL)
   - name: generate_spec
-    agent: split_spec_generator
-    prompt: |
+    agent: |
       #split_spec_generator(
         workspace_name="{{ setup.workspace_name }}",
         diff_path="{{ setup.diff_path }}"
@@ -25,8 +24,7 @@ steps:
 
   # Step 4: Execute split (agent)
   - name: execute_split
-    agent: split_executor
-    prompt: |
+    agent: |
       #split_executor(
         diff_path="{{ setup.diff_path }}",
         spec_markdown="{{ prepare_execute.spec_markdown }}",
