@@ -422,6 +422,9 @@ def load_workflow_states() -> list[WorkflowEntry]:
                     project_name = project_dir.name
                     project_file = str(project_dir / f"{project_name}.gp")
 
+                    # Extract PID if available
+                    pid = data.get("pid")
+
                     entries.append(
                         WorkflowEntry(
                             workflow_name=data.get("workflow_name", "unknown"),
@@ -433,6 +436,7 @@ def load_workflow_states() -> list[WorkflowEntry]:
                             steps=steps,
                             start_time=start_time,
                             artifacts_dir=str(timestamp_dir),
+                            pid=pid,
                         )
                     )
                 except Exception:
@@ -533,6 +537,7 @@ def load_workflow_agents() -> list[Agent]:
                 start_time=entry.start_time,
                 workflow=entry.workflow_name,
                 raw_suffix=raw_suffix,
+                pid=entry.pid,
             )
         )
 

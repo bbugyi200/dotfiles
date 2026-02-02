@@ -248,9 +248,16 @@ class KeybindingFooter(Horizontal):
                     bindings.append(("e", "edit chat"))
             elif agent.status == "WAITING INPUT":
                 bindings.append(("a", "answer"))
-                bindings.append(("x", "kill"))
+                if agent.pid is None:
+                    bindings.append(("x", "dismiss"))
+                else:
+                    bindings.append(("x", "kill"))
             else:
-                bindings.append(("x", "kill"))
+                # RUNNING or other active statuses
+                if agent.pid is None:
+                    bindings.append(("x", "dismiss"))
+                else:
+                    bindings.append(("x", "kill"))
 
         # Layout toggle (only when diff is visible)
         if diff_visible:

@@ -31,6 +31,7 @@ class WorkflowEntry:
     steps: list[StepState]
     start_time: datetime | None
     artifacts_dir: str
+    pid: int | None = None
 
     @property
     def display_type(self) -> str:

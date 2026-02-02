@@ -88,6 +88,7 @@ class WorkflowExecutor(StepMixin, LoopMixin):
             "context": self.state.context,
             "artifacts_dir": self.state.artifacts_dir,
             "start_time": self.state.start_time,
+            "pid": os.getpid(),
         }
         os.makedirs(self.artifacts_dir, exist_ok=True)
         with open(state_path, "w", encoding="utf-8") as f:
