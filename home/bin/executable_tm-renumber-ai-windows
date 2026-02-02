@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# Renames AI windows sequentially based on window order:
+# First AI window → ai, Second → ai2, Third → ai3, etc.
+
+# Get AI windows (index:name format), sorted by window index
+ai_windows=$(tmux list-windows -F '#{window_index}:#{window_name}' | grep -E ':ai[0-9]*$')
+
+# Exit early if no AI windows
+[[ -z "$ai_windows" ]] && exit 0
+
+count=1
+while IFS=: read -r idx name; do
+    if [[ $count -eq 1 ]]; then
+        new_name="ai"
+    else
+        new_name="ai${count}"
+    fi
+
+    if [[ "$name" != "$new_name" ]]; then
+        tmux rename-window -t "$idx" "$new_name"
+    fi
+
+    ((count++))
+done <<< "$ai_windows"

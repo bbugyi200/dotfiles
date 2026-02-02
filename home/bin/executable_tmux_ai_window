@@ -6,13 +6,15 @@ existing_windows=$(tmux list-windows -F '#W')
 # Check if any window is an ai variant (ai, ai2, ai3, etc.)
 if ! echo "$existing_windows" | grep -qE "^ai[0-9]*$"; then
     # No ai windows exist, create 'ai'
-    tmux new-window -n ai "cd ~/.local/share/chezmoi && claude --dangerously-skip-permissions"
+    window_name="ai"
 else
     # At least one ai window exists, find next available number
     n=2
     while echo "$existing_windows" | grep -q "^ai${n}$"; do
         ((n++))
     done
-
-    tmux new-window -n "ai${n}" "cd ~/.local/share/chezmoi && claude --dangerously-skip-permissions"
+    window_name="ai${n}"
 fi
+
+# Run Claude, then cleanup on exit (background + disown so it runs after window closes)
+tmux new-window -n "$window_name" "cd ~/.local/share/chezmoi && claude --dangerously-skip-permissions; { sleep 0.1 && tm-fix-layout && tm-renumber-ai-windows; } & disown"
