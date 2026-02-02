@@ -133,11 +133,12 @@ def process_xprompt_references(prompt: str) -> str:
     if "#" not in prompt:
         return prompt
 
-    # Pre-process shorthand syntax (#name: text -> #name([[text]]))
-    prompt = preprocess_shorthand_syntax(prompt, set(xprompts.keys()))
-
     iteration = 0
     while iteration < _MAX_EXPANSION_ITERATIONS:
+        # Pre-process shorthand syntax on each iteration
+        # (expanded content may contain shorthand that needs processing)
+        prompt = preprocess_shorthand_syntax(prompt, set(xprompts.keys()))
+
         # Find all xprompt references
         matches = list(re.finditer(_XPROMPT_PATTERN, prompt, re.MULTILINE))
 
