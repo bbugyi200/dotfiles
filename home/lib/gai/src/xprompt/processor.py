@@ -265,7 +265,9 @@ def execute_workflow(
     import json
     import os
     import tempfile
+    from typing import Any
 
+    from ._step_input_loader import load_step_input_value
     from .workflow_executor import WorkflowExecutor
     from .workflow_hitl import CLIHITLHandler, TUIHITLHandler
     from .workflow_models import WorkflowExecutionError
@@ -291,6 +293,22 @@ def execute_workflow(
     for input_arg in workflow.inputs:
         if input_arg.name not in args and input_arg.default is not None:
             args[input_arg.name] = str(input_arg.default)
+
+    # Process step inputs: load from @file or parse inline YAML/JSON
+    # Step inputs allow users to skip steps by providing their outputs directly
+    processed_args: dict[str, Any] = {}
+    for input_arg in workflow.inputs:
+        if input_arg.name not in args:
+            continue
+        value = args[input_arg.name]
+        if input_arg.is_step_input:
+            # Load and validate step input
+            processed_args[input_arg.name] = load_step_input_value(
+                value, input_arg.output_schema
+            )
+        else:
+            processed_args[input_arg.name] = value
+    args = processed_args
 
     # Use provided artifacts_dir or create a temp directory
     if artifacts_dir is None:

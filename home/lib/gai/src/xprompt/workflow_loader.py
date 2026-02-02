@@ -12,7 +12,7 @@ from xprompt.loader import (
     parse_output_from_front_matter,
     parse_shortform_inputs,
 )
-from xprompt.models import InputArg, OutputSpec
+from xprompt.models import InputArg, InputType, OutputSpec
 from xprompt.workflow_models import (
     LoopConfig,
     Workflow,
@@ -212,8 +212,12 @@ def _validate_workflow_variables(workflow: Workflow) -> None:
     input_names = {inp.name for inp in workflow.inputs}
     step_names = {step.name for step in workflow.steps}
 
+    # Step inputs are available from the start (user provides them upfront)
+    step_input_names = {inp.name for inp in workflow.inputs if inp.is_step_input}
+
     # Track which variables are defined at each point
-    defined_vars: set[str] = set(input_names)
+    # Step inputs count as defined from the start since users can provide them
+    defined_vars: set[str] = set(input_names) | step_input_names
 
     # Track usage of inputs
     input_usage: dict[str, bool] = dict.fromkeys(input_names, False)
@@ -395,6 +399,20 @@ def _load_workflow_from_file(file_path: Path) -> Workflow | None:
 
     if not steps:
         return None
+
+    # Generate implicit inputs for each step with an output schema
+    # These allow users to provide step outputs directly, skipping those steps
+    explicit_input_names = {inp.name for inp in inputs}
+    for step in steps:
+        if step.output is not None and step.name not in explicit_input_names:
+            implicit_input = InputArg(
+                name=step.name,
+                type=InputType.LINE,  # Type doesn't matter for step inputs
+                default=None,  # Not required by default
+                is_step_input=True,
+                output_schema=step.output,
+            )
+            inputs.append(implicit_input)
 
     workflow = Workflow(
         name=str(name),

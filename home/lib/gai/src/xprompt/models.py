@@ -57,11 +57,15 @@ class InputArg:
         name: The argument name (used for named args like `name=value`).
         type: The expected type of the argument value.
         default: Default value if argument is not provided (None means required).
+        is_step_input: True for implicit step inputs (generated from step outputs).
+        output_schema: For step inputs, the output schema to validate against.
     """
 
     name: str
     type: InputType = InputType.LINE
     default: Any = None
+    is_step_input: bool = False
+    output_schema: "OutputSpec | None" = None
 
     def validate_and_convert(self, value: str) -> Any:
         """Validate and convert a string value to the declared type.

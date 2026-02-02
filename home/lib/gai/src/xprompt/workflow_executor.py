@@ -55,6 +55,13 @@ class WorkflowExecutor(StepMixin, LoopMixin):
         self.hitl_handler = hitl_handler
         self.output_handler = output_handler
 
+        # Detect step inputs - args that match step names with output schemas
+        # These are used to skip steps and use pre-provided outputs
+        self._step_inputs: dict[str, Any] = {}
+        for step in workflow.steps:
+            if step.name in args and step.output is not None:
+                self._step_inputs[step.name] = args[step.name]
+
         # Initialize state
         self.state = WorkflowState(
             workflow_name=workflow.name,
@@ -118,6 +125,24 @@ class WorkflowExecutor(StepMixin, LoopMixin):
 
             # Determine step type for display
             step_type = self._get_step_type(step)
+
+            # Check if step should be skipped due to provided step input
+            if step.name in self._step_inputs:
+                step_state.status = StepStatus.SKIPPED
+                step_state.output = self._step_inputs[step.name]
+                self.context[step.name] = self._step_inputs[step.name]
+                self._save_state()
+                if self.output_handler:
+                    self.output_handler.on_step_start(
+                        step.name,
+                        step_type,
+                        i,
+                        total_steps,
+                    )
+                    self.output_handler.on_step_skip(
+                        step.name, reason="step input provided"
+                    )
+                continue
 
             # Evaluate if: condition
             condition_result: bool | None = None
