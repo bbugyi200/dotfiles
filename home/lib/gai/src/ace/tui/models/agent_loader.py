@@ -228,6 +228,10 @@ def load_all_agents() -> list[Agent]:
                     for step in workflow_agent_steps
                     if step.parent_timestamp == agent.raw_suffix
                 ]
+                # Sort by step_index (None values go last)
+                matching_steps.sort(
+                    key=lambda s: (s.step_index is None, s.step_index or 0)
+                )
                 result.extend(matching_steps)
         return result
 

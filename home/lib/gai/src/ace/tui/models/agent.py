@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 
 class AgentType(Enum):
@@ -72,6 +73,18 @@ class Agent:
 
     # Workflow step name (clean, without tree decoration)
     step_name: str | None = None
+
+    # Type of workflow step: "agent", "bash", or "python"
+    step_type: str | None = None
+
+    # Source code/command for bash/python steps
+    step_source: str | None = None
+
+    # Step output data
+    step_output: dict[str, Any] | None = None
+
+    # Step index for ordering (0-based)
+    step_index: int | None = None
 
     @property
     def display_type(self) -> str:

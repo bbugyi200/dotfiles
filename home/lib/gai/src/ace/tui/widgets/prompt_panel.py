@@ -93,6 +93,11 @@ class AgentPromptPanel(Static):
         header_text.append("─" * 50 + "\n", style="dim")
         header_text.append("\n")
 
+        # Check if this is a bash/python workflow step - display differently
+        if agent.is_workflow_child and agent.step_type in ("bash", "python"):
+            self._update_bash_python_display(agent, header_text)
+            return
+
         # AGENT PROMPT section
         header_text.append("AGENT PROMPT\n", style="bold #D7AF5F underline")
         header_text.append("\n")
@@ -166,6 +171,50 @@ class AgentPromptPanel(Static):
                 return f.read()
         except Exception:
             return None
+
+    def _update_bash_python_display(self, agent: Agent, header_text: Text) -> None:
+        """Display bash command or python code with output.
+
+        Args:
+            agent: The workflow step agent to display.
+            header_text: The Text object with header content to append to.
+        """
+        if agent.step_type == "bash":
+            source_label = "BASH COMMAND"
+            syntax_lang = "bash"
+        else:
+            source_label = "PYTHON CODE"
+            syntax_lang = "python"
+
+        # Show source header
+        header_text.append(f"{source_label}\n", style="bold #D7AF5F underline")
+        header_text.append("\n")
+
+        source_content: Syntax | Text
+        if agent.step_source:
+            source_content = Syntax(
+                agent.step_source, syntax_lang, theme="monokai", word_wrap=True
+            )
+        else:
+            source_content = Text("No source available.\n", style="dim italic")
+
+        # Show output section
+        output_header = Text()
+        output_header.append("\n")
+        output_header.append("─" * 50 + "\n", style="dim")
+        output_header.append("\n")
+        output_header.append("STEP OUTPUT\n", style="bold #D7AF5F underline")
+        output_header.append("\n")
+
+        if agent.step_output:
+            output_str = _format_output(agent.step_output)
+            output_syntax = Syntax(output_str, "json", theme="monokai", word_wrap=True)
+            self.update(
+                Group(header_text, source_content, output_header, output_syntax)
+            )
+        else:
+            output_header.append("No output available.\n", style="dim italic")
+            self.update(Group(header_text, source_content, output_header))
 
     def _update_workflow_display(self, agent: Agent) -> None:
         """Update display for a workflow agent.

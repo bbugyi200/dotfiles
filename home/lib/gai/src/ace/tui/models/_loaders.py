@@ -608,6 +608,12 @@ def load_workflow_agent_steps() -> list[Agent]:
                         workflow_name = data.get("workflow_name", "unknown")
                         step_name = data.get("step_name", "unknown")
 
+                        # Read new fields from marker (with backward compat defaults)
+                        step_type = data.get("step_type", "agent")
+                        step_source = data.get("step_source")
+                        step_output = data.get("output")
+                        step_index = data.get("step_index")
+
                         agents.append(
                             Agent(
                                 agent_type=AgentType.WORKFLOW,
@@ -620,6 +626,10 @@ def load_workflow_agent_steps() -> list[Agent]:
                                 parent_workflow=workflow_name,
                                 parent_timestamp=timestamp_dir.name,
                                 step_name=step_name,
+                                step_type=step_type,
+                                step_source=step_source,
+                                step_output=step_output,
+                                step_index=step_index,
                             )
                         )
                     except Exception:

@@ -49,7 +49,14 @@ class StepMixin:
         """Save workflow state to JSON file."""
         raise NotImplementedError
 
-    def _save_agent_step_marker(self, step_name: str, step_state: StepState) -> None:
+    def _save_agent_step_marker(
+        self,
+        step_name: str,
+        step_state: StepState,
+        step_type: str = "agent",
+        step_source: str | None = None,
+        step_index: int | None = None,
+    ) -> None:
         """Save a marker file for agent steps to track them in the TUI."""
         raise NotImplementedError
 
@@ -243,7 +250,9 @@ class StepMixin:
             step_state.status = StepStatus.WAITING_HITL
             self.state.status = "waiting_hitl"
             self._save_state()
-            self._save_agent_step_marker(step.name, step_state)
+            self._save_agent_step_marker(
+                step.name, step_state, step_type="bash", step_source=rendered_command
+            )
 
             result_hitl = self.hitl_handler.prompt(
                 step.name, "bash", output, has_output=step.output is not None
@@ -262,7 +271,9 @@ class StepMixin:
 
         # Mark step completed after HITL
         step_state.status = StepStatus.COMPLETED
-        self._save_agent_step_marker(step.name, step_state)
+        self._save_agent_step_marker(
+            step.name, step_state, step_type="bash", step_source=rendered_command
+        )
 
         # Store output in context under step name
         step_state.output = output
@@ -335,7 +346,9 @@ class StepMixin:
             step_state.status = StepStatus.WAITING_HITL
             self.state.status = "waiting_hitl"
             self._save_state()
-            self._save_agent_step_marker(step.name, step_state)
+            self._save_agent_step_marker(
+                step.name, step_state, step_type="python", step_source=rendered_code
+            )
 
             result_hitl = self.hitl_handler.prompt(
                 step.name, "python", output, has_output=step.output is not None
@@ -354,7 +367,9 @@ class StepMixin:
 
         # Mark step completed after HITL
         step_state.status = StepStatus.COMPLETED
-        self._save_agent_step_marker(step.name, step_state)
+        self._save_agent_step_marker(
+            step.name, step_state, step_type="python", step_source=rendered_code
+        )
 
         # Store output in context under step name
         step_state.output = output

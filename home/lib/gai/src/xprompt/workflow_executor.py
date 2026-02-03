@@ -224,7 +224,15 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
 
                 step_state.status = StepStatus.COMPLETED
                 self._save_state()
-                self._save_agent_step_marker(step.name, step_state)
+                step_type = self._get_step_type(step)
+                step_source = (
+                    step.bash
+                    if step_type == "bash"
+                    else (step.python if step_type == "python" else None)
+                )
+                self._save_agent_step_marker(
+                    step.name, step_state, step_type, step_source, i
+                )
 
                 # Notify step complete
                 if self.output_handler:
@@ -328,12 +336,22 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
         except Exception:
             return False
 
-    def _save_agent_step_marker(self, step_name: str, step_state: StepState) -> None:
+    def _save_agent_step_marker(
+        self,
+        step_name: str,
+        step_state: StepState,
+        step_type: str = "agent",
+        step_source: str | None = None,
+        step_index: int | None = None,
+    ) -> None:
         """Save a marker file for agent steps to track them in the TUI.
 
         Args:
             step_name: Name of the agent step.
             step_state: The runtime state for this step.
+            step_type: Type of step ("agent", "bash", or "python").
+            step_source: Source code/command for bash/python steps.
+            step_index: Index of the step in the workflow (0-based).
         """
         marker_path = os.path.join(self.artifacts_dir, f"agent_step_{step_name}.json")
         marker_data = {
@@ -342,6 +360,9 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
             "status": step_state.status.value,
             "output": step_state.output,
             "artifacts_dir": self.artifacts_dir,
+            "step_type": step_type,
+            "step_source": step_source,
+            "step_index": step_index,
         }
         try:
             with open(marker_path, "w", encoding="utf-8") as f:
