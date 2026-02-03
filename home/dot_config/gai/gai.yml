@@ -109,9 +109,6 @@ xprompts:
   duckie: "Make sure to use your ask-duckie tool to perform some research before deciding on a solution."
   feat: |
     publisher feature (see @contentads/drx/fe/g3doc/admin/publisher_features.md for more information on publisher features)
-  noc: "You should make the necessary file changes, but should NOT create/amend a CL."
-  nocl: "#noc #cl"
-  scuba: "Make sure all related tests pass, except for some scuba diff tests, which are expected to fail."
   mentor/aaa: |
     #mentor: Can you help me enforce the AAA (arrange, act, assert) test method structure? In particular, find and fix Any test
     method modified by this CL that does NOT structure its statements using the Arrange, Act, Assert pattern. There
@@ -176,8 +173,11 @@ xprompts:
   mentor/ui: |
     #mentor: Can you help me ensure that the changes made by this CL adhere to the guidelines outlined in the
     @contentads/drx/fe/client/g3doc/drx_ui_style.md document?
+  noc: "You should make the necessary file changes, but should NOT create/amend a CL."
+  nocl: "#noc #cl"
   reporting: |
     Refer to the `contentads/drx/reporting/g3doc/**/*.md` files for documentation on how the reporting stack works.
+  scuba: "Make sure all related tests pass, except for some scuba diff tests, which are expected to fail."
   x:
     input: { name: word, cmd: line }
     content: "@$(xcmd {{ name }} {{ cmd }})"
