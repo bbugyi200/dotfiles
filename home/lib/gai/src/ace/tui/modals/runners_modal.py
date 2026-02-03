@@ -18,10 +18,10 @@ from ...changespec import (
     find_all_changespecs,
 )
 
-# Box dimensions: total width = 57 chars
-# Layout: "  | " (5 chars) + content (49 chars) + " |" (3 chars) = 57 chars
-_BOX_WIDTH = 57
-_CONTENT_WIDTH = 49
+# Box dimensions: total width = 87 chars
+# Layout: "  | " (5 chars) + content (78 chars) + " |" (4 chars) = 87 chars
+_BOX_WIDTH = 87
+_CONTENT_WIDTH = 78
 
 
 @dataclass
