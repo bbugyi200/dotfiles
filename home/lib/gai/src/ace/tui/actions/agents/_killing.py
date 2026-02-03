@@ -28,6 +28,7 @@ class AgentKillingMixin:
     # Agent state (needed for _dismiss_done_agent)
     _revived_agents: list[Agent]
     _viewed_agents: set[tuple[AgentType, str, str | None]]
+    _dismissed_agents: set[tuple[AgentType, str, str | None]]
 
     def _do_kill_agent(self, agent: Agent) -> None:
         """Perform the actual agent kill after confirmation."""
@@ -310,6 +311,32 @@ class AgentKillingMixin:
                 self.notify(f"Error dismissing workflow: {e}", severity="error")  # type: ignore[attr-defined]
                 return
 
+            self._load_agents()  # type: ignore[attr-defined]
+            return
+
+        # Handle hook-based agents (FIX_HOOK, SUMMARIZE, MENTOR, CRS)
+        # These don't have a done.json file - they're stored as status lines
+        # in the project file. We track dismissal in _dismissed_agents.
+        if agent.agent_type in (
+            AgentType.FIX_HOOK,
+            AgentType.SUMMARIZE,
+            AgentType.MENTOR,
+            AgentType.CRS,
+        ):
+            from ...dismissed_agents import save_dismissed_agents
+
+            self._dismissed_agents.add(agent.identity)  # type: ignore[attr-defined]
+            save_dismissed_agents(self._dismissed_agents)  # type: ignore[attr-defined]
+
+            # Remove from viewed agents set if present and persist
+            self._viewed_agents.discard(agent.identity)  # type: ignore[attr-defined]
+            from ...viewed_agents import save_viewed_agents
+
+            save_viewed_agents(self._viewed_agents)  # type: ignore[attr-defined]
+
+            self.notify(  # type: ignore[attr-defined]
+                f"Dismissed {agent.agent_type.value.lower()} agent for {agent.cl_name}"
+            )
             self._load_agents()  # type: ignore[attr-defined]
             return
 

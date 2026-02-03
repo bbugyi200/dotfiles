@@ -105,6 +105,7 @@ class AgentsMixinCore(
     _tracked_running_agents: set[tuple[AgentType, str, str | None]]
     _pending_attention_count: int
     _viewed_agents: set[tuple[AgentType, str, str | None]]
+    _dismissed_agents: set[tuple[AgentType, str, str | None]]
 
     def action_kill_agent(self) -> None:
         """Kill or dismiss agent, or clear AXE output depending on tab."""
@@ -165,6 +166,9 @@ class AgentsMixinCore(
 
         # Merge revived agents (they appear at the end of the list)
         all_agents.extend(self._revived_agents)
+
+        # Filter out dismissed agents
+        all_agents = [a for a in all_agents if a.identity not in self._dismissed_agents]
 
         # Categorize agents: always-visible (dismissable OR running) vs hideable
         always_visible = [a for a in all_agents if _is_always_visible(a)]

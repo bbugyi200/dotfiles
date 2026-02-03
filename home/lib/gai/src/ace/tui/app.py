@@ -251,12 +251,14 @@ class AceApp(
         self._hidden_count: int = 0
 
         # Agent completion tracking for notifications
+        from .dismissed_agents import load_dismissed_agents
         from .models.agent import AgentType
         from .viewed_agents import load_viewed_agents
 
         self._tracked_running_agents: set[tuple[AgentType, str, str | None]] = set()
         self._pending_attention_count: int = 0
         self._viewed_agents = load_viewed_agents()
+        self._dismissed_agents = load_dismissed_agents()
 
         # Axe state
         self._axe_status: AxeStatus | None = None
