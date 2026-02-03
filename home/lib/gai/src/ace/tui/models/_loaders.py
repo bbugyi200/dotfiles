@@ -594,7 +594,9 @@ def load_workflow_agent_steps() -> list[Agent]:
 
                         # Map status to display string
                         status = data.get("status", "completed")
-                        if status == "completed":
+                        if status == "waiting_hitl":
+                            display_status = "WAITING INPUT"
+                        elif status == "completed":
                             display_status = "COMPLETED"
                         elif status == "in_progress":
                             display_status = "RUNNING"
