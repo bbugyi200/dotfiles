@@ -1,0 +1,3 @@
+#!/bin/bash
+
+tee /dev/stderr | xclip -sel clipboard
