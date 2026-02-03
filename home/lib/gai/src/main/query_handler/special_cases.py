@@ -104,34 +104,20 @@ def handle_run_special_cases(args_after_run: list[str]) -> bool:
         potential_query = args_after_run[0]
         if potential_query.startswith("#"):
             workflow_ref = potential_query[1:]  # Strip the #
-            # Extract workflow name (handle #split(args) syntax too)
-            if "(" in workflow_ref:
-                workflow_name = workflow_ref.split("(")[0]
-            else:
-                workflow_name = workflow_ref
 
             from xprompt import (
                 execute_workflow,
                 get_all_workflows,
                 get_all_xprompts,
+                parse_workflow_reference,
+            )
+
+            workflow_name, positional_args, named_args = parse_workflow_reference(
+                workflow_ref
             )
 
             workflows = get_all_workflows()
             if workflow_name in workflows:
-                # Parse args if present
-                positional_args: list[str] = []
-                named_args: dict[str, str] = {}
-                if "(" in workflow_ref and workflow_ref.endswith(")"):
-                    args_str = workflow_ref[len(workflow_name) + 1 : -1]
-                    if args_str:
-                        # Simple arg parsing - split on comma
-                        for arg in args_str.split(","):
-                            arg = arg.strip()
-                            if "=" in arg:
-                                key, value = arg.split("=", 1)
-                                named_args[key.strip()] = value.strip()
-                            else:
-                                positional_args.append(arg)
                 try:
                     execute_workflow(workflow_name, positional_args, named_args)
                     sys.exit(0)

@@ -8,6 +8,7 @@ from xprompt._parsing import (
     _process_text_block,
     find_matching_paren_for_args,
     parse_args,
+    parse_workflow_reference,
 )
 from xprompt.models import XPrompt
 from xprompt.processor import _expand_single_xprompt
@@ -478,3 +479,78 @@ def testparse_named_arg_text_block_positional() -> None:
     name, value = _parse_named_arg("[[content=here]]")
     assert name is None
     assert value == "[[content=here]]"
+
+
+# Tests for parse_workflow_reference
+
+
+def test_parse_workflow_reference_plain_name() -> None:
+    """Test parsing a plain workflow name without arguments."""
+    name, pos, named = parse_workflow_reference("split")
+    assert name == "split"
+    assert pos == []
+    assert named == {}
+
+
+def test_parse_workflow_reference_parenthesis_positional() -> None:
+    """Test parsing workflow with positional args in parentheses."""
+    name, pos, named = parse_workflow_reference("split(arg1, arg2)")
+    assert name == "split"
+    assert pos == ["arg1", "arg2"]
+    assert named == {}
+
+
+def test_parse_workflow_reference_parenthesis_named() -> None:
+    """Test parsing workflow with named args in parentheses."""
+    name, pos, named = parse_workflow_reference("foo(bar=2)")
+    assert name == "foo"
+    assert pos == []
+    assert named == {"bar": "2"}
+
+
+def test_parse_workflow_reference_parenthesis_mixed() -> None:
+    """Test parsing workflow with mixed positional and named args."""
+    name, pos, named = parse_workflow_reference("workflow(pos1, key=value, pos2)")
+    assert name == "workflow"
+    assert pos == ["pos1", "pos2"]
+    assert named == {"key": "value"}
+
+
+def test_parse_workflow_reference_simple_colon() -> None:
+    """Test parsing workflow with simple colon syntax (no space)."""
+    name, pos, named = parse_workflow_reference("foo:2")
+    assert name == "foo"
+    assert pos == ["2"]
+    assert named == {}
+
+
+def test_parse_workflow_reference_multiline_colon() -> None:
+    """Test parsing workflow with multi-line colon syntax (space after colon)."""
+    name, pos, named = parse_workflow_reference("foo: Some text here")
+    assert name == "foo"
+    assert pos == ["Some text here"]
+    assert named == {}
+
+
+def test_parse_workflow_reference_plus_suffix() -> None:
+    """Test parsing workflow with plus suffix."""
+    name, pos, named = parse_workflow_reference("foo+")
+    assert name == "foo"
+    assert pos == ["true"]
+    assert named == {}
+
+
+def test_parse_workflow_reference_empty_parens() -> None:
+    """Test parsing workflow with empty parentheses."""
+    name, pos, named = parse_workflow_reference("workflow()")
+    assert name == "workflow"
+    assert pos == []
+    assert named == {}
+
+
+def test_parse_workflow_reference_colon_empty_value() -> None:
+    """Test parsing workflow with colon but empty value."""
+    name, pos, named = parse_workflow_reference("foo:")
+    assert name == "foo"
+    assert pos == [""]
+    assert named == {}

@@ -186,6 +186,54 @@ def _parse_named_arg(token: str) -> tuple[str | None, str]:
     return None, token
 
 
+def parse_workflow_reference(
+    workflow_ref: str,
+) -> tuple[str, list[str], dict[str, str]]:
+    """Parse a workflow reference string into name and arguments.
+
+    Handles:
+    - Parenthesis syntax: workflow_name(arg1, key=value)
+    - Simple colon syntax: workflow_name:value (no space after colon)
+    - Multi-line colon syntax: workflow_name: text... (space after colon)
+    - Plus syntax: workflow_name+ (equivalent to :true)
+    - Plain name: workflow_name
+
+    Args:
+        workflow_ref: The workflow reference string (without leading #).
+
+    Returns:
+        Tuple of (workflow_name, positional_args, named_args).
+    """
+    # Plus syntax: workflow+ -> ["true"]
+    if workflow_ref.endswith("+"):
+        return workflow_ref[:-1], ["true"], {}
+
+    # Parenthesis syntax: workflow(args)
+    if "(" in workflow_ref:
+        paren_idx = workflow_ref.index("(")
+        workflow_name = workflow_ref[:paren_idx]
+        if workflow_ref.endswith(")"):
+            args_str = workflow_ref[paren_idx + 1 : -1]
+            if args_str:
+                positional_args, named_args = parse_args(args_str)
+                return workflow_name, positional_args, named_args
+        return workflow_name, [], {}
+
+    # Colon syntax: workflow:value or workflow: text
+    if ":" in workflow_ref:
+        colon_idx = workflow_ref.index(":")
+        workflow_name = workflow_ref[:colon_idx]
+        rest = workflow_ref[colon_idx + 1 :]
+        # The entire rest (with or without leading space) is a single positional arg
+        # But we strip leading space for multi-line syntax aesthetics
+        if rest.startswith(" "):
+            return workflow_name, [rest[1:]], {}
+        return workflow_name, [rest], {}
+
+    # Plain name, no args
+    return workflow_ref, [], {}
+
+
 def parse_args(args_str: str) -> tuple[list[str], dict[str, str]]:
     """Parse argument string into positional and named arguments.
 
