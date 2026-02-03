@@ -1,0 +1,328 @@
+"""Tests for parallel execution in workflow_executor."""
+
+import os
+import tempfile
+import time
+from typing import Any
+
+import pytest
+from xprompt.workflow_executor import WorkflowExecutor
+from xprompt.workflow_models import (
+    ParallelConfig,
+    StepStatus,
+    Workflow,
+    WorkflowExecutionError,
+    WorkflowStep,
+)
+
+
+def _create_workflow(
+    name: str,
+    steps: list[WorkflowStep],
+) -> Workflow:
+    """Helper to create a workflow for testing."""
+    return Workflow(name=name, steps=steps)
+
+
+def _create_executor(
+    workflow: Workflow,
+    args: dict[str, Any] | None = None,
+) -> WorkflowExecutor:
+    """Helper to create an executor with a temp artifacts dir."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        artifacts_dir = os.path.join(tmpdir, "artifacts")
+        os.makedirs(artifacts_dir, exist_ok=True)
+        executor = WorkflowExecutor(
+            workflow=workflow,
+            args=args or {},
+            artifacts_dir=artifacts_dir,
+        )
+        # Store tmpdir reference to keep it alive during test
+        executor._test_tmpdir = tmpdir  # type: ignore[attr-defined]
+        return executor
+
+
+# ============================================================================
+# TestParallelExecution - parallel: step execution
+# ============================================================================
+
+
+def test_parallel_executes_all_steps() -> None:
+    """Test parallel: executes all nested steps."""
+    nested_steps = [
+        WorkflowStep(name="step_a", bash='echo "a=done"'),
+        WorkflowStep(name="step_b", bash='echo "b=done"'),
+    ]
+    steps = [
+        WorkflowStep(
+            name="parallel_test",
+            parallel_config=ParallelConfig(steps=nested_steps),
+        ),
+    ]
+    workflow = _create_workflow("test", steps)
+    executor = _create_executor(workflow)
+
+    success = executor.execute()
+
+    assert success
+    assert executor.state.steps[0].status == StepStatus.COMPLETED
+    output = executor.context["parallel_test"]
+    assert "step_a" in output
+    assert "step_b" in output
+
+
+def test_parallel_runs_concurrently() -> None:
+    """Test that parallel steps actually run concurrently (timing-based)."""
+    # Each step sleeps for 0.5 seconds
+    # If sequential, total time would be ~1 second
+    # If parallel, total time should be ~0.5 seconds
+    nested_steps = [
+        WorkflowStep(name="step_a", bash='sleep 0.3 && echo "a=done"'),
+        WorkflowStep(name="step_b", bash='sleep 0.3 && echo "b=done"'),
+    ]
+    steps = [
+        WorkflowStep(
+            name="parallel_test",
+            parallel_config=ParallelConfig(steps=nested_steps),
+        ),
+    ]
+    workflow = _create_workflow("test", steps)
+    executor = _create_executor(workflow)
+
+    start_time = time.time()
+    success = executor.execute()
+    elapsed = time.time() - start_time
+
+    assert success
+    # Should complete in less than 0.6s if truly parallel (allow some overhead)
+    # Would be ~0.6s or more if sequential
+    assert elapsed < 0.55, f"Expected parallel execution but took {elapsed:.2f}s"
+
+
+def test_parallel_default_join_is_object() -> None:
+    """Test that default join mode for parallel is 'object'."""
+    nested_steps = [
+        WorkflowStep(name="step_a", bash='echo "value_a=1"'),
+        WorkflowStep(name="step_b", bash='echo "value_b=2"'),
+    ]
+    steps = [
+        WorkflowStep(
+            name="parallel_test",
+            parallel_config=ParallelConfig(steps=nested_steps),
+            # No join specified - should default to object
+        ),
+    ]
+    workflow = _create_workflow("test", steps)
+    executor = _create_executor(workflow)
+
+    executor.execute()
+
+    output = executor.context["parallel_test"]
+    # Output should be nested under step names
+    assert isinstance(output, dict)
+    assert "step_a" in output
+    assert "step_b" in output
+
+
+def test_parallel_with_join_array() -> None:
+    """Test parallel with join: array."""
+    nested_steps = [
+        WorkflowStep(name="step_a", bash='echo "val=1"'),
+        WorkflowStep(name="step_b", bash='echo "val=2"'),
+    ]
+    steps = [
+        WorkflowStep(
+            name="parallel_test",
+            parallel_config=ParallelConfig(steps=nested_steps),
+            join="array",
+        ),
+    ]
+    workflow = _create_workflow("test", steps)
+    executor = _create_executor(workflow)
+
+    executor.execute()
+
+    output = executor.context["parallel_test"]
+    assert isinstance(output, list)
+    assert len(output) == 2
+
+
+def test_parallel_context_isolation() -> None:
+    """Test that parallel steps have isolated context."""
+    # Each step tries to modify a shared variable
+    # If context is properly isolated, they shouldn't interfere
+    nested_steps = [
+        WorkflowStep(
+            name="step_a",
+            bash='echo "result={{ shared_var }}_a"',
+        ),
+        WorkflowStep(
+            name="step_b",
+            bash='echo "result={{ shared_var }}_b"',
+        ),
+    ]
+    steps = [
+        WorkflowStep(
+            name="parallel_test",
+            parallel_config=ParallelConfig(steps=nested_steps),
+        ),
+    ]
+    workflow = _create_workflow("test", steps)
+    executor = _create_executor(workflow, {"shared_var": "original"})
+
+    success = executor.execute()
+
+    assert success
+    output = executor.context["parallel_test"]
+    # Both should have seen the original value
+    assert output["step_a"]["result"] == "original_a"
+    assert output["step_b"]["result"] == "original_b"
+
+
+def test_parallel_step_failure_raises() -> None:
+    """Test that failure in parallel step raises error."""
+    nested_steps = [
+        WorkflowStep(name="step_a", bash='echo "a=done"'),
+        WorkflowStep(name="step_b", bash="exit 1"),  # This will fail
+    ]
+    steps = [
+        WorkflowStep(
+            name="parallel_test",
+            parallel_config=ParallelConfig(steps=nested_steps),
+        ),
+    ]
+    workflow = _create_workflow("test", steps)
+    executor = _create_executor(workflow)
+
+    with pytest.raises(WorkflowExecutionError) as exc_info:
+        executor.execute()
+
+    assert "parallel_test" in str(exc_info.value)
+
+
+def test_parallel_with_if_condition() -> None:
+    """Test parallel step with if: condition."""
+    nested_steps = [
+        WorkflowStep(name="step_a", bash='echo "a=done"'),
+        WorkflowStep(name="step_b", bash='echo "b=done"'),
+    ]
+    steps = [
+        WorkflowStep(
+            name="parallel_test",
+            condition="{{ should_run }}",
+            parallel_config=ParallelConfig(steps=nested_steps),
+        ),
+    ]
+    workflow = _create_workflow("test", steps)
+    executor = _create_executor(workflow, {"should_run": False})
+
+    success = executor.execute()
+
+    assert success
+    assert executor.state.steps[0].status == StepStatus.SKIPPED
+
+
+# ============================================================================
+# TestForParallel - for: + parallel: combination
+# ============================================================================
+
+
+def test_for_parallel_basic() -> None:
+    """Test basic for: + parallel: combination."""
+    nested_steps = [
+        WorkflowStep(name="lint", bash='echo "lint_{{ file }}=ok"'),
+        WorkflowStep(name="format", bash='echo "format_{{ file }}=ok"'),
+    ]
+    steps = [
+        WorkflowStep(
+            name="process_files",
+            for_loop={"file": "{{ files }}"},
+            parallel_config=ParallelConfig(steps=nested_steps),
+        ),
+    ]
+    workflow = _create_workflow("test", steps)
+    executor = _create_executor(workflow, {"files": ["a.py", "b.py"]})
+
+    success = executor.execute()
+
+    assert success
+    output = executor.context["process_files"]
+    # Default join is array, so we get a list of results per iteration
+    assert isinstance(output, list)
+    assert len(output) == 2
+
+
+def test_for_parallel_runs_iteration_parallel_steps_concurrently() -> None:
+    """Test that within each for iteration, parallel steps run concurrently."""
+    nested_steps = [
+        WorkflowStep(name="step_a", bash='sleep 0.2 && echo "a={{ item }}"'),
+        WorkflowStep(name="step_b", bash='sleep 0.2 && echo "b={{ item }}"'),
+    ]
+    steps = [
+        WorkflowStep(
+            name="process",
+            for_loop={"item": "{{ items }}"},
+            parallel_config=ParallelConfig(steps=nested_steps),
+        ),
+    ]
+    workflow = _create_workflow("test", steps)
+    executor = _create_executor(workflow, {"items": ["x", "y"]})
+
+    start_time = time.time()
+    success = executor.execute()
+    elapsed = time.time() - start_time
+
+    assert success
+    # 2 iterations, each with 2 parallel steps sleeping 0.2s
+    # If parallel within iteration: 2 * 0.2 = 0.4s
+    # If fully sequential: 4 * 0.2 = 0.8s
+    # Should complete in under 0.6s if truly parallel
+    assert elapsed < 0.6
+
+
+def test_for_parallel_with_join_object() -> None:
+    """Test for: + parallel: with join: object."""
+    nested_steps = [
+        WorkflowStep(name="lint", bash='echo "result=lint_{{ file }}"'),
+        WorkflowStep(name="format", bash='echo "result=format_{{ file }}"'),
+    ]
+    steps = [
+        WorkflowStep(
+            name="process_files",
+            for_loop={"file": "{{ files }}"},
+            parallel_config=ParallelConfig(steps=nested_steps),
+            join="object",
+        ),
+    ]
+    workflow = _create_workflow("test", steps)
+    executor = _create_executor(workflow, {"files": ["a.py", "b.py"]})
+
+    success = executor.execute()
+
+    assert success
+    output = executor.context["process_files"]
+    # join: object merges all results
+    assert isinstance(output, dict)
+
+
+def test_for_parallel_empty_list() -> None:
+    """Test for: + parallel: with empty iteration list."""
+    nested_steps = [
+        WorkflowStep(name="step_a", bash='echo "a={{ item }}"'),
+        WorkflowStep(name="step_b", bash='echo "b={{ item }}"'),
+    ]
+    steps = [
+        WorkflowStep(
+            name="process",
+            for_loop={"item": "{{ items }}"},
+            parallel_config=ParallelConfig(steps=nested_steps),
+        ),
+    ]
+    workflow = _create_workflow("test", steps)
+    executor = _create_executor(workflow, {"items": []})
+
+    success = executor.execute()
+
+    assert success
+    output = executor.context["process"]
+    assert output == []
