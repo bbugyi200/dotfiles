@@ -21,8 +21,9 @@ class AgentPromptPanel(Static):
         Args:
             agent: The Agent to display.
         """
-        # Check if this is a workflow agent - display workflow-specific info
-        if agent.agent_type == AgentType.WORKFLOW:
+        # Check if this is a top-level workflow agent - display workflow-specific info
+        # Workflow children (steps) should show the normal agent view with prompt/chat
+        if agent.agent_type == AgentType.WORKFLOW and not agent.is_workflow_child:
             self._update_workflow_display(agent)
             return
 
