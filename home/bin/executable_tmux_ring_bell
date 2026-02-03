@@ -1,14 +1,43 @@
 #!/bin/bash
 
-set -euo pipefail
+source ~/lib/bugyi.sh
 
-target_window="${1:?usage: tmux-bell-window <target-window>  (e.g. mysession:3 or :3 or @12)}"
+function run() {
+  local target_window="${1:?usage: tmux_ring_bell <target-window> [count] [delay_secs]}"
+  shift
 
-# Ensure tmux will *mark* the window when a bell happens.
-tmux set-window-option -t "$target_window" monitor-bell on >/dev/null
+  local count=1
+  local delay_secs=1
 
-# Pick a pane in that window (first one) and get its tty.
-tty="$(tmux list-panes -t "$target_window" -F '#{pane_tty}' | head -n1)"
+  if [[ -n "${1:-}" ]]; then
+    count="$1"
+    shift
 
-# Emit an actual terminal bell in that pane => tmux sets the bell flag on the *window*.
-printf '\a' >"$tty"
+    if ! [[ "${count}" =~ ^[0-9]+$ ]]; then
+      die "count MUST be a positive integer!"
+    fi
+
+    if [[ -n "${1:-}" ]]; then
+      delay_secs="$1"
+      shift
+    fi
+  fi
+
+  # Ensure tmux will *mark* the window when a bell happens.
+  tmux set-window-option -t "$target_window" monitor-bell on >/dev/null
+
+  # Pick a pane in that window (first one) and get its tty.
+  tty="$(tmux list-panes -t "$target_window" -F '#{pane_tty}' | head -n1)"
+
+  # Emit bell(s) to that pane => tmux sets the bell flag on the *window*.
+  for i in $(seq "$count"); do
+    if [[ $i -gt 1 ]]; then
+      sleep "${delay_secs}"
+    fi
+    printf '\a' >"$tty"
+  done
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+  run "$@"
+fi

@@ -542,7 +542,9 @@ class AgentsMixinCore(
 
         try:
             subprocess.run(
-                ["tmux_ring_bell", tmux_pane], check=False, capture_output=True
+                ["tmux_ring_bell", tmux_pane, "3", "0.1"],
+                check=False,
+                capture_output=True,
             )
         except FileNotFoundError:
             pass  # Script not available
