@@ -206,6 +206,18 @@ class AgentPromptPanel(Static):
             header_text.append("PID: ", style="bold #87D7FF")
             header_text.append(f"{agent.pid}\n", style="#FF87D7 bold")
 
+        # Inputs (if available)
+        inputs = self._load_workflow_inputs(agent)
+        if inputs:
+            header_text.append("\n")
+            header_text.append("INPUTS\n", style="bold #D7AF5F underline")
+            for key, value in inputs.items():
+                header_text.append(f"  {key}: ", style="bold #87D7FF")
+                if isinstance(value, str):
+                    header_text.append(f'"{value}"\n', style="#5FD75F")
+                else:
+                    header_text.append(f"{value}\n", style="#5FD75F")
+
         # Separator
         header_text.append("\n")
         header_text.append("─" * 50 + "\n", style="dim")
@@ -227,6 +239,31 @@ class AgentPromptPanel(Static):
         else:
             header_text.append("No workflow state found.\n", style="dim italic")
             self.update(header_text)
+
+    def _load_workflow_inputs(self, agent: Agent) -> dict[str, Any] | None:
+        """Load workflow inputs from workflow_state.json.
+
+        Args:
+            agent: The workflow agent.
+
+        Returns:
+            Dict of workflow inputs, or None if not found.
+        """
+        artifacts_dir = agent.get_artifacts_dir()
+        if artifacts_dir is None:
+            return None
+
+        state_file = Path(artifacts_dir) / "workflow_state.json"
+        if not state_file.exists():
+            return None
+
+        try:
+            with open(state_file, encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            return None
+
+        return data.get("inputs")
 
     def _load_workflow_steps(self, agent: Agent) -> str | None:
         """Load and format workflow steps from workflow_state.json.

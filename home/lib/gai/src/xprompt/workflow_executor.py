@@ -80,6 +80,15 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
     def _save_state(self) -> None:
         """Save workflow state to JSON file."""
         state_path = os.path.join(self.artifacts_dir, "workflow_state.json")
+
+        # Extract declared workflow inputs (exclude auto-generated step inputs)
+        inputs = {}
+        for input_arg in self.workflow.inputs:
+            if input_arg.is_step_input:
+                continue
+            if input_arg.name in self.state.context:
+                inputs[input_arg.name] = self.state.context[input_arg.name]
+
         state_dict = {
             "workflow_name": self.state.workflow_name,
             "status": self.state.status,
@@ -94,6 +103,7 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
                 for s in self.state.steps
             ],
             "context": self.state.context,
+            "inputs": inputs,
             "artifacts_dir": self.state.artifacts_dir,
             "start_time": self.state.start_time,
             "pid": os.getpid(),
