@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ...models import Agent
+    from ...models.agent import AgentType
 
 # Import ChangeSpec unconditionally since it's used as a type annotation
 # in attribute declarations (not just in function signatures)
@@ -26,6 +27,7 @@ class AgentKillingMixin:
 
     # Agent state (needed for _dismiss_done_agent)
     _revived_agents: list[Agent]
+    _viewed_agents: set[tuple[AgentType, str, str | None]]
 
     def _do_kill_agent(self, agent: Agent) -> None:
         """Perform the actual agent kill after confirmation."""
@@ -310,6 +312,9 @@ class AgentKillingMixin:
         except Exception as e:
             self.notify(f"Error dismissing agent: {e}", severity="error")  # type: ignore[attr-defined]
             return
+
+        # Remove from viewed agents set if present
+        self._viewed_agents.discard(agent.identity)  # type: ignore[attr-defined]
 
         # Refresh agents list
         self._load_agents()  # type: ignore[attr-defined]

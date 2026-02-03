@@ -104,6 +104,7 @@ class AgentsMixinCore(
     # Agent completion tracking for notifications
     _tracked_running_agents: set[tuple[AgentType, str, str | None]]
     _pending_attention_count: int
+    _viewed_agents: set[tuple[AgentType, str, str | None]]
 
     def action_kill_agent(self) -> None:
         """Kill or dismiss agent, or clear AXE output depending on tab."""
@@ -514,20 +515,32 @@ class AgentsMixinCore(
             self._ring_tmux_bell()
 
         self._tracked_running_agents = current_running
-        self._pending_attention_count = len(current_dismissible_non_axe)
+
+        # Only count agents that haven't been viewed yet
+        unviewed_dismissible = current_dismissible_non_axe - self._viewed_agents
+        self._pending_attention_count = len(unviewed_dismissible)
 
         if self.current_tab != "agents":
             self._update_tab_bar_emphasis()
         else:
-            # Clear emphasis when on agents tab
+            # Mark all dismissable agents as viewed when on agents tab
+            self._viewed_agents.update(current_dismissible_non_axe)
             self._clear_tab_bar_emphasis()
 
     def _ring_tmux_bell(self) -> None:
         """Ring tmux bell to notify user of agent completion."""
+        import os
         import subprocess
 
+        # Get current tmux pane from environment
+        tmux_pane = os.environ.get("TMUX_PANE")
+        if not tmux_pane:
+            return  # Not in tmux
+
         try:
-            subprocess.run(["tmux_ring_bell", ":0"], check=False, capture_output=True)
+            subprocess.run(
+                ["tmux_ring_bell", tmux_pane], check=False, capture_output=True
+            )
         except FileNotFoundError:
             pass  # Script not available
 

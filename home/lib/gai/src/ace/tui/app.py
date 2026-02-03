@@ -255,6 +255,7 @@ class AceApp(
 
         self._tracked_running_agents: set[tuple[AgentType, str, str | None]] = set()
         self._pending_attention_count: int = 0
+        self._viewed_agents: set[tuple[AgentType, str, str | None]] = set()
 
         # Axe state
         self._axe_status: AxeStatus | None = None
