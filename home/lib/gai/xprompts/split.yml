@@ -13,7 +13,7 @@ steps:
     agent: |
       #split_spec_generator(
         workspace_name="{{ setup.workspace_name }}",
-        diff_path="{{ setup.diff_path }}"
+        diff_path="{{ setup.diff_path }}",
         split_desc="{{ split_desc }}"
       )
     output: [{ name: word, description: text, parent: { type: word, default: "" } }]
