@@ -1,0 +1,3 @@
+#!/bin/bash
+
+hg xl | grep " bbugyi " | xl2clname
