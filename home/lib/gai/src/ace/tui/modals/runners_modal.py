@@ -17,6 +17,7 @@ from ...changespec import (
     MentorStatusLine,
     find_all_changespecs,
 )
+from .base import CopyModeForwardingMixin
 
 # Box dimensions: total width = 120 chars
 # Layout: "  │  " (5 chars) + content (113 chars) + " │" (2 chars) = 120 chars
@@ -296,7 +297,7 @@ def _format_duration(start_time: datetime | None) -> str:
     return f"{hours}h{minutes}m"
 
 
-class RunnersModal(ModalScreen[None]):
+class RunnersModal(CopyModeForwardingMixin, ModalScreen[None]):
     """Modal showing all currently running processes and agents."""
 
     BINDINGS = [

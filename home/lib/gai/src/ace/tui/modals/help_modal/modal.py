@@ -10,6 +10,8 @@ from textual.containers import Container, Horizontal, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Static
 
+from ..base import CopyModeForwardingMixin
+
 if TYPE_CHECKING:
     from ...app import AceApp
 
@@ -44,7 +46,7 @@ def _create_load_query_action(slot: str) -> Callable[["HelpModal"], None]:
     return action
 
 
-class HelpModal(ModalScreen[None]):
+class HelpModal(CopyModeForwardingMixin, ModalScreen[None]):
     """Beautiful help modal showing all keybindings and saved queries."""
 
     BINDINGS = [

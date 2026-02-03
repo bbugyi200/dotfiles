@@ -1,6 +1,36 @@
 """Base classes and mixins for ace TUI modals."""
 
+from textual import events
 from textual.widgets import Input, OptionList
+
+
+class CopyModeForwardingMixin:
+    """Mixin that forwards copy-mode keys (%) to the app.
+
+    This allows the %s (and other %) copy shortcuts to work even when
+    a modal is open.
+    """
+
+    def on_key(self, event: events.Key) -> None:
+        """Forward copy-mode keys to the app."""
+        from ..app import AceApp
+
+        app = self.app  # type: ignore[attr-defined]
+        if not isinstance(app, AceApp):
+            return
+
+        # If % is pressed, start copy mode
+        if event.key == "percent_sign":
+            app.action_start_copy_mode()
+            event.prevent_default()
+            event.stop()
+            return
+
+        # If copy mode is active, forward the key
+        if app._copy_mode_active:
+            if app._handle_copy_key(event.key):
+                event.prevent_default()
+                event.stop()
 
 
 class FilterInput(Input):
