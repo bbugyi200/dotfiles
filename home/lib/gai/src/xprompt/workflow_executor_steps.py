@@ -168,6 +168,9 @@ class StepMixin:
                 # Continue with edited output
             # Future: handle feedback for regeneration
 
+        # Mark step completed after HITL (agent work is done)
+        step_state.status = StepStatus.COMPLETED
+
         # Store output in context under step name
         step_state.output = output
         self.context[step.name] = output
@@ -257,6 +260,10 @@ class StepMixin:
                 # Continue with edited output
             # Future: handle rerun
 
+        # Mark step completed after HITL
+        step_state.status = StepStatus.COMPLETED
+        self._save_agent_step_marker(step.name, step_state)
+
         # Store output in context under step name
         step_state.output = output
         self.context[step.name] = output
@@ -344,6 +351,10 @@ class StepMixin:
                     output = result_hitl.edited_output
                 # Continue with edited output
             # Future: handle rerun
+
+        # Mark step completed after HITL
+        step_state.status = StepStatus.COMPLETED
+        self._save_agent_step_marker(step.name, step_state)
 
         # Store output in context under step name
         step_state.output = output

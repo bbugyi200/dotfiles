@@ -224,6 +224,7 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
 
                 step_state.status = StepStatus.COMPLETED
                 self._save_state()
+                self._save_agent_step_marker(step.name, step_state)
 
                 # Notify step complete
                 if self.output_handler:
