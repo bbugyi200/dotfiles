@@ -353,6 +353,7 @@ def add_commit_entry(
             last_commit_entry_line = -1
             changespec_end_line = -1
 
+            in_commits_section = False
             for i, line in enumerate(lines):
                 if line.startswith("NAME: "):
                     current_name = line[6:].strip()
@@ -364,13 +365,15 @@ def add_commit_entry(
                 elif in_target_changespec:
                     if line.startswith("COMMITS:"):
                         commits_field_line = i
-                    elif commits_field_line >= 0:
+                        in_commits_section = True
+                    elif in_commits_section:
                         # Check if this is a commit entry line or continuation
                         stripped = line.strip()
                         if re.match(r"^\(\d+\)", stripped) or stripped.startswith("| "):
                             last_commit_entry_line = i
                         elif stripped and not stripped.startswith("#"):
                             # Non-commit, non-empty line - commits section ended
+                            in_commits_section = False
                             if changespec_end_line < 0:
                                 changespec_end_line = i
 
