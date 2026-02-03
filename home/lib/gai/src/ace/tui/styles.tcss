@@ -1014,3 +1014,42 @@ ToastRack {
     margin-top: 1;
     margin-bottom: 0;
 }
+
+/* ===== Runners Modal Styling ===== */
+
+RunnersModal {
+    align: center middle;
+}
+
+RunnersModal > Container {
+    width: 90%;
+    max-width: 120;
+    height: 70%;
+    border: double $primary;
+    background: $surface;
+    padding: 1 2;
+}
+
+RunnersModal #runners-title {
+    text-align: center;
+    height: auto;
+    margin-bottom: 1;
+}
+
+RunnersModal #runners-content-scroll {
+    height: 1fr;
+    scrollbar-gutter: stable;
+}
+
+RunnersModal #runners-content {
+    height: auto;
+}
+
+RunnersModal #runners-footer {
+    text-align: center;
+    color: $text-muted;
+    height: auto;
+    margin-top: 1;
+    border-top: solid $secondary;
+    padding-top: 1;
+}

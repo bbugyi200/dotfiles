@@ -162,6 +162,7 @@ AXE_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
             ("j / k", "Move to next / previous command"),
             ("g", "Scroll to top"),
             ("G", "Scroll to bottom"),
+            ("r", "Show runners info"),
         ],
     ),
     (

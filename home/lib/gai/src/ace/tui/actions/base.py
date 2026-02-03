@@ -216,6 +216,11 @@ class BaseActionsMixin:
             self.action_revive_agent()  # type: ignore[attr-defined]
             return
 
+        # On axe tab, dispatch to show_runners instead
+        if self.current_tab == "axe":
+            self.action_show_runners()  # type: ignore[attr-defined]
+            return
+
         # Only run on changespecs tab
         if self.current_tab != "changespecs":
             return

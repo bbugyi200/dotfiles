@@ -685,3 +685,11 @@ class AxeMixin:
             footer.set_axe_stopping(stopping)
         except Exception:
             pass
+
+    def action_show_runners(self) -> None:
+        """Show the runners modal with all current runners."""
+        if self.current_tab != "axe":
+            return
+        from ..modals import RunnersModal
+
+        self.push_screen(RunnersModal())  # type: ignore[attr-defined]
