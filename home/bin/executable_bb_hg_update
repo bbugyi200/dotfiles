@@ -2,5 +2,8 @@
 
 set -e
 
-hg update "$@"
+cl_name="$1"
+shift
+
+hg update "$cl_name" "$@"
 clear_branch_name

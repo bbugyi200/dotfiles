@@ -1,0 +1,26 @@
+#!/bin/bash
+
+#################################################################################
+# Takes one or more lines of output from the `hg xl` command and parses out
+# the CL name in fig (e.g. `hg cls-name foobar` sets the current CL name to
+# foobar).
+#
+# Examples
+# --------
+# hg xl | xl2wsname
+#################################################################################
+
+function run() {
+  while read line; do
+     filter_line "${line}"
+  done
+}
+
+function filter_line() {
+  local line="$1"
+  shift
+
+  echo "${line}" | perl -nE 'print s{.* bbugyi ([^ ]+).*}{\1}gr'
+}
+
+run "$@"
