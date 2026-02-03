@@ -215,13 +215,32 @@ class AgentKillingMixin:
         """
         from pathlib import Path
 
-        # For workflow agents, we just remove the workflow state file
+        # For workflow agents, we need to reconstruct the full path
         if agent.raw_suffix is None:
-            self.notify("Cannot dismiss workflow: no artifact path", severity="error")  # type: ignore[attr-defined]
+            self.notify("Cannot dismiss workflow: no timestamp", severity="error")  # type: ignore[attr-defined]
             return
 
-        # The raw_suffix for workflow agents is the artifacts_dir path
-        state_file = Path(agent.raw_suffix) / "workflow_state.json"
+        if agent.workflow is None:
+            self.notify("Cannot dismiss workflow: no workflow name", severity="error")  # type: ignore[attr-defined]
+            return
+
+        # Extract project name from project_file path
+        # Path format: ~/.gai/projects/<project>/<project>.gp
+        project_path = Path(agent.project_file)
+        project_name = project_path.parent.name
+
+        # Construct full path to workflow state file
+        state_file = (
+            Path.home()
+            / ".gai"
+            / "projects"
+            / project_name
+            / "artifacts"
+            / f"workflow-{agent.workflow}"
+            / agent.raw_suffix
+            / "workflow_state.json"
+        )
+
         if state_file.exists():
             try:
                 state_file.unlink()
