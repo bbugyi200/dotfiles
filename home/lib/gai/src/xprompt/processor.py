@@ -19,6 +19,7 @@ from ._parsing import (
 )
 from .loader import get_all_workflows, get_all_xprompts
 from .models import OutputSpec, XPrompt
+from .workflow_models import WorkflowValidationError
 
 # Maximum number of expansion iterations to prevent infinite loops
 _MAX_EXPANSION_ITERATIONS = 100
@@ -239,6 +240,36 @@ def is_workflow_reference(name: str) -> bool:
     return name in workflows
 
 
+def _write_failed_workflow_state(
+    workflow_name: str,
+    artifacts_dir: str,
+    error_message: str,
+) -> None:
+    """Write a workflow_state.json for validation failures.
+
+    This ensures that the TUI can display the error when a workflow fails
+    validation before execution starts.
+    """
+    import json
+    import os
+    from datetime import datetime
+
+    state_dict = {
+        "workflow_name": workflow_name,
+        "status": "failed",
+        "current_step_index": 0,
+        "steps": [],
+        "context": {},
+        "artifacts_dir": artifacts_dir,
+        "start_time": datetime.now().isoformat(),
+        "pid": os.getpid(),
+        "error": error_message,
+    }
+    state_path = os.path.join(artifacts_dir, "workflow_state.json")
+    with open(state_path, "w", encoding="utf-8") as f:
+        json.dump(state_dict, f, indent=2)
+
+
 def execute_workflow(
     name: str,
     positional_args: list[str],
@@ -281,8 +312,22 @@ def execute_workflow(
 
     workflow = workflows[name]
 
-    # Compile-time validation
-    validate_workflow(workflow)
+    # Create artifacts_dir early so we can write state on validation failure
+    if artifacts_dir is None:
+        artifacts_dir = tempfile.mkdtemp(prefix=f"workflow-{name}-")
+    else:
+        os.makedirs(artifacts_dir, exist_ok=True)
+
+    # Compile-time validation with error state on failure
+    try:
+        validate_workflow(workflow)
+    except WorkflowValidationError as e:
+        _write_failed_workflow_state(
+            workflow_name=name,
+            artifacts_dir=artifacts_dir,
+            error_message=str(e),
+        )
+        raise
 
     # Build args dict from positional and named args
     args: dict[str, str] = dict(named_args)
@@ -314,12 +359,6 @@ def execute_workflow(
         else:
             processed_args[input_arg.name] = value
     args = processed_args
-
-    # Use provided artifacts_dir or create a temp directory
-    if artifacts_dir is None:
-        artifacts_dir = tempfile.mkdtemp(prefix=f"workflow-{name}-")
-    else:
-        os.makedirs(artifacts_dir, exist_ok=True)
 
     # Create handlers based on silent mode
     hitl_handler: TUIHITLHandler | CLIHITLHandler
