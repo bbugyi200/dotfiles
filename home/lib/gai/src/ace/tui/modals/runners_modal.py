@@ -18,10 +18,10 @@ from ...changespec import (
     find_all_changespecs,
 )
 
-# Box dimensions: total width = 87 chars
-# Layout: "  | " (5 chars) + content (78 chars) + " |" (4 chars) = 87 chars
-_BOX_WIDTH = 87
-_CONTENT_WIDTH = 78
+# Box dimensions: total width = 120 chars
+# Layout: "  │  " (5 chars) + content (113 chars) + " │" (2 chars) = 120 chars
+_BOX_WIDTH = 120
+_CONTENT_WIDTH = 113
 
 
 @dataclass
@@ -269,9 +269,6 @@ def _abbreviate_agent_type(agent_type: str) -> str:
             abbreviated_parts.append(part)
 
     result = ":".join(abbreviated_parts)
-    # Final truncation if still too long
-    if len(result) > 15:
-        result = result[:12] + "..."
     return result
 
 
@@ -419,10 +416,8 @@ class RunnersModal(ModalScreen[None]):
         parts: list[tuple[str, str]] = []  # (text, style) tuples
         content_len = 0
 
-        # CL name (truncate to max 15 chars)
+        # CL name (no truncation)
         cl_name = runner.cl_name
-        if len(cl_name) > 15:
-            cl_name = cl_name[:12] + "..."
         parts.append((cl_name, "bold #87D7FF"))
         parts.append((" ", ""))
         content_len += len(cl_name) + 1
@@ -440,11 +435,9 @@ class RunnersModal(ModalScreen[None]):
         parts.append((type_str, type_style))
         content_len += len(type_str)
 
-        # Hook command if present (truncated to 18 chars)
+        # Hook command if present (no truncation)
         if runner.hook_command:
             cmd = runner.hook_command
-            if len(cmd) > 18:
-                cmd = cmd[:15] + "..."
             parts.append((f" {cmd}", "#87AFAF"))
             content_len += len(cmd) + 1
 
