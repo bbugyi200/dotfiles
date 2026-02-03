@@ -313,8 +313,11 @@ class AgentKillingMixin:
             self.notify(f"Error dismissing agent: {e}", severity="error")  # type: ignore[attr-defined]
             return
 
-        # Remove from viewed agents set if present
+        # Remove from viewed agents set if present and persist
         self._viewed_agents.discard(agent.identity)  # type: ignore[attr-defined]
+        from ...viewed_agents import save_viewed_agents
+
+        save_viewed_agents(self._viewed_agents)  # type: ignore[attr-defined]
 
         # Refresh agents list
         self._load_agents()  # type: ignore[attr-defined]

@@ -523,8 +523,11 @@ class AgentsMixinCore(
         if self.current_tab != "agents":
             self._update_tab_bar_emphasis()
         else:
-            # Mark all dismissable agents as viewed when on agents tab
+            # Mark all dismissable agents as viewed when on agents tab and persist
             self._viewed_agents.update(current_dismissible_non_axe)
+            from ...viewed_agents import save_viewed_agents
+
+            save_viewed_agents(self._viewed_agents)
             self._clear_tab_bar_emphasis()
 
     def _ring_tmux_bell(self) -> None:
