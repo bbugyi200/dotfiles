@@ -1,9 +1,37 @@
 #!/bin/bash
 
-set -e
+source ~/lib/bugyi.sh
 
-cl_name="$1"
-shift
+function run() {
+  local cl_name="$1"
+  shift
 
-hg update "$cl_name" "$@"
-clear_branch_name
+  # Get all available CL names
+  local all_cl_names
+  all_cl_names=$(get_all_cl_names)
+
+  local resolved_name
+  # Check if exact CL name exists
+  if echo "$all_cl_names" | grep -qx "$cl_name"; then
+    resolved_name="$cl_name"
+  else
+    # Look for <name>__<N> variants and pick highest N
+    resolved_name=$(echo "$all_cl_names" \
+      | grep -E "^${cl_name}__[0-9]+$" \
+      | sort -t'_' -k3 -n \
+      | tail -1)
+
+    if [[ -z "$resolved_name" ]]; then
+      die "CL name '$cl_name' not found"
+    fi
+
+    log::info "Resolved '%s' -> '%s'" "$cl_name" "$resolved_name"
+  fi
+
+  hg update "$resolved_name" "$@"
+  clear_branch_name
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+  run "$@"
+fi
