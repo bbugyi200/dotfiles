@@ -152,6 +152,7 @@ class StepMixin:
             step_state.status = StepStatus.WAITING_HITL
             self.state.status = "waiting_hitl"
             self._save_state()
+            self._save_agent_step_marker(step.name, step_state)
 
             result = self.hitl_handler.prompt(
                 step.name, "agent", output, has_output=step.output is not None
@@ -239,6 +240,7 @@ class StepMixin:
             step_state.status = StepStatus.WAITING_HITL
             self.state.status = "waiting_hitl"
             self._save_state()
+            self._save_agent_step_marker(step.name, step_state)
 
             result_hitl = self.hitl_handler.prompt(
                 step.name, "bash", output, has_output=step.output is not None
@@ -326,6 +328,7 @@ class StepMixin:
             step_state.status = StepStatus.WAITING_HITL
             self.state.status = "waiting_hitl"
             self._save_state()
+            self._save_agent_step_marker(step.name, step_state)
 
             result_hitl = self.hitl_handler.prompt(
                 step.name, "python", output, has_output=step.output is not None
