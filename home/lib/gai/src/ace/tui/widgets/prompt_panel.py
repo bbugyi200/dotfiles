@@ -248,6 +248,10 @@ class AgentPromptPanel(Static):
 
         steps = data.get("steps", [])
         if not steps:
+            # Check for workflow-level error (e.g., validation failure)
+            error = data.get("error")
+            if error:
+                return f"Error: {error}"
             return None
 
         return self._format_workflow_steps(steps, data.get("context", {}))
