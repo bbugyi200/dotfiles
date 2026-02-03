@@ -560,3 +560,29 @@ class AgentsMixinCore(
 
         tab_bar = self.query_one("#tab-bar", TabBar)  # type: ignore[attr-defined]
         tab_bar.set_attention_count(0)
+
+    def _mark_current_agents_as_viewed(self) -> None:
+        """Mark all current dismissable non-axe agents as viewed immediately.
+
+        This is called when switching to the agents tab to ensure agents are
+        marked as viewed right away, rather than waiting for the next auto-refresh.
+        This prevents the badge from reappearing when quickly switching away.
+        """
+        from ...models import load_all_agents
+        from ...viewed_agents import save_viewed_agents
+
+        all_agents = load_all_agents()
+        all_agents.extend(self._revived_agents)
+
+        # Collect all dismissable non-axe agents
+        current_dismissible_non_axe: set[tuple[AgentType, str, str | None]] = set()
+        for agent in all_agents:
+            is_axe = _is_axe_spawned_agent(agent)
+            is_dismissible = agent.status in DISMISSABLE_STATUSES
+
+            if is_dismissible and not is_axe:
+                current_dismissible_non_axe.add(agent.identity)
+
+        # Update viewed agents and persist to disk
+        self._viewed_agents.update(current_dismissible_non_axe)
+        save_viewed_agents(self._viewed_agents)

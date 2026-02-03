@@ -429,6 +429,8 @@ class AceApp(
             axe_view.add_class("hidden")
             # Load agents on first access or refresh
             self._load_agents()
+            # Mark current dismissable agents as viewed immediately (not waiting for auto-refresh)
+            self._mark_current_agents_as_viewed()
             # Clear the attention badge when viewing agents tab
             self._clear_tab_bar_emphasis()
         else:  # axe
