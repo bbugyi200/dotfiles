@@ -273,12 +273,16 @@ def execute_workflow(
     from .workflow_hitl import CLIHITLHandler, TUIHITLHandler
     from .workflow_models import WorkflowExecutionError
     from .workflow_output import WorkflowOutputHandler
+    from .workflow_validator import validate_workflow
 
     workflows = get_all_workflows()
     if name not in workflows:
         raise WorkflowExecutionError(f"Workflow '{name}' not found")
 
     workflow = workflows[name]
+
+    # Compile-time validation
+    validate_workflow(workflow)
 
     # Build args dict from positional and named args
     args: dict[str, str] = dict(named_args)
