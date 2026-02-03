@@ -18,6 +18,11 @@ from ...changespec import (
     find_all_changespecs,
 )
 
+# Box dimensions: total width = 57 chars
+# Layout: "  | " (5 chars) + content (49 chars) + " |" (3 chars) = 57 chars
+_BOX_WIDTH = 57
+_CONTENT_WIDTH = 49
+
 
 @dataclass
 class _RunnerInfo:
@@ -226,6 +231,50 @@ def _collect_runners() -> tuple[list[_RunnerInfo], list[_RunnerInfo]]:
     return processes, agents
 
 
+def get_runner_count() -> int:
+    """Get the total count of running processes and agents.
+
+    Returns:
+        Total number of running processes and agents.
+    """
+    processes, agents = _collect_runners()
+    return len(processes) + len(agents)
+
+
+def _abbreviate_agent_type(agent_type: str) -> str:
+    """Abbreviate long agent type strings for display.
+
+    Args:
+        agent_type: Full agent type string (e.g., "mentor:code:comments").
+
+    Returns:
+        Abbreviated string (e.g., "m:code:comm").
+    """
+    # Common abbreviations
+    abbrevs = {
+        "mentor": "m",
+        "summarize-hook": "sum",
+        "fix-hook": "fix",
+        "comments": "comm",
+    }
+
+    parts = agent_type.split(":")
+    abbreviated_parts = []
+    for part in parts:
+        if part in abbrevs:
+            abbreviated_parts.append(abbrevs[part])
+        elif len(part) > 6:
+            abbreviated_parts.append(part[:4])
+        else:
+            abbreviated_parts.append(part)
+
+    result = ":".join(abbreviated_parts)
+    # Final truncation if still too long
+    if len(result) > 15:
+        result = result[:12] + "..."
+    return result
+
+
 def _format_duration(start_time: datetime | None) -> str:
     """Format duration from start time to now.
 
@@ -294,8 +343,7 @@ class RunnersModal(ModalScreen[None]):
             for runner in processes:
                 self._add_runner_entry(text, runner, "#FFD700")
         else:
-            text.append("  \u2502  ", style="dim #FFD700")
-            text.append("No running processes\n", style="dim")
+            self._add_empty_row(text, "No running processes", "#FFD700")
         self._add_section_footer(text, "#FFD700")
 
         text.append("\n")
@@ -306,8 +354,7 @@ class RunnersModal(ModalScreen[None]):
             for runner in agents:
                 self._add_runner_entry(text, runner, "#FF8C00")
         else:
-            text.append("  \u2502  ", style="dim #FF8C00")
-            text.append("No running agents\n", style="dim")
+            self._add_empty_row(text, "No running agents", "#FF8C00")
         self._add_section_footer(text, "#FF8C00")
 
         return text
@@ -320,10 +367,13 @@ class RunnersModal(ModalScreen[None]):
             title: The section title.
             color: The color for the box drawing.
         """
+        # Header: "  ┌─ TITLE ──────────────────────────────────────────┐"
+        # "  ┌─ " = 5 chars, " " after title + dashes + "┐" fills to _BOX_WIDTH
         text.append("  \u250c\u2500 ", style=f"dim {color}")
         text.append(title, style=f"bold {color}")
         text.append(" ", style="")
-        remaining = 50 - len(title)
+        # 5 (prefix) + len(title) + 1 (space) + remaining + 1 (corner) = _BOX_WIDTH
+        remaining = _BOX_WIDTH - 5 - len(title) - 1 - 1
         text.append("\u2500" * remaining + "\u2510", style=f"dim {color}")
         text.append("\n")
 
@@ -334,9 +384,27 @@ class RunnersModal(ModalScreen[None]):
             text: The Text object to append to.
             color: The color for the box drawing.
         """
+        # Footer: "  └─────────────────────────────────────────────────────┘"
+        # "  └" = 3 chars, dashes + "┘" fills to _BOX_WIDTH
         text.append("  \u2514", style=f"dim {color}")
-        text.append("\u2500" * 53, style=f"dim {color}")
+        text.append("\u2500" * (_BOX_WIDTH - 4), style=f"dim {color}")
         text.append("\u2518", style=f"dim {color}")
+        text.append("\n")
+
+    def _add_empty_row(self, text: Text, message: str, color: str) -> None:
+        """Add an empty state row with right border.
+
+        Args:
+            text: The Text object to append to.
+            message: The empty state message.
+            color: The color for the box drawing border.
+        """
+        # "  │  " = 5 chars prefix, message, padding, " │" = 2 chars suffix
+        text.append("  \u2502  ", style=f"dim {color}")
+        padding = _CONTENT_WIDTH - len(message)
+        text.append(message, style="dim")
+        text.append(" " * padding, style="")
+        text.append(" \u2502", style=f"dim {color}")
         text.append("\n")
 
     def _add_runner_entry(self, text: Text, runner: _RunnerInfo, color: str) -> None:
@@ -347,35 +415,61 @@ class RunnersModal(ModalScreen[None]):
             runner: The runner info to display.
             color: The color for the box drawing border.
         """
-        text.append("  \u2502  ", style=f"dim {color}")
+        # Build content parts and track length
+        parts: list[tuple[str, str]] = []  # (text, style) tuples
+        content_len = 0
 
-        # CL name in bold
-        text.append(f"{runner.cl_name}", style="bold #87D7FF")
-        text.append(" ", style="")
+        # CL name (truncate to max 15 chars)
+        cl_name = runner.cl_name
+        if len(cl_name) > 15:
+            cl_name = cl_name[:12] + "..."
+        parts.append((cl_name, "bold #87D7FF"))
+        parts.append((" ", ""))
+        content_len += len(cl_name) + 1
 
         # Type indicator
         if runner.runner_type == "process":
-            text.append("($)", style="bold #3D2B1F on #FFD700")
+            type_str = "($)"
+            type_style = "bold #3D2B1F on #FFD700"
         else:
-            type_str = runner.agent_type or "agent"
-            text.append(f"(@:{type_str})", style="bold #FFFFFF on #FF8C00")
+            agent_type = runner.agent_type or "agent"
+            # Abbreviate long agent types (e.g., mentor:code:comments -> m:code:comm)
+            agent_type = _abbreviate_agent_type(agent_type)
+            type_str = f"(@:{agent_type})"
+            type_style = "bold #FFFFFF on #FF8C00"
+        parts.append((type_str, type_style))
+        content_len += len(type_str)
 
-        # Hook command if present (truncated)
+        # Hook command if present (truncated to 18 chars)
         if runner.hook_command:
             cmd = runner.hook_command
-            if len(cmd) > 25:
-                cmd = cmd[:22] + "..."
-            text.append(f" {cmd}", style="#87AFAF")
+            if len(cmd) > 18:
+                cmd = cmd[:15] + "..."
+            parts.append((f" {cmd}", "#87AFAF"))
+            content_len += len(cmd) + 1
 
         # Reviewer for CRS
         if runner.reviewer:
-            text.append(f" [{runner.reviewer}]", style="#D7AF87")
+            reviewer_str = f" [{runner.reviewer}]"
+            parts.append((reviewer_str, "#D7AF87"))
+            content_len += len(reviewer_str)
 
         # PID and duration
         pid_str = str(runner.pid) if runner.pid else "?"
         duration = _format_duration(runner.start_time)
-        text.append(f" (PID:{pid_str}, {duration})", style="dim")
+        pid_duration = f" (PID:{pid_str}, {duration})"
+        parts.append((pid_duration, "dim"))
+        content_len += len(pid_duration)
 
+        # Write row with proper borders
+        text.append("  \u2502  ", style=f"dim {color}")
+        for part_text, part_style in parts:
+            text.append(part_text, style=part_style)
+
+        # Pad to _CONTENT_WIDTH and add right border
+        if content_len < _CONTENT_WIDTH:
+            text.append(" " * (_CONTENT_WIDTH - content_len), style="")
+        text.append(" \u2502", style=f"dim {color}")
         text.append("\n")
 
     def action_close(self) -> None:

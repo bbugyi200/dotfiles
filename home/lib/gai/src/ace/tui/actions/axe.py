@@ -600,9 +600,12 @@ class AxeMixin:
                     info, output, running, self._countdown_remaining
                 )
 
+            from ..modals import get_runner_count
+
             footer.set_axe_running(self.axe_running)
             running_count, done_count = self._get_bgcmd_counts()
             footer.set_bgcmd_count(running_count, done_count)
+            footer.set_runner_count(get_runner_count())
             footer.update_axe_bindings()
 
             # Update bgcmd list if visible

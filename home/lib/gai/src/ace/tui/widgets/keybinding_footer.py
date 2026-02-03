@@ -26,6 +26,7 @@ class KeybindingFooter(Horizontal):
         self._axe_stopping: bool = False
         self._bgcmd_running_count: int = 0
         self._bgcmd_done_count: int = 0
+        self._runner_count: int = 0
 
     def compose(self) -> ComposeResult:
         """Compose the footer with bindings on left and status on right."""
@@ -69,6 +70,14 @@ class KeybindingFooter(Horizontal):
         self._bgcmd_running_count = running_count
         self._bgcmd_done_count = done_count
         self._update_status()
+
+    def set_runner_count(self, count: int) -> None:
+        """Update the runner count for AXE tab bindings.
+
+        Args:
+            count: Number of active runners (processes + agents).
+        """
+        self._runner_count = count
 
     def _update_status(self) -> None:
         """Update the status indicator widget."""
@@ -192,9 +201,11 @@ class KeybindingFooter(Horizontal):
         Returns:
             List of (key, label) tuples.
         """
-        return [
-            ("x", "clear"),
-        ]
+        bindings: list[tuple[str, str]] = []
+        if self._runner_count > 0:
+            bindings.append(("r", f"runners ({self._runner_count})"))
+        bindings.append(("x", "clear"))
+        return bindings
 
     def update_leader_bindings(self) -> None:
         """Update bindings to show leader mode options."""

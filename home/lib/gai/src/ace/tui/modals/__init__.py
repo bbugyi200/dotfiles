@@ -17,7 +17,7 @@ from .prompt_history_modal import (
 )
 from .query_edit_modal import QueryEditModal
 from .rename_cl_modal import RenameCLModal
-from .runners_modal import RunnersModal
+from .runners_modal import RunnersModal, get_runner_count
 from .status_modal import StatusModal
 from .workflow_hitl_modal import WorkflowHITLInput, WorkflowHITLModal
 from .workflow_select_modal import WorkflowSelectModal
@@ -46,6 +46,7 @@ __all__ = [
     "QueryEditModal",
     "RenameCLModal",
     "RunnersModal",
+    "get_runner_count",
     "SelectionItem",
     "StatusModal",
     "TabName",
