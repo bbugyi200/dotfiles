@@ -369,7 +369,9 @@ def add_commit_entry(
                     elif in_commits_section:
                         # Check if this is a commit entry line or continuation
                         stripped = line.strip()
-                        if re.match(r"^\(\d+\)", stripped) or stripped.startswith("| "):
+                        if re.match(r"^\(\d+[a-z]?\)", stripped) or stripped.startswith(
+                            "| "
+                        ):
                             last_commit_entry_line = i
                         elif stripped and not stripped.startswith("#"):
                             # Non-commit, non-empty line - commits section ended
