@@ -207,29 +207,35 @@ class AgentKillingMixin:
     def _kill_workflow_agent(self, agent: Agent) -> None:
         """Kill a workflow agent.
 
-        Workflow agents don't have PIDs in the traditional sense.
-        This dismisses the workflow state.
-
         Args:
-            agent: The workflow agent to kill/dismiss.
+            agent: The workflow agent to kill.
         """
         from pathlib import Path
 
-        # For workflow agents, we need to reconstruct the full path
-        if agent.raw_suffix is None:
-            self.notify("Cannot dismiss workflow: no timestamp", severity="error")  # type: ignore[attr-defined]
+        from running_field import release_workspace
+
+        # Kill the workflow process if it has a PID
+        if agent.pid is not None:
+            if not self._kill_process_group(agent.pid):
+                return
+            self.notify(f"Killed workflow (PID {agent.pid})")  # type: ignore[attr-defined]
+
+        # Release the workspace claim (workflow claims use "workflow(name)" format)
+        if agent.workspace_num is not None and agent.workflow is not None:
+            release_workspace(
+                agent.project_file,
+                agent.workspace_num,
+                f"workflow({agent.workflow})",
+                agent.cl_name,
+            )
+
+        # Delete the workflow state file
+        if agent.raw_suffix is None or agent.workflow is None:
             return
 
-        if agent.workflow is None:
-            self.notify("Cannot dismiss workflow: no workflow name", severity="error")  # type: ignore[attr-defined]
-            return
-
-        # Extract project name from project_file path
-        # Path format: ~/.gai/projects/<project>/<project>.gp
         project_path = Path(agent.project_file)
         project_name = project_path.parent.name
 
-        # Construct full path to workflow state file
         state_file = (
             Path.home()
             / ".gai"
@@ -244,11 +250,8 @@ class AgentKillingMixin:
         if state_file.exists():
             try:
                 state_file.unlink()
-                self.notify(f"Dismissed workflow for {agent.cl_name}")  # type: ignore[attr-defined]
-            except OSError as e:
-                self.notify(f"Failed to dismiss workflow: {e}", severity="error")  # type: ignore[attr-defined]
-        else:
-            self.notify("Workflow state file not found", severity="warning")  # type: ignore[attr-defined]
+            except OSError:
+                pass  # Already notified about kill, state file cleanup is secondary
 
     def _dismiss_done_agent(self, agent: Agent) -> None:
         """Dismiss a DONE, REVIVED, or completed workflow agent.
