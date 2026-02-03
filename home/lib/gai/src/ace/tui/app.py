@@ -250,6 +250,12 @@ class AceApp(
         self._has_always_visible: bool = False
         self._hidden_count: int = 0
 
+        # Agent completion tracking for notifications
+        from .models.agent import AgentType
+
+        self._tracked_running_agents: set[tuple[AgentType, str, str | None]] = set()
+        self._pending_attention_count: int = 0
+
         # Axe state
         self._axe_status: AxeStatus | None = None
         self._axe_metrics: AxeMetrics | None = None
@@ -326,6 +332,9 @@ class AceApp(
         # Load revived agents from persistence
         self._load_revived_agents()
 
+        # Initialize agent tracking for completion notifications
+        self._initialize_agent_tracking()
+
         # Load initial changespecs and save as last query
         self._load_changespecs()
         self._restore_last_selection()
@@ -343,6 +352,23 @@ class AceApp(
             self._refresh_timer = self.set_interval(
                 self.refresh_interval, self._on_auto_refresh, name="auto-refresh"
             )
+
+    def _initialize_agent_tracking(self) -> None:
+        """Initialize agent tracking by capturing currently running agents.
+
+        This ensures we don't trigger notifications for agents that were
+        already running when the TUI started.
+        """
+        from .actions.agents._core import DISMISSABLE_STATUSES
+        from .models import load_all_agents
+
+        all_agents = load_all_agents()
+        all_agents.extend(self._revived_agents)
+
+        # Track all currently running agents
+        for agent in all_agents:
+            if agent.status not in DISMISSABLE_STATUSES:
+                self._tracked_running_agents.add(agent.identity)
 
     def _save_current_selection(self) -> None:
         """Save the currently selected ChangeSpec name."""
@@ -401,6 +427,8 @@ class AceApp(
             axe_view.add_class("hidden")
             # Load agents on first access or refresh
             self._load_agents()
+            # Clear the attention badge when viewing agents tab
+            self._clear_tab_bar_emphasis()
         else:  # axe
             changespecs_view.add_class("hidden")
             agents_view.add_class("hidden")

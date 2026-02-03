@@ -9,6 +9,7 @@ from ._revival import AgentRevivalMixin
 
 if TYPE_CHECKING:
     from ...models import Agent
+    from ...models.agent import AgentType
 
 # Import ChangeSpec unconditionally since it's used as a type annotation
 # in attribute declarations (not just in function signatures)
@@ -45,6 +46,39 @@ def _is_always_visible(agent: Agent) -> bool:
     )
 
 
+def _is_axe_spawned_agent(agent: Agent) -> bool:
+    """Check if agent was spawned by gai axe (not user-initiated).
+
+    Agents spawned by axe should not trigger notifications since they're
+    automated background tasks.
+
+    Args:
+        agent: The agent to check.
+
+    Returns:
+        True if agent was spawned by axe, False if user-initiated.
+    """
+    from ...models.agent import AgentType
+
+    # Hook-based types are always axe-spawned
+    if agent.agent_type in (
+        AgentType.FIX_HOOK,
+        AgentType.SUMMARIZE,
+        AgentType.MENTOR,
+        AgentType.CRS,
+    ):
+        return True
+
+    # RUNNING/WORKFLOW types spawned by axe have specific workflow patterns
+    if agent.agent_type in (AgentType.RUNNING, AgentType.WORKFLOW):
+        if agent.workflow:
+            # axe-spawned workflows start with axe(...)
+            if agent.workflow.startswith(("axe(mentor)", "axe(fix-hook)", "axe(crs)")):
+                return True
+
+    return False
+
+
 class AgentsMixinCore(
     AgentKillingMixin,
     AgentRevivalMixin,
@@ -66,6 +100,10 @@ class AgentsMixinCore(
     _revived_agents: list[Agent]
     _has_always_visible: bool
     _hidden_count: int
+
+    # Agent completion tracking for notifications
+    _tracked_running_agents: set[tuple[AgentType, str, str | None]]
+    _pending_attention_count: int
 
     def action_kill_agent(self) -> None:
         """Kill or dismiss agent, or clear AXE output depending on tab."""
@@ -444,3 +482,65 @@ class AgentsMixinCore(
             self.call_later(self._load_agents)  # type: ignore[attr-defined]
 
         self.push_screen(WorkflowHITLModal(input_data), on_dismiss)  # type: ignore[attr-defined]
+
+    def _poll_agent_completions(self) -> None:
+        """Poll agents for completions and update notification state.
+
+        Detects when user-initiated agents complete and triggers notifications.
+        Called on every auto-refresh regardless of current tab.
+        """
+        from ...models import load_all_agents
+        from ...models.agent import AgentType
+
+        all_agents = load_all_agents()
+        all_agents.extend(self._revived_agents)
+
+        current_running: set[tuple[AgentType, str, str | None]] = set()
+        current_dismissible_non_axe: set[tuple[AgentType, str, str | None]] = set()
+
+        for agent in all_agents:
+            is_axe = _is_axe_spawned_agent(agent)
+            is_dismissible = agent.status in DISMISSABLE_STATUSES
+
+            if not is_dismissible:
+                current_running.add(agent.identity)
+            elif not is_axe:
+                current_dismissible_non_axe.add(agent.identity)
+
+        # Detect newly completed (was running, now dismissible non-axe)
+        newly_completed = self._tracked_running_agents & current_dismissible_non_axe
+
+        if newly_completed:
+            self._ring_tmux_bell()
+
+        self._tracked_running_agents = current_running
+        self._pending_attention_count = len(current_dismissible_non_axe)
+
+        if self.current_tab != "agents":
+            self._update_tab_bar_emphasis()
+        else:
+            # Clear emphasis when on agents tab
+            self._clear_tab_bar_emphasis()
+
+    def _ring_tmux_bell(self) -> None:
+        """Ring tmux bell to notify user of agent completion."""
+        import subprocess
+
+        try:
+            subprocess.run(["tmux_ring_bell", ":0"], check=False, capture_output=True)
+        except FileNotFoundError:
+            pass  # Script not available
+
+    def _update_tab_bar_emphasis(self) -> None:
+        """Update tab bar with attention count badge."""
+        from ...widgets import TabBar
+
+        tab_bar = self.query_one("#tab-bar", TabBar)  # type: ignore[attr-defined]
+        tab_bar.set_attention_count(self._pending_attention_count)
+
+    def _clear_tab_bar_emphasis(self) -> None:
+        """Clear tab bar attention badge."""
+        from ...widgets import TabBar
+
+        tab_bar = self.query_one("#tab-bar", TabBar)  # type: ignore[attr-defined]
+        tab_bar.set_attention_count(0)

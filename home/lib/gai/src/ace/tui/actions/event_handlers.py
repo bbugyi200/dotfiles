@@ -51,6 +51,9 @@ class EventHandlersMixin:
         # Always poll axe status regardless of tab (for STARTING/STOPPING states)
         self._load_axe_status()  # type: ignore[attr-defined]
 
+        # Poll agent completions for notifications (regardless of tab)
+        self._poll_agent_completions()  # type: ignore[attr-defined]
+
         # Skip changespec refresh if user is in an input mode
         # (prompt bar or hint bar is active)
         if getattr(self, "_prompt_context", None) is not None:

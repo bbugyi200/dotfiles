@@ -22,6 +22,7 @@ class TabBar(Static):
 
     def __init__(self, **kwargs: Any) -> None:
         self._current_tab: TabName = "changespecs"
+        self._attention_count: int = 0
         # Store positions for click detection
         self._cl_tab_range: tuple[int, int] = (0, 0)
         self._agents_tab_range: tuple[int, int] = (0, 0)
@@ -37,6 +38,16 @@ class TabBar(Static):
         """
         self._current_tab = tab
         self._refresh_content()
+
+    def set_attention_count(self, count: int) -> None:
+        """Set the attention count for the Agents tab badge.
+
+        Args:
+            count: Number of agents needing attention.
+        """
+        if self._attention_count != count:
+            self._attention_count = count
+            self._refresh_content()
 
     def _build_content(self) -> Text:
         """Build the tab bar content."""
@@ -57,6 +68,12 @@ class TabBar(Static):
         agents_start = len(text.plain)
         if self._current_tab == "agents":
             text.append(" Agents ", style="bold reverse #87D7FF")
+        elif self._attention_count > 0:
+            # Emphasized: gold badge with count
+            text.append(
+                f" Agents ({self._attention_count}) ",
+                style="bold #1a1a1a on #FFD700",
+            )
         else:
             text.append(" Agents ", style="dim")
         agents_end = len(text.plain)
