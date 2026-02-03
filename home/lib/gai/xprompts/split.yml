@@ -1,7 +1,5 @@
 name: split
-
 input: { split_desc: { type: line, default: "multiple CLs" } }
-
 steps:
   # Step 1: Setup - gather metadata from current branch
   - name: setup
