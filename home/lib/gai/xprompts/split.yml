@@ -1,6 +1,6 @@
 name: split
 
-input: { num_cls: { type: line, default: "multiple" } }
+input: { split_desc: { type: line, default: "multiple CLs" } }
 
 steps:
   # Step 1: Setup - gather metadata from current branch
@@ -14,6 +14,7 @@ steps:
       #split_spec_generator(
         workspace_name="{{ setup.workspace_name }}",
         diff_path="{{ setup.diff_path }}"
+        split_desc="{{ split_desc }}"
       )
     output: [{ name: word, description: text, parent: { type: word, default: "" } }]
     hitl: true

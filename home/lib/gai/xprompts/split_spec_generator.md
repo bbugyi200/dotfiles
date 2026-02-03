@@ -1,13 +1,12 @@
 ---
 name: split_spec_generator
-input: { workspace_name: word, diff_path: path, num_cls: { type: line, default: "multiple" } }
+input: { workspace_name: word, diff_path: path, split_desc: { type: line, default: "multiple CLs" } }
 output: [{ name: word, description: text, parent: { type: word, default: "" } }]
 ---
 
 # Generate Split Specification
 
-You need to analyze the changes in a CL and generate a split specification that divides the work into {{ num_cls }}
-focused CLs.
+You need to analyze the changes in a CL and generate a split specification that divides the work into {{ split_desc }}.
 
 ## Original Diff
 
