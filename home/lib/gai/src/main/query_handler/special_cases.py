@@ -3,7 +3,7 @@
 import sys
 
 from chat_history import list_chat_histories
-from shared_utils import run_shell_command
+from shared_utils import create_artifacts_directory, run_shell_command
 
 from ._editor import open_editor_for_prompt, show_prompt_history_picker
 from ._query import run_query
@@ -118,8 +118,15 @@ def handle_run_special_cases(args_after_run: list[str]) -> bool:
 
             workflows = get_all_workflows()
             if workflow_name in workflows:
+                # Create artifacts directory in ~/.gai/projects/ so TUI can find it
+                artifacts_dir = create_artifacts_directory(f"workflow-{workflow_name}")
                 try:
-                    execute_workflow(workflow_name, positional_args, named_args)
+                    execute_workflow(
+                        workflow_name,
+                        positional_args,
+                        named_args,
+                        artifacts_dir=artifacts_dir,
+                    )
                     sys.exit(0)
                 except Exception as e:
                     print(f"Workflow error: {e}")
