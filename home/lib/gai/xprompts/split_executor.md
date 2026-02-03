@@ -37,6 +37,11 @@ For each entry in the split specification (process in the order shown - parents 
 
 5. **Repeat** for the next entry.
 
+## No Human Assistance is Available
+
+You should do your best to fully complete this split with no additional information from the user, since stopping to ask
+the user a question will break the workflow.
+
 ## Processing Order
 
 Process the entries in this order (parents before children):
