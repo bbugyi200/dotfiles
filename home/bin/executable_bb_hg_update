@@ -2,11 +2,5 @@
 
 set -e
 
-local_diff="$(branch_local_diff)"
-if [[ -n "${local_diff}" ]]; then
-  printf "There are uncommitted changes in the %s workspace!:\n\n%s" "$(workspace_name)" "${local_diff}"
-  exit 1
-fi
-
 hg update "$@"
 clear_branch_name
