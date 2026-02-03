@@ -70,6 +70,9 @@ class Agent:
     # Parent timestamp for agent steps (links to parent workflow entry)
     parent_timestamp: str | None = None
 
+    # Workflow step name (clean, without tree decoration)
+    step_name: str | None = None
+
     @property
     def display_type(self) -> str:
         """Human-readable agent type for display."""

@@ -33,15 +33,20 @@ class AgentPromptPanel(Static):
         header_text.append("AGENT DETAILS\n", style="bold #D7AF5F underline")
         header_text.append("\n")
 
-        # ChangeSpec name
-        header_text.append("ChangeSpec: ", style="bold #87D7FF")
-        header_text.append(f"{agent.cl_name}", style="#00D7AF")
-        if agent.cl_num:
-            cl_id = agent.cl_num.removeprefix("http://cl/")
-            header_text.append(" (")
-            header_text.append(f"http://cl/{cl_id}", style="bold underline #569CD6")
-            header_text.append(")")
-        header_text.append("\n")
+        # For workflow step agents, show "Step" instead of "ChangeSpec"
+        if agent.is_workflow_child and agent.step_name:
+            header_text.append("Step: ", style="bold #87D7FF")
+            header_text.append(f"{agent.step_name}\n", style="#00D7AF")
+        else:
+            # ChangeSpec name
+            header_text.append("ChangeSpec: ", style="bold #87D7FF")
+            header_text.append(f"{agent.cl_name}", style="#00D7AF")
+            if agent.cl_num:
+                cl_id = agent.cl_num.removeprefix("http://cl/")
+                header_text.append(" (")
+                header_text.append(f"http://cl/{cl_id}", style="bold underline #569CD6")
+                header_text.append(")")
+            header_text.append("\n")
 
         # Workspace (if available)
         if agent.workspace_num is not None:

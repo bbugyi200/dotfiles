@@ -617,6 +617,7 @@ def load_workflow_agent_steps() -> list[Agent]:
                                 raw_suffix=timestamp_dir.name,
                                 parent_workflow=workflow_name,
                                 parent_timestamp=timestamp_dir.name,
+                                step_name=step_name,
                             )
                         )
                     except Exception:
