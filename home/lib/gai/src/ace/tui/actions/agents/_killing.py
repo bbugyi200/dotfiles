@@ -404,6 +404,17 @@ class AgentKillingMixin:
             from ...dismissed_agents import save_dismissed_agents
 
             self._dismissed_agents.add(agent.identity)  # type: ignore[attr-defined]
+
+            # If this is a parent workflow (not a child step), also dismiss all its steps
+            if not agent.is_workflow_child:
+                for step in self._agents:  # type: ignore[attr-defined]
+                    if (
+                        step.is_workflow_child
+                        and step.parent_timestamp == agent.raw_suffix
+                        and step.parent_workflow == agent.workflow
+                    ):
+                        self._dismissed_agents.add(step.identity)  # type: ignore[attr-defined]
+
             save_dismissed_agents(self._dismissed_agents)  # type: ignore[attr-defined]
 
             self._load_agents()  # type: ignore[attr-defined]
