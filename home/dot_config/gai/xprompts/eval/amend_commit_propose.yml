@@ -8,7 +8,6 @@ steps:
 
   # Step 2: Validate commit created
   - name: validate_commit
-    hidden: true
     bash: |
       branch=$(branch_name)
       if [[ "$branch" == *"add_foobar_field__"* ]]; then
@@ -28,7 +27,6 @@ steps:
 
   # Step 4: Validate amend via hg obslog
   - name: validate_amend
-    hidden: true
     if: "{{ validate_commit.valid }}"
     bash: |
       obslog=$(hg obslog 2>&1 || true)
@@ -48,7 +46,6 @@ steps:
 
   # Step 6: Validate proposal in eval.gp
   - name: validate_proposal
-    hidden: true
     if: "{{ validate_commit.valid and validate_amend.valid }}"
     bash: |
       project_file="$HOME/.gai/projects/eval/eval.gp"
@@ -70,7 +67,6 @@ steps:
 
   # Step 7: Summary report
   - name: report
-    hidden: true
     bash: |
       if [ "{{ validate_commit.valid }}" != "true" ]; then
         echo "status=failed"
