@@ -172,9 +172,9 @@ def process_xprompt_references(prompt: str) -> str:
 
                 expanded = _expand_single_xprompt(xprompt, positional_args, named_args)
 
-                # Handle section xprompts (content starting with ###)
+                # Handle section xprompts (content starting with ### or ---)
                 # Prepend \n\n when the xprompt is not at the start of a line
-                if expanded.startswith("###"):
+                if expanded.startswith("###") or expanded.startswith("---"):
                     is_at_line_start = (
                         match.start() == 0 or prompt[match.start() - 1] == "\n"
                     )

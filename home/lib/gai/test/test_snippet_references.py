@@ -275,3 +275,37 @@ def test_process_snippet_nested_section_snippet() -> None:
         result = process_xprompt_references("#outer")
     # outer expands to "Prefix #inner", then inner expands with \n\n prefix
     assert result == "Prefix \n\n### Inner\nInner content"
+
+
+# Tests for horizontal rule snippets (content starting with ---)
+
+
+def test_process_snippet_hr_snippet_at_start_of_line() -> None:
+    """Test that HR snippet at start of line gets no prefix."""
+    snippets = {"hr": "---\nContent below rule"}
+    with patch(
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
+    ):
+        result = process_xprompt_references("#hr")
+    assert result == "---\nContent below rule"
+
+
+def test_process_snippet_hr_snippet_inline() -> None:
+    """Test that HR snippet after text gets \\n\\n prefix."""
+    snippets = {"hr": "---\nContent below rule"}
+    with patch(
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
+    ):
+        result = process_xprompt_references("Hello #hr")
+    assert result == "Hello \n\n---\nContent below rule"
+
+
+def test_process_snippet_hr_snippet_after_newline() -> None:
+    """Test that HR snippet at start of second line gets no prefix."""
+    snippets = {"hr": "---\nContent below rule"}
+    prompt = "First line\n#hr"
+    with patch(
+        "xprompt.processor.get_all_xprompts", return_value=_make_xprompts(snippets)
+    ):
+        result = process_xprompt_references(prompt)
+    assert result == "First line\n---\nContent below rule"
