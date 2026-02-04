@@ -12,7 +12,7 @@ RUN groupadd --gid $GROUP_ID docker && \
 ### Install Python 3.12
 RUN apt-get update && \
     apt-get install -y wget build-essential libssl-dev zlib1g-dev \
-    libbz2-dev libreadline-dev libsqlite3-dev curl \
+    libbz2-dev libreadline-dev libsqlite3-dev curl ripgrep \
     libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev && \
     cd /tmp && \
     wget https://www.python.org/ftp/python/3.12.7/Python-3.12.7.tgz && \
@@ -34,10 +34,11 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*;
 
-### Install keep-sorted
-RUN curl -fsSL -o /usr/local/bin/keep-sorted \
-    https://github.com/google/keep-sorted/releases/download/v0.7.1/keep-sorted_linux && \
-    chmod +x /usr/local/bin/keep-sorted
+### Install keep-sorted (build from source to avoid GLIBC issues)
+RUN curl -fsSL https://go.dev/dl/go1.22.5.linux-amd64.tar.gz | tar -C /usr/local -xzf - && \
+    /usr/local/go/bin/go install github.com/google/keep-sorted@v0.7.1 && \
+    mv /root/go/bin/keep-sorted /usr/local/bin/ && \
+    rm -rf /usr/local/go /root/go
 
 ### Install bashunit
 RUN cd / && \
