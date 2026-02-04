@@ -124,8 +124,8 @@ class AgentPromptPanel(Static):
                 word_wrap=True,
             )
 
-            # For completed agents, also show the response
-            if agent.status in ("NO CHANGES", "NEW CL", "NEW PROPOSAL"):
+            # For completed agents/steps, also show the response
+            if agent.status in ("NO CHANGES", "NEW CL", "NEW PROPOSAL", "COMPLETED"):
                 reply_header = Text()
                 reply_header.append("\n")
                 reply_header.append("─" * 50 + "\n", style="dim")

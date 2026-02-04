@@ -66,6 +66,7 @@ class StepMixin:
         step_index: int | None = None,
         parent_step_index: int | None = None,
         parent_total_steps: int | None = None,
+        is_pre_prompt_step: bool = False,
     ) -> None:
         """Save a marker file for prompt steps to track them in the TUI."""
         raise NotImplementedError
@@ -84,6 +85,7 @@ class StepMixin:
         embedded_context: dict[str, Any],
         parent_step_name: str,
         parent_step_context: "ParentStepContext | None" = None,
+        is_pre_prompt_step: bool = False,
     ) -> bool:
         """Execute steps from an embedded workflow.
 
@@ -95,6 +97,8 @@ class StepMixin:
             embedded_context: Context for the embedded workflow (args + outputs).
             parent_step_name: Name of the parent step for error messages.
             parent_step_context: Context for parent step numbering in output.
+            is_pre_prompt_step: True if these are pre-prompt steps (before the main
+                prompt), which should be hidden in the Agents tab.
 
         Returns:
             True if all steps succeeded, False if any failed.
@@ -178,6 +182,7 @@ class StepMixin:
                     parent_total_steps=(
                         parent_step_context.total_steps if parent_step_context else None
                     ),
+                    is_pre_prompt_step=is_pre_prompt_step,
                 )
 
                 # Notify step complete
@@ -291,6 +296,7 @@ class StepMixin:
                     embedded_context,
                     f"embedded:{name}",
                     parent_step_context=parent_ctx,
+                    is_pre_prompt_step=True,
                 )
                 if not success:
                     raise WorkflowExecutionError(

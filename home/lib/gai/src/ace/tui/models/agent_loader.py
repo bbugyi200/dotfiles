@@ -108,11 +108,20 @@ def load_all_agents() -> list[Agent]:
         # COMMENTS - CRS agents
         agents.extend(load_agents_from_comments(cs, bug, cl_num))
 
-    # Filter out agents with dead PIDs (but keep DONE and FAILED agents)
+    # Filter out agents with dead PIDs (but keep completed agents)
     verified_agents: list[Agent] = []
+    # Statuses that indicate completed work (don't filter these by PID)
+    completed_statuses = (
+        "DONE",
+        "FAILED",
+        "COMPLETED",
+        "NO CHANGES",
+        "NEW CL",
+        "NEW PROPOSAL",
+    )
     for agent in agents:
-        # DONE and FAILED agents represent completed workflows - always include them
-        if agent.status in ("DONE", "FAILED"):
+        # Completed agents represent finished work - always include them
+        if agent.status in completed_statuses:
             verified_agents.append(agent)
         elif agent.pid is not None:
             if is_process_running(agent.pid):

@@ -110,6 +110,9 @@ class Agent:
         if self.appears_as_agent:
             # Use workflow name if available (e.g., "fix-hook"), otherwise "run"
             return self.workflow if self.workflow else "run"
+        # For workflow children, use step_type (bash/python/prompt)
+        if self.is_workflow_child and self.step_type:
+            return self.step_type
         return self.agent_type.value
 
     @property

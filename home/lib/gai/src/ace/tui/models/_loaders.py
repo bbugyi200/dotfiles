@@ -627,6 +627,16 @@ def load_workflow_agent_steps() -> list[Agent]:
                         parent_step_index = data.get("parent_step_index")
                         parent_total_steps = data.get("parent_total_steps")
                         is_hidden = data.get("hidden", False)
+                        is_pre_prompt_step = data.get("is_pre_prompt_step", False)
+
+                        # Skip hidden workflow steps - they should never appear
+                        # in the Agents tab
+                        if is_hidden:
+                            continue
+
+                        # Skip pre-prompt steps from embedded workflows
+                        if is_pre_prompt_step:
+                            continue
 
                         agents.append(
                             Agent(

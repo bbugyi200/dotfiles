@@ -347,6 +347,7 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
         step_index: int | None = None,
         parent_step_index: int | None = None,
         parent_total_steps: int | None = None,
+        is_pre_prompt_step: bool = False,
     ) -> None:
         """Save a marker file for prompt steps to track them in the TUI.
 
@@ -358,6 +359,8 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
             step_index: Index of the step in the workflow (0-based).
             parent_step_index: Index of the parent step for embedded workflow steps.
             parent_total_steps: Total steps in the parent workflow for embedded steps.
+            is_pre_prompt_step: True if this is a pre-prompt step from an embedded
+                workflow, which should be hidden in the Agents tab.
         """
         marker_path = os.path.join(self.artifacts_dir, f"prompt_step_{step_name}.json")
         marker_data = {
@@ -377,6 +380,7 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
                 if step_index is not None
                 else False
             ),
+            "is_pre_prompt_step": is_pre_prompt_step,
         }
         try:
             with open(marker_path, "w", encoding="utf-8") as f:

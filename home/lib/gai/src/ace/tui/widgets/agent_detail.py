@@ -45,6 +45,12 @@ class AgentDetail(Static):
 
         prompt_panel.update_display(agent)
 
+        # Hide diff panel for bash/python workflow steps - they don't have diffs
+        if agent.is_workflow_child and agent.step_type in ("bash", "python"):
+            diff_scroll.add_class("hidden")
+            prompt_scroll.add_class("expanded")
+            return
+
         if agent.status == "NO CHANGES":
             # Hide diff panel, expand prompt panel (reply is embedded in it)
             diff_scroll.add_class("hidden")
