@@ -425,6 +425,9 @@ def load_workflow_states() -> list[WorkflowEntry]:
                     # Extract PID if available
                     pid = data.get("pid")
 
+                    # Read appears_as_agent flag
+                    appears_as_agent = data.get("appears_as_agent", False)
+
                     entries.append(
                         WorkflowEntry(
                             workflow_name=data.get("workflow_name", "unknown"),
@@ -437,6 +440,7 @@ def load_workflow_states() -> list[WorkflowEntry]:
                             start_time=start_time,
                             artifacts_dir=str(timestamp_dir),
                             pid=pid,
+                            appears_as_agent=appears_as_agent,
                         )
                     )
                 except Exception:
@@ -538,6 +542,7 @@ def load_workflow_agents() -> list[Agent]:
                 workflow=entry.workflow_name,
                 raw_suffix=raw_suffix,
                 pid=entry.pid,
+                appears_as_agent=entry.appears_as_agent,
             )
         )
 
@@ -579,8 +584,8 @@ def load_workflow_agent_steps() -> list[Agent]:
                 if not timestamp_dir.is_dir():
                     continue
 
-                # Find all agent step marker files
-                for marker_file in timestamp_dir.glob("agent_step_*.json"):
+                # Find all prompt step marker files
+                for marker_file in timestamp_dir.glob("prompt_step_*.json"):
                     try:
                         with open(marker_file, encoding="utf-8") as f:
                             data = json.load(f)
@@ -613,6 +618,7 @@ def load_workflow_agent_steps() -> list[Agent]:
                         step_source = data.get("step_source")
                         step_output = data.get("output")
                         step_index = data.get("step_index")
+                        is_hidden = data.get("hidden", False)
 
                         agents.append(
                             Agent(
@@ -630,6 +636,7 @@ def load_workflow_agent_steps() -> list[Agent]:
                                 step_source=step_source,
                                 step_output=step_output,
                                 step_index=step_index,
+                                is_hidden_step=is_hidden,
                             )
                         )
                     except Exception:

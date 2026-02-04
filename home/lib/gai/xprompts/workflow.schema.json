@@ -205,6 +205,11 @@
             "description": "Whether to require human-in-the-loop approval",
             "default": false
           },
+          "hidden": {
+            "type": "boolean",
+            "description": "If true, this step is hidden by default in the Agents tab TUI",
+            "default": false
+          },
           "if": {
             "type": "string",
             "description": "Jinja2 condition expression - step is skipped if false"
@@ -353,6 +358,11 @@
                 "if": {
                   "type": "string",
                   "description": "Jinja2 condition expression - step is skipped if false"
+                },
+                "hidden": {
+                  "type": "boolean",
+                  "description": "If true, this step is hidden by default in the Agents tab TUI",
+                  "default": false
                 }
               },
               "oneOf": [

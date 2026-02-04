@@ -40,6 +40,10 @@ def _is_always_visible(agent: Agent) -> bool:
     """
     from ...models.agent import AgentType
 
+    # Hidden workflow steps are hideable
+    if agent.is_hidden_step:
+        return False
+
     return (
         agent.agent_type in (AgentType.RUNNING, AgentType.WORKFLOW)
         or agent.status in DISMISSABLE_STATUSES

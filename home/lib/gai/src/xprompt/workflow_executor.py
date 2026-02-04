@@ -99,14 +99,16 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
                     "status": s.status.value,
                     "output": s.output,
                     "error": s.error,
+                    "hidden": self.workflow.steps[i].hidden,
                 }
-                for s in self.state.steps
+                for i, s in enumerate(self.state.steps)
             ],
             "context": self.state.context,
             "inputs": inputs,
             "artifacts_dir": self.state.artifacts_dir,
             "start_time": self.state.start_time,
             "pid": os.getpid(),
+            "appears_as_agent": self.workflow.appears_as_agent(),
         }
         os.makedirs(self.artifacts_dir, exist_ok=True)
         with open(state_path, "w", encoding="utf-8") as f:
@@ -363,6 +365,11 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
             "step_type": step_type,
             "step_source": step_source,
             "step_index": step_index,
+            "hidden": (
+                self.workflow.steps[step_index].hidden
+                if step_index is not None
+                else False
+            ),
         }
         try:
             with open(marker_path, "w", encoding="utf-8") as f:

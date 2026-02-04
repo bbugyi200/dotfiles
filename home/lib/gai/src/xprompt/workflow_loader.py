@@ -120,6 +120,7 @@ def _parse_workflow_step(
     while_data = step_data.get("while")
     join = step_data.get("join")
     hitl = bool(step_data.get("hitl", False))
+    hidden = bool(step_data.get("hidden", False))
 
     # Validate mutual exclusivity of loop types (for, repeat, while)
     loop_types = [for_loop, repeat_data, while_data]
@@ -262,6 +263,7 @@ def _parse_workflow_step(
         prompt_part=str(prompt_part) if prompt_part else None,
         output=output,
         hitl=hitl,
+        hidden=hidden,
         condition=str(condition) if condition else None,
         for_loop=parsed_for_loop,
         repeat_config=repeat_config,

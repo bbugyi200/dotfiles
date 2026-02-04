@@ -3,6 +3,7 @@ input:
   schema: text
 steps:
   - name: setup
+    hidden: true
     bash: gai_json_workflow --setup '{{ schema }}'
     output: { schema_json: text, semantic_hints: text }
 
@@ -29,6 +30,7 @@ steps:
       - The JSON must conform exactly to the schema above
 
   - name: write_response
+    hidden: true
     python: |
       import tempfile
       response = {{ _response | tojson }}
@@ -38,6 +40,7 @@ steps:
     output: { response_file: path }
 
   - name: validate
+    hidden: true
     bash: |
       gai_json_workflow --validate \
         --schema '{{ setup.schema_json }}' \

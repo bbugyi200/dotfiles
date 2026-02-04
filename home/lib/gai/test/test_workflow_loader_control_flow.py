@@ -2,7 +2,7 @@
 
 import pytest
 from xprompt.workflow_loader import _parse_workflow_step
-from xprompt.workflow_models import WorkflowValidationError
+from xprompt.workflow_models import Workflow, WorkflowStep, WorkflowValidationError
 
 
 def test_parse_if_condition() -> None:
@@ -587,3 +587,142 @@ def test_parse_parallel_mutually_exclusive_with_bash() -> None:
     with pytest.raises(WorkflowValidationError) as exc_info:
         _parse_workflow_step(step_data, 0)
     assert "can only have one of" in str(exc_info.value)
+
+
+# ============================================================================
+# Hidden step field tests
+# ============================================================================
+
+
+def test_parse_hidden_field_true() -> None:
+    """Test parsing hidden: true field."""
+    step_data = {
+        "name": "hidden_step",
+        "bash": "echo setup",
+        "hidden": True,
+    }
+    step = _parse_workflow_step(step_data, 0)
+    assert step.hidden is True
+
+
+def test_parse_hidden_field_false() -> None:
+    """Test parsing hidden: false field."""
+    step_data = {
+        "name": "visible_step",
+        "bash": "echo visible",
+        "hidden": False,
+    }
+    step = _parse_workflow_step(step_data, 0)
+    assert step.hidden is False
+
+
+def test_parse_hidden_field_default() -> None:
+    """Test that hidden defaults to False when not specified."""
+    step_data = {
+        "name": "normal_step",
+        "bash": "echo hello",
+    }
+    step = _parse_workflow_step(step_data, 0)
+    assert step.hidden is False
+
+
+def test_parse_hidden_with_prompt_part() -> None:
+    """Test that hidden can be combined with prompt_part."""
+    step_data = {
+        "name": "inject",
+        "prompt_part": "Some content to inject",
+        "hidden": False,  # prompt_part steps are typically visible
+    }
+    step = _parse_workflow_step(step_data, 0)
+    assert step.hidden is False
+    assert step.is_prompt_part_step()
+
+
+def test_parse_hidden_with_control_flow() -> None:
+    """Test that hidden can be combined with control flow."""
+    step_data = {
+        "name": "hidden_loop",
+        "bash": "process {{ item }}",
+        "for": {"item": "{{ items }}"},
+        "hidden": True,
+    }
+    step = _parse_workflow_step(step_data, 0)
+    assert step.hidden is True
+    assert step.for_loop is not None
+
+
+# ============================================================================
+# Workflow.appears_as_agent() tests
+# ============================================================================
+
+
+def test_workflow_appears_as_agent_with_hidden_steps() -> None:
+    """Test that workflow appears as agent when all non-prompt steps are hidden."""
+    workflow = Workflow(
+        name="json",
+        steps=[
+            WorkflowStep(name="setup", bash="setup.sh", hidden=True),
+            WorkflowStep(name="inject", prompt="Do the thing"),
+            WorkflowStep(name="validate", bash="validate.sh", hidden=True),
+        ],
+    )
+    assert workflow.appears_as_agent() is True
+
+
+def test_workflow_appears_as_agent_single_visible_prompt() -> None:
+    """Test that workflow with only a visible prompt step appears as agent."""
+    workflow = Workflow(
+        name="simple",
+        steps=[
+            WorkflowStep(name="main", prompt="Do something"),
+        ],
+    )
+    assert workflow.appears_as_agent() is True
+
+
+def test_workflow_not_appears_as_agent_with_visible_non_prompt() -> None:
+    """Test that workflow with visible non-prompt step doesn't appear as agent."""
+    workflow = Workflow(
+        name="workflow_with_setup",
+        steps=[
+            WorkflowStep(name="setup", bash="setup.sh", hidden=False),
+            WorkflowStep(name="main", prompt="Do something"),
+        ],
+    )
+    assert workflow.appears_as_agent() is False
+
+
+def test_workflow_not_appears_as_agent_multiple_visible() -> None:
+    """Test that workflow with multiple visible steps doesn't appear as agent."""
+    workflow = Workflow(
+        name="multi_step",
+        steps=[
+            WorkflowStep(name="step1", prompt="Step 1"),
+            WorkflowStep(name="step2", prompt="Step 2"),
+        ],
+    )
+    assert workflow.appears_as_agent() is False
+
+
+def test_workflow_not_appears_as_agent_no_prompt_visible() -> None:
+    """Test that workflow with only visible non-prompt steps doesn't appear as agent."""
+    workflow = Workflow(
+        name="bash_only",
+        steps=[
+            WorkflowStep(name="step1", bash="echo hello"),
+        ],
+    )
+    assert workflow.appears_as_agent() is False
+
+
+def test_workflow_not_appears_as_agent_all_hidden() -> None:
+    """Test that workflow with all hidden steps doesn't appear as agent."""
+    workflow = Workflow(
+        name="all_hidden",
+        steps=[
+            WorkflowStep(name="setup", bash="setup.sh", hidden=True),
+            WorkflowStep(name="cleanup", bash="cleanup.sh", hidden=True),
+        ],
+    )
+    # No visible steps, so it shouldn't appear as agent
+    assert workflow.appears_as_agent() is False

@@ -86,9 +86,17 @@ class Agent:
     # Step index for ordering (0-based)
     step_index: int | None = None
 
+    # Whether this is a hidden workflow step (hidden by default in Agents tab)
+    is_hidden_step: bool = False
+
+    # Workflow that looks like an agent (all non-prompt steps hidden)
+    appears_as_agent: bool = False
+
     @property
     def display_type(self) -> str:
         """Human-readable agent type for display."""
+        if self.appears_as_agent:
+            return "run"  # Show as [run] instead of [workflow:name]
         return self.agent_type.value
 
     @property

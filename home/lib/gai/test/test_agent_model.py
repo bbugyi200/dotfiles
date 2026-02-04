@@ -227,3 +227,86 @@ def test_agent_optional_fields() -> None:
     assert agent.reviewer == "critique"
     assert agent.pid == 12345
     assert agent.raw_suffix == "fix_hook-12345-251230_151429"
+
+
+# --- Hidden Step and Appears As Agent Tests ---
+
+
+def test_agent_is_hidden_step_default() -> None:
+    """Test Agent.is_hidden_step defaults to False."""
+    agent = Agent(
+        agent_type=AgentType.WORKFLOW,
+        cl_name="my_feature",
+        project_file="/tmp/test.gp",
+        status="RUNNING",
+        start_time=None,
+    )
+    assert agent.is_hidden_step is False
+
+
+def test_agent_is_hidden_step_true() -> None:
+    """Test Agent.is_hidden_step can be set to True."""
+    agent = Agent(
+        agent_type=AgentType.WORKFLOW,
+        cl_name="my_feature",
+        project_file="/tmp/test.gp",
+        status="COMPLETED",
+        start_time=None,
+        is_hidden_step=True,
+    )
+    assert agent.is_hidden_step is True
+
+
+def test_agent_appears_as_agent_default() -> None:
+    """Test Agent.appears_as_agent defaults to False."""
+    agent = Agent(
+        agent_type=AgentType.WORKFLOW,
+        cl_name="my_feature",
+        project_file="/tmp/test.gp",
+        status="RUNNING",
+        start_time=None,
+    )
+    assert agent.appears_as_agent is False
+
+
+def test_agent_appears_as_agent_true() -> None:
+    """Test Agent.appears_as_agent can be set to True."""
+    agent = Agent(
+        agent_type=AgentType.WORKFLOW,
+        cl_name="my_feature",
+        project_file="/tmp/test.gp",
+        status="RUNNING",
+        start_time=None,
+        appears_as_agent=True,
+    )
+    assert agent.appears_as_agent is True
+
+
+def test_agent_display_type_with_appears_as_agent() -> None:
+    """Test Agent.display_type returns 'run' when appears_as_agent is True."""
+    agent = Agent(
+        agent_type=AgentType.WORKFLOW,
+        cl_name="my_feature",
+        project_file="/tmp/test.gp",
+        status="RUNNING",
+        start_time=None,
+        workflow="json",
+        appears_as_agent=True,
+    )
+    # Even though it's a WORKFLOW type, display_type should be "run"
+    assert agent.display_type == "run"
+
+
+def test_agent_display_type_workflow_without_appears_as_agent() -> None:
+    """Test Agent.display_type for WORKFLOW without appears_as_agent."""
+    agent = Agent(
+        agent_type=AgentType.WORKFLOW,
+        cl_name="my_feature",
+        project_file="/tmp/test.gp",
+        status="RUNNING",
+        start_time=None,
+        workflow="json",
+        appears_as_agent=False,
+    )
+    # Should return the normal WORKFLOW value
+    assert agent.display_type == "workflow"

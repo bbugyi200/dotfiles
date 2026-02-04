@@ -58,6 +58,7 @@ class WorkflowStep:
             Mutually exclusive with prompt/bash/python/parallel.
         output: Output specification for validation.
         hitl: Whether to require human-in-the-loop approval.
+        hidden: If true, this step is hidden by default in the Agents tab TUI.
         condition: if: condition (Jinja2 expression) - step skipped if false.
         for_loop: for: loop config {var: expression} for iteration over lists.
         repeat_config: repeat: loop config with until: condition.
@@ -73,6 +74,7 @@ class WorkflowStep:
     prompt_part: str | None = None
     output: OutputSpec | None = None
     hitl: bool = False
+    hidden: bool = False
     condition: str | None = None
     for_loop: dict[str, str] | None = None
     repeat_config: LoopConfig | None = None
@@ -182,6 +184,15 @@ class Workflow:
         if idx is None:
             return list(self.steps)
         return self.steps[idx + 1 :]
+
+    def appears_as_agent(self) -> bool:
+        """Check if workflow should appear as an 'agent' entry.
+
+        Returns True if all non-prompt steps are hidden, meaning the workflow
+        should display as a simple [run] entry instead of [workflow:name].
+        """
+        visible_steps = [s for s in self.steps if not s.hidden]
+        return len(visible_steps) == 1 and visible_steps[0].is_prompt_step()
 
 
 @dataclass

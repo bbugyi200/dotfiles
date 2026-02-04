@@ -137,7 +137,11 @@ class AgentList(OptionList):
             text.append(f"{_DONE_ICON} ", style="bold red")
 
         # Agent type indicator with color
-        color = _AGENT_TYPE_COLORS.get(agent.agent_type, "#FFFFFF")
+        # Workflows appearing as agents use RUNNING color
+        if agent.appears_as_agent:
+            color = _AGENT_TYPE_COLORS[AgentType.RUNNING]
+        else:
+            color = _AGENT_TYPE_COLORS.get(agent.agent_type, "#FFFFFF")
         text.append(f"[{agent.display_type}] ", style=f"bold {color}")
 
         # CL name

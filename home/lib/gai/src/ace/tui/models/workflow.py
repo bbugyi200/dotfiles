@@ -32,6 +32,7 @@ class WorkflowEntry:
     start_time: datetime | None
     artifacts_dir: str
     pid: int | None = None
+    appears_as_agent: bool = False
 
     @property
     def display_type(self) -> str:
