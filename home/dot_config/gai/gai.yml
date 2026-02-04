@@ -97,11 +97,6 @@ xprompts:
   clref:
     input: { cl_id: int }
     content: "Use #clr:{{ cl_id }} as a reference."
-  newfeat:
-    input: { feat_name: word, usage: line }
-    content: |
-      Can you help me add a new #feat named {{ feat_name }} to the java/com/google/ads/publisher/domain/entity/feature/publisher_features.textproto file?
-      This publisher feature will be used to {{ usage }}. #noc
   # Simple xprompts (no arguments) remain as strings
   chat: "@$(gai_first_commit_chat)"
   duck: "@$(printf '%s\\n' ~/bb/duckie/* | sort | tail -n 1)"
@@ -173,6 +168,11 @@ xprompts:
   mentor/ui: |
     #mentor: Can you help me ensure that the changes made by this CL adhere to the guidelines outlined in the
     @contentads/drx/fe/client/g3doc/drx_ui_style.md document?
+  newfeat:
+    input: { feat_name: word, usage: line }
+    content: |
+      Can you help me add a new #feat named {{ feat_name }} to the java/com/google/ads/publisher/domain/entity/feature/publisher_features.textproto file?
+      This publisher feature will be used to {{ usage }}. #noc
   noc: "You should make the necessary file changes, but should NOT create/amend a CL."
   nocl: "#noc #cl"
   reporting: |
