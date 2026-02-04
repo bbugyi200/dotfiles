@@ -64,6 +64,8 @@ class StepMixin:
         step_type: str = "prompt",
         step_source: str | None = None,
         step_index: int | None = None,
+        parent_step_index: int | None = None,
+        parent_total_steps: int | None = None,
     ) -> None:
         """Save a marker file for prompt steps to track them in the TUI."""
         raise NotImplementedError
@@ -157,6 +159,26 @@ class StepMixin:
 
                 if not success:
                     return False
+
+                # Save marker for embedded step with parent context
+                step_source = (
+                    step.bash
+                    if step_type == "bash"
+                    else (step.python if step_type == "python" else None)
+                )
+                self._save_prompt_step_marker(
+                    step.name,
+                    temp_state,
+                    step_type,
+                    step_source,
+                    i,
+                    parent_step_index=(
+                        parent_step_context.step_index if parent_step_context else None
+                    ),
+                    parent_total_steps=(
+                        parent_step_context.total_steps if parent_step_context else None
+                    ),
+                )
 
                 # Notify step complete
                 if self.output_handler:

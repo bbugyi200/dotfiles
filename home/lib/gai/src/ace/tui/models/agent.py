@@ -86,6 +86,15 @@ class Agent:
     # Step index for ordering (0-based)
     step_index: int | None = None
 
+    # Total steps in the parent workflow (for step numbering display)
+    total_steps: int | None = None
+
+    # Parent step index for embedded workflow steps (0-based)
+    parent_step_index: int | None = None
+
+    # Total steps in the grandparent workflow (for embedded step display)
+    parent_total_steps: int | None = None
+
     # Whether this is a hidden workflow step (hidden by default in Agents tab)
     is_hidden_step: bool = False
 

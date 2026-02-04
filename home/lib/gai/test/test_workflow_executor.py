@@ -354,24 +354,24 @@ class TestEmbeddedWorkflowExpansion:
 
 
 class TestSubstepSuffix:
-    """Tests for the _get_substep_suffix helper function."""
+    """Tests for the get_substep_suffix helper function."""
 
     def test_substep_suffix_first_letters(self) -> None:
         """Test that indices 0-25 map to a-z."""
-        from xprompt.workflow_output import _get_substep_suffix
+        from xprompt.workflow_output import get_substep_suffix
 
-        assert _get_substep_suffix(0) == "a"
-        assert _get_substep_suffix(1) == "b"
-        assert _get_substep_suffix(25) == "z"
+        assert get_substep_suffix(0) == "a"
+        assert get_substep_suffix(1) == "b"
+        assert get_substep_suffix(25) == "z"
 
     def test_substep_suffix_double_letters(self) -> None:
         """Test that indices 26+ map to aa, ab, etc."""
-        from xprompt.workflow_output import _get_substep_suffix
+        from xprompt.workflow_output import get_substep_suffix
 
-        assert _get_substep_suffix(26) == "aa"
-        assert _get_substep_suffix(27) == "ab"
-        assert _get_substep_suffix(51) == "az"
-        assert _get_substep_suffix(52) == "ba"
+        assert get_substep_suffix(26) == "aa"
+        assert get_substep_suffix(27) == "ab"
+        assert get_substep_suffix(51) == "az"
+        assert get_substep_suffix(52) == "ba"
 
 
 class TestParentStepContext:

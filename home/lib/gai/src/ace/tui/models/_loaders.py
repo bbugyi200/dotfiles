@@ -618,6 +618,9 @@ def load_workflow_agent_steps() -> list[Agent]:
                         step_source = data.get("step_source")
                         step_output = data.get("output")
                         step_index = data.get("step_index")
+                        total_steps = data.get("total_steps")
+                        parent_step_index = data.get("parent_step_index")
+                        parent_total_steps = data.get("parent_total_steps")
                         is_hidden = data.get("hidden", False)
 
                         agents.append(
@@ -636,6 +639,9 @@ def load_workflow_agent_steps() -> list[Agent]:
                                 step_source=step_source,
                                 step_output=step_output,
                                 step_index=step_index,
+                                total_steps=total_steps,
+                                parent_step_index=parent_step_index,
+                                parent_total_steps=parent_total_steps,
                                 is_hidden_step=is_hidden,
                             )
                         )

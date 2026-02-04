@@ -113,7 +113,7 @@ class WorkflowOutputHandler:
         if parent_step_context is not None:
             # Embedded step: use parent step number with letter suffix
             parent_num = parent_step_context.step_index + 1
-            suffix = _get_substep_suffix(step_index)
+            suffix = get_substep_suffix(step_index)
             step_display = f"{parent_num}{suffix}"
             total_display = parent_step_context.total_steps
         else:
@@ -390,7 +390,7 @@ class WorkflowOutputHandler:
         self.console.print(syntax)
 
 
-def _get_substep_suffix(index: int) -> str:
+def get_substep_suffix(index: int) -> str:
     """Convert 0-based index to substep suffix (a, b, ..., z, aa, ab, ...).
 
     Args:

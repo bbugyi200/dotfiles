@@ -6,6 +6,7 @@ from rich.text import Text
 from textual.message import Message
 from textual.widgets import OptionList
 from textual.widgets.option_list import Option
+from xprompt.workflow_output import get_substep_suffix
 
 from ..models.agent import Agent, AgentType
 
@@ -43,11 +44,25 @@ def _calculate_entry_display_width(agent: Agent) -> int:
     Returns:
         Width in terminal cells
     """
-    # Format: "[indent][icon] [{display_type}] {cl_name} ({status}) - #{workspace_num}"
+    # Format: "[indent][step_num][icon] [{display_type}] {cl_name} ({status}) - #{wks}"
     parts = []
     # Add indentation for workflow children
     if agent.is_workflow_child:
         parts.append(_CHILD_INDENT)
+        # Add step number if available
+        if agent.step_index is not None:
+            if (
+                agent.parent_step_index is not None
+                and agent.parent_total_steps is not None
+            ):
+                # Embedded step: format as "1a/7 "
+                parent_num = agent.parent_step_index + 1
+                suffix = get_substep_suffix(agent.step_index)
+                parts.append(f"{parent_num}{suffix}/{agent.parent_total_steps} ")
+            elif agent.total_steps is not None:
+                # Regular step: format as "1/3 "
+                step_num = agent.step_index + 1
+                parts.append(f"{step_num}/{agent.total_steps} ")
     if agent.status in _DISMISSIBLE_STATUSES:
         parts.append(f"{_DONE_ICON} ")
     parts.extend([f"[{agent.display_type}] ", agent.cl_name, " ", f"({agent.status})"])
@@ -131,6 +146,23 @@ class AgentList(OptionList):
         # Indentation for workflow child agents
         if agent.is_workflow_child:
             text.append(_CHILD_INDENT, style="dim #808080")
+            # Add step number if available
+            if agent.step_index is not None:
+                if (
+                    agent.parent_step_index is not None
+                    and agent.parent_total_steps is not None
+                ):
+                    # Embedded step: format as "1a/7"
+                    parent_num = agent.parent_step_index + 1
+                    suffix = get_substep_suffix(agent.step_index)
+                    text.append(
+                        f"{parent_num}{suffix}/{agent.parent_total_steps} ",
+                        style="dim #AAAAAA",
+                    )
+                elif agent.total_steps is not None:
+                    # Regular step: format as "1/3"
+                    step_num = agent.step_index + 1
+                    text.append(f"{step_num}/{agent.total_steps} ", style="dim #AAAAAA")
 
         # Done icon for dismissible agents
         if agent.status in _DISMISSIBLE_STATUSES:

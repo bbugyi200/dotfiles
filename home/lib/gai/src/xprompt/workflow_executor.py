@@ -345,6 +345,8 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
         step_type: str = "prompt",
         step_source: str | None = None,
         step_index: int | None = None,
+        parent_step_index: int | None = None,
+        parent_total_steps: int | None = None,
     ) -> None:
         """Save a marker file for prompt steps to track them in the TUI.
 
@@ -354,6 +356,8 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
             step_type: Type of step ("prompt", "bash", or "python").
             step_source: Source code/command for bash/python steps.
             step_index: Index of the step in the workflow (0-based).
+            parent_step_index: Index of the parent step for embedded workflow steps.
+            parent_total_steps: Total steps in the parent workflow for embedded steps.
         """
         marker_path = os.path.join(self.artifacts_dir, f"prompt_step_{step_name}.json")
         marker_data = {
@@ -365,6 +369,9 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
             "step_type": step_type,
             "step_source": step_source,
             "step_index": step_index,
+            "total_steps": len(self.workflow.steps),
+            "parent_step_index": parent_step_index,
+            "parent_total_steps": parent_total_steps,
             "hidden": (
                 self.workflow.steps[step_index].hidden
                 if step_index is not None
