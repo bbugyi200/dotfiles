@@ -6,7 +6,11 @@ Validates workflows before execution to catch errors early with clear messages.
 import re
 from dataclasses import dataclass
 
-from xprompt._parsing import find_matching_paren_for_args, parse_args
+from xprompt._parsing import (
+    find_matching_paren_for_args,
+    parse_args,
+    preprocess_shorthand_syntax,
+)
 from xprompt.loader import get_all_xprompts
 from xprompt.models import XPrompt
 from xprompt.workflow_models import Workflow, WorkflowStep, WorkflowValidationError
@@ -311,7 +315,9 @@ def validate_workflow(workflow: Workflow) -> None:
     # Validate xprompt calls in each step
     for step in workflow.steps:
         for content in _collect_step_content(step):
-            calls = _extract_xprompt_calls(content)
+            # Preprocess shorthand syntax (#name: text -> #name([[text]]))
+            preprocessed = preprocess_shorthand_syntax(content, set(xprompts.keys()))
+            calls = _extract_xprompt_calls(preprocessed)
             for call in calls:
                 if call.name in xprompts:
                     xprompt = xprompts[call.name]
