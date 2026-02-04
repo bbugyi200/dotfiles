@@ -1,6 +1,6 @@
 # Metahooks intercept failing hooks before the summarize agent runs.
 metahooks:
-  # keep-sorted start group_prefixes=-
+  # keep-sorted start
   - name: hg_presubmit_tap
     hook_command: bb_hg_presubmit
     output_regex: "[1-9]\\d* failed,"
@@ -11,7 +11,7 @@ metahooks:
 
 # Mentor profiles define which mentors to apply to which files.
 mentor_profiles:
-  # keep-sorted start group_prefixes=-
+  # keep-sorted start
   - profile_name: aaa
     mentors:
       - prompt: "#mentor/aaa"
@@ -74,15 +74,15 @@ mentor_profiles:
 # Usage: #xprompt_name or #xprompt_name(arg1, arg2)
 # Simple xprompts use string values, xprompts with arguments use input/content dicts.
 xprompts:
-  # keep-sorted start block=yes
-  b:
-    input: { bug_id: int }
-    content: "Can you help me fix the bug described by the #bug:{{ bug_id }} file? #noc"
+  # keep-sorted start
   b/ab:
     input: { bug_id: int }
     content: |
       #b:{{ bug_id }} Refer to the 'How to add a Authorized Buyers' section of the @contentads/drx/fe/g3doc/indirect/bidders.md
       file to help you with this. #clref:852317975
+  b:
+    input: { bug_id: int }
+    content: "Can you help me fix the bug described by the #bug:{{ bug_id }} file? #noc"
   bug:
     input: { bug_id: int }
     content: "#x(bug_desc, bugged show '{{ bug_id }}')"
