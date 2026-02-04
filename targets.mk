@@ -44,7 +44,7 @@ lint-md: ## Check Markdown formatting with prettier.
 .PHONY: lint-keepsorted
 lint-keepsorted: ## Check that keep-sorted blocks are sorted.
 	@printf "\n---------- Checking keep-sorted blocks... ----------\n"
-	keep-sorted --mode=lint home/dot_config/gai/gai.yml
+	rg -l '# keep-sorted' home/ | xargs keep-sorted --mode=lint
 
 VENV_DIR := .venv
 PYTHON := python3.12
@@ -109,7 +109,7 @@ fix-md: ## Format Markdown files with prettier.
 .PHONY: fix-keepsorted
 fix-keepsorted: ## Fix keep-sorted blocks.
 	@printf "\n---------- Fixing keep-sorted blocks... ----------\n"
-	keep-sorted --mode=fix home/dot_config/gai/gai.yml
+	rg -l '# keep-sorted' home/ | xargs keep-sorted --mode=fix
 
 .PHONY: test-header
 test-header:
