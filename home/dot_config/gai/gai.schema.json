@@ -53,7 +53,7 @@
               "additionalProperties": false,
               "oneOf": [
                 { "required": ["xprompt"] },
-                { "required": ["prompt", "mentor_name"] }
+                { "required": ["prompt"] }
               ],
               "properties": {
                 "xprompt": {
@@ -104,7 +104,24 @@
       "type": "object",
       "description": "Reusable text templates that can be referenced in prompts",
       "additionalProperties": {
-        "type": "string"
+        "oneOf": [
+          { "type": "string" },
+          {
+            "type": "object",
+            "required": ["input", "content"],
+            "additionalProperties": false,
+            "properties": {
+              "input": {
+                "type": "object",
+                "description": "Input parameters for the xprompt template"
+              },
+              "content": {
+                "type": "string",
+                "description": "Template content with Jinja2 placeholders"
+              }
+            }
+          }
+        ]
       }
     }
   }
