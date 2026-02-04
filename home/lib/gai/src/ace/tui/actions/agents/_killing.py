@@ -261,7 +261,10 @@ class AgentKillingMixin:
             workspace_num = agent.workspace_num
             if workspace_num is None:
                 # For steps, don't use the decorated cl_name for lookup
-                lookup_cl_name = None if agent.is_workflow_child else agent.cl_name
+                # Also treat "unknown" as None since it's a placeholder
+                lookup_cl_name = None
+                if not agent.is_workflow_child and agent.cl_name != "unknown":
+                    lookup_cl_name = agent.cl_name
                 workspace_num = _find_workflow_workspace_from_running_field(
                     agent.project_file,
                     workflow_name,
@@ -269,11 +272,15 @@ class AgentKillingMixin:
                 )
 
             if workspace_num is not None:
+                # Treat "unknown" as None since it's a placeholder
+                release_cl_name = None
+                if not agent.is_workflow_child and agent.cl_name != "unknown":
+                    release_cl_name = agent.cl_name
                 release_workspace(
                     agent.project_file,
                     workspace_num,
                     f"workflow({workflow_name})",
-                    None if agent.is_workflow_child else agent.cl_name,
+                    release_cl_name,
                 )
 
         # Delete the workflow state file
@@ -352,7 +359,10 @@ class AgentKillingMixin:
                 workspace_num = agent.workspace_num
                 if workspace_num is None:
                     # For steps, don't use the decorated cl_name for lookup
-                    lookup_cl_name = None if agent.is_workflow_child else agent.cl_name
+                    # Also treat "unknown" as None since it's a placeholder
+                    lookup_cl_name = None
+                    if not agent.is_workflow_child and agent.cl_name != "unknown":
+                        lookup_cl_name = agent.cl_name
                     workspace_num = _find_workflow_workspace_from_running_field(
                         agent.project_file,
                         workflow_name,
@@ -360,11 +370,15 @@ class AgentKillingMixin:
                     )
 
                 if workspace_num is not None:
+                    # Treat "unknown" as None since it's a placeholder
+                    release_cl_name = None
+                    if not agent.is_workflow_child and agent.cl_name != "unknown":
+                        release_cl_name = agent.cl_name
                     release_workspace(
                         agent.project_file,
                         workspace_num,
                         f"workflow({workflow_name})",
-                        None if agent.is_workflow_child else agent.cl_name,
+                        release_cl_name,
                     )
 
             workflow_dir = (
