@@ -1,0 +1,223 @@
+#!/usr/bin/env python3
+"""Helper script for the #commit xprompt workflow.
+
+Creates a new CL from uncommitted workspace changes.
+"""
+
+import argparse
+import os
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+# Add gai source directory to path for imports
+_GAI_SRC = Path.home() / "lib" / "gai" / "src"
+if str(_GAI_SRC) not in sys.path:
+    sys.path.insert(0, str(_GAI_SRC))
+
+
+def _get_project_from_workspace() -> str | None:
+    """Get the project name from the current workspace."""
+    result = subprocess.run(
+        ["workspace_name"], capture_output=True, text=True, check=False
+    )
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip() or None
+
+
+def _get_parent_branch() -> str | None:
+    """Get the current branch name if on a named branch."""
+    result = subprocess.run(
+        ["branch_name"], capture_output=True, text=True, check=False
+    )
+    if result.returncode != 0:
+        return None
+    branch = result.stdout.strip()
+    return branch if branch else None
+
+
+def _run_command(cmd: str, capture_output: bool = True) -> subprocess.CompletedProcess:
+    """Run a shell command."""
+    return subprocess.run(
+        cmd,
+        shell=True,
+        capture_output=capture_output,
+        text=True,
+    )
+
+
+def _create_cl(
+    name: str,
+    bug_id: int,
+    response_file: str,
+) -> tuple[bool, str, str, str]:
+    """Create a new CL from uncommitted changes.
+
+    Args:
+        name: The CL name (without project prefix).
+        bug_id: Bug ID to link (0 for no bug).
+        response_file: Path to file containing agent response for description.
+
+    Returns:
+        Tuple of (success, cl_url, full_cl_name, error_message)
+    """
+    from commit_utils.workspace import save_diff
+    from commit_workflow.branch_info import get_cl_number
+    from commit_workflow.changespec_operations import add_changespec_to_project_file
+    from commit_workflow.changespec_queries import get_conflicting_changespec
+    from commit_workflow.cl_formatting import format_cl_description
+    from gai_utils import generate_timestamp
+    from shared_utils import run_shell_command
+    from summarize_utils import get_file_summary
+    from workflow_utils import get_initial_hooks_for_changespec, get_project_file_path
+
+    # Get project name
+    project = _get_project_from_workspace()
+    if not project:
+        return False, "", "", "Could not determine project from workspace"
+
+    # Build full CL name with project prefix
+    full_cl_name = name
+    if not name.startswith(f"{project}_"):
+        full_cl_name = f"{project}_{name}"
+
+    # Check for conflicts
+    conflict = get_conflicting_changespec(project, full_cl_name)
+    if conflict:
+        conflict_name, conflict_status = conflict
+        return (
+            False,
+            "",
+            "",
+            f"CL name conflicts with '{conflict_name}' (status: {conflict_status})",
+        )
+
+    # Get parent branch (if on a named branch)
+    parent_branch = _get_parent_branch()
+
+    # Save the current diff
+    timestamp = generate_timestamp()
+    diff_path = save_diff(full_cl_name, target_dir=None, timestamp=timestamp)
+
+    # Generate description from response file
+    description = get_file_summary(
+        response_file,
+        usage="a concise description of what changes were made to the codebase",
+        fallback="Changes made by agent",
+    )
+
+    # Write description to temp file for hg commit
+    fd, desc_file = tempfile.mkstemp(suffix=".txt", prefix="gai_commit_desc_")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(description)
+
+        # Format with [project] prefix for Mercurial commit message
+        bug_str = str(bug_id) if bug_id > 0 else None
+        format_cl_description(desc_file, project, bug=bug_str)
+
+        # Run hg addremove to stage new/deleted files
+        run_shell_command("hg addremove", capture_output=True)
+
+        # If we have a parent branch, checkout to it first
+        # This handles the case where another agent may have amended the parent CL
+        if parent_branch:
+            result = subprocess.run(
+                ["bb_hg_update", parent_branch],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if result.returncode != 0:
+                # Continue anyway, not a fatal error
+                pass
+
+        # Create the Mercurial commit
+        commit_cmd = f'hg commit --name "{full_cl_name}" --logfile "{desc_file}"'
+        commit_result = run_shell_command(commit_cmd, capture_output=True)
+        if commit_result.returncode != 0:
+            return False, "", "", f"hg commit failed: {commit_result.stderr}"
+
+        # Run hg fix (non-fatal if it fails)
+        run_shell_command("hg fix", capture_output=True)
+
+        # Run hg upload tree (non-fatal if it fails)
+        run_shell_command("hg upload tree", capture_output=True)
+
+        # Get CL number
+        cl_number = get_cl_number()
+        if not cl_number:
+            return False, "", "", "Failed to get CL number after upload"
+        cl_url = f"http://cl/{cl_number}"
+
+        # Get initial hooks
+        initial_hooks = get_initial_hooks_for_changespec(verbose=False)
+
+        # Format bug as URL for ChangeSpec
+        bug_url = f"http://b/{bug_id}" if bug_id > 0 else None
+
+        # Create the ChangeSpec
+        project_file = get_project_file_path(project)
+        suffixed_name = add_changespec_to_project_file(
+            project=project,
+            cl_name=full_cl_name,
+            description=description,
+            parent=parent_branch,
+            cl_url=cl_url,
+            initial_hooks=initial_hooks,
+            initial_commits=[(1, "[run] Initial Commit", response_file, diff_path)],
+            bug=bug_url,
+        )
+
+        if not suffixed_name:
+            return False, "", "", "Failed to create ChangeSpec"
+
+        # Rename the CL if needed to match the suffixed ChangeSpec name
+        if suffixed_name != full_cl_name:
+            run_shell_command(f'bb_hg_rename "{suffixed_name}"', capture_output=True)
+
+        return True, cl_url, suffixed_name, ""
+
+    finally:
+        # Clean up temp file
+        try:
+            os.unlink(desc_file)
+        except OSError:
+            pass
+
+
+def main() -> None:
+    """Main entry point."""
+    parser = argparse.ArgumentParser(
+        description="Helper for the #commit xprompt workflow"
+    )
+    parser.add_argument(
+        "--create", action="store_true", help="Create a new CL from uncommitted changes"
+    )
+    parser.add_argument("--name", required=True, help="CL name (without project prefix)")
+    parser.add_argument(
+        "--bug-id", type=int, default=0, help="Bug ID to link (0 for no bug)"
+    )
+    parser.add_argument(
+        "--response-file", required=True, help="Path to agent response file"
+    )
+
+    args = parser.parse_args()
+
+    if args.create:
+        success, cl_url, full_cl_name, error = _create_cl(
+            args.name, args.bug_id, args.response_file
+        )
+        print(f"success={'true' if success else 'false'}")
+        print(f"cl_url={cl_url}")
+        print(f"full_cl_name={full_cl_name}")
+        print(f"error={error}")
+    else:
+        parser.print_help()
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
