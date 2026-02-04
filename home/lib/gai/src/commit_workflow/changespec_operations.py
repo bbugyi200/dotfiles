@@ -1,5 +1,7 @@
 """Functions for manipulating ChangeSpec files."""
 
+import os
+
 from ace.changespec import changespec_lock, write_changespec_atomic
 from rich_utils import print_status
 from workflow_utils import get_project_file_path
@@ -86,6 +88,13 @@ def add_changespec_to_project_file(
         The suffixed cl_name (e.g., "foo_bar__1") on success, None on failure.
     """
     project_file = get_project_file_path(project)
+
+    # Ensure project file exists before trying to add a ChangeSpec
+    if not os.path.isfile(project_file):
+        from commit_workflow.project_file_utils import create_project_file
+
+        if not create_project_file(project):
+            return None
 
     # Format the description with 2-space indent
     description_lines = description.strip().split("\n")
