@@ -359,6 +359,8 @@ class StepMixin:
         # Execute post-steps from embedded workflows
         for _, post_steps, embedded_context in embedded_workflows:
             if post_steps:
+                # Make agent response available to post-steps
+                embedded_context["_response"] = response_text
                 success = self._execute_embedded_workflow_steps(
                     post_steps, embedded_context, f"embedded:post:{step.name}"
                 )

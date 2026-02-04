@@ -419,8 +419,13 @@ def run_query(
             timestamp=shared_timestamp,
         )
 
+        # Get response content before executing post-steps
+        response_content = ensure_str_content(ai_result.content)
+
         # Execute post-steps from embedded workflows
         for post_steps, embedded_context in post_workflows:
+            # Make agent response available to post-steps
+            embedded_context["_response"] = response_content
             _execute_standalone_steps(
                 post_steps, embedded_context, "run-embedded", artifacts_dir
             )
@@ -431,8 +436,6 @@ def run_query(
         # Check for file modifications and prompt for action
         console = Console()
         target_dir = os.getcwd()
-
-        response_content = ensure_str_content(ai_result.content)
 
         # Check if this query uses an xprompt with output validation
         # Use original query (not full_prompt) to detect output spec

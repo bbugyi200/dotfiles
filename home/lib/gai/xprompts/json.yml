@@ -1,0 +1,28 @@
+name: json
+input:
+  schema: text
+steps:
+  - name: setup
+    bash: gai_json_workflow --setup '{{ schema }}'
+    output: { schema_json: text, format_instructions: text }
+
+  - name: inject
+    prompt_part: |
+      {{ setup.format_instructions | safe }}
+
+  - name: write_response
+    python: |
+      import tempfile
+      import json
+      response = {{ _response | tojson }}
+      with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+          f.write(response)
+          print(f"response_file={f.name}")
+    output: { response_file: path }
+
+  - name: validate
+    bash: |
+      gai_json_workflow --validate \
+        --schema '{{ setup.schema_json }}' \
+        --response-file '{{ write_response.response_file }}'
+    output: { validated: word, data: text }

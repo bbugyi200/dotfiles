@@ -1,7 +1,6 @@
 ---
 name: split_spec_generator
 input: { workspace_name: word, diff_path: path, split_desc: { type: line, default: "multiple CLs" } }
-output: [{ name: word, description: text, parent: { type: word, default: "" } }]
 ---
 
 # Generate Split Specification
@@ -34,3 +33,5 @@ Refer to the following files for guidance:
    - If two CLs modify different files or independent parts of the codebase, they should be PARALLEL (no parent)
    - Parallel CLs can be reviewed and submitted independently, which is faster
    - When in doubt, prefer parallel CLs over creating unnecessary parent-child chains
+
+#json:[{ name: word, description: text, parent: { type: word, default: "" } }]

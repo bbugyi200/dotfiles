@@ -1,0 +1,73 @@
+#!/usr/bin/env python3
+"""Helper script for the #json embedded workflow.
+
+Provides two modes:
+- --setup SCHEMA: Parse schema and generate format instructions
+- --validate --schema JSON --response-file FILE: Validate response against schema
+"""
+
+import argparse
+import json
+import sys
+
+
+def _setup_mode(schema_str: str) -> None:
+    """Parse schema and generate format instructions."""
+    import yaml
+
+    from xprompt.loader import parse_output_from_front_matter
+    from xprompt.output_validation import generate_format_instructions
+
+    schema_data = yaml.safe_load(schema_str)
+    output_spec = parse_output_from_front_matter(schema_data)
+    if output_spec is None:
+        print("Error: Could not parse schema", file=sys.stderr)
+        sys.exit(1)
+
+    instructions = generate_format_instructions(output_spec)
+    print(f"schema_json={json.dumps(output_spec.schema)}")
+    print(f"format_instructions={json.dumps(instructions)}")
+
+
+def _validate_mode(schema_json: str, response_file: str) -> None:
+    """Validate response against schema."""
+    from xprompt.models import OutputSpec
+    from xprompt.output_validation import validate_response
+
+    with open(response_file) as f:
+        response = f.read()
+
+    schema = json.loads(schema_json)
+    output_spec = OutputSpec(type="json_schema", schema=schema)
+    data, error = validate_response(response, output_spec)
+
+    if error:
+        print(f"validation_error={error}")
+        sys.exit(1)
+    print("validated=true")
+    print(f"data={json.dumps(data)}")
+
+
+def main() -> None:
+    """Main entry point."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--setup", metavar="SCHEMA", help="Parse schema, emit format instructions")
+    parser.add_argument("--validate", action="store_true", help="Validate response against schema")
+    parser.add_argument("--schema", help="JSON schema string (for --validate)")
+    parser.add_argument("--response-file", help="File containing response to validate")
+    args = parser.parse_args()
+
+    if args.setup:
+        _setup_mode(args.setup)
+    elif args.validate:
+        if not args.schema or not args.response_file:
+            print("--validate requires --schema and --response-file", file=sys.stderr)
+            sys.exit(1)
+        _validate_mode(args.schema, args.response_file)
+    else:
+        parser.print_help()
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
