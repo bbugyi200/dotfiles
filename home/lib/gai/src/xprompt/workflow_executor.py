@@ -205,8 +205,8 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
                     success = self._execute_while_step(step, step_state)
                 elif step.parallel_config:
                     success = self._execute_parallel_step(step, step_state)
-                elif step.is_agent_step():
-                    success = self._execute_agent_step(step, step_state)
+                elif step.is_prompt_step():
+                    success = self._execute_prompt_step(step, step_state)
                 elif step.is_python_step():
                     success = self._execute_python_step(step, step_state)
                 else:
@@ -230,7 +230,7 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
                     if step_type == "bash"
                     else (step.python if step_type == "python" else None)
                 )
-                self._save_agent_step_marker(
+                self._save_prompt_step_marker(
                     step.name, step_state, step_type, step_source, i
                 )
 
@@ -275,8 +275,8 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
         """
         if step.is_parallel_step():
             return "parallel"
-        elif step.is_agent_step():
-            return "agent"
+        elif step.is_prompt_step():
+            return "prompt"
         elif step.is_python_step():
             return "python"
         else:
@@ -336,24 +336,24 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
         except Exception:
             return False
 
-    def _save_agent_step_marker(
+    def _save_prompt_step_marker(
         self,
         step_name: str,
         step_state: StepState,
-        step_type: str = "agent",
+        step_type: str = "prompt",
         step_source: str | None = None,
         step_index: int | None = None,
     ) -> None:
-        """Save a marker file for agent steps to track them in the TUI.
+        """Save a marker file for prompt steps to track them in the TUI.
 
         Args:
-            step_name: Name of the agent step.
+            step_name: Name of the prompt step.
             step_state: The runtime state for this step.
-            step_type: Type of step ("agent", "bash", or "python").
+            step_type: Type of step ("prompt", "bash", or "python").
             step_source: Source code/command for bash/python steps.
             step_index: Index of the step in the workflow (0-based).
         """
-        marker_path = os.path.join(self.artifacts_dir, f"agent_step_{step_name}.json")
+        marker_path = os.path.join(self.artifacts_dir, f"prompt_step_{step_name}.json")
         marker_data = {
             "workflow_name": self.workflow.name,
             "step_name": step_name,

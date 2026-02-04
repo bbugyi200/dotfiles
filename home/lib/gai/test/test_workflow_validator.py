@@ -179,18 +179,18 @@ def test_collect_used_variables_multiple_sources() -> None:
         name="test",
         inputs=[
             InputArg(name="bash_var", type=InputType.LINE),
-            InputArg(name="agent_var", type=InputType.LINE),
+            InputArg(name="prompt_var", type=InputType.LINE),
             InputArg(name="python_var", type=InputType.LINE),
         ],
         steps=[
             WorkflowStep(name="s1", bash="echo {{ bash_var }}"),
-            WorkflowStep(name="s2", agent="{{ agent_var }}"),
+            WorkflowStep(name="s2", prompt="{{ prompt_var }}"),
             WorkflowStep(name="s3", python="print({{ python_var }})"),
         ],
     )
     used = _collect_used_variables(workflow)
     assert "bash_var" in used
-    assert "agent_var" in used
+    assert "prompt_var" in used
     assert "python_var" in used
 
 

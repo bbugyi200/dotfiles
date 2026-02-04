@@ -89,7 +89,7 @@ class WorkflowOutputHandler:
 
         Args:
             step_name: Name of the step.
-            step_type: Type of step (agent, bash, python).
+            step_type: Type of step (prompt, bash, python).
             step_index: Zero-based index of the step.
             total_steps: Total number of steps.
             condition: The condition expression (if present).

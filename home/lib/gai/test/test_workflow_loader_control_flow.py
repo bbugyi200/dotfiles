@@ -341,14 +341,14 @@ def test_parse_parallel_with_agent_steps() -> None:
     step_data = {
         "name": "parallel_agents",
         "parallel": [
-            {"name": "summarize", "agent": "Summarize this: {{ doc }}"},
-            {"name": "extract", "agent": "Extract entities from: {{ doc }}"},
+            {"name": "summarize", "prompt": "Summarize this: {{ doc }}"},
+            {"name": "extract", "prompt": "Extract entities from: {{ doc }}"},
         ],
     }
     step = _parse_workflow_step(step_data, 0)
     assert step.parallel_config is not None
-    assert step.parallel_config.steps[0].is_agent_step()
-    assert step.parallel_config.steps[1].is_agent_step()
+    assert step.parallel_config.steps[0].is_prompt_step()
+    assert step.parallel_config.steps[1].is_prompt_step()
 
 
 def test_parse_parallel_mixed_step_types() -> None:
@@ -563,7 +563,7 @@ def test_parse_parallel_mutually_exclusive_with_agent() -> None:
     """Test that parallel: is mutually exclusive with agent:."""
     step_data = {
         "name": "bad_step",
-        "agent": "Do something",
+        "prompt": "Do something",
         "parallel": [
             {"name": "step_a", "bash": "echo a"},
             {"name": "step_b", "bash": "echo b"},

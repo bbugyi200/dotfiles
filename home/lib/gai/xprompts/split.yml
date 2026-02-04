@@ -6,9 +6,9 @@ steps:
     bash: gai_split_setup
     output: { cl_name: word, diff_path: path, bug: line, workspace_name: word, default_parent: word }
 
-  # Step 2: Generate split spec (agent with HITL)
+  # Step 2: Generate split spec (prompt with HITL)
   - name: generate_spec
-    agent: |
+    prompt: |
       #split_spec_generator(
         workspace_name="{{ setup.workspace_name }}",
         diff_path="{{ setup.diff_path }}",
@@ -23,9 +23,9 @@ steps:
       gai_split_prepare_execute --spec '{{ generate_spec | tojson }}' --cl-name "{{ setup.cl_name }}" --default-parent "{{ setup.default_parent }}"
     output: { archive_path: path, spec_markdown: text, processing_order: text }
 
-  # Step 4: Execute split (agent)
+  # Step 4: Execute split (prompt)
   - name: execute_split
-    agent: |
+    prompt: |
       #split_executor(
         diff_path="{{ setup.diff_path }}",
         spec_markdown="{{ prepare_execute.spec_markdown }}",

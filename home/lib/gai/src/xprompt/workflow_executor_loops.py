@@ -28,7 +28,7 @@ class LoopMixin:
 
     This mixin requires the following methods on self:
         - _evaluate_condition(condition: str) -> bool
-        - _execute_agent_step(step, step_state) -> bool
+        - _execute_prompt_step(step, step_state) -> bool
         - _execute_python_step(step, step_state) -> bool
         - _execute_bash_step(step, step_state) -> bool
         - _execute_single_nested_step(nested_step, context_copy) -> tuple
@@ -45,7 +45,7 @@ class LoopMixin:
     # Method type declarations for methods provided by other mixins/main class
     # These are not implemented here - they're provided via MRO
     _evaluate_condition: Any  # (condition: str) -> bool
-    _execute_agent_step: Any  # (step, step_state) -> bool
+    _execute_prompt_step: Any  # (step, step_state) -> bool
     _execute_python_step: Any  # (step, step_state) -> bool
     _execute_bash_step: Any  # (step, step_state) -> bool
     _execute_single_nested_step: Any  # (nested_step, context_copy) -> tuple
@@ -199,8 +199,8 @@ class LoopMixin:
 
             try:
                 # Execute the step with iteration context
-                if step.is_agent_step():
-                    success = self._execute_agent_step(step, step_state)
+                if step.is_prompt_step():
+                    success = self._execute_prompt_step(step, step_state)
                 elif step.is_python_step():
                     success = self._execute_python_step(step, step_state)
                 else:
@@ -250,8 +250,8 @@ class LoopMixin:
 
         for iteration_idx in range(config.max_iterations):
             # Execute the step
-            if step.is_agent_step():
-                success = self._execute_agent_step(step, step_state)
+            if step.is_prompt_step():
+                success = self._execute_prompt_step(step, step_state)
             elif step.is_python_step():
                 success = self._execute_python_step(step, step_state)
             else:
@@ -306,8 +306,8 @@ class LoopMixin:
 
         for iteration_idx in range(config.max_iterations):
             # Execute the step first
-            if step.is_agent_step():
-                success = self._execute_agent_step(step, step_state)
+            if step.is_prompt_step():
+                success = self._execute_prompt_step(step, step_state)
             elif step.is_python_step():
                 success = self._execute_python_step(step, step_state)
             else:

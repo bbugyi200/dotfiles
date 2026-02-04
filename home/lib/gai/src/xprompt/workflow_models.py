@@ -50,10 +50,10 @@ class WorkflowStep:
 
     Attributes:
         name: Step identifier (defaults to step_{index} if not specified).
-        agent: Prompt template for agent steps (supports Jinja2 and xprompt refs).
+        prompt: Prompt template for prompt steps (supports Jinja2 and xprompt refs).
             Mutually exclusive with bash/python/parallel.
-        bash: Bash command to execute (mutually exclusive with agent/python/parallel).
-        python: Python code to execute (mutually exclusive with agent/bash/parallel).
+        bash: Bash command to execute (mutually exclusive with prompt/python/parallel).
+        python: Python code to execute (mutually exclusive with prompt/bash/parallel).
         output: Output specification for validation.
         hitl: Whether to require human-in-the-loop approval.
         condition: if: condition (Jinja2 expression) - step skipped if false.
@@ -65,7 +65,7 @@ class WorkflowStep:
     """
 
     name: str
-    agent: str | None = None
+    prompt: str | None = None
     bash: str | None = None
     python: str | None = None
     output: OutputSpec | None = None
@@ -77,9 +77,9 @@ class WorkflowStep:
     parallel_config: ParallelConfig | None = None
     join: str | None = None
 
-    def is_agent_step(self) -> bool:
-        """Return True if this is an agent step."""
-        return self.agent is not None
+    def is_prompt_step(self) -> bool:
+        """Return True if this is a prompt step."""
+        return self.prompt is not None
 
     def is_bash_step(self) -> bool:
         """Return True if this is a bash step."""

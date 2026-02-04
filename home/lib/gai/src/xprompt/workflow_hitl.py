@@ -47,7 +47,7 @@ class TUIHITLHandler:
 
         Args:
             step_name: Name of the step being reviewed.
-            step_type: Either "agent" or "bash".
+            step_type: Either "prompt" or "bash".
             output: The step's output data.
             has_output: Whether the step has an output field defined.
 
@@ -135,7 +135,7 @@ class CLIHITLHandler:
 
         Args:
             step_name: Name of the step being reviewed.
-            step_type: Either "agent" or "bash".
+            step_type: Either "prompt" or "bash".
             output: The step's output data.
             has_output: Whether the step has an output field defined.
 
@@ -166,14 +166,14 @@ class CLIHITLHandler:
         self.console.print("[bold cyan]What would you like to do?[/bold cyan]")
         self.console.print("  [green]a[/green] - Accept and continue")
 
-        # Edit option available for agent steps, or bash/python with output field
-        can_edit = step_type == "agent" or (
+        # Edit option available for prompt steps, or bash/python with output field
+        can_edit = step_type == "prompt" or (
             step_type in ("bash", "python") and has_output
         )
         if can_edit:
             self.console.print("  [yellow]e[/yellow] - Edit the output")
 
-        if step_type == "agent":
+        if step_type == "prompt":
             self.console.print("  [blue]<text>[/blue] - Provide feedback to regenerate")
         elif step_type in ("bash", "python"):
             self.console.print("  [yellow]r[/yellow] - Re-run the command")
@@ -197,7 +197,7 @@ class CLIHITLHandler:
                 return HITLResult(action="reject")
         elif response.lower() == "r" and step_type in ("bash", "python"):
             return HITLResult(action="rerun")
-        elif response and step_type == "agent":
+        elif response and step_type == "prompt":
             # Treat any other input as feedback for regeneration
             return HITLResult(action="feedback", feedback=response)
         else:

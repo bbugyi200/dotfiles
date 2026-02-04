@@ -25,7 +25,7 @@ class ParallelMixin:
         - output_handler: WorkflowOutputHandler | None
 
     This mixin requires the following methods on self:
-        - _execute_agent_step(step, step_state) -> bool
+        - _execute_prompt_step(step, step_state) -> bool
         - _execute_python_step(step, step_state) -> bool
         - _execute_bash_step(step, step_state) -> bool
         - _collect_results(results, join_mode) -> Any
@@ -37,7 +37,7 @@ class ParallelMixin:
     output_handler: "WorkflowOutputHandler | None"
 
     # Method type declarations for methods provided by other mixins/main class
-    _execute_agent_step: Any
+    _execute_prompt_step: Any
     _execute_python_step: Any
     _execute_bash_step: Any
     _collect_results: Any
@@ -69,8 +69,8 @@ class ParallelMixin:
 
         try:
             # Execute based on step type
-            if nested_step.is_agent_step():
-                success = self._execute_agent_step(nested_step, temp_step_state)
+            if nested_step.is_prompt_step():
+                success = self._execute_prompt_step(nested_step, temp_step_state)
             elif nested_step.is_python_step():
                 success = self._execute_python_step(nested_step, temp_step_state)
             else:

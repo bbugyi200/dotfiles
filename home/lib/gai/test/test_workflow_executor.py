@@ -19,7 +19,7 @@ def _create_test_workflow(
         steps = [
             WorkflowStep(
                 name="step1",
-                agent="Test prompt",
+                prompt="Test prompt",
                 output=OutputSpec(
                     type="json_schema",
                     schema={
@@ -59,7 +59,7 @@ class TestWorkflowExecutorValidation:
         )
         step = WorkflowStep(
             name="test_step",
-            agent="#json_output\nGenerate output",
+            prompt="#json_output\nGenerate output",
             output=mock_output_spec,
             hitl=False,
         )
@@ -104,7 +104,7 @@ class TestWorkflowExecutorValidation:
         )
         step = WorkflowStep(
             name="test_step",
-            agent="#json_output\nGenerate output",
+            prompt="#json_output\nGenerate output",
             output=mock_output_spec,
             hitl=True,
         )
@@ -157,7 +157,7 @@ class TestWorkflowExecutorValidation:
         )
         step = WorkflowStep(
             name="test_step",
-            agent="#json_output\nGenerate output",
+            prompt="#json_output\nGenerate output",
             output=mock_output_spec,
             hitl=False,
         )
@@ -203,7 +203,7 @@ class TestWorkflowExecutorValidation:
         )
         step = WorkflowStep(
             name="test_step",
-            agent="#json_output\nGenerate output",
+            prompt="#json_output\nGenerate output",
             output=mock_output_spec,
             hitl=False,
         )
@@ -249,7 +249,7 @@ class TestWorkflowExecutorValidation:
         )
         step = WorkflowStep(
             name="test_step",
-            agent="#json_output\nGenerate output",
+            prompt="#json_output\nGenerate output",
             output=mock_output_spec,
             hitl=True,
         )

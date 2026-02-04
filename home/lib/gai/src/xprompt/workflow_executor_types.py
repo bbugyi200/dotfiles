@@ -18,7 +18,7 @@ class HITLHandler(Protocol):
 
         Args:
             step_name: Name of the step being reviewed.
-            step_type: Either "agent" or "bash".
+            step_type: Either "prompt" or "bash".
             output: The step's output data.
             has_output: Whether the step has an output field defined.
 

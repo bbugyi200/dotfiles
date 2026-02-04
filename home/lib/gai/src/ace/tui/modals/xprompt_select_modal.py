@@ -90,9 +90,9 @@ class XPromptSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
 
         lines.append("## Steps")
         for i, step in enumerate(workflow.steps, 1):
-            if step.agent:
-                step_type = "agent"
-                step_label = step.agent.split("\n")[0][:50]  # First line, truncated
+            if step.prompt:
+                step_type = "prompt"
+                step_label = step.prompt.split("\n")[0][:50]  # First line, truncated
             elif step.bash:
                 step_type = "bash"
                 step_label = step.bash

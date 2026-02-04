@@ -46,17 +46,17 @@
             "type": "string",
             "description": "Step identifier (defaults to step_{index} if not specified)"
           },
-          "agent": {
+          "prompt": {
             "type": "string",
-            "description": "Prompt template for agent steps (supports Jinja2 and xprompt refs). Mutually exclusive with bash/python."
+            "description": "Prompt template for prompt steps (supports Jinja2 and xprompt refs). Mutually exclusive with bash/python."
           },
           "bash": {
             "type": "string",
-            "description": "Bash command to execute (mutually exclusive with agent/python)"
+            "description": "Bash command to execute (mutually exclusive with prompt/python)"
           },
           "python": {
             "type": "string",
-            "description": "Python code to execute (mutually exclusive with agent/bash)"
+            "description": "Python code to execute (mutually exclusive with prompt/bash)"
           },
           "output": {
             "type": "object",
@@ -174,7 +174,7 @@
           },
           "parallel": {
             "type": "array",
-            "description": "List of steps to run in parallel (mutually exclusive with agent/bash/python)",
+            "description": "List of steps to run in parallel (mutually exclusive with prompt/bash/python)",
             "minItems": 2,
             "items": {
               "type": "object",
@@ -185,9 +185,9 @@
                   "type": "string",
                   "description": "Step identifier (must be unique within parallel block)"
                 },
-                "agent": {
+                "prompt": {
                   "type": "string",
-                  "description": "Prompt template for agent steps"
+                  "description": "Prompt template for prompt steps"
                 },
                 "bash": {
                   "type": "string",
@@ -207,7 +207,7 @@
                 }
               },
               "oneOf": [
-                { "required": ["agent"] },
+                { "required": ["prompt"] },
                 { "required": ["bash"] },
                 { "required": ["python"] }
               ]
@@ -218,7 +218,7 @@
           {
             "oneOf": [
               {
-                "required": ["agent"],
+                "required": ["prompt"],
                 "not": {
                   "anyOf": [
                     { "required": ["bash"] },
@@ -231,7 +231,7 @@
                 "required": ["bash"],
                 "not": {
                   "anyOf": [
-                    { "required": ["agent"] },
+                    { "required": ["prompt"] },
                     { "required": ["python"] },
                     { "required": ["parallel"] }
                   ]
@@ -241,7 +241,7 @@
                 "required": ["python"],
                 "not": {
                   "anyOf": [
-                    { "required": ["agent"] },
+                    { "required": ["prompt"] },
                     { "required": ["bash"] },
                     { "required": ["parallel"] }
                   ]
@@ -251,7 +251,7 @@
                 "required": ["parallel"],
                 "not": {
                   "anyOf": [
-                    { "required": ["agent"] },
+                    { "required": ["prompt"] },
                     { "required": ["bash"] },
                     { "required": ["python"] }
                   ]

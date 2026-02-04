@@ -33,7 +33,7 @@ class StepMixin:
 
     This mixin requires the following methods on self:
         - _save_state() -> None
-        - _save_agent_step_marker(step_name, step_state) -> None
+        - _save_prompt_step_marker(step_name, step_state) -> None
     """
 
     # Type hints for attributes from WorkflowExecutor
@@ -49,23 +49,23 @@ class StepMixin:
         """Save workflow state to JSON file."""
         raise NotImplementedError
 
-    def _save_agent_step_marker(
+    def _save_prompt_step_marker(
         self,
         step_name: str,
         step_state: StepState,
-        step_type: str = "agent",
+        step_type: str = "prompt",
         step_source: str | None = None,
         step_index: int | None = None,
     ) -> None:
-        """Save a marker file for agent steps to track them in the TUI."""
+        """Save a marker file for prompt steps to track them in the TUI."""
         raise NotImplementedError
 
-    def _execute_agent_step(
+    def _execute_prompt_step(
         self,
         step: WorkflowStep,
         step_state: StepState,
     ) -> bool:
-        """Execute an agent step.
+        """Execute a prompt step.
 
         Args:
             step: The workflow step definition.
@@ -86,13 +86,11 @@ class StepMixin:
         )
         from xprompt.output_validation import OutputValidationError
 
-        if not step.agent:
-            raise WorkflowExecutionError(
-                f"Agent step '{step.name}' has no agent prompt"
-            )
+        if not step.prompt:
+            raise WorkflowExecutionError(f"Prompt step '{step.name}' has no prompt")
 
         # Render prompt with Jinja2 context
-        rendered_prompt = render_template(step.agent, self.context)
+        rendered_prompt = render_template(step.prompt, self.context)
 
         # Get output schema before expansion
         output_spec = get_primary_output_schema(rendered_prompt)
@@ -108,7 +106,7 @@ class StepMixin:
 
         # Save initial marker to show step is running in TUI
         step_state.status = StepStatus.IN_PROGRESS
-        self._save_agent_step_marker(step.name, step_state)
+        self._save_prompt_step_marker(step.name, step_state)
 
         # Invoke agent
         response = invoke_agent(
@@ -159,10 +157,10 @@ class StepMixin:
             step_state.status = StepStatus.WAITING_HITL
             self.state.status = "waiting_hitl"
             self._save_state()
-            self._save_agent_step_marker(step.name, step_state)
+            self._save_prompt_step_marker(step.name, step_state)
 
             result = self.hitl_handler.prompt(
-                step.name, "agent", output, has_output=step.output is not None
+                step.name, "prompt", output, has_output=step.output is not None
             )
 
             if result.action == "reject":
@@ -175,7 +173,7 @@ class StepMixin:
                 # Continue with edited output
             # Future: handle feedback for regeneration
 
-        # Mark step completed after HITL (agent work is done)
+        # Mark step completed after HITL (prompt work is done)
         step_state.status = StepStatus.COMPLETED
 
         # Store output in context under step name
@@ -183,8 +181,8 @@ class StepMixin:
         self.context[step.name] = output
         self.state.context = dict(self.context)
 
-        # Save agent step marker for TUI visibility
-        self._save_agent_step_marker(step.name, step_state)
+        # Save prompt step marker for TUI visibility
+        self._save_prompt_step_marker(step.name, step_state)
 
         return True
 
@@ -250,7 +248,7 @@ class StepMixin:
             step_state.status = StepStatus.WAITING_HITL
             self.state.status = "waiting_hitl"
             self._save_state()
-            self._save_agent_step_marker(
+            self._save_prompt_step_marker(
                 step.name, step_state, step_type="bash", step_source=rendered_command
             )
 
@@ -271,7 +269,7 @@ class StepMixin:
 
         # Mark step completed after HITL
         step_state.status = StepStatus.COMPLETED
-        self._save_agent_step_marker(
+        self._save_prompt_step_marker(
             step.name, step_state, step_type="bash", step_source=rendered_command
         )
 
@@ -346,7 +344,7 @@ class StepMixin:
             step_state.status = StepStatus.WAITING_HITL
             self.state.status = "waiting_hitl"
             self._save_state()
-            self._save_agent_step_marker(
+            self._save_prompt_step_marker(
                 step.name, step_state, step_type="python", step_source=rendered_code
             )
 
@@ -367,7 +365,7 @@ class StepMixin:
 
         # Mark step completed after HITL
         step_state.status = StepStatus.COMPLETED
-        self._save_agent_step_marker(
+        self._save_prompt_step_marker(
             step.name, step_state, step_type="python", step_source=rendered_code
         )
 
