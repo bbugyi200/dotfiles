@@ -236,3 +236,118 @@ class TestParseBashOutput:
         output = "Just some plain text"
         result = parse_bash_output(output)
         assert result == {"_output": "Just some plain text"}
+
+
+class TestEmbeddedWorkflowExpansion:
+    """Tests for embedded workflow expansion in prompts."""
+
+    def test_embedded_workflow_dashes_inline_gets_newlines(self) -> None:
+        """Test that --- content gets \\n\\n prepended when not at line start."""
+        from unittest.mock import patch
+
+        # Create a workflow with prompt_part starting with ---
+        workflow_with_dashes = Workflow(
+            name="inject_workflow",
+            steps=[
+                WorkflowStep(
+                    name="inject",
+                    prompt_part="---\nIMPORTANT: Additional instructions",
+                )
+            ],
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create a simple workflow to get an executor
+            main_workflow = _create_test_workflow()
+            executor = WorkflowExecutor(
+                workflow=main_workflow,
+                args={},
+                artifacts_dir=tmpdir,
+            )
+
+            # Mock get_all_workflows at the loader module where it's imported from
+            with patch("xprompt.loader.get_all_workflows") as mock_get_workflows:
+                mock_get_workflows.return_value = {
+                    "inject_workflow": workflow_with_dashes
+                }
+
+                # Test case: workflow ref inline (not at line start)
+                prompt = "Do NOT modify any files. #inject_workflow"
+                expanded, _ = executor._expand_embedded_workflows_in_prompt(prompt)
+
+                # Should prepend \n\n before the --- content
+                assert "\n\n---\nIMPORTANT:" in expanded
+                assert expanded == (
+                    "Do NOT modify any files. \n\n---\nIMPORTANT: "
+                    "Additional instructions"
+                )
+
+    def test_embedded_workflow_dashes_at_line_start_no_extra_newlines(self) -> None:
+        """Test that --- content at line start doesn't get extra newlines."""
+        from unittest.mock import patch
+
+        workflow_with_dashes = Workflow(
+            name="inject_workflow",
+            steps=[
+                WorkflowStep(
+                    name="inject",
+                    prompt_part="---\nIMPORTANT: Additional instructions",
+                )
+            ],
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            main_workflow = _create_test_workflow()
+            executor = WorkflowExecutor(
+                workflow=main_workflow,
+                args={},
+                artifacts_dir=tmpdir,
+            )
+
+            with patch("xprompt.loader.get_all_workflows") as mock_get_workflows:
+                mock_get_workflows.return_value = {
+                    "inject_workflow": workflow_with_dashes
+                }
+
+                # Test case: workflow ref at start of line
+                prompt = "Some text.\n#inject_workflow"
+                expanded, _ = executor._expand_embedded_workflows_in_prompt(prompt)
+
+                # Should NOT prepend \n\n since it's at line start
+                assert expanded == (
+                    "Some text.\n---\nIMPORTANT: Additional instructions"
+                )
+
+    def test_embedded_workflow_hashes_inline_gets_newlines(self) -> None:
+        """Test that ### content gets \\n\\n prepended when not at line start."""
+        from unittest.mock import patch
+
+        workflow_with_hashes = Workflow(
+            name="inject_workflow",
+            steps=[
+                WorkflowStep(
+                    name="inject",
+                    prompt_part="### Section Header\nSection content",
+                )
+            ],
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            main_workflow = _create_test_workflow()
+            executor = WorkflowExecutor(
+                workflow=main_workflow,
+                args={},
+                artifacts_dir=tmpdir,
+            )
+
+            with patch("xprompt.loader.get_all_workflows") as mock_get_workflows:
+                mock_get_workflows.return_value = {
+                    "inject_workflow": workflow_with_hashes
+                }
+
+                # Test case: workflow ref inline (not at line start)
+                prompt = "Context text. #inject_workflow"
+                expanded, _ = executor._expand_embedded_workflows_in_prompt(prompt)
+
+                # Should prepend \n\n before the ### content
+                assert "\n\n### Section Header" in expanded
