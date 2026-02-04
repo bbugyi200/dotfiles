@@ -2,8 +2,6 @@ name: CI
 on:
   push:
   pull_request:
-env:
-  USE_DOCKER: true
 jobs:
   lint:
     runs-on: ["${{ matrix.os }}"]
@@ -28,6 +26,15 @@ jobs:
 
       - name: Install prettier
         run: npm install -g prettier
+
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+
+      - name: Install keep-sorted
+        run: |
+          curl -fsSL https://go.dev/dl/go1.22.5.linux-amd64.tar.gz | sudo tar -C /usr/local -xzf -
+          /usr/local/go/bin/go install github.com/google/keep-sorted@v0.7.1
+          sudo mv ~/go/bin/keep-sorted /usr/local/bin/
 
       - name: Run linters
         run: |
