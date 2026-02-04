@@ -273,9 +273,15 @@ class StepMixin:
         self._save_prompt_step_marker(step.name, step_state)
 
         # Invoke agent
+        # Extract base workflow name (without project prefix) to avoid slashes in filenames
+        base_name = (
+            self.workflow.name.split("/")[-1]
+            if "/" in self.workflow.name
+            else self.workflow.name
+        )
         response = invoke_agent(
             expanded_prompt,
-            agent_type=f"workflow-{self.workflow.name}-{step.name}",
+            agent_type=f"workflow-{base_name}-{step.name}",
             artifacts_dir=self.artifacts_dir,
             workflow=self.workflow.name,
         )

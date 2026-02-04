@@ -125,7 +125,13 @@ def handle_run_special_cases(args_after_run: list[str]) -> bool:
             prompts = get_all_prompts(project=project)
             if workflow_name in prompts:
                 # Create artifacts directory in ~/.gai/projects/ so TUI can find it
-                artifacts_dir = create_artifacts_directory(f"workflow-{workflow_name}")
+                # Extract base workflow name (without project prefix) to avoid slashes in path
+                base_workflow = (
+                    workflow_name.split("/")[-1]
+                    if "/" in workflow_name
+                    else workflow_name
+                )
+                artifacts_dir = create_artifacts_directory(f"workflow-{base_workflow}")
                 try:
                     execute_workflow(
                         workflow_name,

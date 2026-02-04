@@ -49,8 +49,8 @@ def _generate_chat_filename(
     if timestamp is None:
         timestamp = generate_timestamp()
 
-    # Normalize workflow name: replace dashes with underscores for consistent filenames
-    normalized_workflow = workflow.replace("-", "_")
+    # Normalize workflow name: replace dashes and slashes with underscores for consistent filenames
+    normalized_workflow = workflow.replace("-", "_").replace("/", "_")
 
     # Build filename parts
     parts = [branch_or_workspace, normalized_workflow]
