@@ -1,0 +1,58 @@
+name: amend
+input:
+  - name: note
+    type: line
+    default: ""
+
+steps:
+  - name: inject
+    prompt_part: |
+      ---
+      IMPORTANT: You should make the necessary file changes, but should NOT create/amend a CL.
+      The amend workflow will handle CL amendment automatically after you complete your changes.
+
+  - name: check_changes
+    hidden: true
+    bash: |
+      changes=$(branch_local_changes)
+      if [ -n "$changes" ]; then
+        echo "has_changes=true"
+      else
+        echo "has_changes=false"
+      fi
+    output: { has_changes: bool }
+
+  - name: save_response
+    hidden: true
+    if: "{{ check_changes.has_changes }}"
+    python: |
+      import tempfile
+      response = {{ _response | tojson }}
+      with tempfile.NamedTemporaryFile(mode='w', suffix='.md', prefix='gai_amend_', delete=False) as f:
+          f.write(response)
+          print(f"response_file={f.name}")
+    output: { response_file: path }
+
+  - name: amend_cl
+    hidden: true
+    if: "{{ check_changes.has_changes }}"
+    bash: |
+      gai_amend_workflow \
+        --note "{{ note }}" \
+        --response-file "{{ save_response.response_file }}"
+    output: { success: bool, entry_id: word, cl_name: word, error: text }
+
+  - name: report
+    hidden: true
+    bash: |
+      if [ "{{ check_changes.has_changes }}" = "false" ]; then
+        echo "status=no_changes"
+        echo "message=No local changes detected - CL not amended"
+      elif [ "{{ amend_cl.success }}" = "true" ]; then
+        echo "status=amended"
+        echo "message=Amended CL {{ amend_cl.cl_name }} with HISTORY entry ({{ amend_cl.entry_id }})"
+      else
+        echo "status=error"
+        echo "message={{ amend_cl.error }}"
+      fi
+    output: { status: word, message: text }
