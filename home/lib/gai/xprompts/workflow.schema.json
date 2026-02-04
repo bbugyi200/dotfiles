@@ -11,28 +11,60 @@
       "description": "Workflow identifier (used in #name syntax)"
     },
     "input": {
-      "type": "array",
-      "description": "List of input argument definitions",
-      "items": {
-        "type": "object",
-        "required": ["name"],
-        "additionalProperties": false,
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "The argument name (used for named args like name=value)"
-          },
-          "type": {
-            "type": "string",
-            "description": "The expected type of the argument value",
-            "enum": ["word", "line", "text", "path", "int", "integer", "float", "bool", "boolean", "string"],
-            "default": "line"
-          },
-          "default": {
-            "description": "Default value if argument is not provided (null means required)"
+      "description": "Input argument definitions (array or object shorthand)",
+      "oneOf": [
+        {
+          "type": "array",
+          "description": "List of input argument definitions",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "The argument name (used for named args like name=value)"
+              },
+              "type": {
+                "type": "string",
+                "description": "The expected type of the argument value",
+                "enum": ["word", "line", "text", "path", "int", "integer", "float", "bool", "boolean", "string"],
+                "default": "line"
+              },
+              "default": {
+                "description": "Default value if argument is not provided (null means required)"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "description": "Object shorthand: { argName: type } or { argName: { type, default } }",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "string",
+                "description": "Type shorthand (e.g., 'text', 'line')",
+                "enum": ["word", "line", "text", "path", "int", "integer", "float", "bool", "boolean", "string"]
+              },
+              {
+                "type": "object",
+                "description": "Full definition with type and default",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "description": "The expected type of the argument value",
+                    "enum": ["word", "line", "text", "path", "int", "integer", "float", "bool", "boolean", "string"]
+                  },
+                  "default": {
+                    "description": "Default value if argument is not provided"
+                  }
+                }
+              }
+            ]
           }
         }
-      }
+      ]
     },
     "steps": {
       "type": "array",
@@ -63,51 +95,110 @@
             "description": "Content to append to containing prompt when workflow is embedded. Mutually exclusive with prompt/bash/python/parallel. Cannot have control flow (if/for/repeat/while), output, or hitl."
           },
           "output": {
-            "type": "object",
             "description": "Output specification for validating step responses",
-            "required": ["type", "schema"],
-            "additionalProperties": false,
-            "properties": {
-              "type": {
-                "type": "string",
-                "description": "The output format type",
-                "enum": ["json_schema"]
-              },
-              "schema": {
+            "oneOf": [
+              {
                 "type": "object",
-                "description": "The schema definition (JSON Schema for json_schema type)",
+                "description": "Full format with type and schema",
+                "required": ["type", "schema"],
+                "additionalProperties": false,
                 "properties": {
                   "type": {
                     "type": "string",
-                    "description": "JSON Schema type (object, array, etc.)"
+                    "description": "The output format type",
+                    "enum": ["json_schema"]
                   },
-                  "properties": {
+                  "schema": {
                     "type": "object",
-                    "description": "Property definitions for object schemas",
-                    "additionalProperties": {
-                      "type": "object",
+                    "description": "The schema definition (JSON Schema for json_schema type)",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "description": "JSON Schema type (object, array, etc.)"
+                      },
                       "properties": {
-                        "type": {
-                          "type": "string",
-                          "description": "Property type (word, line, text, path, string, or JSON Schema types)"
+                        "type": "object",
+                        "description": "Property definitions for object schemas",
+                        "additionalProperties": {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "description": "Property type (word, line, text, path, string, or JSON Schema types)"
+                            }
+                          }
+                        }
+                      },
+                      "items": {
+                        "type": "object",
+                        "description": "Item schema for array types"
+                      },
+                      "required": {
+                        "type": "array",
+                        "description": "List of required property names",
+                        "items": {
+                          "type": "string"
                         }
                       }
                     }
-                  },
-                  "items": {
-                    "type": "object",
-                    "description": "Item schema for array types"
-                  },
-                  "required": {
-                    "type": "array",
-                    "description": "List of required property names",
-                    "items": {
-                      "type": "string"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "description": "Object shorthand: { prop: type } or { prop: { type, default } }",
+                "not": {
+                  "required": ["type", "schema"]
+                },
+                "additionalProperties": {
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "description": "Type shorthand (e.g., 'text', 'word')"
+                    },
+                    {
+                      "type": "object",
+                      "description": "Full property definition with type and default",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "description": "The property type"
+                        },
+                        "default": {
+                          "description": "Default value for the property"
+                        }
+                      }
                     }
+                  ]
+                }
+              },
+              {
+                "type": "array",
+                "description": "Array shorthand: [{ prop: type }] for array return types",
+                "items": {
+                  "type": "object",
+                  "description": "Object shorthand for array items",
+                  "additionalProperties": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "description": "Type shorthand"
+                      },
+                      {
+                        "type": "object",
+                        "description": "Full property definition",
+                        "properties": {
+                          "type": {
+                            "type": "string"
+                          },
+                          "default": {}
+                        }
+                      }
+                    ]
                   }
                 }
               }
-            }
+            ]
           },
           "hitl": {
             "type": "boolean",
@@ -202,8 +293,62 @@
                   "description": "Python code to execute"
                 },
                 "output": {
-                  "type": "object",
-                  "description": "Output specification for validating step responses"
+                  "description": "Output specification for validating step responses",
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "description": "Full format with type and schema",
+                      "required": ["type", "schema"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": ["json_schema"]
+                        },
+                        "schema": {
+                          "type": "object"
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "description": "Object shorthand: { prop: type }",
+                      "not": {
+                        "required": ["type", "schema"]
+                      },
+                      "additionalProperties": {
+                        "oneOf": [
+                          { "type": "string" },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": { "type": "string" },
+                              "default": {}
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "array",
+                      "description": "Array shorthand: [{ prop: type }]",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "oneOf": [
+                            { "type": "string" },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": { "type": "string" },
+                                "default": {}
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  ]
                 },
                 "if": {
                   "type": "string",
