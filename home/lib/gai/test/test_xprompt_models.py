@@ -3,7 +3,14 @@
 from pathlib import Path
 
 import pytest
-from xprompt.models import InputArg, InputType, XPrompt, XPromptValidationError
+from xprompt.models import (
+    InputArg,
+    InputType,
+    XPrompt,
+    XPromptValidationError,
+    create_adhoc_workflow,
+    xprompt_to_workflow,
+)
 
 # Tests for InputType enum
 
@@ -257,3 +264,90 @@ def test_xprompt_get_input_by_position_empty_inputs() -> None:
     """Test getting input by position with no inputs defined."""
     xp = XPrompt(name="test", content="")
     assert xp.get_input_by_position(0) is None
+
+
+# Tests for xprompt_to_workflow
+
+
+def test_xprompt_to_workflow_basic() -> None:
+    """Test basic xprompt to workflow conversion."""
+    xp = XPrompt(name="explain", content="Explain this code: {{ code }}")
+    workflow = xprompt_to_workflow(xp)
+
+    assert workflow.name == "explain"
+    assert len(workflow.steps) == 1
+    assert workflow.steps[0].name == "main"
+    assert workflow.steps[0].prompt_part == "Explain this code: {{ code }}"
+    assert workflow.steps[0].is_prompt_part_step()
+    assert workflow.source_path is None
+
+
+def test_xprompt_to_workflow_preserves_inputs() -> None:
+    """Test that conversion preserves input definitions."""
+    inputs = [
+        InputArg(name="code", type=InputType.TEXT),
+        InputArg(name="language", type=InputType.WORD, default="python"),
+    ]
+    xp = XPrompt(name="review", content="Review {{ code }}", inputs=inputs)
+    workflow = xprompt_to_workflow(xp)
+
+    assert len(workflow.inputs) == 2
+    assert workflow.inputs[0].name == "code"
+    assert workflow.inputs[0].type == InputType.TEXT
+    assert workflow.inputs[1].name == "language"
+    assert workflow.inputs[1].default == "python"
+
+
+def test_xprompt_to_workflow_preserves_source_path() -> None:
+    """Test that conversion preserves source path."""
+    xp = XPrompt(name="test", content="test content", source_path="/path/to/test.md")
+    workflow = xprompt_to_workflow(xp)
+
+    assert workflow.source_path == "/path/to/test.md"
+
+
+def test_xprompt_to_workflow_is_simple_xprompt() -> None:
+    """Test that converted xprompt is detected as simple."""
+    xp = XPrompt(name="simple", content="Simple prompt")
+    workflow = xprompt_to_workflow(xp)
+
+    assert workflow.is_simple_xprompt()
+    assert workflow.has_prompt_part()
+    assert workflow.get_prompt_part_content() == "Simple prompt"
+
+
+# Tests for create_adhoc_workflow
+
+
+def test_create_adhoc_workflow_basic() -> None:
+    """Test basic adhoc workflow creation."""
+    workflow = create_adhoc_workflow("Hello world")
+
+    assert workflow.name == "_adhoc"
+    assert len(workflow.steps) == 1
+    assert workflow.steps[0].name == "main"
+    assert workflow.steps[0].prompt == "Hello world"
+    assert workflow.steps[0].is_prompt_step()
+    assert workflow.source_path is None
+    assert workflow.inputs == []
+
+
+def test_create_adhoc_workflow_not_simple_xprompt() -> None:
+    """Test that adhoc workflow is NOT a simple xprompt (uses prompt, not prompt_part)."""
+    workflow = create_adhoc_workflow("Test query")
+
+    # Adhoc workflows use 'prompt' (full prompt step), not 'prompt_part'
+    assert not workflow.is_simple_xprompt()
+    assert not workflow.has_prompt_part()
+    assert workflow.steps[0].prompt is not None
+
+
+def test_create_adhoc_workflow_multiline_query() -> None:
+    """Test adhoc workflow with multiline query."""
+    query = """Please review this code:
+
+def foo():
+    pass"""
+    workflow = create_adhoc_workflow(query)
+
+    assert workflow.steps[0].prompt == query

@@ -10,11 +10,20 @@ This module provides a replacement for the legacy snippet system, adding:
 
 from ._parsing import parse_workflow_reference
 from .loader import (
+    get_all_prompts,
     get_all_workflows,
     get_all_xprompts,
     get_xprompt_or_workflow,
 )
-from .models import InputArg, InputType, OutputSpec, XPrompt, XPromptValidationError
+from .models import (
+    InputArg,
+    InputType,
+    OutputSpec,
+    XPrompt,
+    XPromptValidationError,
+    create_adhoc_workflow,
+    xprompt_to_workflow,
+)
 from .output_validation import (
     OutputValidationError,
     extract_semantic_type_hints,
@@ -52,6 +61,8 @@ __all__ = [
     "OutputSpec",
     "XPrompt",
     "XPromptValidationError",
+    "create_adhoc_workflow",
+    "xprompt_to_workflow",
     # Output validation
     "OutputValidationError",
     "extract_semantic_type_hints",
@@ -60,6 +71,7 @@ __all__ = [
     "validate_against_schema",
     "validate_response",
     # Loader
+    "get_all_prompts",
     "get_all_workflows",
     "get_all_xprompts",
     "get_xprompt_or_workflow",

@@ -602,6 +602,37 @@ def get_all_workflows() -> dict[str, "Workflow"]:
     return _get_all_workflows()
 
 
+def get_all_prompts(project: str | None = None) -> dict[str, "Workflow"]:
+    """Get all xprompts and workflows as unified Workflow objects.
+
+    XPrompts are converted to single-step workflows with prompt_part.
+    Actual workflows are returned as-is.
+    Workflows take precedence on name collision.
+
+    This enables uniform handling - all prompts can be treated as workflows:
+    - Simple xprompt #foo → workflow with single prompt_part step
+    - Complex workflow #split → workflow with multiple steps
+
+    Args:
+        project: Optional project name to include project-specific xprompts.
+
+    Returns:
+        Dictionary mapping name to Workflow object.
+    """
+    from xprompt.models import xprompt_to_workflow
+
+    workflows = get_all_workflows()
+    xprompts = get_all_xprompts(project=project)
+
+    # Convert xprompts to workflows (workflows take precedence on collision)
+    converted = {
+        name: xprompt_to_workflow(xp)
+        for name, xp in xprompts.items()
+        if name not in workflows
+    }
+    return {**converted, **workflows}
+
+
 def get_xprompt_or_workflow(
     name: str, project: str | None = None
 ) -> "XPrompt | Workflow | None":

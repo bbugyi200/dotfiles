@@ -1,9 +1,14 @@
 """XPrompt data models for typed prompt templates."""
 
+from __future__ import annotations
+
 import os
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from xprompt.workflow_models import Workflow
 
 
 class InputType(Enum):
@@ -65,7 +70,7 @@ class InputArg:
     type: InputType = InputType.LINE
     default: Any = None
     is_step_input: bool = False
-    output_schema: "OutputSpec | None" = None
+    output_schema: OutputSpec | None = None
 
     def validate_and_convert(self, value: str) -> Any:
         """Validate and convert a string value to the declared type.
@@ -176,3 +181,57 @@ class XPrompt:
         if 0 <= position < len(self.inputs):
             return self.inputs[position]
         return None
+
+
+def xprompt_to_workflow(xprompt: XPrompt) -> Workflow:
+    """Convert an XPrompt to a Workflow with a single prompt_part step.
+
+    This enables uniform handling of xprompts and workflows - all xprompts
+    can be treated as workflows with a single prompt_part step.
+
+    Args:
+        xprompt: The XPrompt to convert.
+
+    Returns:
+        A Workflow object with a single prompt_part step containing the xprompt content.
+    """
+    from xprompt.workflow_models import Workflow, WorkflowStep
+
+    return Workflow(
+        name=xprompt.name,
+        inputs=xprompt.inputs,
+        steps=[
+            WorkflowStep(
+                name="main",
+                prompt_part=xprompt.content,
+            )
+        ],
+        source_path=xprompt.source_path,
+    )
+
+
+def create_adhoc_workflow(query: str) -> Workflow:
+    """Create an ephemeral workflow for a raw query string.
+
+    This allows raw queries (like "gai run 'hello'") to be treated
+    as workflows with a single prompt step.
+
+    Args:
+        query: The raw query string.
+
+    Returns:
+        A Workflow object with a single prompt step containing the query.
+    """
+    from xprompt.workflow_models import Workflow, WorkflowStep
+
+    return Workflow(
+        name="_adhoc",
+        inputs=[],
+        steps=[
+            WorkflowStep(
+                name="main",
+                prompt=query,  # Note: prompt, not prompt_part
+            )
+        ],
+        source_path=None,
+    )

@@ -726,3 +726,88 @@ def test_workflow_not_appears_as_agent_all_hidden() -> None:
     )
     # No visible steps, so it shouldn't appear as agent
     assert workflow.appears_as_agent() is False
+
+
+# ============================================================================
+# Workflow.is_simple_xprompt() tests
+# ============================================================================
+
+
+def test_workflow_is_simple_xprompt_single_prompt_part() -> None:
+    """Test that single prompt_part step workflow is a simple xprompt."""
+    workflow = Workflow(
+        name="explain",
+        steps=[
+            WorkflowStep(name="main", prompt_part="Explain this code"),
+        ],
+    )
+    assert workflow.is_simple_xprompt() is True
+
+
+def test_workflow_is_simple_xprompt_with_inputs() -> None:
+    """Test that single prompt_part with inputs is still simple xprompt."""
+    from xprompt.models import InputArg, InputType
+
+    workflow = Workflow(
+        name="review",
+        inputs=[InputArg(name="code", type=InputType.TEXT)],
+        steps=[
+            WorkflowStep(name="main", prompt_part="Review: {{ code }}"),
+        ],
+    )
+    assert workflow.is_simple_xprompt() is True
+
+
+def test_workflow_not_simple_xprompt_prompt_step() -> None:
+    """Test that workflow with prompt step (not prompt_part) is not simple."""
+    workflow = Workflow(
+        name="adhoc",
+        steps=[
+            WorkflowStep(name="main", prompt="Do something"),
+        ],
+    )
+    assert workflow.is_simple_xprompt() is False
+
+
+def test_workflow_not_simple_xprompt_bash_step() -> None:
+    """Test that workflow with bash step is not simple xprompt."""
+    workflow = Workflow(
+        name="runner",
+        steps=[
+            WorkflowStep(name="main", bash="echo hello"),
+        ],
+    )
+    assert workflow.is_simple_xprompt() is False
+
+
+def test_workflow_not_simple_xprompt_multiple_steps() -> None:
+    """Test that workflow with multiple steps is not simple xprompt."""
+    workflow = Workflow(
+        name="complex",
+        steps=[
+            WorkflowStep(name="setup", bash="setup.sh"),
+            WorkflowStep(name="main", prompt_part="Do the thing"),
+        ],
+    )
+    assert workflow.is_simple_xprompt() is False
+
+
+def test_workflow_not_simple_xprompt_prompt_part_with_post_steps() -> None:
+    """Test that prompt_part with post-steps is not simple xprompt."""
+    workflow = Workflow(
+        name="with_validation",
+        steps=[
+            WorkflowStep(name="inject", prompt_part="Generate JSON"),
+            WorkflowStep(name="validate", bash="validate.sh"),
+        ],
+    )
+    assert workflow.is_simple_xprompt() is False
+
+
+def test_workflow_not_simple_xprompt_empty_steps() -> None:
+    """Test that workflow with no steps is not simple xprompt."""
+    workflow = Workflow(
+        name="empty",
+        steps=[],
+    )
+    assert workflow.is_simple_xprompt() is False

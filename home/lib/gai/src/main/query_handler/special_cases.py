@@ -99,7 +99,8 @@ def handle_run_special_cases(args_after_run: list[str]) -> bool:
         )
         sys.exit(0)
 
-    # Handle #workflow_name syntax (e.g., gai run "#split")
+    # Handle #workflow_name syntax (e.g., gai run "#split" or gai run "#explain")
+    # All xprompts and workflows are treated uniformly through execute_workflow
     if args_after_run:
         potential_query = args_after_run[0]
         if potential_query.startswith("#"):
@@ -107,8 +108,7 @@ def handle_run_special_cases(args_after_run: list[str]) -> bool:
 
             from xprompt import (
                 execute_workflow,
-                get_all_workflows,
-                get_all_xprompts,
+                get_all_prompts,
                 parse_workflow_reference,
             )
 
@@ -116,8 +116,9 @@ def handle_run_special_cases(args_after_run: list[str]) -> bool:
                 workflow_ref
             )
 
-            workflows = get_all_workflows()
-            if workflow_name in workflows:
+            # get_all_prompts() returns both workflows and converted xprompts
+            prompts = get_all_prompts()
+            if workflow_name in prompts:
                 # Create artifacts directory in ~/.gai/projects/ so TUI can find it
                 artifacts_dir = create_artifacts_directory(f"workflow-{workflow_name}")
                 try:
@@ -132,21 +133,14 @@ def handle_run_special_cases(args_after_run: list[str]) -> bool:
                     print(f"Workflow error: {e}")
                     sys.exit(1)
 
-            # If not a workflow, check if it's an xprompt
-            xprompts = get_all_xprompts()
-            if workflow_name in xprompts:
-                # Pass the original #query to run_query for expansion
-                run_query(potential_query)
-                sys.exit(0)
-
-    # Handle direct query (not a known workflow, contains spaces)
+    # Handle direct query (not a known prompt, contains spaces)
     if args_after_run:
         potential_query = args_after_run[0]
-        # Get known workflows dynamically
-        from xprompt import get_all_workflows
+        # Get known prompts dynamically (includes both xprompts and workflows)
+        from xprompt import get_all_prompts
 
-        known_workflows = set(get_all_workflows().keys())
-        if potential_query not in known_workflows and " " in potential_query:
+        known_prompts = set(get_all_prompts().keys())
+        if potential_query not in known_prompts and " " in potential_query:
             run_query(potential_query)
             sys.exit(0)
 

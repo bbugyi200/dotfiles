@@ -9,7 +9,7 @@ from textual.containers import Container, Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Input, Label, OptionList, Static
 from textual.widgets.option_list import Option
-from xprompt import get_all_workflows, get_all_xprompts
+from xprompt import get_all_prompts
 from xprompt.workflow_models import Workflow
 
 from .base import OptionListNavigationMixin
@@ -57,15 +57,19 @@ class XPromptSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
             project: Optional project name to include project-specific xprompts.
         """
         super().__init__()
-        self.xprompts = get_all_xprompts(project=project)
-        self.workflows = get_all_workflows()
+        # Use unified loader - all items are Workflow objects now
+        self._prompts = get_all_prompts(project=project)
         # Build unified items dict: name -> (content/preview, type)
+        # Simple xprompts show raw content, complex workflows show step preview
         self._all_items: dict[str, tuple[str, str]] = {}
-        for name, xprompt in self.xprompts.items():
-            self._all_items[name] = (xprompt.content, "xprompt")
-        for name, workflow in self.workflows.items():
-            preview = self._create_workflow_preview(workflow)
-            self._all_items[name] = (preview, "workflow")
+        for name, workflow in self._prompts.items():
+            if workflow.is_simple_xprompt():
+                # Simple xprompt - show prompt_part content directly
+                self._all_items[name] = (workflow.get_prompt_part_content(), "xprompt")
+            else:
+                # Complex workflow - show structured preview
+                preview = self._create_workflow_preview(workflow)
+                self._all_items[name] = (preview, "workflow")
         self._filtered_names: list[str] = sorted(self._all_items.keys())
 
     def _create_workflow_preview(self, workflow: Workflow) -> str:
@@ -99,6 +103,11 @@ class XPromptSelectModal(OptionListNavigationMixin, ModalScreen[str | None]):
             elif step.python:
                 step_type = "python"
                 step_label = step.python
+            elif step.prompt_part:
+                step_type = "prompt_part"
+                step_label = step.prompt_part.split("\n")[0][
+                    :50
+                ]  # First line, truncated
             else:
                 step_type = "unknown"
                 step_label = "?"

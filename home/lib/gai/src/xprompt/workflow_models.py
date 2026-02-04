@@ -194,6 +194,22 @@ class Workflow:
         visible_steps = [s for s in self.steps if not s.hidden]
         return len(visible_steps) == 1 and visible_steps[0].is_prompt_step()
 
+    def is_simple_xprompt(self) -> bool:
+        """Check if workflow is a simple xprompt (single prompt_part step only).
+
+        Returns True for converted xprompts that can be expanded inline as pure
+        text substitution. This is the prompt_part equivalent of appears_as_agent().
+
+        A simple xprompt has:
+        - Exactly one step
+        - That step is a prompt_part step (not prompt, bash, python, or parallel)
+
+        These workflows can be:
+        - Expanded inline when embedded in other prompts
+        - Executed as direct prompts when run standalone
+        """
+        return len(self.steps) == 1 and self.has_prompt_part()
+
 
 @dataclass
 class StepState:

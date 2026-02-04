@@ -253,7 +253,7 @@ def execute_workflow(
     """Execute a workflow and return its final output.
 
     Args:
-        name: The workflow name.
+        name: The workflow name (can be a workflow or converted xprompt).
         positional_args: Positional arguments.
         named_args: Named arguments.
         artifacts_dir: Optional directory for workflow artifacts.
@@ -272,17 +272,19 @@ def execute_workflow(
     from typing import Any
 
     from ._step_input_loader import load_step_input_value
+    from .loader import get_all_prompts
     from .workflow_executor import WorkflowExecutor
     from .workflow_hitl import CLIHITLHandler, TUIHITLHandler
     from .workflow_models import WorkflowExecutionError
     from .workflow_output import WorkflowOutputHandler
     from .workflow_validator import validate_workflow
 
-    workflows = get_all_workflows()
-    if name not in workflows:
+    # Use unified loader to get both workflows and converted xprompts
+    prompts = get_all_prompts()
+    if name not in prompts:
         raise WorkflowExecutionError(f"Workflow '{name}' not found")
 
-    workflow = workflows[name]
+    workflow = prompts[name]
 
     # Create artifacts_dir early so we can write state on validation failure
     if artifacts_dir is None:
@@ -315,6 +317,21 @@ def execute_workflow(
     for input_arg in workflow.inputs:
         if input_arg.name not in args and input_arg.default is not None:
             args[input_arg.name] = str(input_arg.default)
+
+    # Handle simple xprompts (converted xprompts with single prompt_part step)
+    # Execute them as direct prompts through run_query instead of workflow executor
+    if workflow.is_simple_xprompt():
+        from main.query_handler._query import run_query
+
+        from xprompt.workflow_executor_utils import render_template
+
+        # Render the prompt_part content with args substituted
+        content = workflow.get_prompt_part_content()
+        rendered = render_template(content, args)
+
+        # Execute as a direct prompt through the standard run_query path
+        run_query(rendered)
+        return ""
 
     # Process step inputs: load from @file or parse inline YAML/JSON
     # Step inputs allow users to skip steps by providing their outputs directly
