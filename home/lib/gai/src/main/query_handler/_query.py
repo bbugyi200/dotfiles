@@ -1,6 +1,5 @@
 """Core query execution logic."""
 
-import json
 import os
 import re
 import tempfile
@@ -17,11 +16,6 @@ from running_field import claim_workspace, release_workspace
 from shared_utils import (
     create_artifacts_directory,
     generate_workflow_tag,
-)
-from xprompt import (
-    OutputValidationError,
-    get_primary_output_schema,
-    validate_response,
 )
 from xprompt.workflow_models import WorkflowStep
 
@@ -436,39 +430,6 @@ def run_query(
         # Check for file modifications and prompt for action
         console = Console()
         target_dir = os.getcwd()
-
-        # Check if this query uses an xprompt with output validation
-        # Use original query (not full_prompt) to detect output spec
-        output_spec = get_primary_output_schema(query)
-        if output_spec is not None:
-            try:
-                parsed_data, validation_error = validate_response(
-                    response_content, output_spec
-                )
-                if validation_error is None:
-                    # Valid output - print nicely formatted JSON and exit
-                    console.print("\n[green]Output validated successfully:[/green]")
-                    console.print_json(json.dumps(parsed_data, indent=2))
-
-                    # Still save chat history for record-keeping
-                    saved_path = save_chat_history(
-                        prompt=query,
-                        response=response_content,
-                        workflow="run",
-                        previous_history=previous_history,
-                        timestamp=shared_timestamp,
-                    )
-                    print(f"\nChat history saved to: {saved_path}")
-                    return  # Early exit - skip CL creation and prompting
-                else:
-                    # Validation failed - print error and exit
-                    console.print(
-                        f"\n[red]Output validation failed: {validation_error}[/red]"
-                    )
-                    return
-            except OutputValidationError as e:
-                console.print(f"\n[red]Could not parse output: {e.message}[/red]")
-                return
 
         # Prepare and save chat history BEFORE prompting so we have chat_path
         saved_path = save_chat_history(

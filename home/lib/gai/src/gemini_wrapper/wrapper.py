@@ -17,15 +17,10 @@ from rich_utils import (
 )
 from shared_utils import get_gai_log_file, run_bam_command
 from xprompt import (
-    OutputValidationError,
-    generate_format_instructions,
-    get_primary_output_schema,
     is_jinja2_template,
     process_xprompt_references,
     render_toplevel_jinja2,
-    validate_response,
 )
-from xprompt.models import OutputSpec
 
 from .file_references import (
     format_with_prettier,
@@ -255,7 +250,6 @@ class GeminiCommandWrapper:
             False  # Flag to suppress immediate prompt/response output
         )
         self.is_home_mode: bool = False  # Skip file copying in home mode
-        self.skip_output_validation: bool = False  # Skip automatic output validation
         # Check for global override first, then use constructor arg
         override = os.environ.get("GAI_MODEL_SIZE_OVERRIDE")
         self.model_size: Literal["little", "big"] = (
@@ -276,7 +270,6 @@ class GeminiCommandWrapper:
         workflow: str | None = None,
         timestamp: str | None = None,
         is_home_mode: bool = False,
-        skip_output_validation: bool = False,
     ) -> None:
         """Set the context for logging prompts and responses.
 
@@ -289,7 +282,6 @@ class GeminiCommandWrapper:
             workflow: Workflow name for saving to ~/.gai/chats/ (e.g., "crs")
             timestamp: Optional timestamp for chat file naming (YYmmdd_HHMMSS format)
             is_home_mode: If True, skip file copying for @ file references
-            skip_output_validation: If True, skip automatic output schema validation
         """
         self.agent_type = agent_type
         self.iteration = iteration
@@ -299,7 +291,6 @@ class GeminiCommandWrapper:
         self.workflow = workflow
         self.timestamp = timestamp
         self.is_home_mode = is_home_mode
-        self.skip_output_validation = skip_output_validation
 
     def _display_decision_counts(self) -> None:
         """Display the planning agent decision counts."""
@@ -322,12 +313,6 @@ class GeminiCommandWrapper:
         if not query:
             return AIMessage(content="No query found in messages")
 
-        # Detect output schema BEFORE xprompt expansion
-        # This allows us to know what format the final response should be in
-        output_spec: OutputSpec | None = None
-        if not self.skip_output_validation:
-            output_spec = get_primary_output_schema(query)
-
         # Process xprompt references in the prompt (expand #name patterns)
         query = process_xprompt_references(query)
 
@@ -341,12 +326,6 @@ class GeminiCommandWrapper:
         # Process Jinja2 templates AFTER all expansions, so conditions can check resolved values
         if is_jinja2_template(query):
             query = render_toplevel_jinja2(query)
-
-        # Append output format instructions if we have an output schema
-        if output_spec is not None:
-            format_instructions = generate_format_instructions(output_spec)
-            if format_instructions:
-                query = query + format_instructions
 
         # Format prompt with prettier for consistent markdown formatting
         query = format_with_prettier(query)
@@ -498,29 +477,6 @@ class GeminiCommandWrapper:
                     agent=chat_agent,
                     timestamp=start_timestamp,
                 )
-
-            # Validate output against schema if specified
-            if output_spec is not None:
-                try:
-                    _, validation_error = validate_response(
-                        response_content, output_spec
-                    )
-                    if validation_error:
-                        if not self.suppress_output:
-                            from rich_utils import print_status
-
-                            print_status(
-                                f"Output validation failed: {validation_error}",
-                                "warning",
-                            )
-                except OutputValidationError as e:
-                    if not self.suppress_output:
-                        from rich_utils import print_status
-
-                        print_status(
-                            f"Output validation error: {e.message}",
-                            "warning",
-                        )
 
             return AIMessage(content=response_content)
         except subprocess.CalledProcessError as e:

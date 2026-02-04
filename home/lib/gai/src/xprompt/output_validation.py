@@ -349,7 +349,7 @@ def validate_against_schema(
     return True, None
 
 
-def _extract_semantic_type_hints(schema: Any, path: str = "") -> list[str]:
+def extract_semantic_type_hints(schema: Any, path: str = "") -> list[str]:
     """Extract semantic type hints from a schema for format instructions.
 
     Args:
@@ -380,12 +380,12 @@ def _extract_semantic_type_hints(schema: Any, path: str = "") -> list[str]:
     if "properties" in schema and isinstance(schema["properties"], dict):
         for prop_name, prop_schema in schema["properties"].items():
             prop_path = f"{path}.{prop_name}" if path else prop_name
-            hints.extend(_extract_semantic_type_hints(prop_schema, prop_path))
+            hints.extend(extract_semantic_type_hints(prop_schema, prop_path))
 
     # Recurse into items (for arrays)
     if "items" in schema and isinstance(schema["items"], dict):
         items_path = f"{path}[]" if path else "items"
-        hints.extend(_extract_semantic_type_hints(schema["items"], items_path))
+        hints.extend(extract_semantic_type_hints(schema["items"], items_path))
 
     return hints
 
@@ -405,7 +405,7 @@ def generate_format_instructions(output_spec: OutputSpec) -> str:
     schema_str = json.dumps(output_spec.schema, indent=2)
 
     # Extract semantic type hints
-    semantic_hints = _extract_semantic_type_hints(output_spec.schema)
+    semantic_hints = extract_semantic_type_hints(output_spec.schema)
     semantic_section = ""
     if semantic_hints:
         hints_text = "\n".join(semantic_hints)

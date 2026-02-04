@@ -1,6 +1,7 @@
 """Tests for xprompt.loader shortform syntax parsing."""
 
 from xprompt.loader import (
+    _normalize_schema_properties,
     _parse_inputs_from_front_matter,
     _parse_shortform_input_value,
     _parse_shortform_output,
@@ -166,6 +167,14 @@ def test_parse_shortform_output_array_empty() -> None:
     assert output.schema["type"] == "array"
 
 
+def test_parse_shortform_output_array_non_dict_item() -> None:
+    """Test parsing array shortform with non-dict item."""
+    output = _parse_shortform_output(["not a dict"])  # type: ignore[list-item]
+    assert output.type == "json_schema"
+    assert output.schema["type"] == "array"
+    assert output.schema["items"] == {}
+
+
 # Tests for _parse_inputs_from_front_matter with shortform
 
 
@@ -267,3 +276,44 @@ def test_parse_output_distinguishes_longform_from_shortform() -> None:
     )
     assert shortform is not None
     assert "properties" in shortform.schema
+
+
+# Tests for _normalize_schema_properties
+
+
+def test_normalize_schema_properties_non_dict() -> None:
+    """Test that non-dict input is returned as-is."""
+    result = _normalize_schema_properties("not a dict")  # type: ignore[arg-type]
+    assert result == "not a dict"
+
+
+def test_normalize_schema_properties_nested_properties() -> None:
+    """Test normalizing nested properties."""
+    schema = {
+        "type": "object",
+        "properties": {
+            "outer": {
+                "type": "object",
+                "properties": {
+                    "inner": {"type": "string"},
+                },
+            },
+        },
+    }
+    result = _normalize_schema_properties(schema)
+    assert result["properties"]["outer"]["properties"]["inner"]["type"] == "string"
+
+
+def test_normalize_schema_properties_with_items() -> None:
+    """Test normalizing array items."""
+    schema = {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+            },
+        },
+    }
+    result = _normalize_schema_properties(schema)
+    assert result["items"]["properties"]["name"]["type"] == "string"

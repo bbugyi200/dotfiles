@@ -17,6 +17,7 @@ from .loader import (
 from .models import InputArg, InputType, OutputSpec, XPrompt, XPromptValidationError
 from .output_validation import (
     OutputValidationError,
+    extract_semantic_type_hints,
     extract_structured_content,
     generate_format_instructions,
     validate_against_schema,
@@ -25,7 +26,6 @@ from .output_validation import (
 from .processor import (
     execute_workflow,
     expand_workflow_for_embedding,
-    get_primary_output_schema,
     is_jinja2_template,
     is_workflow_reference,
     process_xprompt_references,
@@ -54,6 +54,7 @@ __all__ = [
     "XPromptValidationError",
     # Output validation
     "OutputValidationError",
+    "extract_semantic_type_hints",
     "extract_structured_content",
     "generate_format_instructions",
     "validate_against_schema",
@@ -67,7 +68,6 @@ __all__ = [
     # Processor
     "execute_workflow",
     "expand_workflow_for_embedding",
-    "get_primary_output_schema",
     "is_jinja2_template",
     "is_workflow_reference",
     "process_xprompt_references",

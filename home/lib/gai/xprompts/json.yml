@@ -4,16 +4,33 @@ input:
 steps:
   - name: setup
     bash: gai_json_workflow --setup '{{ schema }}'
-    output: { schema_json: text, format_instructions: text }
+    output: { schema_json: text, semantic_hints: text }
 
   - name: inject
     prompt_part: |
-      {{ setup.format_instructions | safe }}
+      ---
+      OUTPUT FORMAT REQUIREMENTS:
+
+      Your response MUST be valid JSON that conforms to the following JSON Schema:
+
+      ```json
+      {{ setup.schema_json }}
+      ```
+      {% if setup.semantic_hints %}
+
+      FIELD CONSTRAINTS:
+      {{ setup.semantic_hints }}
+      {% endif %}
+
+      IMPORTANT:
+      - Output ONLY the JSON data, wrapped in a code fence (```json ... ```)
+      - Do NOT include any explanation or commentary before or after the JSON
+      - The JSON must be valid and parseable
+      - The JSON must conform exactly to the schema above
 
   - name: write_response
     python: |
       import tempfile
-      import json
       response = {{ _response | tojson }}
       with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
           f.write(response)

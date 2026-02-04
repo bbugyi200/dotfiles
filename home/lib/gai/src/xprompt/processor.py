@@ -18,7 +18,7 @@ from ._parsing import (
     preprocess_shorthand_syntax,
 )
 from .loader import get_all_workflows, get_all_xprompts
-from .models import OutputSpec, XPrompt
+from .models import XPrompt
 from .workflow_models import WorkflowStep, WorkflowValidationError
 
 # Maximum number of expansion iterations to prevent infinite loops
@@ -37,38 +37,6 @@ _XPROMPT_PATTERN = (
     r"#([a-zA-Z_][a-zA-Z0-9_]*(?:/[a-zA-Z_][a-zA-Z0-9_]*)*)"  # Group 1: xprompt name with optional namespace
     r"(?:(\()|:([a-zA-Z0-9_.-]+)|(\+))?"  # Group 2: open paren OR Group 3: colon arg OR Group 4: plus
 )
-
-
-def get_primary_output_schema(prompt: str) -> OutputSpec | None:
-    """Find the first xprompt with an output schema in the original prompt.
-
-    This function scans the prompt text (before expansion) for xprompt references
-    and returns the output specification from the first one that has an output
-    field defined. This is used to determine the expected output format for the
-    entire prompt.
-
-    Args:
-        prompt: The original prompt text (before xprompt expansion).
-
-    Returns:
-        The OutputSpec from the first xprompt with an output field, or None
-        if no xprompts have output specifications.
-    """
-    xprompts = get_all_xprompts()
-    if not xprompts or "#" not in prompt:
-        return None
-
-    # Find all xprompt references in order
-    matches = list(re.finditer(_XPROMPT_PATTERN, prompt, re.MULTILINE))
-
-    for match in matches:
-        name = match.group(1)
-        if name in xprompts:
-            xprompt = xprompts[name]
-            if xprompt.output is not None:
-                return xprompt.output
-
-    return None
 
 
 def _expand_single_xprompt(
@@ -460,7 +428,6 @@ def expand_workflow_for_embedding(
 __all__ = [
     "execute_workflow",
     "expand_workflow_for_embedding",
-    "get_primary_output_schema",
     "is_jinja2_template",
     "is_workflow_reference",
     "process_xprompt_references",

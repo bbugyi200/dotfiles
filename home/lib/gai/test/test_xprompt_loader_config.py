@@ -7,6 +7,7 @@ from unittest.mock import patch
 from xprompt.loader import (
     _load_xprompt_from_file,
     _load_xprompts_from_config,
+    _parse_yaml_front_matter,
     get_all_xprompts,
 )
 from xprompt.models import InputType, XPrompt
@@ -93,6 +94,43 @@ def test_load_xprompt_from_file_nonexistent() -> None:
     assert xprompt is None
 
 
+# Tests for _parse_yaml_front_matter
+
+
+def test_parse_yaml_front_matter_invalid_yaml() -> None:
+    """Test that invalid YAML in front matter returns None and full content."""
+    content = """---
+invalid: yaml: content: [not closed
+---
+Body content"""
+    front_matter, body = _parse_yaml_front_matter(content)
+    assert front_matter is None
+    assert body == content
+
+
+def test_parse_yaml_front_matter_non_dict() -> None:
+    """Test that non-dict YAML front matter returns empty dict."""
+    content = """---
+- just
+- a
+- list
+---
+Body content"""
+    front_matter, body = _parse_yaml_front_matter(content)
+    assert front_matter == {}
+    assert body == "Body content"
+
+
+def test_parse_yaml_front_matter_unclosed() -> None:
+    """Test that unclosed front matter returns None and full content."""
+    content = """---
+name: test
+No closing delimiter here"""
+    front_matter, body = _parse_yaml_front_matter(content)
+    assert front_matter is None
+    assert body == content
+
+
 # Tests for _load_xprompts_from_config
 
 
@@ -159,36 +197,6 @@ xprompts:
     count_input = next(i for i in xprompts["with_input"].inputs if i.name == "count")
     assert count_input.type == InputType.INT
     assert count_input.default == 0
-
-    Path(config_path).unlink()
-
-
-def test_load_xprompts_from_config_structured_with_output() -> None:
-    """Test loading structured xprompts with output spec from config."""
-    yaml_content = """
-xprompts:
-  with_output:
-    input: { query: line }
-    content: "Search for {{ query }}"
-    output: { result: text, score: int }
-"""
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".yml", delete=False, encoding="utf-8"
-    ) as f:
-        f.write(yaml_content)
-        config_path = f.name
-
-    with patch("xprompt.loader._get_config_path", return_value=config_path):
-        xprompts = _load_xprompts_from_config()
-
-    assert len(xprompts) == 1
-    xp = xprompts["with_output"]
-    assert xp.content == "Search for {{ query }}"
-    assert len(xp.inputs) == 1
-    assert xp.inputs[0].name == "query"
-    assert xp.output is not None
-    assert xp.output.type == "json_schema"
-    assert "properties" in xp.output.schema
 
     Path(config_path).unlink()
 
@@ -334,7 +342,6 @@ def _load_xprompts_from_project_with_base(
                     content=xprompt.content,
                     inputs=xprompt.inputs,
                     source_path=xprompt.source_path,
-                    output=xprompt.output,
                 )
     return xprompts
 

@@ -12,10 +12,10 @@ import sys
 
 
 def _setup_mode(schema_str: str) -> None:
-    """Parse schema and generate format instructions."""
+    """Parse schema and return schema JSON and semantic hints."""
     import yaml
     from xprompt.loader import parse_output_from_front_matter
-    from xprompt.output_validation import generate_format_instructions
+    from xprompt.output_validation import extract_semantic_type_hints
 
     schema_data = yaml.safe_load(schema_str.strip("`"))
     output_spec = parse_output_from_front_matter(schema_data)
@@ -23,9 +23,13 @@ def _setup_mode(schema_str: str) -> None:
         print("Error: Could not parse schema", file=sys.stderr)
         sys.exit(1)
 
-    instructions = generate_format_instructions(output_spec)
-    print(f"schema_json={json.dumps(output_spec.schema)}")
-    print(f"format_instructions={json.dumps(instructions)}")
+    # Extract semantic hints for field constraints
+    hints = extract_semantic_type_hints(output_spec.schema)
+    hints_str = "\n".join(hints) if hints else ""
+
+    # Output pretty-printed schema and hints
+    print(f"schema_json={json.dumps(output_spec.schema, indent=2)}")
+    print(f"semantic_hints={json.dumps(hints_str)}")
 
 
 def _validate_mode(schema_json: str, response_file: str) -> None:

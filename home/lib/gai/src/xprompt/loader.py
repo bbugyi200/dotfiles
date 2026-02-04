@@ -352,17 +352,11 @@ def _load_xprompt_from_file(file_path: Path) -> XPrompt | None:
     if front_matter and "input" in front_matter:
         inputs = _parse_inputs_from_front_matter(front_matter["input"])
 
-    # Parse output specification if present
-    output: OutputSpec | None = None
-    if front_matter and "output" in front_matter:
-        output = parse_output_from_front_matter(front_matter["output"])
-
     return XPrompt(
         name=name,
         content=body,
         inputs=inputs,
         source_path=str(file_path),
-        output=output,
     )
 
 
@@ -482,14 +476,12 @@ def _load_xprompts_from_config() -> dict[str, XPrompt]:
             # Simple string content (no arguments)
             content = value
             inputs: list[InputArg] = []
-            output: OutputSpec | None = None
         elif isinstance(value, dict):
             # Structured xprompt with input/content
             content = value.get("content", "")
             if not isinstance(content, str):
                 continue
             inputs = _parse_inputs_from_front_matter(value.get("input"))
-            output = parse_output_from_front_matter(value.get("output"))
         else:
             continue
 
@@ -498,7 +490,6 @@ def _load_xprompts_from_config() -> dict[str, XPrompt]:
             content=content,
             inputs=inputs,
             source_path="config",
-            output=output,
         )
 
     return xprompts
@@ -553,7 +544,6 @@ def _load_xprompts_from_project(project: str) -> dict[str, XPrompt]:
                     content=xprompt.content,
                     inputs=xprompt.inputs,
                     source_path=xprompt.source_path,
-                    output=xprompt.output,
                 )
     return xprompts
 

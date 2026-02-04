@@ -5,8 +5,8 @@ from xprompt.models import OutputSpec
 from xprompt.output_validation import (
     OutputValidationError,
     _convert_semantic_schema_to_json_schema,
-    _extract_semantic_type_hints,
     _validate_semantic_type,
+    extract_semantic_type_hints,
     extract_structured_content,
     generate_format_instructions,
     validate_against_schema,
@@ -58,6 +58,20 @@ class TestExtractStructuredContent:
             extract_structured_content(response)
         assert "Could not extract valid JSON or YAML" in str(exc_info.value)
         assert exc_info.value.raw_response == response
+
+    def test_yaml_plain_string_not_accepted(self) -> None:
+        """Test that YAML that parses as plain string is not accepted."""
+        # YAML safely loads plain text as a string, which we reject
+        response = "just plain text with no structure"
+        with pytest.raises(OutputValidationError):
+            extract_structured_content(response)
+
+    def test_yaml_list_is_accepted(self) -> None:
+        """Test that YAML list is accepted."""
+        response = "- item1\n- item2\n- item3"
+        data, format_type = extract_structured_content(response)
+        assert data == ["item1", "item2", "item3"]
+        assert format_type == "yaml"
 
 
 class TestValidateAgainstSchema:
@@ -392,6 +406,34 @@ class TestValidateAgainstSchemaWithSemanticTypes:
         assert is_valid is False
         assert error is not None and "expected word" in error
 
+    def test_int_type_with_invalid_string_keeps_string(self) -> None:
+        """Test that int type with non-numeric string stays as string."""
+        schema = {
+            "type": "object",
+            "properties": {
+                "count": {"type": "int"},
+            },
+        }
+        # String that can't be converted to int should fail validation
+        data = {"count": "not a number"}
+        is_valid, error = validate_against_schema(data, schema)
+        # It should fail because "not a number" is not an integer
+        assert is_valid is False
+
+    def test_float_type_with_invalid_string_keeps_string(self) -> None:
+        """Test that float type with non-numeric string stays as string."""
+        schema = {
+            "type": "object",
+            "properties": {
+                "value": {"type": "float"},
+            },
+        }
+        # String that can't be converted to float should fail validation
+        data = {"value": "not a float"}
+        is_valid, error = validate_against_schema(data, schema)
+        # It should fail because "not a float" is not a number
+        assert is_valid is False
+
     def test_json_schema_validation_before_semantic(self) -> None:
         """Test that JSON Schema validation happens before semantic validation."""
         schema = {
@@ -409,7 +451,7 @@ class TestValidateAgainstSchemaWithSemanticTypes:
 
 
 class TestExtractSemanticTypeHints:
-    """Tests for _extract_semantic_type_hints function."""
+    """Tests for extract_semantic_type_hints function."""
 
     def test_extract_word_hint(self) -> None:
         """Test extracting hint for word type."""
@@ -419,7 +461,7 @@ class TestExtractSemanticTypeHints:
                 "name": {"type": "word"},
             },
         }
-        hints = _extract_semantic_type_hints(schema)
+        hints = extract_semantic_type_hints(schema)
         assert len(hints) == 1
         assert "name" in hints[0]
         assert "single word" in hints[0]
@@ -432,7 +474,7 @@ class TestExtractSemanticTypeHints:
                 "title": {"type": "line"},
             },
         }
-        hints = _extract_semantic_type_hints(schema)
+        hints = extract_semantic_type_hints(schema)
         assert len(hints) == 1
         assert "title" in hints[0]
         assert "single line" in hints[0]
@@ -445,7 +487,7 @@ class TestExtractSemanticTypeHints:
                 "file": {"type": "path"},
             },
         }
-        hints = _extract_semantic_type_hints(schema)
+        hints = extract_semantic_type_hints(schema)
         assert len(hints) == 1
         assert "file" in hints[0]
         assert "valid path" in hints[0]
@@ -458,7 +500,7 @@ class TestExtractSemanticTypeHints:
                 "body": {"type": "text"},
             },
         }
-        hints = _extract_semantic_type_hints(schema)
+        hints = extract_semantic_type_hints(schema)
         assert len(hints) == 0
 
     def test_no_hint_for_string_type(self) -> None:
@@ -469,7 +511,7 @@ class TestExtractSemanticTypeHints:
                 "name": {"type": "string"},
             },
         }
-        hints = _extract_semantic_type_hints(schema)
+        hints = extract_semantic_type_hints(schema)
         assert len(hints) == 0
 
     def test_multiple_hints_from_nested_schema(self) -> None:
@@ -485,7 +527,7 @@ class TestExtractSemanticTypeHints:
                 },
             },
         }
-        hints = _extract_semantic_type_hints(schema)
+        hints = extract_semantic_type_hints(schema)
         assert len(hints) == 2  # name and parent are word types
         names_mentioned = [h for h in hints if "name" in h]
         parent_mentioned = [h for h in hints if "parent" in h]
