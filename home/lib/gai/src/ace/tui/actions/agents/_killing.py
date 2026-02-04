@@ -292,6 +292,18 @@ class AgentKillingMixin:
 
         # Handle workflow agents - delete entire workflow artifacts directory
         if agent.agent_type == AgentType.WORKFLOW:
+            # Release the workspace claim first (workflow claims use
+            # "workflow(name)" format in RUNNING field)
+            from running_field import release_workspace
+
+            if agent.workspace_num is not None and agent.workflow is not None:
+                release_workspace(
+                    agent.project_file,
+                    agent.workspace_num,
+                    f"workflow({agent.workflow})",
+                    agent.cl_name,
+                )
+
             workflow_dir = (
                 Path.home()
                 / ".gai"
