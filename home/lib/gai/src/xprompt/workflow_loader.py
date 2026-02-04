@@ -617,7 +617,10 @@ def _load_workflows_from_project(project: str) -> dict[str, Workflow]:
         if yml_file.is_file():
             workflow = _load_workflow_from_file(yml_file)
             if workflow:
-                namespaced_name = f"{project}/{workflow.name}"
+                # Use file stem for project workflows to avoid duplicate prefixes
+                # (the YAML's name field might already include the project prefix)
+                base_name = yml_file.stem
+                namespaced_name = f"{project}/{base_name}"
                 workflows[namespaced_name] = Workflow(
                     name=namespaced_name,
                     inputs=workflow.inputs,
@@ -629,7 +632,10 @@ def _load_workflows_from_project(project: str) -> dict[str, Workflow]:
         if yaml_file.is_file():
             workflow = _load_workflow_from_file(yaml_file)
             if workflow:
-                namespaced_name = f"{project}/{workflow.name}"
+                # Use file stem for project workflows to avoid duplicate prefixes
+                # (the YAML's name field might already include the project prefix)
+                base_name = yaml_file.stem
+                namespaced_name = f"{project}/{base_name}"
                 if namespaced_name not in workflows:  # .yml takes precedence
                     workflows[namespaced_name] = Workflow(
                         name=namespaced_name,
