@@ -15,6 +15,35 @@ if TYPE_CHECKING:
 from ....changespec import ChangeSpec
 
 
+def _find_workflow_workspace_from_running_field(
+    project_file: str,
+    workflow_name: str,
+    cl_name: str | None = None,
+) -> int | None:
+    """Find workspace_num for a workflow from the RUNNING field.
+
+    Args:
+        project_file: Path to the project file.
+        workflow_name: The workflow name (without "workflow()" wrapper).
+        cl_name: Optional CL name for more specific matching.
+
+    Returns:
+        The workspace_num if found, None otherwise.
+    """
+    from running_field import get_claimed_workspaces
+
+    claims = get_claimed_workspaces(project_file)
+    expected_workflow = f"workflow({workflow_name})"
+
+    for claim in claims:
+        if claim.workflow == expected_workflow:
+            if cl_name is not None and claim.cl_name != cl_name:
+                continue
+            return claim.workspace_num
+
+    return None
+
+
 class AgentKillingMixin:
     """Mixin providing agent killing/dismissal methods.
 
@@ -221,14 +250,31 @@ class AgentKillingMixin:
                 return
             self.notify(f"Killed workflow (PID {agent.pid})")  # type: ignore[attr-defined]
 
+        # Determine workflow name (steps use parent_workflow)
+        workflow_name = agent.workflow
+        if agent.is_workflow_child and agent.parent_workflow:
+            workflow_name = agent.parent_workflow
+
         # Release the workspace claim (workflow claims use "workflow(name)" format)
-        if agent.workspace_num is not None and agent.workflow is not None:
-            release_workspace(
-                agent.project_file,
-                agent.workspace_num,
-                f"workflow({agent.workflow})",
-                agent.cl_name,
-            )
+        if workflow_name is not None:
+            # Try agent's workspace_num first, then look it up from RUNNING field
+            workspace_num = agent.workspace_num
+            if workspace_num is None:
+                # For steps, don't use the decorated cl_name for lookup
+                lookup_cl_name = None if agent.is_workflow_child else agent.cl_name
+                workspace_num = _find_workflow_workspace_from_running_field(
+                    agent.project_file,
+                    workflow_name,
+                    lookup_cl_name,
+                )
+
+            if workspace_num is not None:
+                release_workspace(
+                    agent.project_file,
+                    workspace_num,
+                    f"workflow({workflow_name})",
+                    None if agent.is_workflow_child else agent.cl_name,
+                )
 
         # Delete the workflow state file
         if agent.raw_suffix is None or agent.workflow is None:
@@ -296,13 +342,30 @@ class AgentKillingMixin:
             # "workflow(name)" format in RUNNING field)
             from running_field import release_workspace
 
-            if agent.workspace_num is not None and agent.workflow is not None:
-                release_workspace(
-                    agent.project_file,
-                    agent.workspace_num,
-                    f"workflow({agent.workflow})",
-                    agent.cl_name,
-                )
+            # Determine workflow name (steps use parent_workflow)
+            workflow_name = agent.workflow
+            if agent.is_workflow_child and agent.parent_workflow:
+                workflow_name = agent.parent_workflow
+
+            if workflow_name is not None:
+                # Try agent's workspace_num first, then look it up from RUNNING field
+                workspace_num = agent.workspace_num
+                if workspace_num is None:
+                    # For steps, don't use the decorated cl_name for lookup
+                    lookup_cl_name = None if agent.is_workflow_child else agent.cl_name
+                    workspace_num = _find_workflow_workspace_from_running_field(
+                        agent.project_file,
+                        workflow_name,
+                        lookup_cl_name,
+                    )
+
+                if workspace_num is not None:
+                    release_workspace(
+                        agent.project_file,
+                        workspace_num,
+                        f"workflow({workflow_name})",
+                        None if agent.is_workflow_child else agent.cl_name,
+                    )
 
             workflow_dir = (
                 Path.home()
@@ -310,8 +373,8 @@ class AgentKillingMixin:
                 / "projects"
                 / project_name
                 / "artifacts"
-                / f"workflow-{agent.workflow}"
-                / agent.raw_suffix
+                / f"workflow-{workflow_name or agent.workflow}"
+                / (agent.parent_timestamp or agent.raw_suffix)
             )
             try:
                 if workflow_dir.exists():
