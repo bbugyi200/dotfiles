@@ -47,11 +47,11 @@ steps:
       if [ "{{ check_changes.has_changes }}" = "false" ]; then
         echo "status=no_changes"
         echo "message=No local changes detected - proposal not created"
-      elif [ "{{ create_proposal.success }}" = "true" ]; then
+      elif [ "{{ create_proposal.success | default(false) }}" = "true" ]; then
         echo "status=created"
-        echo "message=Created proposal ({{ create_proposal.proposal_id }}) on CL {{ create_proposal.cl_name }}"
+        echo "message=Created proposal ({{ create_proposal.proposal_id | default('') }}) on CL {{ create_proposal.cl_name | default('') }}"
       else
         echo "status=error"
-        echo "message={{ create_proposal.error }}"
+        echo "message={{ create_proposal.error | default('Unknown error') }}"
       fi
     output: { status: word, message: text }

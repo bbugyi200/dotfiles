@@ -68,6 +68,14 @@ class StepMixin:
         """Save a marker file for prompt steps to track them in the TUI."""
         raise NotImplementedError
 
+    def _get_step_type(self, step: WorkflowStep) -> str:
+        """Get the display type for a step."""
+        raise NotImplementedError
+
+    def _evaluate_condition(self, condition: str) -> bool:
+        """Evaluate a Jinja2 condition expression."""
+        raise NotImplementedError
+
     def _execute_embedded_workflow_steps(
         self,
         steps: list[WorkflowStep],
@@ -87,15 +95,51 @@ class StepMixin:
         Returns:
             True if all steps succeeded, False if any failed.
         """
-        for step in steps:
+        total_steps = len(steps)
+
+        for i, step in enumerate(steps):
             # Create a temporary step state for execution
-            temp_state = StepState(name=step.name, status=StepStatus.IN_PROGRESS)
+            temp_state = StepState(name=step.name, status=StepStatus.PENDING)
 
             # Save original context and temporarily use embedded context
             original_context = self.context
             self.context = embedded_context
 
             try:
+                # Determine step type for display
+                step_type = self._get_step_type(step)
+
+                # Evaluate if: condition
+                if step.condition:
+                    condition_result = self._evaluate_condition(step.condition)
+                    if not condition_result:
+                        temp_state.status = StepStatus.SKIPPED
+                        # Notify output handler about skipped step
+                        if self.output_handler:
+                            self.output_handler.on_step_start(
+                                step.name,
+                                step_type,
+                                i,
+                                total_steps,
+                                condition=step.condition,
+                                condition_result=False,
+                            )
+                            self.output_handler.on_step_skip(
+                                step.name, reason="condition false"
+                            )
+                        continue
+
+                # Notify step start
+                if self.output_handler:
+                    self.output_handler.on_step_start(
+                        step.name,
+                        step_type,
+                        i,
+                        total_steps,
+                    )
+
+                temp_state.status = StepStatus.IN_PROGRESS
+
                 if step.is_prompt_step():
                     success = self._execute_prompt_step(step, temp_state)
                 elif step.is_python_step():
@@ -109,6 +153,11 @@ class StepMixin:
 
                 if not success:
                     return False
+
+                # Notify step complete
+                if self.output_handler:
+                    self.output_handler.on_step_complete(step.name, temp_state.output)
+
             finally:
                 # Restore original context
                 self.context = original_context
