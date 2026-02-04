@@ -25,7 +25,7 @@ from ..utils import ensure_project_file_and_get_workspace_num
 _WORKFLOW_REF_PATTERN = (
     r"(?:^|(?<=\s)|(?<=[(\[{\"']))"
     r"#([a-zA-Z_][a-zA-Z0-9_]*(?:/[a-zA-Z_][a-zA-Z0-9_]*)*)"
-    r"(?:(\()|:([a-zA-Z0-9_.-]+)|(\+))?"
+    r"(?:(\()|:(`[^`]*`|[a-zA-Z0-9_.-]+)|(\+))?"  # Supports backtick-delimited colon args
 )
 
 
@@ -88,6 +88,9 @@ def _expand_embedded_workflows_in_query(
                 positional_args, named_args = parse_args(paren_content)
                 match_end = paren_end + 1
         elif colon_arg is not None:
+            # Strip backticks if present (backtick-delimited syntax)
+            if colon_arg.startswith("`") and colon_arg.endswith("`"):
+                colon_arg = colon_arg[1:-1]
             positional_args = [colon_arg]
         elif plus_suffix is not None:
             positional_args = ["true"]

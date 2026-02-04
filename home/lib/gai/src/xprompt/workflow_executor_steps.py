@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 _WORKFLOW_REF_PATTERN = (
     r"(?:^|(?<=\s)|(?<=[(\[{\"']))"
     r"#([a-zA-Z_][a-zA-Z0-9_]*(?:/[a-zA-Z_][a-zA-Z0-9_]*)*)"
-    r"(?:(\()|:([a-zA-Z0-9_.-]+)|(\+))?"
+    r"(?:(\()|:(`[^`]*`|[a-zA-Z0-9_.-]+)|(\+))?"  # Supports backtick-delimited colon args
 )
 
 
@@ -176,6 +176,9 @@ class StepMixin:
                     positional_args, named_args = parse_args(paren_content)
                     match_end = paren_end + 1
             elif colon_arg is not None:
+                # Strip backticks if present (backtick-delimited syntax)
+                if colon_arg.startswith("`") and colon_arg.endswith("`"):
+                    colon_arg = colon_arg[1:-1]
                 positional_args = [colon_arg]
             elif plus_suffix is not None:
                 positional_args = ["true"]
@@ -254,14 +257,16 @@ class StepMixin:
         # Render prompt with Jinja2 context
         rendered_prompt = render_template(step.prompt, self.context)
 
-        # Expand embedded workflows first (before xprompt processing)
+        # Expand xprompt references FIRST
+        # This allows xprompts to contain embedded workflow references (like #json:...)
+        # which will be expanded in the next step
+        expanded_prompt = process_xprompt_references(rendered_prompt)
+
+        # Then expand embedded workflows
         # This executes pre-steps and replaces workflow refs with prompt_part content
         expanded_prompt, embedded_workflows = self._expand_embedded_workflows_in_prompt(
-            rendered_prompt
+            expanded_prompt
         )
-
-        # Expand xprompt references
-        expanded_prompt = process_xprompt_references(expanded_prompt)
 
         # Save initial marker to show step is running in TUI
         step_state.status = StepStatus.IN_PROGRESS

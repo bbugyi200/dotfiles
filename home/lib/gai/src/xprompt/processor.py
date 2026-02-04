@@ -31,11 +31,12 @@ _MAX_EXPANSION_ITERATIONS = 100
 #   - #name - simple xprompt (no args)
 #   - #name( - parenthesis syntax start (matching ) found programmatically)
 #   - #name:arg - colon syntax for single arg (word-like chars only)
+#   - #name:`arg` - colon syntax with backtick-delimited arg (any content)
 #   - #name+ - plus syntax, equivalent to #name:true
 _XPROMPT_PATTERN = (
     r"(?:^|(?<=\s)|(?<=[(\[{\"']))"  # Must be at start, after whitespace, or after ([{"'
     r"#([a-zA-Z_][a-zA-Z0-9_]*(?:/[a-zA-Z_][a-zA-Z0-9_]*)*)"  # Group 1: xprompt name with optional namespace
-    r"(?:(\()|:([a-zA-Z0-9_.-]+)|(\+))?"  # Group 2: open paren OR Group 3: colon arg OR Group 4: plus
+    r"(?:(\()|:(`[^`]*`|[a-zA-Z0-9_.-]+)|(\+))?"  # Group 2: open paren OR Group 3: colon arg (backtick or word) OR Group 4: plus
 )
 
 
@@ -160,6 +161,9 @@ def process_xprompt_references(prompt: str) -> str:
                         positional_args, named_args = parse_args(paren_content)
                         match_end = paren_end + 1  # Include the closing )
                 elif colon_arg is not None:
+                    # Strip backticks if present (backtick-delimited syntax)
+                    if colon_arg.startswith("`") and colon_arg.endswith("`"):
+                        colon_arg = colon_arg[1:-1]
                     positional_args, named_args = [colon_arg], {}
                 elif plus_suffix is not None:
                     positional_args, named_args = ["true"], {}
