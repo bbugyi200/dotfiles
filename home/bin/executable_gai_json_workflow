@@ -14,7 +14,6 @@ import sys
 def _setup_mode(schema_str: str) -> None:
     """Parse schema and generate format instructions."""
     import yaml
-
     from xprompt.loader import parse_output_from_front_matter
     from xprompt.output_validation import generate_format_instructions
 
