@@ -151,23 +151,21 @@ return {
 			})
 
 			-- yaml-language-server
-			if vim.fn.executable("yaml-language-server") == 1 then
-				cfg.yamlls.setup({
-					settings = {
-						yaml = {
-							schemas = {
-								[vim.fn.expand("~/.config/gai/gai.schema.json")] = "gai.yml",
-								[vim.fn.expand("~/lib/gai/xprompts/workflow.schema.json")] = "*/xprompts/*.yml",
-							},
-							validate = true,
-							schemaStore = {
-								enable = true,
-								url = "https://www.schemastore.org/api/json/catalog.json",
-							},
+			cfg.yamlls.setup({
+				settings = {
+					yaml = {
+						schemas = {
+							[vim.fn.expand("~/.config/gai/gai.schema.json")] = "gai.yml",
+							[vim.fn.expand("~/lib/gai/xprompts/workflow.schema.json")] = "*/xprompts/*.yml",
+						},
+						validate = true,
+						schemaStore = {
+							enable = true,
+							url = "https://www.schemastore.org/api/json/catalog.json",
 						},
 					},
-				})
-			end
+				},
+			})
 		end,
 	},
 }
