@@ -96,7 +96,8 @@ class Agent:
     def display_type(self) -> str:
         """Human-readable agent type for display."""
         if self.appears_as_agent:
-            return "run"  # Show as [run] instead of [workflow:name]
+            # Use workflow name if available (e.g., "fix-hook"), otherwise "run"
+            return self.workflow if self.workflow else "run"
         return self.agent_type.value
 
     @property

@@ -44,6 +44,10 @@ def _is_always_visible(agent: Agent) -> bool:
     if agent.is_hidden_step:
         return False
 
+    # Axe-spawned agents are hideable (hidden by default, shown with '.' toggle)
+    if _is_axe_spawned_agent(agent):
+        return False
+
     return (
         agent.agent_type in (AgentType.RUNNING, AgentType.WORKFLOW)
         or agent.status in DISMISSABLE_STATUSES
@@ -78,6 +82,9 @@ def _is_axe_spawned_agent(agent: Agent) -> bool:
         if agent.workflow:
             # axe-spawned workflows start with axe(...)
             if agent.workflow.startswith(("axe(mentor)", "axe(fix-hook)", "axe(crs)")):
+                return True
+            # Plain workflow names for axe-spawned types (from workflow_state.json)
+            if agent.workflow in ("fix-hook", "crs", "mentor", "summarize-hook"):
                 return True
 
     return False

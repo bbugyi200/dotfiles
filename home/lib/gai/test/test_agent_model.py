@@ -283,17 +283,32 @@ def test_agent_appears_as_agent_true() -> None:
 
 
 def test_agent_display_type_with_appears_as_agent() -> None:
-    """Test Agent.display_type returns 'run' when appears_as_agent is True."""
+    """Test Agent.display_type returns workflow name when appears_as_agent is True."""
     agent = Agent(
         agent_type=AgentType.WORKFLOW,
         cl_name="my_feature",
         project_file="/tmp/test.gp",
         status="RUNNING",
         start_time=None,
-        workflow="json",
+        workflow="fix-hook",
         appears_as_agent=True,
     )
-    # Even though it's a WORKFLOW type, display_type should be "run"
+    # When appears_as_agent is True, display_type should be the workflow name
+    assert agent.display_type == "fix-hook"
+
+
+def test_agent_display_type_with_appears_as_agent_no_workflow() -> None:
+    """Test Agent.display_type returns 'run' when appears_as_agent is True but no workflow."""
+    agent = Agent(
+        agent_type=AgentType.WORKFLOW,
+        cl_name="my_feature",
+        project_file="/tmp/test.gp",
+        status="RUNNING",
+        start_time=None,
+        workflow=None,
+        appears_as_agent=True,
+    )
+    # When appears_as_agent is True but workflow is None, should fall back to "run"
     assert agent.display_type == "run"
 
 
