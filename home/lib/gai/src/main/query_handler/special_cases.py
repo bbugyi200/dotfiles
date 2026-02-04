@@ -116,8 +116,13 @@ def handle_run_special_cases(args_after_run: list[str]) -> bool:
                 workflow_ref
             )
 
+            # Extract project from workflow_name if it contains a slash
+            project = None
+            if "/" in workflow_name:
+                project = workflow_name.split("/")[0]
+
             # get_all_prompts() returns both workflows and converted xprompts
-            prompts = get_all_prompts()
+            prompts = get_all_prompts(project=project)
             if workflow_name in prompts:
                 # Create artifacts directory in ~/.gai/projects/ so TUI can find it
                 artifacts_dir = create_artifacts_directory(f"workflow-{workflow_name}")

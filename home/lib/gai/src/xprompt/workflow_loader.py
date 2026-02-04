@@ -595,7 +595,52 @@ def _load_workflows_from_internal() -> dict[str, Workflow]:
     return workflows
 
 
-def get_all_workflows() -> dict[str, Workflow]:
+def _load_workflows_from_project(project: str) -> dict[str, Workflow]:
+    """Load workflows from a project-specific directory.
+
+    Loads workflows from ~/.config/gai/xprompts/{project}/*.yml and namespaces
+    them with the project name (e.g., bar.yml → foo/bar for project 'foo').
+
+    Args:
+        project: The project name to load workflows for.
+
+    Returns:
+        Dictionary mapping namespaced workflow name to Workflow object.
+        Returns empty dict if directory doesn't exist.
+    """
+    project_dir = Path.home() / ".config" / "gai" / "xprompts" / project
+    if not project_dir.is_dir():
+        return {}
+
+    workflows: dict[str, Workflow] = {}
+    for yml_file in project_dir.glob("*.yml"):
+        if yml_file.is_file():
+            workflow = _load_workflow_from_file(yml_file)
+            if workflow:
+                namespaced_name = f"{project}/{workflow.name}"
+                workflows[namespaced_name] = Workflow(
+                    name=namespaced_name,
+                    inputs=workflow.inputs,
+                    steps=workflow.steps,
+                    source_path=workflow.source_path,
+                )
+
+    for yaml_file in project_dir.glob("*.yaml"):
+        if yaml_file.is_file():
+            workflow = _load_workflow_from_file(yaml_file)
+            if workflow:
+                namespaced_name = f"{project}/{workflow.name}"
+                if namespaced_name not in workflows:  # .yml takes precedence
+                    workflows[namespaced_name] = Workflow(
+                        name=namespaced_name,
+                        inputs=workflow.inputs,
+                        steps=workflow.steps,
+                        source_path=workflow.source_path,
+                    )
+    return workflows
+
+
+def get_all_workflows(project: str | None = None) -> dict[str, Workflow]:
     """Get all workflows from all sources, respecting priority order.
 
     Priority order (first wins on name conflict):
@@ -603,7 +648,11 @@ def get_all_workflows() -> dict[str, Workflow]:
     2. xprompts/*.yml (CWD, non-hidden)
     3. ~/.xprompts/*.yml (home, hidden)
     4. ~/xprompts/*.yml (home, non-hidden)
-    5. <gai_package>/xprompts/*.yml (internal)
+    5. ~/.config/gai/xprompts/{project}/*.yml (project-specific, if project given)
+    6. <gai_package>/xprompts/*.yml (internal)
+
+    Args:
+        project: Optional project name to include project-specific workflows.
 
     Returns:
         Dictionary mapping workflow name to Workflow object.
@@ -612,6 +661,11 @@ def get_all_workflows() -> dict[str, Workflow]:
 
     # Internal workflows (lowest priority)
     all_workflows.update(_load_workflows_from_internal())
+
+    # Project-specific workflows (if project provided)
+    if project:
+        project_workflows = _load_workflows_from_project(project)
+        all_workflows.update(project_workflows)
 
     # File-based workflows (highest priority) - already sorted
     file_workflows = _load_workflows_from_files()

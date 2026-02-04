@@ -588,18 +588,21 @@ def get_all_xprompts(project: str | None = None) -> dict[str, XPrompt]:
     return all_xprompts
 
 
-def get_all_workflows() -> dict[str, "Workflow"]:
+def get_all_workflows(project: str | None = None) -> dict[str, "Workflow"]:
     """Get all workflows from all sources, respecting priority order.
 
     This is a wrapper around workflow_loader.get_all_workflows() to provide
     a unified interface in the loader module.
+
+    Args:
+        project: Optional project name to include project-specific workflows.
 
     Returns:
         Dictionary mapping workflow name to Workflow object.
     """
     from xprompt.workflow_loader import get_all_workflows as _get_all_workflows
 
-    return _get_all_workflows()
+    return _get_all_workflows(project=project)
 
 
 def get_all_prompts(project: str | None = None) -> dict[str, "Workflow"]:
@@ -621,7 +624,7 @@ def get_all_prompts(project: str | None = None) -> dict[str, "Workflow"]:
     """
     from xprompt.models import xprompt_to_workflow
 
-    workflows = get_all_workflows()
+    workflows = get_all_workflows(project=project)
     xprompts = get_all_xprompts(project=project)
 
     # Convert xprompts to workflows (workflows take precedence on collision)
