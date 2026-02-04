@@ -75,6 +75,9 @@ mentor_profiles:
 # Simple xprompts use string values, xprompts with arguments use input/content dicts.
 xprompts:
   # keep-sorted start
+  a:
+    input: { note: { type: line, default: "" } }
+    content: "#amend(note='{{ note }}')"
   b/ab:
     input: { bug_id: int }
     content: |
@@ -86,6 +89,9 @@ xprompts:
   bug:
     input: { bug_id: int }
     content: "#x(bug_desc, bugged show '{{ bug_id }}')"
+  c:
+    input: { name: word, bug_id: { type: int, default: 0 } }
+    content: "#commit(name={{ name }}, bug_id={{ bug_id }})"
   chat: "@$(gai_first_commit_chat)"
   cl:
     input: { include_chat: { type: bool, default: false } }
@@ -178,6 +184,9 @@ xprompts:
       This publisher feature will be used to {{ usage }}. #noc
   noc: "You should make the necessary file changes, but should NOT create/amend a CL."
   nocl: "#noc #cl"
+  p:
+    input: { note: { type: line, default: "" } }
+    content: "#propose(note='{{ note }}')"
   reporting: |
     Refer to the `contentads/drx/reporting/g3doc/**/*.md` files for documentation on how the reporting stack works.
   scuba: "Make sure all related tests pass, except for some scuba diff tests, which are expected to fail."
