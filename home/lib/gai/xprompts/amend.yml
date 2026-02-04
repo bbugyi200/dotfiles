@@ -8,8 +8,7 @@ steps:
   - name: inject
     prompt_part: |
       ---
-      IMPORTANT: You should make the necessary file changes, but should NOT create/amend a CL.
-      The amend workflow will handle CL amendment automatically after you complete your changes.
+      IMPORTANT: You should make the necessary file changes, but should NOT create/amend a CL. #cl
 
   - name: check_changes
     hidden: true
