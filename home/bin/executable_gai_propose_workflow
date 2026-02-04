@@ -1,0 +1,149 @@
+#!/usr/bin/env python3
+"""Helper script for the #propose xprompt workflow.
+
+Creates a proposal entry on an existing CL from uncommitted workspace changes.
+"""
+
+import argparse
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+# Add gai source directory to path for imports
+_GAI_SRC = Path.home() / "lib" / "gai" / "src"
+if str(_GAI_SRC) not in sys.path:
+    sys.path.insert(0, str(_GAI_SRC))
+
+
+def _get_project_from_workspace() -> str | None:
+    """Get the project name from the current workspace."""
+    result = subprocess.run(
+        ["workspace_name"], capture_output=True, text=True, check=False
+    )
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip() or None
+
+
+def _get_cl_name_from_branch() -> str | None:
+    """Get the CL name from the current branch."""
+    result = subprocess.run(
+        ["branch_name"], capture_output=True, text=True, check=False
+    )
+    if result.returncode != 0:
+        return None
+    branch = result.stdout.strip()
+    return branch if branch else None
+
+
+def _create_proposal(
+    note: str,
+    response_file: str,
+) -> tuple[bool, str, str, str]:
+    """Create a proposal entry on the current CL.
+
+    Args:
+        note: The note for the proposal (empty string to auto-generate).
+        response_file: Path to file containing agent response.
+
+    Returns:
+        Tuple of (success, proposal_id, cl_name, error_message)
+    """
+    from chat_history import save_chat_history
+    from commit_utils.entries import add_proposed_commit_entry
+    from commit_utils.workspace import clean_workspace, save_diff
+    from gai_utils import generate_timestamp
+    from summarize_utils import get_file_summary
+    from workflow_utils import get_project_file_path
+
+    # Get CL name from branch
+    cl_name = _get_cl_name_from_branch()
+    if not cl_name:
+        return False, "", "", "Could not determine CL name from branch"
+
+    # Get project name
+    project = _get_project_from_workspace()
+    if not project:
+        return False, "", "", "Could not determine project from workspace"
+
+    # Get project file path
+    project_file = get_project_file_path(project)
+    if not os.path.exists(project_file):
+        return False, "", "", f"Project file not found: {project_file}"
+
+    # Generate timestamp for consistent filenames
+    timestamp = generate_timestamp()
+
+    # Save the current diff
+    diff_path = save_diff(cl_name, target_dir=None, timestamp=timestamp)
+    if not diff_path:
+        return False, "", "", "No changes to save (diff is empty)"
+
+    # Generate note from response file if not provided
+    if not note:
+        note = get_file_summary(
+            response_file,
+            usage="a concise description of what changes were proposed",
+            fallback="Proposed changes",
+        )
+
+    # Save chat history with a placeholder prompt
+    chat_path = save_chat_history(
+        prompt="(Proposal created via #propose workflow)",
+        response=Path(response_file).read_text(encoding="utf-8"),
+        workflow="propose",
+        timestamp=timestamp,
+    )
+
+    # Create the proposal entry
+    success, proposal_id = add_proposed_commit_entry(
+        project_file=project_file,
+        cl_name=cl_name,
+        note=note,
+        diff_path=diff_path,
+        chat_path=chat_path,
+        end_timestamp=timestamp,
+    )
+
+    if not success:
+        return False, "", "", f"Failed to add proposal entry to ChangeSpec for {cl_name}"
+
+    # Clean the workspace (revert changes)
+    clean_workspace(os.getcwd())
+
+    return True, proposal_id or "", cl_name, ""
+
+
+def main() -> None:
+    """Main entry point."""
+    parser = argparse.ArgumentParser(
+        description="Helper for the #propose xprompt workflow"
+    )
+    parser.add_argument(
+        "--create", action="store_true", help="Create a proposal on the current CL"
+    )
+    parser.add_argument(
+        "--note", default="", help="Note for the proposal (auto-generated if empty)"
+    )
+    parser.add_argument(
+        "--response-file", required=True, help="Path to agent response file"
+    )
+
+    args = parser.parse_args()
+
+    if args.create:
+        success, proposal_id, cl_name, error = _create_proposal(
+            args.note, args.response_file
+        )
+        print(f"success={'true' if success else 'false'}")
+        print(f"proposal_id={proposal_id}")
+        print(f"cl_name={cl_name}")
+        print(f"error={error}")
+    else:
+        parser.print_help()
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
