@@ -27,9 +27,13 @@ def _setup_mode(schema_str: str) -> None:
     hints = extract_semantic_type_hints(output_spec.schema)
     hints_str = "\n".join(hints) if hints else ""
 
-    # Output pretty-printed schema and hints
-    print(f"schema_json={json.dumps(output_spec.schema, indent=2)}")
-    print(f"semantic_hints={json.dumps(hints_str)}")
+    # Output as JSON (parse_bash_output handles JSON format correctly)
+    # schema_json is a pretty-printed string for display in the prompt
+    result = {
+        "schema_json": json.dumps(output_spec.schema, indent=2),
+        "semantic_hints": hints_str,
+    }
+    print(json.dumps(result))
 
 
 def _validate_mode(schema_json: str, response_file: str) -> None:
