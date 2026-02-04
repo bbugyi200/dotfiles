@@ -249,6 +249,7 @@ def execute_workflow(
     artifacts_dir: str | None = None,
     *,
     silent: bool = False,
+    project: str | None = None,
 ) -> str:
     """Execute a workflow and return its final output.
 
@@ -280,7 +281,7 @@ def execute_workflow(
     from .workflow_validator import validate_workflow
 
     # Use unified loader to get both workflows and converted xprompts
-    prompts = get_all_prompts()
+    prompts = get_all_prompts(project=project)
     if name not in prompts:
         raise WorkflowExecutionError(f"Workflow '{name}' not found")
 

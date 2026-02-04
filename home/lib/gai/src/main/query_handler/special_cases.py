@@ -132,6 +132,7 @@ def handle_run_special_cases(args_after_run: list[str]) -> bool:
                         positional_args,
                         named_args,
                         artifacts_dir=artifacts_dir,
+                        project=project,
                     )
                     sys.exit(0)
                 except Exception as e:

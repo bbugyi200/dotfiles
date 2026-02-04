@@ -657,7 +657,7 @@ def get_xprompt_or_workflow(
         return xprompts[name]
 
     # Check workflows
-    workflows = get_all_workflows()
+    workflows = get_all_workflows(project=project)
     if name in workflows:
         return workflows[name]
 
