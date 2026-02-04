@@ -1,0 +1,88 @@
+name: eval/amend_commit_propose
+
+steps:
+  # Step 1: Create commit
+  - name: create_commit
+    prompt: |
+      Can you help me add a new string 'foobar' field to the SizeSetting model class in the contentads/drx/fe/client/exchange/size_setting/model/lib/size_setting.dart file? Do NOT modify any other files. #commit:add_foobar_field
+
+  # Step 2: Validate commit created
+  - name: validate_commit
+    hidden: true
+    bash: |
+      branch=$(branch_name)
+      if [[ "$branch" == *"add_foobar_field__"* ]]; then
+        echo "valid=true"
+        echo "branch=$branch"
+      else
+        echo "valid=false"
+        echo "error=Branch name '$branch' does not contain 'add_foobar_field__'"
+      fi
+    output: { valid: bool, branch: line, error: text }
+
+  # Step 3: Amend the commit
+  - name: amend_commit
+    if: "{{ validate_commit.valid }}"
+    prompt: |
+      Can you help me add conversion support to the contentads/drx/fe/client/exchange/size_setting/service/lib/size_setting_op_converter.dart file for the new foobar field added by this CL? Do NOT modify any other files. #amend(Add converter support for foobar field)
+
+  # Step 4: Validate amend via hg obslog
+  - name: validate_amend
+    hidden: true
+    if: "{{ validate_commit.valid }}"
+    bash: |
+      obslog=$(hg obslog 2>&1 || true)
+      if echo "$obslog" | grep -q "Add converter support for foobar field"; then
+        echo "valid=true"
+      else
+        echo "valid=false"
+        echo "error=hg obslog does not contain 'Add converter support for foobar field'"
+      fi
+    output: { valid: bool, error: text }
+
+  # Step 5: Create proposal
+  - name: create_proposal
+    if: "{{ validate_commit.valid and validate_amend.valid }}"
+    prompt: |
+      Can you help me add a new integer 'bazbuz' field to the SizeSetting model. Do NOT modify any files that have not already been modified by this CL. #propose
+
+  # Step 6: Validate proposal in eval.gp
+  - name: validate_proposal
+    hidden: true
+    if: "{{ validate_commit.valid and validate_amend.valid }}"
+    bash: |
+      project_file="$HOME/.gai/projects/eval/eval.gp"
+      if [ ! -f "$project_file" ]; then
+        echo "valid=false"
+        echo "error=Project file not found: $project_file"
+      else
+        # Check that the project file contains a proposal entry for this CL
+        cl_name="{{ validate_commit.branch }}"
+        # Look for proposed entry pattern like (0a) or (1a) with NEW PROPOSAL marker
+        if grep -q "(!: NEW PROPOSAL)" "$project_file" && grep -q "NAME: $cl_name" "$project_file"; then
+          echo "valid=true"
+        else
+          echo "valid=false"
+          echo "error=No NEW PROPOSAL entry found for CL $cl_name in $project_file"
+        fi
+      fi
+    output: { valid: bool, error: text }
+
+  # Step 7: Summary report
+  - name: report
+    hidden: true
+    bash: |
+      if [ "{{ validate_commit.valid }}" != "true" ]; then
+        echo "status=failed"
+        echo "message=Commit validation failed: {{ validate_commit.error }}"
+      elif [ "{{ validate_amend.valid }}" != "true" ]; then
+        echo "status=failed"
+        echo "message=Amend validation failed: {{ validate_amend.error }}"
+      elif [ "{{ validate_proposal.valid }}" != "true" ]; then
+        echo "status=failed"
+        echo "message=Proposal validation failed: {{ validate_proposal.error }}"
+      else
+        echo "status=passed"
+        echo "message=All eval tests passed: commit, amend, and propose workflows verified"
+      fi
+    output: { status: word, message: text }
