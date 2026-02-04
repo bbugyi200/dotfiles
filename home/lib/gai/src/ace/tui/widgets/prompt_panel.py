@@ -93,6 +93,12 @@ class AgentPromptPanel(Static):
         header_text.append("Timestamp: ", style="bold #87D7FF")
         header_text.append(f"{agent.start_time_display}\n", style="#D7D7FF")
 
+        # Error message (for failed agents)
+        if agent.error_message:
+            header_text.append("\n")
+            header_text.append("ERROR\n", style="bold #FF5F5F underline")
+            header_text.append(f"{agent.error_message}\n", style="bold #FF5F5F")
+
         # Separator
         header_text.append("\n")
         header_text.append("─" * 50 + "\n", style="dim")

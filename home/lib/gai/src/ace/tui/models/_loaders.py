@@ -142,8 +142,12 @@ def load_agents_from_hooks(
             continue
 
         for sl in hook.status_lines:
-            if sl.suffix_type != "running_agent":
+            # Capture running agents AND failed agents with error suffix
+            if sl.suffix_type not in ("running_agent", "error"):
                 continue
+
+            # Extract error message for failed agents
+            error_message = sl.suffix if sl.suffix_type == "error" else None
 
             # Determine agent type from suffix
             agent_type = AgentType.FIX_HOOK
@@ -163,6 +167,7 @@ def load_agents_from_hooks(
                     raw_suffix=sl.suffix,
                     bug=bug,
                     cl_num=cl_num,
+                    error_message=error_message,
                 )
             )
 

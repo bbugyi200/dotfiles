@@ -101,6 +101,9 @@ class Agent:
     # Workflow that looks like an agent (all non-prompt steps hidden)
     appears_as_agent: bool = False
 
+    # Error message for failed agents (from HookStatusLine.suffix)
+    error_message: str | None = None
+
     @property
     def display_type(self) -> str:
         """Human-readable agent type for display."""
