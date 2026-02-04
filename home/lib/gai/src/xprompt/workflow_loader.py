@@ -88,21 +88,23 @@ def _parse_workflow_step(
     prompt = step_data.get("prompt")
     bash = step_data.get("bash")
     python = step_data.get("python")
+    prompt_part = step_data.get("prompt_part")
     parallel_data = step_data.get("parallel")
 
-    # Validate mutually exclusive fields - must have exactly one of prompt, bash, python, parallel
-    step_types = [prompt, bash, python, parallel_data]
+    # Validate mutually exclusive fields - must have exactly one of prompt, bash, python,
+    # prompt_part, parallel
+    step_types = [prompt, bash, python, prompt_part, parallel_data]
     num_step_types = sum(1 for t in step_types if t)
 
     if num_step_types > 1:
         raise WorkflowValidationError(
             f"Step '{name}' can only have one of 'prompt', 'bash', 'python', "
-            "or 'parallel' fields"
+            "'prompt_part', or 'parallel' fields"
         )
     if num_step_types == 0:
         raise WorkflowValidationError(
             f"Step '{name}' must have one of 'prompt', 'bash', 'python', "
-            "or 'parallel' field"
+            "'prompt_part', or 'parallel' field"
         )
 
     # Parse output specification
@@ -132,6 +134,26 @@ def _parse_workflow_step(
         raise WorkflowValidationError(
             f"Step '{name}' cannot combine 'parallel' with 'repeat' or 'while'"
         )
+
+    # Validate prompt_part step restrictions
+    if prompt_part:
+        if condition:
+            raise WorkflowValidationError(
+                f"Step '{name}' with 'prompt_part' cannot have 'if' condition"
+            )
+        if for_loop or repeat_data or while_data:
+            raise WorkflowValidationError(
+                f"Step '{name}' with 'prompt_part' cannot have "
+                "'for', 'repeat', or 'while' loops"
+            )
+        if output_data:
+            raise WorkflowValidationError(
+                f"Step '{name}' with 'prompt_part' cannot have 'output' specification"
+            )
+        if hitl:
+            raise WorkflowValidationError(
+                f"Step '{name}' with 'prompt_part' cannot have 'hitl: true'"
+            )
 
     # Validate nested step restrictions
     if is_nested:
@@ -237,6 +259,7 @@ def _parse_workflow_step(
         prompt=str(prompt) if prompt else None,
         bash=str(bash) if bash else None,
         python=str(python) if python else None,
+        prompt_part=str(prompt_part) if prompt_part else None,
         output=output,
         hitl=hitl,
         condition=str(condition) if condition else None,
@@ -451,6 +474,14 @@ def _load_workflow_from_file(file_path: Path) -> Workflow | None:
                 continue
             step = _parse_workflow_step(step_data, step_index)
             steps.append(step)
+
+        # Validate at most one prompt_part step per workflow
+        prompt_part_count = sum(1 for step in steps if step.is_prompt_part_step())
+        if prompt_part_count > 1:
+            raise WorkflowValidationError(
+                f"Workflow '{name}' has {prompt_part_count} prompt_part steps, "
+                "but at most one is allowed"
+            )
     except WorkflowValidationError:
         return None
 

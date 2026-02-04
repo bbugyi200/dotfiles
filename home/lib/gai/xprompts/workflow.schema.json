@@ -48,15 +48,19 @@
           },
           "prompt": {
             "type": "string",
-            "description": "Prompt template for prompt steps (supports Jinja2 and xprompt refs). Mutually exclusive with bash/python."
+            "description": "Prompt template for prompt steps (supports Jinja2 and xprompt refs). Mutually exclusive with bash/python/prompt_part/parallel."
           },
           "bash": {
             "type": "string",
-            "description": "Bash command to execute (mutually exclusive with prompt/python)"
+            "description": "Bash command to execute (mutually exclusive with prompt/python/prompt_part/parallel)"
           },
           "python": {
             "type": "string",
-            "description": "Python code to execute (mutually exclusive with prompt/bash)"
+            "description": "Python code to execute (mutually exclusive with prompt/bash/prompt_part)"
+          },
+          "prompt_part": {
+            "type": "string",
+            "description": "Content to append to containing prompt when workflow is embedded. Mutually exclusive with prompt/bash/python/parallel. Cannot have control flow (if/for/repeat/while), output, or hitl."
           },
           "output": {
             "type": "object",
@@ -223,6 +227,7 @@
                   "anyOf": [
                     { "required": ["bash"] },
                     { "required": ["python"] },
+                    { "required": ["prompt_part"] },
                     { "required": ["parallel"] }
                   ]
                 }
@@ -233,6 +238,7 @@
                   "anyOf": [
                     { "required": ["prompt"] },
                     { "required": ["python"] },
+                    { "required": ["prompt_part"] },
                     { "required": ["parallel"] }
                   ]
                 }
@@ -243,7 +249,25 @@
                   "anyOf": [
                     { "required": ["prompt"] },
                     { "required": ["bash"] },
+                    { "required": ["prompt_part"] },
                     { "required": ["parallel"] }
+                  ]
+                }
+              },
+              {
+                "required": ["prompt_part"],
+                "not": {
+                  "anyOf": [
+                    { "required": ["prompt"] },
+                    { "required": ["bash"] },
+                    { "required": ["python"] },
+                    { "required": ["parallel"] },
+                    { "required": ["if"] },
+                    { "required": ["for"] },
+                    { "required": ["repeat"] },
+                    { "required": ["while"] },
+                    { "required": ["output"] },
+                    { "required": ["hitl"] }
                   ]
                 }
               },
@@ -253,7 +277,8 @@
                   "anyOf": [
                     { "required": ["prompt"] },
                     { "required": ["bash"] },
-                    { "required": ["python"] }
+                    { "required": ["python"] },
+                    { "required": ["prompt_part"] }
                   ]
                 }
               }
@@ -266,7 +291,10 @@
                 { "required": ["for", "while"] },
                 { "required": ["repeat", "while"] },
                 { "required": ["parallel", "repeat"] },
-                { "required": ["parallel", "while"] }
+                { "required": ["parallel", "while"] },
+                { "required": ["prompt_part", "for"] },
+                { "required": ["prompt_part", "repeat"] },
+                { "required": ["prompt_part", "while"] }
               ]
             }
           }

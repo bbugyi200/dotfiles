@@ -2,6 +2,9 @@
 
 import json
 import os
+import re
+import tempfile
+from typing import Any
 
 from change_actions import (
     execute_change_action,
@@ -20,8 +23,233 @@ from xprompt import (
     get_primary_output_schema,
     validate_response,
 )
+from xprompt.workflow_models import WorkflowStep
 
 from ..utils import ensure_project_file_and_get_workspace_num
+
+# Pattern to match workflow references in prompts
+_WORKFLOW_REF_PATTERN = (
+    r"(?:^|(?<=\s)|(?<=[(\[{\"']))"
+    r"#([a-zA-Z_][a-zA-Z0-9_]*(?:/[a-zA-Z_][a-zA-Z0-9_]*)*)"
+    r"(?:(\()|:([a-zA-Z0-9_.-]+)|(\+))?"
+)
+
+
+def _expand_embedded_workflows_in_query(
+    query: str,
+    artifacts_dir: str | None = None,
+) -> tuple[str, list[tuple[list[WorkflowStep], dict[str, Any]]]]:
+    """Detect and expand embedded workflows in a query.
+
+    For simple `gai run` queries, this handles workflows with `prompt_part`:
+    - Executes pre-steps from embedded workflows
+    - Replaces workflow references with prompt_part content
+    - Returns post-steps to be executed after the main prompt
+
+    Args:
+        query: The query text that may contain workflow references.
+        artifacts_dir: Optional directory for workflow artifacts.
+
+    Returns:
+        Tuple of (expanded_query, list of (post_steps, context) tuples).
+    """
+    from xprompt._parsing import find_matching_paren_for_args, parse_args
+    from xprompt.loader import get_all_workflows
+    from xprompt.workflow_executor_utils import render_template
+
+    workflows = get_all_workflows()
+    post_workflows: list[tuple[list[WorkflowStep], dict[str, Any]]] = []
+
+    # Find all potential workflow references
+    matches = list(re.finditer(_WORKFLOW_REF_PATTERN, query, re.MULTILINE))
+
+    # Process from last to first to preserve positions
+    for match in reversed(matches):
+        name = match.group(1)
+
+        # Skip if not a workflow
+        if name not in workflows:
+            continue
+
+        workflow = workflows[name]
+
+        # Skip workflows without prompt_part (execute as full workflow)
+        if not workflow.has_prompt_part():
+            continue
+
+        # Extract arguments
+        has_open_paren = match.group(2) is not None
+        colon_arg = match.group(3)
+        plus_suffix = match.group(4)
+        match_end = match.end()
+
+        positional_args: list[str] = []
+        named_args: dict[str, str] = {}
+
+        if has_open_paren:
+            paren_start = match.end() - 1
+            paren_end = find_matching_paren_for_args(query, paren_start)
+            if paren_end is not None:
+                paren_content = query[paren_start + 1 : paren_end]
+                positional_args, named_args = parse_args(paren_content)
+                match_end = paren_end + 1
+        elif colon_arg is not None:
+            positional_args = [colon_arg]
+        elif plus_suffix is not None:
+            positional_args = ["true"]
+
+        # Build args dict
+        args: dict[str, Any] = dict(named_args)
+        for i, value in enumerate(positional_args):
+            if i < len(workflow.inputs):
+                input_arg = workflow.inputs[i]
+                if input_arg.name not in args:
+                    args[input_arg.name] = value
+
+        # Apply defaults
+        for input_arg in workflow.inputs:
+            if input_arg.name not in args and input_arg.default is not None:
+                args[input_arg.name] = str(input_arg.default)
+
+        # Get pre and post steps
+        pre_steps = workflow.get_pre_prompt_steps()
+        post_steps = workflow.get_post_prompt_steps()
+
+        # Create isolated context for the embedded workflow
+        embedded_context: dict[str, Any] = dict(args)
+
+        # Execute pre-steps using a minimal workflow executor
+        if pre_steps:
+            embedded_context = _execute_standalone_steps(
+                pre_steps, embedded_context, workflow.name, artifacts_dir
+            )
+
+        # Render prompt_part with the embedded context (args + pre-step outputs)
+        prompt_part_content = workflow.get_prompt_part_content()
+        if prompt_part_content:
+            prompt_part_content = render_template(prompt_part_content, embedded_context)
+
+        # Replace the workflow reference with the prompt_part content
+        query = query[: match.start()] + prompt_part_content + query[match_end:]
+
+        # Store post-steps for execution after the main prompt
+        if post_steps:
+            post_workflows.append((post_steps, embedded_context))
+
+    return query, post_workflows
+
+
+def _execute_standalone_steps(
+    steps: list[WorkflowStep],
+    context: dict[str, Any],
+    workflow_name: str,
+    artifacts_dir: str | None = None,
+) -> dict[str, Any]:
+    """Execute workflow steps in a standalone context.
+
+    Used for running pre/post steps from embedded workflows outside of
+    the normal workflow executor context.
+
+    Args:
+        steps: List of workflow steps to execute.
+        context: Initial context (args).
+        workflow_name: Name of the workflow (for artifacts).
+        artifacts_dir: Optional directory for artifacts.
+
+    Returns:
+        Updated context with step outputs.
+
+    Raises:
+        WorkflowExecutionError: If any step fails.
+    """
+    import subprocess
+    import sys
+
+    from xprompt.workflow_executor_utils import parse_bash_output, render_template
+    from xprompt.workflow_models import WorkflowExecutionError
+
+    for step in steps:
+        if step.is_bash_step() and step.bash:
+            rendered_command = render_template(step.bash, context)
+            try:
+                result = subprocess.run(
+                    rendered_command,
+                    shell=True,
+                    capture_output=True,
+                    text=True,
+                    cwd=os.getcwd(),
+                )
+            except Exception as e:
+                raise WorkflowExecutionError(
+                    f"Failed to execute bash step '{step.name}': {e}"
+                ) from e
+
+            if result.returncode != 0:
+                error_msg = (
+                    result.stderr.strip()
+                    if result.stderr
+                    else f"Exit code {result.returncode}"
+                )
+                raise WorkflowExecutionError(
+                    f"Bash step '{step.name}' failed: {error_msg}"
+                )
+
+            output = parse_bash_output(result.stdout)
+            context[step.name] = output
+
+        elif step.is_python_step() and step.python:
+            rendered_code = render_template(step.python, context)
+            try:
+                result = subprocess.run(
+                    [sys.executable, "-c", rendered_code],
+                    capture_output=True,
+                    text=True,
+                    cwd=os.getcwd(),
+                )
+            except Exception as e:
+                raise WorkflowExecutionError(
+                    f"Failed to execute python step '{step.name}': {e}"
+                ) from e
+
+            if result.returncode != 0:
+                error_msg = (
+                    result.stderr.strip()
+                    if result.stderr
+                    else f"Exit code {result.returncode}"
+                )
+                raise WorkflowExecutionError(
+                    f"Python step '{step.name}' failed: {error_msg}"
+                )
+
+            output = parse_bash_output(result.stdout)
+            context[step.name] = output
+
+        elif step.is_prompt_step() and step.prompt:
+            from gemini_wrapper import invoke_agent
+            from shared_utils import ensure_str_content
+            from xprompt import process_xprompt_references
+
+            rendered_prompt = render_template(step.prompt, context)
+            expanded_prompt = process_xprompt_references(rendered_prompt)
+
+            # Create temp artifacts dir if not provided
+            step_artifacts_dir = artifacts_dir
+            if step_artifacts_dir is None:
+                step_artifacts_dir = tempfile.mkdtemp(
+                    prefix=f"embedded-{workflow_name}-"
+                )
+
+            response = invoke_agent(
+                expanded_prompt,
+                agent_type=f"embedded-{workflow_name}-{step.name}",
+                artifacts_dir=step_artifacts_dir,
+            )
+            response_text = ensure_str_content(response.content)
+
+            # Store raw output for prompt steps
+            context[step.name] = {"_raw": response_text}
+
+    return context
 
 
 def _auto_create_wip_cl(
@@ -177,13 +405,25 @@ def run_query(
                 artifacts_timestamp=artifacts_timestamp,
             )
 
+        # Expand embedded workflows (workflows with prompt_part)
+        # This executes pre-steps and replaces workflow refs with prompt_part content
+        expanded_prompt, post_workflows = _expand_embedded_workflows_in_query(
+            full_prompt, artifacts_dir
+        )
+
         ai_result = invoke_agent(
-            full_prompt,
+            expanded_prompt,
             agent_type=agent_type,
             model_size="big",
             artifacts_dir=artifacts_dir,
             timestamp=shared_timestamp,
         )
+
+        # Execute post-steps from embedded workflows
+        for post_steps, embedded_context in post_workflows:
+            _execute_standalone_steps(
+                post_steps, embedded_context, "run-embedded", artifacts_dir
+            )
 
         # Capture end timestamp for accurate duration calculation
         end_timestamp = generate_timestamp()

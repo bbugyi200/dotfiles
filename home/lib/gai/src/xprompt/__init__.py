@@ -24,6 +24,7 @@ from .output_validation import (
 )
 from .processor import (
     execute_workflow,
+    expand_workflow_for_embedding,
     get_primary_output_schema,
     is_jinja2_template,
     is_workflow_reference,
@@ -65,6 +66,7 @@ __all__ = [
     "parse_workflow_reference",
     # Processor
     "execute_workflow",
+    "expand_workflow_for_embedding",
     "get_primary_output_schema",
     "is_jinja2_template",
     "is_workflow_reference",

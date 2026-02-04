@@ -51,9 +51,11 @@ class WorkflowStep:
     Attributes:
         name: Step identifier (defaults to step_{index} if not specified).
         prompt: Prompt template for prompt steps (supports Jinja2 and xprompt refs).
-            Mutually exclusive with bash/python/parallel.
-        bash: Bash command to execute (mutually exclusive with prompt/python/parallel).
-        python: Python code to execute (mutually exclusive with prompt/bash/parallel).
+            Mutually exclusive with bash/python/parallel/prompt_part.
+        bash: Bash command to execute (mutually exclusive with prompt/python/parallel/prompt_part).
+        python: Python code to execute (mutually exclusive with prompt/bash/parallel/prompt_part).
+        prompt_part: Content to append to containing prompt when workflow is embedded.
+            Mutually exclusive with prompt/bash/python/parallel.
         output: Output specification for validation.
         hitl: Whether to require human-in-the-loop approval.
         condition: if: condition (Jinja2 expression) - step skipped if false.
@@ -68,6 +70,7 @@ class WorkflowStep:
     prompt: str | None = None
     bash: str | None = None
     python: str | None = None
+    prompt_part: str | None = None
     output: OutputSpec | None = None
     hitl: bool = False
     condition: str | None = None
@@ -92,6 +95,10 @@ class WorkflowStep:
     def is_parallel_step(self) -> bool:
         """Return True if this is a parallel step."""
         return self.parallel_config is not None
+
+    def is_prompt_part_step(self) -> bool:
+        """Return True if this is a prompt_part step."""
+        return self.prompt_part is not None
 
 
 @dataclass
@@ -123,6 +130,58 @@ class Workflow:
             if input_arg.name == name:
                 return input_arg
         return None
+
+    def get_prompt_part_index(self) -> int | None:
+        """Get the index of the prompt_part step if present.
+
+        Returns:
+            The index of the prompt_part step, or None if not present.
+        """
+        for i, step in enumerate(self.steps):
+            if step.is_prompt_part_step():
+                return i
+        return None
+
+    def has_prompt_part(self) -> bool:
+        """Check if this workflow has a prompt_part step.
+
+        Returns:
+            True if the workflow has a prompt_part step.
+        """
+        return self.get_prompt_part_index() is not None
+
+    def get_prompt_part_content(self) -> str:
+        """Get the prompt_part content if present.
+
+        Returns:
+            The prompt_part content, or empty string if not present.
+        """
+        idx = self.get_prompt_part_index()
+        if idx is not None:
+            return self.steps[idx].prompt_part or ""
+        return ""
+
+    def get_pre_prompt_steps(self) -> list[WorkflowStep]:
+        """Get steps that run before the prompt_part step.
+
+        Returns:
+            List of steps before prompt_part, or empty list if no prompt_part.
+        """
+        idx = self.get_prompt_part_index()
+        if idx is None:
+            return []
+        return self.steps[:idx]
+
+    def get_post_prompt_steps(self) -> list[WorkflowStep]:
+        """Get steps that run after the prompt_part step.
+
+        Returns:
+            List of steps after prompt_part, or all steps if no prompt_part.
+        """
+        idx = self.get_prompt_part_index()
+        if idx is None:
+            return list(self.steps)
+        return self.steps[idx + 1 :]
 
 
 @dataclass

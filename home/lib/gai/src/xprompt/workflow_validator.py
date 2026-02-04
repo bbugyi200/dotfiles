@@ -154,6 +154,8 @@ def _collect_step_content(step: WorkflowStep) -> list[str]:
         contents.append(step.bash)
     if step.python:
         contents.append(step.python)
+    if step.prompt_part:
+        contents.append(step.prompt_part)
     if step.condition:
         contents.append(step.condition)
     if step.for_loop:
@@ -215,12 +217,77 @@ def _detect_unused_inputs(workflow: Workflow, used_vars: set[str]) -> list[str]:
     return unused
 
 
+def _validate_prompt_part_steps(workflow: Workflow) -> list[str]:
+    """Validate prompt_part steps in a workflow.
+
+    Validates:
+    - At most one prompt_part step per workflow
+    - prompt_part steps cannot have control flow (if, for, repeat, while)
+    - prompt_part steps cannot have output specification
+    - prompt_part steps cannot have hitl: true
+
+    Args:
+        workflow: The workflow to validate.
+
+    Returns:
+        List of error messages (empty if valid).
+    """
+    errors: list[str] = []
+    prompt_part_count = 0
+
+    for step in workflow.steps:
+        if not step.is_prompt_part_step():
+            continue
+
+        prompt_part_count += 1
+
+        # Validate no control flow
+        if step.condition:
+            errors.append(
+                f"Step '{step.name}' with 'prompt_part' cannot have 'if' condition"
+            )
+        if step.for_loop:
+            errors.append(
+                f"Step '{step.name}' with 'prompt_part' cannot have 'for' loop"
+            )
+        if step.repeat_config:
+            errors.append(
+                f"Step '{step.name}' with 'prompt_part' cannot have 'repeat' loop"
+            )
+        if step.while_config:
+            errors.append(
+                f"Step '{step.name}' with 'prompt_part' cannot have 'while' loop"
+            )
+
+        # Validate no output specification
+        if step.output:
+            errors.append(
+                f"Step '{step.name}' with 'prompt_part' cannot have 'output' specification"
+            )
+
+        # Validate no HITL
+        if step.hitl:
+            errors.append(
+                f"Step '{step.name}' with 'prompt_part' cannot have 'hitl: true'"
+            )
+
+    # Validate at most one prompt_part
+    if prompt_part_count > 1:
+        errors.append(
+            f"Workflow has {prompt_part_count} prompt_part steps, "
+            "but at most one is allowed"
+        )
+
+    return errors
+
+
 def validate_workflow(workflow: Workflow) -> None:
     """Validate a workflow before execution.
 
     Performs compile-time checks:
     - Detects unused inputs (defined but never referenced)
     - Validates xprompt calls (required args, named arg names, positional counts)
+    - Validates prompt_part steps (at most one, no control flow, no output, no hitl)
 
     Args:
         workflow: The workflow to validate.
@@ -230,6 +297,10 @@ def validate_workflow(workflow: Workflow) -> None:
     """
     errors: list[str] = []
     xprompts = get_all_xprompts()
+
+    # Validate prompt_part steps
+    prompt_part_errors = _validate_prompt_part_steps(workflow)
+    errors.extend(prompt_part_errors)
 
     # Check for unused inputs
     used_vars = _collect_used_variables(workflow)

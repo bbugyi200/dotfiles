@@ -19,7 +19,7 @@ from ._parsing import (
 )
 from .loader import get_all_workflows, get_all_xprompts
 from .models import OutputSpec, XPrompt
-from .workflow_models import WorkflowValidationError
+from .workflow_models import WorkflowStep, WorkflowValidationError
 
 # Maximum number of expansion iterations to prevent infinite loops
 _MAX_EXPANSION_ITERATIONS = 100
@@ -392,8 +392,74 @@ def execute_workflow(
     return ""
 
 
+def expand_workflow_for_embedding(
+    workflow_name: str,
+    positional_args: list[str],
+    named_args: dict[str, str],
+) -> tuple[str, list[WorkflowStep], list[WorkflowStep]]:
+    """Expand a workflow for embedding into a containing prompt.
+
+    When a workflow with a `prompt_part` step is embedded in a prompt,
+    this function extracts:
+    - The rendered prompt_part content (to append to the containing prompt)
+    - Pre-steps (steps before prompt_part) to execute before the prompt
+    - Post-steps (steps after prompt_part) to execute after the prompt
+
+    If the workflow has no prompt_part, all steps are returned as post-steps.
+
+    Args:
+        workflow_name: The name of the workflow to expand.
+        positional_args: Positional arguments for the workflow.
+        named_args: Named arguments for the workflow.
+
+    Returns:
+        Tuple of (prompt_part_content, pre_steps, post_steps).
+
+    Raises:
+        WorkflowValidationError: If workflow not found.
+    """
+    from xprompt.workflow_executor_utils import render_template
+
+    workflows = get_all_workflows()
+    if workflow_name not in workflows:
+        raise WorkflowValidationError(f"Workflow '{workflow_name}' not found")
+
+    workflow = workflows[workflow_name]
+
+    # Build args dict from positional and named args
+    args: dict[str, str] = dict(named_args)
+
+    # Map positional args to input names
+    for i, value in enumerate(positional_args):
+        if i < len(workflow.inputs):
+            input_arg = workflow.inputs[i]
+            if input_arg.name not in args:
+                args[input_arg.name] = value
+
+    # Apply defaults for missing args
+    for input_arg in workflow.inputs:
+        if input_arg.name not in args and input_arg.default is not None:
+            args[input_arg.name] = str(input_arg.default)
+
+    # Get pre and post steps
+    pre_steps = workflow.get_pre_prompt_steps()
+    post_steps = workflow.get_post_prompt_steps()
+
+    # Render prompt_part content with args as initial context
+    # Note: Pre-step outputs will be added to context during execution
+    prompt_part_content = workflow.get_prompt_part_content()
+    if prompt_part_content:
+        # Render with just the input args for now
+        # The full context (with pre-step outputs) will be used at execution time
+        # when the prompt_part is actually expanded
+        prompt_part_content = render_template(prompt_part_content, args)
+
+    return prompt_part_content, pre_steps, post_steps
+
+
 __all__ = [
     "execute_workflow",
+    "expand_workflow_for_embedding",
     "get_primary_output_schema",
     "is_jinja2_template",
     "is_workflow_reference",
