@@ -351,3 +351,113 @@ class TestEmbeddedWorkflowExpansion:
 
                 # Should prepend \n\n before the ### content
                 assert "\n\n### Section Header" in expanded
+
+
+class TestSubstepSuffix:
+    """Tests for the _get_substep_suffix helper function."""
+
+    def test_substep_suffix_first_letters(self) -> None:
+        """Test that indices 0-25 map to a-z."""
+        from xprompt.workflow_output import _get_substep_suffix
+
+        assert _get_substep_suffix(0) == "a"
+        assert _get_substep_suffix(1) == "b"
+        assert _get_substep_suffix(25) == "z"
+
+    def test_substep_suffix_double_letters(self) -> None:
+        """Test that indices 26+ map to aa, ab, etc."""
+        from xprompt.workflow_output import _get_substep_suffix
+
+        assert _get_substep_suffix(26) == "aa"
+        assert _get_substep_suffix(27) == "ab"
+        assert _get_substep_suffix(51) == "az"
+        assert _get_substep_suffix(52) == "ba"
+
+
+class TestParentStepContext:
+    """Tests for parent step context in embedded workflow output."""
+
+    def test_on_step_start_with_parent_context(self) -> None:
+        """Test that on_step_start formats embedded steps correctly."""
+        from io import StringIO
+
+        from rich.console import Console
+        from xprompt.workflow_output import (
+            ParentStepContext,
+            WorkflowOutputHandler,
+        )
+
+        # Create a console that writes to a string buffer (no_color to avoid ANSI)
+        output = StringIO()
+        console = Console(file=output, force_terminal=False, no_color=True, width=100)
+        handler = WorkflowOutputHandler(console=console)
+
+        # Create parent step context (parent step 1 of 7 total)
+        parent_ctx = ParentStepContext(step_index=0, total_steps=7)
+
+        # Call on_step_start with parent context (substep 0)
+        handler.on_step_start(
+            step_name="check_changes",
+            step_type="bash",
+            step_index=0,
+            total_steps=4,
+            parent_step_context=parent_ctx,
+        )
+
+        # Check output contains the expected format "1a/7"
+        result = output.getvalue()
+        assert "Step 1a/7: check_changes (bash)" in result
+
+    def test_on_step_start_without_parent_context(self) -> None:
+        """Test that on_step_start uses regular numbering without parent context."""
+        from io import StringIO
+
+        from rich.console import Console
+        from xprompt.workflow_output import WorkflowOutputHandler
+
+        output = StringIO()
+        console = Console(file=output, force_terminal=False, no_color=True, width=100)
+        handler = WorkflowOutputHandler(console=console)
+
+        # Call on_step_start without parent context
+        handler.on_step_start(
+            step_name="test_step",
+            step_type="prompt",
+            step_index=2,
+            total_steps=5,
+        )
+
+        # Check output contains the expected format "3/5" (0-indexed + 1)
+        result = output.getvalue()
+        assert "Step 3/5: test_step (prompt)" in result
+
+    def test_on_step_start_multiple_substeps(self) -> None:
+        """Test formatting of multiple embedded substeps."""
+        from io import StringIO
+
+        from rich.console import Console
+        from xprompt.workflow_output import (
+            ParentStepContext,
+            WorkflowOutputHandler,
+        )
+
+        output = StringIO()
+        console = Console(file=output, force_terminal=False, no_color=True, width=100)
+        handler = WorkflowOutputHandler(console=console)
+
+        parent_ctx = ParentStepContext(step_index=2, total_steps=10)
+
+        # Substeps 0, 1, 2 should produce 3a, 3b, 3c
+        for i in range(3):
+            handler.on_step_start(
+                step_name=f"substep_{i}",
+                step_type="bash",
+                step_index=i,
+                total_steps=3,
+                parent_step_context=parent_ctx,
+            )
+
+        result = output.getvalue()
+        assert "Step 3a/10:" in result
+        assert "Step 3b/10:" in result
+        assert "Step 3c/10:" in result

@@ -18,7 +18,7 @@ from xprompt.workflow_models import (
 )
 
 if TYPE_CHECKING:
-    from xprompt.workflow_output import WorkflowOutputHandler
+    from xprompt.workflow_output import ParentStepContext, WorkflowOutputHandler
 
 # Pattern to match workflow references in prompts (same as processor.py)
 _WORKFLOW_REF_PATTERN = (
@@ -81,6 +81,7 @@ class StepMixin:
         steps: list[WorkflowStep],
         embedded_context: dict[str, Any],
         parent_step_name: str,
+        parent_step_context: "ParentStepContext | None" = None,
     ) -> bool:
         """Execute steps from an embedded workflow.
 
@@ -91,6 +92,7 @@ class StepMixin:
             steps: List of workflow steps to execute.
             embedded_context: Context for the embedded workflow (args + outputs).
             parent_step_name: Name of the parent step for error messages.
+            parent_step_context: Context for parent step numbering in output.
 
         Returns:
             True if all steps succeeded, False if any failed.
@@ -123,6 +125,7 @@ class StepMixin:
                                 total_steps,
                                 condition=step.condition,
                                 condition_result=False,
+                                parent_step_context=parent_step_context,
                             )
                             self.output_handler.on_step_skip(
                                 step.name, reason="condition false"
@@ -136,6 +139,7 @@ class StepMixin:
                         step_type,
                         i,
                         total_steps,
+                        parent_step_context=parent_step_context,
                     )
 
                 temp_state.status = StepStatus.IN_PROGRESS
@@ -254,8 +258,17 @@ class StepMixin:
 
             # Execute pre-steps to populate context
             if pre_steps:
+                from xprompt.workflow_output import ParentStepContext
+
+                parent_ctx = ParentStepContext(
+                    step_index=self.state.current_step_index,
+                    total_steps=len(self.workflow.steps),
+                )
                 success = self._execute_embedded_workflow_steps(
-                    pre_steps, embedded_context, f"embedded:{name}"
+                    pre_steps,
+                    embedded_context,
+                    f"embedded:{name}",
+                    parent_step_context=parent_ctx,
                 )
                 if not success:
                     raise WorkflowExecutionError(
@@ -397,10 +410,19 @@ class StepMixin:
         # Execute post-steps from embedded workflows
         for _, post_steps, embedded_context in embedded_workflows:
             if post_steps:
+                from xprompt.workflow_output import ParentStepContext
+
                 # Make agent response available to post-steps
                 embedded_context["_response"] = response_text
+                parent_ctx = ParentStepContext(
+                    step_index=self.state.current_step_index,
+                    total_steps=len(self.workflow.steps),
+                )
                 success = self._execute_embedded_workflow_steps(
-                    post_steps, embedded_context, f"embedded:post:{step.name}"
+                    post_steps,
+                    embedded_context,
+                    f"embedded:post:{step.name}",
+                    parent_step_context=parent_ctx,
                 )
                 if not success:
                     raise WorkflowExecutionError(

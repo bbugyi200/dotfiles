@@ -21,6 +21,14 @@ class LoopInfo:
     max_iterations: int | None = None
 
 
+@dataclass
+class ParentStepContext:
+    """Context for parent step when executing embedded workflow steps."""
+
+    step_index: int  # 0-based index of parent step
+    total_steps: int  # Total steps in parent workflow
+
+
 class WorkflowOutputHandler:
     """Handler for displaying verbose output during workflow execution."""
 
@@ -84,6 +92,7 @@ class WorkflowOutputHandler:
         condition: str | None = None,
         condition_result: bool | None = None,
         loop_info: LoopInfo | None = None,
+        parent_step_context: ParentStepContext | None = None,
     ) -> None:
         """Called when a step begins execution.
 
@@ -95,11 +104,24 @@ class WorkflowOutputHandler:
             condition: The condition expression (if present).
             condition_result: Result of condition evaluation (if applicable).
             loop_info: Information about loop iteration (if applicable).
+            parent_step_context: Context for parent step when executing embedded
+                workflow steps.
         """
         self._step_start_time = time.time()
 
         # Step header
-        header = f"Step {step_index + 1}/{total_steps}: {step_name} ({step_type})"
+        if parent_step_context is not None:
+            # Embedded step: use parent step number with letter suffix
+            parent_num = parent_step_context.step_index + 1
+            suffix = _get_substep_suffix(step_index)
+            step_display = f"{parent_num}{suffix}"
+            total_display = parent_step_context.total_steps
+        else:
+            # Normal step: use regular numbering
+            step_display = str(step_index + 1)
+            total_display = total_steps
+
+        header = f"Step {step_display}/{total_display}: {step_name} ({step_type})"
         self.console.print(f"[bold cyan]{header}[/bold cyan]")
         self.console.print("[dim]" + "-" * len(header) + "[/dim]")
 
@@ -366,6 +388,23 @@ class WorkflowOutputHandler:
 
         syntax = Syntax(indented, "yaml", theme="monokai", background_color="default")
         self.console.print(syntax)
+
+
+def _get_substep_suffix(index: int) -> str:
+    """Convert 0-based index to substep suffix (a, b, ..., z, aa, ab, ...).
+
+    Args:
+        index: 0-based index of the substep.
+
+    Returns:
+        Letter suffix for the substep (a-z, then aa, ab, etc.).
+    """
+    if index < 26:
+        return chr(ord("a") + index)
+    # For 26+, use aa, ab, etc.
+    first = index // 26 - 1
+    second = index % 26
+    return chr(ord("a") + first) + chr(ord("a") + second)
 
 
 def _format_value(value: Any) -> str:
