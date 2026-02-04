@@ -1,14 +1,17 @@
 # Metahooks intercept failing hooks before the summarize agent runs.
 metahooks:
-  - name: scuba
-    hook_command: bb_rabbit_test
-    output_regex: "Expected: Scuba Result PASSED"
+  # keep-sorted start group_prefixes=-
   - name: hg_presubmit_tap
     hook_command: bb_hg_presubmit
     output_regex: "[1-9]\\d* failed,"
+  - name: scuba
+    hook_command: bb_rabbit_test
+    output_regex: "Expected: Scuba Result PASSED"
+  # keep-sorted end
 
 # Mentor profiles define which mentors to apply to which files.
 mentor_profiles:
+  # keep-sorted start group_prefixes=-
   - profile_name: aaa
     mentors:
       - prompt: "#mentor/aaa"
@@ -65,12 +68,13 @@ mentor_profiles:
       - "**/*.dart"
       - "**/*.acx.html"
       - "**/*.scss"
+  # keep-sorted end
 
 # XPrompts are reusable text templates that can be referenced in prompts.
 # Usage: #xprompt_name or #xprompt_name(arg1, arg2)
 # Simple xprompts use string values, xprompts with arguments use input/content dicts.
 xprompts:
-  # XPrompts with arguments use dict with input/content
+  # keep-sorted start block=yes
   b:
     input: { bug_id: int }
     content: "Can you help me fix the bug described by the #bug:{{ bug_id }} file? #noc"
@@ -82,6 +86,7 @@ xprompts:
   bug:
     input: { bug_id: int }
     content: "#x(bug_desc, bugged show '{{ bug_id }}')"
+  chat: "@$(gai_first_commit_chat)"
   cl:
     input: { include_chat: { type: bool, default: false } }
     content: |
@@ -97,11 +102,9 @@ xprompts:
   clref:
     input: { cl_id: int }
     content: "Use #clr:{{ cl_id }} as a reference."
-  # Simple xprompts (no arguments) remain as strings
-  chat: "@$(gai_first_commit_chat)"
   duck: "@$(printf '%s\\n' ~/bb/duckie/* | sort | tail -n 1)"
-  duckref: "See the agent chat in #duck for some initial ideas."
   duckie: "Make sure to use your ask-duckie tool to perform some research before deciding on a solution."
+  duckref: "See the agent chat in #duck for some initial ideas."
   feat: |
     publisher feature (see @contentads/drx/fe/g3doc/admin/publisher_features.md for more information on publisher features)
   mentor/aaa: |
@@ -120,27 +123,6 @@ xprompts:
           - If the best you can do is restate the name of the field, function, class, or method in the comment, then
             no comment is necessary.
       + We are critical about the comments we add — avoid redundant comments that simply restate what the code does.
-  mentor/shared_code: |
-    #mentor: Can you help me identify any code that is duplicated across multiple files in this CL? You should use your
-    CodeSearch tool to search for duplication and/or existing shared utilities across the codebase (related to the
-    changes made in this CL). If you find any, please refactor the code to factor out a new shared utility / use the
-    existing shared utility.
-  mentor/sound_tests: |
-    #mentor: Can you help me ensure that the changes made in this CL have proper test coverage? Specifically, you should
-    verify that:
-      + New logic comes with new or strengthened tests (or a clear justification for why existing tests are
-        sufficient).
-      + in the case of bug fixes, regressions are actively guarded against, not "accidentally avoided": include at
-        least one test that would have failed before the change.
-  mentor/symbol_names: |
-    #mentor: Can you help me ensure that all classes, methods, functions, variables, and fields modified by this CL have clear
-    and descriptive names that follow best practices for the language they are written in?
-  mentor/vision: |
-    #mentor: Can you help me check all code modified by this CL to ensure that the visibility modifiers (ex: public / private /
-    protected for Java or just a leading underscore for private Dart symbols) of all classes, methods, and fields
-    modified in this CL are appropriate? Make sure that no class, method, or field is more visible than it needs to
-    be. For example, if a method is only used within its own class, it should be marked as private instead of public
-    or protected. Dead code (unused public functionality that was added by this CL) should also be removed.
   mentor/complete: |
     {% set chat_val = "#chat" -%}
     {%- set chat_clause = ", the initial conversation with Gemini that resulted in the creation of this CL (shown in the " ~ chat_val ~ " file)," if chat_val != "@" else "" -%}
@@ -158,6 +140,18 @@ xprompts:
     #mentor: Can you ensure that if this CL adds a new #feat that the value we used for the 'id' field is equal to the
     output of the `branch_number` command and that the value we used for the 'rollout_bug_id' field is equal to
     the output of the `cl_bug` command?
+  mentor/shared_code: |
+    #mentor: Can you help me identify any code that is duplicated across multiple files in this CL? You should use your
+    CodeSearch tool to search for duplication and/or existing shared utilities across the codebase (related to the
+    changes made in this CL). If you find any, please refactor the code to factor out a new shared utility / use the
+    existing shared utility.
+  mentor/sound_tests: |
+    #mentor: Can you help me ensure that the changes made in this CL have proper test coverage? Specifically, you should
+    verify that:
+      + New logic comes with new or strengthened tests (or a clear justification for why existing tests are
+        sufficient).
+      + in the case of bug fixes, regressions are actively guarded against, not "accidentally avoided": include at
+        least one test that would have failed before the change.
   mentor/sql: |
     #mentor: Can you help me ensure that the SQL files added by this CL have file paths of the form
     `configs/storage/f1/data_changes/gfp-f1-prod/input/*.sql` OR `configs/storage/f1/data_changes/gfp-f1-prod/input/gfp-f1-<team>/*.sql`,
@@ -165,9 +159,18 @@ xprompts:
     use the latter form when that subdirectory contains a README.md file that lists the name of the SQL table we
     are modifying; however, if that is the case, then you MUST use the latter form. You should also ensure that
     this CL adheres to the best practices described in the @contentads/gfp/agave/g3doc/modify/data_change.md file.
+  mentor/symbol_names: |
+    #mentor: Can you help me ensure that all classes, methods, functions, variables, and fields modified by this CL have clear
+    and descriptive names that follow best practices for the language they are written in?
   mentor/ui: |
     #mentor: Can you help me ensure that the changes made by this CL adhere to the guidelines outlined in the
     @contentads/drx/fe/client/g3doc/drx_ui_style.md document?
+  mentor/vision: |
+    #mentor: Can you help me check all code modified by this CL to ensure that the visibility modifiers (ex: public / private /
+    protected for Java or just a leading underscore for private Dart symbols) of all classes, methods, and fields
+    modified in this CL are appropriate? Make sure that no class, method, or field is more visible than it needs to
+    be. For example, if a method is only used within its own class, it should be marked as private instead of public
+    or protected. Dead code (unused public functionality that was added by this CL) should also be removed.
   newfeat:
     input: { feat_name: word, usage: line }
     content: |
@@ -181,3 +184,4 @@ xprompts:
   x:
     input: { name: word, cmd: line }
     content: "@$(xcmd {{ name }} {{ cmd }})"
+  # keep-sorted end

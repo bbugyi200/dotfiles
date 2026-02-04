@@ -34,6 +34,13 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*;
 
+### Install Go and keep-sorted
+RUN apt-get update && \
+    apt-get install -y golang-go && \
+    GOBIN=/usr/local/bin go install github.com/google/keep-sorted@latest && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 ### Install bashunit
 RUN cd / && \
     curl -s https://bashunit.typeddevs.com/install.sh | bash -s bin && \
