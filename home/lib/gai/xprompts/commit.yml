@@ -36,7 +36,6 @@ steps:
     output: { response_file: path }
 
   - name: create_cl
-    hidden: true
     if: "{{ check_changes.has_changes }}"
     bash: |
       gai_commit_workflow --create \
