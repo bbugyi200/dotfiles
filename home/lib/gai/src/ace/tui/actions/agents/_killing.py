@@ -393,12 +393,18 @@ class AgentKillingMixin:
             try:
                 if workflow_dir.exists():
                     shutil.rmtree(workflow_dir)
-                    self.notify(f"Dismissed workflow {agent.workflow}")  # type: ignore[attr-defined]
-                else:
-                    self.notify("Workflow already dismissed", severity="warning")  # type: ignore[attr-defined]
+                self.notify(f"Dismissed workflow {agent.workflow}")  # type: ignore[attr-defined]
             except Exception as e:
                 self.notify(f"Error dismissing workflow: {e}", severity="error")  # type: ignore[attr-defined]
                 return
+
+            # Always track dismissal in _dismissed_agents as a fallback.
+            # This ensures the workflow is filtered out even if it's loaded
+            # from the RUNNING field or other sources.
+            from ...dismissed_agents import save_dismissed_agents
+
+            self._dismissed_agents.add(agent.identity)  # type: ignore[attr-defined]
+            save_dismissed_agents(self._dismissed_agents)  # type: ignore[attr-defined]
 
             self._load_agents()  # type: ignore[attr-defined]
             return
