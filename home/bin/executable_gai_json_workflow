@@ -17,7 +17,7 @@ def _setup_mode(schema_str: str) -> None:
     from xprompt.loader import parse_output_from_front_matter
     from xprompt.output_validation import generate_format_instructions
 
-    schema_data = yaml.safe_load(schema_str)
+    schema_data = yaml.safe_load(schema_str.strip("`"))
     output_spec = parse_output_from_front_matter(schema_data)
     if output_spec is None:
         print("Error: Could not parse schema", file=sys.stderr)
