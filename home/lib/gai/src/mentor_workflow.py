@@ -12,6 +12,10 @@ from change_actions import execute_change_action, prompt_for_change_action
 from commit_utils import run_bb_hg_clean
 from gai_utils import generate_timestamp
 from gemini_wrapper import invoke_agent
+from main.query_handler import (
+    execute_standalone_steps,
+    expand_embedded_workflows_in_query,
+)
 from mentor_config import (
     MentorConfig,
     get_mentor_from_profile,
@@ -255,9 +259,14 @@ class MentorWorkflow(BaseWorkflow):
             print_status("Building mentor prompt...", "progress")
             prompt = _build_mentor_prompt(self._mentor)
 
+            # Expand embedded workflows (like #propose from #p expansion)
+            expanded_prompt, post_workflows = expand_embedded_workflows_in_query(
+                prompt, artifacts_dir
+            )
+
             print_status(f"Running mentor '{self.mentor_name}'...", "progress")
             response = invoke_agent(
-                prompt,
+                expanded_prompt,
                 agent_type=f"mentor-{self.mentor_name}",
                 model_size="big",
                 iteration=1,
@@ -266,6 +275,18 @@ class MentorWorkflow(BaseWorkflow):
                 workflow=f"mentor-{self.mentor_name}",
                 timestamp=self._timestamp,
             )
+
+            # Execute post-steps from embedded workflows
+            response_content = ensure_str_content(response.content)
+            for post_steps, embedded_context in post_workflows:
+                embedded_context["_prompt"] = expanded_prompt
+                embedded_context["_response"] = response_content
+                execute_standalone_steps(
+                    post_steps,
+                    embedded_context,
+                    f"mentor-{self.mentor_name}-embedded",
+                    artifacts_dir,
+                )
 
             # Check for empty response (indicates silent failure like permission issues)
             response_text = response.content

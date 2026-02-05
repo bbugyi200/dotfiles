@@ -29,7 +29,7 @@ _WORKFLOW_REF_PATTERN = (
 )
 
 
-def _expand_embedded_workflows_in_query(
+def expand_embedded_workflows_in_query(
     query: str,
     artifacts_dir: str | None = None,
 ) -> tuple[str, list[tuple[list[WorkflowStep], dict[str, Any]]]]:
@@ -117,7 +117,7 @@ def _expand_embedded_workflows_in_query(
 
         # Execute pre-steps using a minimal workflow executor
         if pre_steps:
-            embedded_context = _execute_standalone_steps(
+            embedded_context = execute_standalone_steps(
                 pre_steps, embedded_context, workflow.name, artifacts_dir
             )
 
@@ -136,7 +136,7 @@ def _expand_embedded_workflows_in_query(
     return query, post_workflows
 
 
-def _execute_standalone_steps(
+def execute_standalone_steps(
     steps: list[WorkflowStep],
     context: dict[str, Any],
     workflow_name: str,
@@ -410,7 +410,7 @@ def run_query(
 
         # Expand embedded workflows (workflows with prompt_part)
         # This executes pre-steps and replaces workflow refs with prompt_part content
-        expanded_prompt, post_workflows = _expand_embedded_workflows_in_query(
+        expanded_prompt, post_workflows = expand_embedded_workflows_in_query(
             full_prompt, artifacts_dir
         )
 
@@ -430,7 +430,7 @@ def run_query(
             # Make agent prompt and response available to post-steps
             embedded_context["_prompt"] = expanded_prompt
             embedded_context["_response"] = response_content
-            _execute_standalone_steps(
+            execute_standalone_steps(
                 post_steps, embedded_context, "run-embedded", artifacts_dir
             )
 
