@@ -557,6 +557,7 @@ def load_workflow_agents() -> list[Agent]:
                 raw_suffix=raw_suffix,
                 pid=entry.pid,
                 appears_as_agent=entry.appears_as_agent,
+                artifacts_dir=entry.artifacts_dir,
             )
         )
 
