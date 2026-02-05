@@ -303,9 +303,7 @@ def check_and_complete_workflows(
                         break
 
                 current_summary = None
-                hooks_to_update = changespec.hooks
                 if current_cs and current_cs.hooks:
-                    hooks_to_update = current_cs.hooks
                     for h in current_cs.hooks:
                         if h.command == hook_command:
                             sl = h.get_status_line_for_commit_entry(entry_id)
@@ -320,16 +318,20 @@ def check_and_complete_workflows(
                 else:
                     current_summary = shortened_output
 
-                if hooks_to_update:
-                    set_hook_suffix(
-                        changespec.file_path,
-                        changespec.name,
-                        hook_command,
-                        "fix-hook Failed",
-                        hooks_to_update,
-                        entry_id=entry_id,
-                        suffix_type="error",
-                        summary=current_summary,
+                success = set_hook_suffix(
+                    changespec.file_path,
+                    changespec.name,
+                    hook_command,
+                    "fix-hook Failed",
+                    hooks=None,  # Fresh read under lock
+                    entry_id=entry_id,
+                    suffix_type="error",
+                    summary=current_summary,
+                )
+                if not success:
+                    updates.append(
+                        f"WARNING: Could not set error suffix for fix-hook "
+                        f"'{hook_command}' entry ({entry_id})"
                     )
                 updates.append(
                     f"fix-hook workflow '{hook_command}' -> FAILED (exit {exit_code})"
@@ -382,16 +384,20 @@ def check_and_complete_workflows(
                 # Workflow failed - include output path for debugging
                 shortened_output = shorten_path(output_path)
 
-                if changespec.hooks:
-                    set_hook_suffix(
-                        changespec.file_path,
-                        changespec.name,
-                        hook_command,
-                        "summarize-hook Failed",
-                        changespec.hooks,
-                        entry_id=entry_id,
-                        suffix_type="error",
-                        summary=shortened_output,
+                success = set_hook_suffix(
+                    changespec.file_path,
+                    changespec.name,
+                    hook_command,
+                    "summarize-hook Failed",
+                    hooks=None,  # Fresh read under lock
+                    entry_id=entry_id,
+                    suffix_type="error",
+                    summary=shortened_output,
+                )
+                if not success:
+                    updates.append(
+                        f"WARNING: Could not set error suffix for summarize-hook "
+                        f"'{hook_command}' entry ({entry_id})"
                     )
                 updates.append(
                     f"summarize-hook workflow '{hook_command}' -> FAILED (exit {exit_code})"
