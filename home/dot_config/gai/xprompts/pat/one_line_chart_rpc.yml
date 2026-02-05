@@ -34,13 +34,13 @@ steps:
       Here is the research gathered from 3 parallel agents:
 
       ## OnePlatform Reporting API Research
-      {{ research.api_research }}
+      @bb/gai/file/research_api.md
 
       ## Prior Art (Existing Dart Clients)
-      {{ research.prior_art }}
+      @bb/gai/file/research_prior_art.md
 
       ## Required Dimensions and Metrics
-      {{ research.dimensions_metrics }}
+      @bb/gai/file/research_dimensions.md
 
       Please create a thorough implementation plan for this feature. Use the following directory as a reference for
       where the new line chart component will live:
@@ -54,6 +54,6 @@ steps:
 
       Here is the implementation plan:
 
-      {{ planning }}
+      @bb/gai/file/planning.md
 
       Please implement this feature according to the plan. #commit:line_chart
