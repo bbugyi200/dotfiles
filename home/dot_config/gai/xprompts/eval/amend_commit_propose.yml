@@ -4,7 +4,9 @@ steps:
   # Step 1: Create commit
   - name: create_commit
     prompt: |
-      Can you help me add a new string 'foobar' field to the SizeSetting model class in the contentads/drx/fe/client/exchange/size_setting/model/lib/size_setting.dart file? Do NOT modify any other files. #commit:add_foobar_field
+      Can you help me add a new string 'foobar' field to the SizeSetting model class in the
+      contentads/drx/fe/client/exchange/size_setting/model/lib/size_setting.dart file? Do NOT modify any other files and
+      do NOT ask the user any questions (no human is available for assistance). #commit:add_foobar_field
 
   # Step 2: Validate commit created
   - name: validate_commit
@@ -24,7 +26,10 @@ steps:
   - name: amend_commit
     if: "{{ validate_commit.valid }}"
     prompt: |
-      Can you help me add conversion support to the contentads/drx/fe/client/exchange/size_setting/service/lib/size_setting_op_converter.dart file for the new foobar field added by this CL? Do NOT modify any other files. #amend(Add converter support for foobar field)
+      Can you help me add conversion support to the
+      contentads/drx/fe/client/exchange/size_setting/service/lib/size_setting_op_converter.dart file for the new foobar
+      field added by this CL? Do NOT modify any other files and do NOT ask the user any questions (no human is available
+      for assistance). #amend(Add converter support for foobar field)
 
   # Step 4: Validate amend via hg obslog
   - name: validate_amend
@@ -44,7 +49,9 @@ steps:
   - name: create_proposal
     if: "{{ validate_commit.valid and validate_amend.valid }}"
     prompt: |
-      Can you help me add a new integer 'bazbuz' field to the SizeSetting model. Do NOT modify any files that have not already been modified by this CL. #propose
+      Can you help me add a new integer 'bazbuz' field to the SizeSetting model. Do NOT modify any files that have not
+      already been modified by this CL and do NOT ask the user any questions (no human is available for assistance).
+      #propose
 
   # Step 6: Validate proposal in eval.gp
   - name: validate_proposal
