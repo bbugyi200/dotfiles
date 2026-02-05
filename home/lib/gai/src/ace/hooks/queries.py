@@ -404,9 +404,10 @@ def _apply_hook_suffix_update(
     entry_id: str | None = None,
     suffix_type: str | None = None,
     summary: str | None = None,
-) -> list[HookEntry]:
-    """Apply suffix update to hooks list and return updated hooks."""
+) -> tuple[list[HookEntry], bool]:
+    """Apply suffix update to hooks list and return (updated_hooks, was_updated)."""
     updated_hooks = []
+    was_updated = False
     for hook in hooks:
         if hook.command == hook_command:
             if hook.status_lines:
@@ -418,6 +419,7 @@ def _apply_hook_suffix_update(
                     target_sl = hook.latest_status_line
                 for sl in hook.status_lines:
                     if sl is target_sl:
+                        was_updated = True
                         updated_status_lines.append(
                             HookStatusLine(
                                 commit_entry_num=sl.commit_entry_num,
@@ -441,7 +443,7 @@ def _apply_hook_suffix_update(
                 updated_hooks.append(hook)
         else:
             updated_hooks.append(hook)
-    return updated_hooks
+    return updated_hooks, was_updated
 
 
 def set_hook_suffix(
@@ -473,9 +475,11 @@ def set_hook_suffix(
     """
     # If hooks provided, use them directly (caller responsible for freshness)
     if hooks is not None:
-        updated_hooks = _apply_hook_suffix_update(
+        updated_hooks, was_updated = _apply_hook_suffix_update(
             hooks, hook_command, suffix, entry_id, suffix_type, summary
         )
+        if not was_updated:
+            return False
         return update_changespec_hooks_field(
             project_file, changespec_name, updated_hooks
         )
@@ -494,9 +498,11 @@ def set_hook_suffix(
             if not current_hooks:
                 return False
 
-            updated_hooks = _apply_hook_suffix_update(
+            updated_hooks, was_updated = _apply_hook_suffix_update(
                 current_hooks, hook_command, suffix, entry_id, suffix_type, summary
             )
+            if not was_updated:
+                return False
             write_hooks_unlocked(project_file, changespec_name, updated_hooks)
             return True
     except Exception:
@@ -505,9 +511,10 @@ def set_hook_suffix(
 
 def _apply_clear_hook_suffix(
     hooks: list[HookEntry], hook_command: str
-) -> list[HookEntry]:
-    """Apply clear suffix update to hooks list and return updated hooks."""
+) -> tuple[list[HookEntry], bool]:
+    """Apply clear suffix update to hooks list and return (updated_hooks, was_cleared)."""
     updated_hooks = []
+    was_cleared = False
     for hook in hooks:
         if hook.command == hook_command:
             if hook.status_lines:
@@ -515,6 +522,7 @@ def _apply_clear_hook_suffix(
                 latest_sl = hook.latest_status_line
                 for sl in hook.status_lines:
                     if sl is latest_sl and sl.suffix is not None:
+                        was_cleared = True
                         updated_status_lines.append(
                             HookStatusLine(
                                 commit_entry_num=sl.commit_entry_num,
@@ -536,7 +544,7 @@ def _apply_clear_hook_suffix(
                 updated_hooks.append(hook)
         else:
             updated_hooks.append(hook)
-    return updated_hooks
+    return updated_hooks, was_cleared
 
 
 def clear_hook_suffix(
@@ -556,7 +564,9 @@ def clear_hook_suffix(
     """
     # If hooks provided, use them directly (caller responsible for freshness)
     if hooks is not None:
-        updated_hooks = _apply_clear_hook_suffix(hooks, hook_command)
+        updated_hooks, was_cleared = _apply_clear_hook_suffix(hooks, hook_command)
+        if not was_cleared:
+            return False
         return update_changespec_hooks_field(
             project_file, changespec_name, updated_hooks
         )
@@ -575,7 +585,11 @@ def clear_hook_suffix(
             if not current_hooks:
                 return False
 
-            updated_hooks = _apply_clear_hook_suffix(current_hooks, hook_command)
+            updated_hooks, was_cleared = _apply_clear_hook_suffix(
+                current_hooks, hook_command
+            )
+            if not was_cleared:
+                return False
             write_hooks_unlocked(project_file, changespec_name, updated_hooks)
             return True
     except Exception:

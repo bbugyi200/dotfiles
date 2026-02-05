@@ -23,9 +23,10 @@ def test_apply_hook_suffix_update_basic() -> None:
             ],
         ),
     ]
-    updated = _apply_hook_suffix_update(
+    updated, was_updated = _apply_hook_suffix_update(
         hooks, "flake8 src", "my_suffix", suffix_type="error"
     )
+    assert was_updated is True
     assert len(updated) == 1
     assert updated[0].status_lines is not None
     assert updated[0].status_lines[0].suffix == "my_suffix"
@@ -53,9 +54,10 @@ def test_apply_hook_suffix_update_with_entry_id() -> None:
             ],
         ),
     ]
-    updated = _apply_hook_suffix_update(
+    updated, was_updated = _apply_hook_suffix_update(
         hooks, "flake8 src", "suffix_for_entry1", entry_id="1"
     )
+    assert was_updated is True
     assert updated[0].status_lines is not None
     sl1 = [sl for sl in updated[0].status_lines if sl.commit_entry_num == "1"][0]
     assert sl1.suffix == "suffix_for_entry1"
@@ -79,13 +81,14 @@ def test_apply_hook_suffix_update_with_summary() -> None:
             ],
         ),
     ]
-    updated = _apply_hook_suffix_update(
+    updated, was_updated = _apply_hook_suffix_update(
         hooks,
         "flake8 src",
         "fix_attempt",
         suffix_type="summarize_complete",
         summary="Brief summary of the issue",
     )
+    assert was_updated is True
     assert updated[0].status_lines is not None
     sl = updated[0].status_lines[0]
     assert sl.suffix == "fix_attempt"
@@ -109,7 +112,8 @@ def test_apply_hook_suffix_update_no_match() -> None:
             ],
         ),
     ]
-    updated = _apply_hook_suffix_update(hooks, "pytest tests", "suffix")
+    updated, was_updated = _apply_hook_suffix_update(hooks, "pytest tests", "suffix")
+    assert was_updated is False
     assert updated[0].status_lines is not None
     assert updated[0].status_lines[0].suffix is None
 
@@ -119,7 +123,8 @@ def test_apply_hook_suffix_update_no_status_lines() -> None:
     from ace.hooks.queries import _apply_hook_suffix_update
 
     hooks = [HookEntry(command="flake8 src")]
-    updated = _apply_hook_suffix_update(hooks, "flake8 src", "suffix")
+    updated, was_updated = _apply_hook_suffix_update(hooks, "flake8 src", "suffix")
+    assert was_updated is False
     assert updated[0].command == "flake8 src"
     assert updated[0].status_lines is None
 
@@ -150,7 +155,8 @@ def test_apply_hook_suffix_update_multiple_hooks() -> None:
             ],
         ),
     ]
-    updated = _apply_hook_suffix_update(hooks, "pytest tests", "my_suffix")
+    updated, was_updated = _apply_hook_suffix_update(hooks, "pytest tests", "my_suffix")
+    assert was_updated is True
     assert updated[0].status_lines is not None
     assert updated[0].status_lines[0].suffix is None
     assert updated[1].status_lines is not None
@@ -175,7 +181,8 @@ def test_apply_clear_hook_suffix_basic() -> None:
             ],
         ),
     ]
-    updated = _apply_clear_hook_suffix(hooks, "flake8 src")
+    updated, was_cleared = _apply_clear_hook_suffix(hooks, "flake8 src")
+    assert was_cleared is True
     assert updated[0].status_lines is not None
     assert updated[0].status_lines[0].suffix is None
 
@@ -203,7 +210,8 @@ def test_apply_clear_hook_suffix_multiple_status_lines() -> None:
             ],
         ),
     ]
-    updated = _apply_clear_hook_suffix(hooks, "flake8 src")
+    updated, was_cleared = _apply_clear_hook_suffix(hooks, "flake8 src")
+    assert was_cleared is True
     assert updated[0].status_lines is not None
     sl1 = [sl for sl in updated[0].status_lines if sl.commit_entry_num == "1"][0]
     assert sl1.suffix == "old_suffix"
@@ -228,7 +236,8 @@ def test_apply_clear_hook_suffix_no_match() -> None:
             ],
         ),
     ]
-    updated = _apply_clear_hook_suffix(hooks, "pytest tests")
+    updated, was_cleared = _apply_clear_hook_suffix(hooks, "pytest tests")
+    assert was_cleared is False
     assert updated[0].status_lines is not None
     assert updated[0].status_lines[0].suffix == "should_remain"
 
@@ -250,7 +259,8 @@ def test_apply_clear_hook_suffix_no_suffix() -> None:
             ],
         ),
     ]
-    updated = _apply_clear_hook_suffix(hooks, "flake8 src")
+    updated, was_cleared = _apply_clear_hook_suffix(hooks, "flake8 src")
+    assert was_cleared is False
     assert updated[0].status_lines is not None
     assert updated[0].status_lines[0].suffix is None
 
@@ -260,7 +270,8 @@ def test_apply_clear_hook_suffix_no_status_lines() -> None:
     from ace.hooks.queries import _apply_clear_hook_suffix
 
     hooks = [HookEntry(command="flake8 src")]
-    updated = _apply_clear_hook_suffix(hooks, "flake8 src")
+    updated, was_cleared = _apply_clear_hook_suffix(hooks, "flake8 src")
+    assert was_cleared is False
     assert updated[0].command == "flake8 src"
     assert updated[0].status_lines is None
 
@@ -293,7 +304,8 @@ def test_apply_clear_hook_suffix_multiple_hooks() -> None:
             ],
         ),
     ]
-    updated = _apply_clear_hook_suffix(hooks, "pytest tests")
+    updated, was_cleared = _apply_clear_hook_suffix(hooks, "pytest tests")
+    assert was_cleared is True
     assert updated[0].status_lines is not None
     assert updated[0].status_lines[0].suffix == "suffix_to_keep"
     assert updated[1].status_lines is not None
