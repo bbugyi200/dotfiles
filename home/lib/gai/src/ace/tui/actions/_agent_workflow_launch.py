@@ -5,6 +5,8 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
+from .agent_workflow._types import PromptContext
+
 if TYPE_CHECKING:
     from ...changespec import ChangeSpec
     from ..models import Agent
@@ -21,7 +23,7 @@ class AgentLaunchMixin:
     # State for bulk agent runs (from AgentWorkflowMixin)
     _bulk_changespecs: list[ChangeSpec] | None = None
     # State for prompt input (from AgentWorkflowMixin)
-    _prompt_context: object | None = None
+    _prompt_context: PromptContext | None = None
 
     def _finish_agent_launch(self, prompt: str) -> None:
         """Complete agent launch with the given prompt.
@@ -55,21 +57,21 @@ class AgentLaunchMixin:
 
         # Launch single background agent
         self._launch_background_agent(
-            cl_name=ctx.display_name,  # type: ignore[attr-defined]
-            project_file=ctx.project_file,  # type: ignore[attr-defined]
-            workspace_dir=ctx.workspace_dir,  # type: ignore[attr-defined]
-            workspace_num=ctx.workspace_num,  # type: ignore[attr-defined]
-            workflow_name=ctx.workflow_name,  # type: ignore[attr-defined]
+            cl_name=ctx.display_name,
+            project_file=ctx.project_file,
+            workspace_dir=ctx.workspace_dir,
+            workspace_num=ctx.workspace_num,
+            workflow_name=ctx.workflow_name,
             prompt=prompt,
-            timestamp=ctx.timestamp,  # type: ignore[attr-defined]
-            new_cl_name=ctx.new_cl_name,  # type: ignore[attr-defined]
-            parent_cl_name=ctx.parent_cl_name,  # type: ignore[attr-defined]
-            update_target=ctx.update_target,  # type: ignore[attr-defined]
-            project_name=ctx.project_name,  # type: ignore[attr-defined]
-            history_sort_key=ctx.history_sort_key,  # type: ignore[attr-defined]
-            bug=ctx.bug,  # type: ignore[attr-defined]
-            fixed_bug=ctx.fixed_bug,  # type: ignore[attr-defined]
-            is_home_mode=getattr(ctx, "is_home_mode", False),
+            timestamp=ctx.timestamp,
+            new_cl_name=ctx.new_cl_name,
+            parent_cl_name=ctx.parent_cl_name,
+            update_target=ctx.update_target,
+            project_name=ctx.project_name,
+            history_sort_key=ctx.history_sort_key,
+            bug=ctx.bug,
+            fixed_bug=ctx.fixed_bug,
+            is_home_mode=ctx.is_home_mode,
         )
 
         # Refresh agents list (deferred to avoid lag)
@@ -96,7 +98,7 @@ class AgentLaunchMixin:
         self._bulk_changespecs = None
 
         # Extract new_cl_name before clearing context
-        new_cl_name = self._prompt_context.new_cl_name if self._prompt_context else None  # type: ignore[attr-defined]
+        new_cl_name = self._prompt_context.new_cl_name if self._prompt_context else None
         self._prompt_context = None
 
         launched_count = 0
@@ -317,9 +319,7 @@ class AgentLaunchMixin:
         # Check if we have changespec context (not home mode)
         ctx = self._prompt_context
         has_changespec_context = (
-            ctx is not None
-            and not getattr(ctx, "is_home_mode", True)
-            and ctx.project_file  # type: ignore[attr-defined]
+            ctx is not None and not ctx.is_home_mode and ctx.project_file
         )
 
         if has_changespec_context:
@@ -423,7 +423,7 @@ class AgentLaunchMixin:
 
         # Build artifacts directory using project context
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        project_name = os.path.basename(os.path.dirname(ctx.project_file))  # type: ignore[attr-defined]
+        project_name = os.path.basename(os.path.dirname(ctx.project_file))
         artifacts_dir = os.path.expanduser(
             f"~/.gai/projects/{project_name}/artifacts/workflow-{workflow_name}/{timestamp}"
         )
@@ -453,14 +453,14 @@ class AgentLaunchMixin:
                         workflow_name,
                         json.dumps(positional_args),
                         json.dumps(named_args),
-                        ctx.project_file,  # type: ignore[attr-defined]
-                        ctx.workspace_dir,  # type: ignore[attr-defined]
-                        str(ctx.workspace_num),  # type: ignore[attr-defined]
+                        ctx.project_file,
+                        ctx.workspace_dir,
+                        str(ctx.workspace_num),
                         artifacts_dir,
-                        ctx.update_target or "",  # type: ignore[attr-defined]
+                        ctx.update_target or "",
                         "",  # not home mode
                     ],
-                    cwd=ctx.workspace_dir,  # type: ignore[attr-defined]
+                    cwd=ctx.workspace_dir,
                     stdout=output_file,
                     stderr=subprocess.STDOUT,
                     start_new_session=True,  # Detach from TUI process
@@ -473,11 +473,11 @@ class AgentLaunchMixin:
         # Claim workspace with subprocess PID
         workflow_field_name = f"workflow({workflow_name})"
         if not claim_workspace(
-            ctx.project_file,  # type: ignore[attr-defined]
-            ctx.workspace_num,  # type: ignore[attr-defined]
+            ctx.project_file,
+            ctx.workspace_num,
             workflow_field_name,
             process.pid,
-            ctx.display_name,  # type: ignore[attr-defined]
+            ctx.display_name,
             artifacts_timestamp=timestamp,
         ):
             self.notify("Failed to claim workspace", severity="error")  # type: ignore[attr-defined]
