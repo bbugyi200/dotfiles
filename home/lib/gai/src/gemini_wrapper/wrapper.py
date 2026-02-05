@@ -238,7 +238,7 @@ def invoke_agent(
 
 
 class GeminiCommandWrapper:
-    def __init__(self, model_size: Literal["little", "big"] = "little") -> None:
+    def __init__(self, model_size: Literal["little", "big"] = "big") -> None:
         self.decision_counts: dict[str, Any] | None = None
         self.agent_type: str = "agent"
         self.iteration: int | None = None
