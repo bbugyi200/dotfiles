@@ -126,6 +126,17 @@ def expand_embedded_workflows_in_query(
         if prompt_part_content:
             prompt_part_content = render_template(prompt_part_content, embedded_context)
 
+            # Handle section content (starting with ### or ---)
+            # Prepend \n\n when the workflow ref is not at the start of a line
+            if prompt_part_content.startswith("###") or prompt_part_content.startswith(
+                "---"
+            ):
+                is_at_line_start = (
+                    match.start() == 0 or query[match.start() - 1] == "\n"
+                )
+                if not is_at_line_start:
+                    prompt_part_content = "\n\n" + prompt_part_content
+
         # Replace the workflow reference with the prompt_part content
         query = query[: match.start()] + prompt_part_content + query[match_end:]
 
