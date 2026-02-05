@@ -525,3 +525,42 @@ def format_with_prettier(text: str) -> str:
         return result.stdout.replace(r"\_", "_")
     except subprocess.CalledProcessError:
         return text
+
+
+def strip_html_comments(text: str) -> str:
+    """Strip HTML/markdown comments from text while preserving code blocks.
+
+    Removes all HTML comments (<!-- ... -->) from the text, including
+    multi-line comments. Comments inside fenced code blocks (```...```)
+    are preserved.
+
+    Args:
+        text: The text to process
+
+    Returns:
+        The text with HTML comments removed
+    """
+    if "<!--" not in text:
+        return text
+
+    # Protect fenced code blocks from comment stripping
+    code_blocks: list[str] = []
+    placeholder_template = "\x00CODE_BLOCK_{}\x00"
+
+    def _save_code_block(match: re.Match[str]) -> str:
+        code_blocks.append(match.group(0))
+        return placeholder_template.format(len(code_blocks) - 1)
+
+    # Pattern for fenced code blocks: ``` optionally followed by language, then content, then ```
+    code_block_pattern = r"```[^\n]*\n[\s\S]*?```"
+    protected_text = re.sub(code_block_pattern, _save_code_block, text)
+
+    # Strip HTML comments
+    comment_pattern = r"<!--[\s\S]*?-->"
+    result = re.sub(comment_pattern, "", protected_text)
+
+    # Restore code blocks
+    for i, block in enumerate(code_blocks):
+        result = result.replace(placeholder_template.format(i), block)
+
+    return result

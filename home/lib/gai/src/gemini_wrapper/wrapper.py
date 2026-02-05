@@ -26,6 +26,7 @@ from .file_references import (
     format_with_prettier,
     process_command_substitution,
     process_file_references,
+    strip_html_comments,
 )
 
 
@@ -329,6 +330,9 @@ class GeminiCommandWrapper:
 
         # Format prompt with prettier for consistent markdown formatting
         query = format_with_prettier(query)
+
+        # Strip HTML/markdown comments (e.g., <!-- prettier-ignore -->)
+        query = strip_html_comments(query)
 
         # Build agent type with model size suffix
         model_size_label = "BIG" if self.model_size == "big" else "LITTLE"
