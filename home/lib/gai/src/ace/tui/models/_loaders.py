@@ -168,7 +168,11 @@ def load_agents_from_hooks(
                     agent_type=agent_type,
                     cl_name=cs.name,
                     project_file=cs.file_path,
-                    status=sl.status,
+                    # Fix-hook agents that are running should have RUNNING status,
+                    # not inherit the hook's FAILED status
+                    status=(
+                        "RUNNING" if sl.suffix_type == "running_agent" else sl.status
+                    ),
                     start_time=parse_timestamp_from_suffix(sl.suffix),
                     hook_command=hook.display_command,
                     commit_entry_id=sl.commit_entry_num,
