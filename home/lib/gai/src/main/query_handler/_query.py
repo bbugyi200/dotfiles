@@ -402,6 +402,12 @@ def run_query(
                 artifacts_timestamp=artifacts_timestamp,
             )
 
+        # Expand xprompts FIRST, so workflow references like #propose can be produced
+        # from aliases like #p before workflow expansion looks for them
+        from xprompt import process_xprompt_references
+
+        full_prompt = process_xprompt_references(full_prompt)
+
         # Expand embedded workflows (workflows with prompt_part)
         # This executes pre-steps and replaces workflow refs with prompt_part content
         expanded_prompt, post_workflows = _expand_embedded_workflows_in_query(
