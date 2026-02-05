@@ -655,7 +655,7 @@ def load_workflow_agent_steps() -> list[Agent]:
                         agents.append(
                             Agent(
                                 agent_type=AgentType.WORKFLOW,
-                                cl_name=step_name,
+                                cl_name=f"  └─ {step_name}",
                                 project_file=project_file,
                                 status=display_status,
                                 start_time=start_time,

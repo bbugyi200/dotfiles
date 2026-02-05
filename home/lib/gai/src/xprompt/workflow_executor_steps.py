@@ -126,9 +126,6 @@ class StepMixin:
             True if all steps succeeded, False if any failed.
         """
         total_steps = len(steps)
-        # Track visible step index separately for correct suffix calculation
-        # (pre-prompt steps are hidden, so visible steps should start from 0)
-        visible_step_index = 0
 
         for i, step in enumerate(steps):
             # Create a temporary step state for execution
@@ -195,15 +192,12 @@ class StepMixin:
                     if step_type == "bash"
                     else (step.python if step_type == "python" else None)
                 )
-                # Use visible_step_index for non-pre-prompt steps so suffixes
-                # start from 'a' (pre-prompt steps are hidden anyway)
-                marker_step_index = i if is_pre_prompt_step else visible_step_index
                 self._save_prompt_step_marker(
                     step.name,
                     temp_state,
                     step_type,
                     step_source,
-                    marker_step_index,
+                    i,
                     parent_step_index=(
                         parent_step_context.step_index if parent_step_context else None
                     ),
@@ -212,8 +206,6 @@ class StepMixin:
                     ),
                     is_pre_prompt_step=is_pre_prompt_step,
                 )
-                if not is_pre_prompt_step:
-                    visible_step_index += 1
 
                 # Notify step complete
                 if self.output_handler:
