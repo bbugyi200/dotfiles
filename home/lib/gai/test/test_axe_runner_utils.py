@@ -4,128 +4,12 @@ import signal
 from unittest.mock import MagicMock, patch
 
 from axe_runner_utils import (
-    _check_for_local_changes,
     _killed_state,
-    create_proposal_from_changes,
     finalize_axe_runner,
     install_sigterm_handler,
     prepare_workspace,
     was_killed,
 )
-
-
-def test_check_for_local_changes_with_changes() -> None:
-    """Test _check_for_local_changes returns True when changes exist."""
-    with patch("axe_runner_utils.subprocess.run") as mock_run:
-        mock_run.return_value = MagicMock(stdout="file1.py\nfile2.py\n")
-        result = _check_for_local_changes()
-        assert result is True
-        mock_run.assert_called_once_with(
-            ["branch_local_changes"],
-            capture_output=True,
-            text=True,
-        )
-
-
-def test_check_for_local_changes_no_changes() -> None:
-    """Test _check_for_local_changes returns False when no changes."""
-    with patch("axe_runner_utils.subprocess.run") as mock_run:
-        mock_run.return_value = MagicMock(stdout="")
-        result = _check_for_local_changes()
-        assert result is False
-
-
-def test_check_for_local_changes_whitespace_only() -> None:
-    """Test _check_for_local_changes returns False for whitespace-only output."""
-    with patch("axe_runner_utils.subprocess.run") as mock_run:
-        mock_run.return_value = MagicMock(stdout="   \n\n  ")
-        result = _check_for_local_changes()
-        assert result is False
-
-
-def test_create_proposal_from_changes_no_changes() -> None:
-    """Test create_proposal_from_changes returns failure when no changes."""
-    with patch("axe_runner_utils._check_for_local_changes", return_value=False):
-        proposal_id, exit_code = create_proposal_from_changes(
-            project_file="/path/to/project.gp",
-            cl_name="test_cl",
-            workspace_dir="/workspace",
-            workflow_note="[test]",
-            prompt="test prompt",
-            response="test response",
-            workflow="test",
-        )
-        assert proposal_id is None
-        assert exit_code == 1
-
-
-def test_create_proposal_from_changes_success() -> None:
-    """Test create_proposal_from_changes succeeds with changes."""
-    with (
-        patch("axe_runner_utils._check_for_local_changes", return_value=True),
-        patch("axe_runner_utils.save_chat_history", return_value="/path/chat.md"),
-        patch("axe_runner_utils.save_diff", return_value="/path/diff.patch"),
-        patch(
-            "axe_runner_utils.add_proposed_commit_entry",
-            return_value=(True, "abc123"),
-        ),
-        patch("axe_runner_utils.clean_workspace"),
-    ):
-        proposal_id, exit_code = create_proposal_from_changes(
-            project_file="/path/to/project.gp",
-            cl_name="test_cl",
-            workspace_dir="/workspace",
-            workflow_note="[test]",
-            prompt="test prompt",
-            response="test response",
-            workflow="test",
-        )
-        assert proposal_id == "abc123"
-        assert exit_code == 0
-
-
-def test_create_proposal_from_changes_diff_fails() -> None:
-    """Test create_proposal_from_changes fails when diff save fails."""
-    with (
-        patch("axe_runner_utils._check_for_local_changes", return_value=True),
-        patch("axe_runner_utils.save_chat_history", return_value="/path/chat.md"),
-        patch("axe_runner_utils.save_diff", return_value=None),
-    ):
-        proposal_id, exit_code = create_proposal_from_changes(
-            project_file="/path/to/project.gp",
-            cl_name="test_cl",
-            workspace_dir="/workspace",
-            workflow_note="[test]",
-            prompt="test prompt",
-            response="test response",
-            workflow="test",
-        )
-        assert proposal_id is None
-        assert exit_code == 1
-
-
-def test_create_proposal_from_changes_history_entry_fails() -> None:
-    """Test create_proposal_from_changes fails when history entry creation fails."""
-    with (
-        patch("axe_runner_utils._check_for_local_changes", return_value=True),
-        patch("axe_runner_utils.save_chat_history", return_value="/path/chat.md"),
-        patch("axe_runner_utils.save_diff", return_value="/path/diff.patch"),
-        patch(
-            "axe_runner_utils.add_proposed_commit_entry",
-            return_value=(False, None),
-        ),
-    ):
-        proposal_id, exit_code = create_proposal_from_changes(
-            project_file="/path/to/project.gp",
-            cl_name="test_cl",
-            workspace_dir="/workspace",
-            workflow_note="[test]",
-            prompt="test prompt",
-            response="test response",
-            workflow="test",
-        )
-        assert proposal_id is None
-        assert exit_code == 1
 
 
 def test_finalize_axe_runner_success() -> None:
@@ -275,6 +159,34 @@ def test_prepare_workspace_update_timeout() -> None:
         patch(
             "axe_runner_utils.subprocess.run",
             side_effect=subprocess.TimeoutExpired(cmd="bb_hg_update", timeout=300),
+        ),
+    ):
+        result = prepare_workspace("/workspace", "my_cl", "p4head", backup_suffix="ace")
+        assert result is False
+
+
+def test_prepare_workspace_update_fails() -> None:
+    """Test prepare_workspace returns False when bb_hg_update returns non-zero."""
+    mock_result = MagicMock()
+    mock_result.returncode = 1
+    mock_result.stderr = "update error"
+    mock_result.stdout = ""
+
+    with (
+        patch("commit_utils.run_bb_hg_clean", return_value=(True, None)),
+        patch("axe_runner_utils.subprocess.run", return_value=mock_result),
+    ):
+        result = prepare_workspace("/workspace", "my_cl", "p4head", backup_suffix="ace")
+        assert result is False
+
+
+def test_prepare_workspace_update_exception() -> None:
+    """Test prepare_workspace returns False on unexpected exception."""
+    with (
+        patch("commit_utils.run_bb_hg_clean", return_value=(True, None)),
+        patch(
+            "axe_runner_utils.subprocess.run",
+            side_effect=OSError("command not found"),
         ),
     ):
         result = prepare_workspace("/workspace", "my_cl", "p4head", backup_suffix="ace")

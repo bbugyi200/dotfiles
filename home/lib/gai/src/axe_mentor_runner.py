@@ -13,7 +13,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ace.hooks import format_duration  # noqa: E402
-from ace.mentors import get_latest_proposal_for_entry, set_mentor_status  # noqa: E402
+from ace.mentors import set_mentor_status  # noqa: E402
 from axe_runner_utils import install_sigterm_handler, was_killed  # noqa: E402
 from mentor_workflow import MentorWorkflow  # noqa: E402
 from running_field import release_workspace  # noqa: E402
@@ -57,6 +57,9 @@ def main() -> None:
 
     try:
         try:
+            # Build note prefix for proposal
+            note = f"[mentor:{mentor_name}]"
+
             # Run the mentor workflow with pre-claimed workspace info
             workflow = MentorWorkflow(
                 profile_name=profile_name,
@@ -66,11 +69,16 @@ def main() -> None:
                 workflow_name=workflow_name,
                 workspace_dir=workspace_dir,
                 timestamp=timestamp,
+                note=note,
             )
             success = workflow.run()
+
+            # Get proposal_id from workflow
+            proposal_id: str | None = workflow.proposal_id
         except Exception as e:
             print(f"Error running mentor workflow: {e}", file=sys.stderr)
             success = False
+            proposal_id = None
 
         end_time = time.time()
         elapsed_seconds = int(end_time - start_time)
@@ -87,17 +95,8 @@ def main() -> None:
         print(f"Mentor workflow completed with status: {final_status}")
         print(f"Duration: {duration}")
 
-        # Look up if mentor created a proposal for this entry
-        # Filter by mentor_name to only find proposals created by this specific mentor
-        proposal_id: str | None = None
-        try:
-            proposal_id = get_latest_proposal_for_entry(
-                project_file, cl_name, int(entry_id), mentor_name=mentor_name
-            )
-            if proposal_id:
-                print(f"Associated proposal: {proposal_id}")
-        except Exception as e:
-            print(f"Error looking up proposal: {e}", file=sys.stderr)
+        if proposal_id:
+            print(f"Associated proposal: {proposal_id}")
 
         # Determine final status:
         # - FAILED if a proposal was created (regardless of workflow success)

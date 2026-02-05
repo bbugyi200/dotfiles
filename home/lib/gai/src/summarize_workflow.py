@@ -6,21 +6,7 @@ from typing import NoReturn
 from gemini_wrapper import invoke_agent
 from shared_utils import ensure_str_content
 from workflow_base import BaseWorkflow
-from xprompt import process_xprompt_references
-
-
-def _escape_for_xprompt(text: str) -> str:
-    """Escape text for use in an xprompt argument string.
-
-    Escapes double quotes and backslashes.
-
-    Args:
-        text: The text to escape.
-
-    Returns:
-        The escaped text safe for use in xprompt argument.
-    """
-    return text.replace("\\", "\\\\").replace('"', '\\"')
+from xprompt import escape_for_xprompt, process_xprompt_references
 
 
 def _build_summarize_prompt(target_file: str, usage: str) -> str:
@@ -33,8 +19,8 @@ def _build_summarize_prompt(target_file: str, usage: str) -> str:
     Returns:
         The formatted prompt string.
     """
-    escaped_file = _escape_for_xprompt(target_file)
-    escaped_usage = _escape_for_xprompt(usage)
+    escaped_file = escape_for_xprompt(target_file)
+    escaped_usage = escape_for_xprompt(usage)
     prompt_text = f'#summarize(target_file="{escaped_file}", usage="{escaped_usage}")'
     return process_xprompt_references(prompt_text)
 

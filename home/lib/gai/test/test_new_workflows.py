@@ -28,10 +28,12 @@ class TestCrsWorkflow:
 
         try:
             prompt = _build_crs_prompt(comments_file)
-            # #cl xprompt is expanded to context files section
-            assert "Context Files Related to this CL" in prompt
+            # #cl is now provided by #propose (not inline in crs.md)
+            # but the prompt should still have the core content
             assert f"@{comments_file}" in prompt
             assert "Critique" in prompt
+            # #propose reference should be present for later workflow expansion
+            assert "#propose" in prompt
         finally:
             os.unlink(comments_file)
 
@@ -62,8 +64,9 @@ class TestCrsWorkflowAdvanced:
 
             try:
                 prompt = _build_crs_prompt(comments_file, tmpdir)
-                # #cl xprompt is expanded to context files section
-                assert "Context Files Related to this CL" in prompt
+                # Context files should be included in the prompt
                 assert "context.md" in prompt
+                # #propose reference should be present for later workflow expansion
+                assert "#propose" in prompt
             finally:
                 os.unlink(comments_file)

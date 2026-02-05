@@ -9,8 +9,7 @@ input: { prompt: text }
 - You will NOT perform a full review of the CL, but will instead focus on the specific review focus goal assigned to you
   below.
 - Modify the code to correct any problems you find (if any), run the relevant tests, and then summarize what changes you
-  made and why. DO NOT attempt to amend/upload the CL. If no changes are needed, simply summarize your review and state
-  that no changes were made.
+  made and why. If no changes are needed, simply summarize your review and state that no changes were made.
 - IMPORTANT:
   - DO NOT make any changes outside the scope of the review focus goal.
   - Do NOT modify any code that was not modified / added by this CL! Your job is to QA the changes made by this CL, NOT
@@ -20,4 +19,4 @@ input: { prompt: text }
 
 {{ prompt }}
 
-#cl
+#propose

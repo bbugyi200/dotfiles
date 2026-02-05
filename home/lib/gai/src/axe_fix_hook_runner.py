@@ -23,13 +23,15 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ace.changespec import ChangeSpec
 from ace.hooks import contract_test_target_command, set_hook_suffix
-from axe_runner_utils import (
-    create_proposal_from_changes,
-    finalize_axe_runner,
-)
+from axe_runner_utils import finalize_axe_runner
 from gai_utils import shorten_path, strip_hook_prefix
 from gemini_wrapper import invoke_agent
-from shared_utils import create_artifacts_directory
+from main.query_handler import (
+    execute_standalone_steps,
+    expand_embedded_workflows_in_query,
+)
+from shared_utils import create_artifacts_directory, ensure_str_content
+from xprompt import escape_for_xprompt, process_xprompt_references
 
 
 def _update_hook_suffix(
@@ -123,16 +125,15 @@ def main() -> int:
         print(f"Hook output: {hook_output_path}")
         print()
 
-        # Build the prompt for the agent
-        prompt = (
-            f'The command "{run_hook_command}" is failing. The output of the last run can '
-            f"be found in the @{hook_output_path} file. Can you help me fix this command by "
-            "making the appropriate file changes? Verify that your fix worked when you "
-            "are done by re-running that command.\n\n"
-            "IMPORTANT: Do NOT commit or amend any changes. Only make file edits and "
-            "leave them uncommitted.\n\n#cl"
+        # Build the prompt using xprompt reference
+        escaped_cmd = escape_for_xprompt(run_hook_command)
+        escaped_output = escape_for_xprompt(hook_output_path)
+        prompt_ref = (
+            f'#fix_hook(hook_command="{escaped_cmd}", output_file="{escaped_output}")'
         )
+        prompt = process_xprompt_references(prompt_ref)
 
+        # Expand embedded workflows (#propose from fix_hook.md)
         # Create artifacts directory using same timestamp as agent suffix
         # This ensures the Agents tab can find the prompt file
         artifacts_dir = create_artifacts_directory(
@@ -141,67 +142,48 @@ def main() -> int:
             timestamp=timestamp,
         )
 
+        expanded_prompt, post_workflows = expand_embedded_workflows_in_query(
+            prompt, artifacts_dir
+        )
+
         # Run the agent
         print("Running fix-hook agent...")
         print(f"Command: {run_hook_command}")
         print()
 
         response = invoke_agent(
-            prompt,
+            expanded_prompt,
             agent_type="fix-hook",
             model_size="big",
             workflow="fix-hook",
             artifacts_dir=artifacts_dir,
             timestamp=timestamp,
         )
-        response_content = str(response.content)
+        response_content = ensure_str_content(response.content)
         print(f"\nAgent Response:\n{response_content}\n")
 
-        # Build workflow note with summary
+        # Build note prefix for proposal
         history_ref = f"({last_history_id})" if last_history_id else ""
-
-        # Get summary of the fix-hook response for the HISTORY entry header
-        summary = ""
-        if response_content:
-            import tempfile
-
-            # Save response to temp file for summarization
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".txt", delete=False
-            ) as f:
-                f.write(response_content)
-                temp_path = f.name
-
-            try:
-                from summarize_utils import get_file_summary
-
-                summary = get_file_summary(
-                    target_file=temp_path,
-                    usage="a HISTORY entry header describing what changes were made to fix the hook",
-                    fallback="",
-                )
-            finally:
-                os.unlink(temp_path)
-
-        # Contract test target command for display in COMMITS entry
         display_command = contract_test_target_command(run_hook_command)
+        note = f"[fix-hook {history_ref} {display_command}]"
 
-        if summary:
-            workflow_note = f"[fix-hook {history_ref} {display_command}] {summary}"
-        else:
-            workflow_note = f"[fix-hook {history_ref} {display_command}]"
+        # Execute post-steps from embedded workflows (proposal creation via #propose)
+        for post_steps, embedded_context in post_workflows:
+            embedded_context["_prompt"] = expanded_prompt
+            embedded_context["_response"] = response_content
+            embedded_context["note"] = note
+            execute_standalone_steps(
+                post_steps, embedded_context, "fix-hook-embedded", artifacts_dir
+            )
 
-        # Create proposal from changes
-        proposal_id, exit_code = create_proposal_from_changes(
-            project_file=project_file,
-            cl_name=changespec_name,
-            workspace_dir=workspace_dir,
-            workflow_note=workflow_note,
-            prompt=prompt,
-            response=response_content,
-            workflow="fix-hook",
-            timestamp=timestamp,
-        )
+            # Extract proposal_id from create_proposal step output
+            create_result = embedded_context.get("create_proposal", {})
+            if (
+                isinstance(create_result, dict)
+                and create_result.get("success") == "true"
+            ):
+                proposal_id = create_result.get("proposal_id")
+                exit_code = 0
 
     except Exception as e:
         print(f"Error running fix-hook workflow: {e}")

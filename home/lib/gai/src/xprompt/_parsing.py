@@ -5,6 +5,20 @@ import re
 from ._exceptions import XPromptArgumentError
 
 
+def escape_for_xprompt(text: str) -> str:
+    """Escape text for use in an xprompt argument string.
+
+    Escapes double quotes and backslashes.
+
+    Args:
+        text: The text to escape.
+
+    Returns:
+        The escaped text safe for use in xprompt argument.
+    """
+    return text.replace("\\", "\\\\").replace('"', '\\"')
+
+
 def _process_text_block(value: str) -> str:
     """Process a value that may be a text block [[...]].
 

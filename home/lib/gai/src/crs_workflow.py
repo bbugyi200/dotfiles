@@ -7,6 +7,10 @@ from typing import NoReturn
 
 from gai_utils import get_context_files
 from gemini_wrapper import invoke_agent
+from main.query_handler import (
+    execute_standalone_steps,
+    expand_embedded_workflows_in_query,
+)
 from rich_utils import (
     print_artifact_created,
     print_status,
@@ -23,7 +27,7 @@ from shared_utils import (
     run_shell_command,
 )
 from workflow_base import BaseWorkflow
-from xprompt import process_xprompt_references
+from xprompt import escape_for_xprompt, process_xprompt_references
 
 
 def _create_critique_comments_artifact(
@@ -60,20 +64,6 @@ def _create_critique_comments_artifact(
     return artifact_path
 
 
-def _escape_for_xprompt(text: str) -> str:
-    """Escape text for use in an xprompt argument string.
-
-    Escapes double quotes and backslashes.
-
-    Args:
-        text: The text to escape.
-
-    Returns:
-        The escaped text safe for use in xprompt argument.
-    """
-    return text.replace("\\", "\\\\").replace('"', '\\"')
-
-
 def _build_crs_prompt(
     critique_comments_path: str, context_file_directory: str | None = None
 ) -> str:
@@ -94,8 +84,8 @@ def _build_crs_prompt(
         for context_file in context_files:
             context_files_section += f"+ @{context_file}\n"
 
-    escaped_path = _escape_for_xprompt(critique_comments_path)
-    escaped_section = _escape_for_xprompt(context_files_section)
+    escaped_path = escape_for_xprompt(critique_comments_path)
+    escaped_section = escape_for_xprompt(context_files_section)
     prompt_text = f'#crs(critique_comments_path="{escaped_path}", context_files_section="{escaped_section}")'
     return process_xprompt_references(prompt_text)
 
@@ -108,6 +98,7 @@ class CrsWorkflow(BaseWorkflow):
         context_file_directory: str | None = None,
         comments_file: str | None = None,
         timestamp: str | None = None,
+        note: str | None = None,
     ) -> None:
         """Initialize CRS workflow.
 
@@ -117,12 +108,15 @@ class CrsWorkflow(BaseWorkflow):
                 If provided, copy from this file instead of running critique_comments.
             timestamp: Optional timestamp for artifacts directory (YYmmdd_HHMMSS format).
                 When provided, ensures the artifacts directory matches the agent suffix timestamp.
+            note: Optional note prefix for the proposal (e.g., "[crs (ref)]").
         """
         self.context_file_directory = context_file_directory
         self.comments_file = comments_file
         self._timestamp = timestamp
+        self._note = note
         self.response_path: str | None = None
         self.last_prompt: str | None = None
+        self.proposal_id: str | None = None
 
     @property
     def name(self) -> str:
@@ -166,10 +160,15 @@ class CrsWorkflow(BaseWorkflow):
         prompt = _build_crs_prompt(critique_artifact, self.context_file_directory)
         self.last_prompt = prompt
 
+        # Expand embedded workflows (#propose from crs.md)
+        expanded_prompt, post_workflows = expand_embedded_workflows_in_query(
+            prompt, artifacts_dir
+        )
+
         # Call Gemini
         print_status("Calling Gemini to address change requests...", "progress")
         response = invoke_agent(
-            prompt,
+            expanded_prompt,
             agent_type="crs",
             model_size="big",
             iteration=1,
@@ -180,10 +179,29 @@ class CrsWorkflow(BaseWorkflow):
         )
 
         # Save the response
+        response_content = ensure_str_content(response.content)
         self.response_path = os.path.join(artifacts_dir, "crs_response.txt")
         with open(self.response_path, "w") as f:
-            f.write(ensure_str_content(response.content))
+            f.write(response_content)
         print_artifact_created(self.response_path)
+
+        # Execute post-steps from embedded workflows (proposal creation via #propose)
+        for post_steps, embedded_context in post_workflows:
+            embedded_context["_prompt"] = expanded_prompt
+            embedded_context["_response"] = response_content
+            if self._note:
+                embedded_context["note"] = self._note
+            execute_standalone_steps(
+                post_steps, embedded_context, "crs-embedded", artifacts_dir
+            )
+
+            # Extract proposal_id from create_proposal step output
+            create_result = embedded_context.get("create_proposal", {})
+            if (
+                isinstance(create_result, dict)
+                and create_result.get("success") == "true"
+            ):
+                self.proposal_id = create_result.get("proposal_id")
 
         print_status("Change request analysis complete!", "success")
 

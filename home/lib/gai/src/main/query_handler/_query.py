@@ -50,6 +50,7 @@ def expand_embedded_workflows_in_query(
     """
     from xprompt._parsing import find_matching_paren_for_args, parse_args
     from xprompt.loader import get_all_workflows
+    from xprompt.processor import process_xprompt_references
     from xprompt.workflow_executor_utils import render_template
 
     workflows = get_all_workflows()
@@ -126,6 +127,7 @@ def expand_embedded_workflows_in_query(
         prompt_part_content = workflow.get_prompt_part_content()
         if prompt_part_content:
             prompt_part_content = render_template(prompt_part_content, embedded_context)
+            prompt_part_content = process_xprompt_references(prompt_part_content)
 
             # Handle section markers (### or ---) with proper line positioning
             is_at_line_start = match.start() == 0 or query[match.start() - 1] == "\n"
@@ -141,6 +143,33 @@ def expand_embedded_workflows_in_query(
             post_workflows.append((post_steps, embedded_context))
 
     return query, post_workflows
+
+
+def _evaluate_standalone_condition(condition: str, context: dict[str, Any]) -> bool:
+    """Evaluate a Jinja2 condition expression for standalone step execution.
+
+    Mirrors WorkflowExecutor._evaluate_condition but operates on a plain dict
+    context instead of the full executor state.
+
+    Args:
+        condition: The Jinja2 condition expression to evaluate.
+        context: The current step context dictionary.
+
+    Returns:
+        True if condition evaluates to truthy, False otherwise.
+    """
+    from xprompt.workflow_executor_utils import create_jinja_env
+
+    env = create_jinja_env()
+    try:
+        template = env.from_string(condition)
+        result = template.render(context)
+        if isinstance(result, bool):
+            return result
+        result_str = result.strip().lower()
+        return result_str not in ("", "false", "none", "0", "[]", "{}")
+    except Exception:
+        return False
 
 
 def execute_standalone_steps(
@@ -173,6 +202,12 @@ def execute_standalone_steps(
     from xprompt.workflow_models import WorkflowExecutionError
 
     for step in steps:
+        # Evaluate step condition (if: field) - skip step if condition is false
+        if step.condition and not _evaluate_standalone_condition(
+            step.condition, context
+        ):
+            continue
+
         if step.is_bash_step() and step.bash:
             rendered_command = render_template(step.bash, context)
             try:

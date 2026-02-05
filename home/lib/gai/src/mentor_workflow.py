@@ -7,8 +7,6 @@ from pathlib import Path
 from typing import NoReturn
 
 from ace.changespec import find_all_changespecs
-from ace.scheduler.mentor_runner import get_mentor_chat_path
-from change_actions import execute_change_action, prompt_for_change_action
 from commit_utils import run_bb_hg_clean
 from gai_utils import generate_timestamp
 from gemini_wrapper import invoke_agent
@@ -37,7 +35,6 @@ from shared_utils import (
     initialize_gai_log,
     run_bam_command,
 )
-from summarize_utils import get_file_summary
 from workflow_base import BaseWorkflow
 from workflow_utils import get_cl_name_from_branch
 from xprompt import process_xprompt_references
@@ -86,6 +83,7 @@ class MentorWorkflow(BaseWorkflow):
         workflow_name: str | None = None,
         workspace_dir: str | None = None,
         timestamp: str | None = None,
+        note: str | None = None,
     ) -> None:
         """Initialize the mentor workflow.
 
@@ -97,6 +95,7 @@ class MentorWorkflow(BaseWorkflow):
             workflow_name: Pre-claimed workflow name (for axe context).
             workspace_dir: Pre-configured workspace directory (for axe context).
             timestamp: Timestamp for chat file naming (YYmmdd_HHMMSS format).
+            note: Optional note prefix for the proposal (e.g., "[mentor:name]").
         """
         self.profile_name = profile_name
         self.mentor_name = mentor_name
@@ -105,8 +104,10 @@ class MentorWorkflow(BaseWorkflow):
         self._workflow_name = workflow_name
         self._workspace_dir = workspace_dir
         self._timestamp = timestamp
+        self._note = note
         self._owns_workspace = False  # True if we claimed the workspace ourselves
         self.response_path: str | None = None
+        self.proposal_id: str | None = None
         self._mentor: MentorConfig | None = None
         self._console = Console()
 
@@ -279,12 +280,22 @@ class MentorWorkflow(BaseWorkflow):
             for post_steps, embedded_context in post_workflows:
                 embedded_context["_prompt"] = expanded_prompt
                 embedded_context["_response"] = response_content
+                if self._note:
+                    embedded_context["note"] = self._note
                 execute_standalone_steps(
                     post_steps,
                     embedded_context,
                     f"mentor-{self.mentor_name}-embedded",
                     artifacts_dir,
                 )
+
+                # Extract proposal_id from create_proposal step output
+                create_result = embedded_context.get("create_proposal", {})
+                if (
+                    isinstance(create_result, dict)
+                    and create_result.get("success") == "true"
+                ):
+                    self.proposal_id = create_result.get("proposal_id")
 
             # Check for empty response (indicates silent failure like permission issues)
             response_text = response.content
@@ -298,25 +309,11 @@ class MentorWorkflow(BaseWorkflow):
                 )
                 return False
 
-            # Get the chat file path for the proposal
-            chat_file_path = get_mentor_chat_path(
-                resolved_cl_name, self.mentor_name, self._timestamp
-            )
-            chat_path = chat_file_path.replace(str(Path.home()), "~")
-
             # Save response
             self.response_path = os.path.join(artifacts_dir, "mentor_response.txt")
             with open(self.response_path, "w") as f:
-                f.write(ensure_str_content(response.content))
+                f.write(response_content)
             print_artifact_created(self.response_path)
-
-            # Get summary of mentor response for better proposal message
-            print_status("Summarizing changes...", "progress")
-            summary = get_file_summary(
-                target_file=self.response_path,
-                usage="a HISTORY entry header describing what changes were made by the mentor",
-                fallback="",
-            )
 
             print_status("Mentor workflow complete!", "success")
             finalize_gai_log(
@@ -324,40 +321,7 @@ class MentorWorkflow(BaseWorkflow):
             )
             run_bam_command(f"Mentor ({self.mentor_name}) Complete!")
 
-            # Prompt for change action
-            # In loop context (_owns_workspace=False), auto-reject to avoid blocking
-            # on stdin which is unavailable in background processes
-            action_result = prompt_for_change_action(
-                self._console,
-                workspace_dir,
-                workflow_name=f"mentor:{self.mentor_name}",
-                workflow_summary=summary,
-                chat_path=chat_path,
-                project_file=project_file,
-                auto_reject=not self._owns_workspace,
-            )
-
-            if action_result is None:
-                self._console.print(
-                    "\n[yellow]Warning: Mentor completed but no changes were made.[/yellow]"
-                )
-                return True
-
-            action, action_args = action_result
-
-            if action == "reject":
-                self._console.print(
-                    "[yellow]Changes rejected. Proposal saved.[/yellow]"
-                )
-                return True
-
-            return execute_change_action(
-                action=action,
-                action_args=action_args,
-                console=self._console,
-                target_dir=workspace_dir,
-                project_file=project_file,
-            )
+            return True
 
         except KeyboardInterrupt:
             self._console.print(

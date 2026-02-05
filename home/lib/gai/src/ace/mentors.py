@@ -15,54 +15,6 @@ from .changespec import (
 )
 
 
-def get_latest_proposal_for_entry(
-    project_file: str,
-    cl_name: str,
-    base_entry_id: int,
-    mentor_name: str | None = None,
-) -> str | None:
-    """Find the latest (highest letter) proposal for a base entry ID.
-
-    This is used to associate a FAILED mentor with the proposal it created.
-    For example, if entry_id is 2 and proposals "2a" and "2b" exist,
-    returns "2b" (the latest).
-
-    Args:
-        project_file: Path to the project file.
-        cl_name: Name of the ChangeSpec.
-        base_entry_id: The base entry number (e.g., 2 for proposals "2a", "2b").
-        mentor_name: If provided, only match proposals created by this mentor
-            (proposals with notes starting with "[mentor:<name>]").
-
-    Returns:
-        Proposal ID like "2a" or None if no proposals exist for this entry.
-    """
-    try:
-        changespecs = parse_project_file(project_file)
-        for cs in changespecs:
-            if cs.name == cl_name and cs.commits:
-                # Find all proposals with this base number
-                proposals = [
-                    c
-                    for c in cs.commits
-                    if c.number == base_entry_id
-                    and c.proposal_letter is not None
-                    and (
-                        mentor_name is None
-                        or c.note.startswith(f"[mentor:{mentor_name}]")
-                    )
-                ]
-                if not proposals:
-                    return None
-                # Return the one with the highest letter
-                proposals.sort(key=lambda p: p.proposal_letter or "")
-                latest = proposals[-1]
-                return f"{latest.number}{latest.proposal_letter}"
-        return None
-    except Exception:
-        return None
-
-
 def _format_profile_with_count(
     profile_name: str,
     status_lines: list[MentorStatusLine] | None,

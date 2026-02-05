@@ -22,10 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ace.changespec import ChangeSpec
 from ace.comments import set_comment_suffix
-from axe_runner_utils import (
-    create_proposal_from_changes,
-    finalize_axe_runner,
-)
+from axe_runner_utils import finalize_axe_runner
 from crs_workflow import CrsWorkflow
 from gai_utils import shorten_path
 
@@ -95,11 +92,16 @@ def main() -> int:
             f"~/.gai/projects/{project_basename}/context/"
         )
 
+        # Build note prefix for proposal
+        comments_ref = shorten_path(comments_file) if comments_file else "comments"
+        note = f"[crs ({comments_ref})]"
+
         # Run the CRS workflow with timestamp for consistent artifacts directory
         workflow = CrsWorkflow(
             context_file_directory=context_file_directory,
             comments_file=comments_file,
             timestamp=timestamp,
+            note=note,
         )
         workflow_succeeded = workflow.run()
 
@@ -107,43 +109,9 @@ def main() -> int:
             print("CRS workflow failed")
             exit_code = 1
         else:
-            # Read CRS response for chat history
-            crs_response = ""
-            if workflow.response_path and os.path.exists(workflow.response_path):
-                with open(workflow.response_path, encoding="utf-8") as f:
-                    crs_response = f.read()
-
-            # Build references for note and prompt
-            comments_ref = shorten_path(comments_file) if comments_file else "comments"
-            prompt_desc = f"CRS workflow processing: {comments_ref}"
-
-            # Get summary of the CRS response for the HISTORY entry header
-            summary = ""
-            if workflow.response_path and os.path.exists(workflow.response_path):
-                from summarize_utils import get_file_summary
-
-                summary = get_file_summary(
-                    target_file=workflow.response_path,
-                    usage="a HISTORY entry header describing what the CRS workflow accomplished",
-                    fallback="",
-                )
-
-            if summary:
-                workflow_note = f"[crs ({comments_ref})] {summary}"
-            else:
-                workflow_note = f"[crs ({comments_ref})]" if comments_file else "[crs]"
-
-            # Create proposal from changes
-            proposal_id, exit_code = create_proposal_from_changes(
-                project_file=project_file,
-                cl_name=changespec_name,
-                workspace_dir=workspace_dir,
-                workflow_note=workflow_note,
-                prompt=workflow.last_prompt or prompt_desc,
-                response=crs_response,
-                workflow="crs",
-                timestamp=timestamp,
-            )
+            # Get proposal_id from workflow
+            proposal_id = workflow.proposal_id
+            exit_code = 0 if proposal_id else 1
 
     except Exception as e:
         print(f"Error running CRS workflow: {e}")
