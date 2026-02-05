@@ -20,6 +20,27 @@ from xprompt.workflow_models import (
 if TYPE_CHECKING:
     from xprompt.workflow_output import ParentStepContext, WorkflowOutputHandler
 
+
+def _capture_git_diff() -> str | None:
+    """Capture uncommitted changes as a git diff.
+
+    Returns:
+        The git diff output, or None if no changes or an error occurred.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "diff", "HEAD"],
+            capture_output=True,
+            text=True,
+            cwd=os.getcwd(),
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return result.stdout
+    except Exception:
+        pass
+    return None
+
+
 # Pattern to match workflow references in prompts (same as processor.py)
 _WORKFLOW_REF_PATTERN = (
     r"(?:^|(?<=\s)|(?<=[(\[{\"']))"
@@ -67,6 +88,7 @@ class StepMixin:
         parent_step_index: int | None = None,
         parent_total_steps: int | None = None,
         is_pre_prompt_step: bool = False,
+        diff_path: str | None = None,
     ) -> None:
         """Save a marker file for prompt steps to track them in the TUI."""
         raise NotImplementedError
@@ -432,8 +454,19 @@ class StepMixin:
         self.context[step.name] = output
         self.state.context = dict(self.context)
 
+        # Capture git diff if changes were made
+        diff_content = _capture_git_diff()
+        diff_path: str | None = None
+        if diff_content:
+            diff_path = os.path.join(self.artifacts_dir, f"{step.name}_diff.txt")
+            try:
+                with open(diff_path, "w", encoding="utf-8") as f:
+                    f.write(diff_content)
+            except Exception:
+                diff_path = None
+
         # Save prompt step marker for TUI visibility
-        self._save_prompt_step_marker(step.name, step_state)
+        self._save_prompt_step_marker(step.name, step_state, diff_path=diff_path)
 
         # Execute post-steps from embedded workflows
         for _, post_steps, embedded_context in embedded_workflows:

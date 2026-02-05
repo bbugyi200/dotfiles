@@ -134,6 +134,15 @@ class AgentPromptPanel(Static):
                 reply_header.append("\n")
 
                 response_content = agent.get_response_content()
+
+                # Fallback: for workflow step agents, try step_output if no response file
+                if (
+                    response_content is None
+                    and agent.is_workflow_child
+                    and agent.step_output
+                ):
+                    response_content = _format_output(agent.step_output)
+
                 if response_content:
                     response_syntax = Syntax(
                         response_content,

@@ -104,6 +104,9 @@ class Agent:
     # Error message for failed agents (from HookStatusLine.suffix)
     error_message: str | None = None
 
+    # Explicit artifacts directory path (for workflow steps loaded from marker files)
+    artifacts_dir: str | None = None
+
     @property
     def display_type(self) -> str:
         """Human-readable agent type for display."""
@@ -166,6 +169,10 @@ class Agent:
         Returns:
             Path to the artifacts directory, or None if it cannot be determined.
         """
+        # If we have an explicit artifacts_dir (from marker files), use it directly
+        if self.artifacts_dir and os.path.isdir(self.artifacts_dir):
+            return self.artifacts_dir
+
         # Extract project name from project_file
         # Format: ~/.gai/projects/<project>/<project>.gp
         project_path = Path(self.project_file)

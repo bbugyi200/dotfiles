@@ -647,6 +647,10 @@ def load_workflow_agent_steps() -> list[Agent]:
                         if is_pre_prompt_step:
                             continue
 
+                        # Read artifacts_dir and diff_path from marker
+                        artifacts_dir_from_marker = data.get("artifacts_dir")
+                        diff_path = data.get("diff_path")
+
                         agents.append(
                             Agent(
                                 agent_type=AgentType.WORKFLOW,
@@ -667,6 +671,8 @@ def load_workflow_agent_steps() -> list[Agent]:
                                 parent_step_index=parent_step_index,
                                 parent_total_steps=parent_total_steps,
                                 is_hidden_step=is_hidden,
+                                artifacts_dir=artifacts_dir_from_marker,
+                                diff_path=diff_path,
                             )
                         )
                     except Exception:
