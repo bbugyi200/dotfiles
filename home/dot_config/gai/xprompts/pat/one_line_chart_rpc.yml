@@ -1,0 +1,59 @@
+name: pat/one_line_chart_rpc
+
+steps:
+  # Step 1: Run 3 research agents in parallel
+  - name: research
+    parallel:
+      - name: api_research
+        prompt: |
+          I need to add a new line chart to the PA troubleshooting page on (for Google Ad Manager's FE). We need to make sure
+          we only make one RPC to populate the data for the line chart and we have decided to use the OnePlatform Reporting
+          API to accomplish this. Can you help me do some research on how the OnePlatform Reporting API works?
+
+      - name: prior_art
+        prompt: |
+          I need to add a new line chart to the PA troubleshooting page on (for Google Ad Manager's FE). We need to make sure
+          we only make one RPC to populate the data for the line chart and we have decided to use the OnePlatform Reporting
+          API to accomplish this. Can you help me do some research on prior art in the form of other Dart clients that are
+          currently using the OnePlatform Reporting API? Bonus points if you can find any that are using the dimensions we
+          need!
+
+      - name: dimensions_metrics
+        prompt: |
+          I need to add a new line chart to the PA troubleshooting page on (for Google Ad Manager's FE). We need to make sure
+          we only make one RPC to populate the data for the line chart and we have decided to use the OnePlatform Reporting
+          API to accomplish this. Can you help me do some research on what specific dimensions and metrics we need to query
+          from the OnePlatform Reporting API?
+
+  # Step 2: Planning agent synthesizes research and creates implementation plan
+  - name: planning
+    prompt: |
+      I need to add a new line chart to the PA troubleshooting page (for Google Ad Manager's FE). We need to make sure
+      we only make one RPC to populate the data for the line chart using the OnePlatform Reporting API.
+
+      Here is the research gathered from 3 parallel agents:
+
+      ## OnePlatform Reporting API Research
+      {{ research.api_research }}
+
+      ## Prior Art (Existing Dart Clients)
+      {{ research.prior_art }}
+
+      ## Required Dimensions and Metrics
+      {{ research.dimensions_metrics }}
+
+      Please create a thorough implementation plan for this feature. Use the following directory as a reference for
+      where the new line chart component will live:
+      contentads/drx/fe/client/trafficking/private_marketplace/components/deal_check_ui/
+
+  # Step 3: Implementation agent executes the plan
+  - name: implementation
+    prompt: |
+      I need to add a new line chart to the PA troubleshooting page (for Google Ad Manager's FE). We need to make sure
+      we only make one RPC to populate the data for the line chart using the OnePlatform Reporting API.
+
+      Here is the implementation plan:
+
+      {{ planning }}
+
+      Please implement this feature according to the plan. #commit:line_chart
