@@ -69,7 +69,10 @@ def _expand_single_xprompt(
     )
 
 
-def process_xprompt_references(prompt: str) -> str:
+def process_xprompt_references(
+    prompt: str,
+    extra_xprompts: dict[str, XPrompt] | None = None,
+) -> str:
     """Process xprompt references in the prompt.
 
     Expands all #xprompt_name and #xprompt_name(arg1, arg2) patterns
@@ -89,6 +92,8 @@ def process_xprompt_references(prompt: str) -> str:
 
     Args:
         prompt: The prompt text to process
+        extra_xprompts: Optional additional xprompts that take highest priority
+            (e.g., workflow-local xprompts).
 
     Returns:
         The transformed prompt with xprompts expanded
@@ -97,6 +102,8 @@ def process_xprompt_references(prompt: str) -> str:
         SystemExit: If any xprompt processing error occurs
     """
     xprompts = get_all_xprompts()
+    if extra_xprompts:
+        xprompts.update(extra_xprompts)
     if not xprompts:
         return prompt  # No xprompts defined
 

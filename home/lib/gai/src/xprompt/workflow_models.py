@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-from xprompt.models import InputArg, OutputSpec
+from xprompt.models import InputArg, OutputSpec, XPrompt
 
 
 class StepStatus(Enum):
@@ -112,12 +112,14 @@ class Workflow:
         inputs: List of input argument definitions.
         steps: Ordered list of workflow steps to execute.
         source_path: File path where workflow was loaded from.
+        xprompts: Workflow-local xprompt definitions (highest priority within this workflow).
     """
 
     name: str
     inputs: list[InputArg] = field(default_factory=list)
     steps: list[WorkflowStep] = field(default_factory=list)
     source_path: str | None = None
+    xprompts: dict[str, XPrompt] = field(default_factory=dict)
 
     def get_input_by_name(self, name: str) -> InputArg | None:
         """Get an input argument definition by name.

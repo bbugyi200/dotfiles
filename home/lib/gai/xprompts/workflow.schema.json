@@ -10,6 +10,30 @@
       "type": "string",
       "description": "Workflow identifier (used in #name syntax)"
     },
+    "xprompts": {
+      "type": "object",
+      "description": "Workflow-local xprompt definitions (highest priority within this workflow)",
+      "additionalProperties": {
+        "oneOf": [
+          { "type": "string" },
+          {
+            "type": "object",
+            "required": ["input", "content"],
+            "additionalProperties": false,
+            "properties": {
+              "input": {
+                "type": "object",
+                "description": "Input parameters for the xprompt template"
+              },
+              "content": {
+                "type": "string",
+                "description": "Template content with Jinja2 placeholders"
+              }
+            }
+          }
+        ]
+      }
+    },
     "input": {
       "description": "Input argument definitions (array or object shorthand)",
       "oneOf": [

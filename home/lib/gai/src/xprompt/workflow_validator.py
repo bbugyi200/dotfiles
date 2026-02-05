@@ -301,6 +301,7 @@ def validate_workflow(workflow: Workflow) -> None:
     """
     errors: list[str] = []
     xprompts = get_all_xprompts()
+    xprompts.update(workflow.xprompts)  # workflow-local takes priority
 
     # Validate prompt_part steps
     prompt_part_errors = _validate_prompt_part_steps(workflow)

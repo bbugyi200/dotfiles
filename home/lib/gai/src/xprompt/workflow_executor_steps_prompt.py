@@ -101,7 +101,10 @@ class PromptStepMixin:
         # Expand xprompt references FIRST
         # This allows xprompts to contain embedded workflow references (like #json:...)
         # which will be expanded in the next step
-        expanded_prompt = process_xprompt_references(rendered_prompt)
+        expanded_prompt = process_xprompt_references(
+            rendered_prompt,
+            extra_xprompts=self.workflow.xprompts,
+        )
 
         # Then expand embedded workflows
         # This executes pre-steps and replaces workflow refs with prompt_part content

@@ -429,6 +429,58 @@ def _load_xprompts_from_files() -> dict[str, XPrompt]:
     return xprompts
 
 
+def parse_xprompt_entries(
+    entries: dict[str, Any], source_path: str
+) -> dict[str, XPrompt]:
+    """Parse a dict of xprompt entries into XPrompt objects.
+
+    Supports both simple string format and structured dict format:
+
+    Simple format:
+        foo: "Content here"
+
+    Structured format (with inputs):
+        bar:
+            input: {name: word, count: {type: int, default: 0}}
+            content: "Hello {{ name }}, count is {{ count }}"
+
+    Args:
+        entries: Dictionary mapping xprompt names to string content or
+            structured dicts with input/content keys.
+        source_path: Source identifier for the xprompts (e.g., file path or "config").
+
+    Returns:
+        Dictionary mapping xprompt name to XPrompt object.
+    """
+    xprompts: dict[str, XPrompt] = {}
+
+    for name, value in entries.items():
+        if not isinstance(name, str):
+            continue
+
+        if isinstance(value, str):
+            # Simple string content (no arguments)
+            content = value
+            inputs: list[InputArg] = []
+        elif isinstance(value, dict):
+            # Structured xprompt with input/content
+            content = value.get("content", "")
+            if not isinstance(content, str):
+                continue
+            inputs = _parse_inputs_from_front_matter(value.get("input"))
+        else:
+            continue
+
+        xprompts[name] = XPrompt(
+            name=name,
+            content=content,
+            inputs=inputs,
+            source_path=source_path,
+        )
+
+    return xprompts
+
+
 def _load_xprompts_from_config() -> dict[str, XPrompt]:
     """Load xprompts from gai.yml configuration file.
 
@@ -462,37 +514,11 @@ def _load_xprompts_from_config() -> dict[str, XPrompt]:
     if not isinstance(data, dict):
         return {}
 
-    xprompts: dict[str, XPrompt] = {}
-
     config_data = data.get("xprompts")
     if not isinstance(config_data, dict):
         return {}
 
-    for name, value in config_data.items():
-        if not isinstance(name, str):
-            continue
-
-        if isinstance(value, str):
-            # Simple string content (no arguments)
-            content = value
-            inputs: list[InputArg] = []
-        elif isinstance(value, dict):
-            # Structured xprompt with input/content
-            content = value.get("content", "")
-            if not isinstance(content, str):
-                continue
-            inputs = _parse_inputs_from_front_matter(value.get("input"))
-        else:
-            continue
-
-        xprompts[name] = XPrompt(
-            name=name,
-            content=content,
-            inputs=inputs,
-            source_path="config",
-        )
-
-    return xprompts
+    return parse_xprompt_entries(config_data, "config")
 
 
 def _load_xprompts_from_internal() -> dict[str, XPrompt]:

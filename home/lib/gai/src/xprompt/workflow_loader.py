@@ -11,6 +11,7 @@ from xprompt.loader import (
     parse_input_type,
     parse_output_from_front_matter,
     parse_shortform_inputs,
+    parse_xprompt_entries,
 )
 from xprompt.models import InputArg, InputType, OutputSpec
 from xprompt.workflow_models import (
@@ -464,6 +465,14 @@ def _load_workflow_from_file(file_path: Path) -> Workflow | None:
     # Parse inputs
     inputs = _parse_workflow_inputs(data.get("input"))
 
+    # Parse workflow-local xprompts
+    xprompts_data = data.get("xprompts")
+    parsed_xprompts = (
+        parse_xprompt_entries(xprompts_data, str(file_path))
+        if isinstance(xprompts_data, dict)
+        else {}
+    )
+
     # Parse steps
     steps_data = data.get("steps", [])
     if not isinstance(steps_data, list):
@@ -509,6 +518,7 @@ def _load_workflow_from_file(file_path: Path) -> Workflow | None:
         inputs=inputs,
         steps=steps,
         source_path=str(file_path),
+        xprompts=parsed_xprompts,
     )
 
     # Validate variable usage
@@ -626,6 +636,7 @@ def _load_workflows_from_project(project: str) -> dict[str, Workflow]:
                     inputs=workflow.inputs,
                     steps=workflow.steps,
                     source_path=workflow.source_path,
+                    xprompts=workflow.xprompts,
                 )
 
     for yaml_file in project_dir.glob("*.yaml"):
@@ -642,6 +653,7 @@ def _load_workflows_from_project(project: str) -> dict[str, Workflow]:
                         inputs=workflow.inputs,
                         steps=workflow.steps,
                         source_path=workflow.source_path,
+                        xprompts=workflow.xprompts,
                     )
     return workflows
 
