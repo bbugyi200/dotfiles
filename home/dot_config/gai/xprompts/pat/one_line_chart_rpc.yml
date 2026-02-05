@@ -8,7 +8,7 @@ steps:
         prompt: |
           I need to add a new line chart to the PA troubleshooting page on (for Google Ad Manager's FE). We need to make sure
           we only make one RPC to populate the data for the line chart and we have decided to use the OnePlatform Reporting
-          API to accomplish this. Can you help me do some research on how the OnePlatform Reporting API works?
+          API to accomplish this. Can you help me do some research on how the OnePlatform Reporting API works? #file:research_api
 
       - name: prior_art
         prompt: |
@@ -16,14 +16,14 @@ steps:
           we only make one RPC to populate the data for the line chart and we have decided to use the OnePlatform Reporting
           API to accomplish this. Can you help me do some research on prior art in the form of other Dart clients that are
           currently using the OnePlatform Reporting API? Bonus points if you can find any that are using the dimensions we
-          need!
+          need! #file:research_prior_art
 
       - name: dimensions_metrics
         prompt: |
           I need to add a new line chart to the PA troubleshooting page on (for Google Ad Manager's FE). We need to make sure
           we only make one RPC to populate the data for the line chart and we have decided to use the OnePlatform Reporting
           API to accomplish this. Can you help me do some research on what specific dimensions and metrics we need to query
-          from the OnePlatform Reporting API?
+          from the OnePlatform Reporting API? #file:research_dimensions
 
   # Step 2: Planning agent synthesizes research and creates implementation plan
   - name: planning
@@ -44,7 +44,7 @@ steps:
 
       Please create a thorough implementation plan for this feature. Use the following directory as a reference for
       where the new line chart component will live:
-      contentads/drx/fe/client/trafficking/private_marketplace/components/deal_check_ui/
+      contentads/drx/fe/client/trafficking/private_marketplace/components/deal_check_ui/ #file:planning
 
   # Step 3: Implementation agent executes the plan
   - name: implementation

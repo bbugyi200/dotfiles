@@ -1,0 +1,25 @@
+name: file
+input:
+  - name: name
+    type: word
+
+steps:
+  - name: save_response
+    hidden: true
+    python: |
+      import os
+
+      name = {{ name | tojson }}
+      response = {{ _response | tojson }}
+
+      # Create the file directory if it doesn't exist
+      file_dir = "bb/gai/file"
+      os.makedirs(file_dir, exist_ok=True)
+
+      # Write the response as plain markdown
+      file_path = os.path.join(file_dir, f"{name}.md")
+      with open(file_path, 'w') as f:
+          f.write(response)
+
+      print(f"file_path={file_path}")
+    output: { file_path: path }
