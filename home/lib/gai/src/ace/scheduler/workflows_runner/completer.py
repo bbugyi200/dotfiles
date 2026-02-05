@@ -379,16 +379,19 @@ def check_and_complete_workflows(
                                         break
                             break
             else:
-                # Workflow failed - set fallback suffix
+                # Workflow failed - include output path for debugging
+                shortened_output = shorten_path(output_path)
+
                 if changespec.hooks:
                     set_hook_suffix(
                         changespec.file_path,
                         changespec.name,
                         hook_command,
-                        "Hook Command Failed",
+                        "summarize-hook Failed",
                         changespec.hooks,
                         entry_id=entry_id,
                         suffix_type="error",
+                        summary=shortened_output,
                     )
                 updates.append(
                     f"summarize-hook workflow '{hook_command}' -> FAILED (exit {exit_code})"

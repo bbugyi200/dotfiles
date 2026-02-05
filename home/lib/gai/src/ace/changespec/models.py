@@ -9,6 +9,8 @@ ERROR_SUFFIX_MESSAGES = frozenset(
     {
         "ZOMBIE",
         "Hook Command Failed",
+        "summarize-hook Failed",
+        "fix-hook Failed",
         "Unresolved Critique Comments",
     }
 )

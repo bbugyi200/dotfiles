@@ -150,9 +150,13 @@ def load_agents_from_hooks(
             error_message = sl.suffix if sl.suffix_type == "error" else None
 
             # Determine agent type from suffix
+            # - Running summarize agents: suffix contains "summarize_hook-<PID>-<timestamp>"
+            # - Failed summarize agents: suffix is "summarize-hook Failed"
             agent_type = AgentType.FIX_HOOK
-            if sl.suffix and "summarize" in sl.suffix.lower():
-                agent_type = AgentType.SUMMARIZE
+            if sl.suffix:
+                suffix_lower = sl.suffix.lower()
+                if "summarize" in suffix_lower:
+                    agent_type = AgentType.SUMMARIZE
 
             agents.append(
                 Agent(
