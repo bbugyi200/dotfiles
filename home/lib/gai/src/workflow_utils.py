@@ -133,7 +133,7 @@ def get_initial_hooks_for_changespec(verbose: bool = True) -> list[str]:
         List of hook command strings in order (required hooks first, then test targets).
     """
     from ace.constants import REQUIRED_CHANGESPEC_HOOKS
-    from ace.hooks.queries import TEST_TARGET_HOOK_PREFIX
+    from ace.hooks.test_targets import TEST_TARGET_HOOK_PREFIX
 
     hooks: list[str] = list(REQUIRED_CHANGESPEC_HOOKS)
 

@@ -60,7 +60,7 @@ def _format_hooks_field(hooks: list[HookEntry]) -> list[str]:
         return []
 
     # Lazy import to avoid circular dependency
-    from .queries import contract_test_target_command
+    from .test_targets import contract_test_target_command
 
     lines = ["HOOKS:\n"]
     for hook in hooks:

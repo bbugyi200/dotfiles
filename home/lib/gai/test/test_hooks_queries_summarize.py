@@ -28,7 +28,7 @@ def _make_hook(
 # Tests for get_failing_hooks_for_summarize
 def test_get_failing_hooks_for_summarize_basic() -> None:
     """Test getting failing hooks eligible for summarize-hook workflow."""
-    from ace.hooks.queries import get_failing_hooks_for_summarize
+    from ace.hooks.workflow_queries import get_failing_hooks_for_summarize
 
     hook = HookEntry(
         command="flake8 src",
@@ -47,7 +47,7 @@ def test_get_failing_hooks_for_summarize_basic() -> None:
 
 def test_get_failing_hooks_for_summarize_excludes_non_proposal() -> None:
     """Test that non-proposal entries are excluded from summarize-hook."""
-    from ace.hooks.queries import get_failing_hooks_for_summarize
+    from ace.hooks.workflow_queries import get_failing_hooks_for_summarize
 
     hook = HookEntry(
         command="flake8 src",
@@ -65,7 +65,7 @@ def test_get_failing_hooks_for_summarize_excludes_non_proposal() -> None:
 
 def test_get_failing_hooks_for_summarize_excludes_with_suffix() -> None:
     """Test that hooks with suffix are excluded from summarize-hook."""
-    from ace.hooks.queries import get_failing_hooks_for_summarize
+    from ace.hooks.workflow_queries import get_failing_hooks_for_summarize
 
     hook = HookEntry(
         command="flake8 src",
@@ -84,7 +84,7 @@ def test_get_failing_hooks_for_summarize_excludes_with_suffix() -> None:
 
 def test_get_failing_hooks_for_summarize_excludes_non_failed() -> None:
     """Test that non-FAILED statuses are excluded from summarize-hook."""
-    from ace.hooks.queries import get_failing_hooks_for_summarize
+    from ace.hooks.workflow_queries import get_failing_hooks_for_summarize
 
     hooks = [
         HookEntry(
@@ -114,7 +114,7 @@ def test_get_failing_hooks_for_summarize_excludes_non_failed() -> None:
 
 def test_get_failing_hooks_for_summarize_no_status_lines() -> None:
     """Test that hooks with no status_lines are excluded from summarize."""
-    from ace.hooks.queries import get_failing_hooks_for_summarize
+    from ace.hooks.workflow_queries import get_failing_hooks_for_summarize
 
     hooks = [HookEntry(command="flake8 src")]
     result = get_failing_hooks_for_summarize(hooks)
@@ -124,7 +124,7 @@ def test_get_failing_hooks_for_summarize_no_status_lines() -> None:
 # Tests for get_failing_hook_entries_for_summarize
 def test_get_failing_hook_entries_for_summarize_basic() -> None:
     """Test getting failing hook entries for summarize workflow."""
-    from ace.hooks.queries import get_failing_hook_entries_for_summarize
+    from ace.hooks.workflow_queries import get_failing_hook_entries_for_summarize
 
     hook = HookEntry(
         command="flake8 src",
@@ -144,7 +144,7 @@ def test_get_failing_hook_entries_for_summarize_basic() -> None:
 
 def test_get_failing_hook_entries_for_summarize_includes_non_proposal() -> None:
     """Test that non-proposal entries ARE included in summarize."""
-    from ace.hooks.queries import get_failing_hook_entries_for_summarize
+    from ace.hooks.workflow_queries import get_failing_hook_entries_for_summarize
 
     hook = HookEntry(
         command="flake8 src",
@@ -162,7 +162,7 @@ def test_get_failing_hook_entries_for_summarize_includes_non_proposal() -> None:
 
 def test_get_failing_hook_entries_for_summarize_excludes_with_suffix() -> None:
     """Test that entries with suffix are excluded from summarize."""
-    from ace.hooks.queries import get_failing_hook_entries_for_summarize
+    from ace.hooks.workflow_queries import get_failing_hook_entries_for_summarize
 
     hook = HookEntry(
         command="flake8 src",
@@ -181,7 +181,7 @@ def test_get_failing_hook_entries_for_summarize_excludes_with_suffix() -> None:
 
 def test_get_failing_hook_entries_for_summarize_multiple() -> None:
     """Test summarize with multiple hooks and entry IDs."""
-    from ace.hooks.queries import get_failing_hook_entries_for_summarize
+    from ace.hooks.workflow_queries import get_failing_hook_entries_for_summarize
 
     hooks = [
         HookEntry(
@@ -211,7 +211,7 @@ def test_get_failing_hook_entries_for_summarize_multiple() -> None:
 
 def test_get_failing_hook_entries_for_summarize_no_status_lines() -> None:
     """Test that hooks with no status_lines return empty results for summarize."""
-    from ace.hooks.queries import get_failing_hook_entries_for_summarize
+    from ace.hooks.workflow_queries import get_failing_hook_entries_for_summarize
 
     hooks = [HookEntry(command="flake8 src")]
     result = get_failing_hook_entries_for_summarize(hooks, ["1", "2"])
@@ -220,7 +220,7 @@ def test_get_failing_hook_entries_for_summarize_no_status_lines() -> None:
 
 def test_get_failing_hook_entries_for_summarize_entry_not_found() -> None:
     """Test that missing entry IDs are handled correctly for summarize."""
-    from ace.hooks.queries import get_failing_hook_entries_for_summarize
+    from ace.hooks.workflow_queries import get_failing_hook_entries_for_summarize
 
     hooks = [
         HookEntry(
@@ -240,7 +240,7 @@ def test_get_failing_hook_entries_for_summarize_entry_not_found() -> None:
 
 def test_get_failing_hook_entries_for_summarize_passed_status() -> None:
     """Test that PASSED hooks are excluded from summarize."""
-    from ace.hooks.queries import get_failing_hook_entries_for_summarize
+    from ace.hooks.workflow_queries import get_failing_hook_entries_for_summarize
 
     hooks = [
         HookEntry(

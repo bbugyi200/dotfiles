@@ -9,7 +9,7 @@ from ace.changespec import (
 # Tests for _apply_hook_suffix_update
 def test_apply_hook_suffix_update_basic() -> None:
     """Test applying suffix update to a hook's latest status line."""
-    from ace.hooks.queries import _apply_hook_suffix_update
+    from ace.hooks.mutations import _apply_hook_suffix_update
 
     hooks = [
         HookEntry(
@@ -35,7 +35,7 @@ def test_apply_hook_suffix_update_basic() -> None:
 
 def test_apply_hook_suffix_update_with_entry_id() -> None:
     """Test applying suffix update to a specific entry ID."""
-    from ace.hooks.queries import _apply_hook_suffix_update
+    from ace.hooks.mutations import _apply_hook_suffix_update
 
     hooks = [
         HookEntry(
@@ -67,7 +67,7 @@ def test_apply_hook_suffix_update_with_entry_id() -> None:
 
 def test_apply_hook_suffix_update_with_summary() -> None:
     """Test applying suffix update with summary."""
-    from ace.hooks.queries import _apply_hook_suffix_update
+    from ace.hooks.mutations import _apply_hook_suffix_update
 
     hooks = [
         HookEntry(
@@ -98,7 +98,7 @@ def test_apply_hook_suffix_update_with_summary() -> None:
 
 def test_apply_hook_suffix_update_no_match() -> None:
     """Test that non-matching hooks are unchanged."""
-    from ace.hooks.queries import _apply_hook_suffix_update
+    from ace.hooks.mutations import _apply_hook_suffix_update
 
     hooks = [
         HookEntry(
@@ -120,7 +120,7 @@ def test_apply_hook_suffix_update_no_match() -> None:
 
 def test_apply_hook_suffix_update_no_status_lines() -> None:
     """Test applying suffix to hook with no status lines."""
-    from ace.hooks.queries import _apply_hook_suffix_update
+    from ace.hooks.mutations import _apply_hook_suffix_update
 
     hooks = [HookEntry(command="flake8 src")]
     updated, was_updated = _apply_hook_suffix_update(hooks, "flake8 src", "suffix")
@@ -131,7 +131,7 @@ def test_apply_hook_suffix_update_no_status_lines() -> None:
 
 def test_apply_hook_suffix_update_multiple_hooks() -> None:
     """Test applying suffix update when there are multiple hooks."""
-    from ace.hooks.queries import _apply_hook_suffix_update
+    from ace.hooks.mutations import _apply_hook_suffix_update
 
     hooks = [
         HookEntry(
@@ -166,7 +166,7 @@ def test_apply_hook_suffix_update_multiple_hooks() -> None:
 # Tests for _apply_clear_hook_suffix
 def test_apply_clear_hook_suffix_basic() -> None:
     """Test clearing suffix from a hook's latest status line."""
-    from ace.hooks.queries import _apply_clear_hook_suffix
+    from ace.hooks.mutations import _apply_clear_hook_suffix
 
     hooks = [
         HookEntry(
@@ -189,7 +189,7 @@ def test_apply_clear_hook_suffix_basic() -> None:
 
 def test_apply_clear_hook_suffix_multiple_status_lines() -> None:
     """Test that only the latest status line's suffix is cleared."""
-    from ace.hooks.queries import _apply_clear_hook_suffix
+    from ace.hooks.mutations import _apply_clear_hook_suffix
 
     hooks = [
         HookEntry(
@@ -221,7 +221,7 @@ def test_apply_clear_hook_suffix_multiple_status_lines() -> None:
 
 def test_apply_clear_hook_suffix_no_match() -> None:
     """Test that non-matching hooks are unchanged."""
-    from ace.hooks.queries import _apply_clear_hook_suffix
+    from ace.hooks.mutations import _apply_clear_hook_suffix
 
     hooks = [
         HookEntry(
@@ -244,7 +244,7 @@ def test_apply_clear_hook_suffix_no_match() -> None:
 
 def test_apply_clear_hook_suffix_no_suffix() -> None:
     """Test clearing when there's no suffix to clear."""
-    from ace.hooks.queries import _apply_clear_hook_suffix
+    from ace.hooks.mutations import _apply_clear_hook_suffix
 
     hooks = [
         HookEntry(
@@ -267,7 +267,7 @@ def test_apply_clear_hook_suffix_no_suffix() -> None:
 
 def test_apply_clear_hook_suffix_no_status_lines() -> None:
     """Test clearing suffix on hook with no status lines."""
-    from ace.hooks.queries import _apply_clear_hook_suffix
+    from ace.hooks.mutations import _apply_clear_hook_suffix
 
     hooks = [HookEntry(command="flake8 src")]
     updated, was_cleared = _apply_clear_hook_suffix(hooks, "flake8 src")
@@ -278,7 +278,7 @@ def test_apply_clear_hook_suffix_no_status_lines() -> None:
 
 def test_apply_clear_hook_suffix_multiple_hooks() -> None:
     """Test clearing suffix when there are multiple hooks."""
-    from ace.hooks.queries import _apply_clear_hook_suffix
+    from ace.hooks.mutations import _apply_clear_hook_suffix
 
     hooks = [
         HookEntry(
@@ -343,7 +343,7 @@ def test_is_proposal_entry_empty() -> None:
 # Tests for _is_test_target_hook
 def test_is_test_target_hook_true() -> None:
     """Test that bb_rabbit_test commands are identified as test target hooks."""
-    from ace.hooks.queries import _is_test_target_hook
+    from ace.hooks.test_targets import _is_test_target_hook
 
     hook = HookEntry(command="bb_rabbit_test //foo:test")
     assert _is_test_target_hook(hook) is True
@@ -351,7 +351,7 @@ def test_is_test_target_hook_true() -> None:
 
 def test_is_test_target_hook_false() -> None:
     """Test that non-test commands are not identified as test target hooks."""
-    from ace.hooks.queries import _is_test_target_hook
+    from ace.hooks.test_targets import _is_test_target_hook
 
     hook = HookEntry(command="flake8 src")
     assert _is_test_target_hook(hook) is False
@@ -363,7 +363,7 @@ def test_is_test_target_hook_false() -> None:
 # Tests for _create_test_target_hook
 def test_create_test_target_hook() -> None:
     """Test creating a test target hook from a target string."""
-    from ace.hooks.queries import _create_test_target_hook
+    from ace.hooks.test_targets import _create_test_target_hook
 
     hook = _create_test_target_hook("//foo/bar:test")
     assert hook.command == "bb_rabbit_test //foo/bar:test"
@@ -373,7 +373,7 @@ def test_create_test_target_hook() -> None:
 # Tests for _hook_has_fix_excluded_suffix
 def test_hook_has_fix_excluded_suffix_true() -> None:
     """Test that hooks with suffix are identified as excluded."""
-    from ace.hooks.queries import _hook_has_fix_excluded_suffix
+    from ace.hooks.workflow_queries import _hook_has_fix_excluded_suffix
 
     hook = HookEntry(
         command="flake8 src",
@@ -391,7 +391,7 @@ def test_hook_has_fix_excluded_suffix_true() -> None:
 
 def test_hook_has_fix_excluded_suffix_false_no_suffix() -> None:
     """Test that hooks without suffix are not excluded."""
-    from ace.hooks.queries import _hook_has_fix_excluded_suffix
+    from ace.hooks.workflow_queries import _hook_has_fix_excluded_suffix
 
     hook = HookEntry(
         command="flake8 src",
@@ -408,7 +408,7 @@ def test_hook_has_fix_excluded_suffix_false_no_suffix() -> None:
 
 def test_hook_has_fix_excluded_suffix_false_no_status_lines() -> None:
     """Test that hooks with no status_lines are not excluded."""
-    from ace.hooks.queries import _hook_has_fix_excluded_suffix
+    from ace.hooks.workflow_queries import _hook_has_fix_excluded_suffix
 
     hook = HookEntry(command="flake8 src")
     assert _hook_has_fix_excluded_suffix(hook) is False

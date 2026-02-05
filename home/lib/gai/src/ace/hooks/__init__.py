@@ -25,6 +25,14 @@ from .history import (
     get_last_history_entry_id,
     is_proposal_entry,
 )
+from .mutations import (
+    add_hook_to_changespec,
+    clear_hook_suffix,
+    get_failed_hooks_file_path,
+    rerun_delete_hooks_by_command,
+    set_hook_suffix,
+    try_claim_hook_for_fix,
+)
 from .processes import (
     is_process_running,
     kill_running_agent_processes,
@@ -36,25 +44,6 @@ from .processes import (
     mark_hooks_as_killed,
     mark_mentor_agents_as_killed,
 )
-from .queries import (
-    add_hook_to_changespec,
-    add_test_target_hooks_to_changespec,
-    clear_failed_test_target_hook_status,
-    clear_hook_suffix,
-    contract_test_target_command,
-    get_failed_hooks_file_path,
-    get_failing_hook_entries_for_fix,
-    get_failing_hook_entries_for_summarize,
-    get_failing_hooks_for_fix,
-    get_failing_hooks_for_summarize,
-    get_failing_test_target_hooks,
-    get_test_target_from_hook,
-    has_failing_hooks_for_fix,
-    has_failing_test_target_hooks,
-    rerun_delete_hooks_by_command,
-    set_hook_suffix,
-    try_claim_hook_for_fix,
-)
 from .status import (
     entry_has_running_hooks,
     get_entries_needing_hook_run,
@@ -62,6 +51,17 @@ from .status import (
     hook_has_any_running_status,
     hook_needs_run,
     is_hook_zombie,
+)
+from .test_targets import (
+    TEST_TARGET_HOOK_PREFIX,
+    TEST_TARGET_SHORTHAND_PREFIX,
+    add_test_target_hooks_to_changespec,
+    clear_failed_test_target_hook_status,
+    contract_test_target_command,
+    expand_test_target_shorthand,
+    get_failing_test_target_hooks,
+    get_test_target_from_hook,
+    has_failing_test_target_hooks,
 )
 from .timestamps import (
     calculate_duration_from_timestamps,
@@ -72,8 +72,18 @@ from .timestamps import (
     is_suffix_stale,
     is_timestamp_suffix,
 )
+from .workflow_queries import (
+    get_failing_hook_entries_for_fix,
+    get_failing_hook_entries_for_summarize,
+    get_failing_hooks_for_fix,
+    get_failing_hooks_for_summarize,
+    has_failing_hooks_for_fix,
+)
 
 __all__ = [
+    # Constants
+    "TEST_TARGET_HOOK_PREFIX",
+    "TEST_TARGET_SHORTHAND_PREFIX",
     # Core functions
     "calculate_duration_from_timestamps",
     "entry_has_running_hooks",
@@ -110,6 +120,7 @@ __all__ = [
     "clear_failed_test_target_hook_status",
     "clear_hook_suffix",
     "contract_test_target_command",
+    "expand_test_target_shorthand",
     "get_failed_hooks_file_path",
     "get_failing_hook_entries_for_fix",
     "get_failing_hook_entries_for_summarize",

@@ -4,7 +4,7 @@ import re
 from typing import TypedDict
 
 from ..display_helpers import is_entry_ref_suffix
-from ..hooks.queries import expand_test_target_shorthand
+from ..hooks.test_targets import expand_test_target_shorthand
 from .models import (
     CommentEntry,
     CommitEntry,

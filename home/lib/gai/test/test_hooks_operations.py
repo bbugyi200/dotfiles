@@ -21,7 +21,7 @@ from ace.hooks import (
 from ace.hooks.execution import (
     _format_hooks_field,
 )
-from ace.hooks.queries import expand_test_target_shorthand
+from ace.hooks.test_targets import expand_test_target_shorthand
 from gai_utils import get_gai_directory
 
 
