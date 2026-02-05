@@ -5,9 +5,11 @@ Creates a proposal entry on an existing CL from uncommitted workspace changes.
 """
 
 import argparse
+import json
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 # Add gai source directory to path for imports
@@ -39,13 +41,13 @@ def _get_cl_name_from_branch() -> str | None:
 
 def _create_proposal(
     note: str,
-    response_file: str,
+    data_file: str,
 ) -> tuple[bool, str, str, str]:
     """Create a proposal entry on the current CL.
 
     Args:
         note: The note for the proposal (empty string to auto-generate).
-        response_file: Path to file containing agent response.
+        data_file: Path to JSON file containing prompt and response from agent.
 
     Returns:
         Tuple of (success, proposal_id, cl_name, error_message)
@@ -56,6 +58,12 @@ def _create_proposal(
     from gai_utils import generate_timestamp
     from summarize_utils import get_file_summary
     from workflow_utils import get_project_file_path
+
+    # Load prompt and response from data file
+    with open(data_file, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    prompt = data["prompt"]
+    response = data["response"]
 
     # Get CL name from branch
     cl_name = _get_cl_name_from_branch()
@@ -80,18 +88,28 @@ def _create_proposal(
     if not diff_path:
         return False, "", "", "No changes to save (diff is empty)"
 
-    # Generate note from response file if not provided
+    # Generate note from response if not provided
     if not note:
-        note = get_file_summary(
-            response_file,
-            usage="a concise description of what changes were proposed",
-            fallback="Proposed changes",
-        )
+        # Write response to temp file for get_file_summary
+        fd, response_tmp = tempfile.mkstemp(suffix=".md", prefix="gai_propose_response_")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(response)
+            note = get_file_summary(
+                response_tmp,
+                usage="a concise description of what changes were proposed",
+                fallback="Proposed changes",
+            )
+        finally:
+            try:
+                os.unlink(response_tmp)
+            except OSError:
+                pass
 
-    # Save chat history with a placeholder prompt
+    # Save chat history with actual prompt
     chat_path = save_chat_history(
-        prompt="(Proposal created via #propose workflow)",
-        response=Path(response_file).read_text(encoding="utf-8"),
+        prompt=prompt,
+        response=response,
         workflow="propose",
         timestamp=timestamp,
     )
@@ -127,14 +145,14 @@ def main() -> None:
         "--note", default="", help="Note for the proposal (auto-generated if empty)"
     )
     parser.add_argument(
-        "--response-file", required=True, help="Path to agent response file"
+        "--data-file", required=True, help="Path to JSON file with prompt and response"
     )
 
     args = parser.parse_args()
 
     if args.create:
         success, proposal_id, cl_name, error = _create_proposal(
-            args.note, args.response_file
+            args.note, args.data_file
         )
         print(f"success={'true' if success else 'false'}")
         print(f"proposal_id={proposal_id}")

@@ -421,7 +421,8 @@ def run_query(
 
         # Execute post-steps from embedded workflows
         for post_steps, embedded_context in post_workflows:
-            # Make agent response available to post-steps
+            # Make agent prompt and response available to post-steps
+            embedded_context["_prompt"] = expanded_prompt
             embedded_context["_response"] = response_content
             _execute_standalone_steps(
                 post_steps, embedded_context, "run-embedded", artifacts_dir

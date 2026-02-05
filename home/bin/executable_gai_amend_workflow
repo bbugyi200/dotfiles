@@ -5,9 +5,11 @@ Amends an existing CL after agent file changes, adding a HISTORY entry.
 """
 
 import argparse
+import json
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 # Add gai source directory to path for imports
@@ -39,13 +41,13 @@ def _get_cl_name_from_branch() -> str | None:
 
 def _amend_cl(
     note: str,
-    response_file: str,
+    data_file: str,
 ) -> tuple[bool, str, str, str]:
     """Amend the current CL with a HISTORY entry.
 
     Args:
         note: The note for the HISTORY entry (empty string to auto-generate).
-        response_file: Path to file containing agent response.
+        data_file: Path to JSON file containing prompt and response from agent.
 
     Returns:
         Tuple of (success, entry_id, cl_name, error_message)
@@ -55,6 +57,12 @@ def _amend_cl(
     from gai_utils import generate_timestamp
     from summarize_utils import get_file_summary
     from workflow_utils import add_test_hooks_if_available, get_project_file_path
+
+    # Load prompt and response from data file
+    with open(data_file, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    prompt = data["prompt"]
+    response = data["response"]
 
     # Get CL name from branch
     cl_name = _get_cl_name_from_branch()
@@ -79,18 +87,28 @@ def _amend_cl(
     if not diff_path:
         return False, "", "", "No changes to amend (diff is empty)"
 
-    # Generate note from response file if not provided
+    # Generate note from response if not provided
     if not note:
-        note = get_file_summary(
-            response_file,
-            usage="a concise description of the changes made",
-            fallback="Agent changes",
-        )
+        # Write response to temp file for get_file_summary
+        fd, response_tmp = tempfile.mkstemp(suffix=".md", prefix="gai_amend_response_")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(response)
+            note = get_file_summary(
+                response_tmp,
+                usage="a concise description of the changes made",
+                fallback="Agent changes",
+            )
+        finally:
+            try:
+                os.unlink(response_tmp)
+            except OSError:
+                pass
 
-    # Save chat history
+    # Save chat history with actual prompt
     chat_path = save_chat_history(
-        prompt="(Amend via #amend workflow)",
-        response=Path(response_file).read_text(encoding="utf-8"),
+        prompt=prompt,
+        response=response,
         workflow="amend",
         timestamp=timestamp,
     )
@@ -143,12 +161,12 @@ def main() -> None:
         "--note", default="", help="Note for the HISTORY entry (auto-generated if empty)"
     )
     parser.add_argument(
-        "--response-file", required=True, help="Path to agent response file"
+        "--data-file", required=True, help="Path to JSON file with prompt and response"
     )
 
     args = parser.parse_args()
 
-    success, entry_id, cl_name, error = _amend_cl(args.note, args.response_file)
+    success, entry_id, cl_name, error = _amend_cl(args.note, args.data_file)
     print(f"success={'true' if success else 'false'}")
     print(f"entry_id={entry_id}")
     print(f"cl_name={cl_name}")

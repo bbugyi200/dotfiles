@@ -477,7 +477,8 @@ class StepMixin:
             if post_steps:
                 from xprompt.workflow_output import ParentStepContext
 
-                # Make agent response available to post-steps
+                # Make agent prompt and response available to post-steps
+                embedded_context["_prompt"] = expanded_prompt
                 embedded_context["_response"] = response_text
                 parent_ctx = ParentStepContext(
                     step_index=self.state.current_step_index,

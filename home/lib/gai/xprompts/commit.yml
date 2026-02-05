@@ -28,11 +28,13 @@ steps:
     if: "{{ check_changes.has_changes }}"
     python: |
       import tempfile
+      import json
+      prompt = {{ _prompt | tojson }}
       response = {{ _response | tojson }}
-      with tempfile.NamedTemporaryFile(mode='w', suffix='.md', prefix='gai_commit_', delete=False) as f:
-          f.write(response)
-          print(f"response_file={f.name}")
-    output: { response_file: path }
+      with tempfile.NamedTemporaryFile(mode='w', suffix='.json', prefix='gai_commit_', delete=False) as f:
+          json.dump({"prompt": prompt, "response": response}, f)
+          print(f"data_file={f.name}")
+    output: { data_file: path }
 
   - name: create_cl
     if: "{{ check_changes.has_changes }}"
@@ -40,7 +42,7 @@ steps:
       gai_commit_workflow --create \
         --name "{{ name }}" \
         --bug-id "{{ bug_id }}" \
-        --response-file "{{ save_response.response_file }}"
+        --data-file "{{ save_response.data_file }}"
     output: { success: bool, cl_url: line, full_cl_name: word, error: text }
 
   - name: report
