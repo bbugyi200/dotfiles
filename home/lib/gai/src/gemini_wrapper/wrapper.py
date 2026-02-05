@@ -191,7 +191,7 @@ def invoke_agent(
     prompt: str,
     *,
     agent_type: str,
-    model_size: Literal["little", "big"] = "little",
+    model_size: Literal["little", "big"] = "big",
     iteration: int | None = None,
     workflow_tag: str | None = None,
     artifacts_dir: str | None = None,
