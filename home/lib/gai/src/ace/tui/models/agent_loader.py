@@ -24,6 +24,17 @@ from .agent import Agent, AgentType
 from .workflow import WorkflowEntry
 
 
+def _get_status_priority(status: str) -> int:
+    """Return sort priority for agent status (lower = appears first).
+
+    Completed/failed steps appear before running/waiting steps.
+    """
+    if status in ("COMPLETED", "FAILED"):
+        return 0
+    # RUNNING, WAITING INPUT, and any other status
+    return 1
+
+
 def load_all_workflows() -> list[WorkflowEntry]:
     """Load all workflow entries from workflow_state.json files.
 
@@ -240,16 +251,18 @@ def load_all_agents() -> list[Agent]:
                 # Sort by workflow position: main steps first, then substeps
                 matching_steps.sort(
                     key=lambda s: (
-                        # Primary: position in workflow (parent_step_index for
+                        # Primary: completed/failed steps (0) before running/waiting steps (1)
+                        _get_status_priority(s.status),
+                        # Secondary: position in workflow (parent_step_index for
                         # substeps, step_index for main steps)
                         (
                             s.parent_step_index
                             if s.parent_step_index is not None
                             else (s.step_index or 0)
                         ),
-                        # Secondary: substeps (1) come after main steps (0)
+                        # Tertiary: substeps (1) come after main steps (0)
                         1 if s.parent_step_index is not None else 0,
-                        # Tertiary: order within substeps
+                        # Quaternary: order within substeps
                         s.step_index or 0,
                     )
                 )

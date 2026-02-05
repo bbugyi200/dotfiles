@@ -3,7 +3,7 @@
 from unittest.mock import MagicMock, patch
 
 from ace.tui.models.agent import AgentType
-from ace.tui.models.agent_loader import load_all_agents
+from ace.tui.models.agent_loader import _get_status_priority, load_all_agents
 
 
 def test_load_all_agents_empty() -> None:
@@ -507,3 +507,13 @@ def test_load_all_agents_dedup_mentor_by_timestamp() -> None:
         assert agents[0].agent_type == AgentType.MENTOR
         assert agents[0].pid == 1855023  # Subprocess PID
         assert agents[0].workspace_num == 3  # Copied from RUNNING entry
+
+
+def test_workflow_steps_sorted_completed_before_running() -> None:
+    """Test that workflow steps sort completed/failed before running/waiting."""
+    # Test status priorities
+    assert _get_status_priority("COMPLETED") == 0
+    assert _get_status_priority("FAILED") == 0
+    assert _get_status_priority("RUNNING") == 1
+    assert _get_status_priority("WAITING INPUT") == 1
+    assert _get_status_priority("UNKNOWN") == 1  # Unknown defaults to active
