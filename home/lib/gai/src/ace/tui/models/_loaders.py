@@ -146,8 +146,13 @@ def load_agents_from_hooks(
             if sl.suffix_type not in ("running_agent", "error"):
                 continue
 
-            # Extract error message for failed agents
-            error_message = sl.suffix if sl.suffix_type == "error" else None
+            # Extract error message for failed agents (include summary if available)
+            error_message = None
+            if sl.suffix_type == "error":
+                if sl.summary:
+                    error_message = f"{sl.suffix}\n\nOutput: {sl.summary}"
+                else:
+                    error_message = sl.suffix
 
             # Determine agent type from suffix
             # - Running summarize agents: suffix contains "summarize_hook-<PID>-<timestamp>"
