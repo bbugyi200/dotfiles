@@ -7,9 +7,8 @@ input:
 steps:
   - name: inject
     prompt_part: |
-      #cl
       ---
-      IMPORTANT: You should make the necessary file changes, but should NOT create/amend a CL.
+      IMPORTANT: You should make the necessary file changes, but should NOT create/amend a CL. #cl
 
   - name: check_changes
     hidden: true

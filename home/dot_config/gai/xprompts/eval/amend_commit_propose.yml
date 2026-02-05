@@ -29,7 +29,7 @@ steps:
       Can you help me add conversion support to the
       contentads/drx/fe/client/exchange/size_setting/service/lib/size_setting_op_converter.dart file for the new foobar
       field added by this CL? Do NOT modify any other files and do NOT ask the user any questions (no human is available
-      for assistance). #amend(Add converter support for foobar field) #cl
+      for assistance). #amend(Add converter support for foobar field)
 
   # Step 4: Validate amend via hg obslog
   - name: validate_amend
@@ -51,7 +51,7 @@ steps:
     prompt: |
       Can you help me add a new integer 'bazbuz' field to the SizeSetting model. Do NOT modify any files that have not
       already been modified by this CL and do NOT ask the user any questions (no human is available for assistance).
-      #propose #cl
+      #propose
 
   # Step 6: Validate proposal in eval.gp
   - name: validate_proposal
