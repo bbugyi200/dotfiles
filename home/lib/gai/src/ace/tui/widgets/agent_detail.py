@@ -65,13 +65,17 @@ class AgentDetail(Static):
                 # No diff path - hide diff panel
                 diff_scroll.add_class("hidden")
                 prompt_scroll.add_class("expanded")
-        else:
-            # RUNNING - show auto-refreshing diff panel
+        elif agent.status in ("RUNNING", "WAITING INPUT"):
+            # Show auto-refreshing diff panel for active agents
             # Don't change visibility here - let update_display() handle it
             # via DiffVisibilityChanged message after fetching/validating the diff
             diff_panel.update_display(
                 agent, stale_threshold_seconds=stale_threshold_seconds
             )
+        else:
+            # COMPLETED, FAILED, REVIVED, etc. — no meaningful diff to show
+            diff_scroll.add_class("hidden")
+            prompt_scroll.add_class("expanded")
 
     def show_empty(self) -> None:
         """Show empty state for both panels."""
