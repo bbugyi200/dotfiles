@@ -109,19 +109,39 @@ def ensure_str_content(content: str | list[str | dict[Any, Any]]) -> str:
     return str(content)
 
 
+def convert_timestamp_to_artifacts_format(timestamp: str) -> str:
+    """Convert a YYmmdd_HHMMSS timestamp to YYYYmmddHHMMSS format.
+
+    Args:
+        timestamp: Timestamp in YYmmdd_HHMMSS format (e.g., '251227_143052').
+
+    Returns:
+        Timestamp in YYYYmmddHHMMSS format (e.g., '20251227143052').
+    """
+    return f"20{timestamp[:6]}{timestamp[7:]}"
+
+
 def create_artifacts_directory(
-    workflow_name: str, project_name: str | None = None
+    workflow_name: str,
+    project_name: str | None = None,
+    timestamp: str | None = None,
 ) -> str:
     """Create a timestamped artifacts directory using NYC Eastern timezone.
 
     Args:
         workflow_name: Name of the workflow (e.g., 'crs', 'new-tdd-feature')
         project_name: Name of the project. If None, will attempt to get from workspace_name command
+        timestamp: Optional pre-existing timestamp in YYmmdd_HHMMSS format.
+            When provided, it is converted to YYYYmmddHHMMSS format for the
+            artifacts directory. When None, generates a new timestamp.
 
     Returns:
         Path to the created artifacts directory: ~/.gai/projects/<project>/artifacts/<workflow>/<timestamp>
     """
-    timestamp = datetime.now(EASTERN_TZ).strftime("%Y%m%d%H%M%S")
+    if timestamp is not None:
+        artifacts_timestamp = convert_timestamp_to_artifacts_format(timestamp)
+    else:
+        artifacts_timestamp = datetime.now(EASTERN_TZ).strftime("%Y%m%d%H%M%S")
 
     # Get project name from workspace_name command if not provided
     if project_name is None:
@@ -134,7 +154,7 @@ def create_artifacts_directory(
 
     # Create artifacts directory in new location: ~/.gai/projects/<project>/artifacts/<workflow>/<timestamp>
     artifacts_dir = os.path.expanduser(
-        f"~/.gai/projects/{project_name}/artifacts/{workflow_name}/{timestamp}"
+        f"~/.gai/projects/{project_name}/artifacts/{workflow_name}/{artifacts_timestamp}"
     )
     Path(artifacts_dir).mkdir(parents=True, exist_ok=True)
     return artifacts_dir

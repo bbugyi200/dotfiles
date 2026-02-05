@@ -8,81 +8,15 @@ the workspace upon completion.
 
 import json
 import os
-import signal
-import subprocess
 import sys
 
 # Add parent directory to path for imports (use abspath to handle relative __file__)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from axe_runner_utils import install_sigterm_handler, prepare_workspace  # noqa: E402
 from running_field import release_workspace  # noqa: E402
 
-# Global flag to track if we received SIGTERM
-_killed = False
-
-
-def _sigterm_handler(_signum: int, _frame: object) -> None:
-    """Handle SIGTERM by setting killed flag and exiting gracefully.
-
-    Using sys.exit() instead of re-raising SIGTERM allows finally blocks
-    to run, ensuring workspace cleanup happens before the process exits.
-    """
-    global _killed
-    _killed = True
-    print("\nReceived SIGTERM - workflow was killed", file=sys.stderr)
-    # Exit with conventional signal exit code (128 + signal number)
-    # This allows cleanup code in finally blocks to run
-    sys.exit(128 + signal.SIGTERM)
-
-
-# Register SIGTERM handler
-signal.signal(signal.SIGTERM, _sigterm_handler)
-
-
-def _prepare_workspace(workspace_dir: str, cl_name: str, update_target: str) -> bool:
-    """Clean and update workspace before running workflow.
-
-    Args:
-        workspace_dir: The workspace directory.
-        cl_name: Display name for the CL/project (used for backup diff name).
-        update_target: What to checkout (CL name or "p4head").
-
-    Returns:
-        True if successful, False otherwise.
-    """
-    from commit_utils import run_bb_hg_clean
-
-    # Clean workspace (saves any existing changes to a diff file)
-    print("Cleaning workspace...")
-    success, error = run_bb_hg_clean(workspace_dir, f"{cl_name}-workflow")
-    if not success:
-        print(f"bb_hg_clean failed: {error}", file=sys.stderr)
-        return False
-
-    # Update workspace to target
-    print(f"Updating workspace to {update_target}...")
-    try:
-        result = subprocess.run(
-            ["bb_hg_update", update_target],
-            cwd=workspace_dir,
-            capture_output=True,
-            text=True,
-            timeout=300,
-        )
-
-        if result.returncode != 0:
-            error_msg = result.stderr.strip() or result.stdout.strip()
-            print(f"bb_hg_update failed: {error_msg}", file=sys.stderr)
-            return False
-    except subprocess.TimeoutExpired:
-        print("bb_hg_update timed out", file=sys.stderr)
-        return False
-    except Exception as e:
-        print(f"bb_hg_update error: {e}", file=sys.stderr)
-        return False
-
-    print("Workspace ready")
-    return True
+install_sigterm_handler("workflow")
 
 
 def main() -> None:
@@ -125,7 +59,9 @@ def main() -> None:
     # Prepare workspace before running workflow (skip for home mode)
     if update_target and not is_home_mode:
         print("=== Preparing Workspace ===")
-        if not _prepare_workspace(workspace_dir, cl_name, update_target):
+        if not prepare_workspace(
+            workspace_dir, cl_name, update_target, backup_suffix="workflow"
+        ):
             print("Failed to prepare workspace", file=sys.stderr)
             sys.exit(1)
         print("===========================")

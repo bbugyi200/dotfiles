@@ -13,6 +13,7 @@ from rich_utils import (
     print_workflow_header,
 )
 from shared_utils import (
+    create_artifacts_directory,
     ensure_str_content,
     finalize_gai_log,
     generate_workflow_tag,
@@ -136,17 +137,13 @@ class CrsWorkflow(BaseWorkflow):
         # Initialize workflow context
         if self._timestamp:
             # Use provided timestamp to ensure artifacts match agent suffix
-            # Convert timestamp: YYmmdd_HHMMSS -> YYYYmmddHHMMSS
-            artifacts_timestamp = f"20{self._timestamp[:6]}{self._timestamp[7:]}"
             if self.context_file_directory:
                 project_name = Path(self.context_file_directory).parent.name
             else:
-                result = run_shell_command("workspace_name", capture_output=True)
-                project_name = result.stdout.strip()
-            artifacts_dir = os.path.expanduser(
-                f"~/.gai/projects/{project_name}/artifacts/crs/{artifacts_timestamp}"
+                project_name = None
+            artifacts_dir = create_artifacts_directory(
+                "crs", project_name=project_name, timestamp=self._timestamp
             )
-            Path(artifacts_dir).mkdir(parents=True, exist_ok=True)
             workflow_tag = generate_workflow_tag()
             print_workflow_header("crs", workflow_tag)
             print_status(f"Created artifacts directory: {artifacts_dir}", "success")

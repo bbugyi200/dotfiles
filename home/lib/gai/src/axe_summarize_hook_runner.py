@@ -25,6 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ace.hooks import set_hook_suffix
 from metahook_config import MetahookConfig, find_matching_metahook
+from shared_utils import create_artifacts_directory
 from summarize_utils import get_file_summary
 
 # Workflow completion marker (same pattern as other axe runners)
@@ -120,14 +121,11 @@ def main() -> int:
 
         # Create artifacts directory using same timestamp as agent suffix
         # This ensures the Agents tab can find the prompt file
-        # Convert timestamp: YYmmdd_HHMMSS -> YYYYmmddHHMMSS
-        artifacts_timestamp = f"20{timestamp[:6]}{timestamp[7:]}"
-        project_name = Path(project_file).parent.name
-        artifacts_dir = os.path.expanduser(
-            f"~/.gai/projects/{project_name}/artifacts/"
-            f"summarize-hook/{artifacts_timestamp}"
+        artifacts_dir = create_artifacts_directory(
+            "summarize-hook",
+            project_name=Path(project_file).parent.name,
+            timestamp=timestamp,
         )
-        Path(artifacts_dir).mkdir(parents=True, exist_ok=True)
 
         # Get summary of the hook failure
         summary = get_file_summary(

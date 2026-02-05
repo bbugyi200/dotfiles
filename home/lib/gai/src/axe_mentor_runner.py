@@ -6,7 +6,6 @@ It handles workspace cleanup and status updates upon completion.
 """
 
 import os
-import signal
 import sys
 import time
 
@@ -15,29 +14,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ace.hooks import format_duration  # noqa: E402
 from ace.mentors import get_latest_proposal_for_entry, set_mentor_status  # noqa: E402
+from axe_runner_utils import install_sigterm_handler, was_killed  # noqa: E402
 from mentor_workflow import MentorWorkflow  # noqa: E402
 from running_field import release_workspace  # noqa: E402
 
-# Global flag to track if we received SIGTERM (killed by accept workflow)
-_killed = False
-
-
-def _sigterm_handler(_signum: int, _frame: object) -> None:
-    """Handle SIGTERM by setting killed flag and exiting gracefully.
-
-    Using sys.exit() instead of re-raising SIGTERM allows finally blocks
-    to run, ensuring workspace cleanup happens before the process exits.
-    """
-    global _killed
-    _killed = True
-    print("\nReceived SIGTERM - mentor was killed", file=sys.stderr)
-    # Exit with conventional signal exit code (128 + signal number)
-    # This allows cleanup code in finally blocks to run
-    sys.exit(128 + signal.SIGTERM)
-
-
-# Register SIGTERM handler
-signal.signal(signal.SIGTERM, _sigterm_handler)
+install_sigterm_handler("mentor")
 
 
 def main() -> None:
@@ -141,7 +122,7 @@ def main() -> None:
 
         # Skip status update if we were killed - the accept workflow already marked
         # the mentor as killed, and we don't want to overwrite that status
-        if _killed:
+        if was_killed():
             print("Skipping status update - mentor was killed", file=sys.stderr)
         else:
             try:

@@ -7,7 +7,6 @@ It handles workspace cleanup and releases the workspace upon completion.
 
 import json
 import os
-import signal
 import subprocess
 import sys
 import time
@@ -16,6 +15,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ace.hooks import format_duration  # noqa: E402
+from axe_runner_utils import install_sigterm_handler, prepare_workspace  # noqa: E402
 from change_actions import execute_change_action, prompt_for_change_action  # noqa: E402
 from chat_history import save_chat_history  # noqa: E402
 from gemini_wrapper import invoke_agent  # noqa: E402
@@ -25,75 +25,14 @@ from main.query_handler import (  # noqa: E402
 )
 from rich.console import Console  # noqa: E402
 from running_field import release_workspace  # noqa: E402
-from shared_utils import ensure_str_content  # noqa: E402
+from shared_utils import (  # noqa: E402
+    convert_timestamp_to_artifacts_format,
+    create_artifacts_directory,
+    ensure_str_content,
+)
 from xprompt import process_xprompt_references  # noqa: E402
 
-# Global flag to track if we received SIGTERM
-_killed = False
-
-
-def _sigterm_handler(_signum: int, _frame: object) -> None:
-    """Handle SIGTERM by setting killed flag and exiting gracefully.
-
-    Using sys.exit() instead of re-raising SIGTERM allows finally blocks
-    to run, ensuring workspace cleanup happens before the process exits.
-    """
-    global _killed
-    _killed = True
-    print("\nReceived SIGTERM - agent was killed", file=sys.stderr)
-    # Exit with conventional signal exit code (128 + signal number)
-    # This allows cleanup code in finally blocks to run
-    sys.exit(128 + signal.SIGTERM)
-
-
-# Register SIGTERM handler
-signal.signal(signal.SIGTERM, _sigterm_handler)
-
-
-def _prepare_workspace(workspace_dir: str, cl_name: str, update_target: str) -> bool:
-    """Clean and update workspace before running agent.
-
-    Args:
-        workspace_dir: The workspace directory.
-        cl_name: Display name for the CL/project (used for backup diff name).
-        update_target: What to checkout (CL name or "p4head").
-
-    Returns:
-        True if successful, False otherwise.
-    """
-    from commit_utils import run_bb_hg_clean
-
-    # Clean workspace (saves any existing changes to a diff file)
-    print("Cleaning workspace...")
-    success, error = run_bb_hg_clean(workspace_dir, f"{cl_name}-ace")
-    if not success:
-        print(f"bb_hg_clean failed: {error}", file=sys.stderr)
-        return False
-
-    # Update workspace to target
-    print(f"Updating workspace to {update_target}...")
-    try:
-        result = subprocess.run(
-            ["bb_hg_update", update_target],
-            cwd=workspace_dir,
-            capture_output=True,
-            text=True,
-            timeout=300,
-        )
-
-        if result.returncode != 0:
-            error_msg = result.stderr.strip() or result.stdout.strip()
-            print(f"bb_hg_update failed: {error_msg}", file=sys.stderr)
-            return False
-    except subprocess.TimeoutExpired:
-        print("bb_hg_update timed out", file=sys.stderr)
-        return False
-    except Exception as e:
-        print(f"bb_hg_update error: {e}", file=sys.stderr)
-        return False
-
-    print("Workspace ready")
-    return True
+install_sigterm_handler("agent")
 
 
 def _create_new_changespec(
@@ -354,7 +293,9 @@ def main() -> None:
     # Prepare workspace before running agent (skip for home mode)
     if update_target and not is_home_mode:
         print("=== Preparing Workspace ===")
-        if not _prepare_workspace(workspace_dir, cl_name, update_target):
+        if not prepare_workspace(
+            workspace_dir, cl_name, update_target, backup_suffix="ace"
+        ):
             print("Failed to prepare workspace", file=sys.stderr)
             sys.exit(1)
         print("===========================")
@@ -376,12 +317,12 @@ def main() -> None:
                 project_name = os.path.basename(os.path.dirname(project_file))
 
             # Create artifacts directory using shared timestamp
-            # Convert timestamp from YYmmdd_HHMMSS to YYYYmmddHHMMSS format
-            artifacts_timestamp = f"20{timestamp[:6]}{timestamp[7:]}"
-            artifacts_dir = os.path.expanduser(
-                f"~/.gai/projects/{project_name}/artifacts/ace-run/{artifacts_timestamp}"
+            artifacts_timestamp = convert_timestamp_to_artifacts_format(timestamp)
+            artifacts_dir = create_artifacts_directory(
+                "ace-run",
+                project_name=project_name,
+                timestamp=timestamp,
             )
-            os.makedirs(artifacts_dir, exist_ok=True)
 
             # Write running marker for home mode (no workspace tracking available)
             if is_home_mode:

@@ -30,6 +30,7 @@ from running_field import (
     release_workspace,
 )
 from shared_utils import (
+    create_artifacts_directory,
     ensure_str_content,
     finalize_gai_log,
     generate_workflow_tag,
@@ -240,14 +241,11 @@ class MentorWorkflow(BaseWorkflow):
 
             # Create artifacts directory using the same timestamp as the agent suffix
             # This ensures the Agents tab can find the prompt file
-            # Convert timestamp: YYmmdd_HHMMSS -> YYYYmmddHHMMSS
-            artifacts_timestamp = f"20{self._timestamp[:6]}{self._timestamp[7:]}"
-            project_name = Path(project_file).parent.name
-            artifacts_dir = os.path.expanduser(
-                f"~/.gai/projects/{project_name}/artifacts/"
-                f"mentor-{self.mentor_name}/{artifacts_timestamp}"
+            artifacts_dir = create_artifacts_directory(
+                f"mentor-{self.mentor_name}",
+                project_name=Path(project_file).parent.name,
+                timestamp=self._timestamp,
             )
-            Path(artifacts_dir).mkdir(parents=True, exist_ok=True)
             print_status(f"Created artifacts directory: {artifacts_dir}", "success")
 
             # Initialize the gai.md log

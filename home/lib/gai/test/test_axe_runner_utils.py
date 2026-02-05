@@ -1,11 +1,16 @@
 """Tests for axe_runner_utils module."""
 
+import signal
 from unittest.mock import MagicMock, patch
 
 from axe_runner_utils import (
     _check_for_local_changes,
+    _killed_state,
     create_proposal_from_changes,
     finalize_axe_runner,
+    install_sigterm_handler,
+    prepare_workspace,
+    was_killed,
 )
 
 
@@ -216,3 +221,78 @@ def test_finalize_axe_runner_handles_errors() -> None:
             exit_code=1,
             update_suffix_fn=lambda *args: None,
         )
+
+
+# Tests for was_killed / install_sigterm_handler
+def test_was_killed_default_false() -> None:
+    """Test was_killed returns False by default."""
+    # Reset state
+    _killed_state["killed"] = False
+    assert was_killed() is False
+
+
+def test_install_sigterm_handler_registers_handler() -> None:
+    """Test that install_sigterm_handler registers a SIGTERM handler."""
+    with patch("axe_runner_utils.signal.signal") as mock_signal:
+        install_sigterm_handler("test")
+        mock_signal.assert_called_once()
+        args = mock_signal.call_args[0]
+        assert args[0] == signal.SIGTERM
+
+
+def test_sigterm_handler_sets_killed() -> None:
+    """Test that invoking the captured handler sets was_killed to True."""
+    _killed_state["killed"] = False
+    captured_handler = None
+
+    with patch("axe_runner_utils.signal.signal") as mock_signal:
+        install_sigterm_handler("test")
+        captured_handler = mock_signal.call_args[0][1]
+
+    # Invoke the handler - it calls sys.exit, so we catch SystemExit
+    with patch("axe_runner_utils.sys.exit"):
+        captured_handler(signal.SIGTERM, None)
+
+    assert was_killed() is True
+    # Reset state
+    _killed_state["killed"] = False
+
+
+# Tests for prepare_workspace
+def test_prepare_workspace_clean_fails() -> None:
+    """Test prepare_workspace returns False when clean fails."""
+    with patch("commit_utils.run_bb_hg_clean", return_value=(False, "clean error")):
+        result = prepare_workspace("/workspace", "my_cl", "p4head", backup_suffix="ace")
+        assert result is False
+
+
+def test_prepare_workspace_update_timeout() -> None:
+    """Test prepare_workspace returns False on bb_hg_update timeout."""
+    import subprocess
+
+    with (
+        patch("commit_utils.run_bb_hg_clean", return_value=(True, None)),
+        patch(
+            "axe_runner_utils.subprocess.run",
+            side_effect=subprocess.TimeoutExpired(cmd="bb_hg_update", timeout=300),
+        ),
+    ):
+        result = prepare_workspace("/workspace", "my_cl", "p4head", backup_suffix="ace")
+        assert result is False
+
+
+def test_prepare_workspace_success() -> None:
+    """Test prepare_workspace returns True on success with correct backup suffix."""
+    mock_result = MagicMock()
+    mock_result.returncode = 0
+
+    with (
+        patch("commit_utils.run_bb_hg_clean", return_value=(True, None)) as mock_clean,
+        patch("axe_runner_utils.subprocess.run", return_value=mock_result),
+    ):
+        result = prepare_workspace(
+            "/workspace", "my_cl", "p4head", backup_suffix="workflow"
+        )
+        assert result is True
+        # Verify the backup suffix was used correctly
+        mock_clean.assert_called_once_with("/workspace", "my_cl-workflow")

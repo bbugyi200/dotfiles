@@ -12,6 +12,7 @@ from shared_utils import (
     _finalize_log_file,
     _initialize_log_file,
     apply_section_marker_handling,
+    convert_timestamp_to_artifacts_format,
     create_artifacts_directory,
     ensure_str_content,
     finalize_gai_log,
@@ -354,3 +355,46 @@ def test_apply_section_marker_handling_triple_hash_empty_content() -> None:
     assert result == "###"
     result = apply_section_marker_handling(content, is_at_line_start=False)
     assert result == "\n\n###"
+
+
+# Tests for convert_timestamp_to_artifacts_format
+def test_convert_timestamp_to_artifacts_format() -> None:
+    """Test conversion from YYmmdd_HHMMSS to YYYYmmddHHMMSS format."""
+    assert convert_timestamp_to_artifacts_format("251227_143052") == "20251227143052"
+
+
+def test_convert_timestamp_to_artifacts_format_different_date() -> None:
+    """Test conversion with a different timestamp."""
+    assert convert_timestamp_to_artifacts_format("240101_000000") == "20240101000000"
+
+
+# Tests for create_artifacts_directory with timestamp parameter
+def test_create_artifacts_directory_with_timestamp() -> None:
+    """Test that pre-existing timestamp is used instead of generating new one."""
+    project_name = "test-project-ts"
+    workflow_name = "test-workflow"
+    timestamp = "251227_143052"
+    artifacts_dir = create_artifacts_directory(
+        workflow_name, project_name, timestamp=timestamp
+    )
+
+    # Check that the directory uses the converted timestamp
+    expected_suffix = "20251227143052"
+    assert artifacts_dir.endswith(expected_suffix)
+
+    # Verify format: ~/.gai/projects/<project>/artifacts/<workflow>/<timestamp>
+    expanded_home = str(Path.home())
+    expected_path = (
+        f"{expanded_home}/.gai/projects/{project_name}"
+        f"/artifacts/{workflow_name}/{expected_suffix}"
+    )
+    assert artifacts_dir == expected_path
+
+    # Check directory exists
+    assert Path(artifacts_dir).exists()
+
+    # Cleanup
+    import shutil
+
+    project_dir = Path.home() / ".gai" / "projects" / project_name
+    shutil.rmtree(project_dir)

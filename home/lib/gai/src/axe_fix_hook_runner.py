@@ -29,6 +29,7 @@ from axe_runner_utils import (
 )
 from gai_utils import shorten_path, strip_hook_prefix
 from gemini_wrapper import invoke_agent
+from shared_utils import create_artifacts_directory
 
 
 def _update_hook_suffix(
@@ -134,13 +135,11 @@ def main() -> int:
 
         # Create artifacts directory using same timestamp as agent suffix
         # This ensures the Agents tab can find the prompt file
-        # Convert timestamp: YYmmdd_HHMMSS -> YYYYmmddHHMMSS
-        artifacts_timestamp = f"20{timestamp[:6]}{timestamp[7:]}"
-        project_name = Path(project_file).parent.name
-        artifacts_dir = os.path.expanduser(
-            f"~/.gai/projects/{project_name}/artifacts/fix-hook/{artifacts_timestamp}"
+        artifacts_dir = create_artifacts_directory(
+            "fix-hook",
+            project_name=Path(project_file).parent.name,
+            timestamp=timestamp,
         )
-        Path(artifacts_dir).mkdir(parents=True, exist_ok=True)
 
         # Run the agent
         print("Running fix-hook agent...")
