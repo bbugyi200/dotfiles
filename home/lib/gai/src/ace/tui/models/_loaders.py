@@ -443,6 +443,14 @@ def load_workflow_states() -> list[WorkflowEntry]:
                     # Extract PID if available
                     pid = data.get("pid")
 
+                    # Check PID liveness for active workflows
+                    if (
+                        display_status in ("RUNNING", "WAITING INPUT")
+                        and pid is not None
+                        and not is_process_running(pid)
+                    ):
+                        display_status = "FAILED"
+
                     # Read appears_as_agent flag
                     appears_as_agent = data.get("appears_as_agent", False)
 

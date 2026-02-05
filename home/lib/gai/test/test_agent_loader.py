@@ -517,3 +517,212 @@ def test_workflow_steps_sorted_completed_before_running() -> None:
     assert _get_status_priority("RUNNING") == 1
     assert _get_status_priority("WAITING INPUT") == 1
     assert _get_status_priority("UNKNOWN") == 1  # Unknown defaults to active
+
+
+def test_workflow_dead_pid_marked_as_failed() -> None:
+    """Test that a workflow with dead PID is marked as FAILED."""
+    import json
+    import tempfile
+    from pathlib import Path
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Create workflow_state.json with running status and a PID
+        project_dir = Path(tmpdir) / "myproject"
+        workflow_dir = project_dir / "artifacts" / "workflow-deploy" / "20260101120000"
+        workflow_dir.mkdir(parents=True)
+
+        state = {
+            "workflow_name": "deploy",
+            "status": "running",
+            "pid": 99999,
+            "context": {"cl_name": "test_cl"},
+            "steps": [],
+        }
+        (workflow_dir / "workflow_state.json").write_text(json.dumps(state))
+
+        with (
+            patch(
+                "ace.tui.models._loaders.Path.home",
+                return_value=Path(tmpdir).parent,
+            ),
+            patch(
+                "ace.tui.models._loaders.is_process_running",
+                return_value=False,
+            ),
+        ):
+            # Point projects_dir to our tmpdir
+            from ace.tui.models._loaders import load_workflow_states
+
+            # We need to patch the projects_dir path
+            with patch(
+                "ace.tui.models._loaders.Path.home",
+                return_value=Path(tmpdir),
+            ):
+                # Create the expected directory structure: ~/.gai/projects/<name>
+                gai_projects = Path(tmpdir) / ".gai" / "projects" / "myproject"
+                gai_artifacts = (
+                    gai_projects / "artifacts" / "workflow-deploy" / "20260101120000"
+                )
+                gai_artifacts.mkdir(parents=True)
+                gai_projects_gp = gai_projects / "myproject.gp"
+                gai_projects_gp.touch()
+
+                state_file = gai_artifacts / "workflow_state.json"
+                state_file.write_text(json.dumps(state))
+
+                entries = load_workflow_states()
+
+        assert len(entries) == 1
+        assert entries[0].status == "FAILED"
+
+
+def test_workflow_alive_pid_stays_running() -> None:
+    """Test that a workflow with alive PID stays RUNNING."""
+    import json
+    import tempfile
+    from pathlib import Path
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        gai_projects = Path(tmpdir) / ".gai" / "projects" / "myproject"
+        gai_artifacts = (
+            gai_projects / "artifacts" / "workflow-deploy" / "20260101120000"
+        )
+        gai_artifacts.mkdir(parents=True)
+        (gai_projects / "myproject.gp").touch()
+
+        state = {
+            "workflow_name": "deploy",
+            "status": "running",
+            "pid": 99999,
+            "context": {"cl_name": "test_cl"},
+            "steps": [],
+        }
+        (gai_artifacts / "workflow_state.json").write_text(json.dumps(state))
+
+        with (
+            patch(
+                "ace.tui.models._loaders.Path.home",
+                return_value=Path(tmpdir),
+            ),
+            patch(
+                "ace.tui.models._loaders.is_process_running",
+                return_value=True,
+            ),
+        ):
+            from ace.tui.models._loaders import load_workflow_states
+
+            entries = load_workflow_states()
+
+        assert len(entries) == 1
+        assert entries[0].status == "RUNNING"
+
+
+def test_workflow_waiting_hitl_dead_pid_marked_as_failed() -> None:
+    """Test that a WAITING INPUT workflow with dead PID is marked as FAILED."""
+    import json
+    import tempfile
+    from pathlib import Path
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        gai_projects = Path(tmpdir) / ".gai" / "projects" / "myproject"
+        gai_artifacts = (
+            gai_projects / "artifacts" / "workflow-deploy" / "20260101120000"
+        )
+        gai_artifacts.mkdir(parents=True)
+        (gai_projects / "myproject.gp").touch()
+
+        state = {
+            "workflow_name": "deploy",
+            "status": "waiting_hitl",
+            "pid": 99999,
+            "context": {"cl_name": "test_cl"},
+            "steps": [],
+        }
+        (gai_artifacts / "workflow_state.json").write_text(json.dumps(state))
+
+        with (
+            patch(
+                "ace.tui.models._loaders.Path.home",
+                return_value=Path(tmpdir),
+            ),
+            patch(
+                "ace.tui.models._loaders.is_process_running",
+                return_value=False,
+            ),
+        ):
+            from ace.tui.models._loaders import load_workflow_states
+
+            entries = load_workflow_states()
+
+        assert len(entries) == 1
+        assert entries[0].status == "FAILED"
+
+
+def test_workflow_dedup_propagates_failed_status() -> None:
+    """Test that dedup propagates FAILED status from workflow_state.json."""
+    from ace.tui.models.agent import Agent, AgentType
+
+    # Simulate RUNNING field entry (status=RUNNING, no PID)
+    running_field_agent = Agent(
+        agent_type=AgentType.WORKFLOW,
+        cl_name="test_cl",
+        project_file="/tmp/test.gp",
+        status="RUNNING",
+        start_time=None,
+        workflow="deploy",
+        raw_suffix="20260101120000",
+        workspace_num=5,
+    )
+
+    # Simulate workflow_state.json entry (status=FAILED, with PID)
+    workflow_state_agent = Agent(
+        agent_type=AgentType.WORKFLOW,
+        cl_name="test_cl",
+        project_file="/tmp/test.gp",
+        status="FAILED",
+        start_time=None,
+        workflow="deploy",
+        raw_suffix="20260101120000",
+        pid=121415,
+    )
+
+    with (
+        patch(
+            "ace.tui.models.agent_loader.get_all_project_files",
+            return_value=[],
+        ),
+        patch(
+            "ace.tui.models.agent_loader.find_all_changespecs",
+            return_value=[],
+        ),
+        patch(
+            "ace.tui.models.agent_loader.load_agents_from_running_field",
+            return_value=[running_field_agent],
+        ),
+        patch(
+            "ace.tui.models.agent_loader.load_done_agents",
+            return_value=[],
+        ),
+        patch(
+            "ace.tui.models.agent_loader.load_running_home_agents",
+            return_value=[],
+        ),
+        patch(
+            "ace.tui.models.agent_loader.load_workflow_agents",
+            return_value=[workflow_state_agent],
+        ),
+        patch(
+            "ace.tui.models.agent_loader.load_workflow_agent_steps",
+            return_value=[],
+        ),
+    ):
+        result = load_all_agents()
+
+    # Should be deduplicated to one agent
+    assert len(result) == 1
+    # Status should be FAILED (propagated from workflow_state.json)
+    assert result[0].status == "FAILED"
+    # Workspace num should be preserved from RUNNING field entry
+    assert result[0].workspace_num == 5
+    # PID should be propagated from workflow_state.json
+    assert result[0].pid == 121415

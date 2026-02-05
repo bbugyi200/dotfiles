@@ -201,6 +201,12 @@ def load_all_agents() -> list[Agent]:
                 # Copy cl_name if existing has "unknown"
                 if existing.cl_name == "unknown" and agent.cl_name != "unknown":
                     existing.cl_name = agent.cl_name
+                # Prefer non-RUNNING status from workflow_state.json (accurate status)
+                if existing.status == "RUNNING" and agent.status != "RUNNING":
+                    existing.status = agent.status
+                # Copy PID from workflow_state.json if existing has none
+                if existing.pid is None and agent.pid is not None:
+                    existing.pid = agent.pid
             else:
                 seen_suffixes[agent.raw_suffix] = agent
 

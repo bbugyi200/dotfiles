@@ -307,6 +307,24 @@ class AgentKillingMixin:
             except OSError:
                 pass  # Already notified about kill, state file cleanup is secondary
 
+        # Track dismissal as safety net (ensures agent is filtered even if
+        # workspace release failed or RUNNING field persists)
+        from ...dismissed_agents import save_dismissed_agents
+
+        self._dismissed_agents.add(agent.identity)  # type: ignore[attr-defined]
+
+        # Also dismiss child steps
+        if not agent.is_workflow_child:
+            for step in self._agents:  # type: ignore[attr-defined]
+                if (
+                    step.is_workflow_child
+                    and step.parent_timestamp == agent.raw_suffix
+                    and step.parent_workflow == agent.workflow
+                ):
+                    self._dismissed_agents.add(step.identity)  # type: ignore[attr-defined]
+
+        save_dismissed_agents(self._dismissed_agents)  # type: ignore[attr-defined]
+
     def _dismiss_done_agent(self, agent: Agent) -> None:
         """Dismiss a DONE, REVIVED, or completed workflow agent.
 
