@@ -509,6 +509,95 @@ def set_hook_suffix(
         return False
 
 
+def try_claim_hook_for_fix(
+    project_file: str,
+    changespec_name: str,
+    hook_command: str,
+    entry_id: str,
+    claiming_suffix: str,
+) -> str | None:
+    """Atomically check eligibility and claim a hook for fix-hook workflow.
+
+    This function prevents race conditions by performing the eligibility check
+    and claim in a single atomic operation under the changespec lock.
+
+    Args:
+        project_file: Path to the project file.
+        changespec_name: Name of the ChangeSpec.
+        hook_command: The hook command to claim.
+        entry_id: The entry ID for the failing status line.
+        claiming_suffix: The suffix to set when claiming (e.g., "claiming-{timestamp}").
+
+    Returns:
+        The existing summary if successfully claimed, None if not eligible or already claimed.
+    """
+    from ..changespec import parse_project_file
+
+    try:
+        with changespec_lock(project_file):
+            # Re-read fresh state under lock
+            changespecs = parse_project_file(project_file)
+            cs = next((c for c in changespecs if c.name == changespec_name), None)
+            if not cs or not cs.hooks:
+                return None
+
+            # Find the hook
+            current_hook = next(
+                (h for h in cs.hooks if h.command == hook_command), None
+            )
+            if not current_hook or not current_hook.status_lines:
+                return None
+
+            # Check eligibility under lock
+            sl = current_hook.get_status_line_for_commit_entry(entry_id)
+            if sl is None:
+                return None
+            if sl.status != "FAILED":
+                return None
+            if sl.suffix_type != "summarize_complete":
+                return None  # Already claimed or not ready
+            if not sl.suffix:
+                return None
+
+            existing_summary = sl.suffix
+
+            # Claim by updating suffix - build new hooks list
+            updated_hooks = []
+            for hook in cs.hooks:
+                if hook.command == hook_command and hook.status_lines:
+                    updated_status_lines = []
+                    for status_line in hook.status_lines:
+                        if status_line.commit_entry_num == entry_id:
+                            # Claim with "claiming_fix" suffix_type
+                            updated_status_lines.append(
+                                HookStatusLine(
+                                    commit_entry_num=status_line.commit_entry_num,
+                                    timestamp=status_line.timestamp,
+                                    status=status_line.status,
+                                    duration=status_line.duration,
+                                    suffix=claiming_suffix,
+                                    suffix_type="claiming_fix",
+                                    summary=existing_summary,
+                                )
+                            )
+                        else:
+                            updated_status_lines.append(status_line)
+                    updated_hooks.append(
+                        HookEntry(
+                            command=hook.command,
+                            status_lines=updated_status_lines,
+                        )
+                    )
+                else:
+                    updated_hooks.append(hook)
+
+            write_hooks_unlocked(project_file, changespec_name, updated_hooks)
+            return existing_summary
+
+    except Exception:
+        return None
+
+
 def _apply_clear_hook_suffix(
     hooks: list[HookEntry], hook_command: str
 ) -> tuple[list[HookEntry], bool]:

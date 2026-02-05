@@ -53,6 +53,7 @@ from .queries import (
     has_failing_test_target_hooks,
     rerun_delete_hooks_by_command,
     set_hook_suffix,
+    try_claim_hook_for_fix,
 )
 from .status import (
     entry_has_running_hooks,
@@ -123,6 +124,7 @@ __all__ = [
     "rerun_delete_hooks_by_command",
     "set_hook_suffix",
     "start_hook_background",
+    "try_claim_hook_for_fix",
     "update_changespec_hooks_field",
     "update_hook_status_line_suffix_type",
 ]

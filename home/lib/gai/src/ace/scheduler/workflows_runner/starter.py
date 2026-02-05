@@ -315,20 +315,24 @@ def start_fix_hook_workflow(
         )
         return None
 
-    # Get the summary from the existing status line BEFORE starting the process
-    # (has suffix_type="summarize_complete" after summarize-hook workflow completed)
-    existing_summary: str | None = None
-    sl = hook.get_status_line_for_commit_entry(entry_id)
-    if sl and sl.suffix_type == "summarize_complete":
-        existing_summary = sl.suffix  # The summary is stored as the suffix value
+    # ATOMIC CLAIM: Check eligibility and claim hook under lock to prevent race condition
+    # where two processes both see "summarize_complete" and start fix-hook agents
+    from ...hooks import try_claim_hook_for_fix
 
-    # Refuse to start fix-hook without a summary - this ensures the requirement
-    # that fix-hooks always have summaries from the summarize-hook workflow
+    claiming_suffix = f"claiming-{timestamp}"
+    existing_summary = try_claim_hook_for_fix(
+        changespec.file_path,
+        changespec.name,
+        hook.command,
+        entry_id,
+        claiming_suffix,
+    )
     if not existing_summary:
+        # Either not eligible or already claimed by another process
         log(
-            f"[WS#{workspace_num}] Warning: No summary found for fix-hook on "
-            f"{hook.display_command} ({entry_id}), skipping",
-            "yellow",
+            f"[WS#{workspace_num}] Fix-hook for {hook.display_command} ({entry_id}) "
+            "not eligible or already claimed",
+            "dim",
         )
         return None
 
