@@ -28,8 +28,14 @@ steps:
   # Step 2: Implementation agent executes the plan
   - name: implementation
     prompt: |
-      I need to add a new line chart to the PA troubleshooting page (for Google Ad Manager's FE). We need to make sure
-      we only make one RPC to populate the data for the line chart using the OnePlatform Reporting API.
+      Can you help me improve the PA troubleshooting page by adding a line chart view in addition to the existing pie
+      chart view?
+
+      - We shouldn't show the pie chart and the line chart at the same time ever. So make sure the user has a way to
+        toggle between the two.
+      - This code lives somewhere in the
+        contentads/drx/fe/client/trafficking/private_marketplace/components/deal_check_ui/ directory.
+      - This functionality should all be gated behind the ENABLE_PA_TROUBLESHOOTING_IMPROVEMENTS #feat.
 
       Here is the research gathered from 3 parallel agents:
 
@@ -42,7 +48,7 @@ steps:
       ## Required Dimensions and Metrics
       {{ research.dimensions_metrics._raw }}
 
-      Please create a thorough implementation plan for this feature and then implement it. Use the following directory
-      as a reference for where the new line chart component will live: contentads/drx/fe/client/trafficking/private_marketplace/components/deal_check_ui/
+      ## Your Task
+      Please create a thorough implementation plan for this feature and then implement it.
 
       #commit:line_chart
