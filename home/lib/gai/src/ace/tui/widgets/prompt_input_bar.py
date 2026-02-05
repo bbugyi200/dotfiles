@@ -19,6 +19,7 @@ class _PromptInput(Input):
         ("ctrl+f", "cursor_right", "Forward"),
         ("ctrl+b", "cursor_left", "Backward"),
         ("ctrl+g", "open_editor", "Edit in editor"),
+        ("ctrl+y", "open_workflow_editor", "Workflow YAML"),
         ("ctrl+u", "unix_line_discard", "Clear to start"),
         ("ctrl+e", "end", "End of line"),
     ]
@@ -44,6 +45,15 @@ class _PromptInput(Input):
         while parent is not None:
             if isinstance(parent, PromptInputBar):
                 parent.post_message(PromptInputBar.EditorRequested(self.value))
+                return
+            parent = parent.parent
+
+    def action_open_workflow_editor(self) -> None:
+        """Request to open workflow YAML editor."""
+        parent = self.parent
+        while parent is not None:
+            if isinstance(parent, PromptInputBar):
+                parent.post_message(PromptInputBar.WorkflowEditorRequested())
                 return
             parent = parent.parent
 
@@ -105,6 +115,11 @@ class PromptInputBar(Static):
 
         pass
 
+    class WorkflowEditorRequested(Message):
+        """Message sent when user requests workflow YAML editor (Ctrl+Y)."""
+
+        pass
+
     BINDINGS = [
         ("escape", "cancel", "Cancel"),
     ]
@@ -122,7 +137,7 @@ class PromptInputBar(Static):
         with Horizontal(id="prompt-input-container"):
             yield Label("Prompt: ", id="prompt-label")
             yield _PromptInput(
-                placeholder="Type prompt, '.' for history, '##' for snippets [^G] editor",
+                placeholder="Type prompt, '.' for history, '##' for snippets [^G] editor [^Y] workflow",
                 id="prompt-input",
             )
             yield Label("[Esc] cancel", id="prompt-escape-hint", classes="dim-label")

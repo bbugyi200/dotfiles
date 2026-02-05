@@ -577,6 +577,25 @@ class AgentWorkflowMixin(AgentLaunchMixin):
         project = self._prompt_context.project_name if self._prompt_context else None
         self.push_screen(XPromptSelectModal(project=project), on_xprompt_select)  # type: ignore[attr-defined]
 
+    def on_prompt_input_bar_workflow_editor_requested(self, event: object) -> None:
+        """Handle request to open workflow YAML editor (Ctrl+Y)."""
+        from ..widgets import PromptInputBar
+
+        if not isinstance(event, PromptInputBar.WorkflowEditorRequested):
+            return
+
+        if self._prompt_context is None:
+            return
+
+        result = self._open_workflow_yaml_editor()
+        if result:
+            workflow_name, _file_path = result
+            self._finish_agent_launch(f"#{workflow_name}")
+        else:
+            self.notify("No workflow from editor - cancelled", severity="warning")  # type: ignore[attr-defined]
+            self._unmount_prompt_bar()
+            self._prompt_context = None
+
     def _open_editor_for_agent_prompt(self, initial_content: str = "") -> str | None:
         """Suspend TUI and open editor for prompt input.
 
@@ -615,6 +634,89 @@ class AgentWorkflowMixin(AgentLaunchMixin):
                     pass
 
             return content if content else None
+
+        with self.suspend():  # type: ignore[attr-defined]
+            return run_editor()
+
+    def _open_workflow_yaml_editor(self) -> tuple[str, str] | None:
+        """Suspend TUI and open editor for ad-hoc workflow YAML.
+
+        Creates a YAML template, opens it in the user's editor, then saves the
+        result to ~/.xprompts/ for execution.
+
+        Returns:
+            A (workflow_name, file_path) tuple, or None if cancelled/invalid.
+        """
+        import subprocess
+        import tempfile
+
+        import yaml  # type: ignore[import-untyped]
+        from gai_utils import generate_timestamp
+
+        timestamp = generate_timestamp()
+        default_name = f"adhoc_{timestamp}"
+        template = (
+            f"name: {default_name}\n"
+            "\n"
+            "steps:\n"
+            "  - name: main\n"
+            "    prompt: |\n"
+            "      <your prompt here>\n"
+        )
+
+        def run_editor() -> tuple[str, str] | None:
+            fd, temp_path = tempfile.mkstemp(suffix=".yml", prefix="gai_ace_workflow_")
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(template)
+
+            editor = os.environ.get("EDITOR", "nvim")
+            result = subprocess.run([editor, temp_path], check=False)
+            if result.returncode != 0:
+                try:
+                    os.unlink(temp_path)
+                except OSError:
+                    pass
+                return None
+
+            try:
+                with open(temp_path, encoding="utf-8") as f:
+                    content = f.read()
+            finally:
+                try:
+                    os.unlink(temp_path)
+                except OSError:
+                    pass
+
+            stripped = content.strip()
+            if not stripped:
+                return None
+
+            # Parse YAML to extract workflow name
+            try:
+                data = yaml.safe_load(content)
+            except yaml.YAMLError:
+                return None
+
+            if not isinstance(data, dict):
+                return None
+
+            workflow_name = str(data.get("name", default_name))
+
+            # Save to ~/.xprompts/
+            xprompts_dir = os.path.expanduser("~/.xprompts")
+            os.makedirs(xprompts_dir, exist_ok=True)
+
+            dest_path = os.path.join(xprompts_dir, f"{workflow_name}.yml")
+            if os.path.exists(dest_path):
+                # Append timestamp to avoid collision
+                dest_path = os.path.join(
+                    xprompts_dir, f"{workflow_name}_{timestamp}.yml"
+                )
+
+            with open(dest_path, "w", encoding="utf-8") as f:
+                f.write(content)
+
+            return (workflow_name, dest_path)
 
         with self.suspend():  # type: ignore[attr-defined]
             return run_editor()
