@@ -19,9 +19,14 @@ from ace.hooks import format_duration  # noqa: E402
 from change_actions import execute_change_action, prompt_for_change_action  # noqa: E402
 from chat_history import save_chat_history  # noqa: E402
 from gemini_wrapper import invoke_agent  # noqa: E402
+from main.query_handler import (  # noqa: E402
+    execute_standalone_steps,
+    expand_embedded_workflows_in_query,
+)
 from rich.console import Console  # noqa: E402
 from running_field import release_workspace  # noqa: E402
 from shared_utils import ensure_str_content  # noqa: E402
+from xprompt import process_xprompt_references  # noqa: E402
 
 # Global flag to track if we received SIGTERM
 _killed = False
@@ -390,9 +395,17 @@ def main() -> None:
                 with open(running_marker_path, "w", encoding="utf-8") as f:
                     json.dump(running_marker, f, indent=2)
 
+            # Expand xprompts first (e.g., #p → #propose(note=''))
+            prompt = process_xprompt_references(prompt)
+
+            # Expand embedded workflows (e.g., #propose → prompt_part content)
+            expanded_prompt, post_workflows = expand_embedded_workflows_in_query(
+                prompt, artifacts_dir
+            )
+
             # Run the agent
             ai_result = invoke_agent(
-                prompt,
+                expanded_prompt,
                 agent_type="ace-run",
                 model_size="big",
                 artifacts_dir=artifacts_dir,
@@ -403,12 +416,23 @@ def main() -> None:
             # Prepare and save chat history
             response_content = ensure_str_content(ai_result.content)
             saved_path = save_chat_history(
-                prompt=prompt,
+                prompt=expanded_prompt,
                 response=response_content,
                 workflow="ace-run",
                 timestamp=timestamp,
             )
             print(f"\nChat history saved to: {saved_path}")
+
+            # Execute post-steps from embedded workflows
+            for post_steps, embedded_context in post_workflows:
+                embedded_context["_prompt"] = expanded_prompt
+                embedded_context["_response"] = response_content
+                execute_standalone_steps(
+                    post_steps,
+                    embedded_context,
+                    "ace-run-embedded",
+                    artifacts_dir,
+                )
 
             # Check for local changes (skip for home mode - not version-controlled)
             if is_home_mode:
