@@ -233,7 +233,12 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
                     else (step.python if step_type == "python" else None)
                 )
                 self._save_prompt_step_marker(
-                    step.name, step_state, step_type, step_source, i
+                    step.name,
+                    step_state,
+                    step_type,
+                    step_source,
+                    i,
+                    hidden=step.hidden,
                 )
 
                 # Notify step complete
@@ -349,6 +354,7 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
         parent_total_steps: int | None = None,
         is_pre_prompt_step: bool = False,
         diff_path: str | None = None,
+        hidden: bool = False,
     ) -> None:
         """Save a marker file for prompt steps to track them in the TUI.
 
@@ -377,11 +383,7 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
             "total_steps": len(self.workflow.steps),
             "parent_step_index": parent_step_index,
             "parent_total_steps": parent_total_steps,
-            "hidden": (
-                self.workflow.steps[step_index].hidden
-                if step_index is not None
-                else False
-            ),
+            "hidden": hidden,
             "is_pre_prompt_step": is_pre_prompt_step,
             "diff_path": diff_path,
         }

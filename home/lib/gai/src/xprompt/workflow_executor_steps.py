@@ -89,6 +89,7 @@ class StepMixin:
         parent_total_steps: int | None = None,
         is_pre_prompt_step: bool = False,
         diff_path: str | None = None,
+        hidden: bool = False,
     ) -> None:
         """Save a marker file for prompt steps to track them in the TUI."""
         raise NotImplementedError
@@ -205,6 +206,7 @@ class StepMixin:
                         parent_step_context.total_steps if parent_step_context else None
                     ),
                     is_pre_prompt_step=is_pre_prompt_step,
+                    hidden=step.hidden,
                 )
 
                 # Notify step complete
@@ -393,7 +395,7 @@ class StepMixin:
 
         # Save initial marker to show step is running in TUI
         step_state.status = StepStatus.IN_PROGRESS
-        self._save_prompt_step_marker(step.name, step_state)
+        self._save_prompt_step_marker(step.name, step_state, hidden=step.hidden)
 
         # Invoke agent
         # Extract base workflow name (without project prefix) to avoid slashes in filenames
@@ -430,7 +432,7 @@ class StepMixin:
             step_state.status = StepStatus.WAITING_HITL
             self.state.status = "waiting_hitl"
             self._save_state()
-            self._save_prompt_step_marker(step.name, step_state)
+            self._save_prompt_step_marker(step.name, step_state, hidden=step.hidden)
 
             result = self.hitl_handler.prompt(
                 step.name, "prompt", output, has_output=step.output is not None
@@ -466,7 +468,9 @@ class StepMixin:
                 diff_path = None
 
         # Save prompt step marker for TUI visibility
-        self._save_prompt_step_marker(step.name, step_state, diff_path=diff_path)
+        self._save_prompt_step_marker(
+            step.name, step_state, diff_path=diff_path, hidden=step.hidden
+        )
 
         # Execute post-steps from embedded workflows
         for _, post_steps, embedded_context in embedded_workflows:
@@ -555,7 +559,11 @@ class StepMixin:
             self.state.status = "waiting_hitl"
             self._save_state()
             self._save_prompt_step_marker(
-                step.name, step_state, step_type="bash", step_source=rendered_command
+                step.name,
+                step_state,
+                step_type="bash",
+                step_source=rendered_command,
+                hidden=step.hidden,
             )
 
             result_hitl = self.hitl_handler.prompt(
@@ -576,7 +584,11 @@ class StepMixin:
         # Mark step completed after HITL
         step_state.status = StepStatus.COMPLETED
         self._save_prompt_step_marker(
-            step.name, step_state, step_type="bash", step_source=rendered_command
+            step.name,
+            step_state,
+            step_type="bash",
+            step_source=rendered_command,
+            hidden=step.hidden,
         )
 
         # Store output in context under step name
@@ -651,7 +663,11 @@ class StepMixin:
             self.state.status = "waiting_hitl"
             self._save_state()
             self._save_prompt_step_marker(
-                step.name, step_state, step_type="python", step_source=rendered_code
+                step.name,
+                step_state,
+                step_type="python",
+                step_source=rendered_code,
+                hidden=step.hidden,
             )
 
             result_hitl = self.hitl_handler.prompt(
@@ -672,7 +688,11 @@ class StepMixin:
         # Mark step completed after HITL
         step_state.status = StepStatus.COMPLETED
         self._save_prompt_step_marker(
-            step.name, step_state, step_type="python", step_source=rendered_code
+            step.name,
+            step_state,
+            step_type="python",
+            step_source=rendered_code,
+            hidden=step.hidden,
         )
 
         # Store output in context under step name
