@@ -4,6 +4,9 @@ input:
     type: word
 
 steps:
+  - name: inject
+    prompt_part: ""
+
   - name: save_response
     hidden: true
     python: |
