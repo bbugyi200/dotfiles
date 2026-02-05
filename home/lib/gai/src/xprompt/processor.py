@@ -4,6 +4,7 @@ import re
 import sys
 
 from rich_utils import print_status
+from shared_utils import apply_section_marker_handling
 
 from ._exceptions import XPromptError
 from ._jinja import (
@@ -172,30 +173,11 @@ def process_xprompt_references(prompt: str) -> str:
 
                 expanded = _expand_single_xprompt(xprompt, positional_args, named_args)
 
-                # Handle section xprompts (content starting with ### or ---)
-                # Prepend \n\n when the xprompt is not at the start of a line
-                # Also strip "---" marker lines (they just signal newline handling)
-                starts_with_section_marker = expanded.startswith(
-                    "###"
-                ) or expanded.startswith("---")
-                has_hr_marker = (
-                    expanded.startswith("---\n") or expanded.strip() == "---"
+                # Handle section markers (### or ---) with proper line positioning
+                is_at_line_start = (
+                    match.start() == 0 or prompt[match.start() - 1] == "\n"
                 )
-
-                if starts_with_section_marker:
-                    is_at_line_start = (
-                        match.start() == 0 or prompt[match.start() - 1] == "\n"
-                    )
-                    # Strip --- marker if present (it's just a signal, not content)
-                    if has_hr_marker:
-                        if expanded.strip() == "---":
-                            expanded = ""
-                        else:
-                            # Remove "---\n" and trailing newlines
-                            expanded = expanded[4:].lstrip("\n")
-                    # Prepend \n\n if not at line start and there's content
-                    if not is_at_line_start and expanded:
-                        expanded = "\n\n" + expanded
+                expanded = apply_section_marker_handling(expanded, is_at_line_start)
 
                 prompt = prompt[: match.start()] + expanded + prompt[match_end:]
         except XPromptError as e:

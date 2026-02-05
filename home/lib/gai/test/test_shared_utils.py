@@ -11,6 +11,7 @@ from gai_utils import run_shell_command
 from shared_utils import (
     _finalize_log_file,
     _initialize_log_file,
+    apply_section_marker_handling,
     create_artifacts_directory,
     ensure_str_content,
     finalize_gai_log,
@@ -277,3 +278,79 @@ def test_finalize_log_file_error(mock_print_status: MagicMock) -> None:
     mock_print_status.assert_called_once()
     call_msg = mock_print_status.call_args[0][0]
     assert "Failed" in call_msg
+
+
+# Tests for apply_section_marker_handling
+def test_apply_section_marker_handling_no_marker() -> None:
+    """Test that content without section markers is returned unchanged."""
+    content = "Regular content without markers"
+    assert apply_section_marker_handling(content, True) == content
+    assert apply_section_marker_handling(content, False) == content
+
+
+def test_apply_section_marker_handling_triple_hash_at_line_start() -> None:
+    """Test ### marker at line start is returned unchanged."""
+    content = "### Section Header\nContent here"
+    result = apply_section_marker_handling(content, is_at_line_start=True)
+    assert result == content
+
+
+def test_apply_section_marker_handling_triple_hash_not_at_line_start() -> None:
+    """Test ### marker not at line start gets \\n\\n prepended."""
+    content = "### Section Header\nContent here"
+    result = apply_section_marker_handling(content, is_at_line_start=False)
+    assert result == "\n\n### Section Header\nContent here"
+
+
+def test_apply_section_marker_handling_hr_marker_only() -> None:
+    """Test standalone --- marker is stripped entirely."""
+    content = "---"
+    result = apply_section_marker_handling(content, is_at_line_start=True)
+    assert result == ""
+
+
+def test_apply_section_marker_handling_hr_marker_only_not_at_line_start() -> None:
+    """Test standalone --- marker not at line start is stripped (no newlines added for empty)."""
+    content = "---"
+    result = apply_section_marker_handling(content, is_at_line_start=False)
+    assert result == ""
+
+
+def test_apply_section_marker_handling_hr_marker_with_content() -> None:
+    """Test --- marker with following content strips marker and leading newlines."""
+    content = "---\nActual content"
+    result = apply_section_marker_handling(content, is_at_line_start=True)
+    assert result == "Actual content"
+
+
+def test_apply_section_marker_handling_hr_marker_with_content_not_at_line_start() -> (
+    None
+):
+    """Test --- marker with content not at line start strips marker and prepends \\n\\n."""
+    content = "---\nActual content"
+    result = apply_section_marker_handling(content, is_at_line_start=False)
+    assert result == "\n\nActual content"
+
+
+def test_apply_section_marker_handling_hr_marker_strips_leading_newlines() -> None:
+    """Test --- marker strips both marker and leading newlines from content."""
+    content = "---\n\n\nContent after newlines"
+    result = apply_section_marker_handling(content, is_at_line_start=True)
+    assert result == "Content after newlines"
+
+
+def test_apply_section_marker_handling_hr_with_leading_whitespace() -> None:
+    """Test --- with leading whitespace is NOT treated as a section marker."""
+    content = "  ---  "
+    # Content doesn't start with --- due to leading whitespace, so returned unchanged
+    result = apply_section_marker_handling(content, is_at_line_start=True)
+    assert result == "  ---  "
+
+
+def test_apply_section_marker_handling_triple_hash_empty_content() -> None:
+    """Test that ### at start with no following content works correctly."""
+    content = "###"
+    result = apply_section_marker_handling(content, is_at_line_start=True)
+    assert result == "###"
+    result = apply_section_marker_handling(content, is_at_line_start=False)
+    assert result == "\n\n###"

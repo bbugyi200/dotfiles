@@ -58,6 +58,45 @@ class WorkflowContext:
     workflow_name: str
 
 
+def apply_section_marker_handling(content: str, is_at_line_start: bool) -> str:
+    """Apply section marker handling for content starting with ### or ---.
+
+    For content starting with section markers (### or ---):
+    - Prepends \\n\\n when not at the start of a line (for proper spacing)
+    - Strips "---" marker lines (they're just signals, not content)
+
+    The --- marker serves as a signal that triggers newline handling
+    without appearing in the final output.
+
+    Args:
+        content: The content to process
+        is_at_line_start: Whether the content appears at the start of a line
+
+    Returns:
+        The processed content with section marker handling applied
+    """
+    starts_with_section_marker = content.startswith("###") or content.startswith("---")
+
+    if not starts_with_section_marker:
+        return content
+
+    has_hr_marker = content.startswith("---\n") or content.strip() == "---"
+
+    # Strip --- marker if present (it's just a signal, not content)
+    if has_hr_marker:
+        if content.strip() == "---":
+            content = ""
+        else:
+            # Remove "---\n" and any leading newlines after it
+            content = content[4:].lstrip("\n")
+
+    # Prepend \n\n if not at line start and there's content
+    if not is_at_line_start and content:
+        content = "\n\n" + content
+
+    return content
+
+
 def ensure_str_content(content: str | list[str | dict[Any, Any]]) -> str:
     """Ensure AIMessage content is a string.
 

@@ -3,6 +3,8 @@
 import re
 from typing import TYPE_CHECKING, Any
 
+from shared_utils import apply_section_marker_handling
+
 from xprompt.workflow_executor_types import HITLHandler
 from xprompt.workflow_executor_utils import render_template
 from xprompt.workflow_models import (
@@ -295,31 +297,13 @@ class EmbeddedWorkflowMixin:
                     prompt_part_content, embedded_context
                 )
 
-                # Handle section content (starting with ### or ---)
-                # Prepend \n\n when the workflow ref is not at the start of a line
-                # Also strip "---" marker lines (they just signal newline handling)
-                starts_with_section_marker = prompt_part_content.startswith(
-                    "###"
-                ) or prompt_part_content.startswith("---")
-                has_hr_marker = (
-                    prompt_part_content.startswith("---\n")
-                    or prompt_part_content.strip() == "---"
+                # Handle section markers (### or ---) with proper line positioning
+                is_at_line_start = (
+                    match.start() == 0 or prompt[match.start() - 1] == "\n"
                 )
-
-                if starts_with_section_marker:
-                    is_at_line_start = (
-                        match.start() == 0 or prompt[match.start() - 1] == "\n"
-                    )
-                    # Strip --- marker if present (it's just a signal, not content)
-                    if has_hr_marker:
-                        if prompt_part_content.strip() == "---":
-                            prompt_part_content = ""
-                        else:
-                            # Remove "---\n" and trailing newlines
-                            prompt_part_content = prompt_part_content[4:].lstrip("\n")
-                    # Prepend \n\n if not at line start and there's content
-                    if not is_at_line_start and prompt_part_content:
-                        prompt_part_content = "\n\n" + prompt_part_content
+                prompt_part_content = apply_section_marker_handling(
+                    prompt_part_content, is_at_line_start
+                )
 
             # Replace the workflow reference with the prompt_part content
             prompt = prompt[: match.start()] + prompt_part_content + prompt[match_end:]
