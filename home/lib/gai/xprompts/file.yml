@@ -5,24 +5,32 @@ input:
 
 steps:
   - name: inject
-    prompt_part: ""
+    prompt_part: |
+      ---
+      FILE OUTPUT REQUIREMENTS:
 
-  - name: save_response
+      You MUST write your complete response (summary, research, plan, etc.) to the
+      following file:
+
+        bb/gai/file/{{ name }}.md
+
+      Create the directory `bb/gai/file/` if it does not already exist.
+
+      IMPORTANT:
+      - The file MUST contain your full response as markdown
+      - Do NOT skip writing to the file — this is a required step
+
+  - name: verify_file
     hidden: true
-    python: |
-      import os
-
-      name = {{ name | tojson }}
-      response = {{ _response | tojson }}
-
-      # Create the file directory if it doesn't exist
-      file_dir = "bb/gai/file"
-      os.makedirs(file_dir, exist_ok=True)
-
-      # Write the response as plain markdown
-      file_path = os.path.join(file_dir, f"{name}.md")
-      with open(file_path, 'w') as f:
-          f.write(response)
-
-      print(f"file_path={file_path}")
+    bash: |
+      file_path="bb/gai/file/{{ name }}.md"
+      if [ ! -f "$file_path" ]; then
+        echo "ERROR: Expected file '$file_path' was not created by the agent" >&2
+        exit 1
+      fi
+      if [ ! -s "$file_path" ]; then
+        echo "ERROR: File '$file_path' exists but is empty" >&2
+        exit 1
+      fi
+      echo "file_path=$file_path"
     output: { file_path: path }
