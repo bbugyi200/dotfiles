@@ -237,9 +237,21 @@ def load_all_agents() -> list[Agent]:
                     for step in workflow_agent_steps
                     if step.parent_timestamp == agent.raw_suffix
                 ]
-                # Sort by step_index (None values go last)
+                # Sort by workflow position: main steps first, then substeps
                 matching_steps.sort(
-                    key=lambda s: (s.step_index is None, s.step_index or 0)
+                    key=lambda s: (
+                        # Primary: position in workflow (parent_step_index for
+                        # substeps, step_index for main steps)
+                        (
+                            s.parent_step_index
+                            if s.parent_step_index is not None
+                            else (s.step_index or 0)
+                        ),
+                        # Secondary: substeps (1) come after main steps (0)
+                        1 if s.parent_step_index is not None else 0,
+                        # Tertiary: order within substeps
+                        s.step_index or 0,
+                    )
                 )
                 result.extend(matching_steps)
         return result
