@@ -1,32 +1,32 @@
 name: pat/one_line_chart_rpc
 
+xprompts:
+  - research: |
+      I need to add a new line chart to the PA troubleshooting page on (for Google Ad Manager's FE). We need to make
+      sure we only make one RPC to populate the data for the line chart and we have decided to use the OnePlatform
+      Reporting API to accomplish this.
+
 steps:
   # Step 1: Run 3 research agents in parallel
   - name: research
     parallel:
       - name: api_research
         prompt: |
-          I need to add a new line chart to the PA troubleshooting page on (for Google Ad Manager's FE). We need to make sure
-          we only make one RPC to populate the data for the line chart and we have decided to use the OnePlatform Reporting
-          API to accomplish this. Can you help me do some research on how the OnePlatform Reporting API works?
+          #research Can you help me do some research on how the OnePlatform Reporting API works?
 
           #file(name=api_research)
 
       - name: prior_art
         prompt: |
-          I need to add a new line chart to the PA troubleshooting page on (for Google Ad Manager's FE). We need to make sure
-          we only make one RPC to populate the data for the line chart and we have decided to use the OnePlatform Reporting
-          API to accomplish this. Can you help me do some research on prior art in the form of other Dart clients that are
-          currently using the OnePlatform Reporting API? Bonus points if you can find any that are using the dimensions we
-          need!
+          #research Can you help me do some research on prior art in the form of other Dart clients that are
+          currently using the OnePlatform Reporting API? Bonus points if you can find any that are using the dimensions
+          we need!
 
           #file(name=prior_art)
 
       - name: dimensions_metrics
         prompt: |
-          I need to add a new line chart to the PA troubleshooting page on (for Google Ad Manager's FE). We need to make sure
-          we only make one RPC to populate the data for the line chart and we have decided to use the OnePlatform Reporting
-          API to accomplish this. Can you help me do some research on what specific dimensions and metrics we need to query
+          #research Can you help me do some research on what specific dimensions and metrics we need to query
           from the OnePlatform Reporting API?
 
           #file(name=dimensions_metrics)
@@ -53,8 +53,5 @@ steps:
 
       ## Required Dimensions and Metrics
       @bb/gai/file/dimensions_metrics.md
-
-      ## Your Task
-      Please create a thorough implementation plan for this feature and then implement it.
 
       #commit:line_chart
