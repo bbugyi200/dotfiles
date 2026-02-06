@@ -35,7 +35,7 @@ Refer to the following files for guidance:
    - `parent`: (optional) The name of the parent CL if this builds on another split CL
 
 <!-- prettier-ignore -->
-{% if should_chain_cls -%}
+{%- if should_chain_cls -%}
 3. **CREATE A CHAIN OF CLS**: Plan the split in such a way that each CL depends on the previous one (i.e. uses the
    previous CL as its parent).
 {% else -%}
