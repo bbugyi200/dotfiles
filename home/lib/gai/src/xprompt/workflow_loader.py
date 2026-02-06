@@ -479,12 +479,6 @@ def _load_workflow_from_file(file_path: Path) -> Workflow | None:
         prefixed_xprompts[prefixed_name] = xprompt
     parsed_xprompts = prefixed_xprompts
 
-    # Parse exports
-    exports_data = data.get("exports")
-    exports: dict[str, str] = {}
-    if isinstance(exports_data, dict):
-        exports = {str(k): str(v) for k, v in exports_data.items()}
-
     # Parse steps
     steps_data = data.get("steps", [])
     if not isinstance(steps_data, list):
@@ -531,7 +525,6 @@ def _load_workflow_from_file(file_path: Path) -> Workflow | None:
         steps=steps,
         source_path=str(file_path),
         xprompts=parsed_xprompts,
-        exports=exports,
     )
 
     # Validate variable usage
@@ -650,7 +643,6 @@ def _load_workflows_from_project(project: str) -> dict[str, Workflow]:
                     steps=workflow.steps,
                     source_path=workflow.source_path,
                     xprompts=workflow.xprompts,
-                    exports=workflow.exports,
                 )
 
     for yaml_file in project_dir.glob("*.yaml"):
@@ -668,7 +660,6 @@ def _load_workflows_from_project(project: str) -> dict[str, Workflow]:
                         steps=workflow.steps,
                         source_path=workflow.source_path,
                         xprompts=workflow.xprompts,
-                        exports=workflow.exports,
                     )
     return workflows
 

@@ -445,10 +445,10 @@ def test_pre_expand_parallel_collects_post_steps() -> None:
 
     # Should have collected 2 sets of post-steps (one per embedded ref)
     assert len(collected) == 2
-    for info in collected:
-        assert len(info.post_steps) == 1
-        assert info.post_steps[0].name == "verify"
-        assert "name" in info.context
+    for _pre_steps, post_steps, ctx in collected:
+        assert len(post_steps) == 1
+        assert post_steps[0].name == "verify"
+        assert "name" in ctx
 
 
 def test_pre_expand_parallel_preserves_non_prompt_steps() -> None:

@@ -120,7 +120,6 @@ class Workflow:
     steps: list[WorkflowStep] = field(default_factory=list)
     source_path: str | None = None
     xprompts: dict[str, XPrompt] = field(default_factory=dict)
-    exports: dict[str, str] = field(default_factory=dict)
 
     def get_input_by_name(self, name: str) -> InputArg | None:
         """Get an input argument definition by name.
