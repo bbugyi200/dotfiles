@@ -59,6 +59,7 @@ function M.get_markdown_snippets()
 	local i = ls.insert_node
 	local t = ls.text_node
 	local fmt = require("luasnip.extras.fmt").fmt
+	local fmta = require("luasnip.extras.fmt").fmta
 	local editor_tool_name = "{insert_edit_into_file}"
 
 	return {
@@ -237,6 +238,39 @@ function M.get_markdown_snippets()
 		s(
 			{ trig = "tryy", desc = "Try again now that you have access to some more files." },
 			{ t("Try again now that you have access to some more files.") }
+		),
+		-- SNIPPET: %if
+		s(
+			{ trig = "%if", desc = "Jinja2 if block" },
+			fmta(
+				[[
+      {%% if <cond> %%}
+      <body>
+      {%% endif %%}
+      ]],
+				{
+					cond = i(1),
+					body = d(2, M.get_visual()),
+				}
+			)
+		),
+		-- SNIPPET: %ife
+		s(
+			{ trig = "%ife", desc = "Jinja2 if-else block" },
+			fmta(
+				[[
+      {%% if <cond> %%}
+      <if_body>
+      {%% else %%}
+      <else_body>
+      {%% endif %%}
+      ]],
+				{
+					cond = i(1),
+					if_body = i(2),
+					else_body = d(3, M.get_visual()),
+				}
+			)
 		),
 		-- SNIPPET: tst
 		s({ trig = "tst", desc = "Test failure" }, {
