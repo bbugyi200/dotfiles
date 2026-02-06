@@ -202,7 +202,9 @@ function M.get_markdown_snippets()
 			{ t("Can you help me diagnose the root cause of this issue and fix it?") }
 		),
 		-- SNIPPET: gsn
-		s({ trig = "gsn", desc = "`gai ace` snapshot" }, { t("(see the `gai ace` snapshot below)") }),
+		s({ trig = "gsn", desc = "`gai ace` snapshot" }, { t("`gai ace` snapshot") }),
+		-- SNIPPET: gsna
+		s({ trig = "gsna", desc = "`gai ace` snapshot (in parens)" }, { t("(see the `gai ace` snapshot below)") }),
 		-- SNIPPET: gta
 		s(
 			{ trig = "gta", desc = "the <tab> tab of the `gai ace` TUI" },
