@@ -2,7 +2,8 @@ input: { create_plan: { type: bool, default: false } }
 xprompts:
   one_op_rpc: |
     We need to make sure we only make one RPC to populate the data for the line chart and we have decided to use the
-    OnePlatform Reporting API to accomplish this.
+    OnePlatform Reporting API (in particular, the FetchReport method defined in the
+    google/ads/admanager/main/reporting/report_service.proto file) to accomplish this.
   file:
     input: { fname: word, query: text }
     content: |
@@ -11,27 +12,21 @@ xprompts:
       #file:{{ fname }}
   research: |
     Some research has already been done to help you with this task. Review these files before deciding on your implementation approach:
-      - OnePlatform Reporting API Research: @bb/gai/file/api_research.md
       - Prior Art (Existing Dart Clients): @bb/gai/file/prior_art.md
       - Required Dimensions and Metrics: @bb/gai/file/dimensions_metrics.md
 steps:
   # Step 1: Run 3 research agents in parallel
   - name: research
     parallel:
-      - name: api_research
-        prompt: |
-          #_file(api_research): Can you help me do some research on how the OnePlatform Reporting API works?
-
       - name: prior_art
         prompt: |
           #_file(prior_art): Can you help me do some research on prior art in the form of other Dart clients that are
-          currently using the OnePlatform Reporting API? Bonus points if you can find any that are using the dimensions
-          we need!
+          currently using the OnePlatform Reporting API's FetchReport method?
 
       - name: dimensions_metrics
         prompt: |
           #_file(dimensions_metrics): Can you help me do some research on what specific dimensions and metrics we need
-          to query from the OnePlatform Reporting API?
+          to query from Reporting?
 
   # Step 2: Plan agent creates an implementation plan
   - name: plan
