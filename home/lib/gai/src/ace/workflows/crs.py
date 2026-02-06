@@ -40,7 +40,7 @@ def run_crs_workflow(
         console: Rich console for output
         comments_file: Optional path to comments JSON file from COMMENTS field.
             If provided, use this file instead of running critique_comments.
-        comment_reviewer: The reviewer type for the COMMENTS entry (e.g., "critique" or "critique:me").
+        comment_reviewer: The reviewer type for the COMMENTS entry (e.g., "critique").
             Used to update the correct suffix when CRS completes.
 
     Returns:

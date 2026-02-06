@@ -20,7 +20,6 @@ from ..changespec import ChangeSpec, CommentEntry, is_plain_suffix
 from ..cl_status import is_parent_submitted
 from ..comments import (
     get_comments_file_path,
-    is_timestamp_suffix,
     remove_comment_entry,
     update_changespec_comments_field,
 )
@@ -30,12 +29,11 @@ from ..sync_cache import update_last_checked
 LogCallback = Callable[[str, str], None]
 
 # Check type - must be defined before constants
-CheckType = Literal["cl_submitted", "reviewer_comments", "author_comments"]
+CheckType = Literal["cl_submitted", "reviewer_comments"]
 
 # Check type constants
 CHECK_TYPE_CL_SUBMITTED: CheckType = "cl_submitted"
 CHECK_TYPE_REVIEWER_COMMENTS: CheckType = "reviewer_comments"
-CHECK_TYPE_AUTHOR_COMMENTS: CheckType = "author_comments"
 
 # Completion marker (consistent with hooks/workflows)
 CHECK_COMPLETE_MARKER = "===CHECK_COMPLETE=== "
@@ -225,63 +223,6 @@ exit $exit_code
         return None
 
 
-def start_author_comments_check(
-    changespec: ChangeSpec,
-    workspace_dir: str,
-    log: LogCallback,
-) -> str | None:
-    """Start critique_comments --me check for author comments as a background process.
-
-    Args:
-        changespec: The ChangeSpec to check.
-        workspace_dir: The workspace directory to run the command in.
-        log: Logging callback.
-
-    Returns:
-        Update message if check was started, None if failed.
-    """
-    timestamp = generate_timestamp()
-    output_path = _get_check_output_path(
-        changespec.name, CHECK_TYPE_AUTHOR_COMMENTS, timestamp
-    )
-
-    # Create wrapper script - captures output and writes completion marker
-    wrapper_script = f"""#!/bin/bash
-critique_comments --me {changespec.name} 2>&1
-exit_code=$?
-echo ""
-echo "{CHECK_COMPLETE_MARKER}EXIT_CODE: $exit_code"
-exit $exit_code
-"""
-
-    # Write wrapper script to temp file
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".sh", delete=False
-    ) as wrapper_file:
-        wrapper_file.write(wrapper_script)
-        wrapper_path = wrapper_file.name
-
-    os.chmod(wrapper_path, 0o755)
-
-    # Start as background process
-    try:
-        with open(output_path, "w") as output_file:
-            subprocess.Popen(
-                [wrapper_path],
-                cwd=workspace_dir,
-                stdout=output_file,
-                stderr=subprocess.STDOUT,
-                start_new_session=True,
-            )
-        return "Started author_comments check"
-    except Exception as e:
-        log(
-            f"Failed to start author_comments check for {changespec.name}: {e}",
-            "red",
-        )
-        return None
-
-
 def _get_pending_checks(changespec: ChangeSpec) -> list[_PendingCheck]:
     """Get all pending background checks for a ChangeSpec.
 
@@ -317,7 +258,6 @@ def _get_pending_checks(changespec: ChangeSpec) -> list[_PendingCheck]:
             if check_type_str in (
                 CHECK_TYPE_CL_SUBMITTED,
                 CHECK_TYPE_REVIEWER_COMMENTS,
-                CHECK_TYPE_AUTHOR_COMMENTS,
             ):
                 pending.append(
                     _PendingCheck(
@@ -494,102 +434,6 @@ def _handle_reviewer_comments_completion(
     return updates
 
 
-def _handle_author_comments_completion(
-    changespec: ChangeSpec,
-    exit_code: int,
-    content: str,
-    log: LogCallback,
-) -> list[str]:
-    """Handle completed critique_comments --me check for author comments.
-
-    Args:
-        changespec: The ChangeSpec to update.
-        exit_code: The exit code from the check.
-        content: The command output (comment content).
-        log: Logging callback.
-
-    Returns:
-        List of update messages.
-    """
-    updates: list[str] = []
-
-    # Check if command failed
-    if exit_code != 0:
-        meaning = _CRITIQUE_COMMENTS_EXIT_CODES.get(exit_code, "unknown error")
-        log(
-            f"critique_comments --me failed for {changespec.name}: {meaning} "
-            f"(exit code {exit_code})",
-            "red",
-        )
-        return updates
-
-    has_comments = bool(content)
-
-    # Find existing [critique:me] entry
-    existing_author_entry: CommentEntry | None = None
-    if changespec.comments:
-        for entry in changespec.comments:
-            if entry.reviewer == "critique:me":
-                existing_author_entry = entry
-                break
-
-    if has_comments:
-        # If no existing entry, create a new one with the comments file
-        if existing_author_entry is None:
-            timestamp = generate_timestamp()
-            file_path = get_comments_file_path(
-                changespec.name, "critique_me", timestamp
-            )
-
-            # Save output to file
-            with open(file_path, "w") as f:
-                f.write(content)
-
-            # Start with existing comments (minus any [critique] entries)
-            new_comments = []
-            removed_reviewer = False
-            if changespec.comments:
-                for entry in changespec.comments:
-                    if entry.reviewer == "critique":
-                        removed_reviewer = True
-                    else:
-                        new_comments.append(entry)
-
-            if removed_reviewer:
-                updates.append(
-                    "Removed [critique] entry (critique:me comments take precedence)"
-                )
-
-            # Add the new [critique:me] entry
-            display_path = file_path.replace(str(Path.home()), "~")
-            new_entry = CommentEntry(
-                reviewer="critique:me",
-                file_path=display_path,
-                suffix=None,
-            )
-            new_comments.append(new_entry)
-            update_changespec_comments_field(
-                changespec.file_path,
-                changespec.name,
-                new_comments,
-            )
-            updates.append("Added [critique:me] comment entry")
-    else:
-        # No comments - clear [critique:me] entry if it exists and CRS is not running
-        if existing_author_entry is not None and not is_timestamp_suffix(
-            existing_author_entry.suffix
-        ):
-            remove_comment_entry(
-                changespec.file_path,
-                changespec.name,
-                "critique:me",
-                changespec.comments,
-            )
-            updates.append("Removed [critique:me] comment entry (no comments)")
-
-    return updates
-
-
 def _cleanup_check_file(output_path: str) -> None:
     """Remove completed check output file."""
     try:
@@ -633,12 +477,6 @@ def check_pending_checks(
                 changespec, exit_code, content, log
             )
             updates.extend(check_updates)
-        elif check.check_type == CHECK_TYPE_AUTHOR_COMMENTS:
-            check_updates = _handle_author_comments_completion(
-                changespec, exit_code, content, log
-            )
-            updates.extend(check_updates)
-
         # Cleanup the output file
         _cleanup_check_file(check.output_path)
 

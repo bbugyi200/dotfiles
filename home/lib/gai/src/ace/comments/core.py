@@ -19,7 +19,7 @@ def get_comments_file_path(name: str, reviewer: str, timestamp: str) -> str:
 
     Args:
         name: The ChangeSpec name.
-        reviewer: The reviewer identifier (e.g., "critique" or "critique_me").
+        reviewer: The reviewer identifier (e.g., "critique").
         timestamp: The timestamp in YYmmdd_HHMMSS format.
 
     Returns:

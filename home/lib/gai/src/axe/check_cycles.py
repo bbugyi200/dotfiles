@@ -17,11 +17,9 @@ from ace.cl_status import is_parent_submitted
 from ace.comments import is_timestamp_suffix
 from ace.query import QueryExpr, evaluate_query
 from ace.scheduler.checks_runner import (
-    CHECK_TYPE_AUTHOR_COMMENTS,
     CHECK_TYPE_CL_SUBMITTED,
     CHECK_TYPE_REVIEWER_COMMENTS,
     has_pending_check,
-    start_author_comments_check,
     start_cl_submitted_check,
     start_reviewer_comments_check,
 )
@@ -230,7 +228,7 @@ class CheckCycleRunner:
         return updates
 
     def _start_comment_checks(self, changespec: ChangeSpec) -> list[str]:
-        """Start reviewer and author comment checks for a ChangeSpec (non-blocking).
+        """Start reviewer comment checks for a ChangeSpec (non-blocking).
 
         Comment checks bypass the sync_cache since they have their own interval.
 
@@ -274,34 +272,5 @@ class CheckCycleRunner:
                     )
                     if update:
                         updates.append(update)
-
-        # Start author comments check if conditions are met
-        if not has_pending_check(changespec, CHECK_TYPE_AUTHOR_COMMENTS):
-            if get_base_status(changespec.status) in ("Drafted", "Mailed"):
-                # Skip if any [critique] entry exists
-                has_reviewer = False
-                if changespec.comments:
-                    for entry in changespec.comments:
-                        if entry.reviewer == "critique":
-                            has_reviewer = True
-                            break
-                if not has_reviewer:
-                    # Check if we need to start
-                    existing_author_entry = None
-                    if changespec.comments:
-                        for entry in changespec.comments:
-                            if entry.reviewer == "critique:me":
-                                existing_author_entry = entry
-                                break
-                    should_start = existing_author_entry is None or (
-                        existing_author_entry.suffix is not None
-                        and not is_timestamp_suffix(existing_author_entry.suffix)
-                    )
-                    if should_start:
-                        update = start_author_comments_check(
-                            changespec, workspace_dir, self._log
-                        )
-                        if update:
-                            updates.append(update)
 
         return updates

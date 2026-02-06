@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, patch
 
 from ace.scheduler.checks_runner import (
     CHECK_COMPLETE_MARKER,
-    CHECK_TYPE_AUTHOR_COMMENTS,
     CHECK_TYPE_CL_SUBMITTED,
     CHECK_TYPE_REVIEWER_COMMENTS,
     _extract_cl_number,
@@ -281,7 +280,6 @@ def test_check_type_constants() -> None:
     """Test that check type constants have expected values."""
     assert CHECK_TYPE_CL_SUBMITTED == "cl_submitted"
     assert CHECK_TYPE_REVIEWER_COMMENTS == "reviewer_comments"
-    assert CHECK_TYPE_AUTHOR_COMMENTS == "author_comments"
 
 
 def test_check_complete_marker() -> None:

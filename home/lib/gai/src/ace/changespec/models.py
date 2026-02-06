@@ -387,7 +387,6 @@ class CommentEntry:
     Format in file:
       [critique] ~/.gai/comments/<name>-critique-YYmmdd_HHMMSS.json
       [critique] ~/.gai/comments/<name>-critique-YYmmdd_HHMMSS.json - (SUFFIX)
-      [critique:me] ~/.gai/comments/<name>-critique_me-YYmmdd_HHMMSS.json - (!: MSG)
 
     The optional suffix can be:
     - A timestamp (YYmmdd_HHMMSS) indicating a CRS workflow is running
@@ -398,7 +397,7 @@ class CommentEntry:
     "!: " prefix is added when formatting for display/storage.
     """
 
-    reviewer: str  # The comment type (e.g., "critique", "critique:me")
+    reviewer: str  # The comment type (e.g., "critique")
     file_path: str  # Full path to the comments JSON file
     suffix: str | None = (
         None  # e.g., "YYmmdd_HHMMSS", "ZOMBIE", "Unresolved Critique Comments"

@@ -88,17 +88,6 @@ def test_crs_workflow_eligible_with_reviewer_no_suffix() -> None:
     assert result[0].reviewer == "critique"
 
 
-def test_crs_workflow_eligible_with_author_no_suffix() -> None:
-    """Test CRS eligible when critique:me comment has no suffix."""
-    comment = CommentEntry(
-        reviewer="critique:me", file_path="~/.gai/comments/test.json", suffix=None
-    )
-    cs = _make_changespec(comments=[comment])
-    result = _crs_workflow_eligible(cs)
-    assert len(result) == 1
-    assert result[0].reviewer == "critique:me"
-
-
 def test_crs_workflow_eligible_with_suffix_not_eligible() -> None:
     """Test CRS not eligible when comment has suffix (already processed)."""
     comment = CommentEntry(
@@ -335,11 +324,6 @@ def test_crs_workflow_eligible_multiple_comments_mixed() -> None:
             suffix=None,  # Eligible
         ),
         CommentEntry(
-            reviewer="critique:me",
-            file_path="~/.gai/comments/test2.json",
-            suffix="251227123456",  # Not eligible - has suffix
-        ),
-        CommentEntry(
             reviewer="other",
             file_path="~/.gai/comments/test3.json",
             suffix=None,  # Not eligible - wrong reviewer
@@ -349,19 +333,6 @@ def test_crs_workflow_eligible_multiple_comments_mixed() -> None:
     result = _crs_workflow_eligible(cs)
     assert len(result) == 1
     assert result[0].reviewer == "critique"
-
-
-def testget_running_crs_workflows_with_author_timestamp() -> None:
-    """Test detecting running critique:me CRS workflows."""
-    comment = CommentEntry(
-        reviewer="critique:me",
-        file_path="~/.gai/comments/test.json",
-        suffix="251227_123456",
-    )
-    cs = _make_changespec(comments=[comment])
-    result = get_running_crs_workflows(cs)
-    assert len(result) == 1
-    assert result[0] == ("critique:me", "251227_123456")
 
 
 def testget_running_crs_workflows_other_reviewer_ignored() -> None:

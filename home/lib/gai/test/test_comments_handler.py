@@ -91,7 +91,7 @@ def test_check_comment_zombies_multiple_mixed(
             reviewer="critique", file_path="/path/to/c1.json", suffix="241225_100000"
         ),
         CommentEntry(
-            reviewer="critique:me", file_path="/path/to/c2.json", suffix="241225_120000"
+            reviewer="critique", file_path="/path/to/c2.json", suffix="241225_120000"
         ),
     ]
     cs = make_changespec.create(comments=comments)
@@ -116,7 +116,7 @@ def test_check_comment_zombies_all_stale(
             reviewer="critique", file_path="/path/to/c1.json", suffix="241225_100000"
         ),
         CommentEntry(
-            reviewer="critique:me", file_path="/path/to/c2.json", suffix="241225_100000"
+            reviewer="critique", file_path="/path/to/c2.json", suffix="241225_100000"
         ),
     ]
     cs = make_changespec.create(comments=comments)

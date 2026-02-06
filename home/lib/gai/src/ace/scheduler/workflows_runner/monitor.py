@@ -56,7 +56,7 @@ def get_running_crs_workflows(changespec: ChangeSpec) -> list[tuple[str, str]]:
     running: list[tuple[str, str]] = []
     if changespec.comments:
         for entry in changespec.comments:
-            if entry.reviewer in ("critique", "critique:me") and entry.suffix:
+            if entry.reviewer == "critique" and entry.suffix:
                 # Format: crs-<PID>-YYmmdd_HHMMSS
                 if re.match(r"^crs-\d+-\d{6}_\d{6}$", entry.suffix):
                     running.append((entry.reviewer, entry.suffix))

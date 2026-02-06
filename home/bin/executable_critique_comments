@@ -31,22 +31,6 @@ _check_deps() {
 # Check dependencies early
 _check_deps
 
-me_mode=false
-
-# Parse --me option
-while [[ "$1" == -* ]]; do
-  case "$1" in
-    --me)
-      me_mode=true
-      shift
-      ;;
-    *)
-      _error "unknown option: $1"
-      exit $EXIT_USAGE
-      ;;
-  esac
-done
-
 # Get CL number from argument or current branch
 if [[ -n "$1" ]]; then
   if ! command -v branch_num_from_name &>/dev/null; then
@@ -91,32 +75,15 @@ if [[ $rpc_exit -ne 0 ]]; then
   exit $EXIT_RPC_FAILURE
 fi
 
-# Process with jq based on mode
-if [[ "$me_mode" == true ]]; then
-  # Me mode: include ALL unresolved comments if ANY comment contains "#me"
-  # Exclude comments where the last reply contains "#no"
-  result=$(echo "$rpc_output" | jq "$@" '
-      .comment as $comments |
-      if ($comments | any(.content | test("#me"))) then
-        $comments
-        | sort_by(.depot_path, .line_number)[]
-        | select(.resolved != true)
-        | select((.reply | length == 0) or (.reply[-1].content | test("#no") | not))
-        | .content |= (gsub("#me "; "") | gsub(" #me"; "") | gsub("#me"; ""))
-      else
-        empty
-      end' 2>&1)
-  jq_exit=$?
-else
-  result=$(echo "$rpc_output" | jq "$@" '.comment
-         | sort_by(.depot_path, .line_number)[]
-         | select(.resolved != true
-                  and .author!="startblock"
-                  and .author!="gwsq"
-                  and (.author!="bbugyi" or (.reply[] | length > 0))
-                  and .reply[-1].author != "bbugyi")' 2>&1)
-  jq_exit=$?
-fi
+# Process with jq
+result=$(echo "$rpc_output" | jq "$@" '.comment
+       | sort_by(.depot_path, .line_number)[]
+       | select(.resolved != true
+                and .author!="startblock"
+                and .author!="gwsq"
+                and (.author!="bbugyi" or (.reply[] | length > 0))
+                and .reply[-1].author != "bbugyi")' 2>&1)
+jq_exit=$?
 
 if [[ $jq_exit -ne 0 ]]; then
   _error "JSON parsing failed (exit $jq_exit): ${result:0:200}"

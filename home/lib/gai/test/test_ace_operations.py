@@ -124,23 +124,6 @@ def test_get_available_workflows_crs_only(mock_has_failing: MagicMock) -> None:
 
 
 @patch("ace.operations._has_failing_hooks_for_fix")
-def test_get_available_workflows_crs_critique_me(mock_has_failing: MagicMock) -> None:
-    """Test get_available_workflows returns crs for critique:me comment."""
-    mock_has_failing.return_value = False
-
-    mock_comment = MagicMock()
-    mock_comment.reviewer = "critique:me"
-    mock_comment.suffix = None
-
-    mock_changespec = MagicMock()
-    mock_changespec.comments = [mock_comment]
-
-    result = get_available_workflows(mock_changespec)
-
-    assert result == ["crs"]
-
-
-@patch("ace.operations._has_failing_hooks_for_fix")
 def test_get_available_workflows_crs_with_suffix_ignored(
     mock_has_failing: MagicMock,
 ) -> None:
