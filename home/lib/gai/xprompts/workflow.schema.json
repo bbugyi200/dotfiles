@@ -12,7 +12,10 @@
     },
     "xprompts": {
       "type": "object",
-      "description": "Workflow-local xprompt definitions (highest priority within this workflow)",
+      "description": "Workflow-local xprompt definitions (highest priority within this workflow). Names must start with '_'.",
+      "propertyNames": {
+        "pattern": "^_"
+      },
       "additionalProperties": {
         "oneOf": [
           { "type": "string" },

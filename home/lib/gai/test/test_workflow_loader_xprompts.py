@@ -4,9 +4,11 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 from xprompt.loader import parse_xprompt_entries
 from xprompt.models import XPrompt
 from xprompt.workflow_loader import _load_workflow_from_file
+from xprompt.workflow_models import WorkflowValidationError
 from xprompt.workflow_validator import validate_workflow
 
 
@@ -75,10 +77,10 @@ def test_load_workflow_from_file_with_simple_xprompts() -> None:
         workflow_content = """\
 name: test_wf
 xprompts:
-  shared_context: "Always be thorough."
+  _shared_context: "Always be thorough."
 steps:
   - name: analyze
-    prompt: "#shared_context\\nAnalyze the code."
+    prompt: "#_shared_context\\nAnalyze the code."
 """
         path = Path(tmp_dir) / "test.yml"
         path.write_text(workflow_content)
@@ -87,8 +89,8 @@ steps:
 
         assert workflow is not None
         assert workflow.name == "test_wf"
-        assert "shared_context" in workflow.xprompts
-        assert workflow.xprompts["shared_context"].content == "Always be thorough."
+        assert "_shared_context" in workflow.xprompts
+        assert workflow.xprompts["_shared_context"].content == "Always be thorough."
 
 
 def test_load_workflow_from_file_with_structured_xprompts() -> None:
@@ -97,7 +99,7 @@ def test_load_workflow_from_file_with_structured_xprompts() -> None:
         workflow_content = """\
 name: test_wf
 xprompts:
-  greet:
+  _greet:
     input:
       name: word
     content: "Hello {{ name }}!"
@@ -111,10 +113,10 @@ steps:
         workflow = _load_workflow_from_file(path)
 
         assert workflow is not None
-        assert "greet" in workflow.xprompts
-        assert workflow.xprompts["greet"].content == "Hello {{ name }}!"
-        assert len(workflow.xprompts["greet"].inputs) == 1
-        assert workflow.xprompts["greet"].inputs[0].name == "name"
+        assert "_greet" in workflow.xprompts
+        assert workflow.xprompts["_greet"].content == "Hello {{ name }}!"
+        assert len(workflow.xprompts["_greet"].inputs) == 1
+        assert workflow.xprompts["_greet"].inputs[0].name == "name"
 
 
 def test_load_workflow_from_file_no_xprompts() -> None:
@@ -141,13 +143,13 @@ def test_workflow_local_xprompts_override_globals_in_validator() -> None:
         workflow_content = """\
 name: override_test
 xprompts:
-  my_prompt:
+  _my_prompt:
     input:
       target: word
     content: "Review {{ target }} carefully."
 steps:
   - name: review
-    prompt: "#my_prompt(code)"
+    prompt: "#_my_prompt(code)"
 """
         path = Path(tmp_dir) / "test.yml"
         path.write_text(workflow_content)
@@ -157,14 +159,14 @@ steps:
 
         # Validate should pass because workflow-local xprompt is found
         with patch("xprompt.workflow_validator.get_all_xprompts", return_value={}):
-            # No global xprompts, but workflow-local "my_prompt" should be used
+            # No global xprompts, but workflow-local "_my_prompt" should be used
             validate_workflow(workflow)
 
 
 def test_workflow_local_xprompts_take_priority_over_globals() -> None:
     """Test that workflow-local xprompts take priority over global ones."""
     global_xprompt = XPrompt(
-        name="shared",
+        name="_shared",
         content="Global content requiring {{ missing_arg }}.",
         inputs=[],
         source_path="config",
@@ -174,10 +176,10 @@ def test_workflow_local_xprompts_take_priority_over_globals() -> None:
         workflow_content = """\
 name: priority_test
 xprompts:
-  shared: "Local content with no args."
+  _shared: "Local content with no args."
 steps:
   - name: use_it
-    prompt: "#shared"
+    prompt: "#_shared"
 """
         path = Path(tmp_dir) / "test.yml"
         path.write_text(workflow_content)
@@ -185,10 +187,32 @@ steps:
         workflow = _load_workflow_from_file(path)
         assert workflow is not None
 
-        # Validate with global "shared" that has issues, but local overrides it
+        # Validate with global "_shared" that has issues, but local overrides it
         with patch(
             "xprompt.workflow_validator.get_all_xprompts",
-            return_value={"shared": global_xprompt},
+            return_value={"_shared": global_xprompt},
         ):
             # Should succeed because local xprompt (no args) overrides global
             validate_workflow(workflow)
+
+
+def test_workflow_local_xprompts_require_underscore_prefix() -> None:
+    """Test that workflow-local xprompts without '_' prefix fail validation."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        workflow_content = """\
+name: bad_prefix_test
+xprompts:
+  no_underscore: "This should fail."
+steps:
+  - name: step1
+    prompt: "#no_underscore"
+"""
+        path = Path(tmp_dir) / "test.yml"
+        path.write_text(workflow_content)
+
+        workflow = _load_workflow_from_file(path)
+        assert workflow is not None
+
+        with patch("xprompt.workflow_validator.get_all_xprompts", return_value={}):
+            with pytest.raises(WorkflowValidationError, match="must start with '_'"):
+                validate_workflow(workflow)

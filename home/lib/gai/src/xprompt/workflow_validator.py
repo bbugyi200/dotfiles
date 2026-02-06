@@ -303,6 +303,13 @@ def validate_workflow(workflow: Workflow) -> None:
     xprompts = get_all_xprompts()
     xprompts.update(workflow.xprompts)  # workflow-local takes priority
 
+    # Validate workflow-local xprompt names start with '_'
+    for name in workflow.xprompts:
+        if not name.startswith("_"):
+            errors.append(
+                f"Workflow-local xprompt '{name}' must start with '_' (e.g., '_{name}')"
+            )
+
     # Validate prompt_part steps
     prompt_part_errors = _validate_prompt_part_steps(workflow)
     errors.extend(prompt_part_errors)
