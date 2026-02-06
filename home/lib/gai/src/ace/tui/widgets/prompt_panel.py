@@ -93,6 +93,11 @@ class AgentPromptPanel(Static):
             self._update_bash_python_display(agent, header_text)
             return
 
+        # Check if this is a parallel workflow step - show output only, no prompt
+        if agent.is_workflow_child and agent.step_type == "parallel":
+            self._update_parallel_display(agent, header_text)
+            return
+
         # AGENT PROMPT section
         header_text.append("AGENT PROMPT\n", style="bold #D7AF5F underline")
         header_text.append("\n")
@@ -232,6 +237,24 @@ class AgentPromptPanel(Static):
         else:
             output_header.append("No output available.\n", style="dim italic")
             self.update(Group(header_text, source_content, output_header))
+
+    def _update_parallel_display(self, agent: Agent, header_text: Text) -> None:
+        """Display output for a parallel workflow step (no prompt section).
+
+        Args:
+            agent: The workflow step agent to display.
+            header_text: The Text object with header content to append to.
+        """
+        header_text.append("STEP OUTPUT\n", style="bold #D7AF5F underline")
+        header_text.append("\n")
+
+        if agent.step_output:
+            output_str = _format_output(agent.step_output)
+            output_syntax = Syntax(output_str, "json", theme="monokai", word_wrap=True)
+            self.update(Group(header_text, output_syntax))
+        else:
+            header_text.append("No output available.\n", style="dim italic")
+            self.update(header_text)
 
     def _update_workflow_display(self, agent: Agent) -> None:
         """Update display for a workflow agent.

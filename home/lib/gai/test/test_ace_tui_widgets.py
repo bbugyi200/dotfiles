@@ -2,6 +2,7 @@
 
 import time
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 from ace.changespec import ChangeSpec, CommentEntry, CommitEntry, HookEntry
@@ -174,6 +175,8 @@ def _make_agent(
     artifacts_dir: str | None = None,
     parent_workflow: str | None = None,
     step_name: str | None = None,
+    step_type: str | None = None,
+    step_output: dict[str, Any] | None = None,
 ) -> Agent:
     """Create a minimal Agent for prompt panel testing."""
     return Agent(
@@ -185,6 +188,8 @@ def _make_agent(
         artifacts_dir=artifacts_dir,
         parent_workflow=parent_workflow,
         step_name=step_name,
+        step_type=step_type,
+        step_output=step_output,
     )
 
 
@@ -250,6 +255,70 @@ def test_get_prompt_content_step_filter_no_substring_match(
 
     # No step-specific match, so falls back to most recent (the only file)
     assert result == "api_research prompt"
+
+
+# --- Parallel step display Tests ---
+
+
+def test_parallel_step_does_not_show_agent_prompt(tmp_path: Path) -> None:
+    """Parallel workflow steps should show STEP OUTPUT, not AGENT PROMPT."""
+    # Create a prompt file that would be found if parallel wasn't filtered
+    prompt_file = tmp_path / "workflow-olcr-research_prompt.md"
+    prompt_file.write_text("wrong prompt content")
+
+    agent = _make_agent(
+        artifacts_dir=str(tmp_path),
+        parent_workflow="olcr",
+        step_name="research",
+        step_type="parallel",
+        step_output={"_data": "parallel output data"},
+    )
+
+    panel = AgentPromptPanel.__new__(AgentPromptPanel)
+
+    with patch.object(panel, "update") as mock_update:
+        panel.update_display(agent)
+
+        assert mock_update.called
+        call_args = mock_update.call_args[0]
+        rendered = call_args[0]
+
+        # The rendered output should be a Group containing header_text + output_syntax
+        from rich.console import Group
+
+        assert isinstance(rendered, Group)
+        renderables = list(rendered.renderables)
+
+        # First renderable is the header Text - check it contains STEP OUTPUT
+        # but NOT AGENT PROMPT
+        header_text = renderables[0]
+        header_str = str(header_text)
+        assert "STEP OUTPUT" in header_str
+        assert "AGENT PROMPT" not in header_str
+
+
+def test_parallel_step_no_output_shows_placeholder() -> None:
+    """Parallel step with no output shows 'No output available.' message."""
+    agent = _make_agent(
+        parent_workflow="olcr",
+        step_name="research",
+        step_type="parallel",
+    )
+
+    panel = AgentPromptPanel.__new__(AgentPromptPanel)
+
+    with patch.object(panel, "update") as mock_update:
+        panel.update_display(agent)
+
+        assert mock_update.called
+        call_args = mock_update.call_args[0]
+        rendered = call_args[0]
+
+        # When no output, update is called with just header_text (a Text object)
+        header_str = str(rendered)
+        assert "STEP OUTPUT" in header_str
+        assert "No output available." in header_str
+        assert "AGENT PROMPT" not in header_str
 
 
 async def test_tab_bar_integration_tab_key() -> None:
