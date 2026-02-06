@@ -89,6 +89,8 @@ xprompts:
   bug:
     input: { bug_id: int }
     content: "#x(bug_desc, bugged show '{{ bug_id }}')"
+  build: |
+    Can you help me fix the build errors shown below, which were introduced by the current CL? #propose
   c:
     input: { name: word, bug_id: { type: int, default: 0 } }
     content: "#commit(name={{ name }}, bug_id={{ bug_id }})"
