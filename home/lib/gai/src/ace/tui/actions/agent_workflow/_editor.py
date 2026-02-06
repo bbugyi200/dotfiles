@@ -68,6 +68,9 @@ class EditorMixin:
         timestamp = generate_timestamp()
         default_name = f"adhoc_{timestamp}"
         template = (
+            "# yaml-language-server: $schema="
+            + os.path.expanduser("~/lib/gai/xprompts/workflow.schema.json")
+            + "\n"
             f"name: {default_name}\n"
             "\n"
             "steps:\n"
