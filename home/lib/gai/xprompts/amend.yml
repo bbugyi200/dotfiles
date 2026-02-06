@@ -1,5 +1,8 @@
 name: amend
 input:
+  - name: who
+    type: line
+    default: "man"
   - name: note
     type: line
     default: ""
@@ -39,6 +42,7 @@ steps:
     if: "{{ check_changes.has_changes }}"
     bash: |
       gai_amend_workflow \
+        --who "{{ who }}" \
         --note "{{ note }}" \
         --data-file "{{ save_response.data_file }}"
     output: { success: bool, entry_id: word, cl_name: word, error: text }

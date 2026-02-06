@@ -40,12 +40,14 @@ def _get_cl_name_from_branch() -> str | None:
 
 
 def _amend_cl(
+    who: str,
     note: str,
     data_file: str,
 ) -> tuple[bool, str, str, str]:
     """Amend the current CL with a HISTORY entry.
 
     Args:
+        who: Identifier for who is amending (e.g., "man", "mentor:name").
         note: The note for the HISTORY entry (empty string to auto-generate).
         data_file: Path to JSON file containing prompt and response from agent.
 
@@ -87,14 +89,16 @@ def _amend_cl(
     if not diff_path:
         return False, "", "", "No changes to amend (diff is empty)"
 
-    # Generate note from response if not provided
-    if not note:
-        # Write response to temp file for get_file_summary
+    # Build note with [who] prefix
+    if note:
+        note = f"[{who}] {note}"
+    else:
+        # Auto-generate summary from response
         fd, response_tmp = tempfile.mkstemp(suffix=".md", prefix="gai_amend_response_")
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as f:
                 f.write(response)
-            note = get_file_summary(
+            summary = get_file_summary(
                 response_tmp,
                 usage="a concise description of the changes made",
                 fallback="Agent changes",
@@ -104,6 +108,7 @@ def _amend_cl(
                 os.unlink(response_tmp)
             except OSError:
                 pass
+        note = f"[{who}] {summary}"
 
     # Save chat history with actual prompt
     chat_path = save_chat_history(
@@ -158,6 +163,9 @@ def main() -> None:
         description="Helper for the #amend xprompt workflow"
     )
     parser.add_argument(
+        "--who", default="man", help="Identifier for who is amending the CL"
+    )
+    parser.add_argument(
         "--note", default="", help="Note for the HISTORY entry (auto-generated if empty)"
     )
     parser.add_argument(
@@ -166,7 +174,7 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    success, entry_id, cl_name, error = _amend_cl(args.note, args.data_file)
+    success, entry_id, cl_name, error = _amend_cl(args.who, args.note, args.data_file)
     print(f"success={'true' if success else 'false'}")
     print(f"entry_id={entry_id}")
     print(f"cl_name={cl_name}")

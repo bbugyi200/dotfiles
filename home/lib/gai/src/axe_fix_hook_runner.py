@@ -162,16 +162,16 @@ def main() -> int:
         response_content = ensure_str_content(response.content)
         print(f"\nAgent Response:\n{response_content}\n")
 
-        # Build note prefix for proposal
+        # Build who identifier for proposal
         history_ref = f"({last_history_id})" if last_history_id else ""
         display_command = contract_test_target_command(run_hook_command)
-        note = f"[fix-hook {history_ref} {display_command}]"
+        who = f"fix-hook {history_ref} {display_command}"
 
         # Execute post-steps from embedded workflows (proposal creation via #propose)
         for post_steps, embedded_context in post_workflows:
             embedded_context["_prompt"] = expanded_prompt
             embedded_context["_response"] = response_content
-            embedded_context["note"] = note
+            embedded_context["who"] = who
             execute_standalone_steps(
                 post_steps, embedded_context, "fix-hook-embedded", artifacts_dir
             )

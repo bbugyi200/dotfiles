@@ -92,16 +92,16 @@ def main() -> int:
             f"~/.gai/projects/{project_basename}/context/"
         )
 
-        # Build note prefix for proposal
+        # Build who identifier for proposal
         comments_ref = shorten_path(comments_file) if comments_file else "comments"
-        note = f"[crs ({comments_ref})]"
+        who = f"crs ({comments_ref})"
 
         # Run the CRS workflow with timestamp for consistent artifacts directory
         workflow = CrsWorkflow(
             context_file_directory=context_file_directory,
             comments_file=comments_file,
             timestamp=timestamp,
-            note=note,
+            who=who,
         )
         workflow_succeeded = workflow.run()
 

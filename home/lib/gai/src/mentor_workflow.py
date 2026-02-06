@@ -83,7 +83,7 @@ class MentorWorkflow(BaseWorkflow):
         workflow_name: str | None = None,
         workspace_dir: str | None = None,
         timestamp: str | None = None,
-        note: str | None = None,
+        who: str | None = None,
     ) -> None:
         """Initialize the mentor workflow.
 
@@ -95,7 +95,7 @@ class MentorWorkflow(BaseWorkflow):
             workflow_name: Pre-claimed workflow name (for axe context).
             workspace_dir: Pre-configured workspace directory (for axe context).
             timestamp: Timestamp for chat file naming (YYmmdd_HHMMSS format).
-            note: Optional note prefix for the proposal (e.g., "[mentor:name]").
+            who: Optional identifier for who is creating the proposal (e.g., "mentor:name").
         """
         self.profile_name = profile_name
         self.mentor_name = mentor_name
@@ -104,7 +104,7 @@ class MentorWorkflow(BaseWorkflow):
         self._workflow_name = workflow_name
         self._workspace_dir = workspace_dir
         self._timestamp = timestamp
-        self._note = note
+        self._who = who
         self._owns_workspace = False  # True if we claimed the workspace ourselves
         self.response_path: str | None = None
         self.proposal_id: str | None = None
@@ -280,8 +280,8 @@ class MentorWorkflow(BaseWorkflow):
             for post_steps, embedded_context in post_workflows:
                 embedded_context["_prompt"] = expanded_prompt
                 embedded_context["_response"] = response_content
-                if self._note:
-                    embedded_context["note"] = self._note
+                if self._who:
+                    embedded_context["who"] = self._who
                 execute_standalone_steps(
                     post_steps,
                     embedded_context,

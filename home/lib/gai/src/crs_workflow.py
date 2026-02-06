@@ -98,7 +98,7 @@ class CrsWorkflow(BaseWorkflow):
         context_file_directory: str | None = None,
         comments_file: str | None = None,
         timestamp: str | None = None,
-        note: str | None = None,
+        who: str | None = None,
     ) -> None:
         """Initialize CRS workflow.
 
@@ -108,12 +108,12 @@ class CrsWorkflow(BaseWorkflow):
                 If provided, copy from this file instead of running critique_comments.
             timestamp: Optional timestamp for artifacts directory (YYmmdd_HHMMSS format).
                 When provided, ensures the artifacts directory matches the agent suffix timestamp.
-            note: Optional note prefix for the proposal (e.g., "[crs (ref)]").
+            who: Optional identifier for who is creating the proposal (e.g., "crs (ref)").
         """
         self.context_file_directory = context_file_directory
         self.comments_file = comments_file
         self._timestamp = timestamp
-        self._note = note
+        self._who = who
         self.response_path: str | None = None
         self.last_prompt: str | None = None
         self.proposal_id: str | None = None
@@ -189,8 +189,8 @@ class CrsWorkflow(BaseWorkflow):
         for post_steps, embedded_context in post_workflows:
             embedded_context["_prompt"] = expanded_prompt
             embedded_context["_response"] = response_content
-            if self._note:
-                embedded_context["note"] = self._note
+            if self._who:
+                embedded_context["who"] = self._who
             execute_standalone_steps(
                 post_steps, embedded_context, "crs-embedded", artifacts_dir
             )

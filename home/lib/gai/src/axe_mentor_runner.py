@@ -57,8 +57,8 @@ def main() -> None:
 
     try:
         try:
-            # Build note prefix for proposal
-            note = f"[mentor:{mentor_name}]"
+            # Build who identifier for proposal
+            who = f"mentor:{mentor_name}"
 
             # Run the mentor workflow with pre-claimed workspace info
             workflow = MentorWorkflow(
@@ -69,7 +69,7 @@ def main() -> None:
                 workflow_name=workflow_name,
                 workspace_dir=workspace_dir,
                 timestamp=timestamp,
-                note=note,
+                who=who,
             )
             success = workflow.run()
 
