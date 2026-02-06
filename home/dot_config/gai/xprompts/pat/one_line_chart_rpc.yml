@@ -14,7 +14,6 @@ xprompts:
       - OnePlatform Reporting API Research: @bb/gai/file/api_research.md
       - Prior Art (Existing Dart Clients): @bb/gai/file/prior_art.md
       - Required Dimensions and Metrics: @bb/gai/file/dimensions_metrics.md
-
 steps:
   # Step 1: Run 3 research agents in parallel
   - name: research
