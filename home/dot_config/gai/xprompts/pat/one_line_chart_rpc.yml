@@ -44,15 +44,9 @@ steps:
         contentads/drx/fe/client/trafficking/private_marketplace/components/deal_check_ui/ directory.
       - This functionality should all be gated behind the ENABLE_PA_TROUBLESHOOTING_IMPROVEMENTS #feat.
 
-      Here is the research gathered from 3 parallel agents:
-
-      ## OnePlatform Reporting API Research
-      @bb/gai/file/api_research.md
-
-      ## Prior Art (Existing Dart Clients)
-      @bb/gai/file/prior_art.md
-
-      ## Required Dimensions and Metrics
-      @bb/gai/file/dimensions_metrics.md
+      Some research has already been done to help you with this task. Review these files before deciding on your implementation approach:
+        - OnePlatform Reporting API Research: @bb/gai/file/api_research.md
+        - Prior Art (Existing Dart Clients): @bb/gai/file/prior_art.md
+        - Required Dimensions and Metrics: @bb/gai/file/dimensions_metrics.md
 
       #commit:line_chart
