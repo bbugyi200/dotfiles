@@ -16,6 +16,7 @@ steps:
     prompt_part: |
       ### File Output Requirements
       You MUST write your complete response to the following file: {{ generate_path.file_path }}
+
       IMPORTANT: The file MUST contain your full response as markdown. Do NOT skip writing to the file--this is a
       required step.
 
