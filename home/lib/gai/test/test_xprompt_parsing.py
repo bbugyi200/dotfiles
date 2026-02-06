@@ -4,7 +4,9 @@ import pytest
 from xprompt._exceptions import XPromptArgumentError
 from xprompt._parsing import (
     _find_shorthand_text_end,
+    _format_as_text_block,
     _parse_named_arg,
+    _preprocess_paren_shorthand,
     _process_text_block,
     escape_for_xprompt,
     find_matching_paren_for_args,
@@ -234,3 +236,96 @@ def test_parse_workflow_reference_paren() -> None:
     assert name == "myworkflow"
     assert pos == ["a"]
     assert named == {"key": "b"}
+
+
+# Tests for _format_as_text_block
+
+
+def test_format_as_text_block_single_line() -> None:
+    """Test _format_as_text_block with a single line."""
+    assert _format_as_text_block("hello") == "hello"
+
+
+def test_format_as_text_block_multiline() -> None:
+    """Test _format_as_text_block indents continuation lines."""
+    assert _format_as_text_block("line1\nline2\nline3") == "line1\n  line2\n  line3"
+
+
+def test_format_as_text_block_empty_lines() -> None:
+    """Test _format_as_text_block preserves empty lines."""
+    assert _format_as_text_block("line1\n\nline3") == "line1\n\n  line3"
+
+
+# Tests for _preprocess_paren_shorthand
+
+
+def test_paren_shorthand_basic() -> None:
+    """Test #name(arg): text → #name(arg, [[text]])."""
+    result = _preprocess_paren_shorthand("#test(arg1): hello world", {"test"})
+    assert result == "#test(arg1, [[hello world]])"
+
+
+def test_paren_shorthand_multiline_double_newline() -> None:
+    """Test paren shorthand with multiline text terminated by \\n\\n."""
+    result = _preprocess_paren_shorthand("#test(arg1): line1\nline2\n\nother", {"test"})
+    assert result == "#test(arg1, [[line1\n  line2]])\n\nother"
+
+
+def test_paren_shorthand_multiline_eof() -> None:
+    """Test paren shorthand with multiline text terminated by EOF."""
+    result = _preprocess_paren_shorthand("#test(arg1): line1\nline2", {"test"})
+    assert result == "#test(arg1, [[line1\n  line2]])"
+
+
+def test_paren_shorthand_no_colon_space_not_treated() -> None:
+    """Test #name(args) without ): is NOT treated as shorthand."""
+    prompt = "#test(arg1)"
+    result = _preprocess_paren_shorthand(prompt, {"test"})
+    assert result == "#test(arg1)"
+
+
+def test_paren_shorthand_unknown_name() -> None:
+    """Test unknown names are not processed."""
+    prompt = "#unknown(arg): hello"
+    result = _preprocess_paren_shorthand(prompt, {"test"})
+    assert result == "#unknown(arg): hello"
+
+
+def test_paren_shorthand_empty_parens() -> None:
+    """Test #name(): text → #name([[text]])."""
+    result = _preprocess_paren_shorthand("#test(): hello world", {"test"})
+    assert result == "#test([[hello world]])"
+
+
+def test_paren_shorthand_file_xprompt_pattern() -> None:
+    """Test real-world _file xprompt pattern from one_line_chart_rpc.yml."""
+    prompt = "#_file(api_research): Can you help me do some research?"
+    result = _preprocess_paren_shorthand(prompt, {"_file"})
+    assert result == "#_file(api_research, [[Can you help me do some research?]])"
+
+
+def test_paren_shorthand_not_at_line_start() -> None:
+    """Test paren shorthand not at line start is ignored."""
+    prompt = "text before #test(arg): hello"
+    result = _preprocess_paren_shorthand(prompt, {"test"})
+    assert result == "text before #test(arg): hello"
+
+
+def test_mixed_paren_and_simple_shorthand() -> None:
+    """Test mixed paren + simple shorthand in same prompt."""
+    prompt = "#file(name): some text\n\n#simple: other text"
+    result = preprocess_shorthand_syntax(prompt, {"file", "simple"})
+    assert result == "#file(name, [[some text]])\n\n#simple([[other text]])"
+
+
+def test_paren_shorthand_multiline_file_pattern() -> None:
+    """Test multi-line paren shorthand matching workflow file pattern."""
+    prompt = (
+        "#_file(prior_art): Can you help me do some research on prior art\n"
+        "that uses the API?"
+    )
+    result = _preprocess_paren_shorthand(prompt, {"_file"})
+    assert result == (
+        "#_file(prior_art, [[Can you help me do some research on prior art\n"
+        "  that uses the API?]])"
+    )

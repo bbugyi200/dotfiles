@@ -59,6 +59,11 @@ SHORTHAND_PATTERN = re.compile(
     r": "  # Colon followed by space
 )
 
+# Pattern to match paren shorthand: #name( at beginning of line
+_PAREN_SHORTHAND_PATTERN = re.compile(
+    r"(?:^|(?<=\n))" r"#([a-zA-Z_][a-zA-Z0-9_]*(?:/[a-zA-Z_][a-zA-Z0-9_]*)*)" r"\("
+)
+
 
 def _find_shorthand_text_end(prompt: str, start: int) -> int:
     """Find the end of shorthand text (at \\n\\n or end of string)."""
@@ -68,8 +73,65 @@ def _find_shorthand_text_end(prompt: str, start: int) -> int:
     return blank_line_pos
 
 
+def _format_as_text_block(text: str) -> str:
+    """Format text for use inside a [[...]] text block.
+
+    Adds 2-space indent on continuation lines, preserves empty lines.
+    """
+    lines = text.split("\n")
+    formatted_lines = [lines[0]]
+    for line in lines[1:]:
+        if line.strip() == "":
+            formatted_lines.append("")
+        else:
+            formatted_lines.append("  " + line)
+    return "\n".join(formatted_lines)
+
+
+def _preprocess_paren_shorthand(prompt: str, xprompt_names: set[str]) -> str:
+    """Convert #name(args): text shorthand to #name(args, [[text]]) format."""
+    matches = list(re.finditer(_PAREN_SHORTHAND_PATTERN, prompt))
+
+    for match in reversed(matches):
+        name = match.group(1)
+        if name not in xprompt_names:
+            continue
+
+        # Position of the opening '('
+        paren_open = match.end() - 1
+        paren_close = find_matching_paren_for_args(prompt, paren_open)
+        if paren_close is None:
+            continue
+
+        # Check for "): " after the closing paren
+        after_paren = prompt[paren_close + 1 :]
+        if not after_paren.startswith(": "):
+            continue
+
+        text_start = paren_close + 3  # skip "): "
+        text_end = _find_shorthand_text_end(prompt, text_start)
+        text = prompt[text_start:text_end].rstrip()
+
+        text_block_content = _format_as_text_block(text)
+        args_str = prompt[paren_open + 1 : paren_close].strip()
+
+        if args_str:
+            replacement = f"#{name}({args_str}, [[{text_block_content}]])"
+        else:
+            # Empty parens: #name(): text → #name([[text]])
+            replacement = f"#{name}([[{text_block_content}]])"
+
+        prompt = prompt[: match.start()] + replacement + prompt[text_end:]
+
+    return prompt
+
+
 def preprocess_shorthand_syntax(prompt: str, xprompt_names: set[str]) -> str:
     """Convert shorthand #name: text syntax to #name([[text]]) format."""
+    # Pass 1: Handle paren shorthand (#name(args): text)
+    prompt = _preprocess_paren_shorthand(prompt, xprompt_names)
+
+    # Pass 2: Handle simple shorthand (#name: text)
     matches = list(re.finditer(SHORTHAND_PATTERN, prompt))
 
     for match in reversed(matches):  # Process last-to-first to preserve positions
@@ -81,16 +143,7 @@ def preprocess_shorthand_syntax(prompt: str, xprompt_names: set[str]) -> str:
         text_end = _find_shorthand_text_end(prompt, text_start)
         text = prompt[text_start:text_end].rstrip()
 
-        # Format for [[...]] with 2-space indent on continuation lines
-        lines = text.split("\n")
-        formatted_lines = [lines[0]]
-        for line in lines[1:]:
-            if line.strip() == "":
-                formatted_lines.append("")
-            else:
-                formatted_lines.append("  " + line)
-
-        text_block_content = "\n".join(formatted_lines)
+        text_block_content = _format_as_text_block(text)
         replacement = f"#{name}([[{text_block_content}]])"
 
         prompt = prompt[: match.start()] + replacement + prompt[text_end:]
