@@ -296,8 +296,6 @@ def _auto_create_wip_cl(
     project: str,
     shared_timestamp: str,
     end_timestamp: str | None,
-    custom_name: str | None = None,
-    custom_message: str | None = None,
 ) -> tuple[bool, str | None]:
     """Auto-create a WIP CL after query completes.
 
@@ -306,8 +304,6 @@ def _auto_create_wip_cl(
         project: Project name.
         shared_timestamp: Timestamp for syncing files.
         end_timestamp: End timestamp for duration calculation.
-        custom_name: Optional custom CL name (overrides auto-generated name).
-        custom_message: Optional custom commit message (overrides summarize agent).
 
     Returns:
         Tuple of (success, cl_name).
@@ -318,35 +314,25 @@ def _auto_create_wip_cl(
     from workflow_utils import get_cl_name_from_branch, get_next_available_cl_name
 
     # Get CL name - priority order:
-    # 1. custom_name (from -c flag) - always creates/updates specified ChangeSpec
-    # 2. branch_name output (if on existing CL branch) - uses existing CL
-    # 3. auto-generate new WIP name - only when not on any CL branch
-    if custom_name:
-        cl_name = custom_name
+    # 1. branch_name output (if on existing CL branch) - uses existing CL
+    # 2. auto-generate new WIP name - only when not on any CL branch
+    branch_cl_name = get_cl_name_from_branch()
+    if branch_cl_name:
+        cl_name = branch_cl_name
     else:
-        branch_cl_name = get_cl_name_from_branch()
-        if branch_cl_name:
-            cl_name = branch_cl_name
-        else:
-            cl_name = get_next_available_cl_name(project)
+        cl_name = get_next_available_cl_name(project)
 
-    # Get commit message - use custom message if provided, otherwise summarize
-    if custom_message:
-        commit_message = custom_message
+    # Get commit message from summarize agent
+    summarize = SummarizeWorkflow(
+        target_file=chat_path,
+        usage="a git commit message describing the AI-assisted code changes",
+        suppress_output=True,
+    )
+    if summarize.run() and summarize.summary:
+        commit_message = summarize.summary
     else:
-        # Run summarize agent on chat file
-        summarize = SummarizeWorkflow(
-            target_file=chat_path,
-            usage="a git commit message describing the AI-assisted code changes",
-            suppress_output=True,
-        )
-        if summarize.run() and summarize.summary:
-            commit_message = summarize.summary
-        else:
-            commit_message = "AI-assisted code changes"
-            print_status(
-                "Failed to generate summary, using default message.", "warning"
-            )
+        commit_message = "AI-assisted code changes"
+        print_status("Failed to generate summary, using default message.", "warning")
 
     # Run commit workflow
     workflow = CommitWorkflow(
@@ -372,18 +358,12 @@ def _auto_create_wip_cl(
 def run_query(
     query: str,
     previous_history: str | None = None,
-    accept_message: str | None = None,
-    commit_name: str | None = None,
-    commit_message: str | None = None,
 ) -> None:
     """Execute a query through Gemini, optionally continuing a previous conversation.
 
     Args:
         query: The query to send to the agent.
         previous_history: Optional previous conversation history to continue from.
-        accept_message: If provided, auto-select 'a' (accept) with this message.
-        commit_name: If provided along with commit_message, auto-select 'c' (commit).
-        commit_message: The commit message to use with commit_name.
     """
     from gai_utils import generate_timestamp
     from gemini_wrapper.wrapper import invoke_agent
@@ -507,8 +487,6 @@ def run_query(
                     project=project_name,
                     shared_timestamp=shared_timestamp,
                     end_timestamp=end_timestamp,
-                    custom_name=commit_name,
-                    custom_message=commit_message,
                 )
                 if success:
                     console.print(f"[cyan]Created WIP CL: {auto_cl_name}[/cyan]")
@@ -525,7 +503,6 @@ def run_query(
             chat_path=saved_path,
             shared_timestamp=shared_timestamp,
             end_timestamp=end_timestamp,
-            accept_message=accept_message,
         )
 
         if prompt_result is not None:

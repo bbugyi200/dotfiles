@@ -256,21 +256,6 @@ def create_parser() -> argparse.ArgumentParser:
 
     # Options for 'run' (keep sorted alphabetically by long option name)
     run_parser.add_argument(
-        "-a",
-        "--accept",
-        dest="accept_message",
-        metavar="MSG",
-        help="Auto-select 'a' (accept) option with MSG as the accept message. Skips the a/p/n/x prompt.",
-    )
-    run_parser.add_argument(
-        "-c",
-        "--commit",
-        dest="commit_name",
-        nargs=2,
-        metavar=("NAME", "MSG"),
-        help="Override auto-generated CL name and commit message with custom NAME and MSG values.",
-    )
-    run_parser.add_argument(
         "-l",
         "--list",
         action="store_true",

@@ -111,7 +111,6 @@ def prompt_for_change_action(
     shared_timestamp: str | None = None,
     end_timestamp: str | None = None,
     project_file: str | None = None,
-    accept_message: str | None = None,
     auto_reject: bool = False,
     cl_name: str | None = None,
 ) -> tuple[ChangeAction, str | None] | None:
@@ -135,8 +134,6 @@ def prompt_for_change_action(
         end_timestamp: Optional end timestamp for duration calculation
         project_file: Optional path to project file. If not provided,
             will try to infer from workspace_name command.
-        accept_message: If provided, auto-select 'a' (accept) with this message.
-            Skips the interactive prompt.
         auto_reject: If True, auto-select 'n' (reject) after creating the proposal.
             Used when running in background/loop context where stdin is unavailable.
         cl_name: If provided, use this as the CL name instead of running
@@ -229,19 +226,6 @@ def prompt_for_change_action(
                     )
                     # Clean workspace after creating proposal
                     clean_workspace(target_dir)
-
-    # Handle auto-selection if accept_message or commit_message was provided
-    if accept_message is not None:
-        if proposal_id:
-            console.print(
-                f"[cyan]Auto-selecting 'a' (accept) with message: {accept_message}[/cyan]"
-            )
-            return ("accept", f"{proposal_id}:{accept_message}")
-        else:
-            console.print(
-                "[red]Error: Cannot auto-accept - no proposal was created[/red]"
-            )
-            return None
 
     if auto_reject:
         # Auto-reject for background/loop context where stdin is unavailable

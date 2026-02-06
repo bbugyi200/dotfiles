@@ -172,8 +172,6 @@ gai run .                          # Pick from prompt history
 gai run -r                         # Resume last conversation
 gai run -r history_file            # Resume specific conversation
 gai run -l                         # List chat history files
-gai run -a "Accept msg" "prompt"   # Auto-accept with custom message
-gai run -c my_cl "Commit msg" "prompt"  # Override CL name and commit message
 ```
 
 ## Ace TUI Reference

@@ -3,52 +3,8 @@
 import sys
 
 from chat_history import list_chat_histories, load_chat_history
-from shared_utils import run_shell_command
 
 from ._query import run_query
-
-
-def _parse_auto_action_flags(
-    args: list[str],
-) -> tuple[list[str], str | None, str | None, str | None]:
-    """Parse -a/--accept and -c/--commit flags from argument list.
-
-    Args:
-        args: List of arguments to parse.
-
-    Returns:
-        Tuple of (remaining_args, accept_message, commit_name, commit_message).
-    """
-    accept_message: str | None = None
-    commit_name: str | None = None
-    commit_message: str | None = None
-    remaining: list[str] = []
-    i = 0
-
-    while i < len(args):
-        if args[i] in ("-a", "--accept"):
-            if i + 1 >= len(args):
-                print("Error: -a/--accept requires MSG argument")
-                sys.exit(1)
-            # Verify there's a branch to accept to
-            branch_result = run_shell_command("branch_name", capture_output=True)
-            if branch_result.returncode != 0 or not branch_result.stdout.strip():
-                print("Error: -a/--accept requires an existing branch to accept")
-                sys.exit(1)
-            accept_message = args[i + 1]
-            i += 2
-        elif args[i] in ("-c", "--commit"):
-            if i + 2 >= len(args):
-                print("Error: -c/--commit requires NAME and MSG arguments")
-                sys.exit(1)
-            commit_name = args[i + 1]
-            commit_message = args[i + 2]
-            i += 3
-        else:
-            remaining.append(args[i])
-            i += 1
-
-    return remaining, accept_message, commit_name, commit_message
 
 
 def handle_run_with_resume(
@@ -74,9 +30,6 @@ def handle_run_with_resume(
     # Determine history file and query
     history_file: str | None = None
     query: str | None = None
-    accept_message: str | None = None
-    commit_name: str | None = None
-    commit_message: str | None = None
 
     if len(remaining) == 0:
         # Just -r with no arguments - error
@@ -93,10 +46,6 @@ def handle_run_with_resume(
         if " " not in potential_history:
             history_file = potential_history
             remaining = remaining[1:]
-        # Parse -a/-c flags from remaining args
-        remaining, accept_message, commit_name, commit_message = (
-            _parse_auto_action_flags(remaining)
-        )
         query = " ".join(remaining) if remaining else None
 
     if not query:
@@ -123,8 +72,5 @@ def handle_run_with_resume(
     run_query(
         query,
         previous_history,
-        accept_message=accept_message,
-        commit_name=commit_name,
-        commit_message=commit_message,
     )
     sys.exit(0)
