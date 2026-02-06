@@ -4,6 +4,10 @@ input:
     type: word
 
 steps:
+  - name: ensure_dir
+    hidden: true
+    bash: mkdir -p bb/gai/file
+
   - name: inject
     prompt_part: |
       ---
@@ -13,8 +17,6 @@ steps:
       following file:
 
         bb/gai/file/{{ name }}.md
-
-      Create the directory `bb/gai/file/` if it does not already exist.
 
       IMPORTANT:
       - The file MUST contain your full response as markdown
