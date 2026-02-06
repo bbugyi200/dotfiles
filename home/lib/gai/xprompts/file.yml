@@ -3,23 +3,26 @@ input:
     type: word
 
 steps:
-  - name: ensure_dir
+  - name: generate_path
     hidden: true
-    bash: mkdir -p bb/gai/file
+    bash: |
+      mkdir -p bb/gai/file
+      timestamp=$(date +"%y%m%d_%H%M%S")
+      file_path="bb/gai/file/{{ name }}-${timestamp}.md"
+      echo "file_path=$file_path"
+    output: { file_path: path }
 
   - name: inject
     prompt_part: |
       ### File Output Requirements
-
-      You MUST write your complete response to the following file: bb/gai/file/{{ name }}.md
-
+      You MUST write your complete response to the following file: {{ generate_path.file_path }}
       IMPORTANT: The file MUST contain your full response as markdown. Do NOT skip writing to the file--this is a
       required step.
 
   - name: verify_file
     hidden: true
     bash: |
-      file_path="bb/gai/file/{{ name }}.md"
+      file_path="{{ generate_path.file_path }}"
       if [ ! -f "$file_path" ]; then
         echo "ERROR: Expected file '$file_path' was not created by the agent" >&2
         exit 1
@@ -28,5 +31,6 @@ steps:
         echo "ERROR: File '$file_path' exists but is empty" >&2
         exit 1
       fi
+      ln -sf "$(basename "$file_path")" "bb/gai/file/{{ name }}.md"
       echo "file_path=$file_path"
     output: { file_path: path }

@@ -1,6 +1,8 @@
 """Embedded workflow step execution mixin."""
 
+import logging
 import re
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from shared_utils import apply_section_marker_handling
@@ -18,6 +20,27 @@ from xprompt.workflow_models import (
 
 if TYPE_CHECKING:
     from xprompt.workflow_output import ParentStepContext, WorkflowOutputHandler
+
+_logger = logging.getLogger(__name__)
+
+
+@dataclass
+class EmbeddedWorkflowInfo:
+    """Information about an embedded workflow expanded from a prompt reference.
+
+    Attributes:
+        pre_steps: Steps executed before the prompt_part.
+        post_steps: Steps executed after the main prompt completes.
+        context: Isolated context for the embedded workflow (args + outputs).
+        workflow_name: Name of the embedded workflow.
+        nested_step_name: For parallel: which nested step this belongs to.
+    """
+
+    pre_steps: list[WorkflowStep]
+    post_steps: list[WorkflowStep]
+    context: dict[str, Any]
+    workflow_name: str
+    nested_step_name: str | None = None
 
 
 # Pattern to match workflow references in prompts (same as processor.py)
@@ -188,9 +211,7 @@ class EmbeddedWorkflowMixin:
         self,
         prompt: str,
         pre_step_offset: int = 0,
-    ) -> tuple[
-        str, list[tuple[list[WorkflowStep], list[WorkflowStep], dict[str, Any]]], int
-    ]:
+    ) -> tuple[str, list[EmbeddedWorkflowInfo], int]:
         """Detect and expand embedded workflows in a prompt.
 
         Finds workflow references in the prompt, executes their pre-steps,
@@ -201,17 +222,15 @@ class EmbeddedWorkflowMixin:
             pre_step_offset: Starting offset for sub-step numbering of pre-steps.
 
         Returns:
-            Tuple of (expanded_prompt, list of (pre_steps, post_steps, context)
-            tuples, total_pre_steps_executed). The post_steps should be executed
+            Tuple of (expanded_prompt, list of EmbeddedWorkflowInfo,
+            total_pre_steps_executed). The post_steps should be executed
             after the main prompt completes.
         """
         from xprompt._parsing import find_matching_paren_for_args, parse_args
         from xprompt.loader import get_all_workflows
 
         workflows = get_all_workflows()
-        embedded_workflows: list[
-            tuple[list[WorkflowStep], list[WorkflowStep], dict[str, Any]]
-        ] = []
+        embedded_workflows: list[EmbeddedWorkflowInfo] = []
         running_offset = pre_step_offset
 
         # Find all potential workflow references
@@ -318,6 +337,65 @@ class EmbeddedWorkflowMixin:
 
             # Store post-steps for execution after the main prompt
             if post_steps:
-                embedded_workflows.append((pre_steps, post_steps, embedded_context))
+                embedded_workflows.append(
+                    EmbeddedWorkflowInfo(
+                        pre_steps=pre_steps,
+                        post_steps=post_steps,
+                        context=embedded_context,
+                        workflow_name=name,
+                    )
+                )
 
         return prompt, embedded_workflows, running_offset - pre_step_offset
+
+    def _propagate_last_embedded_output(
+        self,
+        embedded_workflows: list[EmbeddedWorkflowInfo],
+        step: WorkflowStep,
+        step_state: StepState,
+    ) -> None:
+        """Propagate the last embedded workflow's output to the parent step.
+
+        If the parent prompt step declares ``output`` AND the last post-step of
+        the last embedded workflow also declares ``output``, and the parent's
+        output property keys are a subset of the embedded step's actual output
+        keys, then overwrite ``step_state.output`` and ``self.context[step.name]``.
+
+        Args:
+            embedded_workflows: List of embedded workflow info from expansion.
+            step: The parent prompt step.
+            step_state: The parent step's runtime state.
+        """
+        if not step.output:
+            return
+        if not embedded_workflows:
+            return
+
+        last_info = embedded_workflows[-1]
+        if not last_info.post_steps:
+            return
+
+        last_post_step = last_info.post_steps[-1]
+        if not last_post_step.output:
+            return
+
+        # Get the actual output of the last post-step from the embedded context
+        embedded_output = last_info.context.get(last_post_step.name)
+        if not isinstance(embedded_output, dict):
+            return
+
+        # Check that parent step's output keys are a subset of embedded output keys
+        parent_keys = set(step.output.schema.get("properties", {}).keys())
+        if not parent_keys:
+            return
+        if not parent_keys.issubset(embedded_output.keys()):
+            _logger.debug(
+                "Output keys mismatch: parent %s not subset of embedded %s",
+                parent_keys,
+                set(embedded_output.keys()),
+            )
+            return
+
+        # Propagate: overwrite step output with embedded output
+        step_state.output = dict(embedded_output)
+        self.context[step.name] = dict(embedded_output)

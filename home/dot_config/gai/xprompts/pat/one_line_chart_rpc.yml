@@ -20,8 +20,8 @@ xprompts:
   research_files: |
     Some research has already been done to help you with this task. Review these files before deciding on your implementation approach:
       - OnePlatform Reporting API Research: @bb/gai/file/api_research.md
-      - Prior Art (Existing Dart Clients): @bb/gai/file/prior_art.md
-      - Required Dimensions and Metrics: @bb/gai/file/dimensions_metrics.md
+      - Prior Art (Existing Dart Clients): @{{ research.prior_art.file_path }}
+      - Required Dimensions and Metrics: @{{ research.dimensions_metrics.file_path }}
 steps:
   # Step 1: Run 3 research agents in parallel
   - name: research
@@ -32,11 +32,13 @@ steps:
           #service method works?
 
       - name: prior_art
+        output: { file_path: path }
         prompt: |
           #_file(prior_art): Can you help me do some research on prior art in the form of other Dart clients that are
           currently using the OnePlatform Reporting API's FetchReport method?
 
       - name: dimensions_metrics
+        output: { file_path: path }
         prompt: |
           #_file(dimensions_metrics): Can you help me do some research on what specific dimensions and metrics we need
           to query from Reporting?
@@ -44,6 +46,7 @@ steps:
   # Step 2: Plan agent creates an implementation plan
   - name: plan
     if: "{{ create_plan }}"
+    output: { file_path: path }
     prompt: |
       #_file(plan): Can you help me write an implementation plan for this feature? Some extra requirements:
 
@@ -59,7 +62,7 @@ steps:
       #_extra_reqs
 
       {% if create_plan -%}
-      Use the following implementation plan to inspire your approach: @bb/gai/file/plan.md
+      Use the following implementation plan to inspire your approach: @{{ plan.file_path }}
       {% else -%}
       #_research_files
       {%- endif %}

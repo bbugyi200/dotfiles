@@ -69,6 +69,9 @@ class PromptStepMixin:
     _save_prompt_step_marker: Any  # (step_name, step_state, ...) -> None
     _expand_embedded_workflows_in_prompt: Any  # (prompt) -> tuple
     _execute_embedded_workflow_steps: Any  # (steps, context, name, ...) -> bool
+    _propagate_last_embedded_output: (
+        Any  # (embedded_workflows, step, step_state) -> None
+    )
 
     def _execute_prompt_step(
         self,
@@ -193,20 +196,20 @@ class PromptStepMixin:
 
         # Execute post-steps from embedded workflows
         cumulative_post_offset = 0
-        for _, post_steps, embedded_context in embedded_workflows:
-            if post_steps:
+        for info in embedded_workflows:
+            if info.post_steps:
                 from xprompt.workflow_output import ParentStepContext
 
                 # Make agent prompt and response available to post-steps
-                embedded_context["_prompt"] = expanded_prompt
-                embedded_context["_response"] = response_text
+                info.context["_prompt"] = expanded_prompt
+                info.context["_response"] = response_text
                 parent_ctx = ParentStepContext(
                     step_index=self.state.current_step_index,
                     total_steps=len(self.workflow.steps),
                 )
                 success = self._execute_embedded_workflow_steps(
-                    post_steps,
-                    embedded_context,
+                    info.post_steps,
+                    info.context,
                     f"embedded:post:{step.name}",
                     parent_step_context=parent_ctx,
                     step_index_offset=cumulative_post_offset,
@@ -215,6 +218,9 @@ class PromptStepMixin:
                     raise WorkflowExecutionError(
                         f"Post-steps for embedded workflow in step '{step.name}' failed"
                     )
-                cumulative_post_offset += len(post_steps)
+                cumulative_post_offset += len(info.post_steps)
+
+        # Propagate output from last embedded workflow's last post-step
+        self._propagate_last_embedded_output(embedded_workflows, step, step_state)
 
         return True

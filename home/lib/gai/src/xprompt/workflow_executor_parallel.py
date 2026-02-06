@@ -4,6 +4,7 @@ import copy
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING, Any
 
+from xprompt.workflow_executor_steps_embedded import EmbeddedWorkflowInfo
 from xprompt.workflow_models import (
     ParallelConfig,
     StepState,
@@ -99,10 +100,7 @@ class ParallelMixin:
     def _pre_expand_parallel_embedded_workflows(
         self,
         nested_steps: list[WorkflowStep],
-    ) -> tuple[
-        list[WorkflowStep],
-        list[tuple[list[WorkflowStep], list[WorkflowStep], dict[str, Any]]],
-    ]:
+    ) -> tuple[list[WorkflowStep], list[EmbeddedWorkflowInfo]]:
         """Pre-expand embedded workflows in nested prompt steps.
 
         Hoists pre-steps (before parallel) and post-steps (after parallel) out
@@ -112,16 +110,14 @@ class ParallelMixin:
             nested_steps: The nested steps from the parallel config.
 
         Returns:
-            Tuple of (possibly-modified nested steps, collected embedded
-            workflow tuples of (pre_steps, post_steps, context)).
+            Tuple of (possibly-modified nested steps, collected
+            EmbeddedWorkflowInfo list).
         """
         from xprompt import process_xprompt_references
         from xprompt.workflow_executor_utils import render_template
 
         modified_steps: list[WorkflowStep] = []
-        all_embedded_workflows: list[
-            tuple[list[WorkflowStep], list[WorkflowStep], dict[str, Any]]
-        ] = []
+        all_embedded_workflows: list[EmbeddedWorkflowInfo] = []
         cumulative_pre_step_offset = 0
 
         for ns in nested_steps:
@@ -142,6 +138,9 @@ class ParallelMixin:
             cumulative_pre_step_offset += pre_step_count
 
             if embedded_wfs:
+                # Tag each embedded workflow with its parent nested step name
+                for ewf in embedded_wfs:
+                    ewf.nested_step_name = ns.name
                 all_embedded_workflows.extend(embedded_wfs)
 
             if expanded != ns.prompt:
@@ -267,8 +266,8 @@ class ParallelMixin:
 
         # Execute post-steps from embedded workflows
         cumulative_post_offset = 0
-        for _, post_steps, embedded_context in collected_embedded_workflows:
-            if post_steps:
+        for info in collected_embedded_workflows:
+            if info.post_steps:
                 from xprompt.workflow_output import ParentStepContext
 
                 parent_ctx = ParentStepContext(
@@ -276,8 +275,8 @@ class ParallelMixin:
                     total_steps=len(self.workflow.steps),
                 )
                 success = self._execute_embedded_workflow_steps(
-                    post_steps,
-                    embedded_context,
+                    info.post_steps,
+                    info.context,
                     f"embedded:post:{step.name}",
                     parent_step_context=parent_ctx,
                     step_index_offset=cumulative_post_offset,
@@ -287,6 +286,71 @@ class ParallelMixin:
                         f"Post-steps for embedded workflow in parallel step "
                         f"'{step.name}' failed"
                     )
-                cumulative_post_offset += len(post_steps)
+                cumulative_post_offset += len(info.post_steps)
+
+        # Propagate outputs from embedded workflows to their parent nested steps
+        if join_mode == "object" and isinstance(combined, dict):
+            self._propagate_parallel_embedded_outputs(
+                collected_embedded_workflows,
+                nested_steps,
+                combined,
+                step,
+                step_state,
+            )
 
         return True
+
+    def _propagate_parallel_embedded_outputs(
+        self,
+        embedded_workflows: list[EmbeddedWorkflowInfo],
+        nested_steps: list[WorkflowStep],
+        combined: dict[str, Any],
+        step: WorkflowStep,
+        step_state: StepState,
+    ) -> None:
+        """Propagate embedded workflow outputs to their parent nested steps.
+
+        For each embedded workflow with a ``nested_step_name``, if its last
+        post-step has ``output`` and the corresponding nested step also declares
+        ``output`` with matching keys, update ``combined[nested_step_name]``.
+
+        Args:
+            embedded_workflows: The collected embedded workflow info list.
+            nested_steps: The nested steps from the parallel config.
+            combined: The combined results dict (object join mode).
+            step: The parent parallel step.
+            step_state: The parent step's runtime state.
+        """
+        # Build a lookup for nested steps by name
+        nested_by_name: dict[str, WorkflowStep] = {ns.name: ns for ns in nested_steps}
+
+        changed = False
+        for info in embedded_workflows:
+            if not info.nested_step_name:
+                continue
+            if not info.post_steps:
+                continue
+
+            nested_step = nested_by_name.get(info.nested_step_name)
+            if not nested_step or not nested_step.output:
+                continue
+
+            last_post_step = info.post_steps[-1]
+            if not last_post_step.output:
+                continue
+
+            embedded_output = info.context.get(last_post_step.name)
+            if not isinstance(embedded_output, dict):
+                continue
+
+            # Check that nested step's output keys are a subset of embedded output keys
+            nested_keys = set(nested_step.output.schema.get("properties", {}).keys())
+            if not nested_keys or not nested_keys.issubset(embedded_output.keys()):
+                continue
+
+            combined[info.nested_step_name] = dict(embedded_output)
+            changed = True
+
+        if changed:
+            step_state.output = combined
+            self.context[step.name] = combined
