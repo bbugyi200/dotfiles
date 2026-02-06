@@ -123,6 +123,7 @@ class EmbeddedWorkflowMixin:
                             self.output_handler.on_step_skip(
                                 step.name, reason="condition false"
                             )
+                        embedded_context[step.name] = {}
                         continue
 
                 # Notify step start

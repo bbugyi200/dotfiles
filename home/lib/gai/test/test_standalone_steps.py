@@ -674,3 +674,46 @@ def test_input_arg_path_with_spaces() -> None:
     arg = InputArg(name="x", type=InputType.PATH)
     with pytest.raises(XPromptValidationError, match="expects path"):
         arg.validate_and_convert("path with spaces")
+
+
+# Tests for skipped step context in execute_standalone_steps
+
+
+def test_skipped_step_stores_empty_dict_in_context() -> None:
+    """Test that a skipped step (false condition) stores empty dict in context."""
+    from main.query_handler._query import execute_standalone_steps
+    from xprompt.workflow_models import WorkflowStep
+
+    steps = [
+        WorkflowStep(
+            name="skipped_step",
+            bash="echo 'should not run'",
+            condition="{{ flag }}",
+        ),
+    ]
+    context: dict[str, object] = {"flag": False}
+    result = execute_standalone_steps(steps, context, "test_workflow")
+    assert "skipped_step" in result
+    assert result["skipped_step"] == {}
+
+
+def test_skipped_step_accessible_via_jinja2_default_filter() -> None:
+    """Test that a subsequent step can reference a skipped step via default filter."""
+    from main.query_handler._query import execute_standalone_steps
+    from xprompt.workflow_models import WorkflowStep
+
+    steps = [
+        WorkflowStep(
+            name="maybe_run",
+            bash="echo 'success=true'",
+            condition="{{ flag }}",
+        ),
+        WorkflowStep(
+            name="report",
+            bash="echo 'result={{ maybe_run.success | default(false) }}'",
+        ),
+    ]
+    context: dict[str, object] = {"flag": False}
+    result = execute_standalone_steps(steps, context, "test_workflow")
+    assert result["maybe_run"] == {}
+    assert result["report"]["result"] == "False"

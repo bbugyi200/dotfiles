@@ -199,6 +199,7 @@ def execute_standalone_steps(
         if step.condition and not _evaluate_standalone_condition(
             step.condition, context
         ):
+            context[step.name] = {}
             continue
 
         if step.is_bash_step() and step.bash:
