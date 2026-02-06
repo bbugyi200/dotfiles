@@ -1,10 +1,11 @@
 name: pat/one_line_chart_rpc
 
 xprompts:
-  _research: |
-    I need to add a new line chart to the PA troubleshooting page on (for Google Ad Manager's FE). We need to make
-    sure we only make one RPC to populate the data for the line chart and we have decided to use the OnePlatform
-    Reporting API to accomplish this.
+  one_op_rpc: |
+    We need to make sure we only make one RPC to populate the data for the line chart and we have decided to use the
+    OnePlatform Reporting API to accomplish this.
+  research: |
+    I need to add a new line chart to the PA troubleshooting page on (for Google Ad Manager's FE). #_one_op_rpc
 
 steps:
   # Step 1: Run 3 research agents in parallel
@@ -35,7 +36,7 @@ steps:
   - name: implementation
     prompt: |
       Can you help me improve the PA troubleshooting page by adding a line chart view in addition to the existing pie
-      chart view?
+      chart view? #_one_op_rpc
 
       - We shouldn't show the pie chart and the line chart at the same time ever. So make sure the user has a way to
         toggle between the two.
