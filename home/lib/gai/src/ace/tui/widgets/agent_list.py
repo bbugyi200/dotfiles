@@ -23,11 +23,8 @@ _AGENT_TYPE_COLORS: dict[AgentType, str] = {
 # Icon for dismissible (completed) agents
 _DONE_ICON = "✘"
 _DISMISSIBLE_STATUSES = (
-    "NO CHANGES",
-    "NEW CL",
-    "NEW PROPOSAL",
+    "DONE",
     "REVIVED",
-    "COMPLETED",
     "FAILED",
 )
 
@@ -184,16 +181,10 @@ class AgentList(OptionList):
         text.append(" (", style="dim")
         if agent.status == "RUNNING":
             text.append(agent.status, style="bold #FFD700")  # Gold
-        elif agent.status == "NO CHANGES":
-            text.append(agent.status, style="#AFAFAF")  # Light gray
-        elif agent.status == "NEW CL":
-            text.append(agent.status, style="bold #87D7FF")  # Blue
-        elif agent.status == "NEW PROPOSAL":
-            text.append(agent.status, style="bold #AF87D7")  # Purple
+        elif agent.status == "DONE":
+            text.append(agent.status, style="bold #5FD75F")  # Green
         elif agent.status == "REVIVED":
             text.append(agent.status, style="bold #D7AF5F")  # Gold/amber
-        elif agent.status == "COMPLETED":
-            text.append(agent.status, style="bold #5FD75F")  # Green
         elif agent.status == "FAILED":
             text.append(agent.status, style="bold #FF5F5F")  # Red
         else:

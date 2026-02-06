@@ -250,7 +250,7 @@ def test_agent_is_hidden_step_true() -> None:
         agent_type=AgentType.WORKFLOW,
         cl_name="my_feature",
         project_file="/tmp/test.gp",
-        status="COMPLETED",
+        status="DONE",
         start_time=None,
         is_hidden_step=True,
     )

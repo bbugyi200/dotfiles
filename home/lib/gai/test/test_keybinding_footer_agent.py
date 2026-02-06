@@ -45,7 +45,7 @@ def test_keybinding_footer_agent_bindings_running_agent() -> None:
 def test_keybinding_footer_agent_bindings_completed_agent_with_chat() -> None:
     """Test agent bindings for completed agent with chat file."""
     footer = KeybindingFooter()
-    agent = _make_agent(status="NO CHANGES", response_path="/tmp/chat.md")
+    agent = _make_agent(status="DONE", response_path="/tmp/chat.md")
 
     bindings = footer._compute_agent_bindings(agent)
     binding_keys = [b[0] for b in bindings]

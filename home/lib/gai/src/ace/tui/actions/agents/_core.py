@@ -20,11 +20,8 @@ TabName = Literal["changespecs", "agents", "axe"]
 
 # Statuses that indicate an agent is dismissable (shows "x dismiss" in footer)
 DISMISSABLE_STATUSES = {
-    "NO CHANGES",
-    "NEW CL",
-    "NEW PROPOSAL",
+    "DONE",
     "REVIVED",
-    "COMPLETED",
     "FAILED",
 }
 
@@ -313,7 +310,7 @@ class AgentsMixinCore(
         agent = self._agents[self.current_idx]
 
         # Only available for completed or revived agents
-        if agent.status not in ("NO CHANGES", "NEW CL", "NEW PROPOSAL", "REVIVED"):
+        if agent.status not in ("DONE", "REVIVED"):
             self.notify("Agent not finished yet", severity="warning")  # type: ignore[attr-defined]
             return
 

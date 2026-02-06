@@ -68,22 +68,6 @@ class AgentPromptPanel(Static):
             header_text.append("PID: ", style="bold #87D7FF")
             header_text.append(f"{agent.pid}\n", style="#FF87D7 bold")
 
-        # New CL Name (for NEW CL agents)
-        if agent.new_cl_name:
-            header_text.append("New CL Name: ", style="bold #87D7FF")
-            header_text.append(f"{agent.new_cl_name}", style="#00D7AF bold")
-            if agent.new_cl_url:
-                cl_id = agent.new_cl_url.removeprefix("http://cl/")
-                header_text.append(" (")
-                header_text.append(f"http://cl/{cl_id}", style="bold underline #569CD6")
-                header_text.append(")")
-            header_text.append("\n")
-
-        # Proposal ID (for NEW PROPOSAL agents)
-        if agent.proposal_id:
-            header_text.append("New Proposal ID: ", style="bold #87D7FF")
-            header_text.append(f"{agent.proposal_id}\n", style="#AF87D7 bold")
-
         # BUG field (if available)
         if agent.bug:
             header_text.append("BUG: ", style="bold #87D7FF")
@@ -125,7 +109,7 @@ class AgentPromptPanel(Static):
             )
 
             # For completed agents/steps, also show the response
-            if agent.status in ("NO CHANGES", "NEW CL", "NEW PROPOSAL", "COMPLETED"):
+            if agent.status == "DONE":
                 reply_header = Text()
                 reply_header.append("\n")
                 reply_header.append("─" * 50 + "\n", style="dim")
@@ -261,7 +245,7 @@ class AgentPromptPanel(Static):
         status_style = {
             "RUNNING": "#87D7FF",
             "WAITING INPUT": "#FFAF5F",
-            "COMPLETED": "#5FD75F",
+            "DONE": "#5FD75F",
             "FAILED": "#FF5F5F",
         }.get(agent.status, "#D7D7FF")
         header_text.append(f"{agent.status}\n", style=status_style)

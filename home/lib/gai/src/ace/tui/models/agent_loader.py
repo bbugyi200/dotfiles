@@ -29,7 +29,7 @@ def _get_status_priority(status: str) -> int:
 
     Completed/failed steps appear before running/waiting steps.
     """
-    if status in ("COMPLETED", "FAILED"):
+    if status in ("DONE", "FAILED"):
         return 0
     # RUNNING, WAITING INPUT, and any other status
     return 1
@@ -125,10 +125,6 @@ def load_all_agents() -> list[Agent]:
     completed_statuses = (
         "DONE",
         "FAILED",
-        "COMPLETED",
-        "NO CHANGES",
-        "NEW CL",
-        "NEW PROPOSAL",
     )
     for agent in agents:
         # Completed agents represent finished work - always include them

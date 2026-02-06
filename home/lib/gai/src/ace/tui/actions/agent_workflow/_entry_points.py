@@ -89,7 +89,6 @@ class EntryPointsMixin:
             project_name,
             cl_name=cl_name,
             update_target=cl_name,
-            new_cl_name=None,  # Key difference: no new CL name
             history_sort_key=cl_name,
         )
 
@@ -141,7 +140,6 @@ class EntryPointsMixin:
                     project_name,
                     cl_name=selected_cl_name,
                     update_target=selected_cl_name,
-                    new_cl_name=None,
                     history_sort_key=history_sort_key,
                 )
             else:
@@ -150,7 +148,6 @@ class EntryPointsMixin:
                     project_name,
                     cl_name=None,
                     update_target="p4head",
-                    new_cl_name=None,
                     history_sort_key=history_sort_key,
                 )
 
@@ -188,6 +185,5 @@ class EntryPointsMixin:
             first_cs.project_basename,
             cl_name=first_cs.name,
             update_target=first_cs.name,
-            new_cl_name=None,
             history_sort_key=first_cs.name,
         )

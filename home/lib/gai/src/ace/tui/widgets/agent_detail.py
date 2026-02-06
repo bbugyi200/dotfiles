@@ -51,21 +51,7 @@ class AgentDetail(Static):
             prompt_scroll.add_class("expanded")
             return
 
-        if agent.status == "NO CHANGES":
-            # Hide diff panel, expand prompt panel (reply is embedded in it)
-            diff_scroll.add_class("hidden")
-            prompt_scroll.add_class("expanded")
-        elif agent.status in ("NEW CL", "NEW PROPOSAL"):
-            # Show static diff panel (from saved diff file)
-            if agent.diff_path:
-                # Don't change visibility here - let display_static_diff() handle it
-                # via DiffVisibilityChanged message after validating the file
-                diff_panel.display_static_diff(agent.diff_path)
-            else:
-                # No diff path - hide diff panel
-                diff_scroll.add_class("hidden")
-                prompt_scroll.add_class("expanded")
-        elif agent.status in ("RUNNING", "WAITING INPUT"):
+        if agent.status in ("RUNNING", "WAITING INPUT"):
             # Show auto-refreshing diff panel for active agents
             # Don't change visibility here - let update_display() handle it
             # via DiffVisibilityChanged message after fetching/validating the diff
@@ -73,7 +59,7 @@ class AgentDetail(Static):
                 agent, stale_threshold_seconds=stale_threshold_seconds
             )
         else:
-            # COMPLETED, FAILED, REVIVED, etc. — no meaningful diff to show
+            # DONE, FAILED, REVIVED, etc. — no meaningful diff to show
             diff_scroll.add_class("hidden")
             prompt_scroll.add_class("expanded")
 

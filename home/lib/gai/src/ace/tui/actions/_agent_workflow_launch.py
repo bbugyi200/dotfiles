@@ -64,13 +64,9 @@ class AgentLaunchMixin:
             workflow_name=ctx.workflow_name,
             prompt=prompt,
             timestamp=ctx.timestamp,
-            new_cl_name=ctx.new_cl_name,
-            parent_cl_name=ctx.parent_cl_name,
             update_target=ctx.update_target,
             project_name=ctx.project_name,
             history_sort_key=ctx.history_sort_key,
-            bug=ctx.bug,
-            fixed_bug=ctx.fixed_bug,
             is_home_mode=ctx.is_home_mode,
         )
 
@@ -96,9 +92,6 @@ class AgentLaunchMixin:
 
         changespecs = self._bulk_changespecs
         self._bulk_changespecs = None
-
-        # Extract new_cl_name before clearing context
-        new_cl_name = self._prompt_context.new_cl_name if self._prompt_context else None
         self._prompt_context = None
 
         launched_count = 0
@@ -137,8 +130,6 @@ class AgentLaunchMixin:
                 workflow_name=workflow_name,
                 prompt=prompt,
                 timestamp=timestamp,
-                new_cl_name=new_cl_name,
-                parent_cl_name=cl_name,
                 update_target=cl_name,
                 project_name=project_name,
                 history_sort_key=cl_name,
@@ -170,13 +161,9 @@ class AgentLaunchMixin:
         workflow_name: str,
         prompt: str,
         timestamp: str,
-        new_cl_name: str | None = None,
-        parent_cl_name: str | None = None,
         update_target: str = "",
         project_name: str = "",
         history_sort_key: str = "",
-        bug: str | None = None,
-        fixed_bug: str | None = None,
         is_home_mode: bool = False,
     ) -> None:
         """Launch agent as background process.
@@ -189,13 +176,9 @@ class AgentLaunchMixin:
             workflow_name: Name for the workflow.
             prompt: The user's prompt for the agent.
             timestamp: Shared timestamp for artifacts.
-            new_cl_name: If provided, create a new ChangeSpec with this name.
-            parent_cl_name: The parent CL name for the new ChangeSpec (if any).
             update_target: What to checkout (CL name or "p4head").
             project_name: Project name for prompt history tracking.
             history_sort_key: CL name to associate with the prompt in history.
-            bug: Bug number to associate with a new ChangeSpec (BUG: field).
-            fixed_bug: Bug number for FIXED: field (mutually exclusive with bug).
             is_home_mode: If True, skip workspace management (for home directory).
         """
         import subprocess
@@ -229,9 +212,8 @@ class AgentLaunchMixin:
 
         # Start background process first to get actual PID
         # Args: cl_name, project_file, workspace_dir, output_path, workspace_num,
-        #       workflow_name, prompt_file, timestamp, new_cl_name, parent_cl_name,
-        #       update_target, project_name, history_sort_key, bug, fixed_bug,
-        #       is_home_mode
+        #       workflow_name, prompt_file, timestamp,
+        #       update_target, project_name, history_sort_key, is_home_mode
         try:
             with open(output_path, "w") as output_file:
                 process = subprocess.Popen(
@@ -246,13 +228,9 @@ class AgentLaunchMixin:
                         workflow_name,
                         prompt_file,
                         timestamp,
-                        new_cl_name or "",
-                        parent_cl_name or "",
                         update_target,
                         project_name,
                         history_sort_key,
-                        bug or "",
-                        fixed_bug or "",
                         "1" if is_home_mode else "",
                     ],
                     cwd=workspace_dir,
@@ -284,7 +262,6 @@ class AgentLaunchMixin:
                 process.pid,
                 cl_name,
                 artifacts_timestamp=timestamp,
-                new_cl_name=new_cl_name,
             ):
                 self.notify(  # type: ignore[attr-defined]
                     "Failed to claim workspace, terminating agent", severity="error"

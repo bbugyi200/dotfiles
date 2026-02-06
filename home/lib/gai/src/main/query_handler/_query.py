@@ -5,18 +5,11 @@ import re
 import tempfile
 from typing import Any
 
-from change_actions import (
-    execute_change_action,
-    prompt_for_change_action,
-)
 from chat_history import save_chat_history
-from gai_utils import run_shell_command
-from rich.console import Console
 from running_field import claim_workspace, release_workspace
 from shared_utils import (
     apply_section_marker_handling,
     create_artifacts_directory,
-    generate_workflow_tag,
 )
 from xprompt.workflow_models import WorkflowStep
 
@@ -291,70 +284,6 @@ def execute_standalone_steps(
     return context
 
 
-def _auto_create_wip_cl(
-    chat_path: str,
-    project: str,
-    shared_timestamp: str,
-    end_timestamp: str | None,
-) -> tuple[bool, str | None]:
-    """Auto-create a WIP CL after query completes.
-
-    Args:
-        chat_path: Path to the saved chat file.
-        project: Project name.
-        shared_timestamp: Timestamp for syncing files.
-        end_timestamp: End timestamp for duration calculation.
-
-    Returns:
-        Tuple of (success, cl_name).
-    """
-    from commit_workflow.workflow import CommitWorkflow
-    from rich_utils import print_status
-    from summarize_workflow import SummarizeWorkflow
-    from workflow_utils import get_cl_name_from_branch, get_next_available_cl_name
-
-    # Get CL name - priority order:
-    # 1. branch_name output (if on existing CL branch) - uses existing CL
-    # 2. auto-generate new WIP name - only when not on any CL branch
-    branch_cl_name = get_cl_name_from_branch()
-    if branch_cl_name:
-        cl_name = branch_cl_name
-    else:
-        cl_name = get_next_available_cl_name(project)
-
-    # Get commit message from summarize agent
-    summarize = SummarizeWorkflow(
-        target_file=chat_path,
-        usage="a git commit message describing the AI-assisted code changes",
-        suppress_output=True,
-    )
-    if summarize.run() and summarize.summary:
-        commit_message = summarize.summary
-    else:
-        commit_message = "AI-assisted code changes"
-        print_status("Failed to generate summary, using default message.", "warning")
-
-    # Run commit workflow
-    workflow = CommitWorkflow(
-        cl_name=cl_name,
-        message=commit_message,
-        project=project,
-        chat_path=chat_path,
-        timestamp=shared_timestamp,
-        end_timestamp=end_timestamp,
-        note="[run] Auto-created WIP CL",
-    )
-
-    success = workflow.run()
-    if success:
-        # Return the full CL name (with project prefix)
-        full_name = (
-            cl_name if cl_name.startswith(f"{project}_") else f"{project}_{cl_name}"
-        )
-        return True, full_name
-    return False, None
-
-
 def run_query(
     query: str,
     previous_history: str | None = None,
@@ -456,14 +385,7 @@ def run_query(
                 post_steps, embedded_context, "run-embedded", artifacts_dir
             )
 
-        # Capture end timestamp for accurate duration calculation
-        end_timestamp = generate_timestamp()
-
-        # Check for file modifications and prompt for action
-        console = Console()
-        target_dir = os.getcwd()
-
-        # Prepare and save chat history BEFORE prompting so we have chat_path
+        # Prepare and save chat history
         saved_path = save_chat_history(
             prompt=query,
             response=response_content,
@@ -471,55 +393,6 @@ def run_query(
             previous_history=previous_history,
             timestamp=shared_timestamp,
         )
-
-        # Auto-create WIP CL only if there are file changes
-        from workflow_utils import get_project_from_workspace
-
-        project_name = get_project_from_workspace()
-        if project_name:
-            # Check for local changes first
-            changes_result = run_shell_command(
-                "branch_local_changes", capture_output=True
-            )
-            if changes_result.stdout.strip():
-                success, auto_cl_name = _auto_create_wip_cl(
-                    chat_path=saved_path,
-                    project=project_name,
-                    shared_timestamp=shared_timestamp,
-                    end_timestamp=end_timestamp,
-                )
-                if success:
-                    console.print(f"[cyan]Created WIP CL: {auto_cl_name}[/cyan]")
-                else:
-                    console.print(
-                        "[yellow]Warning: Failed to auto-create WIP CL[/yellow]"
-                    )
-            # If no changes, silently skip CL creation
-
-        prompt_result = prompt_for_change_action(
-            console,
-            target_dir,
-            workflow_name="run",
-            chat_path=saved_path,
-            shared_timestamp=shared_timestamp,
-            end_timestamp=end_timestamp,
-        )
-
-        if prompt_result is not None:
-            action, action_args = prompt_result
-            if action != "reject":
-                workflow_tag = generate_workflow_tag()
-                execute_change_action(
-                    action=action,
-                    action_args=action_args,
-                    console=console,
-                    target_dir=target_dir,
-                    workflow_tag=workflow_tag,
-                    workflow_name="run",
-                    chat_path=saved_path,
-                    shared_timestamp=shared_timestamp,
-                    end_timestamp=end_timestamp,
-                )
 
         print(f"\nChat history saved to: {saved_path}")
     finally:

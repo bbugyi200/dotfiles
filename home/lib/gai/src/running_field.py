@@ -32,12 +32,11 @@ class _WorkspaceClaim:
     cl_name: str | None
     pid: int
     artifacts_timestamp: str | None = None
-    new_cl_name: str | None = None
 
     def to_line(self) -> str:
         """Convert to RUNNING field line format.
 
-        Format: #N | PID | WORKFLOW | CL_NAME | TIMESTAMP | NEW_CL_NAME
+        Format: #N | PID | WORKFLOW | CL_NAME | TIMESTAMP
         PID is second to make it easily visible for process management.
 
         Raises:
@@ -45,8 +44,7 @@ class _WorkspaceClaim:
         """
         cl_part = self.cl_name or ""
         ts_part = f" | {self.artifacts_timestamp}" if self.artifacts_timestamp else ""
-        new_cl_part = f" | {self.new_cl_name}" if self.new_cl_name else ""
-        return f"  #{self.workspace_num} | {self.pid} | {self.workflow} | {cl_part}{ts_part}{new_cl_part}"
+        return f"  #{self.workspace_num} | {self.pid} | {self.workflow} | {cl_part}{ts_part}"
 
     @staticmethod
     def from_line(line: str) -> "_WorkspaceClaim | None":
@@ -55,7 +53,6 @@ class _WorkspaceClaim:
         Format (PID second, required):
         - #<N> | <PID> | <WORKFLOW> | <CL_NAME>
         - #<N> | <PID> | <WORKFLOW> | <CL_NAME> | <TIMESTAMP>
-        - #<N> | <PID> | <WORKFLOW> | <CL_NAME> | <TIMESTAMP> | <NEW_CL_NAME>
 
         Note: Returns None for entries without a PID (PID is required).
         """
@@ -70,14 +67,12 @@ class _WorkspaceClaim:
             workflow = match.group(3)
             cl_name = match.group(4).strip() or None
             artifacts_timestamp = match.group(5) if match.group(5) else None
-            new_cl_name = match.group(6).strip() if match.group(6) else None
             return _WorkspaceClaim(
                 workspace_num=workspace_num,
                 workflow=workflow,
                 cl_name=cl_name,
                 pid=pid,
                 artifacts_timestamp=artifacts_timestamp,
-                new_cl_name=new_cl_name,
             )
 
         return None
@@ -212,7 +207,6 @@ def claim_workspace(
     pid: int,
     cl_name: str | None = None,
     artifacts_timestamp: str | None = None,
-    new_cl_name: str | None = None,
 ) -> bool:
     """Claim a workspace by adding it to the RUNNING field.
 
@@ -225,7 +219,6 @@ def claim_workspace(
         pid: Process ID of the claiming process (required)
         cl_name: Optional ChangeSpec name being worked on
         artifacts_timestamp: Optional timestamp of the artifacts directory (YYYYmmddHHMMSS)
-        new_cl_name: Optional name for a new ChangeSpec to be created
 
     Returns:
         True if claim was successful, False otherwise
@@ -245,7 +238,6 @@ def claim_workspace(
                 cl_name=cl_name,
                 pid=pid,
                 artifacts_timestamp=artifacts_timestamp,
-                new_cl_name=new_cl_name,
             )
 
             # Find RUNNING field

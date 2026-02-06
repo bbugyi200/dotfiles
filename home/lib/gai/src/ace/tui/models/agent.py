@@ -47,17 +47,8 @@ class Agent:
     # Response file path for completed agents
     response_path: str | None = None
 
-    # Diff file path for completed agents (NEW CL, NEW PROPOSAL)
+    # Diff file path for completed agents
     diff_path: str | None = None
-
-    # New CL name for NEW CL agents
-    new_cl_name: str | None = None
-
-    # CL URL for newly created ChangeSpec
-    new_cl_url: str | None = None
-
-    # Proposal ID for NEW PROPOSAL agents
-    proposal_id: str | None = None
 
     # Bug URL for agents with associated bug IDs
     bug: str | None = None

@@ -315,7 +315,7 @@ def test_load_all_agents_includes_axe_fix_hook() -> None:
 def test_workflow_steps_sorted_completed_before_running() -> None:
     """Test that workflow steps sort completed/failed before running/waiting."""
     # Test status priorities
-    assert _get_status_priority("COMPLETED") == 0
+    assert _get_status_priority("DONE") == 0
     assert _get_status_priority("FAILED") == 0
     assert _get_status_priority("RUNNING") == 1
     assert _get_status_priority("WAITING INPUT") == 1

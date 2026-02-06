@@ -14,7 +14,7 @@ class WorkflowEntry:
         workflow_name: Name of the workflow being executed.
         cl_name: Associated ChangeSpec name.
         project_file: Path to the project .gp file.
-        status: Overall workflow status ("RUNNING", "WAITING INPUT", "COMPLETED", "FAILED").
+        status: Overall workflow status ("RUNNING", "WAITING INPUT", "DONE", "FAILED").
         current_step: Index of the currently executing step.
         total_steps: Total number of steps in the workflow.
         steps: List of step states with their individual status.

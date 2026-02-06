@@ -105,12 +105,6 @@ def load_agents_from_running_field(
                     pid=claim.pid,
                     # Use normalized timestamp as raw_suffix for prompt lookup
                     raw_suffix=normalized_ts,
-                    new_cl_name=claim.new_cl_name,
-                    new_cl_url=(
-                        cl_by_cl_name.get(claim.new_cl_name)
-                        if claim.new_cl_name
-                        else None
-                    ),
                     bug=bug_by_cl_name.get(cl_name),
                     cl_num=cl_by_cl_name.get(cl_name),
                 )
@@ -286,7 +280,7 @@ def load_done_agents(
         cl_by_cl_name: Mapping of CL names to CL numbers.
 
     Returns:
-        List of Agent objects with status="NO CHANGES", "NEW CL", or "NEW PROPOSAL".
+        List of Agent objects with status="DONE".
     """
     agents: list[Agent] = []
     projects_dir = Path.home() / ".gai" / "projects"
@@ -318,34 +312,18 @@ def load_done_agents(
                 timestamp_str = artifact_dir.name
                 start_time = parse_timestamp_14_digit(timestamp_str)
 
-                # Map outcome to status string (backward compat: default to no_changes)
-                outcome = data.get("outcome", "no_changes")
-                if outcome == "new_cl":
-                    status = "NEW CL"
-                elif outcome == "new_proposal":
-                    status = "NEW PROPOSAL"
-                else:
-                    status = "NO CHANGES"
-
                 cl_name = data.get("cl_name", "unknown")
                 agents.append(
                     Agent(
                         agent_type=AgentType.RUNNING,
                         cl_name=cl_name,
                         project_file=data.get("project_file", ""),
-                        status=status,
+                        status="DONE",
                         start_time=start_time,
                         workflow="ace(run)",
                         raw_suffix=timestamp_str,
                         response_path=data.get("response_path"),
                         diff_path=data.get("diff_path"),
-                        new_cl_name=data.get("new_cl_name"),
-                        new_cl_url=(
-                            cl_by_cl_name.get(data.get("new_cl_name"))
-                            if data.get("new_cl_name")
-                            else None
-                        ),
-                        proposal_id=data.get("proposal_id"),
                         workspace_num=data.get("workspace_num"),
                         bug=bug_by_cl_name.get(cl_name),
                         cl_num=cl_by_cl_name.get(cl_name),
@@ -417,7 +395,7 @@ def load_workflow_states() -> list[WorkflowEntry]:
                     if status == "waiting_hitl":
                         display_status = "WAITING INPUT"
                     elif status == "completed":
-                        display_status = "COMPLETED"
+                        display_status = "DONE"
                     elif status == "failed":
                         display_status = "FAILED"
                     else:
@@ -629,7 +607,7 @@ def load_workflow_agent_steps() -> list[Agent]:
                         if status == "waiting_hitl":
                             display_status = "WAITING INPUT"
                         elif status == "completed":
-                            display_status = "COMPLETED"
+                            display_status = "DONE"
                         elif status == "in_progress":
                             display_status = "RUNNING"
                         elif status == "failed":

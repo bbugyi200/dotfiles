@@ -246,15 +246,12 @@ class KeybindingFooter(Horizontal):
         # Kill/dismiss (only when agent selected)
         if agent is not None:
             if agent.status in (
-                "NO CHANGES",
-                "NEW CL",
-                "NEW PROPOSAL",
+                "DONE",
                 "REVIVED",
-                "COMPLETED",
                 "FAILED",
             ):
                 bindings.append(("x", "dismiss"))
-                if agent.status not in ("COMPLETED", "FAILED"):
+                if agent.status not in ("FAILED",):
                     bindings.append(("e", "edit chat"))
             elif agent.status == "WAITING INPUT":
                 bindings.append(("a", "answer"))

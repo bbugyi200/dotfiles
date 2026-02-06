@@ -18,10 +18,7 @@ class PromptBarMixin:
         project_name: str | None,
         cl_name: str | None,
         update_target: str,
-        new_cl_name: str | None,
         history_sort_key: str,
-        bug: str | None = None,
-        fixed_bug: str | None = None,
     ) -> None:
         """Show prompt input bar for agent workflow.
 
@@ -29,10 +26,7 @@ class PromptBarMixin:
             project_name: The project name.
             cl_name: The selected CL name (or None for project-only).
             update_target: What to checkout (CL name or "p4head").
-            new_cl_name: If provided, create a new ChangeSpec with this name.
             history_sort_key: Branch/CL name to sort prompt history by.
-            bug: Bug number to associate with a new ChangeSpec (BUG: field).
-            fixed_bug: Bug number for FIXED: field (mutually exclusive with bug).
         """
         from commit_workflow.project_file_utils import create_project_file
         from gai_utils import generate_timestamp
@@ -78,8 +72,6 @@ class PromptBarMixin:
         self._prompt_context = PromptContext(
             project_name=project_name,
             cl_name=cl_name,
-            new_cl_name=new_cl_name,
-            parent_cl_name=cl_name,
             project_file=project_file,
             workspace_dir=workspace_dir,
             workspace_num=workspace_num,
@@ -88,8 +80,6 @@ class PromptBarMixin:
             history_sort_key=history_sort_key,
             display_name=display_name,
             update_target=update_target,
-            bug=bug,
-            fixed_bug=fixed_bug,
         )
 
         # Immediately show prompt input bar (workspace prep happens in runner)
@@ -125,8 +115,6 @@ class PromptBarMixin:
         self._prompt_context = PromptContext(
             project_name="home",
             cl_name=None,
-            new_cl_name=None,
-            parent_cl_name=None,
             project_file=os.path.expanduser("~/.gai/projects/home/home.gp"),
             workspace_dir=str(Path.home()),
             workspace_num=0,
