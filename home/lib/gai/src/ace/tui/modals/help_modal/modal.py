@@ -38,8 +38,6 @@ def _create_load_query_action(slot: str) -> Callable[["HelpModal"], None]:
     """
 
     def action(self: "HelpModal") -> None:
-        if self._current_tab != "changespecs":
-            return
         self.dismiss(None)
         getattr(cast("AceApp", self.app), f"action_load_saved_query_{slot}")()
 
@@ -55,7 +53,7 @@ class HelpModal(CopyModeForwardingMixin, ModalScreen[None]):
         ("question_mark", "close", "Close"),
         ("ctrl+d", "scroll_down", "Scroll down"),
         ("ctrl+u", "scroll_up", "Scroll up"),
-        # Saved query keybindings (CLs tab only)
+        # Saved query keybindings (work from any tab)
         Binding("1", "load_query_1", "Load Q1", show=False),
         Binding("2", "load_query_2", "Load Q2", show=False),
         Binding("3", "load_query_3", "Load Q3", show=False),
@@ -116,9 +114,10 @@ class HelpModal(CopyModeForwardingMixin, ModalScreen[None]):
         """Build the left column content."""
         text = Text()
 
-        # Add saved queries and history sections at the top for CLs tab
+        # Add saved queries section (works from any tab)
+        add_saved_queries_section(text, self._active_query)
+        # Query history is CLs-tab only
         if self._current_tab == "changespecs":
-            add_saved_queries_section(text, self._active_query)
             add_query_history_section(text)
 
         # Get left-side bindings for current tab
@@ -221,7 +220,7 @@ class HelpModal(CopyModeForwardingMixin, ModalScreen[None]):
         height = scroll.scrollable_content_region.height
         scroll.scroll_relative(y=-(height // 2), animate=False)
 
-    # --- Saved query actions (CLs tab only) ---
+    # --- Saved query actions (work from any tab) ---
     # These are generated using a factory to reduce repetition
     action_load_query_0 = _create_load_query_action("0")
     action_load_query_1 = _create_load_query_action("1")
