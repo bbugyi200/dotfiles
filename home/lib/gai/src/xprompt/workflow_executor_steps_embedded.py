@@ -1,6 +1,7 @@
 """Embedded workflow step execution mixin."""
 
 import re
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from shared_utils import apply_section_marker_handling
@@ -26,6 +27,18 @@ _WORKFLOW_REF_PATTERN = (
     r"#([a-zA-Z_][a-zA-Z0-9_]*(?:/[a-zA-Z_][a-zA-Z0-9_]*)*)"
     r"(?:(\()|:(`[^`]*`|[a-zA-Z0-9_.-]+)|(\+))?"  # Supports backtick-delimited colon args
 )
+
+
+@dataclass
+class EmbeddedWorkflowInfo:
+    """Tracking info for an embedded workflow's pre/post steps and exports."""
+
+    pre_steps: list[WorkflowStep]
+    post_steps: list[WorkflowStep]
+    context: dict[str, Any]
+    workflow_name: str
+    exports: dict[str, str] = field(default_factory=dict)
+    first_input_value: str | None = None
 
 
 class EmbeddedWorkflowMixin:
@@ -188,9 +201,7 @@ class EmbeddedWorkflowMixin:
         self,
         prompt: str,
         pre_step_offset: int = 0,
-    ) -> tuple[
-        str, list[tuple[list[WorkflowStep], list[WorkflowStep], dict[str, Any]]], int
-    ]:
+    ) -> tuple[str, list[EmbeddedWorkflowInfo], int]:
         """Detect and expand embedded workflows in a prompt.
 
         Finds workflow references in the prompt, executes their pre-steps,
@@ -201,17 +212,15 @@ class EmbeddedWorkflowMixin:
             pre_step_offset: Starting offset for sub-step numbering of pre-steps.
 
         Returns:
-            Tuple of (expanded_prompt, list of (pre_steps, post_steps, context)
-            tuples, total_pre_steps_executed). The post_steps should be executed
+            Tuple of (expanded_prompt, list of EmbeddedWorkflowInfo,
+            total_pre_steps_executed). The post_steps should be executed
             after the main prompt completes.
         """
         from xprompt._parsing import find_matching_paren_for_args, parse_args
         from xprompt.loader import get_all_workflows
 
         workflows = get_all_workflows()
-        embedded_workflows: list[
-            tuple[list[WorkflowStep], list[WorkflowStep], dict[str, Any]]
-        ] = []
+        embedded_workflows: list[EmbeddedWorkflowInfo] = []
         running_offset = pre_step_offset
 
         # Find all potential workflow references
@@ -269,6 +278,13 @@ class EmbeddedWorkflowMixin:
                 if input_arg.name not in args and input_arg.default is not None:
                     args[input_arg.name] = str(input_arg.default)
 
+            # Determine first input value for export key naming
+            first_input_value: str | None = None
+            if workflow.inputs:
+                first_input_name = workflow.inputs[0].name
+                if first_input_name in args:
+                    first_input_value = str(args[first_input_name])
+
             # Get pre and post steps
             pre_steps = workflow.get_pre_prompt_steps()
             post_steps = workflow.get_post_prompt_steps()
@@ -316,8 +332,55 @@ class EmbeddedWorkflowMixin:
             # Replace the workflow reference with the prompt_part content
             prompt = prompt[: match.start()] + prompt_part_content + prompt[match_end:]
 
-            # Store post-steps for execution after the main prompt
-            if post_steps:
-                embedded_workflows.append((pre_steps, post_steps, embedded_context))
+            # Store info for post-step execution and export propagation
+            if post_steps or workflow.exports:
+                embedded_workflows.append(
+                    EmbeddedWorkflowInfo(
+                        pre_steps=pre_steps,
+                        post_steps=post_steps,
+                        context=embedded_context,
+                        workflow_name=name,
+                        exports=workflow.exports,
+                        first_input_value=first_input_value,
+                    )
+                )
 
         return prompt, embedded_workflows, running_offset - pre_step_offset
+
+    def _propagate_embedded_exports(
+        self,
+        embedded_workflows: list[EmbeddedWorkflowInfo],
+    ) -> None:
+        """Propagate exports from embedded workflows into the parent context.
+
+        For each embedded workflow that declares exports, resolve the dotted
+        step output paths from the embedded context and store them under
+        a key like ``_{workflow_name}_{first_input_value}`` in the parent
+        context.
+
+        Args:
+            embedded_workflows: List of EmbeddedWorkflowInfo from expansion.
+        """
+        for info in embedded_workflows:
+            if not info.exports:
+                continue
+
+            resolved: dict[str, Any] = {}
+            for export_name, dotted_path in info.exports.items():
+                parts = dotted_path.split(".", 1)
+                if len(parts) == 2:
+                    step_name, field_name = parts
+                    step_output = info.context.get(step_name)
+                    if isinstance(step_output, dict):
+                        resolved[export_name] = step_output.get(field_name)
+                    else:
+                        resolved[export_name] = None
+                else:
+                    resolved[export_name] = info.context.get(dotted_path)
+
+            # Build parent context key: _{workflow_name}_{first_input_value}
+            key = f"_{info.workflow_name}"
+            if info.first_input_value is not None:
+                key = f"{key}_{info.first_input_value}"
+
+            self.context[key] = resolved

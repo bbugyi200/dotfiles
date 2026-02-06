@@ -12,8 +12,8 @@ xprompts:
       #file:{{ fname }}
   research: |
     Some research has already been done to help you with this task. Review these files before deciding on your implementation approach:
-      - Prior Art (Existing Dart Clients): @bb/gai/file/prior_art.md
-      - Required Dimensions and Metrics: @bb/gai/file/dimensions_metrics.md
+      - Prior Art (Existing Dart Clients): @{{ _file_prior_art.file_path }}
+      - Required Dimensions and Metrics: @{{ _file_dimensions_metrics.file_path }}
 steps:
   # Step 1: Run 3 research agents in parallel
   - name: research
@@ -47,7 +47,7 @@ steps:
       - This functionality should all be gated behind the ENABLE_PA_TROUBLESHOOTING_IMPROVEMENTS #feat.
 
       {% if create_plan -%}
-      Use the following implementation plan to inspire your approach: @bb/gai/file/plan.md
+      Use the following implementation plan to inspire your approach: @{{ _file_plan.file_path }}
       {% else -%}
       #_research
       {%- endif %}

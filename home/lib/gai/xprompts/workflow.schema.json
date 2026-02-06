@@ -6,6 +6,11 @@
   "required": ["steps"],
   "additionalProperties": false,
   "properties": {
+    "exports": {
+      "type": "object",
+      "description": "Map of export names to dotted step output paths (e.g., {file_path: verify_file.file_path}). Exports are propagated to parent workflow context when this workflow is embedded.",
+      "additionalProperties": { "type": "string" }
+    },
     "xprompts": {
       "type": "object",
       "description": "Workflow-local xprompt definitions (highest priority within this workflow). Names are auto-prefixed with '_' if not already present.",

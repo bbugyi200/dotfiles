@@ -4,6 +4,7 @@ import copy
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING, Any
 
+from xprompt.workflow_executor_steps_embedded import EmbeddedWorkflowInfo
 from xprompt.workflow_models import (
     ParallelConfig,
     StepState,
@@ -48,6 +49,7 @@ class ParallelMixin:
     _collect_results: Any
     _expand_embedded_workflows_in_prompt: Any
     _execute_embedded_workflow_steps: Any
+    _propagate_embedded_exports: Any
     _save_prompt_step_marker: Any
     _get_step_type: Any
 
@@ -99,10 +101,7 @@ class ParallelMixin:
     def _pre_expand_parallel_embedded_workflows(
         self,
         nested_steps: list[WorkflowStep],
-    ) -> tuple[
-        list[WorkflowStep],
-        list[tuple[list[WorkflowStep], list[WorkflowStep], dict[str, Any]]],
-    ]:
+    ) -> tuple[list[WorkflowStep], list[EmbeddedWorkflowInfo]]:
         """Pre-expand embedded workflows in nested prompt steps.
 
         Hoists pre-steps (before parallel) and post-steps (after parallel) out
@@ -112,16 +111,14 @@ class ParallelMixin:
             nested_steps: The nested steps from the parallel config.
 
         Returns:
-            Tuple of (possibly-modified nested steps, collected embedded
-            workflow tuples of (pre_steps, post_steps, context)).
+            Tuple of (possibly-modified nested steps, collected
+            EmbeddedWorkflowInfo list).
         """
         from xprompt import process_xprompt_references
         from xprompt.workflow_executor_utils import render_template
 
         modified_steps: list[WorkflowStep] = []
-        all_embedded_workflows: list[
-            tuple[list[WorkflowStep], list[WorkflowStep], dict[str, Any]]
-        ] = []
+        all_embedded_workflows: list[EmbeddedWorkflowInfo] = []
         cumulative_pre_step_offset = 0
 
         for ns in nested_steps:
@@ -267,8 +264,8 @@ class ParallelMixin:
 
         # Execute post-steps from embedded workflows
         cumulative_post_offset = 0
-        for _, post_steps, embedded_context in collected_embedded_workflows:
-            if post_steps:
+        for info in collected_embedded_workflows:
+            if info.post_steps:
                 from xprompt.workflow_output import ParentStepContext
 
                 parent_ctx = ParentStepContext(
@@ -276,8 +273,8 @@ class ParallelMixin:
                     total_steps=len(self.workflow.steps),
                 )
                 success = self._execute_embedded_workflow_steps(
-                    post_steps,
-                    embedded_context,
+                    info.post_steps,
+                    info.context,
                     f"embedded:post:{step.name}",
                     parent_step_context=parent_ctx,
                     step_index_offset=cumulative_post_offset,
@@ -287,6 +284,9 @@ class ParallelMixin:
                         f"Post-steps for embedded workflow in parallel step "
                         f"'{step.name}' failed"
                     )
-                cumulative_post_offset += len(post_steps)
+                cumulative_post_offset += len(info.post_steps)
+
+        # Propagate exports from embedded workflows into parent context
+        self._propagate_embedded_exports(collected_embedded_workflows)
 
         return True
