@@ -478,3 +478,59 @@ def test_pre_expand_parallel_preserves_non_prompt_steps() -> None:
     assert modified[1] is not nested_steps[1]
     assert modified[1].prompt is not None
     assert "EXTRA" in modified[1].prompt
+
+
+# ============================================================================
+# TestParallelStepNumbering - marker files with parent step info
+# ============================================================================
+
+
+def test_parallel_children_get_step_numbering_markers() -> None:
+    """Test that parallel child steps get markers with parent step numbering."""
+    import json
+
+    nested_steps = [
+        WorkflowStep(name="child_a", bash='echo "a=done"'),
+        WorkflowStep(name="child_b", bash='echo "b=done"'),
+    ]
+    steps = [
+        WorkflowStep(
+            name="parallel_step",
+            parallel_config=ParallelConfig(steps=nested_steps),
+        ),
+        WorkflowStep(name="final_step", bash='echo "final=done"'),
+    ]
+    workflow = _create_workflow("test", steps)
+    executor = _create_executor(workflow)
+    success = executor.execute()
+    assert success
+
+    # Check child marker files have correct parent step info
+    for child_name, expected_idx in [("child_a", 0), ("child_b", 1)]:
+        marker_path = os.path.join(
+            executor.artifacts_dir, f"prompt_step_{child_name}.json"
+        )
+        with open(marker_path) as f:
+            data = json.load(f)
+        assert data["parent_step_index"] == 0  # parallel_step is step 0
+        assert data["parent_total_steps"] == 2  # 2 top-level steps
+        assert data["step_index"] == expected_idx
+
+
+def test_running_step_marker_has_step_index() -> None:
+    """Test that the initial 'running' marker includes the step index."""
+    import json
+
+    steps = [
+        WorkflowStep(name="only_step", bash='echo "done=true"'),
+    ]
+    workflow = _create_workflow("test", steps)
+    executor = _create_executor(workflow)
+    success = executor.execute()
+    assert success
+
+    marker_path = os.path.join(executor.artifacts_dir, "prompt_step_only_step.json")
+    with open(marker_path) as f:
+        data = json.load(f)
+    assert data["step_index"] == 0
+    assert data["total_steps"] == 1

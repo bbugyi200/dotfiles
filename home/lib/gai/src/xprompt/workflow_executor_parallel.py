@@ -48,6 +48,8 @@ class ParallelMixin:
     _collect_results: Any
     _expand_embedded_workflows_in_prompt: Any
     _execute_embedded_workflow_steps: Any
+    _save_prompt_step_marker: Any
+    _get_step_type: Any
 
     def _execute_single_nested_step(
         self,
@@ -184,6 +186,22 @@ class ParallelMixin:
         if self.output_handler:
             step_names = [s.name for s in nested_steps]
             self.output_handler.on_parallel_start(step.name, step_names)
+
+        # Pre-create "running" markers for parallel children with parent step info
+        parent_idx = self.state.current_step_index
+        total = len(self.workflow.steps)
+        for child_idx, nested_step in enumerate(nested_steps):
+            child_state = StepState(
+                name=nested_step.name, status=StepStatus.IN_PROGRESS
+            )
+            self._save_prompt_step_marker(
+                nested_step.name,
+                child_state,
+                self._get_step_type(nested_step),
+                step_index=child_idx,
+                parent_step_index=parent_idx,
+                parent_total_steps=total,
+            )
 
         # Execute all nested steps in parallel
         results: dict[str, dict[str, Any]] = {}

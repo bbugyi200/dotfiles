@@ -182,6 +182,15 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
             step_state.status = StepStatus.IN_PROGRESS
             self._save_state()
 
+            # Save initial "running" marker with step index for TUI display
+            self._save_prompt_step_marker(
+                step.name,
+                step_state,
+                step_type,
+                step_index=i,
+                hidden=step.hidden,
+            )
+
             # Notify step start
             if self.output_handler:
                 loop_info = self._get_loop_info(step)
@@ -371,6 +380,22 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
             diff_path: Path to the git diff file for this step, if available.
         """
         marker_path = os.path.join(self.artifacts_dir, f"prompt_step_{step_name}.json")
+
+        # Preserve existing step info when step_index is not provided
+        # (e.g. when _execute_prompt_step saves a marker but the caller
+        # already wrote one with proper step numbering).
+        if step_index is None:
+            try:
+                with open(marker_path, encoding="utf-8") as f:
+                    existing = json.load(f)
+                    step_index = existing.get("step_index")
+                    if parent_step_index is None:
+                        parent_step_index = existing.get("parent_step_index")
+                    if parent_total_steps is None:
+                        parent_total_steps = existing.get("parent_total_steps")
+            except (FileNotFoundError, json.JSONDecodeError, OSError):
+                pass
+
         marker_data = {
             "workflow_name": self.workflow.name,
             "step_name": step_name,
