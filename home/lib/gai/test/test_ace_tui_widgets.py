@@ -321,6 +321,38 @@ def test_parallel_step_no_output_shows_placeholder() -> None:
         assert "AGENT PROMPT" not in header_str
 
 
+async def test_update_display_hides_diff_for_top_level_workflow() -> None:
+    """Top-level workflow agents should hide the diff panel even when RUNNING."""
+    from ace.tui.widgets.agent_detail import AgentDetail
+    from textual.app import App, ComposeResult
+
+    class _TestApp(App[None]):
+        def compose(self) -> ComposeResult:
+            yield AgentDetail(id="agent-detail-panel")
+
+    app = _TestApp()
+    async with app.run_test():
+        detail = app.query_one("#agent-detail-panel", AgentDetail)
+        agent = Agent(
+            agent_type=AgentType.WORKFLOW,
+            cl_name="test_cl",
+            project_file="/tmp/test.gp",
+            status="RUNNING",
+            start_time=None,
+            workflow="my_workflow",
+        )
+        # Sanity: top-level workflow is NOT a workflow child
+        assert not agent.is_workflow_child
+        assert not agent.appears_as_agent
+
+        detail.update_display(agent)
+
+        diff_scroll = detail.query_one("#agent-diff-scroll")
+        prompt_scroll = detail.query_one("#agent-prompt-scroll")
+        assert diff_scroll.has_class("hidden")
+        assert prompt_scroll.has_class("expanded")
+
+
 async def test_tab_bar_integration_tab_key() -> None:
     """Test that pressing TAB key cycles through all tabs."""
     mock_changespecs = [_make_changespec()]
