@@ -120,6 +120,7 @@ class ParallelMixin:
         all_embedded_workflows: list[
             tuple[list[WorkflowStep], list[WorkflowStep], dict[str, Any]]
         ] = []
+        cumulative_pre_step_offset = 0
 
         for ns in nested_steps:
             if not (ns.is_prompt_step() and ns.prompt):
@@ -131,7 +132,12 @@ class ParallelMixin:
             expanded = process_xprompt_references(
                 rendered, extra_xprompts=self.workflow.xprompts
             )
-            expanded, embedded_wfs = self._expand_embedded_workflows_in_prompt(expanded)
+            expanded, embedded_wfs, pre_step_count = (
+                self._expand_embedded_workflows_in_prompt(
+                    expanded, pre_step_offset=cumulative_pre_step_offset
+                )
+            )
+            cumulative_pre_step_offset += pre_step_count
 
             if embedded_wfs:
                 all_embedded_workflows.extend(embedded_wfs)
@@ -242,6 +248,7 @@ class ParallelMixin:
             self.output_handler.on_parallel_complete(step.name, combined, None)
 
         # Execute post-steps from embedded workflows
+        cumulative_post_offset = 0
         for _, post_steps, embedded_context in collected_embedded_workflows:
             if post_steps:
                 from xprompt.workflow_output import ParentStepContext
@@ -255,11 +262,13 @@ class ParallelMixin:
                     embedded_context,
                     f"embedded:post:{step.name}",
                     parent_step_context=parent_ctx,
+                    step_index_offset=cumulative_post_offset,
                 )
                 if not success:
                     raise WorkflowExecutionError(
                         f"Post-steps for embedded workflow in parallel step "
                         f"'{step.name}' failed"
                     )
+                cumulative_post_offset += len(post_steps)
 
         return True

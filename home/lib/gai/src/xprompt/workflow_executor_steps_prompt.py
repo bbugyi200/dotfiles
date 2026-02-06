@@ -108,8 +108,8 @@ class PromptStepMixin:
 
         # Then expand embedded workflows
         # This executes pre-steps and replaces workflow refs with prompt_part content
-        expanded_prompt, embedded_workflows = self._expand_embedded_workflows_in_prompt(
-            expanded_prompt
+        expanded_prompt, embedded_workflows, _ = (
+            self._expand_embedded_workflows_in_prompt(expanded_prompt)
         )
 
         # Save initial marker to show step is running in TUI
@@ -192,6 +192,7 @@ class PromptStepMixin:
         )
 
         # Execute post-steps from embedded workflows
+        cumulative_post_offset = 0
         for _, post_steps, embedded_context in embedded_workflows:
             if post_steps:
                 from xprompt.workflow_output import ParentStepContext
@@ -208,10 +209,12 @@ class PromptStepMixin:
                     embedded_context,
                     f"embedded:post:{step.name}",
                     parent_step_context=parent_ctx,
+                    step_index_offset=cumulative_post_offset,
                 )
                 if not success:
                     raise WorkflowExecutionError(
                         f"Post-steps for embedded workflow in step '{step.name}' failed"
                     )
+                cumulative_post_offset += len(post_steps)
 
         return True

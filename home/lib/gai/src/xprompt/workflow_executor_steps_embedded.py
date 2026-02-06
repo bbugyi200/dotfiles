@@ -71,6 +71,7 @@ class EmbeddedWorkflowMixin:
         parent_step_name: str,
         parent_step_context: "ParentStepContext | None" = None,
         is_pre_prompt_step: bool = False,
+        step_index_offset: int = 0,
     ) -> bool:
         """Execute steps from an embedded workflow.
 
@@ -113,7 +114,7 @@ class EmbeddedWorkflowMixin:
                             self.output_handler.on_step_start(
                                 step.name,
                                 step_type,
-                                i,
+                                step_index_offset + i,
                                 total_steps,
                                 condition=step.condition,
                                 condition_result=False,
@@ -129,7 +130,7 @@ class EmbeddedWorkflowMixin:
                     self.output_handler.on_step_start(
                         step.name,
                         step_type,
-                        i,
+                        step_index_offset + i,
                         total_steps,
                         parent_step_context=parent_step_context,
                     )
@@ -161,7 +162,7 @@ class EmbeddedWorkflowMixin:
                     temp_state,
                     step_type,
                     step_source,
-                    i,
+                    step_index_offset + i,
                     parent_step_index=(
                         parent_step_context.step_index if parent_step_context else None
                     ),
@@ -185,8 +186,9 @@ class EmbeddedWorkflowMixin:
     def _expand_embedded_workflows_in_prompt(
         self,
         prompt: str,
+        pre_step_offset: int = 0,
     ) -> tuple[
-        str, list[tuple[list[WorkflowStep], list[WorkflowStep], dict[str, Any]]]
+        str, list[tuple[list[WorkflowStep], list[WorkflowStep], dict[str, Any]]], int
     ]:
         """Detect and expand embedded workflows in a prompt.
 
@@ -195,10 +197,12 @@ class EmbeddedWorkflowMixin:
 
         Args:
             prompt: The prompt text that may contain workflow references.
+            pre_step_offset: Starting offset for sub-step numbering of pre-steps.
 
         Returns:
-            Tuple of (expanded_prompt, list of (pre_steps, post_steps, context) tuples).
-            The post_steps should be executed after the main prompt completes.
+            Tuple of (expanded_prompt, list of (pre_steps, post_steps, context)
+            tuples, total_pre_steps_executed). The post_steps should be executed
+            after the main prompt completes.
         """
         from xprompt._parsing import find_matching_paren_for_args, parse_args
         from xprompt.loader import get_all_workflows
@@ -207,6 +211,7 @@ class EmbeddedWorkflowMixin:
         embedded_workflows: list[
             tuple[list[WorkflowStep], list[WorkflowStep], dict[str, Any]]
         ] = []
+        running_offset = pre_step_offset
 
         # Find all potential workflow references
         matches = list(re.finditer(_WORKFLOW_REF_PATTERN, prompt, re.MULTILINE))
@@ -284,11 +289,13 @@ class EmbeddedWorkflowMixin:
                     f"embedded:{name}",
                     parent_step_context=parent_ctx,
                     is_pre_prompt_step=True,
+                    step_index_offset=running_offset,
                 )
                 if not success:
                     raise WorkflowExecutionError(
                         f"Pre-steps for embedded workflow '{name}' failed"
                     )
+                running_offset += len(pre_steps)
 
             # Render prompt_part with the embedded context (args + pre-step outputs)
             prompt_part_content = workflow.get_prompt_part_content()
@@ -312,4 +319,4 @@ class EmbeddedWorkflowMixin:
             if post_steps:
                 embedded_workflows.append((pre_steps, post_steps, embedded_context))
 
-        return prompt, embedded_workflows
+        return prompt, embedded_workflows, running_offset - pre_step_offset

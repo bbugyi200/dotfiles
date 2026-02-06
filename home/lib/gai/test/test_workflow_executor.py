@@ -273,7 +273,7 @@ class TestEmbeddedWorkflowExpansion:
 
                 # Test case: workflow ref inline (not at line start)
                 prompt = "Do NOT modify any files. #inject_workflow"
-                expanded, _ = executor._expand_embedded_workflows_in_prompt(prompt)
+                expanded, _, _ = executor._expand_embedded_workflows_in_prompt(prompt)
 
                 # The --- marker is stripped but \n\n is still prepended
                 assert expanded == (
@@ -309,7 +309,7 @@ class TestEmbeddedWorkflowExpansion:
 
                 # Test case: workflow ref at start of line
                 prompt = "Some text.\n#inject_workflow"
-                expanded, _ = executor._expand_embedded_workflows_in_prompt(prompt)
+                expanded, _, _ = executor._expand_embedded_workflows_in_prompt(prompt)
 
                 # The --- marker is stripped, content directly follows the newline
                 assert expanded == ("Some text.\nIMPORTANT: Additional instructions")
@@ -343,7 +343,7 @@ class TestEmbeddedWorkflowExpansion:
 
                 # Test case: workflow ref inline (not at line start)
                 prompt = "Context text. #inject_workflow"
-                expanded, _ = executor._expand_embedded_workflows_in_prompt(prompt)
+                expanded, _, _ = executor._expand_embedded_workflows_in_prompt(prompt)
 
                 # Should prepend \n\n before the ### content
                 assert "\n\n### Section Header" in expanded
