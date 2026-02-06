@@ -21,14 +21,12 @@ def main() -> None:
         ["branch_name"], capture_output=True, text=True, check=True
     ).stdout.strip()
 
-    # Validate no children
+    # Check for children (used to skip revert step)
     cs_list = find_all_changespecs()
     children = [
         cs for cs in cs_list if cs.parent == cl_name and cs.status != "Reverted"
     ]
-    if children:
-        print("error=Cannot split: CL has child CLs")
-        sys.exit(1)
+    has_children = "true" if children else "false"
 
     # Get default parent
     target = next((cs for cs in cs_list if cs.name == cl_name), None)
@@ -55,6 +53,7 @@ def main() -> None:
     print(f"bug={bug}")
     print(f"workspace_name={workspace}")
     print(f"default_parent={default_parent}")
+    print(f"has_children={has_children}")
 
 
 if __name__ == "__main__":

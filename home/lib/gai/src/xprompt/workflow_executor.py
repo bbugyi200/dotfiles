@@ -411,6 +411,7 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
             "hidden": hidden,
             "is_pre_prompt_step": is_pre_prompt_step,
             "diff_path": diff_path,
+            "error": step_state.error,
         }
         try:
             with open(marker_path, "w", encoding="utf-8") as f:

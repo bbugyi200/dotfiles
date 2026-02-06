@@ -99,7 +99,11 @@ class ScriptStepMixin:
             error_msg = (
                 result.stderr.strip()
                 if result.stderr
-                else f"Exit code {result.returncode}"
+                else (
+                    result.stdout.strip()
+                    if result.stdout
+                    else f"Exit code {result.returncode}"
+                )
             )
             raise WorkflowExecutionError(f"Bash step '{step.name}' failed: {error_msg}")
 

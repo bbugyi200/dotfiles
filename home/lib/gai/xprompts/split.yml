@@ -3,7 +3,7 @@ steps:
   # Step 1: Setup - gather metadata from current branch
   - name: setup
     bash: gai_split_setup
-    output: { cl_name: word, diff_path: path, bug: line, workspace_name: word, default_parent: word }
+    output: { cl_name: word, diff_path: path, bug: line, workspace_name: word, default_parent: word, has_children: word }
 
   # Step 2: Generate split spec (prompt with HITL)
   - name: generate_spec
@@ -37,6 +37,7 @@ steps:
 
   # Step 5: Prompt to revert original CL (HITL)
   - name: revert_prompt
+    if: "{{ setup.has_children == 'false' }}"
     bash: |
       echo "message=Revert the original CL '{{ setup.cl_name }}'?"
     output: { message: text }
@@ -44,6 +45,7 @@ steps:
 
   # Step 6: Execute revert if approved
   - name: execute_revert
+    if: "{{ setup.has_children == 'false' }}"
     python: |
       # revert_prompt.approved is set by HITL handler
       approved = {{ revert_prompt.approved | tojson }}
