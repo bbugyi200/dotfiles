@@ -3,7 +3,8 @@ steps:
   # Step 1: Setup - gather metadata from current branch
   - name: setup
     bash: gai_split_setup
-    output: { cl_name: word, diff_path: path, bug: line, workspace_name: word, default_parent: word, has_children: word }
+    output:
+      { cl_name: word, diff_path: path, bug: line, workspace_name: word, default_parent: word, has_children: word }
 
   # Step 2: Generate split spec (prompt with HITL)
   - name: generate_spec
@@ -11,7 +12,7 @@ steps:
       #split_spec_generator(
         workspace_name="{{ setup.workspace_name }}",
         diff_path="{{ setup.diff_path }}",
-        split_desc="{{ split_desc }}"
+        split_desc="{{ split_desc }}",
         should_chain_cls="{{ should_chain_cls }}"
       )
     output: [{ name: word, description: text, parent: { type: word, default: "" } }]
