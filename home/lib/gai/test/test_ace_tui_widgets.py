@@ -1,11 +1,15 @@
 """Tests for the ace TUI widgets (section builders and TabBar)."""
 
+import time
+from pathlib import Path
 from unittest.mock import patch
 
 from ace.changespec import ChangeSpec, CommentEntry, CommitEntry, HookEntry
 from ace.tui import AceApp
+from ace.tui.models.agent import Agent, AgentType
 from ace.tui.widgets import TabBar
 from ace.tui.widgets.commits_builder import _should_show_commits_drawers
+from ace.tui.widgets.prompt_panel import AgentPromptPanel
 
 
 def _make_changespec(
@@ -161,6 +165,91 @@ def test_tab_bar_update_tab_to_changespecs() -> None:
     tab_bar.update_tab("agents")
     tab_bar.update_tab("changespecs")
     assert tab_bar._current_tab == "changespecs"
+
+
+# --- _get_prompt_content Tests ---
+
+
+def _make_agent(
+    artifacts_dir: str | None = None,
+    parent_workflow: str | None = None,
+    step_name: str | None = None,
+) -> Agent:
+    """Create a minimal Agent for prompt panel testing."""
+    return Agent(
+        agent_type=AgentType.WORKFLOW,
+        cl_name="test_cl",
+        project_file="/tmp/test.gp",
+        status="RUNNING",
+        start_time=None,
+        artifacts_dir=artifacts_dir,
+        parent_workflow=parent_workflow,
+        step_name=step_name,
+    )
+
+
+def test_get_prompt_content_workflow_child_filters_by_step(
+    tmp_path: Path,
+) -> None:
+    """Workflow child agent gets its own step's prompt, not the most recent."""
+    # Create prompt files in shared artifacts dir; make plan newer than api_research
+    api_research_file = tmp_path / "workflow-olcr-api_research_prompt.md"
+    api_research_file.write_text("api_research prompt content")
+
+    # Ensure plan prompt has a later mtime
+    time.sleep(0.05)
+    plan_file = tmp_path / "workflow-olcr-plan_prompt.md"
+    plan_file.write_text("plan prompt content")
+
+    agent = _make_agent(
+        artifacts_dir=str(tmp_path),
+        parent_workflow="olcr",
+        step_name="api_research",
+    )
+
+    panel = AgentPromptPanel.__new__(AgentPromptPanel)
+    result = panel._get_prompt_content(agent)
+
+    assert result == "api_research prompt content"
+
+
+def test_get_prompt_content_non_workflow_uses_most_recent(
+    tmp_path: Path,
+) -> None:
+    """Non-workflow agent falls back to the most recently modified prompt."""
+    older_file = tmp_path / "older_prompt.md"
+    older_file.write_text("older prompt")
+
+    time.sleep(0.05)
+    newer_file = tmp_path / "newer_prompt.md"
+    newer_file.write_text("newer prompt")
+
+    agent = _make_agent(artifacts_dir=str(tmp_path))
+
+    panel = AgentPromptPanel.__new__(AgentPromptPanel)
+    result = panel._get_prompt_content(agent)
+
+    assert result == "newer prompt"
+
+
+def test_get_prompt_content_step_filter_no_substring_match(
+    tmp_path: Path,
+) -> None:
+    """Step name 'research' must not match '-api_research_prompt.md'."""
+    api_research_file = tmp_path / "workflow-olcr-api_research_prompt.md"
+    api_research_file.write_text("api_research prompt")
+
+    agent = _make_agent(
+        artifacts_dir=str(tmp_path),
+        parent_workflow="olcr",
+        step_name="research",
+    )
+
+    panel = AgentPromptPanel.__new__(AgentPromptPanel)
+    result = panel._get_prompt_content(agent)
+
+    # No step-specific match, so falls back to most recent (the only file)
+    assert result == "api_research prompt"
 
 
 async def test_tab_bar_integration_tab_key() -> None:

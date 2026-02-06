@@ -167,6 +167,19 @@ class AgentPromptPanel(Static):
         if not prompt_files:
             return None
 
+        # For workflow child agents, filter to the step-specific prompt file.
+        # All workflow steps share the same artifacts_dir, so without filtering
+        # we'd always show the most recently modified prompt (usually the last
+        # step).
+        if agent.is_workflow_child and agent.step_name:
+            step_specific = [
+                p
+                for p in prompt_files
+                if p.name.endswith(f"-{agent.step_name}_prompt.md")
+            ]
+            if step_specific:
+                prompt_files = step_specific
+
         # Sort by modification time to get the most recent
         prompt_files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
 
