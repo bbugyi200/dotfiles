@@ -125,6 +125,11 @@ class ChangeSpecMixin:
         Args:
             slot: The slot number ("0"-"9").
         """
+        # Switch to CLs tab if not already there
+        if self.current_tab != "changespecs":
+            self._save_current_tab_position()  # type: ignore[attr-defined]
+            self.current_tab = "changespecs"  # type: ignore[assignment]
+
         from ...query import parse_query, to_canonical_string
         from ...query_history import push_to_prev_stack, save_query_history
         from ...saved_queries import load_saved_queries
