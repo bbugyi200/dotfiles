@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from shared_utils import apply_section_marker_handling
 
+from xprompt.models import OutputSpec
 from xprompt.workflow_executor_types import HITLHandler
 from xprompt.workflow_executor_utils import render_template
 from xprompt.workflow_models import (
@@ -41,6 +42,68 @@ class EmbeddedWorkflowInfo:
     context: dict[str, Any]
     workflow_name: str
     nested_step_name: str | None = None
+
+
+def _get_type_to_keys(spec: OutputSpec) -> dict[str, list[str]]:
+    """Build a mapping from property type → list of property names.
+
+    Args:
+        spec: The OutputSpec to extract type info from.
+
+    Returns:
+        Dict mapping type strings (e.g. "path") to lists of property names.
+    """
+    result: dict[str, list[str]] = {}
+    for key, prop in spec.schema.get("properties", {}).items():
+        prop_type = prop.get("type", "") if isinstance(prop, dict) else ""
+        result.setdefault(prop_type, []).append(key)
+    return result
+
+
+def _map_output_by_type(
+    parent_spec: OutputSpec,
+    embedded_spec: OutputSpec,
+    embedded_output: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Map embedded output values to parent output keys by matching property types.
+
+    For each property type declared in the parent output spec, find the
+    corresponding property in the embedded output spec with the same type
+    and map its value to the parent key name.
+
+    Args:
+        parent_spec: The parent step's output specification.
+        embedded_spec: The embedded post-step's output specification.
+        embedded_output: The actual output dict from the embedded step.
+
+    Returns:
+        A new dict with parent key names mapped to embedded values, or None
+        if the types don't match (e.g. parent has a type not present in embedded).
+    """
+    parent_types = _get_type_to_keys(parent_spec)
+    embedded_types = _get_type_to_keys(embedded_spec)
+
+    if not parent_types:
+        return None
+
+    mapped: dict[str, Any] = {}
+    for prop_type, parent_keys in parent_types.items():
+        embedded_keys = embedded_types.get(prop_type, [])
+        if len(parent_keys) > len(embedded_keys):
+            _logger.debug(
+                "Type mismatch: parent has %d keys of type %r but embedded has %d",
+                len(parent_keys),
+                prop_type,
+                len(embedded_keys),
+            )
+            return None
+        # Map positionally: first parent key of type T gets first embedded key of type T
+        for parent_key, embedded_key in zip(parent_keys, embedded_keys, strict=False):
+            if embedded_key not in embedded_output:
+                return None
+            mapped[parent_key] = embedded_output[embedded_key]
+
+    return mapped
 
 
 # Pattern to match workflow references in prompts (same as processor.py)
@@ -357,9 +420,14 @@ class EmbeddedWorkflowMixin:
         """Propagate the last embedded workflow's output to the parent step.
 
         If the parent prompt step declares ``output`` AND the last post-step of
-        the last embedded workflow also declares ``output``, and the parent's
-        output property keys are a subset of the embedded step's actual output
-        keys, then overwrite ``step_state.output`` and ``self.context[step.name]``.
+        the last embedded workflow also declares ``output``, and each parent
+        output property type matches a corresponding embedded output property
+        type, then build a remapped output dict and overwrite
+        ``step_state.output`` and ``self.context[step.name]``.
+
+        Matching is by property **type** (not name), so a parent declaring
+        ``{my_path: path}`` will match an embedded step declaring
+        ``{file_path: path}``.
 
         Args:
             embedded_workflows: List of embedded workflow info from expansion.
@@ -384,18 +452,12 @@ class EmbeddedWorkflowMixin:
         if not isinstance(embedded_output, dict):
             return
 
-        # Check that parent step's output keys are a subset of embedded output keys
-        parent_keys = set(step.output.schema.get("properties", {}).keys())
-        if not parent_keys:
-            return
-        if not parent_keys.issubset(embedded_output.keys()):
-            _logger.debug(
-                "Output keys mismatch: parent %s not subset of embedded %s",
-                parent_keys,
-                set(embedded_output.keys()),
-            )
+        mapped = _map_output_by_type(
+            step.output, last_post_step.output, embedded_output
+        )
+        if mapped is None:
             return
 
-        # Propagate: overwrite step output with embedded output
-        step_state.output = dict(embedded_output)
-        self.context[step.name] = dict(embedded_output)
+        # Propagate: overwrite step output with remapped output
+        step_state.output = mapped
+        self.context[step.name] = mapped

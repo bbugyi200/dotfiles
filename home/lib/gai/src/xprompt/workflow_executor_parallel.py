@@ -4,7 +4,10 @@ import copy
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING, Any
 
-from xprompt.workflow_executor_steps_embedded import EmbeddedWorkflowInfo
+from xprompt.workflow_executor_steps_embedded import (
+    EmbeddedWorkflowInfo,
+    _map_output_by_type,
+)
 from xprompt.workflow_models import (
     ParallelConfig,
     StepState,
@@ -343,12 +346,14 @@ class ParallelMixin:
             if not isinstance(embedded_output, dict):
                 continue
 
-            # Check that nested step's output keys are a subset of embedded output keys
-            nested_keys = set(nested_step.output.schema.get("properties", {}).keys())
-            if not nested_keys or not nested_keys.issubset(embedded_output.keys()):
+            # Map by type: nested step's output types must match embedded output types
+            mapped = _map_output_by_type(
+                nested_step.output, last_post_step.output, embedded_output
+            )
+            if mapped is None:
                 continue
 
-            combined[info.nested_step_name] = dict(embedded_output)
+            combined[info.nested_step_name] = mapped
             changed = True
 
         if changed:
