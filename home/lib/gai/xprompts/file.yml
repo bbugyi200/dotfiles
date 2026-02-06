@@ -13,7 +13,7 @@ steps:
 
       You MUST write your complete response to the following file: bb/gai/file/{{ name }}.md
 
-      IMPORTANT: The file MUST contain your full response as markdown Do NOT skip writing to the file--this is a
+      IMPORTANT: The file MUST contain your full response as markdown. Do NOT skip writing to the file--this is a
       required step.
 
   - name: verify_file
