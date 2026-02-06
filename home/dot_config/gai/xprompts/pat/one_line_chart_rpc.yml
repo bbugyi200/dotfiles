@@ -30,7 +30,7 @@ steps:
         output: { file_path: path }
         prompt: |
           #_file(api_research): Can you help me do some research on how the OnePlatform ReportService.FetchReport
-          #service method works?
+          service method works?
 
       - name: prior_art
         output: { file_path: path }
