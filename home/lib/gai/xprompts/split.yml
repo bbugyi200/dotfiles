@@ -1,4 +1,4 @@
-input: { split_desc: { type: line, default: "multiple CLs" } }
+input: { split_desc: { type: line, default: "multiple CLs" }, should_chain_cls: { type: bool, default: false } }
 steps:
   # Step 1: Setup - gather metadata from current branch
   - name: setup
@@ -12,6 +12,7 @@ steps:
         workspace_name="{{ setup.workspace_name }}",
         diff_path="{{ setup.diff_path }}",
         split_desc="{{ split_desc }}"
+        should_chain_cls="{{ should_chain_cls }}"
       )
     output: [{ name: word, description: text, parent: { type: word, default: "" } }]
     hitl: true
