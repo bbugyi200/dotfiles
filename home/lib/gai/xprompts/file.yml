@@ -9,8 +9,7 @@ steps:
 
   - name: inject
     prompt_part: |
-      ---
-      FILE OUTPUT REQUIREMENTS:
+      ### File Output Requirements
 
       You MUST write your complete response (summary, research, plan, etc.) to the
       following file:
