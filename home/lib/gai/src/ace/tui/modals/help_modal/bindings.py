@@ -56,7 +56,7 @@ CLS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
         "Workflows & Agents",
         [
             ("r", "Run workflow"),
-            ("@", "Run agent on marked CLs (or current)"),
+            ("@", "Run agent (select project/CL)"),
             ("!", "Run background command"),
             ("<space>", "Run agent from current CL"),
         ],
@@ -64,7 +64,6 @@ CLS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
     (
         "Leader Mode (,)",
         [
-            (",<space>", "Run agent (skip CL name prompt)"),
             (",!", "Run command (use current CL)"),
         ],
     ),

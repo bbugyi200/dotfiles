@@ -1,8 +1,6 @@
 """Modal dialogs for the ace TUI."""
 
-from .bug_input_modal import BugInputModal, BugInputResult
 from .chat_select_modal import ChatFileItem, ChatSelectModal
-from .cl_name_input_modal import CLNameAction, CLNameInputModal, CLNameResult
 from .command_history_modal import CommandHistoryModal
 from .command_input_modal import CommandInputModal
 from .confirm_kill_modal import ConfirmKillModal
@@ -25,13 +23,8 @@ from .workspace_input_modal import WorkspaceInputModal
 from .xprompt_select_modal import XPromptSelectModal
 
 __all__ = [
-    "BugInputModal",
-    "BugInputResult",
     "ChatFileItem",
     "ChatSelectModal",
-    "CLNameAction",
-    "CLNameInputModal",
-    "CLNameResult",
     "CommandHistoryModal",
     "CommandInputModal",
     "ConfirmKillModal",
