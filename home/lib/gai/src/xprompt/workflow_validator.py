@@ -25,6 +25,11 @@ _XPROMPT_PATTERN = (
 # Pattern to match {{ variable }} or {{ variable.field }} template references
 _TEMPLATE_VAR_PATTERN = re.compile(r"\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)")
 
+# Pattern to capture full dotted paths like {{ research.prior_art.file_path }}
+_TEMPLATE_REF_PATTERN = re.compile(
+    r"\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)"
+)
+
 
 @dataclass
 class _XPromptCall:
@@ -285,6 +290,99 @@ def _validate_prompt_part_steps(workflow: Workflow) -> list[str]:
     return errors
 
 
+def _mark_output_refs(content: str, output_usage: dict[str, bool]) -> None:
+    """Scan content for template refs and mark matching output keys as used.
+
+    Args:
+        content: Template content string to scan.
+        output_usage: Dict of output keys to used status (mutated in place).
+    """
+    for match in _TEMPLATE_REF_PATTERN.finditer(content):
+        ref = match.group(1)
+        parts = ref.split(".")
+
+        if len(parts) == 1:
+            # {{ step }} or {{ step | tojson }}
+            if parts[0] in output_usage:
+                output_usage[parts[0]] = True
+        elif len(parts) == 2:
+            # {{ step.field }} → marks "step"
+            if parts[0] in output_usage:
+                output_usage[parts[0]] = True
+        else:
+            # {{ parent.nested.field }} → marks "parent" and "parent.nested"
+            if parts[0] in output_usage:
+                output_usage[parts[0]] = True
+            dotted = f"{parts[0]}.{parts[1]}"
+            if dotted in output_usage:
+                output_usage[dotted] = True
+
+
+def _detect_unused_outputs(workflow: Workflow) -> list[str]:
+    """Find steps with output that are never referenced by other steps.
+
+    The last step is exempt since its output may be consumed when the workflow
+    is embedded (via _propagate_last_embedded_output).
+
+    Args:
+        workflow: The workflow to check.
+
+    Returns:
+        List of error messages for unused outputs.
+    """
+    output_usage: dict[str, bool] = {}
+
+    # Register all steps that have output
+    for step in workflow.steps:
+        if step.output:
+            output_usage[step.name] = False
+        if step.parallel_config:
+            # Only track nested outputs when join is "object" or unset AND no for_loop
+            join = step.join
+            skip_nested = (
+                join in ("array", "text", "lastOf") or step.for_loop is not None
+            )
+            if not skip_nested:
+                for nested in step.parallel_config.steps:
+                    if nested.output:
+                        output_usage[f"{step.name}.{nested.name}"] = False
+
+    # Scan all step content for references
+    for step in workflow.steps:
+        for content in _collect_step_content(step):
+            _mark_output_refs(content, output_usage)
+
+    # Scan workflow-local xprompt content
+    for xprompt in workflow.xprompts.values():
+        _mark_output_refs(xprompt.content, output_usage)
+
+    # Determine exempt steps (last step)
+    exempt_keys: set[str] = set()
+    if workflow.has_prompt_part():
+        post_steps = workflow.get_post_prompt_steps()
+        if post_steps:
+            last_step = post_steps[-1]
+        else:
+            last_step = None
+    else:
+        last_step = workflow.steps[-1] if workflow.steps else None
+
+    if last_step:
+        exempt_keys.add(last_step.name)
+        # If last step is parallel, exempt all nested steps too
+        if last_step.parallel_config:
+            for nested in last_step.parallel_config.steps:
+                exempt_keys.add(f"{last_step.name}.{nested.name}")
+
+    # Return errors for unused outputs that aren't exempt
+    errors: list[str] = []
+    for key, used in output_usage.items():
+        if not used and key not in exempt_keys:
+            errors.append(f"Step '{key}' has output but is never referenced")
+
+    return errors
+
+
 def validate_workflow(workflow: Workflow) -> None:
     """Validate a workflow before execution.
 
@@ -312,6 +410,10 @@ def validate_workflow(workflow: Workflow) -> None:
     unused_inputs = _detect_unused_inputs(workflow, used_vars)
     if unused_inputs:
         errors.append(f"Unused inputs: {unused_inputs}")
+
+    # Check for unused outputs
+    unused_output_errors = _detect_unused_outputs(workflow)
+    errors.extend(unused_output_errors)
 
     # Validate xprompt calls in each step
     for step in workflow.steps:

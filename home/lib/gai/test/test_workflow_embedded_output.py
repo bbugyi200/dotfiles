@@ -6,7 +6,7 @@ from xprompt.models import OutputSpec
 from xprompt.workflow_executor_steps_embedded import (
     EmbeddedWorkflowInfo,
     EmbeddedWorkflowMixin,
-    _map_output_by_type,
+    map_output_by_type,
 )
 from xprompt.workflow_models import StepState, StepStatus, WorkflowStep
 
@@ -75,68 +75,68 @@ def test_embedded_workflow_info_with_nested_step_name() -> None:
 
 
 # ============================================================================
-# _map_output_by_type tests
+# map_output_by_type tests
 # ============================================================================
 
 
-def test_map_output_by_type_same_keys() -> None:
+def testmap_output_by_type_same_keys() -> None:
     """Test type mapping when parent and embedded have the same key names."""
     parent_spec = _make_output_spec({"file_path": "path"})
     embedded_spec = _make_output_spec({"file_path": "path"})
     embedded_output = {"file_path": "/tmp/test.md"}
 
-    result = _map_output_by_type(parent_spec, embedded_spec, embedded_output)
+    result = map_output_by_type(parent_spec, embedded_spec, embedded_output)
     assert result == {"file_path": "/tmp/test.md"}
 
 
-def test_map_output_by_type_different_keys_same_type() -> None:
+def testmap_output_by_type_different_keys_same_type() -> None:
     """Test type mapping when keys differ but types match."""
     parent_spec = _make_output_spec({"plan_path": "path"})
     embedded_spec = _make_output_spec({"file_path": "path"})
     embedded_output = {"file_path": "/tmp/plan-240101.md"}
 
-    result = _map_output_by_type(parent_spec, embedded_spec, embedded_output)
+    result = map_output_by_type(parent_spec, embedded_spec, embedded_output)
     assert result == {"plan_path": "/tmp/plan-240101.md"}
 
 
-def test_map_output_by_type_no_matching_type() -> None:
+def testmap_output_by_type_no_matching_type() -> None:
     """Test that mapping fails when types don't match."""
     parent_spec = _make_output_spec({"file_path": "path"})
     embedded_spec = _make_output_spec({"url": "text"})
     embedded_output = {"url": "http://example.com"}
 
-    result = _map_output_by_type(parent_spec, embedded_spec, embedded_output)
+    result = map_output_by_type(parent_spec, embedded_spec, embedded_output)
     assert result is None
 
 
-def test_map_output_by_type_parent_fewer_keys() -> None:
+def testmap_output_by_type_parent_fewer_keys() -> None:
     """Test mapping when parent has fewer keys of a given type than embedded."""
     parent_spec = _make_output_spec({"my_path": "path"})
     embedded_spec = _make_output_spec({"file_path": "path", "extra_path": "path"})
     embedded_output = {"file_path": "/tmp/test.md", "extra_path": "/tmp/extra.md"}
 
-    result = _map_output_by_type(parent_spec, embedded_spec, embedded_output)
+    result = map_output_by_type(parent_spec, embedded_spec, embedded_output)
     # Should map the first embedded key of type "path" to the parent key
     assert result == {"my_path": "/tmp/test.md"}
 
 
-def test_map_output_by_type_parent_more_keys_fails() -> None:
+def testmap_output_by_type_parent_more_keys_fails() -> None:
     """Test that mapping fails when parent has more keys of a type than embedded."""
     parent_spec = _make_output_spec({"path_a": "path", "path_b": "path"})
     embedded_spec = _make_output_spec({"file_path": "path"})
     embedded_output = {"file_path": "/tmp/test.md"}
 
-    result = _map_output_by_type(parent_spec, embedded_spec, embedded_output)
+    result = map_output_by_type(parent_spec, embedded_spec, embedded_output)
     assert result is None
 
 
-def test_map_output_by_type_empty_parent() -> None:
+def testmap_output_by_type_empty_parent() -> None:
     """Test that mapping returns None for empty parent spec."""
     parent_spec = OutputSpec(type="json_schema", schema={"properties": {}})
     embedded_spec = _make_output_spec({"file_path": "path"})
     embedded_output = {"file_path": "/tmp/test.md"}
 
-    result = _map_output_by_type(parent_spec, embedded_spec, embedded_output)
+    result = map_output_by_type(parent_spec, embedded_spec, embedded_output)
     assert result is None
 
 

@@ -1,10 +1,17 @@
 """Tests for the workflow_validator module."""
 
-from xprompt.models import InputArg, InputType, XPrompt
-from xprompt.workflow_models import Workflow, WorkflowStep
+import pytest
+from xprompt.models import InputArg, InputType, OutputSpec, XPrompt
+from xprompt.workflow_models import (
+    ParallelConfig,
+    Workflow,
+    WorkflowStep,
+    WorkflowValidationError,
+)
 from xprompt.workflow_validator import (
     _collect_used_variables,
     _detect_unused_inputs,
+    _detect_unused_outputs,
     _extract_xprompt_calls,
     _validate_xprompt_call,
     _XPromptCall,
@@ -278,3 +285,210 @@ def test_collect_used_variables_from_for_loop() -> None:
     )
     used = _collect_used_variables(workflow)
     assert "items_list" in used
+
+
+def _make_output() -> OutputSpec:
+    """Create a minimal OutputSpec for testing."""
+    return OutputSpec(
+        type="json_schema",
+        schema={"properties": {"result": {"type": "string"}}},
+    )
+
+
+def test_detect_unused_outputs_finds_unused() -> None:
+    """Step with output never referenced → error."""
+    workflow = Workflow(
+        name="test",
+        steps=[
+            WorkflowStep(name="producer", bash="echo hi", output=_make_output()),
+            WorkflowStep(name="consumer", bash="echo done"),
+        ],
+    )
+    errors = _detect_unused_outputs(workflow)
+    assert len(errors) == 1
+    assert "producer" in errors[0]
+
+
+def test_detect_unused_outputs_used_no_error() -> None:
+    """Step output referenced by next step → no error."""
+    workflow = Workflow(
+        name="test",
+        steps=[
+            WorkflowStep(name="producer", bash="echo hi", output=_make_output()),
+            WorkflowStep(name="consumer", bash="echo {{ producer.result }}"),
+        ],
+    )
+    errors = _detect_unused_outputs(workflow)
+    assert errors == []
+
+
+def test_detect_unused_outputs_last_step_exempt() -> None:
+    """Last step's unused output → no error (exempt)."""
+    workflow = Workflow(
+        name="test",
+        steps=[
+            WorkflowStep(name="first", bash="echo hi"),
+            WorkflowStep(name="last", bash="echo bye", output=_make_output()),
+        ],
+    )
+    errors = _detect_unused_outputs(workflow)
+    assert errors == []
+
+
+def test_detect_unused_outputs_prompt_part_last_post_step_exempt() -> None:
+    """prompt_part workflow, last post-step exempt."""
+    workflow = Workflow(
+        name="test",
+        steps=[
+            WorkflowStep(name="pre", bash="echo pre"),
+            WorkflowStep(name="main", prompt_part="Do something"),
+            WorkflowStep(name="post_last", bash="echo post", output=_make_output()),
+        ],
+    )
+    errors = _detect_unused_outputs(workflow)
+    assert errors == []
+
+
+def test_detect_unused_outputs_parallel_nested_used() -> None:
+    """{{ parent.nested.field }} ref → no error."""
+    workflow = Workflow(
+        name="test",
+        steps=[
+            WorkflowStep(
+                name="research",
+                parallel_config=ParallelConfig(
+                    steps=[
+                        WorkflowStep(
+                            name="task_a",
+                            bash="echo a",
+                            output=_make_output(),
+                        ),
+                        WorkflowStep(
+                            name="task_b",
+                            bash="echo b",
+                            output=_make_output(),
+                        ),
+                    ]
+                ),
+            ),
+            WorkflowStep(
+                name="verify",
+                bash="echo {{ research.task_a.result }} {{ research.task_b.result }}",
+            ),
+        ],
+    )
+    errors = _detect_unused_outputs(workflow)
+    assert errors == []
+
+
+def test_detect_unused_outputs_parallel_nested_unused() -> None:
+    """Nested step output never referenced → error."""
+    workflow = Workflow(
+        name="test",
+        steps=[
+            WorkflowStep(
+                name="research",
+                parallel_config=ParallelConfig(
+                    steps=[
+                        WorkflowStep(
+                            name="task_a",
+                            bash="echo a",
+                            output=_make_output(),
+                        ),
+                        WorkflowStep(
+                            name="task_b",
+                            bash="echo b",
+                            output=_make_output(),
+                        ),
+                    ]
+                ),
+            ),
+            WorkflowStep(
+                name="verify",
+                bash="echo {{ research.task_a.result }}",
+            ),
+        ],
+    )
+    errors = _detect_unused_outputs(workflow)
+    assert len(errors) == 1
+    assert "research.task_b" in errors[0]
+
+
+def test_detect_unused_outputs_parallel_join_array_skips_nested() -> None:
+    """join: array → nested outputs not tracked individually."""
+    workflow = Workflow(
+        name="test",
+        steps=[
+            WorkflowStep(
+                name="parallel_step",
+                join="array",
+                parallel_config=ParallelConfig(
+                    steps=[
+                        WorkflowStep(
+                            name="first",
+                            bash="echo 1",
+                            output=_make_output(),
+                        ),
+                        WorkflowStep(
+                            name="second",
+                            bash="echo 2",
+                            output=_make_output(),
+                        ),
+                    ]
+                ),
+            ),
+            WorkflowStep(
+                name="verify",
+                bash="echo {{ parallel_step | length }}",
+            ),
+        ],
+    )
+    errors = _detect_unused_outputs(workflow)
+    assert errors == []
+
+
+def test_detect_unused_outputs_whole_step_ref() -> None:
+    """{{ step | tojson }} (no dot) → marks step used."""
+    workflow = Workflow(
+        name="test",
+        steps=[
+            WorkflowStep(name="data", bash="echo hi", output=_make_output()),
+            WorkflowStep(name="use_it", bash="echo {{ data | tojson }}"),
+        ],
+    )
+    errors = _detect_unused_outputs(workflow)
+    assert errors == []
+
+
+def test_detect_unused_outputs_xprompt_content_scanned() -> None:
+    """Ref inside workflow-local xprompt → marks output used."""
+    workflow = Workflow(
+        name="test",
+        steps=[
+            WorkflowStep(name="producer", bash="echo hi", output=_make_output()),
+            WorkflowStep(name="consumer", bash="echo done"),
+        ],
+        xprompts={
+            "helper": XPrompt(
+                name="helper",
+                content="Use {{ producer.result }}",
+            ),
+        },
+    )
+    errors = _detect_unused_outputs(workflow)
+    assert errors == []
+
+
+def test_validate_workflow_raises_on_unused_output() -> None:
+    """Integration: validate_workflow() raises error for unused output."""
+    workflow = Workflow(
+        name="test",
+        steps=[
+            WorkflowStep(name="unused_out", bash="echo hi", output=_make_output()),
+            WorkflowStep(name="final", bash="echo done"),
+        ],
+    )
+    with pytest.raises(WorkflowValidationError, match="unused_out"):
+        from xprompt.workflow_validator import validate_workflow
+
+        validate_workflow(workflow)

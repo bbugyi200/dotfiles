@@ -60,7 +60,7 @@ def _get_type_to_keys(spec: OutputSpec) -> dict[str, list[str]]:
     return result
 
 
-def _map_output_by_type(
+def map_output_by_type(
     parent_spec: OutputSpec,
     embedded_spec: OutputSpec,
     embedded_output: dict[str, Any],
@@ -452,9 +452,7 @@ class EmbeddedWorkflowMixin:
         if not isinstance(embedded_output, dict):
             return
 
-        mapped = _map_output_by_type(
-            step.output, last_post_step.output, embedded_output
-        )
+        mapped = map_output_by_type(step.output, last_post_step.output, embedded_output)
         if mapped is None:
             return
 

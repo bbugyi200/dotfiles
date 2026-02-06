@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from xprompt.workflow_executor_steps_embedded import (
     EmbeddedWorkflowInfo,
-    _map_output_by_type,
+    map_output_by_type,
 )
 from xprompt.workflow_models import (
     ParallelConfig,
@@ -347,7 +347,7 @@ class ParallelMixin:
                 continue
 
             # Map by type: nested step's output types must match embedded output types
-            mapped = _map_output_by_type(
+            mapped = map_output_by_type(
                 nested_step.output, last_post_step.output, embedded_output
             )
             if mapped is None:
