@@ -1,12 +1,14 @@
 """MENTORS section builder for ChangeSpec detail display."""
 
+import os
+
 from rich.text import Text
 
 from ...changespec import ChangeSpec
 from ...hooks import format_timestamp_display
 from ...scheduler.mentor_runner import get_mentor_chat_path
 from .hint_tracker import HintTracker
-from .suffix_formatting import append_suffix_to_text
+from .suffix_formatting import SUFFIX_STYLES, append_suffix_to_text
 
 
 def build_mentors_section(
@@ -176,13 +178,28 @@ def build_mentors_section(
                     msl.suffix or msl.suffix_type == "running_agent"
                 ):
                     text.append(" - ")
-                    append_suffix_to_text(
-                        text,
-                        msl.suffix_type,
-                        msl.suffix,
-                        summary=None,
-                        check_entry_ref=True,
-                    )
+                    if (
+                        with_hints
+                        and msl.suffix_type == "error"
+                        and msl.suffix
+                        and (msl.suffix.startswith("~/") or msl.suffix.startswith("/"))
+                    ):
+                        display_path = msl.suffix
+                        full_path = os.path.expanduser(display_path)
+                        hint_mappings[hint_counter] = full_path
+                        text.append("(!: ", style=SUFFIX_STYLES["error"])
+                        text.append(f"[{hint_counter}] ", style="bold #FFFF00")
+                        text.append(display_path, style=SUFFIX_STYLES["error"])
+                        text.append(")", style=SUFFIX_STYLES["error"])
+                        hint_counter += 1
+                    else:
+                        append_suffix_to_text(
+                            text,
+                            msl.suffix_type,
+                            msl.suffix,
+                            summary=None,
+                            check_entry_ref=True,
+                        )
                 text.append("\n")
 
     return HintTracker(
