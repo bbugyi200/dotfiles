@@ -1,16 +1,23 @@
 input: { create_plan: { type: bool, default: false } }
 xprompts:
-  one_op_rpc: |
-    We need to make sure we only make one RPC to populate the data for the line chart and we have decided to use the
-    OnePlatform Reporting API (in particular, the FetchReport method defined in the
+  base: |
+    We need to improve the PA troubleshooting page by adding a line chart view in addition to the existing pie chart
+    view. We need to make sure we only make one RPC to populate the data for the line chart and we have decided to use
+    the OnePlatform Reporting API (in particular, the FetchReport method defined in the
     google/ads/admanager/main/reporting/report_service.proto file) to accomplish this.
+  extra_reqs: |
+    - We shouldn't show the pie chart and the line chart at the same time ever. So make sure the user has a way to
+      toggle between the two.
+    - This code lives somewhere in the
+      contentads/drx/fe/client/trafficking/private_marketplace/components/deal_check_ui/ directory.
+    - This functionality should all be gated behind the ENABLE_PA_TROUBLESHOOTING_IMPROVEMENTS #feat.
   file:
     input: { fname: word, query: text }
     content: |
-      I need to add a new line chart to the PA troubleshooting page on (for Google Ad Manager's FE). #_one_op_rpc {{ query }}
+      #_base {{ query }}
 
       #file:{{ fname }}
-  research: |
+  research_files: |
     Some research has already been done to help you with this task. Review these files before deciding on your implementation approach:
       - OnePlatform Reporting API Research: @bb/gai/file/api_research.md
       - Prior Art (Existing Dart Clients): @bb/gai/file/prior_art.md
@@ -38,24 +45,23 @@ steps:
   - name: plan
     if: "{{ create_plan }}"
     prompt: |
-      #_file(plan): Can you help me write an implementation plan for this feature? #_research
+      #_file(plan): Can you help me write an implementation plan for this feature? Some extra requirements:
+
+      #_extra_reqs
+
+      #_research_files
 
   # Step 3: Implementation agent executes the plan
   - name: implementation
     prompt: |
-      Can you help me improve the PA troubleshooting page by adding a line chart view in addition to the existing pie
-      chart view? #_one_op_rpc
+      #_base
 
-      - We shouldn't show the pie chart and the line chart at the same time ever. So make sure the user has a way to
-        toggle between the two.
-      - This code lives somewhere in the
-        contentads/drx/fe/client/trafficking/private_marketplace/components/deal_check_ui/ directory.
-      - This functionality should all be gated behind the ENABLE_PA_TROUBLESHOOTING_IMPROVEMENTS #feat.
+      #_extra_reqs
 
       {% if create_plan -%}
       Use the following implementation plan to inspire your approach: @bb/gai/file/plan.md
       {% else -%}
-      #_research
+      #_research_files
       {%- endif %}
 
       #commit:line_chart
