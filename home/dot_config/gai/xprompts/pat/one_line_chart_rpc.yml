@@ -1,5 +1,3 @@
-name: pat/one_line_chart_rpc
-
 input: { create_plan: { type: bool, default: false } }
 xprompts:
   one_op_rpc: |
