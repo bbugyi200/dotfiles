@@ -4,8 +4,10 @@ import os
 import tempfile
 import time
 from typing import Any
+from unittest.mock import patch
 
 import pytest
+from xprompt.models import InputArg, InputType
 from xprompt.workflow_executor import WorkflowExecutor
 from xprompt.workflow_models import (
     ParallelConfig,
@@ -326,3 +328,153 @@ def test_for_parallel_empty_list() -> None:
     assert success
     output = executor.context["process"]
     assert output == []
+
+
+# ============================================================================
+# TestPreExpandParallelEmbeddedWorkflows
+# ============================================================================
+
+
+def test_pre_expand_parallel_no_embedded_workflows() -> None:
+    """Test that steps without embedded workflows pass through unchanged."""
+    nested_steps = [
+        WorkflowStep(name="step_a", bash='echo "a=done"'),
+        WorkflowStep(name="step_b", prompt="Plain prompt with no refs"),
+    ]
+
+    workflow = _create_workflow("test", [])
+    executor = _create_executor(workflow)
+
+    with patch("xprompt.loader.get_all_workflows") as mock_get:
+        mock_get.return_value = {}
+        modified, collected = executor._pre_expand_parallel_embedded_workflows(
+            nested_steps
+        )
+
+    # Bash step passes through as-is
+    assert modified[0] is nested_steps[0]
+    # Prompt step without embedded refs also passes through as-is
+    assert modified[1] is nested_steps[1]
+    assert collected == []
+
+
+def test_pre_expand_parallel_expands_prompt_part_inline() -> None:
+    """Test that prompt_part content is expanded inline in the prompt."""
+    # Create an embedded workflow with only a prompt_part (no pre/post steps)
+    embedded_wf = Workflow(
+        name="inject",
+        steps=[
+            WorkflowStep(
+                name="inject_step",
+                prompt_part="INJECTED CONTENT HERE",
+            )
+        ],
+    )
+
+    nested_steps = [
+        WorkflowStep(name="step_a", prompt="Do something. #inject"),
+    ]
+
+    workflow = _create_workflow("test", [])
+    executor = _create_executor(workflow)
+
+    with patch("xprompt.loader.get_all_workflows") as mock_get:
+        mock_get.return_value = {"inject": embedded_wf}
+        modified, collected = executor._pre_expand_parallel_embedded_workflows(
+            nested_steps
+        )
+
+    # prompt_part content should be expanded inline
+    assert modified[0].prompt is not None
+    assert "INJECTED CONTENT HERE" in modified[0].prompt
+    assert "#inject" not in modified[0].prompt
+    # No post-steps to collect (only prompt_part)
+    assert collected == []
+
+
+def test_pre_expand_parallel_collects_post_steps() -> None:
+    """Test that post-steps are collected for execution after parallel."""
+    # Create an embedded workflow with prompt_part + post-step (like #file)
+    embedded_wf = Workflow(
+        name="test_embed",
+        inputs=[InputArg(name="name", type=InputType.WORD)],
+        steps=[
+            WorkflowStep(
+                name="inject",
+                prompt_part="Write output to file {{ name }}.md",
+            ),
+            WorkflowStep(
+                name="verify",
+                hidden=True,
+                bash='echo "verified={{ name }}"',
+            ),
+        ],
+    )
+
+    nested_steps = [
+        WorkflowStep(
+            name="agent_a", prompt="Research topic A. #test_embed(name=topicA)"
+        ),
+        WorkflowStep(
+            name="agent_b", prompt="Research topic B. #test_embed(name=topicB)"
+        ),
+    ]
+
+    workflow = _create_workflow("test", [])
+    executor = _create_executor(workflow)
+
+    with patch("xprompt.loader.get_all_workflows") as mock_get:
+        mock_get.return_value = {"test_embed": embedded_wf}
+        modified, collected = executor._pre_expand_parallel_embedded_workflows(
+            nested_steps
+        )
+
+    # Both prompts should have prompt_part expanded inline
+    assert modified[0].prompt is not None
+    assert modified[1].prompt is not None
+    assert "Write output to file" in modified[0].prompt
+    assert "#test_embed" not in modified[0].prompt
+    assert "Write output to file" in modified[1].prompt
+    assert "#test_embed" not in modified[1].prompt
+
+    # Original steps should not be mutated
+    assert nested_steps[0].prompt is not None
+    assert nested_steps[1].prompt is not None
+    assert "#test_embed" in nested_steps[0].prompt
+    assert "#test_embed" in nested_steps[1].prompt
+
+    # Should have collected 2 sets of post-steps (one per embedded ref)
+    assert len(collected) == 2
+    for _pre_steps, post_steps, ctx in collected:
+        assert len(post_steps) == 1
+        assert post_steps[0].name == "verify"
+        assert "name" in ctx
+
+
+def test_pre_expand_parallel_preserves_non_prompt_steps() -> None:
+    """Test that non-prompt steps in parallel are not modified."""
+    embedded_wf = Workflow(
+        name="inject",
+        steps=[
+            WorkflowStep(name="inject_step", prompt_part="EXTRA"),
+        ],
+    )
+
+    nested_steps = [
+        WorkflowStep(name="bash_step", bash='echo "done=true"'),
+        WorkflowStep(name="prompt_step", prompt="Hello #inject"),
+    ]
+
+    workflow = _create_workflow("test", [])
+    executor = _create_executor(workflow)
+
+    with patch("xprompt.loader.get_all_workflows") as mock_get:
+        mock_get.return_value = {"inject": embedded_wf}
+        modified, _ = executor._pre_expand_parallel_embedded_workflows(nested_steps)
+
+    # Bash step should be the same object (not copied)
+    assert modified[0] is nested_steps[0]
+    # Prompt step should be a new copy with expanded content
+    assert modified[1] is not nested_steps[1]
+    assert modified[1].prompt is not None
+    assert "EXTRA" in modified[1].prompt

@@ -8,6 +8,7 @@ from xprompt.workflow_models import (
     ParallelConfig,
     StepState,
     StepStatus,
+    Workflow,
     WorkflowExecutionError,
     WorkflowStep,
 )
@@ -20,6 +21,7 @@ class ParallelMixin:
     """Mixin class providing parallel step execution for WorkflowExecutor.
 
     This mixin requires the following attributes on self:
+        - workflow: Workflow
         - context: dict[str, Any]
         - state: WorkflowState
         - output_handler: WorkflowOutputHandler | None
@@ -29,9 +31,12 @@ class ParallelMixin:
         - _execute_python_step(step, step_state) -> bool
         - _execute_bash_step(step, step_state) -> bool
         - _collect_results(results, join_mode) -> Any
+        - _expand_embedded_workflows_in_prompt(prompt) -> tuple
+        - _execute_embedded_workflow_steps(steps, context, name, ...) -> bool
     """
 
     # Type hints for attributes from WorkflowExecutor
+    workflow: Workflow
     context: dict[str, Any]
     state: Any  # WorkflowState
     output_handler: "WorkflowOutputHandler | None"
@@ -41,6 +46,8 @@ class ParallelMixin:
     _execute_python_step: Any
     _execute_bash_step: Any
     _collect_results: Any
+    _expand_embedded_workflows_in_prompt: Any
+    _execute_embedded_workflow_steps: Any
 
     def _execute_single_nested_step(
         self,
@@ -87,6 +94,58 @@ class ParallelMixin:
             # Restore original context
             self.context = original_context
 
+    def _pre_expand_parallel_embedded_workflows(
+        self,
+        nested_steps: list[WorkflowStep],
+    ) -> tuple[
+        list[WorkflowStep],
+        list[tuple[list[WorkflowStep], list[WorkflowStep], dict[str, Any]]],
+    ]:
+        """Pre-expand embedded workflows in nested prompt steps.
+
+        Hoists pre-steps (before parallel) and post-steps (after parallel) out
+        of the parallel block. prompt_part content is expanded inline.
+
+        Args:
+            nested_steps: The nested steps from the parallel config.
+
+        Returns:
+            Tuple of (possibly-modified nested steps, collected embedded
+            workflow tuples of (pre_steps, post_steps, context)).
+        """
+        from xprompt import process_xprompt_references
+        from xprompt.workflow_executor_utils import render_template
+
+        modified_steps: list[WorkflowStep] = []
+        all_embedded_workflows: list[
+            tuple[list[WorkflowStep], list[WorkflowStep], dict[str, Any]]
+        ] = []
+
+        for ns in nested_steps:
+            if not (ns.is_prompt_step() and ns.prompt):
+                modified_steps.append(ns)
+                continue
+
+            # Full prompt expansion pipeline (same as _execute_prompt_step)
+            rendered = render_template(ns.prompt, self.context)
+            expanded = process_xprompt_references(
+                rendered, extra_xprompts=self.workflow.xprompts
+            )
+            expanded, embedded_wfs = self._expand_embedded_workflows_in_prompt(expanded)
+
+            if embedded_wfs:
+                all_embedded_workflows.extend(embedded_wfs)
+
+            if expanded != ns.prompt:
+                # Prompt was modified by expansion — use a deep copy with new prompt
+                ns_copy = copy.deepcopy(ns)
+                ns_copy.prompt = expanded
+                modified_steps.append(ns_copy)
+            else:
+                modified_steps.append(ns)
+
+        return modified_steps, all_embedded_workflows
+
     def _execute_parallel_step(
         self,
         step: WorkflowStep,
@@ -109,6 +168,11 @@ class ParallelMixin:
 
         config: ParallelConfig = step.parallel_config
         nested_steps = config.steps
+
+        # Pre-expand embedded workflows (hoists pre/post steps out of parallel)
+        nested_steps, collected_embedded_workflows = (
+            self._pre_expand_parallel_embedded_workflows(nested_steps)
+        )
 
         # Notify parallel execution start
         if self.output_handler:
@@ -176,5 +240,26 @@ class ParallelMixin:
         # Notify parallel complete
         if self.output_handler:
             self.output_handler.on_parallel_complete(step.name, combined, None)
+
+        # Execute post-steps from embedded workflows
+        for _, post_steps, embedded_context in collected_embedded_workflows:
+            if post_steps:
+                from xprompt.workflow_output import ParentStepContext
+
+                parent_ctx = ParentStepContext(
+                    step_index=self.state.current_step_index,
+                    total_steps=len(self.workflow.steps),
+                )
+                success = self._execute_embedded_workflow_steps(
+                    post_steps,
+                    embedded_context,
+                    f"embedded:post:{step.name}",
+                    parent_step_context=parent_ctx,
+                )
+                if not success:
+                    raise WorkflowExecutionError(
+                        f"Post-steps for embedded workflow in parallel step "
+                        f"'{step.name}' failed"
+                    )
 
         return True
