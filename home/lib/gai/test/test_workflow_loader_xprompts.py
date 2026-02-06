@@ -4,11 +4,9 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
 from xprompt.loader import parse_xprompt_entries
 from xprompt.models import XPrompt
 from xprompt.workflow_loader import _load_workflow_from_file
-from xprompt.workflow_models import WorkflowValidationError
 from xprompt.workflow_validator import validate_workflow
 
 
@@ -196,23 +194,44 @@ steps:
             validate_workflow(workflow)
 
 
-def test_workflow_local_xprompts_require_underscore_prefix() -> None:
-    """Test that workflow-local xprompts without '_' prefix fail validation."""
+def test_workflow_local_xprompts_auto_prefix_underscore() -> None:
+    """Test that xprompt names without '_' prefix are auto-prefixed."""
     with tempfile.TemporaryDirectory() as tmp_dir:
         workflow_content = """\
-name: bad_prefix_test
+name: auto_prefix_test
 xprompts:
-  no_underscore: "This should fail."
+  desc: "A description prompt."
 steps:
   - name: step1
-    prompt: "#no_underscore"
+    prompt: "#_desc"
 """
         path = Path(tmp_dir) / "test.yml"
         path.write_text(workflow_content)
 
         workflow = _load_workflow_from_file(path)
         assert workflow is not None
+        assert "_desc" in workflow.xprompts
+        assert "desc" not in workflow.xprompts
+        assert workflow.xprompts["_desc"].name == "_desc"
+        assert workflow.xprompts["_desc"].content == "A description prompt."
 
-        with patch("xprompt.workflow_validator.get_all_xprompts", return_value={}):
-            with pytest.raises(WorkflowValidationError, match="must start with '_'"):
-                validate_workflow(workflow)
+
+def test_workflow_local_xprompts_no_double_prefix() -> None:
+    """Test that xprompt names already starting with '_' are not double-prefixed."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        workflow_content = """\
+name: no_double_prefix_test
+xprompts:
+  _desc: "A description prompt."
+steps:
+  - name: step1
+    prompt: "#_desc"
+"""
+        path = Path(tmp_dir) / "test.yml"
+        path.write_text(workflow_content)
+
+        workflow = _load_workflow_from_file(path)
+        assert workflow is not None
+        assert "_desc" in workflow.xprompts
+        assert "__desc" not in workflow.xprompts
+        assert workflow.xprompts["_desc"].name == "_desc"

@@ -13,7 +13,7 @@ from xprompt.loader import (
     parse_shortform_inputs,
     parse_xprompt_entries,
 )
-from xprompt.models import InputArg, InputType, OutputSpec
+from xprompt.models import InputArg, InputType, OutputSpec, XPrompt
 from xprompt.workflow_models import (
     LoopConfig,
     ParallelConfig,
@@ -472,6 +472,14 @@ def _load_workflow_from_file(file_path: Path) -> Workflow | None:
         if isinstance(xprompts_data, dict)
         else {}
     )
+
+    # Auto-prefix '_' to workflow-local xprompt names
+    prefixed_xprompts: dict[str, XPrompt] = {}
+    for xp_name, xprompt in parsed_xprompts.items():
+        prefixed_name = xp_name if xp_name.startswith("_") else f"_{xp_name}"
+        xprompt.name = prefixed_name
+        prefixed_xprompts[prefixed_name] = xprompt
+    parsed_xprompts = prefixed_xprompts
 
     # Parse steps
     steps_data = data.get("steps", [])
