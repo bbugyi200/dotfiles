@@ -457,10 +457,8 @@ def _load_workflow_from_file(file_path: Path) -> Workflow | None:
     if not isinstance(data, dict):
         return None
 
-    # Get workflow name
-    name = data.get("name")
-    if not name:
-        name = file_path.stem  # Filename without extension
+    # Derive workflow name from filename
+    name = file_path.stem
 
     # Parse inputs
     inputs = _parse_workflow_inputs(data.get("input"))

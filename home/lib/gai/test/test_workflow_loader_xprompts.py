@@ -73,7 +73,6 @@ def test_load_workflow_from_file_with_simple_xprompts() -> None:
     """Test loading a workflow YAML that has simple string xprompts."""
     with tempfile.TemporaryDirectory() as tmp_dir:
         workflow_content = """\
-name: test_wf
 xprompts:
   _shared_context: "Always be thorough."
 steps:
@@ -86,7 +85,7 @@ steps:
         workflow = _load_workflow_from_file(path)
 
         assert workflow is not None
-        assert workflow.name == "test_wf"
+        assert workflow.name == "test"
         assert "_shared_context" in workflow.xprompts
         assert workflow.xprompts["_shared_context"].content == "Always be thorough."
 
@@ -95,7 +94,6 @@ def test_load_workflow_from_file_with_structured_xprompts() -> None:
     """Test loading a workflow YAML that has structured xprompts."""
     with tempfile.TemporaryDirectory() as tmp_dir:
         workflow_content = """\
-name: test_wf
 xprompts:
   _greet:
     input:
@@ -121,7 +119,6 @@ def test_load_workflow_from_file_no_xprompts() -> None:
     """Test loading a workflow without xprompts field works fine."""
     with tempfile.TemporaryDirectory() as tmp_dir:
         workflow_content = """\
-name: no_xprompts_wf
 steps:
   - name: step1
     bash: echo hello
@@ -139,7 +136,6 @@ def test_workflow_local_xprompts_override_globals_in_validator() -> None:
     """Test that workflow-local xprompts override globals during validation."""
     with tempfile.TemporaryDirectory() as tmp_dir:
         workflow_content = """\
-name: override_test
 xprompts:
   _my_prompt:
     input:
@@ -172,7 +168,6 @@ def test_workflow_local_xprompts_take_priority_over_globals() -> None:
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         workflow_content = """\
-name: priority_test
 xprompts:
   _shared: "Local content with no args."
 steps:
@@ -198,7 +193,6 @@ def test_workflow_local_xprompts_auto_prefix_underscore() -> None:
     """Test that xprompt names without '_' prefix are auto-prefixed."""
     with tempfile.TemporaryDirectory() as tmp_dir:
         workflow_content = """\
-name: auto_prefix_test
 xprompts:
   desc: "A description prompt."
 steps:
@@ -220,7 +214,6 @@ def test_workflow_local_xprompts_no_double_prefix() -> None:
     """Test that xprompt names already starting with '_' are not double-prefixed."""
     with tempfile.TemporaryDirectory() as tmp_dir:
         workflow_content = """\
-name: no_double_prefix_test
 xprompts:
   _desc: "A description prompt."
 steps:

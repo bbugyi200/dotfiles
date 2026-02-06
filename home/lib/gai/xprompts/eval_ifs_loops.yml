@@ -1,5 +1,3 @@
-name: eval_ifs_loops
-
 input:
   - name: run_conditional
     type: bool

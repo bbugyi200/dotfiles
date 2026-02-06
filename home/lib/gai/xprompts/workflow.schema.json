@@ -3,13 +3,9 @@
   "title": "GAI XPrompt Workflow",
   "description": "Schema for gai xprompt workflow YAML files",
   "type": "object",
-  "required": ["name", "steps"],
+  "required": ["steps"],
   "additionalProperties": false,
   "properties": {
-    "name": {
-      "type": "string",
-      "description": "Workflow identifier (used in #name syntax)"
-    },
     "xprompts": {
       "type": "object",
       "description": "Workflow-local xprompt definitions (highest priority within this workflow). Names are auto-prefixed with '_' if not already present.",

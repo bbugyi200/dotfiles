@@ -1,5 +1,3 @@
-name: eval_parallel
-
 steps:
   # 1. Basic parallel execution - Two steps that sleep and complete in parallel
   - name: basic_parallel
