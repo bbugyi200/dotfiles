@@ -1,5 +1,7 @@
 """HOOKS section builder for ChangeSpec detail display."""
 
+import os
+
 from accept_workflow.parsing import parse_proposal_id
 from rich.text import Text
 
@@ -15,7 +17,7 @@ from ...hooks import (
     get_hook_output_path,
 )
 from .hint_tracker import HintTracker
-from .suffix_formatting import append_suffix_to_text, should_show_suffix
+from .suffix_formatting import SUFFIX_STYLES, append_suffix_to_text, should_show_suffix
 
 
 def _is_fix_hook_proposal_for_this_hook(
@@ -239,13 +241,40 @@ def build_hooks_section(
                 # Handle running_agent/running_process with suffix (RUNNING hooks)
                 if should_show_suffix(sl.suffix, sl.suffix_type):
                     text.append(" - ")
-                    append_suffix_to_text(
-                        text,
-                        sl.suffix_type,
-                        sl.suffix,
-                        summary=sl.summary,
-                        check_entry_ref=True,
-                    )
+                    # Check for fix-hook error files in summary
+                    if (
+                        show_hint
+                        and sl.suffix_type == "error"
+                        and sl.summary
+                        and (sl.summary.startswith("~/") or sl.summary.startswith("/"))
+                    ):
+                        # Extract file path (first segment before " | ")
+                        if " | " in sl.summary:
+                            file_path_display, rest = sl.summary.split(" | ", 1)
+                        else:
+                            file_path_display = sl.summary
+                            rest = None
+                        full_path = os.path.expanduser(file_path_display)
+                        hint_mappings[hint_counter] = full_path
+                        # Render: (!: <suffix> | [N] <path> [| <rest>])
+                        error_style = SUFFIX_STYLES["error"]
+                        text.append("(!: ", style=error_style)
+                        if sl.suffix:
+                            text.append(f"{sl.suffix} | ", style=error_style)
+                        text.append(f"[{hint_counter}] ", style="bold #FFFF00")
+                        text.append(file_path_display, style=error_style)
+                        if rest:
+                            text.append(f" | {rest}", style=error_style)
+                        text.append(")", style=error_style)
+                        hint_counter += 1
+                    else:
+                        append_suffix_to_text(
+                            text,
+                            sl.suffix_type,
+                            sl.suffix,
+                            summary=sl.summary,
+                            check_entry_ref=True,
+                        )
                 text.append("\n")
 
     return HintTracker(
