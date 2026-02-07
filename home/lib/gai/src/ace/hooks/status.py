@@ -49,14 +49,14 @@ def _parent_hook_passed_or_is_fix_proposal(
 def hook_needs_run(hook: HookEntry, last_history_entry_id: str | None) -> bool:
     """Determine if a hook needs to be run.
 
-    A hook needs to run if no status line exists for the current HISTORY entry.
+    A hook needs to run if no status line exists for the current COMMITS entry.
     Hooks prefixed with "$" are skipped for proposal entries (e.g., "2a").
     For proposals, the parent entry must have PASSED this hook first (unless
     this proposal was created by fix-hook to fix this specific hook).
 
     Args:
         hook: The hook entry to check.
-        last_history_entry_id: The ID of the last HISTORY entry (e.g., '1', '1a').
+        last_history_entry_id: The ID of the last COMMITS entry (e.g., '1', '1a').
 
     Returns:
         True if the hook should be run, False otherwise.

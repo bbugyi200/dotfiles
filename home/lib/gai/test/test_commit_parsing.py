@@ -46,9 +46,9 @@ def test_build_commit_entry_defaults() -> None:
     assert entry.diff is None
 
 
-# Tests for HISTORY field parsing
+# Tests for COMMITS field parsing
 def test_parse_changespec_with_history() -> None:
-    """Test parsing ChangeSpec with HISTORY field."""
+    """Test parsing ChangeSpec with COMMITS field."""
     lines = [
         "## ChangeSpec\n",
         "NAME: test_cl\n",
@@ -81,7 +81,7 @@ def test_parse_changespec_with_history() -> None:
 
 
 def test_parse_changespec_without_history() -> None:
-    """Test parsing ChangeSpec without HISTORY field."""
+    """Test parsing ChangeSpec without COMMITS field."""
     lines = [
         "## ChangeSpec\n",
         "NAME: test_cl\n",
@@ -97,7 +97,7 @@ def test_parse_changespec_without_history() -> None:
 
 
 def test_parse_changespec_history_without_optional_fields() -> None:
-    """Test parsing HISTORY entry without CHAT field."""
+    """Test parsing COMMITS entry without CHAT field."""
     lines = [
         "## ChangeSpec\n",
         "NAME: test_cl\n",
@@ -168,9 +168,9 @@ def test_history_entry_display_number_proposed() -> None:
     assert entry.display_number == "2b"
 
 
-# Tests for parsing proposed HISTORY entries
+# Tests for parsing proposed COMMITS entries
 def test_parse_changespec_with_proposed_entries() -> None:
-    """Test parsing ChangeSpec with proposed HISTORY entries."""
+    """Test parsing ChangeSpec with proposed COMMITS entries."""
     lines = [
         "## ChangeSpec\n",
         "NAME: test_cl\n",

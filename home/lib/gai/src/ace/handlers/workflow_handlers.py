@@ -214,7 +214,7 @@ def handle_run_fix_hook_workflow(
     # Generate timestamp for tracking this fix-hook run
     fix_hook_timestamp = generate_fix_hook_timestamp()
 
-    # Get the last HISTORY entry ID for the amend message (e.g., "1", "1a")
+    # Get the last COMMITS entry ID for the amend message (e.g., "1", "1a")
     last_history_id = get_last_history_entry_id(changespec)
 
     # Find first available workspace and claim it
@@ -311,7 +311,7 @@ def handle_run_fix_hook_workflow(
         )
         self.console.print(f"\n[green]Agent Response:[/green]\n{response.content}\n")
 
-        # Save chat history for the HISTORY entry
+        # Save chat history for the COMMITS entry
         chat_path = save_chat_history(
             prompt=prompt,
             response=str(response.content),
@@ -319,7 +319,7 @@ def handle_run_fix_hook_workflow(
             timestamp=start_timestamp,
         )
 
-        # Build workflow name with hook command and HISTORY entry reference
+        # Build workflow name with hook command and COMMITS entry reference
         history_ref = f"({last_history_id})" if last_history_id else ""
         workflow_name = f"fix-hook {history_ref} {run_hook_command}"
 
@@ -337,7 +337,7 @@ def handle_run_fix_hook_workflow(
             action, action_args = prompt_result
             proposal_id = action_args  # e.g., "2a"
 
-            # Handle reject (proposal stays in HISTORY)
+            # Handle reject (proposal stays in COMMITS)
             if action == "reject":
                 self.console.print("[yellow]Changes rejected. Proposal saved.[/yellow]")
                 final_suffix = proposal_id  # Set suffix to proposal_id

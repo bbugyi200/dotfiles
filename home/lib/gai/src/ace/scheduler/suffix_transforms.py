@@ -33,13 +33,13 @@ from ..mentors import update_changespec_mentors_field
 
 
 def transform_old_proposal_suffixes(changespec: ChangeSpec) -> list[str]:
-    """Remove suffixes from old proposal HISTORY entries.
+    """Remove suffixes from old proposal COMMITS entries.
 
     An "old proposal" is a proposed entry (Na) where N < the latest regular
-    entry number. For example, if HISTORY has (3), then (2a), (2b) are old.
+    entry number. For example, if COMMITS has (3), then (2a), (2b) are old.
 
     This affects:
-    - HISTORY entry lines with error suffixes (suffix is removed)
+    - COMMITS entry lines with error suffixes (suffix is removed)
     - Hook status lines for those entry IDs (handled separately, transformed)
 
     Args:
@@ -68,7 +68,7 @@ def transform_old_proposal_suffixes(changespec: ChangeSpec) -> list[str]:
         if entry.proposal_letter is not None:  # Is a proposal
             if entry.number < last_regular_num:  # Is "old"
                 if entry.suffix_type == "error":  # Has error suffix
-                    # Remove HISTORY entry suffix
+                    # Remove COMMITS entry suffix
                     success = update_commit_entry_suffix(
                         changespec.file_path,
                         changespec.name,
@@ -156,7 +156,7 @@ def strip_terminal_status_markers(changespec: ChangeSpec) -> list[str]:
     """Strip error suffixes for terminal status ChangeSpecs.
 
     For ChangeSpecs with STATUS = "Reverted" or "Submitted", removes all
-    error suffixes (`- (!: MSG)`) across HISTORY, HOOKS, and COMMENTS.
+    error suffixes (`- (!: MSG)`) across COMMITS, HOOKS, and COMMENTS.
 
     Args:
         changespec: The ChangeSpec to process.
@@ -170,7 +170,7 @@ def strip_terminal_status_markers(changespec: ChangeSpec) -> list[str]:
     if changespec.status not in ("Reverted", "Submitted", "Archived"):
         return updates
 
-    # Process HISTORY entries with error or running_agent suffix
+    # Process COMMITS entries with error or running_agent suffix
     if changespec.commits:
         for entry in changespec.commits:
             if entry.suffix_type in ("error", "running_agent"):
@@ -182,7 +182,7 @@ def strip_terminal_status_markers(changespec: ChangeSpec) -> list[str]:
                 )
                 if success:
                     updates.append(
-                        f"Cleared HISTORY ({entry.display_number}) "
+                        f"Cleared COMMITS ({entry.display_number}) "
                         f"suffix: {entry.suffix}"
                     )
 
@@ -321,7 +321,7 @@ def check_ready_to_mail(
 
     A ChangeSpec is ready to mail if:
     - STATUS is "Drafted" (base status)
-    - No error suffixes exist in HISTORY/HOOKS/COMMENTS
+    - No error suffixes exist in COMMITS/HOOKS/COMMENTS
     - Parent is ready (no parent, Submitted, or Mailed)
     - All hooks have PASSED for current history entry and its proposals
 

@@ -360,7 +360,7 @@ def rerun_delete_hooks_by_command(
         changespec_name: Name of the ChangeSpec.
         commands_to_rerun: Set of hook commands to rerun (clear status lines).
         commands_to_delete: Set of hook commands to delete entirely.
-        entry_ids_to_clear: The HISTORY entry IDs to clear status for.
+        entry_ids_to_clear: The COMMITS entry IDs to clear status for.
 
     Returns:
         True if update succeeded, False otherwise.

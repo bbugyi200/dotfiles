@@ -96,7 +96,7 @@ def test_strip_terminal_status_markers_processes_submitted() -> None:
         result = strip_terminal_status_markers(cs)
 
     assert len(result) == 1
-    assert "Cleared HISTORY" in result[0]
+    assert "Cleared COMMITS" in result[0]
 
 
 def test_strip_terminal_status_markers_processes_reverted() -> None:
@@ -127,7 +127,7 @@ def test_strip_terminal_status_markers_processes_reverted() -> None:
         result = strip_terminal_status_markers(cs)
 
     assert len(result) == 1
-    assert "Cleared HISTORY" in result[0]
+    assert "Cleared COMMITS" in result[0]
 
 
 def test_strip_terminal_status_markers_skips_plain_suffix() -> None:
@@ -252,7 +252,7 @@ def test_strip_terminal_status_markers_processes_history_running_agent() -> None
         result = strip_terminal_status_markers(cs)
 
     assert len(result) == 1
-    assert "Cleared HISTORY" in result[0]
+    assert "Cleared COMMITS" in result[0]
 
 
 def test_strip_terminal_status_markers_processes_hooks_running_agent() -> None:

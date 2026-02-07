@@ -352,10 +352,10 @@ def _handle_rerun_delete_hooks(
         self.console.print("[yellow]No hooks with status lines to rerun[/yellow]")
         return changespecs, current_idx
 
-    # Get the last HISTORY entry ID - we only delete status lines for this entry
+    # Get the last COMMITS entry ID - we only delete status lines for this entry
     last_history_entry_id = get_last_history_entry_id(changespec)
     if last_history_entry_id is None:
-        self.console.print("[yellow]No HISTORY entries found[/yellow]")
+        self.console.print("[yellow]No COMMITS entries found[/yellow]")
         return changespecs, current_idx
 
     # Parse hint numbers - track actions: rerun or delete
@@ -401,9 +401,9 @@ def _handle_rerun_delete_hooks(
             # Skip this hook entirely (delete it)
             continue
         elif i in hook_indices_to_rerun:
-            # Remove only the status line for the last HISTORY entry (to trigger rerun)
+            # Remove only the status line for the last COMMITS entry (to trigger rerun)
             if hook.status_lines:
-                # Keep all status lines except the one for the last HISTORY entry
+                # Keep all status lines except the one for the last COMMITS entry
                 remaining_status_lines = [
                     sl
                     for sl in hook.status_lines

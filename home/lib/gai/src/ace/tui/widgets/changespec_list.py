@@ -57,7 +57,7 @@ def _get_status_indicator(changespec: ChangeSpec) -> tuple[str, str]:
     running_prefix = "@" if has_running else ""
     process_prefix = "$" if has_process else ""
 
-    # Check for error suffixes in HISTORY/HOOKS/COMMENTS (with status-specific suffix)
+    # Check for error suffixes in COMMITS/HOOKS/COMMENTS (with status-specific suffix)
     # Red takes priority over orange/yellow
     if has_error:
         if status.startswith("Drafted"):

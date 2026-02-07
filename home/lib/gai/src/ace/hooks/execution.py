@@ -410,7 +410,7 @@ def start_hook_background(
         changespec: The ChangeSpec the hook belongs to.
         hook: The hook entry to run.
         workspace_dir: The workspace directory to run the command in.
-        history_entry_id: The HISTORY entry ID this hook run is associated with.
+        history_entry_id: The COMMITS entry ID this hook run is associated with.
 
     Returns:
         Tuple of (updated HookEntry with RUNNING status, output_path).
@@ -647,7 +647,7 @@ def check_hook_completion(
 
             auto_skip_suffix = get_file_summary(
                 target_file=output_path,
-                usage="a hook failure suffix in a HISTORY entry",
+                usage="a hook failure suffix in a COMMITS entry",
                 fallback="Hook Command Failed",
             )
 

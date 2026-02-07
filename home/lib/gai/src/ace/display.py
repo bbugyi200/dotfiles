@@ -46,7 +46,7 @@ def display_changespec(
             - None or "all": Show hints for all entries (history, hooks, etc.)
             - "hooks_only": Show hints only for hooks with status lines
             - "hooks_latest_only": Show hints only for hook status lines that
-              match the last HISTORY entry number (for edit hooks functionality)
+              match the last COMMITS entry number (for edit hooks functionality)
 
     Returns:
         Tuple of:
@@ -155,7 +155,7 @@ def display_changespec(
                     else:
                         text.append(f"  {target}\n", style="bold #AFD75F")
 
-    # HISTORY field (only display if present)
+    # COMMITS field (only display if present)
     # Determine if we should show hints for history entries
     show_history_hints = with_hints and hints_for in (None, "all")
     if changespec.commits:

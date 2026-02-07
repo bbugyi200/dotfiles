@@ -120,7 +120,7 @@ def check_hooks(
     is_terminal_status = changespec.status in ("Reverted", "Submitted", "Archived")
 
     # Get all non-historical entry IDs (current + proposals with same number)
-    # e.g., if HISTORY has (1), (2), (3), (3a) -> returns ["3", "3a"]
+    # e.g., if COMMITS has (1), (2), (3), (3a) -> returns ["3", "3a"]
     entry_ids = get_current_and_proposal_entry_ids(changespec)
 
     # Phase 1: Check completion status of RUNNING hooks (no workspace needed)

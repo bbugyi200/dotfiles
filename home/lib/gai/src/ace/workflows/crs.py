@@ -181,7 +181,7 @@ def run_crs_workflow(
 
         action, proposal_id = result
 
-        # Handle reject (proposal stays in HISTORY)
+        # Handle reject (proposal stays in COMMITS)
         if action == "reject":
             console.print("[yellow]Changes rejected. Proposal saved.[/yellow]")
             # Set suffix to indicate unresolved comments

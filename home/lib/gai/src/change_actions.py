@@ -30,7 +30,7 @@ ChangeAction = Literal["accept", "promote", "reject", "purge"]
 def _delete_proposal_entry(
     project_file: str, cl_name: str, base_num: int, letter: str
 ) -> bool:
-    """Delete a proposal entry from a ChangeSpec's HISTORY.
+    """Delete a proposal entry from a ChangeSpec's COMMITS.
 
     Args:
         project_file: Path to the project file.
@@ -519,7 +519,7 @@ def execute_change_action(
             console.print("[red]bb_hg_amend command not found[/red]")
             return False
 
-        # Renumber history entries (pass extra_msg to append to HISTORY note)
+        # Renumber history entries (pass extra_msg to append to COMMITS note)
         console.print("[cyan]Updating COMMITS...[/cyan]")
         if renumber_commit_entries(
             resolved_project_file,
@@ -527,7 +527,7 @@ def execute_change_action(
             [(base_num, letter)],
             [extra_msg] if extra_msg else None,
         ):
-            console.print("[green]HISTORY updated successfully.[/green]")
+            console.print("[green]COMMITS updated successfully.[/green]")
         else:
             console.print("[yellow]Warning: Failed to update COMMITS.[/yellow]")
 
@@ -596,7 +596,7 @@ def execute_change_action(
         return False
 
     elif action == "purge":
-        # Delete the proposal entry from HISTORY
+        # Delete the proposal entry from COMMITS
         if not action_args:
             console.print("[yellow]No proposal to purge.[/yellow]")
             return False

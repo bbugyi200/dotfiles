@@ -1,4 +1,4 @@
-"""Workflow for amending Mercurial commits with HISTORY tracking."""
+"""Workflow for amending Mercurial commits with COMMITS tracking."""
 
 import os
 import subprocess
@@ -22,7 +22,7 @@ from workflow_utils import (
 
 
 class AmendWorkflow(BaseWorkflow):
-    """A workflow for amending Mercurial commits with HISTORY tracking."""
+    """A workflow for amending Mercurial commits with COMMITS tracking."""
 
     def __init__(
         self,
@@ -36,7 +36,7 @@ class AmendWorkflow(BaseWorkflow):
         """Initialize the amend workflow.
 
         Args:
-            note: The note for the HISTORY entry.
+            note: The note for the COMMITS entry.
             chat_path: Optional path to the chat file for this amend.
             timestamp: Optional shared timestamp for synced chat/diff files.
             propose: If True, create a proposed entry instead of amending.
@@ -57,7 +57,7 @@ class AmendWorkflow(BaseWorkflow):
 
     @property
     def description(self) -> str:
-        return "Amend the current commit with HISTORY tracking"
+        return "Amend the current commit with COMMITS tracking"
 
     def run(self) -> bool:
         """Run the amend workflow.
@@ -117,7 +117,7 @@ class AmendWorkflow(BaseWorkflow):
             True if successful, False otherwise.
         """
         if os.path.isfile(project_file):
-            print_status("Adding proposed HISTORY entry...", "progress")
+            print_status("Adding proposed COMMITS entry...", "progress")
             success, entry_id = add_proposed_commit_entry(
                 project_file=project_file,
                 cl_name=cl_name,
@@ -127,11 +127,11 @@ class AmendWorkflow(BaseWorkflow):
             )
             if success:
                 print_status(
-                    f"Proposed HISTORY entry ({entry_id}) added successfully.",
+                    f"Proposed COMMITS entry ({entry_id}) added successfully.",
                     "success",
                 )
             else:
-                print_status("Failed to add proposed HISTORY entry.", "error")
+                print_status("Failed to add proposed COMMITS entry.", "error")
                 return False
         else:
             print_status(
@@ -177,9 +177,9 @@ class AmendWorkflow(BaseWorkflow):
             print_status("bb_hg_amend command not found", "error")
             return False
 
-        # Add HISTORY entry
+        # Add COMMITS entry
         if os.path.isfile(project_file):
-            print_status("Adding HISTORY entry...", "progress")
+            print_status("Adding COMMITS entry...", "progress")
             success = add_commit_entry(
                 project_file=project_file,
                 cl_name=cl_name,
@@ -188,15 +188,15 @@ class AmendWorkflow(BaseWorkflow):
                 chat_path=self._chat_path,
             )
             if success:
-                print_status("HISTORY entry added successfully.", "success")
+                print_status("COMMITS entry added successfully.", "success")
             else:
-                print_status("Failed to add HISTORY entry.", "warning")
+                print_status("Failed to add COMMITS entry.", "warning")
 
             # Add any new test target hooks from changed_test_targets
             add_test_hooks_if_available(project_file, cl_name)
         else:
             print_status(
-                f"Project file not found: {project_file}. Skipping HISTORY entry.",
+                f"Project file not found: {project_file}. Skipping COMMITS entry.",
                 "warning",
             )
 
@@ -209,7 +209,7 @@ def main() -> NoReturn:
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Amend the current Mercurial commit with HISTORY tracking."
+        description="Amend the current Mercurial commit with COMMITS tracking."
     )
     parser.add_argument(
         "note",
@@ -223,7 +223,7 @@ def main() -> NoReturn:
     parser.add_argument(
         "--propose",
         action="store_true",
-        help="Create a proposed HISTORY entry instead of amending. "
+        help="Create a proposed COMMITS entry instead of amending. "
         "Saves the diff, adds a proposed entry (e.g., 2a), and cleans workspace.",
     )
     parser.add_argument(

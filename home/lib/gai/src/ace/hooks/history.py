@@ -1,10 +1,10 @@
-"""History entry utilities for hooks."""
+"""Commits entry utilities for hooks."""
 
 from ..changespec import ChangeSpec, CommitEntry
 
 
 def get_last_history_entry_id(changespec: ChangeSpec) -> str | None:
-    """Get the ID of the last HISTORY entry (e.g., '1', '1a', '2').
+    """Get the ID of the last COMMITS entry (e.g., '1', '1a', '2').
 
     Args:
         changespec: The ChangeSpec to get the last entry ID from.
@@ -19,7 +19,7 @@ def get_last_history_entry_id(changespec: ChangeSpec) -> str | None:
 
 
 def get_last_history_entry(changespec: ChangeSpec) -> CommitEntry | None:
-    """Get the last HISTORY entry.
+    """Get the last COMMITS entry.
 
     Args:
         changespec: The ChangeSpec to get the last entry from.
@@ -34,7 +34,7 @@ def get_last_history_entry(changespec: ChangeSpec) -> CommitEntry | None:
 
 
 def get_last_accepted_history_entry_id(changespec: ChangeSpec) -> str | None:
-    """Get the ID of the last accepted (all-numeric) HISTORY entry.
+    """Get the ID of the last accepted (all-numeric) COMMITS entry.
 
     This skips proposal entries like '2a' and returns the last entry
     with an all-numeric ID like '2'.

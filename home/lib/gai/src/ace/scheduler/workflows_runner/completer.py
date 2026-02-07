@@ -126,7 +126,7 @@ def _auto_accept_proposal(
         None,
     )
     if not success:
-        log("Failed to renumber HISTORY entries", "yellow")
+        log("Failed to renumber COMMITS entries", "yellow")
         # Continue anyway since amend succeeded
 
     # Add test target hooks from changed_test_targets

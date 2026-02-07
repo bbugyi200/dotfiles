@@ -54,7 +54,7 @@ steps:
         echo "message=No local changes detected - CL not amended"
       elif [ "{{ amend_cl.success | default(false) }}" = "true" ]; then
         echo "status=amended"
-        echo "message=Amended CL {{ amend_cl.cl_name | default('') }} with HISTORY entry ({{ amend_cl.entry_id | default('') }})"
+        echo "message=Amended CL {{ amend_cl.cl_name | default('') }} with COMMITS entry ({{ amend_cl.entry_id | default('') }})"
       else
         echo "status=error"
         echo "message={{ amend_cl.error | default('Unknown error') }}"

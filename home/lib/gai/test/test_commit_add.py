@@ -62,7 +62,7 @@ def test_get_next_commit_number_wrong_changespec() -> None:
 
 # Tests for add_commit_entry
 def test_add_commit_entry_new_history_field() -> None:
-    """Test adding history entry when HISTORY field doesn't exist."""
+    """Test adding history entry when COMMITS field doesn't exist."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
         f.write("NAME: test_cl\n")
         f.write("DESCRIPTION:\n")
@@ -92,7 +92,7 @@ def test_add_commit_entry_new_history_field() -> None:
 
 
 def test_add_commit_entry_existing_history_field() -> None:
-    """Test adding history entry when HISTORY field already exists."""
+    """Test adding history entry when COMMITS field already exists."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
         f.write("NAME: test_cl\n")
         f.write("DESCRIPTION:\n")
@@ -249,7 +249,7 @@ def test_get_next_proposal_letter_fills_gap() -> None:
 
 # Tests for add_proposed_commit_entry
 def test_add_proposed_commit_entry_new_history() -> None:
-    """Test adding proposed entry when no HISTORY exists."""
+    """Test adding proposed entry when no COMMITS exists."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
         f.write("NAME: test_cl\n")
         f.write("STATUS: Drafted\n")
@@ -275,7 +275,7 @@ def test_add_proposed_commit_entry_new_history() -> None:
 
 
 def test_add_proposed_commit_entry_existing_history() -> None:
-    """Test adding proposed entry to existing HISTORY."""
+    """Test adding proposed entry to existing COMMITS."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
         f.write("NAME: test_cl\n")
         f.write("STATUS: Drafted\n")

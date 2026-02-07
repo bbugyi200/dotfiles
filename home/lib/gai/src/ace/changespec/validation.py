@@ -4,7 +4,7 @@ from .models import READY_TO_MAIL_SUFFIX, ChangeSpec, get_base_status
 
 
 def has_any_status_suffix(changespec: ChangeSpec) -> bool:
-    """Check if a ChangeSpec has any ERROR suffix in STATUS/HISTORY/HOOKS/COMMENTS.
+    """Check if a ChangeSpec has any ERROR suffix in STATUS/COMMITS/HOOKS/COMMENTS.
 
     This checks for error suffix patterns (!: ...) in all locations. Used by
     the !!! and !! query shorthands. Includes READY_TO_MAIL suffix.
@@ -18,7 +18,7 @@ def has_any_status_suffix(changespec: ChangeSpec) -> bool:
     # Check STATUS field for error suffix format (including READY_TO_MAIL)
     if " - (!: " in changespec.status:
         return True
-    # Check HISTORY entries for error suffixes
+    # Check COMMITS entries for error suffixes
     if changespec.commits:
         for entry in changespec.commits:
             if entry.suffix_type == "error":
@@ -39,7 +39,7 @@ def has_any_status_suffix(changespec: ChangeSpec) -> bool:
 
 
 def has_any_error_suffix(changespec: ChangeSpec) -> bool:
-    """Check if a ChangeSpec has any error suffixes in STATUS/HISTORY/HOOKS/COMMENTS.
+    """Check if a ChangeSpec has any error suffixes in STATUS/COMMITS/HOOKS/COMMENTS.
 
     This is used to determine if a ChangeSpec has any attention markers that
     would prevent the READY TO MAIL suffix from being added.
@@ -53,7 +53,7 @@ def has_any_error_suffix(changespec: ChangeSpec) -> bool:
     # Check STATUS field for error suffix format (but not READY_TO_MAIL)
     if " - (!: " in changespec.status and READY_TO_MAIL_SUFFIX not in changespec.status:
         return True
-    # Check HISTORY entries
+    # Check COMMITS entries
     if changespec.commits:
         for entry in changespec.commits:
             if entry.suffix_type == "error":

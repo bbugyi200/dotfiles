@@ -98,7 +98,7 @@ def create_parser() -> argparse.ArgumentParser:
     # --- amend ---
     amend_parser = top_level_subparsers.add_parser(
         "amend",
-        help="Amend the current Mercurial commit with HISTORY tracking",
+        help="Amend the current Mercurial commit with COMMITS tracking",
     )
     amend_parser.add_argument(
         "note",
@@ -111,7 +111,7 @@ def create_parser() -> argparse.ArgumentParser:
         "-a",
         "--accept",
         action="store_true",
-        help="Accept one or more proposed HISTORY entries by applying their diffs. "
+        help="Accept one or more proposed COMMITS entries by applying their diffs. "
         "When used, positional args are proposal entries (format: <id>[(<msg>)]). "
         "Examples: '2a', '2b(Add foobar field)'.",
     )
@@ -129,7 +129,7 @@ def create_parser() -> argparse.ArgumentParser:
         "-p",
         "--propose",
         action="store_true",
-        help="Create a proposed HISTORY entry instead of amending. "
+        help="Create a proposed COMMITS entry instead of amending. "
         "Saves the diff, adds a proposed entry (e.g., 2a), and cleans workspace.",
     )
     amend_parser.add_argument(
@@ -174,7 +174,7 @@ def create_parser() -> argparse.ArgumentParser:
     commit_parser.add_argument(
         "--chat",
         dest="chat_path",
-        help="Path to the chat file associated with this commit (for HISTORY entry).",
+        help="Path to the chat file associated with this commit (for COMMITS entry).",
     )
     commit_parser.add_argument(
         "-m",
@@ -184,7 +184,7 @@ def create_parser() -> argparse.ArgumentParser:
     commit_parser.add_argument(
         "-n",
         "--note",
-        help="Custom note for the initial HISTORY entry (default: 'Initial Commit').",
+        help="Custom note for the initial COMMITS entry (default: 'Initial Commit').",
     )
     commit_parser.add_argument(
         "-p",

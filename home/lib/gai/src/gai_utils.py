@@ -149,7 +149,7 @@ def strip_hook_prefix(hook_command: str) -> str:
 
     Prefixes:
     - '!' indicates FAILED status lines should auto-append error suffix
-    - '$' indicates the hook should not run for proposal HISTORY entries
+    - '$' indicates the hook should not run for proposal COMMITS entries
 
     Args:
         hook_command: The hook command string.

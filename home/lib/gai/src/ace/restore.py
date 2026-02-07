@@ -120,9 +120,9 @@ def _run_gai_commit(name: str, workspace_dir: str) -> tuple[bool, str | None]:
 def _clear_hook_status_lines_for_last_history(
     changespec: ChangeSpec, base_name: str, console: Console | None = None
 ) -> tuple[bool, str | None]:
-    """Clear hook status lines for the last HISTORY entry so hooks will rerun.
+    """Clear hook status lines for the last COMMITS entry so hooks will rerun.
 
-    This removes the status line for the last HISTORY entry from every hook,
+    This removes the status line for the last COMMITS entry from every hook,
     allowing gai axe to rerun all hooks after a restore.
 
     Args:
@@ -140,19 +140,19 @@ def _clear_hook_status_lines_for_last_history(
     if not changespec.hooks:
         return (True, None)
 
-    # Get the last HISTORY entry ID
+    # Get the last COMMITS entry ID
     last_history_entry_id = get_last_history_entry_id(changespec)
     if last_history_entry_id is None:
         # No history entries, nothing to clear
         return (True, None)
 
-    # Build updated hooks list with status lines for last HISTORY entry removed
+    # Build updated hooks list with status lines for last COMMITS entry removed
     updated_hooks: list[HookEntry] = []
     hooks_cleared = 0
 
     for hook in changespec.hooks:
         if hook.status_lines:
-            # Keep all status lines except the one for the last HISTORY entry
+            # Keep all status lines except the one for the last COMMITS entry
             remaining_status_lines = [
                 sl
                 for sl in hook.status_lines
@@ -248,7 +248,7 @@ def restore_changespec(
         except Exception as e:
             return (False, f"Failed to rename ChangeSpec: {e}")
 
-    # Clear hook status lines for the last HISTORY entry so hooks will rerun
+    # Clear hook status lines for the last COMMITS entry so hooks will rerun
     success, error = _clear_hook_status_lines_for_last_history(
         changespec, base_name, console
     )

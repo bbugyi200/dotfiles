@@ -199,7 +199,7 @@ def test_evaluate_no_status_suffix_combined_with_project(
 def test_evaluate_error_suffix_matches_history_suffix(
     make_changespec: Any,
 ) -> None:
-    """Test !!! matches ChangeSpec with suffix in HISTORY entry."""
+    """Test !!! matches ChangeSpec with suffix in COMMITS entry."""
     query = parse_query("!!!")
     cs = make_changespec.create(
         status="Drafted",  # No suffix in status
@@ -262,7 +262,7 @@ def test_evaluate_error_suffix_matches_comment_suffix(
 def test_evaluate_no_status_suffix_excludes_history_suffix(
     make_changespec: Any,
 ) -> None:
-    """Test !! excludes ChangeSpec with suffix in HISTORY entry."""
+    """Test !! excludes ChangeSpec with suffix in COMMITS entry."""
     query = parse_query("!!")
     cs = make_changespec.create(
         status="Drafted",  # No suffix in status

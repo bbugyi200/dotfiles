@@ -12,7 +12,7 @@ def test_delete_proposal_entry_success() -> None:
 DESCRIPTION:
   Test description
 STATUS: Drafted
-HISTORY:
+COMMITS:
   (1) Initial commit
       | DIFF: ~/.gai/diffs/my_feature_123.diff
   (1a) [fix typo]
@@ -46,7 +46,7 @@ def test_delete_proposal_entry_not_found() -> None:
 DESCRIPTION:
   Test description
 STATUS: Drafted
-HISTORY:
+COMMITS:
   (1) Initial commit
       | DIFF: ~/.gai/diffs/my_feature_123.diff
 """
@@ -72,12 +72,12 @@ def test_delete_proposal_entry_file_not_found() -> None:
 def test_delete_proposal_entry_wrong_cl_name() -> None:
     """Test that we don't delete entries from wrong ChangeSpec."""
     project_content = """NAME: feature_a
-HISTORY:
+COMMITS:
   (1a) [fix]
       | DIFF: ~/.gai/diffs/a.diff
 
 NAME: feature_b
-HISTORY:
+COMMITS:
   (1a) [fix]
       | DIFF: ~/.gai/diffs/b.diff
 """

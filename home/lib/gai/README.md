@@ -40,7 +40,7 @@ filtering CLs.
 | `gai ace [query]`                  | Interactive TUI for managing ChangeSpecs  |
 | `gai axe`                          | Background daemon for status monitoring   |
 | `gai commit <cl_name> [file_path]` | Create Mercurial commits with metadata    |
-| `gai amend [note]`                 | Amend commits with HISTORY tracking       |
+| `gai amend [note]`                 | Amend commits with COMMITS tracking       |
 | `gai restore [name]`               | Restore reverted ChangeSpecs              |
 | `gai revert <name>`                | Revert and archive ChangeSpecs            |
 | `gai search <query>`               | Search ChangeSpecs (plain or rich output) |
@@ -96,7 +96,7 @@ gai commit my_feature message.txt  # Use file for commit message
 gai commit my_feature -m "Message" # Direct message
 gai commit my_feature -b 12345     # Associate with bug (BUG= tag)
 gai commit my_feature -B 12345     # Bug is fixed by this CL (FIXED= tag)
-gai commit my_feature -n "Note"    # Custom initial HISTORY note
+gai commit my_feature -n "Note"    # Custom initial COMMITS note
 gai commit my_feature -p project   # Override project name
 gai commit my_feature --chat /path/chat.txt  # Associate with chat file
 gai commit my_feature --timestamp 250125_103045  # Shared timestamp for synced files
@@ -105,11 +105,11 @@ gai commit my_feature --end-timestamp 250125_110000  # End timestamp for duratio
 
 ### gai amend
 
-Amend the current commit with HISTORY tracking.
+Amend the current commit with COMMITS tracking.
 
 ```bash
 gai amend "Fixed typo"             # Amend with note
-gai amend -p                       # Create proposed HISTORY entry
+gai amend -p                       # Create proposed COMMITS entry
 gai amend -a 2a                    # Accept proposal entry 2a
 gai amend -a '2b(Add field)'       # Accept with custom message
 gai amend --chat /path/to/chat     # Associate with chat file

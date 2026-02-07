@@ -160,7 +160,7 @@ def start_stale_hooks(
 
     Args:
         changespec: The ChangeSpec to start hooks for.
-        entry_id: The specific HISTORY entry ID to run hooks for (e.g., "3", "3a").
+        entry_id: The specific COMMITS entry ID to run hooks for (e.g., "3", "3a").
         entry: The CommitEntry object for this entry.
         log: Logging callback for status messages.
         skip_limited: If True, only start "unlimited" hooks (those with !-prefix,
@@ -223,7 +223,7 @@ def _start_stale_hooks_for_proposal(
 
     Args:
         changespec: The ChangeSpec to start hooks for.
-        entry_id: The proposal HISTORY entry ID (e.g., "3a").
+        entry_id: The proposal COMMITS entry ID (e.g., "3a").
         entry: The CommitEntry (must be a proposal).
         project_basename: The project basename for workspace lookup.
         log: Logging callback for status messages.
@@ -492,7 +492,7 @@ def _start_stale_hooks_shared_workspace(
 
     Args:
         changespec: The ChangeSpec to start hooks for.
-        entry_id: The HISTORY entry ID (e.g., "1", "2", "3").
+        entry_id: The COMMITS entry ID (e.g., "1", "2", "3").
         project_basename: The project basename for workspace lookup.
         log: Logging callback for status messages.
         skip_limited: If True, only start "unlimited" hooks (those with !-prefix).
