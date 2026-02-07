@@ -21,7 +21,7 @@ from pathlib import Path
 # Add the parent directory to the path for imports (use abspath to handle relative __file__)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from ace.changespec import ChangeSpec
+from ace.changespec import ChangeSpec, parse_project_file
 from ace.hooks import contract_test_target_command, set_hook_suffix
 from axe_runner_utils import finalize_axe_runner
 from gai_utils import shorten_path, strip_hook_prefix
@@ -193,6 +193,31 @@ def main() -> int:
             ):
                 proposal_id = create_result.get("proposal_id")
                 exit_code = 0
+
+        # Fallback: if context extraction failed, check ChangeSpec directly
+        # (the create_proposal step may have written the entry to disk even
+        # though embedded_context didn't capture the result properly)
+        if not proposal_id:
+            try:
+                base_num = int(last_history_id)
+                for cs in parse_project_file(project_file):
+                    if cs.name == changespec_name:
+                        for commit in cs.commits or []:
+                            if (
+                                commit.number == base_num
+                                and commit.is_proposed
+                                and commit.note.startswith("[fix-hook")
+                            ):
+                                proposal_id = commit.display_number
+                                exit_code = 0
+                                print(
+                                    f"Fallback: found proposal ({proposal_id}) "
+                                    f"in ChangeSpec despite context extraction failure"
+                                )
+                                break
+                        break
+            except (ValueError, Exception) as e:
+                print(f"Warning: fallback proposal check failed: {e}")
 
     except Exception as e:
         print(f"Error running fix-hook workflow: {e}")

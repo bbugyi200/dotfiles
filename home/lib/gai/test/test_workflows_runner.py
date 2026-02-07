@@ -10,6 +10,7 @@ from ace.changespec import (
     HookEntry,
     HookStatusLine,
 )
+from ace.scheduler.workflows_runner.completer import _find_fix_hook_proposal
 from ace.scheduler.workflows_runner.monitor import (
     WORKFLOW_COMPLETE_MARKER,
     check_workflow_completion,
@@ -413,3 +414,42 @@ def testget_workflow_output_path_different_types() -> None:
     assert "crs" in crs_path
     assert "fix-hook" in fix_path
     assert crs_path != fix_path
+
+
+# --- Tests for _find_fix_hook_proposal ---
+
+
+def test_find_fix_hook_proposal_returns_display_number() -> None:
+    """Test that proposal display_number is returned when matching fix-hook proposal exists."""
+    commits = [
+        CommitEntry(number=1, note="Initial commit"),
+        CommitEntry(
+            number=1,
+            note="[fix-hook (1) make test] Fix the import",
+            proposal_letter="a",
+        ),
+    ]
+    cs = _make_changespec(commits=commits)
+    result = _find_fix_hook_proposal(cs, "1")
+    assert result == "1a"
+
+
+def test_find_fix_hook_proposal_returns_none_when_no_proposal() -> None:
+    """Test that None is returned when no proposal exists for the entry."""
+    commits = [
+        CommitEntry(number=1, note="Initial commit"),
+    ]
+    cs = _make_changespec(commits=commits)
+    result = _find_fix_hook_proposal(cs, "1")
+    assert result is None
+
+
+def test_find_fix_hook_proposal_returns_none_when_note_wrong_prefix() -> None:
+    """Test that None is returned when proposal note doesn't start with [fix-hook."""
+    commits = [
+        CommitEntry(number=1, note="Initial commit"),
+        CommitEntry(number=1, note="Manual fix for test", proposal_letter="a"),
+    ]
+    cs = _make_changespec(commits=commits)
+    result = _find_fix_hook_proposal(cs, "1")
+    assert result is None
