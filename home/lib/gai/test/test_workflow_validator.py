@@ -16,6 +16,7 @@ from xprompt.workflow_validator import (
     _detect_unused_xprompts,
     _extract_xprompt_calls,
     _validate_xprompt_call,
+    _validate_xprompt_names,
     _XPromptCall,
 )
 
@@ -629,6 +630,50 @@ def test_validate_workflow_raises_on_unused_xprompt_input() -> None:
         },
     )
     with pytest.raises(WorkflowValidationError, match="dead_input"):
+        from xprompt.workflow_validator import validate_workflow
+
+        validate_workflow(workflow)
+
+
+def test_validate_xprompt_names_missing_underscore() -> None:
+    """Xprompt name without '_' prefix → error."""
+    workflow = Workflow(
+        name="test",
+        steps=[WorkflowStep(name="step1", bash="echo hi")],
+        xprompts={
+            "foo": XPrompt(name="foo", content="some content"),
+        },
+    )
+    errors = _validate_xprompt_names(workflow)
+    assert len(errors) == 1
+    assert "foo" in errors[0]
+    assert "must start with '_'" in errors[0]
+    assert "'_foo'" in errors[0]
+
+
+def test_validate_xprompt_names_valid() -> None:
+    """Xprompt name with '_' prefix → no error."""
+    workflow = Workflow(
+        name="test",
+        steps=[WorkflowStep(name="step1", bash="echo hi")],
+        xprompts={
+            "_foo": XPrompt(name="_foo", content="some content"),
+        },
+    )
+    errors = _validate_xprompt_names(workflow)
+    assert errors == []
+
+
+def test_validate_workflow_raises_on_xprompt_missing_underscore() -> None:
+    """Integration: validate_workflow() raises on xprompt name missing '_' prefix."""
+    workflow = Workflow(
+        name="test",
+        steps=[WorkflowStep(name="step1", bash="echo hi")],
+        xprompts={
+            "bad_name": XPrompt(name="bad_name", content="some content"),
+        },
+    )
+    with pytest.raises(WorkflowValidationError, match="must start with '_'"):
         from xprompt.workflow_validator import validate_workflow
 
         validate_workflow(workflow)

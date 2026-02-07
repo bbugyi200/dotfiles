@@ -461,10 +461,29 @@ def _detect_unused_xprompt_inputs(workflow: Workflow) -> list[str]:
     return errors
 
 
+def _validate_xprompt_names(workflow: Workflow) -> list[str]:
+    """Validate that all workflow-local xprompt names start with '_'.
+
+    Args:
+        workflow: The workflow to check.
+
+    Returns:
+        List of error messages for invalid xprompt names.
+    """
+    errors: list[str] = []
+    for name in workflow.xprompts:
+        if not name.startswith("_"):
+            errors.append(
+                f"Workflow-local xprompt '{name}' must start with '_' (e.g. '_{name}')"
+            )
+    return errors
+
+
 def validate_workflow(workflow: Workflow) -> None:
     """Validate a workflow before execution.
 
     Performs compile-time checks:
+    - Validates xprompt names start with '_'
     - Detects unused inputs (defined but never referenced)
     - Validates xprompt calls (required args, named arg names, positional counts)
     - Validates prompt_part steps (at most one, no control flow, no output, no hitl)
@@ -476,6 +495,10 @@ def validate_workflow(workflow: Workflow) -> None:
         WorkflowValidationError: If validation fails.
     """
     errors: list[str] = []
+
+    # Validate xprompt names early (before other xprompt checks)
+    errors.extend(_validate_xprompt_names(workflow))
+
     xprompts = get_all_xprompts()
     xprompts.update(workflow.xprompts)  # workflow-local takes priority
 
