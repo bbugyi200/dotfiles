@@ -2,6 +2,7 @@
 
 import re
 import sys
+from typing import Any
 
 from rich_utils import print_status
 from shared_utils import apply_section_marker_handling
@@ -45,6 +46,7 @@ def _expand_single_xprompt(
     xprompt: XPrompt,
     positional_args: list[str],
     named_args: dict[str, str],
+    scope: dict[str, Any] | None = None,
 ) -> str:
     """Expand a single xprompt with its arguments.
 
@@ -52,6 +54,8 @@ def _expand_single_xprompt(
         xprompt: The XPrompt to expand.
         positional_args: List of positional argument values.
         named_args: Dictionary of named argument values.
+        scope: Optional base context (e.g., workflow execution context).
+            Xprompt-specific args take priority over scope values.
 
     Returns:
         The expanded xprompt content.
@@ -65,13 +69,14 @@ def _expand_single_xprompt(
     )
 
     return substitute_placeholders(
-        xprompt.content, conv_positional, conv_named, xprompt.name
+        xprompt.content, conv_positional, conv_named, xprompt.name, scope=scope
     )
 
 
 def process_xprompt_references(
     prompt: str,
     extra_xprompts: dict[str, XPrompt] | None = None,
+    scope: dict[str, Any] | None = None,
 ) -> str:
     """Process xprompt references in the prompt.
 
@@ -94,6 +99,9 @@ def process_xprompt_references(
         prompt: The prompt text to process
         extra_xprompts: Optional additional xprompts that take highest priority
             (e.g., workflow-local xprompts).
+        scope: Optional base context (e.g., workflow execution context) passed
+            through to Jinja2 template rendering. Xprompt-specific args take
+            priority over scope values.
 
     Returns:
         The transformed prompt with xprompts expanded
@@ -178,7 +186,9 @@ def process_xprompt_references(
                 else:
                     positional_args, named_args = [], {}
 
-                expanded = _expand_single_xprompt(xprompt, positional_args, named_args)
+                expanded = _expand_single_xprompt(
+                    xprompt, positional_args, named_args, scope=scope
+                )
 
                 # Handle section markers (### or ---) with proper line positioning
                 is_at_line_start = (

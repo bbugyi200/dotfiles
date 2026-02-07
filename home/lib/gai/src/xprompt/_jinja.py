@@ -115,6 +115,7 @@ def _render_jinja2_template(
     positional_args: list[Any],
     named_args: dict[str, Any],
     xprompt_name: str,
+    scope: dict[str, Any] | None = None,
 ) -> str:
     """Render xprompt content as a Jinja2 template.
 
@@ -123,6 +124,8 @@ def _render_jinja2_template(
         positional_args: List of positional argument values
         named_args: Dictionary of named argument values
         xprompt_name: Name of the xprompt (for error messages)
+        scope: Optional base context (e.g., workflow execution context).
+            Xprompt-specific args take priority over scope values.
 
     Returns:
         Rendered template content
@@ -132,13 +135,15 @@ def _render_jinja2_template(
     """
     env = _get_jinja_env()
 
-    # Build context with positional args as _1, _2, etc.
+    # Build context: scope first, then positional/named args override
     context: dict[str, Any] = {}
+    if scope:
+        context.update(scope)
     for i, arg in enumerate(positional_args, 1):
         context[f"_{i}"] = arg
     context["_args"] = positional_args
 
-    # Add named args directly
+    # Add named args directly (overrides scope)
     context.update(named_args)
 
     try:
@@ -217,6 +222,7 @@ def substitute_placeholders(
     positional_args: list[Any],
     named_args: dict[str, Any],
     xprompt_name: str,
+    scope: dict[str, Any] | None = None,
 ) -> str:
     """Substitute placeholders using appropriate mode (Jinja2 or legacy).
 
@@ -225,7 +231,7 @@ def substitute_placeholders(
     """
     if is_jinja2_template(content):
         return _render_jinja2_template(
-            content, positional_args, named_args, xprompt_name
+            content, positional_args, named_args, xprompt_name, scope=scope
         )
     else:
         return _substitute_legacy_placeholders(content, positional_args, xprompt_name)

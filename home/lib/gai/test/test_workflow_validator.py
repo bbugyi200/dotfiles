@@ -479,6 +479,30 @@ def test_detect_unused_outputs_xprompt_content_scanned() -> None:
     assert errors == []
 
 
+def test_workflow_local_xprompt_with_scope_resolves_step_outputs() -> None:
+    """Workflow-local xprompts with Jinja2 refs resolve via scope."""
+    from xprompt.processor import process_xprompt_references
+
+    xprompts = {
+        "_research_files": XPrompt(
+            name="_research_files",
+            content="Files: {{ research.api_research.file_path }}",
+        ),
+    }
+    scope = {
+        "research": {
+            "api_research": {"file_path": "/tmp/test.py"},
+        },
+    }
+    result = process_xprompt_references(
+        "Analyze #_research_files",
+        extra_xprompts=xprompts,
+        scope=scope,
+    )
+    assert "Files: /tmp/test.py" in result
+    assert "#_research_files" not in result
+
+
 def test_validate_workflow_raises_on_unused_output() -> None:
     """Integration: validate_workflow() raises error for unused output."""
     workflow = Workflow(

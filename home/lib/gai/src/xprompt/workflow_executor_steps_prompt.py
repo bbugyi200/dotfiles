@@ -107,6 +107,7 @@ class PromptStepMixin:
         expanded_prompt = process_xprompt_references(
             rendered_prompt,
             extra_xprompts=self.workflow.xprompts,
+            scope=self.context,
         )
 
         # Then expand embedded workflows
