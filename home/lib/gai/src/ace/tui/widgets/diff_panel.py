@@ -15,7 +15,7 @@ from textual.message import Message
 from textual.widgets import Static
 from textual.worker import Worker, WorkerState
 
-from ..models.agent import Agent, AgentType
+from ..models.agent import Agent
 
 
 class DiffVisibilityChanged(Message):
@@ -49,7 +49,7 @@ def _get_cache_key(agent: Agent) -> str:
     Includes agent type and workspace to ensure different agents
     don't share cached diffs incorrectly.
     """
-    if agent.agent_type == AgentType.RUNNING and agent.workspace_num is not None:
+    if agent.workspace_num is not None:
         return f"{agent.cl_name}:{agent.agent_type.value}:{agent.workspace_num}"
     return f"{agent.cl_name}:{agent.agent_type.value}"
 
@@ -314,7 +314,7 @@ class AgentDiffPanel(Static):
             # Get project basename from file path
             project_basename = Path(agent.project_file).stem
 
-            if agent.agent_type == AgentType.RUNNING and agent.workspace_num:
+            if agent.workspace_num:
                 workspace_dir = get_workspace_directory(
                     project_basename, agent.workspace_num
                 )
