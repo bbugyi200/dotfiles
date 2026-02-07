@@ -34,6 +34,31 @@ from .starter import (
 )
 
 
+def _find_fix_hook_proposal(
+    changespec: ChangeSpec | None,
+    entry_id: str,
+) -> str | None:
+    """Check if a fix-hook proposal exists for the given entry.
+
+    Scans the ChangeSpec's commits for a proposal entry whose base number
+    matches entry_id and whose note starts with '[fix-hook'.
+    """
+    if not changespec or not changespec.commits:
+        return None
+    try:
+        base_num = int(entry_id)
+    except ValueError:
+        return None
+    for commit in changespec.commits:
+        if (
+            commit.number == base_num
+            and commit.is_proposed
+            and commit.note.startswith("[fix-hook")
+        ):
+            return commit.display_number  # e.g., "1a"
+    return None
+
+
 def _auto_accept_proposal(
     changespec: ChangeSpec,
     proposal_id: str,
@@ -292,50 +317,79 @@ def check_and_complete_workflows(
                         f"({proposal_id}) created (no workspace for auto-accept)"
                     )
             else:
-                # Workflow failed - set error suffix with summary preserved
-                # Re-read ChangeSpec to get current summary (in case fix-hook
-                # started and failed in the same loop iteration)
+                # Workflow reported failure - check if a proposal was
+                # actually created (e.g., create_proposal succeeded but a
+                # later step like report failed)
                 current_changespecs = parse_project_file(changespec.file_path)
-                current_cs = None
-                for cs in current_changespecs:
-                    if cs.name == changespec.name:
-                        current_cs = cs
-                        break
-
-                current_summary = None
-                if current_cs and current_cs.hooks:
-                    for h in current_cs.hooks:
-                        if h.command == hook_command:
-                            sl = h.get_status_line_for_commit_entry(entry_id)
-                            if sl:
-                                current_summary = sl.summary
-                            break
-
-                # Prepend output file path to summary for easy access to fix-hook logs
-                shortened_output = shorten_path(output_path)
-                if current_summary:
-                    current_summary = f"{shortened_output} | {current_summary}"
-                else:
-                    current_summary = shortened_output
-
-                success = set_hook_suffix(
-                    changespec.file_path,
-                    changespec.name,
-                    hook_command,
-                    "fix-hook Failed",
-                    hooks=None,  # Fresh read under lock
-                    entry_id=entry_id,
-                    suffix_type="error",
-                    summary=current_summary,
+                current_cs = next(
+                    (cs for cs in current_changespecs if cs.name == changespec.name),
+                    None,
                 )
-                if not success:
-                    updates.append(
-                        f"WARNING: Could not set error suffix for fix-hook "
-                        f"'{hook_command}' entry ({entry_id})"
+
+                actual_proposal_id = _find_fix_hook_proposal(current_cs, entry_id)
+                if actual_proposal_id:
+                    # Proposal created despite reported failure - treat as
+                    # success
+                    current_summary = None
+                    if current_cs and current_cs.hooks:
+                        for h in current_cs.hooks:
+                            if h.command == hook_command:
+                                sl = h.get_status_line_for_commit_entry(entry_id)
+                                if sl:
+                                    current_summary = sl.summary
+                                break
+                    set_hook_suffix(
+                        changespec.file_path,
+                        changespec.name,
+                        hook_command,
+                        actual_proposal_id,
+                        hooks=None,
+                        entry_id=entry_id,
+                        suffix_type="plain",
+                        summary=current_summary,
                     )
-                updates.append(
-                    f"fix-hook workflow '{hook_command}' -> FAILED (exit {exit_code})"
-                )
+                    updates.append(
+                        f"fix-hook workflow '{hook_command}' -> proposal "
+                        f"({actual_proposal_id}) found despite reported failure"
+                    )
+                else:
+                    # Genuinely failed - set error suffix with summary
+                    current_summary = None
+                    if current_cs and current_cs.hooks:
+                        for h in current_cs.hooks:
+                            if h.command == hook_command:
+                                sl = h.get_status_line_for_commit_entry(entry_id)
+                                if sl:
+                                    current_summary = sl.summary
+                                break
+
+                    # Prepend output file path to summary for easy access
+                    # to fix-hook logs
+                    shortened_output = shorten_path(output_path)
+                    if current_summary:
+                        current_summary = f"{shortened_output} | {current_summary}"
+                    else:
+                        current_summary = shortened_output
+
+                    success = set_hook_suffix(
+                        changespec.file_path,
+                        changespec.name,
+                        hook_command,
+                        "fix-hook Failed",
+                        hooks=None,  # Fresh read under lock
+                        entry_id=entry_id,
+                        suffix_type="error",
+                        summary=current_summary,
+                    )
+                    if not success:
+                        updates.append(
+                            f"WARNING: Could not set error suffix for fix-hook "
+                            f"'{hook_command}' entry ({entry_id})"
+                        )
+                    updates.append(
+                        f"fix-hook workflow '{hook_command}' -> FAILED "
+                        f"(exit {exit_code})"
+                    )
 
                 # Release workspace
                 for claim in get_claimed_workspaces(changespec.file_path):

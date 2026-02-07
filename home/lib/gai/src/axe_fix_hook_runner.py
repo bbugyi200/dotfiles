@@ -172,11 +172,20 @@ def main() -> int:
             embedded_context["_prompt"] = expanded_prompt
             embedded_context["_response"] = response_content
             embedded_context["who"] = who
-            execute_standalone_steps(
-                post_steps, embedded_context, "fix-hook-embedded", artifacts_dir
-            )
+            try:
+                execute_standalone_steps(
+                    post_steps,
+                    embedded_context,
+                    "fix-hook-embedded",
+                    artifacts_dir,
+                )
+            except Exception as step_error:
+                print(f"Warning: Some embedded workflow steps failed: {step_error}")
+                import traceback
 
-            # Extract proposal_id from create_proposal step output
+                traceback.print_exc()
+
+            # Always check for proposal_id (even if later steps failed)
             create_result = embedded_context.get("create_proposal", {})
             if (
                 isinstance(create_result, dict)
