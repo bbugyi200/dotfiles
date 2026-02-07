@@ -12,6 +12,8 @@ from xprompt.workflow_validator import (
     _collect_used_variables,
     _detect_unused_inputs,
     _detect_unused_outputs,
+    _detect_unused_xprompt_inputs,
+    _detect_unused_xprompts,
     _extract_xprompt_calls,
     _validate_xprompt_call,
     _XPromptCall,
@@ -513,6 +515,120 @@ def test_validate_workflow_raises_on_unused_output() -> None:
         ],
     )
     with pytest.raises(WorkflowValidationError, match="unused_out"):
+        from xprompt.workflow_validator import validate_workflow
+
+        validate_workflow(workflow)
+
+
+def test_detect_unused_xprompts_finds_unused() -> None:
+    """Workflow-local xprompt never referenced → error."""
+    workflow = Workflow(
+        name="test",
+        steps=[WorkflowStep(name="step1", bash="echo hi")],
+        xprompts={
+            "_unused": XPrompt(name="_unused", content="some content"),
+        },
+    )
+    xprompts = dict(workflow.xprompts)
+    errors = _detect_unused_xprompts(workflow, xprompts)
+    assert len(errors) == 1
+    assert "_unused" in errors[0]
+
+
+def test_detect_unused_xprompts_used_in_step() -> None:
+    """Xprompt referenced in step content → no error."""
+    workflow = Workflow(
+        name="test",
+        steps=[WorkflowStep(name="step1", prompt="Use #_helper here")],
+        xprompts={
+            "_helper": XPrompt(name="_helper", content="I help"),
+        },
+    )
+    xprompts = dict(workflow.xprompts)
+    errors = _detect_unused_xprompts(workflow, xprompts)
+    assert errors == []
+
+
+def test_detect_unused_xprompts_used_by_other_xprompt() -> None:
+    """Xprompt referenced by another xprompt → no error."""
+    workflow = Workflow(
+        name="test",
+        steps=[WorkflowStep(name="step1", prompt="Use #_outer here")],
+        xprompts={
+            "_base": XPrompt(name="_base", content="base content"),
+            "_outer": XPrompt(name="_outer", content="wraps #_base"),
+        },
+    )
+    xprompts = dict(workflow.xprompts)
+    errors = _detect_unused_xprompts(workflow, xprompts)
+    assert errors == []
+
+
+def test_detect_unused_xprompt_inputs_finds_unused() -> None:
+    """Xprompt input not in content → error."""
+    workflow = Workflow(
+        name="test",
+        steps=[],
+        xprompts={
+            "_helper": XPrompt(
+                name="_helper",
+                content="no vars here",
+                inputs=[InputArg(name="unused_arg", type=InputType.LINE)],
+            ),
+        },
+    )
+    errors = _detect_unused_xprompt_inputs(workflow)
+    assert len(errors) == 1
+    assert "unused_arg" in errors[0]
+    assert "_helper" in errors[0]
+
+
+def test_detect_unused_xprompt_inputs_used() -> None:
+    """Xprompt input referenced in content → no error."""
+    workflow = Workflow(
+        name="test",
+        steps=[],
+        xprompts={
+            "_helper": XPrompt(
+                name="_helper",
+                content="Use {{ my_arg }} here",
+                inputs=[InputArg(name="my_arg", type=InputType.LINE)],
+            ),
+        },
+    )
+    errors = _detect_unused_xprompt_inputs(workflow)
+    assert errors == []
+
+
+def test_validate_workflow_raises_on_unused_xprompt() -> None:
+    """Integration: validate_workflow() raises on unused workflow-local xprompt."""
+    workflow = Workflow(
+        name="test",
+        steps=[WorkflowStep(name="step1", bash="echo hi")],
+        xprompts={
+            "_orphan": XPrompt(name="_orphan", content="never used"),
+        },
+    )
+    with pytest.raises(WorkflowValidationError, match="_orphan"):
+        from xprompt.workflow_validator import validate_workflow
+
+        validate_workflow(workflow)
+
+
+def test_validate_workflow_raises_on_unused_xprompt_input() -> None:
+    """Integration: validate_workflow() raises on unused xprompt input."""
+    workflow = Workflow(
+        name="test",
+        steps=[WorkflowStep(name="step1", prompt="Use #_helper here")],
+        xprompts={
+            "_helper": XPrompt(
+                name="_helper",
+                content="no vars",
+                inputs=[InputArg(name="dead_input", type=InputType.LINE)],
+            ),
+        },
+    )
+    with pytest.raises(WorkflowValidationError, match="dead_input"):
         from xprompt.workflow_validator import validate_workflow
 
         validate_workflow(workflow)

@@ -383,6 +383,84 @@ def _detect_unused_outputs(workflow: Workflow) -> list[str]:
     return errors
 
 
+def _detect_unused_xprompts(
+    workflow: Workflow, xprompts: dict[str, XPrompt]
+) -> list[str]:
+    """Find workflow-local xprompts that are never referenced.
+
+    Scans step content and other workflow-local xprompt content for #name
+    references. Any workflow-local xprompt not referenced anywhere is reported.
+
+    Args:
+        workflow: The workflow to check.
+        xprompts: Merged xprompt dict (global + workflow-local).
+
+    Returns:
+        List of error messages for unused workflow-local xprompts.
+    """
+    if not workflow.xprompts:
+        return []
+
+    xprompt_usage: dict[str, bool] = dict.fromkeys(workflow.xprompts, False)
+    xprompt_names = set(xprompts.keys())
+
+    # Scan step content
+    for step in workflow.steps:
+        for content in _collect_step_content(step):
+            preprocessed = preprocess_shorthand_syntax(content, xprompt_names)
+            for call in _extract_xprompt_calls(preprocessed):
+                if call.name in xprompt_usage:
+                    xprompt_usage[call.name] = True
+
+    # Scan other workflow-local xprompt content (xprompts can reference each other)
+    for xp in workflow.xprompts.values():
+        preprocessed = preprocess_shorthand_syntax(xp.content, xprompt_names)
+        for call in _extract_xprompt_calls(preprocessed):
+            if call.name in xprompt_usage:
+                xprompt_usage[call.name] = True
+
+    errors: list[str] = []
+    for name, used in xprompt_usage.items():
+        if not used:
+            errors.append(
+                f"Workflow-local xprompt '{name}' is defined but never referenced"
+            )
+    return errors
+
+
+def _detect_unused_xprompt_inputs(workflow: Workflow) -> list[str]:
+    """Find inputs on workflow-local xprompts that are never used in content.
+
+    For each workflow-local xprompt that has inputs, checks whether each input
+    name appears as a {{ variable }} reference in the xprompt's content.
+
+    Args:
+        workflow: The workflow to check.
+
+    Returns:
+        List of error messages for unused xprompt inputs.
+    """
+    errors: list[str] = []
+
+    for name, xp in workflow.xprompts.items():
+        if not xp.inputs:
+            continue
+
+        # Collect variable names used in this xprompt's content
+        used_vars: set[str] = set()
+        for match in _TEMPLATE_VAR_PATTERN.finditer(xp.content):
+            used_vars.add(match.group(1))
+
+        for inp in xp.inputs:
+            if inp.name not in used_vars:
+                errors.append(
+                    f"Xprompt '{name}' input '{inp.name}' "
+                    f"is defined but never referenced in its content"
+                )
+
+    return errors
+
+
 def validate_workflow(workflow: Workflow) -> None:
     """Validate a workflow before execution.
 
@@ -414,6 +492,12 @@ def validate_workflow(workflow: Workflow) -> None:
     # Check for unused outputs
     unused_output_errors = _detect_unused_outputs(workflow)
     errors.extend(unused_output_errors)
+
+    # Check for unused workflow-local xprompts
+    errors.extend(_detect_unused_xprompts(workflow, xprompts))
+
+    # Check for unused workflow-local xprompt inputs
+    errors.extend(_detect_unused_xprompt_inputs(workflow))
 
     # Validate xprompt calls in each step
     for step in workflow.steps:
