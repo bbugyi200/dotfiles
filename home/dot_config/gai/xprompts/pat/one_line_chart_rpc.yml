@@ -49,10 +49,13 @@ steps:
     if: "{{ create_plan }}"
     output: { file_path: path }
     prompt: |
-      #_file(plan): Can you help me write an implementation plan for this feature? Some extra requirements:
+      #_file(plan): Can you help me write an implementation plan for this feature?
 
+      ### Extra Requirements
+      Some extra requirements:
       #_extra_reqs
 
+      ### Prior Research
       #_research_files
 
   # Step 3: Implementation agent executes the plan
