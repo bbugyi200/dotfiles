@@ -227,6 +227,8 @@ class EmbeddedWorkflowMixin:
 
                 temp_state.status = StepStatus.IN_PROGRESS
 
+                self._current_embedded_workflow_name = embedded_workflow_name
+
                 if step.is_prompt_step():
                     success = self._execute_prompt_step(step, temp_state)
                 elif step.is_python_step():
@@ -271,6 +273,7 @@ class EmbeddedWorkflowMixin:
             finally:
                 # Restore original context
                 self.context = original_context
+                self._current_embedded_workflow_name = None
 
         return True
 

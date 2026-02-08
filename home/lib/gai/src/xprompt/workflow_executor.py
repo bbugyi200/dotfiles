@@ -55,6 +55,7 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
         self.artifacts_dir = artifacts_dir
         self.hitl_handler = hitl_handler
         self.output_handler = output_handler
+        self._current_embedded_workflow_name: str | None = None
 
         # Detect step inputs - args that match step names with output schemas
         # These are used to skip steps and use pre-provided outputs

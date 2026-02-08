@@ -135,6 +135,9 @@ class ScriptStepMixin:
                 step_type="bash",
                 step_source=rendered_command,
                 hidden=step.hidden,
+                embedded_workflow_name=getattr(
+                    self, "_current_embedded_workflow_name", None
+                ),
             )
 
             result_hitl = self.hitl_handler.prompt(
@@ -160,6 +163,9 @@ class ScriptStepMixin:
             step_type="bash",
             step_source=rendered_command,
             hidden=step.hidden,
+            embedded_workflow_name=getattr(
+                self, "_current_embedded_workflow_name", None
+            ),
         )
 
         # Store output in context under step name
@@ -239,6 +245,9 @@ class ScriptStepMixin:
                 step_type="python",
                 step_source=rendered_code,
                 hidden=step.hidden,
+                embedded_workflow_name=getattr(
+                    self, "_current_embedded_workflow_name", None
+                ),
             )
 
             result_hitl = self.hitl_handler.prompt(
@@ -264,6 +273,9 @@ class ScriptStepMixin:
             step_type="python",
             step_source=rendered_code,
             hidden=step.hidden,
+            embedded_workflow_name=getattr(
+                self, "_current_embedded_workflow_name", None
+            ),
         )
 
         # Store output in context under step name

@@ -326,8 +326,8 @@ def test_parallel_step_no_output_shows_placeholder() -> None:
         assert "AGENT PROMPT" not in header_str
 
 
-async def test_update_display_hides_file_for_top_level_workflow() -> None:
-    """Top-level workflow agents should hide the file panel even when RUNNING."""
+async def test_update_display_hides_file_for_done_workflow_without_diff() -> None:
+    """Done top-level workflow agents without diff_path should hide the file panel."""
     from ace.tui.widgets.agent_detail import AgentDetail
     from textual.app import App, ComposeResult
 
@@ -342,13 +342,14 @@ async def test_update_display_hides_file_for_top_level_workflow() -> None:
             agent_type=AgentType.WORKFLOW,
             cl_name="test_cl",
             project_file="/tmp/test.gp",
-            status="RUNNING",
+            status="DONE",
             start_time=None,
             workflow="my_workflow",
         )
         # Sanity: top-level workflow is NOT a workflow child
         assert not agent.is_workflow_child
         assert not agent.appears_as_agent
+        assert agent.diff_path is None
 
         detail.update_display(agent)
 
