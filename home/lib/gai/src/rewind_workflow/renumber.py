@@ -4,6 +4,13 @@ import re
 from typing import Any
 
 from ace.changespec import changespec_lock, get_entry_id, write_changespec_atomic
+from renumber_utils import (
+    build_commits_section,
+    find_commits_section,
+    parse_commit_entries,
+    sort_entries_by_id,
+    sort_hook_status_lines,
+)
 
 
 def _get_lowest_available_letter(
@@ -277,83 +284,6 @@ def _update_comments_with_id_mapping(
     return updated_lines
 
 
-def _sort_entries_by_id(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Sort entries by number, then by letter.
-
-    Args:
-        entries: List of entry dicts.
-
-    Returns:
-        Sorted list of entries.
-    """
-
-    def sort_key(e: dict[str, Any]) -> tuple[int, str]:
-        num = int(e["number"]) if e["number"] is not None else 0
-        letter = str(e["letter"]) if e["letter"] else ""
-        return (num, letter)
-
-    return sorted(entries, key=sort_key)
-
-
-def _sort_hook_status_lines(lines: list[str], cl_name: str) -> list[str]:
-    """Sort hook status lines by entry ID within each hook.
-
-    Args:
-        lines: All lines from the project file.
-        cl_name: The CL name.
-
-    Returns:
-        Lines with hook status lines sorted by entry ID.
-    """
-    updated_lines: list[str] = []
-    in_target_changespec = False
-    in_hooks = False
-    current_status_lines: list[tuple[str, int, str]] = []
-
-    def flush_status_lines() -> None:
-        nonlocal current_status_lines
-        if current_status_lines:
-            current_status_lines.sort(key=lambda x: (x[1], x[2]))
-            for line_content, _, _ in current_status_lines:
-                updated_lines.append(line_content)
-            current_status_lines = []
-
-    for line in lines:
-        if line.startswith("NAME: "):
-            flush_status_lines()
-            current_name = line[6:].strip()
-            in_target_changespec = current_name == cl_name
-            in_hooks = False
-            updated_lines.append(line)
-        elif in_target_changespec and line.startswith("HOOKS:"):
-            flush_status_lines()
-            in_hooks = True
-            updated_lines.append(line)
-        elif in_target_changespec and in_hooks and line.startswith("      | "):
-            stripped = line.strip()[2:]
-            status_match = re.match(r"^\((\d+)([a-z]?)(?:-\d+)?\)", stripped)
-            if status_match:
-                num = int(status_match.group(1))
-                letter = status_match.group(2) or ""
-                current_status_lines.append((line, num, letter))
-            else:
-                flush_status_lines()
-                updated_lines.append(line)
-        elif in_target_changespec and in_hooks and line.startswith("  "):
-            flush_status_lines()
-            updated_lines.append(line)
-        elif in_target_changespec and in_hooks:
-            flush_status_lines()
-            in_hooks = False
-            updated_lines.append(line)
-        else:
-            flush_status_lines()
-            updated_lines.append(line)
-
-    flush_status_lines()
-    return updated_lines
-
-
 def rewind_commit_entries(
     project_file: str,
     cl_name: str,
@@ -392,61 +322,14 @@ def rewind_commit_entries(
                 lines = f.readlines()
 
             # Find the ChangeSpec and its commits section
-            in_target_changespec = False
-            commits_start = -1
-            commits_end = -1
-
-            for i, line in enumerate(lines):
-                if line.startswith("NAME: "):
-                    current_name = line[6:].strip()
-                    if in_target_changespec:
-                        if commits_end < 0:
-                            commits_end = i
-                        break
-                    in_target_changespec = current_name == cl_name
-                elif in_target_changespec:
-                    if line.startswith("COMMITS:"):
-                        commits_start = i
-                    elif commits_start >= 0:
-                        stripped = line.strip()
-                        if re.match(r"^\(\d+[a-z]?\)", stripped) or stripped.startswith(
-                            "| "
-                        ):
-                            commits_end = i + 1
-                        elif stripped and not stripped.startswith("#"):
-                            break
+            commits_start, commits_end = find_commits_section(lines, cl_name)
 
             if commits_start < 0:
                 return False
 
-            if commits_end < 0:
-                commits_end = len(lines)
-
             # Parse current commit entries
             commit_lines = lines[commits_start + 1 : commits_end]
-            entries: list[dict[str, Any]] = []
-            current_entry: dict[str, Any] | None = None
-
-            for line in commit_lines:
-                stripped = line.strip()
-                entry_match = re.match(r"^\((\d+)([a-z])?\)\s+(.+)$", stripped)
-                if entry_match:
-                    if current_entry:
-                        entries.append(current_entry)
-                    current_entry = {
-                        "number": int(entry_match.group(1)),
-                        "letter": entry_match.group(2),
-                        "note": entry_match.group(3),
-                        "chat": None,
-                        "diff": None,
-                    }
-                elif stripped.startswith("| CHAT:") and current_entry:
-                    current_entry["chat"] = stripped[7:].strip()
-                elif stripped.startswith("| DIFF:") and current_entry:
-                    current_entry["diff"] = stripped[7:].strip()
-
-            if current_entry:
-                entries.append(current_entry)
+            entries = parse_commit_entries(commit_lines)
 
             # Calculate base number for new proposals
             base_num = selected_entry_num
@@ -547,19 +430,10 @@ def rewind_commit_entries(
                 new_entries.append(e.copy())
 
             # Sort entries
-            new_entries = _sort_entries_by_id(new_entries)
+            new_entries = sort_entries_by_id(new_entries)
 
             # Rebuild commits section
-            new_commit_lines = ["COMMITS:\n"]
-            for entry in new_entries:
-                num = entry["number"]
-                letter = str(entry["letter"]) if entry["letter"] else ""
-                note = entry["note"]
-                new_commit_lines.append(f"  ({num}{letter}) {note}\n")
-                if entry["chat"]:
-                    new_commit_lines.append(f"      | CHAT: {entry['chat']}\n")
-                if entry["diff"]:
-                    new_commit_lines.append(f"      | DIFF: {entry['diff']}\n")
+            new_commit_lines = build_commits_section(new_entries)
 
             # Replace old commits section with new one
             new_lines = lines[:commits_start] + new_commit_lines + lines[commits_end:]
@@ -572,7 +446,7 @@ def rewind_commit_entries(
             new_lines = _update_comments_with_id_mapping(new_lines, cl_name, id_mapping)
 
             # Sort hook status lines
-            new_lines = _sort_hook_status_lines(new_lines, cl_name)
+            new_lines = sort_hook_status_lines(new_lines, cl_name)
 
             # Write atomically
             commit_msg = f"Rewind {cl_name} to entry ({selected_entry_num})"

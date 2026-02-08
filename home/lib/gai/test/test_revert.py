@@ -1,57 +1,18 @@
 """Tests for gai.work.revert module."""
 
-import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from ace.changespec import ChangeSpec
 from ace.revert import (
     has_children,
     revert_changespec,
 )
-from gai_utils import get_next_suffix_number
 
 
-def _create_test_changespec(
-    name: str = "test_feature",
-    cl: str | None = "http://cl/123456789",
-    status: str = "Mailed",
-    parent: str | None = None,
-) -> ChangeSpec:
-    """Create a test ChangeSpec."""
-    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".gp") as f:
-        parent_val = parent if parent else "None"
-        cl_val = cl if cl else "None"
-        f.write(f"""# Test Project
-
-## ChangeSpec
-
-NAME: {name}
-DESCRIPTION:
-  A test feature
-PARENT: {parent_val}
-CL: {cl_val}
-STATUS: {status}
-
----
-""")
-        return ChangeSpec(
-            name=name,
-            description="A test feature",
-            parent=parent,
-            cl=cl,
-            status=status,
-            test_targets=None,
-            kickstart=None,
-            file_path=f.name,
-            line_number=6,
-        )
-
-
-def test_has_children_with_no_children() -> None:
+def test_has_children_with_no_children(make_changespec) -> None:  # type: ignore[no-untyped-def]
     """Test has_children returns False when no children exist."""
-    parent = _create_test_changespec(name="parent_feature")
-    child = _create_test_changespec(name="unrelated_feature", parent=None)
+    parent = make_changespec.create_with_file(name="parent_feature")
+    child = make_changespec.create_with_file(name="unrelated_feature", parent=None)
     all_changespecs = [parent, child]
 
     assert has_children(parent, all_changespecs) is False
@@ -60,10 +21,12 @@ def test_has_children_with_no_children() -> None:
     Path(child.file_path).unlink()
 
 
-def test_has_children_with_children() -> None:
+def test_has_children_with_children(make_changespec) -> None:  # type: ignore[no-untyped-def]
     """Test has_children returns True when children exist."""
-    parent = _create_test_changespec(name="parent_feature")
-    child = _create_test_changespec(name="child_feature", parent="parent_feature")
+    parent = make_changespec.create_with_file(name="parent_feature")
+    child = make_changespec.create_with_file(
+        name="child_feature", parent="parent_feature"
+    )
     all_changespecs = [parent, child]
 
     assert has_children(parent, all_changespecs) is True
@@ -72,10 +35,10 @@ def test_has_children_with_children() -> None:
     Path(child.file_path).unlink()
 
 
-def test_has_children_ignores_reverted_children() -> None:
+def test_has_children_ignores_reverted_children(make_changespec) -> None:  # type: ignore[no-untyped-def]
     """Test has_children returns False when only child is Reverted."""
-    parent = _create_test_changespec(name="parent_feature")
-    reverted_child = _create_test_changespec(
+    parent = make_changespec.create_with_file(name="parent_feature")
+    reverted_child = make_changespec.create_with_file(
         name="child_feature__1", parent="parent_feature", status="Reverted"
     )
     all_changespecs = [parent, reverted_child]
@@ -86,36 +49,9 @@ def test_has_children_ignores_reverted_children() -> None:
     Path(reverted_child.file_path).unlink()
 
 
-def test_get_next_suffix_number_first_revert() -> None:
-    """Test get_next_suffix_number returns 1 for first revert."""
-    existing_names = {"test_feature"}
-
-    suffix = get_next_suffix_number("test_feature", existing_names)
-
-    assert suffix == 1
-
-
-def test_get_next_suffix_number_second_revert() -> None:
-    """Test get_next_suffix_number returns 2 when __1 already exists."""
-    existing_names = {"test_feature", "test_feature__1"}
-
-    suffix = get_next_suffix_number("test_feature", existing_names)
-
-    assert suffix == 2
-
-
-def test_get_next_suffix_number_fills_gap() -> None:
-    """Test get_next_suffix_number finds lowest available number."""
-    existing_names = {"test_feature", "test_feature__2", "test_feature__3"}
-
-    suffix = get_next_suffix_number("test_feature", existing_names)
-
-    assert suffix == 1
-
-
-def test_revert_changespec_fails_without_cl() -> None:
+def test_revert_changespec_fails_without_cl(make_changespec) -> None:  # type: ignore[no-untyped-def]
     """Test revert_changespec fails when CL is not set."""
-    changespec = _create_test_changespec(cl=None)
+    changespec = make_changespec.create_with_file(cl=None)
 
     success, error = revert_changespec(changespec)
 
@@ -124,10 +60,12 @@ def test_revert_changespec_fails_without_cl() -> None:
     Path(changespec.file_path).unlink()
 
 
-def test_revert_changespec_fails_with_children() -> None:
+def test_revert_changespec_fails_with_children(make_changespec) -> None:  # type: ignore[no-untyped-def]
     """Test revert_changespec fails when ChangeSpec has children."""
-    parent = _create_test_changespec(name="parent_feature")
-    child = _create_test_changespec(name="child_feature", parent="parent_feature")
+    parent = make_changespec.create_with_file(name="parent_feature")
+    child = make_changespec.create_with_file(
+        name="child_feature", parent="parent_feature"
+    )
 
     with patch("ace.revert.find_all_changespecs", return_value=[parent, child]):
         success, error = revert_changespec(parent)
@@ -140,9 +78,9 @@ def test_revert_changespec_fails_with_children() -> None:
     Path(child.file_path).unlink()
 
 
-def test_revert_changespec_fails_without_workspace_dir() -> None:
+def test_revert_changespec_fails_without_workspace_dir(make_changespec) -> None:  # type: ignore[no-untyped-def]
     """Test revert_changespec fails when workspace directory cannot be determined."""
-    changespec = _create_test_changespec()
+    changespec = make_changespec.create_with_file()
 
     with patch("ace.revert.find_all_changespecs", return_value=[changespec]):
         with patch.dict("os.environ", {}, clear=True):
@@ -155,9 +93,9 @@ def test_revert_changespec_fails_without_workspace_dir() -> None:
     Path(changespec.file_path).unlink()
 
 
-def test_revert_changespec_fails_with_nonexistent_workspace() -> None:
+def test_revert_changespec_fails_with_nonexistent_workspace(make_changespec) -> None:  # type: ignore[no-untyped-def]
     """Test revert_changespec fails when workspace directory doesn't exist."""
-    changespec = _create_test_changespec()
+    changespec = make_changespec.create_with_file()
 
     with patch("ace.revert.find_all_changespecs", return_value=[changespec]):
         with patch("ace.revert.get_workspace_directory_for_changespec") as mock_get_ws:
@@ -171,9 +109,9 @@ def test_revert_changespec_fails_with_nonexistent_workspace() -> None:
     Path(changespec.file_path).unlink()
 
 
-def test_revert_changespec_success() -> None:
+def test_revert_changespec_success(make_changespec) -> None:  # type: ignore[no-untyped-def]
     """Test revert_changespec succeeds with all requirements met."""
-    changespec = _create_test_changespec()
+    changespec = make_changespec.create_with_file()
     console = MagicMock()
 
     with patch("ace.revert.find_all_changespecs", return_value=[changespec]):
@@ -201,9 +139,9 @@ def test_revert_changespec_success() -> None:
     Path(changespec.file_path).unlink()
 
 
-def test_revert_changespec_fails_on_diff_error() -> None:
+def test_revert_changespec_fails_on_diff_error(make_changespec) -> None:  # type: ignore[no-untyped-def]
     """Test revert_changespec fails when diff cannot be saved."""
-    changespec = _create_test_changespec()
+    changespec = make_changespec.create_with_file()
 
     with patch("ace.revert.find_all_changespecs", return_value=[changespec]):
         with patch(
@@ -222,9 +160,9 @@ def test_revert_changespec_fails_on_diff_error() -> None:
     Path(changespec.file_path).unlink()
 
 
-def test_revert_changespec_fails_on_prune_error() -> None:
+def test_revert_changespec_fails_on_prune_error(make_changespec) -> None:  # type: ignore[no-untyped-def]
     """Test revert_changespec fails when prune fails."""
-    changespec = _create_test_changespec()
+    changespec = make_changespec.create_with_file()
 
     with patch("ace.revert.find_all_changespecs", return_value=[changespec]):
         with patch(
@@ -244,9 +182,9 @@ def test_revert_changespec_fails_on_prune_error() -> None:
     Path(changespec.file_path).unlink()
 
 
-def test_revert_changespec_calls_kill_and_persist() -> None:
+def test_revert_changespec_calls_kill_and_persist(make_changespec) -> None:  # type: ignore[no-untyped-def]
     """Test revert_changespec calls kill_and_persist_all_running_processes."""
-    changespec = _create_test_changespec()
+    changespec = make_changespec.create_with_file()
 
     with patch("ace.revert.find_all_changespecs", return_value=[changespec]):
         with patch(

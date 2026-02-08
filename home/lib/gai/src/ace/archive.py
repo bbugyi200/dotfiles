@@ -8,50 +8,26 @@ from rich.console import Console
 
 # Add parent directory to path for status_state_machine import
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from gai_utils import (
-    get_next_suffix_number,
-    has_suffix,
-    run_workspace_command,
-)
+from gai_utils import run_workspace_command
 from running_field import (
     claim_workspace,
     get_first_available_axe_workspace,
     get_workspace_directory_for_num,
     release_workspace,
-    update_running_field_cl_name,
 )
-from status_state_machine import (
-    transition_changespec_status,
-    update_parent_references_atomic,
-)
+from status_state_machine import transition_changespec_status
 
 from .changespec import (
     ChangeSpec,
     find_all_changespecs,
 )
 from .hooks.processes import kill_and_persist_all_running_processes
-from .operations import save_diff_to_file
-from .revert import update_changespec_name_atomic
-
-
-def _has_non_terminal_children(
-    changespec: ChangeSpec, all_changespecs: list[ChangeSpec]
-) -> bool:
-    """Check if any ChangeSpec has this one as a parent and is not archived/reverted.
-
-    For archiving, we allow if all children are either Archived or Reverted.
-
-    Args:
-        changespec: The ChangeSpec to check for children
-        all_changespecs: All ChangeSpecs to search through
-
-    Returns:
-        True if any ChangeSpec has this one as parent and is not archived/reverted
-    """
-    for cs in all_changespecs:
-        if cs.parent == changespec.name and cs.status not in ("Archived", "Reverted"):
-            return True
-    return False
+from .operations import (
+    calculate_lifecycle_new_name,
+    has_active_children,
+    rename_changespec_with_references,
+    save_diff_to_file,
+)
 
 
 def archive_changespec(
@@ -95,7 +71,9 @@ def archive_changespec(
     all_changespecs = find_all_changespecs()
 
     # Validate no non-terminal children (different from revert!)
-    if _has_non_terminal_children(changespec, all_changespecs):
+    if has_active_children(
+        changespec, all_changespecs, terminal_statuses=("Archived", "Reverted")
+    ):
         return (
             False,
             "Cannot archive: other ChangeSpecs have this one as their parent "
@@ -140,13 +118,7 @@ def archive_changespec(
             console.print(f"[green]Checked out: {changespec.name}[/green]")
 
         # Calculate new name with suffix
-        # Skip adding suffix if this is a WIP ChangeSpec that already has one
-        if changespec.status == "WIP" and has_suffix(changespec.name):
-            new_name = changespec.name  # Keep existing name
-        else:
-            existing_names = {cs.name for cs in all_changespecs}
-            suffix = get_next_suffix_number(changespec.name, existing_names)
-            new_name = f"{changespec.name}__{suffix}"
+        new_name = calculate_lifecycle_new_name(changespec, all_changespecs)
 
         if console:
             console.print(f"[cyan]Renaming ChangeSpec to: {new_name}[/cyan]")
@@ -175,15 +147,7 @@ def archive_changespec(
         # Rename the ChangeSpec (skip if name is unchanged, e.g., WIP with existing suffix)
         if new_name != changespec.name:
             try:
-                update_changespec_name_atomic(
-                    changespec.file_path, changespec.name, new_name
-                )
-                # Also update any RUNNING field entries that reference the old name
-                update_running_field_cl_name(
-                    changespec.file_path, changespec.name, new_name
-                )
-                # Update PARENT fields in any child ChangeSpecs
-                update_parent_references_atomic(
+                rename_changespec_with_references(
                     changespec.file_path, changespec.name, new_name
                 )
             except Exception as e:

@@ -4,10 +4,10 @@ from typing import Any
 
 from accept_workflow.renumber import (
     _build_entry_id_mapping,
-    _sort_hook_status_lines,
     _update_hooks_with_id_mapping,
 )
 from ace.changespec import get_entry_id
+from renumber_utils import sort_hook_status_lines
 
 
 # Tests for _get_entry_id
@@ -253,7 +253,7 @@ def test_update_hooks_single_proposal_no_archive() -> None:
     assert "      | (2) [251224_120100] PASSED (30s)\n" in result
 
 
-# Tests for _sort_hook_status_lines
+# Tests for sort_hook_status_lines
 def test_sort_hook_status_lines() -> None:
     """Test sorting hook status lines."""
     lines = [
@@ -266,7 +266,7 @@ def test_sort_hook_status_lines() -> None:
         "      | (1a) [251224_120050] RUNNING\n",
     ]
 
-    result = _sort_hook_status_lines(lines, "test_cl")
+    result = sort_hook_status_lines(lines, "test_cl")
 
     # Find status line indices (stripped lines start with "| (")
     status_lines = [line for line in result if line.strip().startswith("| (")]
@@ -289,7 +289,7 @@ def test_sort_hook_status_lines_multiple_hooks() -> None:
         "      | (1) [251224_120000] PASSED (5m0s)\n",
     ]
 
-    result = _sort_hook_status_lines(lines, "test_cl")
+    result = sort_hook_status_lines(lines, "test_cl")
 
     # Both hooks should have sorted status lines
     hooks_section = "".join(result)
@@ -316,7 +316,7 @@ def test_sort_hook_status_lines_with_archived_format() -> None:
         "      | (1b) [251224_120300] RUNNING\n",
     ]
 
-    result = _sort_hook_status_lines(lines, "test_cl")
+    result = sort_hook_status_lines(lines, "test_cl")
 
     # Stripped lines start with "| ("
     status_lines = [line for line in result if line.strip().startswith("| (")]

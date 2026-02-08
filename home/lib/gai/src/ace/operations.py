@@ -9,13 +9,19 @@ from rich.console import Console
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
+from gai_utils import (
+    get_next_suffix_number,
+    has_suffix,
+)
 from running_field import (
     get_first_available_workspace,
     get_workspace_directory_for_num,
+    update_running_field_cl_name,
 )
 from running_field import (
     get_workspace_directory as get_workspace_dir_from_project,
 )
+from status_state_machine import update_parent_references_atomic
 
 from .changespec import ChangeSpec
 from .hooks import has_failing_hooks_for_fix
@@ -153,6 +159,75 @@ def update_to_changespec(
             False,
             f"Unexpected error running bb_hg_update in {target_dir}: {str(e)}",
         )
+
+
+def has_active_children(
+    changespec: ChangeSpec,
+    all_changespecs: list[ChangeSpec],
+    terminal_statuses: tuple[str, ...] = ("Reverted",),
+) -> bool:
+    """Check if any ChangeSpec has this one as a parent and is not in a terminal status.
+
+    Args:
+        changespec: The ChangeSpec to check for children.
+        all_changespecs: All ChangeSpecs to search through.
+        terminal_statuses: Statuses considered terminal (children with these
+            statuses are ignored). Defaults to ("Reverted",) for revert.
+            Archive uses ("Archived", "Reverted").
+
+    Returns:
+        True if any ChangeSpec has this one as parent and is not terminal.
+    """
+    for cs in all_changespecs:
+        if cs.parent == changespec.name and cs.status not in terminal_statuses:
+            return True
+    return False
+
+
+def calculate_lifecycle_new_name(
+    changespec: ChangeSpec,
+    all_changespecs: list[ChangeSpec],
+) -> str:
+    """Calculate the new name for a lifecycle operation (archive/revert).
+
+    Appends a `__<N>` suffix, skipping if the ChangeSpec is WIP and already
+    has a suffix.
+
+    Args:
+        changespec: The ChangeSpec being renamed.
+        all_changespecs: All ChangeSpecs (used to find next available suffix).
+
+    Returns:
+        The new name (may be unchanged if WIP with existing suffix).
+    """
+    if changespec.status == "WIP" and has_suffix(changespec.name):
+        return changespec.name
+    existing_names = {cs.name for cs in all_changespecs}
+    suffix = get_next_suffix_number(changespec.name, existing_names)
+    return f"{changespec.name}__{suffix}"
+
+
+def rename_changespec_with_references(
+    project_file: str,
+    old_name: str,
+    new_name: str,
+) -> None:
+    """Rename a ChangeSpec and update all references (RUNNING, PARENT fields).
+
+    Args:
+        project_file: Path to the project file.
+        old_name: Current name of the ChangeSpec.
+        new_name: New name for the ChangeSpec.
+
+    Raises:
+        Exception: If any of the rename operations fail.
+    """
+    # Lazy import to avoid circular dependency
+    from .revert import update_changespec_name_atomic
+
+    update_changespec_name_atomic(project_file, old_name, new_name)
+    update_running_field_cl_name(project_file, old_name, new_name)
+    update_parent_references_atomic(project_file, old_name, new_name)
 
 
 def save_diff_to_file(

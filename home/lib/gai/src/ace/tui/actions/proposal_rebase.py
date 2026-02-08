@@ -37,7 +37,7 @@ class ProposalRebaseMixin:
         from ...comments.operations import mark_comment_agents_as_killed
         from ...hooks import (
             kill_running_agent_processes,
-            kill_running_hook_processes_except_dollar,
+            kill_running_hook_processes,
             mark_hook_agents_as_killed,
             mark_hooks_as_killed,
             update_changespec_hooks_field,
@@ -81,7 +81,7 @@ class ProposalRebaseMixin:
             )
 
         # 2. Kill running hooks except $-prefixed ones
-        killed_hooks = kill_running_hook_processes_except_dollar(changespec)
+        killed_hooks = kill_running_hook_processes(changespec, skip_dollar=True)
 
         # Update hooks to mark as killed and persist
         if killed_hooks and changespec.hooks:
@@ -132,7 +132,7 @@ class ProposalRebaseMixin:
         from ...comments.operations import mark_comment_agents_as_killed
         from ...hooks import (
             kill_running_agent_processes,
-            kill_running_hook_processes_except_dollar,
+            kill_running_hook_processes,
             mark_hook_agents_as_killed,
             mark_hooks_as_killed,
             update_changespec_hooks_field,
@@ -162,7 +162,7 @@ class ProposalRebaseMixin:
             )
 
         # 2. Kill running hooks except $-prefixed ones
-        killed_hooks = kill_running_hook_processes_except_dollar(changespec)
+        killed_hooks = kill_running_hook_processes(changespec, skip_dollar=True)
 
         # Update hooks to mark as killed and persist
         if killed_hooks and changespec.hooks:

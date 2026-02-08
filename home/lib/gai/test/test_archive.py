@@ -1,127 +1,114 @@
 """Tests for gai.ace.archive module."""
 
-import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from ace.archive import (
-    _has_non_terminal_children,
-    archive_changespec,
-)
-from ace.changespec import ChangeSpec
+from ace.archive import archive_changespec
+from ace.operations import has_active_children
 
 
-def _create_test_changespec(
-    name: str = "test_feature",
-    cl: str | None = "http://cl/123456789",
-    status: str = "Mailed",
-    parent: str | None = None,
-) -> ChangeSpec:
-    """Create a test ChangeSpec."""
-    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".gp") as f:
-        parent_val = parent if parent else "None"
-        cl_val = cl if cl else "None"
-        f.write(f"""# Test Project
-
-## ChangeSpec
-
-NAME: {name}
-DESCRIPTION:
-  A test feature
-PARENT: {parent_val}
-CL: {cl_val}
-STATUS: {status}
-
----
-""")
-        return ChangeSpec(
-            name=name,
-            description="A test feature",
-            parent=parent,
-            cl=cl,
-            status=status,
-            test_targets=None,
-            kickstart=None,
-            file_path=f.name,
-            line_number=6,
-        )
-
-
-def test_has_non_terminal_children_with_no_children() -> None:
-    """Test has_non_terminal_children returns False when no children exist."""
-    parent = _create_test_changespec(name="parent_feature")
-    child = _create_test_changespec(name="unrelated_feature", parent=None)
+def test_has_active_children_with_no_children(make_changespec) -> None:  # type: ignore[no-untyped-def]
+    """Test has_active_children returns False when no children exist."""
+    parent = make_changespec.create_with_file(name="parent_feature")
+    child = make_changespec.create_with_file(name="unrelated_feature", parent=None)
     all_changespecs = [parent, child]
 
-    assert _has_non_terminal_children(parent, all_changespecs) is False
+    assert (
+        has_active_children(
+            parent, all_changespecs, terminal_statuses=("Archived", "Reverted")
+        )
+        is False
+    )
 
     Path(parent.file_path).unlink()
     Path(child.file_path).unlink()
 
 
-def test_has_non_terminal_children_with_wip_child() -> None:
-    """Test has_non_terminal_children returns True when child is WIP."""
-    parent = _create_test_changespec(name="parent_feature")
-    child = _create_test_changespec(
+def test_has_active_children_with_wip_child(make_changespec) -> None:  # type: ignore[no-untyped-def]
+    """Test has_active_children returns True when child is WIP."""
+    parent = make_changespec.create_with_file(name="parent_feature")
+    child = make_changespec.create_with_file(
         name="child_feature", parent="parent_feature", status="WIP"
     )
     all_changespecs = [parent, child]
 
-    assert _has_non_terminal_children(parent, all_changespecs) is True
+    assert (
+        has_active_children(
+            parent, all_changespecs, terminal_statuses=("Archived", "Reverted")
+        )
+        is True
+    )
 
     Path(parent.file_path).unlink()
     Path(child.file_path).unlink()
 
 
-def test_has_non_terminal_children_ignores_reverted_children() -> None:
-    """Test has_non_terminal_children returns False when only child is Reverted."""
-    parent = _create_test_changespec(name="parent_feature")
-    reverted_child = _create_test_changespec(
+def test_has_active_children_ignores_reverted_children(make_changespec) -> None:  # type: ignore[no-untyped-def]
+    """Test has_active_children returns False when only child is Reverted."""
+    parent = make_changespec.create_with_file(name="parent_feature")
+    reverted_child = make_changespec.create_with_file(
         name="child_feature__1", parent="parent_feature", status="Reverted"
     )
     all_changespecs = [parent, reverted_child]
 
-    assert _has_non_terminal_children(parent, all_changespecs) is False
+    assert (
+        has_active_children(
+            parent, all_changespecs, terminal_statuses=("Archived", "Reverted")
+        )
+        is False
+    )
 
     Path(parent.file_path).unlink()
     Path(reverted_child.file_path).unlink()
 
 
-def test_has_non_terminal_children_ignores_archived_children() -> None:
-    """Test has_non_terminal_children returns False when only child is Archived."""
-    parent = _create_test_changespec(name="parent_feature")
-    archived_child = _create_test_changespec(
+def test_has_active_children_ignores_archived_children(make_changespec) -> None:  # type: ignore[no-untyped-def]
+    """Test has_active_children returns False when only child is Archived."""
+    parent = make_changespec.create_with_file(name="parent_feature")
+    archived_child = make_changespec.create_with_file(
         name="child_feature__1", parent="parent_feature", status="Archived"
     )
     all_changespecs = [parent, archived_child]
 
-    assert _has_non_terminal_children(parent, all_changespecs) is False
+    assert (
+        has_active_children(
+            parent, all_changespecs, terminal_statuses=("Archived", "Reverted")
+        )
+        is False
+    )
 
     Path(parent.file_path).unlink()
     Path(archived_child.file_path).unlink()
 
 
-def test_has_non_terminal_children_allows_mix_of_archived_and_reverted() -> None:
-    """Test has_non_terminal_children returns False with mix of Archived/Reverted."""
-    parent = _create_test_changespec(name="parent_feature")
-    archived_child = _create_test_changespec(
+def test_has_active_children_allows_mix_of_archived_and_reverted(  # type: ignore[no-untyped-def]
+    make_changespec,
+) -> None:
+    """Test has_active_children returns False with mix of Archived/Reverted."""
+    parent = make_changespec.create_with_file(name="parent_feature")
+    archived_child = make_changespec.create_with_file(
         name="child_feature__1", parent="parent_feature", status="Archived"
     )
-    reverted_child = _create_test_changespec(
+    reverted_child = make_changespec.create_with_file(
         name="child_feature__2", parent="parent_feature", status="Reverted"
     )
     all_changespecs = [parent, archived_child, reverted_child]
 
-    assert _has_non_terminal_children(parent, all_changespecs) is False
+    assert (
+        has_active_children(
+            parent, all_changespecs, terminal_statuses=("Archived", "Reverted")
+        )
+        is False
+    )
 
     Path(parent.file_path).unlink()
     Path(archived_child.file_path).unlink()
     Path(reverted_child.file_path).unlink()
 
 
-def test_archive_changespec_fails_without_cl() -> None:
+def test_archive_changespec_fails_without_cl(make_changespec) -> None:  # type: ignore[no-untyped-def]
     """Test archive_changespec fails when CL is not set."""
-    changespec = _create_test_changespec(cl=None)
+    changespec = make_changespec.create_with_file(cl=None)
 
     success, error = archive_changespec(changespec)
 
@@ -130,10 +117,10 @@ def test_archive_changespec_fails_without_cl() -> None:
     Path(changespec.file_path).unlink()
 
 
-def test_archive_changespec_fails_with_non_terminal_children() -> None:
+def test_archive_changespec_fails_with_non_terminal_children(make_changespec) -> None:  # type: ignore[no-untyped-def]
     """Test archive_changespec fails when ChangeSpec has non-terminal children."""
-    parent = _create_test_changespec(name="parent_feature")
-    child = _create_test_changespec(
+    parent = make_changespec.create_with_file(name="parent_feature")
+    child = make_changespec.create_with_file(
         name="child_feature", parent="parent_feature", status="WIP"
     )
 
@@ -159,10 +146,10 @@ def test_archive_changespec_fails_with_non_terminal_children() -> None:
     Path(child.file_path).unlink()
 
 
-def test_archive_changespec_succeeds_with_terminal_children() -> None:
+def test_archive_changespec_succeeds_with_terminal_children(make_changespec) -> None:  # type: ignore[no-untyped-def]
     """Test archive_changespec succeeds when all children are Archived/Reverted."""
-    parent = _create_test_changespec(name="parent_feature")
-    archived_child = _create_test_changespec(
+    parent = make_changespec.create_with_file(name="parent_feature")
+    archived_child = make_changespec.create_with_file(
         name="child_feature__1", parent="parent_feature", status="Archived"
     )
     console = MagicMock()
@@ -182,7 +169,7 @@ def test_archive_changespec_succeeds_with_terminal_children() -> None:
                         with patch(
                             "ace.archive.save_diff_to_file", return_value=(True, None)
                         ):
-                            with patch("ace.archive.update_changespec_name_atomic"):
+                            with patch("ace.archive.rename_changespec_with_references"):
                                 with patch(
                                     "ace.archive.transition_changespec_status",
                                     return_value=(True, "Mailed", None, []),
@@ -199,9 +186,9 @@ def test_archive_changespec_succeeds_with_terminal_children() -> None:
     Path(archived_child.file_path).unlink()
 
 
-def test_archive_changespec_claims_workspace_100_plus() -> None:
+def test_archive_changespec_claims_workspace_100_plus(make_changespec) -> None:  # type: ignore[no-untyped-def]
     """Test archive_changespec claims workspace in >=100 range."""
-    changespec = _create_test_changespec()
+    changespec = make_changespec.create_with_file()
     console = MagicMock()
 
     with patch("ace.archive.find_all_changespecs", return_value=[changespec]):
@@ -221,7 +208,7 @@ def test_archive_changespec_claims_workspace_100_plus() -> None:
                         with patch(
                             "ace.archive.save_diff_to_file", return_value=(True, None)
                         ):
-                            with patch("ace.archive.update_changespec_name_atomic"):
+                            with patch("ace.archive.rename_changespec_with_references"):
                                 with patch(
                                     "ace.archive.transition_changespec_status",
                                     return_value=(True, "Mailed", None, []),
@@ -241,9 +228,9 @@ def test_archive_changespec_claims_workspace_100_plus() -> None:
     Path(changespec.file_path).unlink()
 
 
-def test_archive_changespec_fails_on_archive_error() -> None:
+def test_archive_changespec_fails_on_archive_error(make_changespec) -> None:  # type: ignore[no-untyped-def]
     """Test archive_changespec fails when bb_hg_archive fails."""
-    changespec = _create_test_changespec()
+    changespec = make_changespec.create_with_file()
 
     with patch("ace.archive.find_all_changespecs", return_value=[changespec]):
         with patch("ace.archive.get_first_available_axe_workspace", return_value=100):
@@ -269,9 +256,9 @@ def test_archive_changespec_fails_on_archive_error() -> None:
     Path(changespec.file_path).unlink()
 
 
-def test_archive_changespec_releases_workspace_on_failure() -> None:
+def test_archive_changespec_releases_workspace_on_failure(make_changespec) -> None:  # type: ignore[no-untyped-def]
     """Test archive_changespec releases workspace even on failure."""
-    changespec = _create_test_changespec()
+    changespec = make_changespec.create_with_file()
 
     with patch("ace.archive.find_all_changespecs", return_value=[changespec]):
         with patch("ace.archive.get_first_available_axe_workspace", return_value=100):

@@ -17,6 +17,22 @@ from ..changespec import (
 from .timestamps import get_current_timestamp
 
 
+def _try_kill_process_group(pid: int) -> bool:
+    """Try to kill a process group via SIGTERM.
+
+    Args:
+        pid: The process group ID to kill.
+
+    Returns:
+        True always (process was killed, already dead, or inaccessible).
+    """
+    try:
+        os.killpg(pid, signal.SIGTERM)
+    except (ProcessLookupError, PermissionError):
+        pass
+    return True
+
+
 def is_process_running(pid: int) -> bool:
     """Check if a process with the given PID is still running.
 
@@ -38,6 +54,7 @@ def is_process_running(pid: int) -> bool:
 
 def kill_running_hook_processes(
     changespec: ChangeSpec,
+    skip_dollar: bool = False,
 ) -> list[tuple[HookEntry, HookStatusLine, int]]:
     """Kill all running hook processes for a ChangeSpec.
 
@@ -46,6 +63,7 @@ def kill_running_hook_processes(
 
     Args:
         changespec: The ChangeSpec to kill running hooks for.
+        skip_dollar: If True, skip $-prefixed hooks (skip_proposal_runs).
 
     Returns:
         List of (hook, status_line, pid) tuples for processes that were killed
@@ -57,6 +75,8 @@ def kill_running_hook_processes(
         return killed
 
     for hook in changespec.hooks:
+        if skip_dollar and hook.skip_proposal_runs:
+            continue
         if not hook.status_lines:
             continue
         for sl in hook.status_lines:
@@ -66,17 +86,8 @@ def kill_running_hook_processes(
                 except ValueError:
                     continue
 
-                try:
-                    # Send SIGTERM to process group
-                    os.killpg(pid, signal.SIGTERM)
-                    killed.append((hook, sl, pid))
-                except ProcessLookupError:
-                    # Process already dead - still mark as killed
-                    killed.append((hook, sl, pid))
-                except PermissionError:
-                    # Can't kill - may be owned by different user
-                    # Still mark as killed to clean up the state
-                    killed.append((hook, sl, pid))
+                _try_kill_process_group(pid)
+                killed.append((hook, sl, pid))
 
     return killed
 
@@ -141,55 +152,6 @@ def mark_hooks_as_killed(
     return updated_hooks
 
 
-def kill_running_hook_processes_except_dollar(
-    changespec: ChangeSpec,
-) -> list[tuple[HookEntry, HookStatusLine, int]]:
-    """Kill running hook processes, but skip hooks with $ prefix.
-
-    Similar to kill_running_hook_processes but respects the skip_proposal_runs
-    property ($-prefixed hooks) and leaves those running.
-
-    Args:
-        changespec: The ChangeSpec to kill running hooks for.
-
-    Returns:
-        List of (hook, status_line, pid) tuples for processes that were killed
-        (or attempted to kill). Used to update suffix to killed_process.
-    """
-    killed: list[tuple[HookEntry, HookStatusLine, int]] = []
-
-    if not changespec.hooks:
-        return killed
-
-    for hook in changespec.hooks:
-        # Skip $-prefixed hooks
-        if hook.skip_proposal_runs:
-            continue
-
-        if not hook.status_lines:
-            continue
-        for sl in hook.status_lines:
-            if sl.suffix_type == "running_process" and sl.suffix:
-                try:
-                    pid = int(sl.suffix)
-                except ValueError:
-                    continue
-
-                try:
-                    # Send SIGTERM to process group
-                    os.killpg(pid, signal.SIGTERM)
-                    killed.append((hook, sl, pid))
-                except ProcessLookupError:
-                    # Process already dead - still mark as killed
-                    killed.append((hook, sl, pid))
-                except PermissionError:
-                    # Can't kill - may be owned by different user
-                    # Still mark as killed to clean up the state
-                    killed.append((hook, sl, pid))
-
-    return killed
-
-
 def kill_running_agent_processes(
     changespec: ChangeSpec,
 ) -> tuple[
@@ -224,17 +186,8 @@ def kill_running_agent_processes(
                     if pid is None:
                         continue
 
-                    try:
-                        # Send SIGTERM to process group
-                        os.killpg(pid, signal.SIGTERM)
-                        killed_hooks.append((hook, sl, pid))
-                    except ProcessLookupError:
-                        # Process already dead - still mark as killed
-                        killed_hooks.append((hook, sl, pid))
-                    except PermissionError:
-                        # Can't kill - may be owned by different user
-                        # Still mark as killed to clean up the state
-                        killed_hooks.append((hook, sl, pid))
+                    _try_kill_process_group(pid)
+                    killed_hooks.append((hook, sl, pid))
 
     # Kill agent processes on comments (crs workflow)
     if changespec.comments:
@@ -244,17 +197,8 @@ def kill_running_agent_processes(
                 if pid is None:
                     continue
 
-                try:
-                    # Send SIGTERM to process group
-                    os.killpg(pid, signal.SIGTERM)
-                    killed_comments.append((comment, pid))
-                except ProcessLookupError:
-                    # Process already dead - still mark as killed
-                    killed_comments.append((comment, pid))
-                except PermissionError:
-                    # Can't kill - may be owned by different user
-                    # Still mark as killed to clean up the state
-                    killed_comments.append((comment, pid))
+                _try_kill_process_group(pid)
+                killed_comments.append((comment, pid))
 
     return killed_hooks, killed_comments
 
@@ -358,16 +302,8 @@ def kill_running_processes_for_hooks(
                 pid = extract_pid_from_agent_suffix(sl.suffix)
 
             if pid is not None:
-                try:
-                    os.killpg(pid, signal.SIGTERM)
-                    killed_count += 1
-                except ProcessLookupError:
-                    # Process already dead - still count it as handled
-                    killed_count += 1
-                except PermissionError:
-                    # Can't kill - may be owned by different user
-                    # Still count as handled to clean up the state
-                    killed_count += 1
+                _try_kill_process_group(pid)
+                killed_count += 1
 
     return killed_count
 
@@ -402,17 +338,8 @@ def kill_running_mentor_processes(
                 if pid is None:
                     continue
 
-                try:
-                    # Send SIGTERM to process group
-                    os.killpg(pid, signal.SIGTERM)
-                    killed.append((entry, sl, pid))
-                except ProcessLookupError:
-                    # Process already dead - still mark as killed
-                    killed.append((entry, sl, pid))
-                except PermissionError:
-                    # Can't kill - may be owned by different user
-                    # Still mark as killed to clean up the state
-                    killed.append((entry, sl, pid))
+                _try_kill_process_group(pid)
+                killed.append((entry, sl, pid))
 
     return killed
 

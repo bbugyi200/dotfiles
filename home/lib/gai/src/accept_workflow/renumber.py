@@ -4,6 +4,13 @@ import re
 from typing import Any
 
 from ace.changespec import changespec_lock, get_entry_id, write_changespec_atomic
+from renumber_utils import (
+    build_commits_section,
+    find_commits_section,
+    parse_commit_entries,
+    sort_entries_by_id,
+    sort_hook_status_lines,
+)
 
 
 def _build_entry_id_mapping(
@@ -393,77 +400,6 @@ def _add_ready_to_mail_suffix_unlocked(
     return updated_lines
 
 
-def _sort_hook_status_lines(lines: list[str], cl_name: str) -> list[str]:
-    """Sort hook status lines by entry ID within each hook.
-
-    Handles both regular format (1), (1a) and archive format (1a-3).
-    Archive format entries are sorted by their original base+letter, so
-    (1a-3) sorts before (1b) and (2).
-
-    Args:
-        lines: All lines from the project file.
-        cl_name: The CL name.
-
-    Returns:
-        Lines with hook status lines sorted by entry ID.
-    """
-    updated_lines: list[str] = []
-    in_target_changespec = False
-    in_hooks = False
-    current_status_lines: list[tuple[str, int, str]] = []  # (line, num, letter)
-
-    def flush_status_lines() -> None:
-        """Sort and flush accumulated status lines."""
-        nonlocal current_status_lines
-        if current_status_lines:
-            # Sort by (number, letter)
-            current_status_lines.sort(key=lambda x: (x[1], x[2]))
-            for line_content, _, _ in current_status_lines:
-                updated_lines.append(line_content)
-            current_status_lines = []
-
-    for line in lines:
-        if line.startswith("NAME: "):
-            flush_status_lines()
-            current_name = line[6:].strip()
-            in_target_changespec = current_name == cl_name
-            in_hooks = False
-            updated_lines.append(line)
-        elif in_target_changespec and line.startswith("HOOKS:"):
-            flush_status_lines()
-            in_hooks = True
-            updated_lines.append(line)
-        elif in_target_changespec and in_hooks and line.startswith("      | "):
-            # Status line - accumulate for sorting
-            stripped = line.strip()[2:]  # Skip "| " prefix
-            # Match: (1), (1a), or (1a-3) format (archive suffix ignored for sorting)
-            status_match = re.match(r"^\((\d+)([a-z]?)(?:-\d+)?\)", stripped)
-            if status_match:
-                num = int(status_match.group(1))
-                letter = status_match.group(2) or ""
-                current_status_lines.append((line, num, letter))
-            else:
-                flush_status_lines()
-                updated_lines.append(line)
-        elif in_target_changespec and in_hooks and line.startswith("  "):
-            # New hook command line
-            flush_status_lines()
-            updated_lines.append(line)
-        elif in_target_changespec and in_hooks:
-            # End of hooks section
-            flush_status_lines()
-            in_hooks = False
-            updated_lines.append(line)
-        else:
-            flush_status_lines()
-            updated_lines.append(line)
-
-    # Flush any remaining status lines
-    flush_status_lines()
-
-    return updated_lines
-
-
 def renumber_commit_entries(
     project_file: str,
     cl_name: str,
@@ -497,71 +433,14 @@ def renumber_commit_entries(
                 lines = f.readlines()
 
             # Find the ChangeSpec and its commits section
-            in_target_changespec = False
-            commits_start = -1
-            commits_end = -1
-
-            for i, line in enumerate(lines):
-                if line.startswith("NAME: "):
-                    current_name = line[6:].strip()
-                    if in_target_changespec:
-                        # We hit the next ChangeSpec
-                        if commits_end < 0:
-                            commits_end = i
-                        break
-                    in_target_changespec = current_name == cl_name
-                elif in_target_changespec:
-                    if line.startswith("COMMITS:"):
-                        commits_start = i
-                    elif commits_start >= 0:
-                        stripped = line.strip()
-                        # Check if still in COMMITS section
-                        if re.match(r"^\(\d+[a-z]?\)", stripped) or stripped.startswith(
-                            "| "
-                        ):
-                            commits_end = i + 1  # Track last commit line
-                        elif stripped and not stripped.startswith("#"):
-                            # Non-commit content
-                            break
+            commits_start, commits_end = find_commits_section(lines, cl_name)
 
             if commits_start < 0:
                 return False  # No COMMITS section found
 
-            if commits_end < 0:
-                commits_end = len(lines)
-
             # Parse current commit entries
             commit_lines = lines[commits_start + 1 : commits_end]
-            entries: list[dict[str, Any]] = []
-            current_entry: dict[str, Any] | None = None
-
-            for line in commit_lines:
-                stripped = line.strip()
-                # Match commit entry: (N) or (Na) Note text
-                entry_match = re.match(r"^\((\d+)([a-z])?\)\s+(.+)$", stripped)
-                if entry_match:
-                    if current_entry:
-                        entries.append(current_entry)
-                    current_entry = {
-                        "number": int(entry_match.group(1)),
-                        "letter": entry_match.group(2),
-                        "note": entry_match.group(3),
-                        "chat": None,
-                        "diff": None,
-                        "raw_lines": [line],
-                    }
-                elif stripped.startswith("| CHAT:") and current_entry:
-                    current_entry["chat"] = stripped[7:].strip()
-                    current_entry["raw_lines"].append(line)  # type: ignore[union-attr]
-                elif stripped.startswith("| DIFF:") and current_entry:
-                    current_entry["diff"] = stripped[7:].strip()
-                    current_entry["raw_lines"].append(line)  # type: ignore[union-attr]
-                elif current_entry and stripped == "":
-                    # Blank line within commits section
-                    pass
-
-            if current_entry:
-                entries.append(current_entry)
+            entries = parse_commit_entries(commit_lines, include_raw_lines=True)
 
             # Find max regular (non-proposal) number
             max_regular = 0
@@ -624,24 +503,10 @@ def renumber_commit_entries(
             )
 
             # Sort entries: regular entries by number, then proposals by base+letter
-            def sort_key(e: dict[str, Any]) -> tuple[int, str]:
-                num = int(e["number"]) if e["number"] is not None else 0
-                letter = str(e["letter"]) if e["letter"] else ""
-                return (num, letter)
-
-            new_entries.sort(key=sort_key)
+            new_entries = sort_entries_by_id(new_entries)
 
             # Rebuild commits section
-            new_commit_lines = ["COMMITS:\n"]
-            for entry in new_entries:
-                num = entry["number"]
-                letter = str(entry["letter"]) if entry["letter"] else ""
-                note = entry["note"]
-                new_commit_lines.append(f"  ({num}{letter}) {note}\n")
-                if entry["chat"]:
-                    new_commit_lines.append(f"      | CHAT: {entry['chat']}\n")
-                if entry["diff"]:
-                    new_commit_lines.append(f"      | DIFF: {entry['diff']}\n")
+            new_commit_lines = build_commits_section(new_entries)
 
             # Replace old commits section with new one
             new_lines = lines[:commits_start] + new_commit_lines + lines[commits_end:]
@@ -662,7 +527,7 @@ def renumber_commit_entries(
             )
 
             # Sort hook status lines by entry ID
-            new_lines = _sort_hook_status_lines(new_lines, cl_name)
+            new_lines = sort_hook_status_lines(new_lines, cl_name)
 
             # If mark_ready_to_mail is True, also reject remaining proposals
             # and add READY TO MAIL suffix (all in this same atomic write)

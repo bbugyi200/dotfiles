@@ -9,18 +9,12 @@ from rich.console import Console
 # Add parent directory to path for status_state_machine import
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from gai_utils import (
-    get_next_suffix_number,
     get_workspace_directory_for_changespec,
-    has_suffix,
     run_workspace_command,
-)
-from running_field import (
-    update_running_field_cl_name,
 )
 from status_state_machine import (
     reset_changespec_cl,
     transition_changespec_status,
-    update_parent_references_atomic,
 )
 
 from .changespec import (
@@ -30,7 +24,12 @@ from .changespec import (
     write_changespec_atomic,
 )
 from .hooks.processes import kill_and_persist_all_running_processes
-from .operations import save_diff_to_file
+from .operations import (
+    calculate_lifecycle_new_name,
+    has_active_children,
+    rename_changespec_with_references,
+    save_diff_to_file,
+)
 
 
 def has_children(changespec: ChangeSpec, all_changespecs: list[ChangeSpec]) -> bool:
@@ -43,10 +42,7 @@ def has_children(changespec: ChangeSpec, all_changespecs: list[ChangeSpec]) -> b
     Returns:
         True if any non-reverted ChangeSpec has this one as parent, False otherwise
     """
-    for cs in all_changespecs:
-        if cs.parent == changespec.name and cs.status != "Reverted":
-            return True
-    return False
+    return has_active_children(changespec, all_changespecs)
 
 
 def update_changespec_name_atomic(
@@ -134,13 +130,7 @@ def revert_changespec(
         return (False, f"Workspace directory does not exist: {workspace_dir}")
 
     # Calculate new name with suffix
-    # Skip adding suffix if this is a WIP ChangeSpec that already has one
-    if changespec.status == "WIP" and has_suffix(changespec.name):
-        new_name = changespec.name  # Keep existing name
-    else:
-        existing_names = {cs.name for cs in all_changespecs}
-        suffix = get_next_suffix_number(changespec.name, existing_names)
-        new_name = f"{changespec.name}__{suffix}"
+    new_name = calculate_lifecycle_new_name(changespec, all_changespecs)
 
     if console:
         console.print(f"[cyan]Renaming ChangeSpec to: {new_name}[/cyan]")
@@ -167,15 +157,7 @@ def revert_changespec(
     # Rename the ChangeSpec (skip if name is unchanged, e.g., WIP with existing suffix)
     if new_name != changespec.name:
         try:
-            update_changespec_name_atomic(
-                changespec.file_path, changespec.name, new_name
-            )
-            # Also update any RUNNING field entries that reference the old name
-            update_running_field_cl_name(
-                changespec.file_path, changespec.name, new_name
-            )
-            # Update PARENT fields in any child ChangeSpecs
-            update_parent_references_atomic(
+            rename_changespec_with_references(
                 changespec.file_path, changespec.name, new_name
             )
         except Exception as e:
