@@ -165,7 +165,7 @@ class KeybindingFooter(Horizontal):
         self,
         agent: "Agent | None",
         *,
-        diff_visible: bool = False,
+        file_visible: bool = False,
         has_always_visible: bool = False,
         hidden_count: int = 0,
         hide_non_run: bool = True,
@@ -174,14 +174,14 @@ class KeybindingFooter(Horizontal):
 
         Args:
             agent: Current Agent or None if no agents
-            diff_visible: Whether the diff panel is currently visible
+            file_visible: Whether the file panel is currently visible
             has_always_visible: Whether any always-visible agents exist
             hidden_count: Number of hidden hideable agents
             hide_non_run: Whether hideable agents are currently hidden
         """
         bindings = self._compute_agent_bindings(
             agent,
-            diff_visible=diff_visible,
+            file_visible=file_visible,
             has_always_visible=has_always_visible,
             hidden_count=hidden_count,
             hide_non_run=hide_non_run,
@@ -224,7 +224,7 @@ class KeybindingFooter(Horizontal):
         self,
         agent: "Agent | None",
         *,
-        diff_visible: bool = False,
+        file_visible: bool = False,
         has_always_visible: bool = False,
         hidden_count: int = 0,
         hide_non_run: bool = True,
@@ -233,7 +233,7 @@ class KeybindingFooter(Horizontal):
 
         Args:
             agent: Current Agent or None
-            diff_visible: Whether the diff panel is currently visible
+            file_visible: Whether the file panel is currently visible
             has_always_visible: Whether any always-visible agents exist
             hidden_count: Number of hidden hideable agents
             hide_non_run: Whether hideable agents are currently hidden
@@ -266,8 +266,8 @@ class KeybindingFooter(Horizontal):
                 else:
                     bindings.append(("x", "kill"))
 
-        # Layout toggle (only when diff is visible)
-        if diff_visible:
+        # Layout toggle (only when file panel is visible)
+        if file_visible:
             bindings.append(("l", "layout"))
 
         # Revive chat as agent

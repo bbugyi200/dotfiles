@@ -1,4 +1,4 @@
-"""Agent diff panel widget for the ace TUI."""
+"""Agent file panel widget for the ace TUI."""
 
 import os
 import subprocess
@@ -18,36 +18,36 @@ from textual.worker import Worker, WorkerState
 from ..models.agent import Agent
 
 
-class DiffVisibilityChanged(Message):
-    """Message posted when diff visibility should change."""
+class FileVisibilityChanged(Message):
+    """Message posted when file panel visibility should change."""
 
-    def __init__(self, has_diff: bool) -> None:
+    def __init__(self, has_file: bool) -> None:
         """Initialize the message.
 
         Args:
-            has_diff: True if there is a diff to display, False if empty.
+            has_file: True if there is a file to display, False if empty.
         """
         super().__init__()
-        self.has_diff = has_diff
+        self.has_file = has_file
 
 
 @dataclass
-class _DiffCacheEntry:
-    """Cache entry for agent diff output."""
+class _FileCacheEntry:
+    """Cache entry for agent file output."""
 
     diff_output: str | None
     fetch_time: datetime
 
 
-# Module-level cache for diff outputs
-_diff_cache: dict[str, _DiffCacheEntry] = {}
+# Module-level cache for file outputs
+_file_cache: dict[str, _FileCacheEntry] = {}
 
 
 def _get_cache_key(agent: Agent) -> str:
-    """Generate a unique cache key for an agent's diff.
+    """Generate a unique cache key for an agent's file output.
 
     Includes agent type and workspace to ensure different agents
-    don't share cached diffs incorrectly.
+    don't share cached files incorrectly.
     """
     if agent.workspace_num is not None:
         return f"{agent.cl_name}:{agent.agent_type.value}:{agent.workspace_num}"
@@ -73,36 +73,36 @@ _EXTENSION_TO_LEXER: dict[str, str] = {
 }
 
 
-class AgentDiffPanel(Static):
-    """Bottom panel showing the diff of agent's changes."""
+class AgentFilePanel(Static):
+    """Bottom panel showing agent file output (diffs, markdown, etc.)."""
 
     def __init__(self, **kwargs: Any) -> None:
-        """Initialize the diff panel."""
+        """Initialize the file panel."""
         super().__init__(**kwargs)
         self._current_agent: Agent | None = None
         self._current_worker: Worker[str | None] | None = None
         self._has_displayed_content: bool = False
-        self._last_diff_content: str | None = None
+        self._last_file_content: str | None = None
         self._is_background_refreshing: bool = False
 
     def update_display(self, agent: Agent, stale_threshold_seconds: int = 10) -> None:
-        """Update with agent diff output.
+        """Update with agent file output.
 
         Args:
-            agent: The Agent to display diff for.
-            stale_threshold_seconds: Diffs older than this are refetched.
+            agent: The Agent to display file for.
+            stale_threshold_seconds: Files older than this are refetched.
         """
         self._current_agent = agent
 
         # Check cache
         cache_key = _get_cache_key(agent)
-        cache_entry = _diff_cache.get(cache_key)
+        cache_entry = _file_cache.get(cache_key)
 
         if cache_entry is not None:
             age_seconds = (datetime.now() - cache_entry.fetch_time).total_seconds()
             if age_seconds < stale_threshold_seconds:
                 # Cache is fresh - use it directly
-                self._display_diff_with_timestamp(
+                self._display_file_with_timestamp(
                     cache_entry.diff_output,
                     cache_entry.fetch_time,
                     post_visibility_message=True,
@@ -111,7 +111,7 @@ class AgentDiffPanel(Static):
 
             # Cache is stale - display stale content while fetching in background
             self._is_background_refreshing = True
-            self._display_diff_with_timestamp(
+            self._display_file_with_timestamp(
                 cache_entry.diff_output,
                 cache_entry.fetch_time,
                 post_visibility_message=True,
@@ -127,20 +127,20 @@ class AgentDiffPanel(Static):
 
         # Start background worker using closure to capture agent
         def fetch_task() -> str | None:
-            return self._fetch_diff_in_background(agent)
+            return self._fetch_file_in_background(agent)
 
         self._current_worker = self.run_worker(fetch_task, thread=True)
 
-    def refresh_diff(self, agent: Agent) -> None:
-        """Force refresh the diff for an agent.
+    def refresh_file(self, agent: Agent) -> None:
+        """Force refresh the file for an agent.
 
         Args:
-            agent: The Agent to refresh diff for.
+            agent: The Agent to refresh file for.
         """
         # Clear cache entry
         cache_key = _get_cache_key(agent)
-        if cache_key in _diff_cache:
-            del _diff_cache[cache_key]
+        if cache_key in _file_cache:
+            del _file_cache[cache_key]
 
         # Show loading and start fetch
         self._current_agent = agent
@@ -152,7 +152,7 @@ class AgentDiffPanel(Static):
 
         # Start background worker using closure to capture agent
         def fetch_task() -> str | None:
-            return self._fetch_diff_in_background(agent)
+            return self._fetch_file_in_background(agent)
 
         self._current_worker = self.run_worker(fetch_task, thread=True)
 
@@ -161,18 +161,18 @@ class AgentDiffPanel(Static):
         if not self._has_displayed_content:
             return
         text = Text()
-        text.append("Loading diff...\n", style="bold #87D7FF")
+        text.append("Loading file...\n", style="bold #87D7FF")
         text.append("Please wait while fetching changes.", style="dim")
         self.update(text)
 
     def _get_scroll_container(self) -> VerticalScroll | None:
-        """Get the parent scroll container for this diff panel.
+        """Get the parent scroll container for this file panel.
 
         Returns:
             The VerticalScroll container, or None if not found.
         """
         try:
-            return self.app.query_one("#agent-diff-scroll", VerticalScroll)
+            return self.app.query_one("#agent-file-scroll", VerticalScroll)
         except Exception:
             return None
 
@@ -199,7 +199,7 @@ class AgentDiffPanel(Static):
                 lambda: container.scroll_to(y=position, animate=False)
             )
 
-    def _display_diff_with_timestamp(
+    def _display_file_with_timestamp(
         self,
         diff_output: str | None,
         fetch_time: datetime,
@@ -207,21 +207,21 @@ class AgentDiffPanel(Static):
         post_visibility_message: bool = True,
         is_stale: bool = False,
     ) -> None:
-        """Display diff output with fetch timestamp.
+        """Display file output with fetch timestamp.
 
         Args:
             diff_output: The diff output or None if no changes.
-            fetch_time: When the diff was fetched.
+            fetch_time: When the file was fetched.
             post_visibility_message: Whether to post visibility change message.
                 Set to False when displaying cached data to avoid flicker.
             is_stale: Whether the content is stale (showing while refreshing).
         """
         # Track last displayed content for change detection
-        self._last_diff_content = diff_output
+        self._last_file_content = diff_output
 
         # Post visibility message to parent (only for fresh fetches to avoid flicker)
         if post_visibility_message:
-            self.post_message(DiffVisibilityChanged(has_diff=diff_output is not None))
+            self.post_message(FileVisibilityChanged(has_file=diff_output is not None))
 
         # Build refresh indicator if stale and background refreshing
         refresh_indicator = ""
@@ -254,20 +254,20 @@ class AgentDiffPanel(Static):
 
         self._has_displayed_content = True
 
-    def _fetch_diff_in_background(self, agent: Agent) -> str | None:
-        """Fetch diff output in background thread.
+    def _fetch_file_in_background(self, agent: Agent) -> str | None:
+        """Fetch file output in background thread.
 
         Args:
-            agent: The agent to get diff for.
+            agent: The agent to get file for.
 
         Returns:
-            Diff output string, or None if unavailable.
+            File output string, or None if unavailable.
         """
         diff_output = self._get_agent_diff(agent)
 
         # Store in cache
         cache_key = _get_cache_key(agent)
-        _diff_cache[cache_key] = _DiffCacheEntry(
+        _file_cache[cache_key] = _FileCacheEntry(
             diff_output=diff_output,
             fetch_time=datetime.now(),
         )
@@ -286,15 +286,15 @@ class AgentDiffPanel(Static):
             # Worker completed - display result from cache
             if self._current_agent:
                 cache_key = _get_cache_key(self._current_agent)
-                if cache_key in _diff_cache:
-                    cache_entry = _diff_cache[cache_key]
+                if cache_key in _file_cache:
+                    cache_entry = _file_cache[cache_key]
 
                     # Skip update if content hasn't changed
-                    if cache_entry.diff_output == self._last_diff_content:
+                    if cache_entry.diff_output == self._last_file_content:
                         # Content unchanged - just update timestamp without scroll reset
                         # Re-display to update the timestamp (removes "refreshing...")
                         scroll_pos = self._save_scroll_position()
-                        self._display_diff_with_timestamp(
+                        self._display_file_with_timestamp(
                             cache_entry.diff_output,
                             cache_entry.fetch_time,
                             post_visibility_message=False,
@@ -303,14 +303,14 @@ class AgentDiffPanel(Static):
                     else:
                         # Content changed - save scroll, update, restore scroll
                         scroll_pos = self._save_scroll_position()
-                        self._display_diff_with_timestamp(
+                        self._display_file_with_timestamp(
                             cache_entry.diff_output, cache_entry.fetch_time
                         )
                         self._restore_scroll_position(scroll_pos)
         elif event.state == WorkerState.ERROR:
             # Show error state
             text = Text()
-            text.append("Error fetching diff\n", style="bold red")
+            text.append("Error fetching file\n", style="bold red")
             text.append("The diff command failed or timed out.", style="dim")
             self.update(text)
         elif event.state == WorkerState.CANCELLED:
@@ -384,13 +384,13 @@ class AgentDiffPanel(Static):
         except Exception:
             text = Text("Could not read diff file.\n", style="dim italic")
             self.update(text)
-            self.post_message(DiffVisibilityChanged(has_diff=False))
+            self.post_message(FileVisibilityChanged(has_file=False))
             return
 
         if not diff_content.strip():
             text = Text("Diff file is empty.\n", style="dim italic")
             self.update(text)
-            self.post_message(DiffVisibilityChanged(has_diff=False))
+            self.post_message(FileVisibilityChanged(has_file=False))
             return
 
         # Display diff with "static" indicator instead of timestamp
@@ -404,7 +404,7 @@ class AgentDiffPanel(Static):
         )
         self.update(syntax)
         self._has_displayed_content = True
-        self.post_message(DiffVisibilityChanged(has_diff=True))
+        self.post_message(FileVisibilityChanged(has_file=True))
 
     def display_static_file(self, file_path: str) -> None:
         """Display a static file with syntax highlighting (no auto-refresh).
@@ -421,13 +421,13 @@ class AgentDiffPanel(Static):
         except Exception:
             text = Text("Could not read file.\n", style="dim italic")
             self.update(text)
-            self.post_message(DiffVisibilityChanged(has_diff=False))
+            self.post_message(FileVisibilityChanged(has_file=False))
             return
 
         if not content.strip():
             text = Text("File is empty.\n", style="dim italic")
             self.update(text)
-            self.post_message(DiffVisibilityChanged(has_diff=False))
+            self.post_message(FileVisibilityChanged(has_file=False))
             return
 
         # Detect lexer from file extension
@@ -443,4 +443,4 @@ class AgentDiffPanel(Static):
         )
         self.update(syntax)
         self._has_displayed_content = True
-        self.post_message(DiffVisibilityChanged(has_diff=True))
+        self.post_message(FileVisibilityChanged(has_file=True))

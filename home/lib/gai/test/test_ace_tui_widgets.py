@@ -321,8 +321,8 @@ def test_parallel_step_no_output_shows_placeholder() -> None:
         assert "AGENT PROMPT" not in header_str
 
 
-async def test_update_display_hides_diff_for_top_level_workflow() -> None:
-    """Top-level workflow agents should hide the diff panel even when RUNNING."""
+async def test_update_display_hides_file_for_top_level_workflow() -> None:
+    """Top-level workflow agents should hide the file panel even when RUNNING."""
     from ace.tui.widgets.agent_detail import AgentDetail
     from textual.app import App, ComposeResult
 
@@ -347,7 +347,7 @@ async def test_update_display_hides_diff_for_top_level_workflow() -> None:
 
         detail.update_display(agent)
 
-        diff_scroll = detail.query_one("#agent-diff-scroll")
+        diff_scroll = detail.query_one("#agent-file-scroll")
         prompt_scroll = detail.query_one("#agent-prompt-scroll")
         assert diff_scroll.has_class("hidden")
         assert prompt_scroll.has_class("expanded")

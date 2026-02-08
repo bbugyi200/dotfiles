@@ -89,7 +89,7 @@ class BasicNavigationMixin(NavigationMixinBase):
         if self.current_tab == "changespecs":
             scroll_container = self.query_one("#detail-scroll", VerticalScroll)  # type: ignore[attr-defined]
         elif self.current_tab == "agents":
-            scroll_container = self.query_one("#agent-diff-scroll", VerticalScroll)  # type: ignore[attr-defined]
+            scroll_container = self.query_one("#agent-file-scroll", VerticalScroll)  # type: ignore[attr-defined]
         else:  # axe
             self._axe_pinned_to_bottom = False
             scroll_container = self.query_one("#axe-output-scroll", VerticalScroll)  # type: ignore[attr-defined]
@@ -101,7 +101,7 @@ class BasicNavigationMixin(NavigationMixinBase):
         if self.current_tab == "changespecs":
             scroll_container = self.query_one("#detail-scroll", VerticalScroll)  # type: ignore[attr-defined]
         elif self.current_tab == "agents":
-            scroll_container = self.query_one("#agent-diff-scroll", VerticalScroll)  # type: ignore[attr-defined]
+            scroll_container = self.query_one("#agent-file-scroll", VerticalScroll)  # type: ignore[attr-defined]
         else:  # axe
             self._axe_pinned_to_bottom = False
             scroll_container = self.query_one("#axe-output-scroll", VerticalScroll)  # type: ignore[attr-defined]
@@ -139,7 +139,7 @@ class BasicNavigationMixin(NavigationMixinBase):
             scroll_container = self.query_one("#axe-output-scroll", VerticalScroll)  # type: ignore[attr-defined]
             scroll_container.scroll_home(animate=False)
         elif self.current_tab == "agents":
-            scroll_container = self.query_one("#agent-diff-scroll", VerticalScroll)  # type: ignore[attr-defined]
+            scroll_container = self.query_one("#agent-file-scroll", VerticalScroll)  # type: ignore[attr-defined]
             scroll_container.scroll_home(animate=False)
 
     def action_scroll_to_bottom(self) -> None:
@@ -153,7 +153,7 @@ class BasicNavigationMixin(NavigationMixinBase):
             scroll_container = self.query_one("#axe-output-scroll", VerticalScroll)  # type: ignore[attr-defined]
             scroll_container.scroll_end(animate=False)
         elif self.current_tab == "agents":
-            scroll_container = self.query_one("#agent-diff-scroll", VerticalScroll)  # type: ignore[attr-defined]
+            scroll_container = self.query_one("#agent-file-scroll", VerticalScroll)  # type: ignore[attr-defined]
             scroll_container.scroll_end(animate=False)
 
     # --- Tab Switching Actions ---

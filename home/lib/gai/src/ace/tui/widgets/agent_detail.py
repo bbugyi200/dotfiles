@@ -7,12 +7,12 @@ from textual.containers import Vertical, VerticalScroll
 from textual.widgets import Static
 
 from ..models.agent import Agent, AgentType
-from .diff_panel import AgentDiffPanel, DiffVisibilityChanged
+from .file_panel import AgentFilePanel, FileVisibilityChanged
 from .prompt_panel import AgentPromptPanel
 
 
 class AgentDetail(Static):
-    """Combined widget with prompt and diff panels."""
+    """Combined widget with prompt and file panels."""
 
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the agent detail view."""
@@ -20,132 +20,132 @@ class AgentDetail(Static):
         self._layout_swapped: bool = False
 
     def compose(self) -> ComposeResult:
-        """Compose the two-panel layout (prompt and diff)."""
+        """Compose the two-panel layout (prompt and file)."""
         with Vertical(id="agent-detail-layout"):
             with VerticalScroll(id="agent-prompt-scroll"):
                 yield AgentPromptPanel(id="agent-prompt-panel")
-            with VerticalScroll(id="agent-diff-scroll"):
-                yield AgentDiffPanel(id="agent-diff-panel")
+            with VerticalScroll(id="agent-file-scroll"):
+                yield AgentFilePanel(id="agent-file-panel")
 
     def update_display(self, agent: Agent, stale_threshold_seconds: int = 10) -> None:
         """Update panels with agent information.
 
         For NO CHANGES agents, shows only prompt panel (with reply embedded).
-        For NEW CL and NEW PROPOSAL agents, shows prompt and static diff panels.
-        For running agents, shows prompt and auto-refreshing diff panels.
+        For NEW CL and NEW PROPOSAL agents, shows prompt and static file panels.
+        For running agents, shows prompt and auto-refreshing file panels.
 
         Args:
             agent: The Agent to display.
             stale_threshold_seconds: Diffs older than this are refetched.
         """
         prompt_panel = self.query_one("#agent-prompt-panel", AgentPromptPanel)
-        diff_panel = self.query_one("#agent-diff-panel", AgentDiffPanel)
-        diff_scroll = self.query_one("#agent-diff-scroll", VerticalScroll)
+        file_panel = self.query_one("#agent-file-panel", AgentFilePanel)
+        file_scroll = self.query_one("#agent-file-scroll", VerticalScroll)
         prompt_scroll = self.query_one("#agent-prompt-scroll", VerticalScroll)
 
         prompt_panel.update_display(agent)
 
-        # Hide diff panel for bash/python workflow steps - they don't have diffs
+        # Hide file panel for bash/python workflow steps - they don't have files
         if agent.is_workflow_child and agent.step_type in ("bash", "python"):
-            diff_scroll.add_class("hidden")
+            file_scroll.add_class("hidden")
             prompt_scroll.add_class("expanded")
             return
 
-        # Hide diff panel for top-level workflow agents - only show for individual steps
+        # Hide file panel for top-level workflow agents - only show for individual steps
         if (
             agent.agent_type == AgentType.WORKFLOW
             and not agent.is_workflow_child
             and not agent.appears_as_agent
         ):
-            diff_scroll.add_class("hidden")
+            file_scroll.add_class("hidden")
             prompt_scroll.add_class("expanded")
             return
 
         if agent.status in ("RUNNING", "WAITING INPUT"):
-            # Show auto-refreshing diff panel for active agents
+            # Show auto-refreshing file panel for active agents
             # Don't change visibility here - let update_display() handle it
-            # via DiffVisibilityChanged message after fetching/validating the diff
-            diff_panel.update_display(
+            # via FileVisibilityChanged message after fetching/validating the file
+            file_panel.update_display(
                 agent, stale_threshold_seconds=stale_threshold_seconds
             )
         else:
             # DONE, FAILED, REVIVED, etc.
             if agent.diff_path:
-                diff_panel.display_static_file(agent.diff_path)
+                file_panel.display_static_file(agent.diff_path)
             else:
-                diff_scroll.add_class("hidden")
+                file_scroll.add_class("hidden")
                 prompt_scroll.add_class("expanded")
 
     def show_empty(self) -> None:
         """Show empty state for both panels."""
         prompt_panel = self.query_one("#agent-prompt-panel", AgentPromptPanel)
-        diff_panel = self.query_one("#agent-diff-panel", AgentDiffPanel)
+        file_panel = self.query_one("#agent-file-panel", AgentFilePanel)
 
         prompt_panel.show_empty()
-        diff_panel.show_empty()
+        file_panel.show_empty()
 
-        # Hide diff panel when no agent is selected
+        # Hide file panel when no agent is selected
         prompt_scroll = self.query_one("#agent-prompt-scroll", VerticalScroll)
-        diff_scroll = self.query_one("#agent-diff-scroll", VerticalScroll)
-        diff_scroll.add_class("hidden")
+        file_scroll = self.query_one("#agent-file-scroll", VerticalScroll)
+        file_scroll.add_class("hidden")
         prompt_scroll.add_class("expanded")
 
-    def refresh_current_diff(self, agent: Agent) -> None:
-        """Force refresh the diff for the given agent.
+    def refresh_current_file(self, agent: Agent) -> None:
+        """Force refresh the file for the given agent.
 
         Args:
-            agent: The Agent to refresh diff for.
+            agent: The Agent to refresh file for.
         """
-        diff_panel = self.query_one("#agent-diff-panel", AgentDiffPanel)
-        diff_panel.refresh_diff(agent)
+        file_panel = self.query_one("#agent-file-panel", AgentFilePanel)
+        file_panel.refresh_file(agent)
 
-    def on_diff_visibility_changed(self, message: DiffVisibilityChanged) -> None:
-        """Handle diff visibility changes.
+    def on_file_visibility_changed(self, message: FileVisibilityChanged) -> None:
+        """Handle file panel visibility changes.
 
         Args:
             message: The visibility change message.
         """
         prompt_scroll = self.query_one("#agent-prompt-scroll", VerticalScroll)
-        diff_scroll = self.query_one("#agent-diff-scroll", VerticalScroll)
+        file_scroll = self.query_one("#agent-file-scroll", VerticalScroll)
 
-        if message.has_diff:
-            # Show diff panel
-            diff_scroll.remove_class("hidden")
+        if message.has_file:
+            # Show file panel
+            file_scroll.remove_class("hidden")
             prompt_scroll.remove_class("expanded")
             # Restore layout preference if swapped
             if self._layout_swapped:
                 prompt_scroll.add_class("layout-priority")
-                diff_scroll.add_class("layout-secondary")
+                file_scroll.add_class("layout-secondary")
         else:
-            # Hide diff panel and expand prompt to full height
-            diff_scroll.add_class("hidden")
+            # Hide file panel and expand prompt to full height
+            file_scroll.add_class("hidden")
             prompt_scroll.add_class("expanded")
             # Remove layout classes so expanded (100%) takes effect
             prompt_scroll.remove_class("layout-priority")
-            diff_scroll.remove_class("layout-secondary")
+            file_scroll.remove_class("layout-secondary")
 
     def toggle_layout(self) -> None:
         """Toggle between default (30/70) and swapped (70/30) layout."""
         prompt_scroll = self.query_one("#agent-prompt-scroll", VerticalScroll)
-        diff_scroll = self.query_one("#agent-diff-scroll", VerticalScroll)
+        file_scroll = self.query_one("#agent-file-scroll", VerticalScroll)
 
         self._layout_swapped = not self._layout_swapped
 
         if self._layout_swapped:
             prompt_scroll.add_class("layout-priority")
-            diff_scroll.add_class("layout-secondary")
+            file_scroll.add_class("layout-secondary")
         else:
             prompt_scroll.remove_class("layout-priority")
-            diff_scroll.remove_class("layout-secondary")
+            file_scroll.remove_class("layout-secondary")
 
-    def is_diff_visible(self) -> bool:
-        """Check if the diff panel is currently visible.
+    def is_file_visible(self) -> bool:
+        """Check if the file panel is currently visible.
 
         Returns:
-            True if the diff panel is visible, False otherwise.
+            True if the file panel is visible, False otherwise.
         """
-        diff_scroll = self.query_one("#agent-diff-scroll", VerticalScroll)
-        return not diff_scroll.has_class("hidden")
+        file_scroll = self.query_one("#agent-file-scroll", VerticalScroll)
+        return not file_scroll.has_class("hidden")
 
     def is_layout_swapped(self) -> bool:
         """Check if the layout is currently swapped.

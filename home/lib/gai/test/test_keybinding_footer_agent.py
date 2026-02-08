@@ -54,12 +54,12 @@ def test_keybinding_footer_agent_bindings_completed_agent_with_chat() -> None:
     assert "e" in binding_keys  # Edit chat is available
 
 
-def test_keybinding_footer_agent_bindings_diff_visible() -> None:
-    """Test agent bindings when diff panel is visible."""
+def test_keybinding_footer_agent_bindings_file_visible() -> None:
+    """Test agent bindings when file panel is visible."""
     footer = KeybindingFooter()
     agent = _make_agent(status="RUNNING")
 
-    bindings = footer._compute_agent_bindings(agent, diff_visible=True)
+    bindings = footer._compute_agent_bindings(agent, file_visible=True)
     binding_keys = [b[0] for b in bindings]
 
     assert "l" in binding_keys  # Layout toggle is available

@@ -240,12 +240,12 @@ class AgentsMixinCore(
         else:
             agent_detail.show_empty()
 
-        # Query diff visibility for footer (must be done after update_display)
-        diff_visible = agent_detail.is_diff_visible()
+        # Query file visibility for footer (must be done after update_display)
+        file_visible = agent_detail.is_file_visible()
 
         footer_widget.update_agent_bindings(
             current_agent,
-            diff_visible=diff_visible,
+            file_visible=file_visible,
             has_always_visible=self._has_always_visible,
             hidden_count=self._hidden_count,
             hide_non_run=self.hide_non_run_agents,
@@ -273,13 +273,13 @@ class AgentsMixinCore(
     def action_show_diff(self) -> None:
         """Show diff - behavior depends on current tab."""
         if self.current_tab == "agents":
-            self._refresh_agent_diff()
+            self._refresh_agent_file()
         else:
             # Call parent implementation for ChangeSpecs
             super().action_show_diff()  # type: ignore[misc]
 
-    def _refresh_agent_diff(self) -> None:
-        """Refresh the diff for the currently selected agent."""
+    def _refresh_agent_file(self) -> None:
+        """Refresh the file for the currently selected agent."""
         from ...widgets import AgentDetail
 
         if not self._agents or not (0 <= self.current_idx < len(self._agents)):
@@ -288,7 +288,7 @@ class AgentsMixinCore(
 
         agent = self._agents[self.current_idx]
         agent_detail = self.query_one("#agent-detail-panel", AgentDetail)  # type: ignore[attr-defined]
-        agent_detail.refresh_current_diff(agent)
+        agent_detail.refresh_current_file(agent)
 
     def action_edit_spec(self) -> None:
         """Edit spec/chat - behavior depends on current tab."""
@@ -333,8 +333,8 @@ class AgentsMixinCore(
 
         agent_detail = self.query_one("#agent-detail-panel", AgentDetail)  # type: ignore[attr-defined]
 
-        if not agent_detail.is_diff_visible():
-            self.notify("No diff panel to toggle", severity="warning")  # type: ignore[attr-defined]
+        if not agent_detail.is_file_visible():
+            self.notify("No file panel to toggle", severity="warning")  # type: ignore[attr-defined]
             return
 
         agent_detail.toggle_layout()

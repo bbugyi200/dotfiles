@@ -1,4 +1,4 @@
-"""Tests for diff panel features and workflow output_types extraction."""
+"""Tests for file panel features and workflow output_types extraction."""
 
 import tempfile
 from typing import Any
@@ -215,13 +215,13 @@ def test_display_static_file_reads_and_renders(tmp_path: Any) -> None:
     panel._has_displayed_content = False
 
     # Import and call the method directly using the unbound function
-    from ace.tui.widgets.diff_panel import _EXTENSION_TO_LEXER, AgentDiffPanel
+    from ace.tui.widgets.file_panel import _EXTENSION_TO_LEXER, AgentFilePanel
 
     # Verify the lexer mapping includes .diff
     assert _EXTENSION_TO_LEXER[".diff"] == "diff"
 
     # Test the method logic by calling it on the mock
-    AgentDiffPanel.display_static_file(panel, str(diff_file))
+    AgentFilePanel.display_static_file(panel, str(diff_file))
 
     # Verify update was called (with a Syntax object)
     assert panel.update.called
@@ -234,14 +234,14 @@ def test_display_static_file_handles_missing_file(tmp_path: Any) -> None:
     panel = MagicMock()
     panel.post_message = MagicMock()
 
-    from ace.tui.widgets.diff_panel import AgentDiffPanel
+    from ace.tui.widgets.file_panel import AgentFilePanel
 
-    AgentDiffPanel.display_static_file(panel, str(tmp_path / "nonexistent.diff"))
+    AgentFilePanel.display_static_file(panel, str(tmp_path / "nonexistent.diff"))
 
-    # Should post has_diff=False
+    # Should post has_file=False
     panel.post_message.assert_called()
     call_args = panel.post_message.call_args[0][0]
-    assert call_args.has_diff is False
+    assert call_args.has_file is False
 
 
 def test_display_static_file_handles_empty_file(tmp_path: Any) -> None:
@@ -252,18 +252,18 @@ def test_display_static_file_handles_empty_file(tmp_path: Any) -> None:
     panel = MagicMock()
     panel.post_message = MagicMock()
 
-    from ace.tui.widgets.diff_panel import AgentDiffPanel
+    from ace.tui.widgets.file_panel import AgentFilePanel
 
-    AgentDiffPanel.display_static_file(panel, str(empty_file))
+    AgentFilePanel.display_static_file(panel, str(empty_file))
 
-    # Should post has_diff=False
+    # Should post has_file=False
     call_args = panel.post_message.call_args[0][0]
-    assert call_args.has_diff is False
+    assert call_args.has_file is False
 
 
 def test_extension_to_lexer_mapping() -> None:
     """Test that the extension-to-lexer mapping includes common types."""
-    from ace.tui.widgets.diff_panel import _EXTENSION_TO_LEXER
+    from ace.tui.widgets.file_panel import _EXTENSION_TO_LEXER
 
     assert _EXTENSION_TO_LEXER[".diff"] == "diff"
     assert _EXTENSION_TO_LEXER[".py"] == "python"
