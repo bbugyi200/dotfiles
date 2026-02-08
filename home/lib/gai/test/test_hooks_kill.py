@@ -1,10 +1,15 @@
-"""Tests for mark_hooks_as_killed and kill_running_processes_for_hooks."""
+"""Tests for mark_hooks_as_killed, kill_running_processes_for_hooks, and kill_and_persist_all_running_processes."""
 
 import os
+from unittest.mock import MagicMock, patch
 
 import pytest
-from ace.changespec import HookEntry, HookStatusLine
-from ace.hooks.processes import kill_running_processes_for_hooks, mark_hooks_as_killed
+from ace.changespec import ChangeSpec, HookEntry, HookStatusLine
+from ace.hooks.processes import (
+    kill_and_persist_all_running_processes,
+    kill_running_processes_for_hooks,
+    mark_hooks_as_killed,
+)
 
 
 def _make_hook_with_status_lines(
@@ -290,3 +295,134 @@ def test_kill_running_processes_for_hooks_only_specified_indices(
     assert result == 1
     assert 11111 in killed_pids
     assert 22222 not in killed_pids
+
+
+# Tests for kill_and_persist_all_running_processes
+
+
+@patch("ace.hooks.processes.kill_running_mentor_processes")
+@patch("ace.hooks.processes.kill_running_agent_processes")
+@patch("ace.hooks.processes.kill_running_hook_processes")
+def test_kill_and_persist_no_running_processes(
+    mock_kill_hooks: MagicMock,
+    mock_kill_agents: MagicMock,
+    mock_kill_mentors: MagicMock,
+) -> None:
+    """Test kill_and_persist_all_running_processes when nothing is running."""
+    mock_kill_hooks.return_value = []
+    mock_kill_agents.return_value = ([], [])
+    mock_kill_mentors.return_value = []
+
+    changespec = MagicMock(spec=ChangeSpec)
+    changespec.hooks = None
+    changespec.comments = None
+    changespec.mentors = None
+
+    # Should complete without error, no persist calls needed
+    kill_and_persist_all_running_processes(
+        changespec, "/fake/project.gp", "test_cl", "Test reason"
+    )
+
+    mock_kill_hooks.assert_called_once_with(changespec)
+    mock_kill_agents.assert_called_once_with(changespec)
+    mock_kill_mentors.assert_called_once_with(changespec)
+
+
+@patch("ace.hooks.execution.update_changespec_hooks_field")
+@patch("ace.hooks.processes.mark_hooks_as_killed")
+@patch("ace.hooks.processes.kill_running_mentor_processes")
+@patch("ace.hooks.processes.kill_running_agent_processes")
+@patch("ace.hooks.processes.kill_running_hook_processes")
+def test_kill_and_persist_with_running_hooks(
+    mock_kill_hooks: MagicMock,
+    mock_kill_agents: MagicMock,
+    mock_kill_mentors: MagicMock,
+    mock_mark_killed: MagicMock,
+    mock_update_hooks: MagicMock,
+) -> None:
+    """Test kill_and_persist persists hook updates when hooks are killed."""
+    status_line = HookStatusLine(
+        commit_entry_num="1",
+        timestamp="260101_120000",
+        status="RUNNING",
+        suffix="12345",
+        suffix_type="running_process",
+    )
+    hook = HookEntry(command="make test", status_lines=[status_line])
+    mock_kill_hooks.return_value = [(hook, status_line, 12345)]
+    mock_kill_agents.return_value = ([], [])
+    mock_kill_mentors.return_value = []
+
+    updated_hooks = [MagicMock()]
+    mock_mark_killed.return_value = updated_hooks
+
+    changespec = MagicMock(spec=ChangeSpec)
+    changespec.hooks = [hook]
+    changespec.comments = None
+    changespec.mentors = None
+
+    log_messages: list[str] = []
+    kill_and_persist_all_running_processes(
+        changespec,
+        "/fake/project.gp",
+        "test_cl",
+        "Killed for test",
+        log_fn=log_messages.append,
+    )
+
+    mock_mark_killed.assert_called_once_with(
+        [hook], [(hook, status_line, 12345)], "Killed for test"
+    )
+    mock_update_hooks.assert_called_once_with(
+        "/fake/project.gp", "test_cl", updated_hooks
+    )
+    assert any("hook process" in msg for msg in log_messages)
+
+
+@patch("ace.hooks.execution.update_changespec_hooks_field")
+@patch("ace.hooks.processes.mark_hook_agents_as_killed")
+@patch("ace.comments.operations.update_changespec_comments_field")
+@patch("ace.comments.operations.mark_comment_agents_as_killed")
+@patch("ace.hooks.processes.kill_running_mentor_processes")
+@patch("ace.hooks.processes.kill_running_agent_processes")
+@patch("ace.hooks.processes.kill_running_hook_processes")
+def test_kill_and_persist_with_running_agents(
+    mock_kill_hooks: MagicMock,
+    mock_kill_agents: MagicMock,
+    mock_kill_mentors: MagicMock,
+    mock_mark_comment_agents: MagicMock,
+    mock_update_comments: MagicMock,
+    mock_mark_hook_agents: MagicMock,
+    mock_update_hooks: MagicMock,
+) -> None:
+    """Test kill_and_persist persists agent updates when agents are killed."""
+    hook_sl = HookStatusLine(
+        commit_entry_num="1",
+        timestamp="260101_120000",
+        status="RUNNING",
+        suffix="fix_hook-12345-260101_120000",
+        suffix_type="running_agent",
+    )
+    hook = HookEntry(command="make test", status_lines=[hook_sl])
+    comment_entry = MagicMock()
+
+    mock_kill_hooks.return_value = []
+    mock_kill_agents.return_value = ([(hook, hook_sl, 12345)], [(comment_entry, 67890)])
+    mock_kill_mentors.return_value = []
+
+    mock_mark_hook_agents.return_value = [MagicMock()]
+    mock_mark_comment_agents.return_value = [MagicMock()]
+
+    changespec = MagicMock(spec=ChangeSpec)
+    changespec.hooks = [hook]
+    changespec.comments = [comment_entry]
+    changespec.mentors = None
+
+    kill_and_persist_all_running_processes(
+        changespec, "/fake/project.gp", "test_cl", "Killed for test"
+    )
+
+    mock_mark_hook_agents.assert_called_once()
+    mock_update_hooks.assert_called_once()
+    mock_mark_comment_agents.assert_called_once()
+    mock_update_comments.assert_called_once()

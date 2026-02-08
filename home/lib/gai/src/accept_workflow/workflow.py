@@ -1,26 +1,12 @@
 """AcceptWorkflow class and main entry point for accepting proposals."""
 
 import os
-import re
 import subprocess
 import sys
 from typing import NoReturn
 
 from ace.changespec import CommitEntry
-from ace.comments.operations import (
-    mark_comment_agents_as_killed,
-    update_changespec_comments_field,
-)
-from ace.hooks.execution import update_changespec_hooks_field
-from ace.hooks.processes import (
-    kill_running_agent_processes,
-    kill_running_hook_processes,
-    kill_running_mentor_processes,
-    mark_hook_agents_as_killed,
-    mark_hooks_as_killed,
-    mark_mentor_agents_as_killed,
-)
-from ace.mentors import update_changespec_mentors_field
+from ace.hooks.processes import kill_and_persist_all_running_processes
 from ace.operations import update_to_changespec
 from commit_utils import apply_diff_to_workspace, clean_workspace, run_bb_hg_clean
 from rich_utils import print_status
@@ -43,24 +29,6 @@ from workflow_utils import (
 from .conflict_check import ConflictCheckResult, run_conflict_check
 from .parsing import find_proposal_entry, parse_proposal_entries, parse_proposal_id
 from .renumber import renumber_commit_entries
-
-
-def _extract_mentor_workflow_from_suffix(suffix: str) -> str | None:
-    """Extract workflow name from mentor suffix.
-
-    Args:
-        suffix: Mentor suffix in format "mentor_{name}-{PID}-{timestamp}"
-
-    Returns:
-        Workflow name in format "axe(mentor)-{name}-{timestamp}" or None
-    """
-    # Pattern: mentor_{name}-{PID}-{timestamp}
-    match = re.match(r"^mentor_(.+)-\d+-(\d{6}_\d{6})$", suffix)
-    if match:
-        mentor_name = match.group(1)
-        timestamp = match.group(2)
-        return f"axe(mentor)-{mentor_name}-{timestamp}"
-    return None
 
 
 class AcceptWorkflow(BaseWorkflow):
@@ -146,84 +114,15 @@ class AcceptWorkflow(BaseWorkflow):
             print_status(f"ChangeSpec not found: {cl_name}", "error")
             return False
 
-        # Kill any running hook processes before accepting
-        killed_processes = kill_running_hook_processes(changespec)
-        if killed_processes:
-            print_status(
-                f"Killed {len(killed_processes)} running hook process(es)",
-                "progress",
-            )
-            # Update hooks to mark as killed and persist
-            if changespec.hooks:
-                proposal_ids = " ".join(p[0] for p in self._proposals)
-                updated_hooks = mark_hooks_as_killed(
-                    changespec.hooks,
-                    killed_processes,
-                    f"Killed stale hook after accepting proposals: {proposal_ids}",
-                )
-                update_changespec_hooks_field(project_file, cl_name, updated_hooks)
-
-        # Kill any running agent processes before accepting
-        killed_hook_agents, killed_comment_agents = kill_running_agent_processes(
-            changespec
+        # Kill any running hook/agent/mentor processes before accepting
+        proposal_ids = " ".join(p[0] for p in self._proposals)
+        kill_and_persist_all_running_processes(
+            changespec,
+            project_file,
+            cl_name,
+            f"Killed stale hook after accepting proposals: {proposal_ids}",
+            log_fn=lambda msg: print_status(msg, "progress"),
         )
-        total_killed_agents = len(killed_hook_agents) + len(killed_comment_agents)
-        if total_killed_agents:
-            print_status(
-                f"Killed {total_killed_agents} running agent process(es)",
-                "progress",
-            )
-            # Update hooks to mark agents as killed and persist
-            if killed_hook_agents and changespec.hooks:
-                updated_hooks = mark_hook_agents_as_killed(
-                    changespec.hooks, killed_hook_agents
-                )
-                update_changespec_hooks_field(project_file, cl_name, updated_hooks)
-            # Update comments to mark agents as killed and persist
-            if killed_comment_agents and changespec.comments:
-                updated_comments = mark_comment_agents_as_killed(
-                    changespec.comments, killed_comment_agents
-                )
-                update_changespec_comments_field(
-                    project_file, cl_name, updated_comments
-                )
-
-        # Kill any running mentor processes before accepting
-        killed_mentors = kill_running_mentor_processes(changespec)
-        if killed_mentors:
-            print_status(
-                f"Killed {len(killed_mentors)} running mentor process(es)",
-                "progress",
-            )
-            # Update mentors to mark as killed and persist
-            if changespec.mentors:
-                updated_mentors = mark_mentor_agents_as_killed(
-                    changespec.mentors, killed_mentors
-                )
-                update_changespec_mentors_field(project_file, cl_name, updated_mentors)
-
-            # Release workspaces claimed by killed mentor processes
-            # This is a backup cleanup in case the mentor didn't release before dying
-            for _entry, status_line, _pid in killed_mentors:
-                if not status_line.suffix:
-                    continue
-
-                # Extract workflow name from suffix
-                workflow = _extract_mentor_workflow_from_suffix(status_line.suffix)
-                if not workflow:
-                    continue
-
-                # Find and release the workspace
-                for claim in get_claimed_workspaces(project_file):
-                    if claim.workflow == workflow and claim.cl_name == cl_name:
-                        release_workspace(
-                            project_file, claim.workspace_num, workflow, cl_name
-                        )
-                        print_status(
-                            f"Released workspace #{claim.workspace_num} for killed mentor",
-                            "progress",
-                        )
-                        break
 
         # Validate ALL proposals upfront before making any changes
         validated_proposals: list[tuple[int, str, str | None, CommitEntry]] = []

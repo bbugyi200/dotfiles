@@ -35,6 +35,7 @@ from .mutations import (
 )
 from .processes import (
     is_process_running,
+    kill_and_persist_all_running_processes,
     kill_running_agent_processes,
     kill_running_hook_processes,
     kill_running_hook_processes_except_dollar,
@@ -102,6 +103,7 @@ __all__ = [
     "hook_needs_run",
     "is_hook_zombie",
     "is_process_running",
+    "kill_and_persist_all_running_processes",
     "is_proposal_entry",
     "is_suffix_stale",
     "is_timestamp_suffix",

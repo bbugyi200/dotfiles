@@ -153,16 +153,11 @@ def test_restore_changespec_success() -> None:
     ):
         with patch("os.path.isdir", return_value=True):
             with patch("ace.restore.update_changespec_name_atomic") as mock_rename:
-                with patch("ace.restore._run_bb_hg_update", return_value=(True, None)):
+                with patch(
+                    "ace.restore.run_workspace_command", return_value=(True, None)
+                ):
                     with patch("pathlib.Path.exists", return_value=True):
-                        with patch(
-                            "ace.restore._run_hg_import", return_value=(True, None)
-                        ):
-                            with patch(
-                                "ace.restore._run_gai_commit",
-                                return_value=(True, None),
-                            ):
-                                success, error = restore_changespec(changespec, console)
+                        success, error = restore_changespec(changespec, console)
 
     assert success is True
     assert error is None
@@ -181,19 +176,13 @@ def test_restore_changespec_with_parent() -> None:
         with patch("os.path.isdir", return_value=True):
             with patch("ace.restore.update_changespec_name_atomic"):
                 with patch(
-                    "ace.restore._run_bb_hg_update", return_value=(True, None)
+                    "ace.restore.run_workspace_command", return_value=(True, None)
                 ) as mock_update:
                     with patch("pathlib.Path.exists", return_value=True):
-                        with patch(
-                            "ace.restore._run_hg_import", return_value=(True, None)
-                        ):
-                            with patch(
-                                "ace.restore._run_gai_commit",
-                                return_value=(True, None),
-                            ):
-                                restore_changespec(changespec)
+                        restore_changespec(changespec)
 
-    mock_update.assert_called_once_with("parent_branch", "/tmp")
+    # First call should be bb_hg_update with parent
+    mock_update.assert_any_call(["bb_hg_update", "parent_branch"], "/tmp")
 
 
 def test_restore_changespec_without_parent_uses_p4head() -> None:
@@ -206,19 +195,13 @@ def test_restore_changespec_without_parent_uses_p4head() -> None:
         with patch("os.path.isdir", return_value=True):
             with patch("ace.restore.update_changespec_name_atomic"):
                 with patch(
-                    "ace.restore._run_bb_hg_update", return_value=(True, None)
+                    "ace.restore.run_workspace_command", return_value=(True, None)
                 ) as mock_update:
                     with patch("pathlib.Path.exists", return_value=True):
-                        with patch(
-                            "ace.restore._run_hg_import", return_value=(True, None)
-                        ):
-                            with patch(
-                                "ace.restore._run_gai_commit",
-                                return_value=(True, None),
-                            ):
-                                restore_changespec(changespec)
+                        restore_changespec(changespec)
 
-    mock_update.assert_called_once_with("p4head", "/tmp")
+    # First call should be bb_hg_update with p4head
+    mock_update.assert_any_call(["bb_hg_update", "p4head"], "/tmp")
 
 
 def test_restore_changespec_bb_hg_update_fails() -> None:
@@ -231,7 +214,7 @@ def test_restore_changespec_bb_hg_update_fails() -> None:
         with patch("os.path.isdir", return_value=True):
             with patch("ace.restore.update_changespec_name_atomic"):
                 with patch(
-                    "ace.restore._run_bb_hg_update",
+                    "ace.restore.run_workspace_command",
                     return_value=(False, "update failed"),
                 ):
                     success, error = restore_changespec(changespec)
@@ -249,7 +232,9 @@ def test_restore_changespec_diff_not_found() -> None:
     ):
         with patch("os.path.isdir", return_value=True):
             with patch("ace.restore.update_changespec_name_atomic"):
-                with patch("ace.restore._run_bb_hg_update", return_value=(True, None)):
+                with patch(
+                    "ace.restore.run_workspace_command", return_value=(True, None)
+                ):
                     with patch("pathlib.Path.exists", return_value=False):
                         success, error = restore_changespec(changespec)
 
@@ -267,16 +252,16 @@ def test_restore_changespec_hg_import_fails() -> None:
     ):
         with patch("os.path.isdir", return_value=True):
             with patch("ace.restore.update_changespec_name_atomic"):
-                with patch("ace.restore._run_bb_hg_update", return_value=(True, None)):
+                with patch(
+                    "ace.restore.run_workspace_command",
+                    side_effect=[(True, None), (False, "hg failed: import failed")],
+                ):
                     with patch("pathlib.Path.exists", return_value=True):
-                        with patch(
-                            "ace.restore._run_hg_import",
-                            return_value=(False, "import failed"),
-                        ):
-                            success, error = restore_changespec(changespec)
+                        success, error = restore_changespec(changespec)
 
     assert success is False
-    assert error == "import failed"
+    assert error is not None
+    assert "import failed" in error
 
 
 def test_restore_changespec_gai_commit_fails() -> None:
@@ -288,16 +273,17 @@ def test_restore_changespec_gai_commit_fails() -> None:
     ):
         with patch("os.path.isdir", return_value=True):
             with patch("ace.restore.update_changespec_name_atomic"):
-                with patch("ace.restore._run_bb_hg_update", return_value=(True, None)):
+                with patch(
+                    "ace.restore.run_workspace_command",
+                    side_effect=[
+                        (True, None),
+                        (True, None),
+                        (False, "gai failed: commit failed"),
+                    ],
+                ):
                     with patch("pathlib.Path.exists", return_value=True):
-                        with patch(
-                            "ace.restore._run_hg_import", return_value=(True, None)
-                        ):
-                            with patch(
-                                "ace.restore._run_gai_commit",
-                                return_value=(False, "commit failed"),
-                            ):
-                                success, error = restore_changespec(changespec)
+                        success, error = restore_changespec(changespec)
 
     assert success is False
-    assert error == "commit failed"
+    assert error is not None
+    assert "commit failed" in error

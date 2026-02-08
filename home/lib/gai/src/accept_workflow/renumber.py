@@ -3,14 +3,7 @@
 import re
 from typing import Any
 
-from ace.changespec import changespec_lock, write_changespec_atomic
-
-
-def _get_entry_id(entry: dict[str, Any]) -> str:
-    """Get the entry ID string (e.g., '1', '2a') from an entry dict."""
-    num = entry["number"]
-    letter = entry.get("letter") or ""
-    return f"{num}{letter}"
+from ace.changespec import changespec_lock, get_entry_id, write_changespec_atomic
 
 
 def _build_entry_id_mapping(
@@ -47,7 +40,7 @@ def _build_entry_id_mapping(
     # Regular entries keep their IDs
     for entry in entries:
         if entry["letter"] is None:
-            old_id = _get_entry_id(entry)
+            old_id = get_entry_id(entry)
             promote_mapping[old_id] = old_id
 
     # Accepted proposals - first promoted, others archived
@@ -64,7 +57,7 @@ def _build_entry_id_mapping(
 
     # Remaining proposals keep their original ID unchanged
     for entry in remaining_proposals:
-        old_id = _get_entry_id(entry)
+        old_id = get_entry_id(entry)
         promote_mapping[old_id] = old_id  # Maps to itself
 
     return promote_mapping, archive_mapping

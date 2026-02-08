@@ -1,7 +1,6 @@
 """Restore operations for reverted ChangeSpecs."""
 
 import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -9,7 +8,11 @@ from rich.console import Console
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from gai_utils import get_workspace_directory_for_changespec, strip_reverted_suffix
+from gai_utils import (
+    get_workspace_directory_for_changespec,
+    run_workspace_command,
+    strip_reverted_suffix,
+)
 from running_field import (
     update_running_field_cl_name,
 )
@@ -26,95 +29,6 @@ def list_reverted_changespecs() -> list[ChangeSpec]:
     """
     all_changespecs = find_all_changespecs()
     return [cs for cs in all_changespecs if cs.status == "Reverted"]
-
-
-def _run_bb_hg_update(target: str, workspace_dir: str) -> tuple[bool, str | None]:
-    """Run bb_hg_update command to update to a target.
-
-    Args:
-        target: The target to update to (e.g., "p4head" or parent name)
-        workspace_dir: The workspace directory to run command in
-
-    Returns:
-        Tuple of (success, error_message)
-    """
-    try:
-        result = subprocess.run(
-            ["bb_hg_update", target],
-            cwd=workspace_dir,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-
-        if result.returncode != 0:
-            error_msg = result.stderr.strip() or result.stdout.strip()
-            return (False, f"bb_hg_update failed (cwd: {workspace_dir}): {error_msg}")
-
-        return (True, None)
-    except FileNotFoundError:
-        return (False, f"bb_hg_update command not found (cwd: {workspace_dir})")
-    except Exception as e:
-        return (False, f"Error running bb_hg_update (cwd: {workspace_dir}): {e}")
-
-
-def _run_hg_import(diff_file: str, workspace_dir: str) -> tuple[bool, str | None]:
-    """Run hg import --no-commit to apply a diff file.
-
-    Args:
-        diff_file: Path to the diff file to import
-        workspace_dir: The workspace directory to run command in
-
-    Returns:
-        Tuple of (success, error_message)
-    """
-    try:
-        result = subprocess.run(
-            ["hg", "import", "--no-commit", diff_file],
-            cwd=workspace_dir,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-
-        if result.returncode != 0:
-            error_msg = result.stderr.strip() or result.stdout.strip()
-            return (False, f"hg import failed: {error_msg}")
-
-        return (True, None)
-    except FileNotFoundError:
-        return (False, "hg command not found")
-    except Exception as e:
-        return (False, f"Error running hg import: {e}")
-
-
-def _run_gai_commit(name: str, workspace_dir: str) -> tuple[bool, str | None]:
-    """Run gai commit command.
-
-    Args:
-        name: The CL name to use (without project prefix)
-        workspace_dir: The workspace directory to run command in
-
-    Returns:
-        Tuple of (success, error_message)
-    """
-    try:
-        result = subprocess.run(
-            ["gai", "commit", name],
-            cwd=workspace_dir,
-            capture_output=False,
-            text=True,
-            check=False,
-        )
-
-        if result.returncode != 0:
-            return (False, "gai commit failed")
-
-        return (True, None)
-    except FileNotFoundError:
-        return (False, "gai command not found")
-    except Exception as e:
-        return (False, f"Error running gai commit: {e}")
 
 
 def _clear_hook_status_lines_for_last_history(
@@ -261,7 +175,9 @@ def restore_changespec(
         console.print(f"[cyan]Updating to: {update_target}[/cyan]")
 
     # Run bb_hg_update
-    success, error = _run_bb_hg_update(update_target, workspace_dir)
+    success, error = run_workspace_command(
+        ["bb_hg_update", update_target], workspace_dir
+    )
     if not success:
         return (False, error)
 
@@ -280,7 +196,9 @@ def restore_changespec(
         console.print(f"[cyan]Importing diff: {diff_file}[/cyan]")
 
     # Run hg import
-    success, error = _run_hg_import(str(diff_file), workspace_dir)
+    success, error = run_workspace_command(
+        ["hg", "import", "--no-commit", str(diff_file)], workspace_dir
+    )
     if not success:
         return (False, error)
 
@@ -291,7 +209,9 @@ def restore_changespec(
     if console:
         console.print(f"[cyan]Running gai commit {base_name}...[/cyan]")
 
-    success, error = _run_gai_commit(base_name, workspace_dir)
+    success, error = run_workspace_command(
+        ["gai", "commit", base_name], workspace_dir, capture_output=False
+    )
     if not success:
         return (False, error)
 

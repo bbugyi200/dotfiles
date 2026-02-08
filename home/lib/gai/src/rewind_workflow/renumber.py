@@ -3,14 +3,7 @@
 import re
 from typing import Any
 
-from ace.changespec import changespec_lock, write_changespec_atomic
-
-
-def _get_entry_id(entry: dict[str, Any]) -> str:
-    """Get the entry ID string (e.g., '1', '2a') from an entry dict."""
-    num = entry["number"]
-    letter = entry.get("letter") or ""
-    return f"{num}{letter}"
+from ace.changespec import changespec_lock, get_entry_id, write_changespec_atomic
 
 
 def _get_lowest_available_letter(
@@ -489,16 +482,16 @@ def rewind_commit_entries(
 
             # Entries to keep - no change
             for e in entries_to_keep:
-                old_id = _get_entry_id(e)
+                old_id = get_entry_id(e)
                 id_mapping[old_id] = old_id
 
             # Entries to delete - map to None
             for e in entries_to_delete:
-                old_id = _get_entry_id(e)
+                old_id = get_entry_id(e)
                 id_mapping[old_id] = None
 
             # Selected entry stays as (N) - same ID
-            old_id = _get_entry_id(selected_entry)
+            old_id = get_entry_id(selected_entry)
             id_mapping[old_id] = old_id
 
             # Track used letters for the base number (existing proposals)
@@ -511,13 +504,13 @@ def rewind_commit_entries(
             entry_after_new_letter = _get_lowest_available_letter(
                 base_num, used_letters
             )
-            old_id = _get_entry_id(entry_after)
+            old_id = get_entry_id(entry_after)
             new_id = f"{base_num}{entry_after_new_letter}"
             id_mapping[old_id] = new_id
 
             # Existing proposals stay unchanged
             for e in existing_proposals:
-                old_id = _get_entry_id(e)
+                old_id = get_entry_id(e)
                 id_mapping[old_id] = old_id
 
             # Build new entries list

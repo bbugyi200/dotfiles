@@ -4,23 +4,23 @@ from typing import Any
 
 from accept_workflow.renumber import (
     _build_entry_id_mapping,
-    _get_entry_id,
     _sort_hook_status_lines,
     _update_hooks_with_id_mapping,
 )
+from ace.changespec import get_entry_id
 
 
 # Tests for _get_entry_id
 def test_get_entry_id_regular() -> None:
     """Test getting entry ID for regular entry."""
     entry = {"number": 2, "letter": None}
-    assert _get_entry_id(entry) == "2"
+    assert get_entry_id(entry) == "2"
 
 
 def test_get_entry_id_proposal() -> None:
     """Test getting entry ID for proposal entry."""
     entry = {"number": 2, "letter": "a"}
-    assert _get_entry_id(entry) == "2a"
+    assert get_entry_id(entry) == "2a"
 
 
 # Tests for _build_entry_id_mapping

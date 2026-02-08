@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, patch
 
 from ace.archive import (
     _has_non_terminal_children,
-    _has_valid_cl,
     archive_changespec,
 )
 from ace.changespec import ChangeSpec
@@ -46,20 +45,6 @@ STATUS: {status}
             file_path=f.name,
             line_number=6,
         )
-
-
-def test__has_valid_cl_with_valid_cl() -> None:
-    """Test _has_valid_cl returns True when CL is set."""
-    changespec = _create_test_changespec(cl="http://cl/123456789")
-    assert _has_valid_cl(changespec) is True
-    Path(changespec.file_path).unlink()
-
-
-def test__has_valid_cl_with_none_cl() -> None:
-    """Test _has_valid_cl returns False when CL is None."""
-    changespec = _create_test_changespec(cl=None)
-    assert _has_valid_cl(changespec) is False
-    Path(changespec.file_path).unlink()
 
 
 def test_has_non_terminal_children_with_no_children() -> None:
@@ -160,7 +145,7 @@ def test_archive_changespec_fails_with_non_terminal_children() -> None:
             ):
                 with patch("ace.archive.claim_workspace", return_value=True):
                     with patch(
-                        "ace.archive._run_bb_hg_update", return_value=(True, None)
+                        "ace.archive.run_workspace_command", return_value=(True, None)
                     ):
                         with patch("ace.archive.release_workspace"):
                             success, error = archive_changespec(parent)
@@ -192,24 +177,20 @@ def test_archive_changespec_succeeds_with_terminal_children() -> None:
             ):
                 with patch("ace.archive.claim_workspace", return_value=True):
                     with patch(
-                        "ace.archive._run_bb_hg_update", return_value=(True, None)
+                        "ace.archive.run_workspace_command", return_value=(True, None)
                     ):
                         with patch(
-                            "ace.archive._save_diff_to_file", return_value=(True, None)
+                            "ace.archive.save_diff_to_file", return_value=(True, None)
                         ):
-                            with patch(
-                                "ace.archive._run_bb_hg_archive",
-                                return_value=(True, None),
-                            ):
-                                with patch("ace.archive.update_changespec_name_atomic"):
-                                    with patch(
-                                        "ace.archive.transition_changespec_status",
-                                        return_value=(True, "Mailed", None, []),
-                                    ):
-                                        with patch("ace.archive.release_workspace"):
-                                            success, error = archive_changespec(
-                                                parent, console
-                                            )
+                            with patch("ace.archive.update_changespec_name_atomic"):
+                                with patch(
+                                    "ace.archive.transition_changespec_status",
+                                    return_value=(True, "Mailed", None, []),
+                                ):
+                                    with patch("ace.archive.release_workspace"):
+                                        success, error = archive_changespec(
+                                            parent, console
+                                        )
 
     assert success is True
     assert error is None
@@ -235,24 +216,20 @@ def test_archive_changespec_claims_workspace_100_plus() -> None:
                     "ace.archive.claim_workspace", return_value=True
                 ) as mock_claim:
                     with patch(
-                        "ace.archive._run_bb_hg_update", return_value=(True, None)
+                        "ace.archive.run_workspace_command", return_value=(True, None)
                     ):
                         with patch(
-                            "ace.archive._save_diff_to_file", return_value=(True, None)
+                            "ace.archive.save_diff_to_file", return_value=(True, None)
                         ):
-                            with patch(
-                                "ace.archive._run_bb_hg_archive",
-                                return_value=(True, None),
-                            ):
-                                with patch("ace.archive.update_changespec_name_atomic"):
-                                    with patch(
-                                        "ace.archive.transition_changespec_status",
-                                        return_value=(True, "Mailed", None, []),
-                                    ):
-                                        with patch("ace.archive.release_workspace"):
-                                            success, _error = archive_changespec(
-                                                changespec, console
-                                            )
+                            with patch("ace.archive.update_changespec_name_atomic"):
+                                with patch(
+                                    "ace.archive.transition_changespec_status",
+                                    return_value=(True, "Mailed", None, []),
+                                ):
+                                    with patch("ace.archive.release_workspace"):
+                                        success, _error = archive_changespec(
+                                            changespec, console
+                                        )
 
     assert success is True
     mock_get_ws.assert_called_once_with(changespec.file_path)
@@ -276,17 +253,14 @@ def test_archive_changespec_fails_on_archive_error() -> None:
             ):
                 with patch("ace.archive.claim_workspace", return_value=True):
                     with patch(
-                        "ace.archive._run_bb_hg_update", return_value=(True, None)
+                        "ace.archive.run_workspace_command",
+                        side_effect=[(True, None), (False, "archive failed")],
                     ):
                         with patch(
-                            "ace.archive._save_diff_to_file", return_value=(True, None)
+                            "ace.archive.save_diff_to_file", return_value=(True, None)
                         ):
-                            with patch(
-                                "ace.archive._run_bb_hg_archive",
-                                return_value=(False, "archive failed"),
-                            ):
-                                with patch("ace.archive.release_workspace"):
-                                    success, error = archive_changespec(changespec)
+                            with patch("ace.archive.release_workspace"):
+                                success, error = archive_changespec(changespec)
 
     assert success is False
     assert error is not None
@@ -307,7 +281,7 @@ def test_archive_changespec_releases_workspace_on_failure() -> None:
             ):
                 with patch("ace.archive.claim_workspace", return_value=True):
                     with patch(
-                        "ace.archive._run_bb_hg_update",
+                        "ace.archive.run_workspace_command",
                         return_value=(False, "update failed"),
                     ):
                         with patch("ace.archive.release_workspace") as mock_release:

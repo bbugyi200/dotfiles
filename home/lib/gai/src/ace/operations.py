@@ -3,6 +3,7 @@
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 from rich.console import Console
 
@@ -152,3 +153,47 @@ def update_to_changespec(
             False,
             f"Unexpected error running bb_hg_update in {target_dir}: {str(e)}",
         )
+
+
+def save_diff_to_file(
+    changespec: ChangeSpec, new_name: str, workspace_dir: str, subdir: str
+) -> tuple[bool, str | None]:
+    """Save the diff of a ChangeSpec to a subdirectory under ~/.gai/.
+
+    Runs `hg diff -c <name>` in the workspace directory and saves
+    the output to `~/.gai/<subdir>/<new_name>.diff`.
+
+    Args:
+        changespec: The ChangeSpec to save diff for.
+        new_name: The new name (with suffix) for the diff file.
+        workspace_dir: The workspace directory to run hg diff in.
+        subdir: The subdirectory under ~/.gai/ (e.g., "reverted" or "archived").
+
+    Returns:
+        Tuple of (success, error_message).
+    """
+    target_dir = Path.home() / ".gai" / subdir
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    diff_file = target_dir / f"{new_name}.diff"
+
+    try:
+        result = subprocess.run(
+            ["hg", "diff", "-c", changespec.name],
+            cwd=workspace_dir,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        if result.returncode != 0:
+            return (False, f"hg diff failed: {result.stderr.strip()}")
+
+        with open(diff_file, "w", encoding="utf-8") as f:
+            f.write(result.stdout)
+
+        return (True, None)
+    except FileNotFoundError:
+        return (False, "hg command not found")
+    except Exception as e:
+        return (False, f"Error saving diff: {e}")

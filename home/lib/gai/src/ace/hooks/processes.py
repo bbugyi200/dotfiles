@@ -1,7 +1,9 @@
 """Process management utilities for hooks."""
 
 import os
+import re
 import signal
+from collections.abc import Callable
 
 from ..changespec import (
     ChangeSpec,
@@ -469,3 +471,113 @@ def mark_mentor_agents_as_killed(
         updated_mentors.append(updated_entry)
 
     return updated_mentors
+
+
+def _extract_mentor_workflow_from_suffix(suffix: str) -> str | None:
+    """Extract workflow name from mentor suffix.
+
+    Args:
+        suffix: Mentor suffix in format "mentor_{name}-{PID}-{timestamp}"
+
+    Returns:
+        Workflow name in format "axe(mentor)-{name}-{timestamp}" or None
+    """
+    match = re.match(r"^mentor_(.+)-\d+-(\d{6}_\d{6})$", suffix)
+    if match:
+        mentor_name = match.group(1)
+        timestamp = match.group(2)
+        return f"axe(mentor)-{mentor_name}-{timestamp}"
+    return None
+
+
+def kill_and_persist_all_running_processes(
+    changespec: ChangeSpec,
+    project_file: str,
+    cl_name: str,
+    kill_reason: str,
+    log_fn: Callable[[str], None] | None = None,
+) -> None:
+    """Kill all running hook/agent/mentor processes and persist updates.
+
+    This is a convenience function that orchestrates killing all running
+    processes (hooks, agents, mentors) for a ChangeSpec, marking them as
+    killed, persisting updates to the project file, and releasing any
+    workspaces claimed by killed mentor processes.
+
+    Args:
+        changespec: The ChangeSpec to kill processes for.
+        project_file: Path to the project file.
+        cl_name: The CL name.
+        kill_reason: Description of why processes are being killed
+            (e.g., "Killed hook running on reverted CL.").
+        log_fn: Optional callback for logging messages.
+    """
+    # Lazy imports to avoid circular dependencies
+    from ..comments.operations import (
+        mark_comment_agents_as_killed,
+        update_changespec_comments_field,
+    )
+    from ..mentors import update_changespec_mentors_field
+    from .execution import update_changespec_hooks_field
+
+    # Kill running hook processes
+    killed_processes = kill_running_hook_processes(changespec)
+    if killed_processes:
+        if log_fn:
+            log_fn(f"Killed {len(killed_processes)} running hook process(es)")
+        if changespec.hooks:
+            updated_hooks = mark_hooks_as_killed(
+                changespec.hooks, killed_processes, kill_reason
+            )
+            update_changespec_hooks_field(project_file, cl_name, updated_hooks)
+
+    # Kill running agent processes
+    killed_hook_agents, killed_comment_agents = kill_running_agent_processes(changespec)
+    total_killed_agents = len(killed_hook_agents) + len(killed_comment_agents)
+    if total_killed_agents:
+        if log_fn:
+            log_fn(f"Killed {total_killed_agents} running agent process(es)")
+        if killed_hook_agents and changespec.hooks:
+            updated_hooks = mark_hook_agents_as_killed(
+                changespec.hooks, killed_hook_agents
+            )
+            update_changespec_hooks_field(project_file, cl_name, updated_hooks)
+        if killed_comment_agents and changespec.comments:
+            updated_comments = mark_comment_agents_as_killed(
+                changespec.comments, killed_comment_agents
+            )
+            update_changespec_comments_field(project_file, cl_name, updated_comments)
+
+    # Kill running mentor processes
+    killed_mentors = kill_running_mentor_processes(changespec)
+    if killed_mentors:
+        if log_fn:
+            log_fn(f"Killed {len(killed_mentors)} running mentor process(es)")
+        if changespec.mentors:
+            updated_mentors = mark_mentor_agents_as_killed(
+                changespec.mentors, killed_mentors
+            )
+            update_changespec_mentors_field(project_file, cl_name, updated_mentors)
+
+        # Release workspaces claimed by killed mentor processes
+        from running_field import get_claimed_workspaces, release_workspace
+
+        for _entry, status_line, _pid in killed_mentors:
+            if not status_line.suffix:
+                continue
+
+            workflow = _extract_mentor_workflow_from_suffix(status_line.suffix)
+            if not workflow:
+                continue
+
+            for claim in get_claimed_workspaces(project_file):
+                if claim.workflow == workflow and claim.cl_name == cl_name:
+                    release_workspace(
+                        project_file, claim.workspace_num, workflow, cl_name
+                    )
+                    if log_fn:
+                        log_fn(
+                            f"Released workspace #{claim.workspace_num} "
+                            f"for killed mentor"
+                        )
+                    break

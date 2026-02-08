@@ -15,6 +15,7 @@ from gai_utils import (
     get_workspace_directory_for_changespec,
     has_suffix,
     make_safe_filename,
+    run_workspace_command,
     shorten_path,
     strip_hook_prefix,
     strip_reverted_suffix,
@@ -340,3 +341,56 @@ def test_get_next_suffix_number_ignores_other_bases() -> None:
     existing = {"other__1", "other__2", "feature__1"}
     result = get_next_suffix_number("feature", existing)
     assert result == 2  # Only considers feature__*, so next is 2
+
+
+# Tests for run_workspace_command
+
+
+def test_run_workspace_command_success() -> None:
+    """Test run_workspace_command returns success on zero exit code."""
+    with patch("gai_utils.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        success, error = run_workspace_command(["echo", "hello"], "/tmp")
+
+    assert success is True
+    assert error is None
+    mock_run.assert_called_once_with(
+        ["echo", "hello"], cwd="/tmp", capture_output=True, text=True, check=False
+    )
+
+
+def test_run_workspace_command_failure() -> None:
+    """Test run_workspace_command returns failure on non-zero exit code."""
+    with patch("gai_utils.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=1, stderr="some error", stdout="")
+        success, error = run_workspace_command(["bb_hg_prune", "foo"], "/tmp")
+
+    assert success is False
+    assert error is not None
+    assert "bb_hg_prune failed" in error
+    assert "some error" in error
+
+
+def test_run_workspace_command_command_not_found() -> None:
+    """Test run_workspace_command handles FileNotFoundError."""
+    with patch("gai_utils.subprocess.run") as mock_run:
+        mock_run.side_effect = FileNotFoundError()
+        success, error = run_workspace_command(["nonexistent_cmd"], "/tmp")
+
+    assert success is False
+    assert error == "nonexistent_cmd command not found"
+
+
+def test_run_workspace_command_no_capture() -> None:
+    """Test run_workspace_command with capture_output=False."""
+    with patch("gai_utils.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        success, error = run_workspace_command(
+            ["gai", "commit"], "/tmp", capture_output=False
+        )
+
+    assert success is True
+    assert error is None
+    mock_run.assert_called_once_with(
+        ["gai", "commit"], cwd="/tmp", capture_output=False, text=True, check=False
+    )

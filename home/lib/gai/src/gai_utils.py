@@ -185,3 +185,49 @@ def get_context_files(directory: str | None) -> list[str]:
         )
     except OSError:
         return []
+
+
+def run_workspace_command(
+    cmd: list[str], workspace_dir: str, capture_output: bool = True
+) -> tuple[bool, str | None]:
+    """Run a subprocess command in a workspace directory.
+
+    A generic wrapper for running commands like bb_hg_prune, bb_hg_update,
+    bb_hg_archive, hg import, and gai commit in a workspace directory.
+
+    Args:
+        cmd: The command and arguments to run.
+        workspace_dir: The workspace directory to run the command in.
+        capture_output: Whether to capture stdout/stderr.
+
+    Returns:
+        Tuple of (success, error_message).
+    """
+    cmd_name = cmd[0]
+    try:
+        result = subprocess.run(
+            cmd,
+            cwd=workspace_dir,
+            capture_output=capture_output,
+            text=True,
+            check=False,
+        )
+
+        if result.returncode != 0:
+            error_msg = ""
+            if capture_output:
+                error_msg = result.stderr.strip() or result.stdout.strip()
+            return (
+                False,
+                (
+                    f"{cmd_name} failed: {error_msg}"
+                    if error_msg
+                    else f"{cmd_name} failed"
+                ),
+            )
+
+        return (True, None)
+    except FileNotFoundError:
+        return (False, f"{cmd_name} command not found")
+    except Exception as e:
+        return (False, f"Error running {cmd_name}: {e}")

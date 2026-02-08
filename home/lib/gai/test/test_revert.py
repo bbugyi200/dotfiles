@@ -4,14 +4,12 @@ import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from ace.changespec import ChangeSpec, MentorEntry, MentorStatusLine
+from ace.changespec import ChangeSpec
 from ace.revert import (
-    _has_valid_cl,
     has_children,
     revert_changespec,
 )
 from gai_utils import get_next_suffix_number
-from running_field import _WorkspaceClaim
 
 
 def _create_test_changespec(
@@ -48,20 +46,6 @@ STATUS: {status}
             file_path=f.name,
             line_number=6,
         )
-
-
-def test__has_valid_cl_with_valid_cl() -> None:
-    """Test _has_valid_cl returns True when CL is set."""
-    changespec = _create_test_changespec(cl="http://cl/123456789")
-    assert _has_valid_cl(changespec) is True
-    Path(changespec.file_path).unlink()
-
-
-def test__has_valid_cl_with_none_cl() -> None:
-    """Test _has_valid_cl returns False when CL is None."""
-    changespec = _create_test_changespec(cl=None)
-    assert _has_valid_cl(changespec) is False
-    Path(changespec.file_path).unlink()
 
 
 def test_has_children_with_no_children() -> None:
@@ -196,8 +180,10 @@ def test_revert_changespec_success() -> None:
         with patch(
             "ace.revert.get_workspace_directory_for_changespec", return_value="/tmp"
         ):
-            with patch("ace.revert._save_diff_to_file", return_value=(True, None)):
-                with patch("ace.revert._run_bb_hg_prune", return_value=(True, None)):
+            with patch("ace.revert.save_diff_to_file", return_value=(True, None)):
+                with patch(
+                    "ace.revert.run_workspace_command", return_value=(True, None)
+                ):
                     with patch(
                         "ace.revert.update_changespec_name_atomic"
                     ) as mock_rename:
@@ -224,7 +210,7 @@ def test_revert_changespec_fails_on_diff_error() -> None:
             "ace.revert.get_workspace_directory_for_changespec", return_value="/tmp"
         ):
             with patch(
-                "ace.revert._save_diff_to_file",
+                "ace.revert.save_diff_to_file",
                 return_value=(False, "hg diff failed"),
             ):
                 success, error = revert_changespec(changespec)
@@ -244,9 +230,9 @@ def test_revert_changespec_fails_on_prune_error() -> None:
         with patch(
             "ace.revert.get_workspace_directory_for_changespec", return_value="/tmp"
         ):
-            with patch("ace.revert._save_diff_to_file", return_value=(True, None)):
+            with patch("ace.revert.save_diff_to_file", return_value=(True, None)):
                 with patch(
-                    "ace.revert._run_bb_hg_prune",
+                    "ace.revert.run_workspace_command",
                     return_value=(False, "prune failed"),
                 ):
                     success, error = revert_changespec(changespec)
@@ -258,33 +244,18 @@ def test_revert_changespec_fails_on_prune_error() -> None:
     Path(changespec.file_path).unlink()
 
 
-def test_revert_changespec_releases_mentor_workspace() -> None:
-    """Test revert_changespec releases workspace claims for killed mentors."""
+def test_revert_changespec_calls_kill_and_persist() -> None:
+    """Test revert_changespec calls kill_and_persist_all_running_processes."""
     changespec = _create_test_changespec()
-    # Add a mentor with a running agent suffix
-    changespec.mentors = [
-        MentorEntry(
-            entry_id="1",
-            profiles=[],
-            status_lines=[
-                MentorStatusLine(
-                    timestamp="251231_120000",
-                    profile_name="code",
-                    mentor_name="complete",
-                    status="RUNNING",
-                    suffix="mentor_complete-235059-260112_201552",
-                    suffix_type="running_agent",
-                )
-            ],
-        )
-    ]
 
     with patch("ace.revert.find_all_changespecs", return_value=[changespec]):
         with patch(
             "ace.revert.get_workspace_directory_for_changespec", return_value="/tmp"
         ):
-            with patch("ace.revert._save_diff_to_file", return_value=(True, None)):
-                with patch("ace.revert._run_bb_hg_prune", return_value=(True, None)):
+            with patch("ace.revert.save_diff_to_file", return_value=(True, None)):
+                with patch(
+                    "ace.revert.run_workspace_command", return_value=(True, None)
+                ):
                     with patch("ace.revert.update_changespec_name_atomic"):
                         with patch(
                             "ace.revert.transition_changespec_status",
@@ -292,22 +263,16 @@ def test_revert_changespec_releases_mentor_workspace() -> None:
                         ):
                             with patch("ace.revert.reset_changespec_cl"):
                                 with patch(
-                                    "ace.revert.release_workspace"
-                                ) as mock_release:
-                                    with patch(
-                                        "ace.revert.get_claimed_workspaces"
-                                    ) as mock_claims:
-                                        mock_claims.return_value = [
-                                            _WorkspaceClaim(
-                                                workspace_num=100,
-                                                workflow="axe(mentor)-complete-260112_201552",
-                                                cl_name="test_feature",
-                                                pid=235059,
-                                            )
-                                        ]
-                                        success, _error = revert_changespec(changespec)
+                                    "ace.revert.kill_and_persist_all_running_processes"
+                                ) as mock_kill:
+                                    success, _error = revert_changespec(changespec)
 
     assert success is True
-    mock_release.assert_called_once()
+    mock_kill.assert_called_once()
+    call_args = mock_kill.call_args
+    assert call_args[0][0] is changespec  # changespec
+    assert call_args[0][1] == changespec.file_path  # project_file
+    assert call_args[0][2] == changespec.name  # cl_name
+    assert "reverted" in call_args[0][3].lower()  # kill_reason
 
     Path(changespec.file_path).unlink()

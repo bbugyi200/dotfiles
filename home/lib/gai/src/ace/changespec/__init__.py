@@ -1,6 +1,7 @@
 """ChangeSpec parsing utilities."""
 
 from pathlib import Path
+from typing import Any
 
 from .locking import (
     LockTimeoutError,
@@ -80,6 +81,7 @@ __all__ = [
     "get_raw_changespec_text",
     "find_all_changespecs",
     "get_eligible_parents_in_project",
+    "get_entry_id",
 ]
 
 
@@ -142,3 +144,17 @@ def get_eligible_parents_in_project(
             eligible.append((cs.name, base_status))
 
     return eligible
+
+
+def get_entry_id(entry: dict[str, Any]) -> str:
+    """Get the entry ID string (e.g., '1', '2a') from an entry dict.
+
+    Args:
+        entry: Dict with 'number' and optional 'letter' keys.
+
+    Returns:
+        Entry ID string like '1' or '2a'.
+    """
+    num = entry["number"]
+    letter = entry.get("letter") or ""
+    return f"{num}{letter}"
