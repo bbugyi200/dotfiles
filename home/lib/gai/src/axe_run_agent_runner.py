@@ -9,6 +9,7 @@ import json
 import os
 import sys
 import time
+from typing import Any
 
 # Add parent directory to path for imports (use abspath to handle relative __file__)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -30,6 +31,24 @@ from shared_utils import (  # noqa: E402
 from xprompt import process_xprompt_references  # noqa: E402
 
 install_sigterm_handler("agent")
+
+
+def _extract_embedded_outputs(
+    post_workflows: list[tuple[list[Any], dict[str, Any]]],
+) -> tuple[str | None, dict[str, str]]:
+    """Extract diff_path and meta_* fields from embedded workflow contexts."""
+    diff_path: str | None = None
+    meta_fields: dict[str, str] = {}
+    for _steps, ctx in post_workflows:
+        for value in ctx.values():
+            if not isinstance(value, dict):
+                continue
+            if "diff_path" in value and value["diff_path"]:
+                diff_path = str(value["diff_path"])
+            for k, v in value.items():
+                if k.startswith("meta_") and v:
+                    meta_fields[k] = str(v)
+    return diff_path, meta_fields
 
 
 def main() -> None:
@@ -185,8 +204,13 @@ def main() -> None:
                     artifacts_dir,
                 )
 
+            # Extract outputs from embedded workflows (e.g., #propose)
+            embedded_diff_path, embedded_meta = _extract_embedded_outputs(
+                post_workflows
+            )
+
             # Write done marker
-            done_marker = {
+            done_marker: dict[str, Any] = {
                 "cl_name": cl_name,
                 "project_file": project_file,
                 "timestamp": timestamp,
@@ -195,6 +219,10 @@ def main() -> None:
                 "outcome": "completed",
                 "workspace_num": workspace_num,
             }
+            if embedded_diff_path:
+                done_marker["diff_path"] = embedded_diff_path
+            if embedded_meta:
+                done_marker["step_output"] = embedded_meta
             done_path = os.path.join(artifacts_dir, "done.json")
             with open(done_path, "w", encoding="utf-8") as f:
                 json.dump(done_marker, f, indent=2)

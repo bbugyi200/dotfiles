@@ -324,6 +324,7 @@ def load_done_agents(
                         raw_suffix=timestamp_str,
                         response_path=data.get("response_path"),
                         diff_path=data.get("diff_path"),
+                        step_output=data.get("step_output"),
                         workspace_num=data.get("workspace_num"),
                         bug=bug_by_cl_name.get(cl_name),
                         cl_num=cl_by_cl_name.get(cl_name),
