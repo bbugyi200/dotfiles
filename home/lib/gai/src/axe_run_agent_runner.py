@@ -194,17 +194,27 @@ def main() -> None:
             print(f"\nChat history saved to: {saved_path}")
 
             # Execute post-steps from embedded workflows
+            post_step_error: str | None = None
             for post_steps, embedded_context in post_workflows:
                 embedded_context["_prompt"] = expanded_prompt
                 embedded_context["_response"] = response_content
-                execute_standalone_steps(
-                    post_steps,
-                    embedded_context,
-                    "ace-run-embedded",
-                    artifacts_dir,
-                )
+                try:
+                    execute_standalone_steps(
+                        post_steps,
+                        embedded_context,
+                        "ace-run-embedded",
+                        artifacts_dir,
+                    )
+                except Exception as e:
+                    post_step_error = str(e)
+                    print(
+                        f"Warning: embedded workflow post-step failed: {e}",
+                        file=sys.stderr,
+                    )
 
             # Extract outputs from embedded workflows (e.g., #propose)
+            # Works even on partial success — extracts whatever completed
+            # steps produced
             embedded_diff_path, embedded_meta = _extract_embedded_outputs(
                 post_workflows
             )
@@ -223,6 +233,8 @@ def main() -> None:
                 done_marker["diff_path"] = embedded_diff_path
             if embedded_meta:
                 done_marker["step_output"] = embedded_meta
+            if post_step_error:
+                done_marker["post_step_error"] = post_step_error
             done_path = os.path.join(artifacts_dir, "done.json")
             with open(done_path, "w", encoding="utf-8") as f:
                 json.dump(done_marker, f, indent=2)

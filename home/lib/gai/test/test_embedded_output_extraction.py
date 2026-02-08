@@ -77,3 +77,25 @@ def test_multiple_embedded_workflows_last_diff_path_wins() -> None:
     diff_path, meta = _extract_embedded_outputs([([], ctx1), ([], ctx2)])
     assert diff_path == "/tmp/second.diff"
     assert meta == {"meta_proposal_id": "id1", "meta_review_id": "rev1"}
+
+
+def test_partial_context_after_failure() -> None:
+    """Extracts outputs from steps that completed before a later step failed.
+
+    Simulates a post-step workflow where early steps populated the context
+    (diff_path, meta_proposal_id) but a later step failed. The context dict
+    still contains the values from completed steps, so _extract_embedded_outputs
+    should find them.
+    """
+    # Early steps populated these values; later step failed before adding more
+    ctx: dict[str, object] = {
+        "save_response": {"saved": True},
+        "create_proposal": {
+            "diff_path": "/tmp/partial.diff",
+            "meta_proposal_id": "partial-123",
+        },
+        # "report" step would have added meta_report_url but failed
+    }
+    diff_path, meta = _extract_embedded_outputs([([], ctx)])
+    assert diff_path == "/tmp/partial.diff"
+    assert meta == {"meta_proposal_id": "partial-123"}
