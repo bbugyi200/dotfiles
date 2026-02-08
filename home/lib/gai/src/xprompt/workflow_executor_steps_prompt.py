@@ -259,6 +259,10 @@ class PromptStepMixin:
                 resave_needed = True
             if embedded_diff_path and not diff_path:
                 diff_path = embedded_diff_path
+                # Also store in step output so it flows into workflow_state.json
+                if step_state.output is None:
+                    step_state.output = {}
+                step_state.output["diff_path"] = embedded_diff_path
                 resave_needed = True
             if resave_needed:
                 self._save_prompt_step_marker(

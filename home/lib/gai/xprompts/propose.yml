@@ -56,8 +56,9 @@ steps:
         echo "status=created"
         echo "message=Created proposal ({{ create_proposal.proposal_id | default('') }}) on CL {{ create_proposal.cl_name | default('') }}"
         echo "meta_proposal_id={{ create_proposal.proposal_id | default('') }}"
+        echo "diff_path={{ create_proposal.diff_path | default('') }}"
       else
         echo "status=error"
         echo "message={{ create_proposal.error | default('Unknown error') }}"
       fi
-    output: { status: word, message: text, meta_proposal_id: word }
+    output: { status: word, message: text, meta_proposal_id: word, diff_path: path }

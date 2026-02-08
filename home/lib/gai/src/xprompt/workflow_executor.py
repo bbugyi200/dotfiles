@@ -408,20 +408,28 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
         """
         marker_path = os.path.join(self.artifacts_dir, f"prompt_step_{step_name}.json")
 
-        # Preserve existing step info when step_index is not provided
-        # (e.g. when _execute_prompt_step saves a marker but the caller
-        # already wrote one with proper step numbering).
-        if step_index is None:
-            try:
-                with open(marker_path, encoding="utf-8") as f:
-                    existing = json.load(f)
-                    step_index = existing.get("step_index")
-                    if parent_step_index is None:
-                        parent_step_index = existing.get("parent_step_index")
-                    if parent_total_steps is None:
-                        parent_total_steps = existing.get("parent_total_steps")
-            except (FileNotFoundError, json.JSONDecodeError, OSError):
-                pass
+        # Read existing marker once for preserving fields not passed by caller.
+        existing_marker: dict[str, Any] | None = None
+        try:
+            with open(marker_path, encoding="utf-8") as f:
+                existing_marker = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
+            pass
+
+        # Preserve step index fields when not provided (e.g. when
+        # _execute_prompt_step saves a marker but the caller already
+        # wrote one with proper step numbering).
+        if step_index is None and existing_marker:
+            step_index = existing_marker.get("step_index")
+            if parent_step_index is None:
+                parent_step_index = existing_marker.get("parent_step_index")
+            if parent_total_steps is None:
+                parent_total_steps = existing_marker.get("parent_total_steps")
+
+        # Always preserve diff_path from existing marker when not provided,
+        # so that execute()'s post-step marker rewrite doesn't clobber it.
+        if diff_path is None and existing_marker:
+            diff_path = existing_marker.get("diff_path")
 
         marker_data = {
             "workflow_name": self.workflow.name,

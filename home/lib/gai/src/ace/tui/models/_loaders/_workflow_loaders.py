@@ -3,6 +3,7 @@
 import json
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from ....hooks.processes import is_process_running
 from .._timestamps import parse_timestamp_14_digit
@@ -119,6 +120,16 @@ def load_workflow_states() -> list[WorkflowEntry]:
                                     if path_value:
                                         diff_path = str(path_value)
 
+                    # Fallback: check for direct diff_path key in step outputs
+                    # (e.g. from embedded workflow outputs stored in step_state)
+                    if not diff_path:
+                        for sd in data.get("steps", []):
+                            sd_output = sd.get("output")
+                            if isinstance(sd_output, dict) and sd_output.get(
+                                "diff_path"
+                            ):
+                                diff_path = str(sd_output["diff_path"])
+
                     entries.append(
                         WorkflowEntry(
                             workflow_name=data.get("workflow_name", "unknown"),
@@ -161,6 +172,15 @@ def load_workflow_agents() -> list[Agent]:
         if entry.artifacts_dir:
             raw_suffix = Path(entry.artifacts_dir).name
 
+        # Extract step_output from last completed step so that
+        # appears_as_agent workflows expose meta_* fields in the TUI.
+        step_output: dict[str, Any] | None = None
+        if entry.appears_as_agent and entry.steps:
+            for step in reversed(entry.steps):
+                if step.output and isinstance(step.output, dict):
+                    step_output = step.output
+                    break
+
         agents.append(
             Agent(
                 agent_type=AgentType.WORKFLOW,
@@ -175,6 +195,7 @@ def load_workflow_agents() -> list[Agent]:
                 artifacts_dir=entry.artifacts_dir,
                 diff_path=entry.diff_path,
                 error_message=entry.error_message,
+                step_output=step_output,
             )
         )
 
