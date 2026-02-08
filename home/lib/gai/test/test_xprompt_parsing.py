@@ -3,6 +3,7 @@
 import pytest
 from xprompt._exceptions import XPromptArgumentError
 from xprompt._parsing import (
+    _find_double_colon_text_end,
     _find_shorthand_text_end,
     _format_as_text_block,
     _parse_named_arg,
@@ -329,3 +330,110 @@ def test_paren_shorthand_multiline_file_pattern() -> None:
         "#_file(prior_art, [[Can you help me do some research on prior art\n"
         "  that uses the API?]])"
     )
+
+
+# Tests for _find_double_colon_text_end
+
+
+def test_find_double_colon_text_end_at_eof() -> None:
+    """Test _find_double_colon_text_end returns len when no next directive."""
+    assert _find_double_colon_text_end("hello world", 0) == 11
+
+
+def test_find_double_colon_text_end_preserves_blank_lines() -> None:
+    """Test that blank lines do NOT terminate double-colon text."""
+    prompt = "line1\n\nline3"
+    assert _find_double_colon_text_end(prompt, 0) == len(prompt)
+
+
+def test_find_double_colon_text_end_at_single_colon_directive() -> None:
+    """Test termination at a #name: directive on next line."""
+    prompt = "some text\n#other: more"
+    end = _find_double_colon_text_end(prompt, 0)
+    assert end == 9
+    assert prompt[end:] == "\n#other: more"
+
+
+def test_find_double_colon_text_end_at_double_colon_directive() -> None:
+    """Test termination at a #name:: directive on next line."""
+    prompt = "some text\n#other:: more"
+    end = _find_double_colon_text_end(prompt, 0)
+    assert end == 9
+    assert prompt[end:] == "\n#other:: more"
+
+
+def test_find_double_colon_text_end_at_paren_directive() -> None:
+    """Test termination at a #name( directive on next line."""
+    prompt = "some text\n#other(args)"
+    end = _find_double_colon_text_end(prompt, 0)
+    assert end == 9
+    assert prompt[end:] == "\n#other(args)"
+
+
+# Tests for simple double-colon shorthand
+
+
+def test_double_colon_shorthand_basic() -> None:
+    """Test basic #name:: text conversion."""
+    result = preprocess_shorthand_syntax("#foo:: hello world", {"foo"})
+    assert result == "#foo([[hello world]])"
+
+
+def test_double_colon_shorthand_preserves_blank_lines() -> None:
+    """Test that blank lines within double-colon text are preserved."""
+    prompt = "#foo:: line1\n\nline3"
+    result = preprocess_shorthand_syntax(prompt, {"foo"})
+    assert result == "#foo([[line1\n\n  line3]])"
+
+
+def test_double_colon_shorthand_terminated_by_next_directive() -> None:
+    """Test double-colon text ends at the next directive."""
+    prompt = "#foo:: line1\n\nline3\n#bar: other"
+    result = preprocess_shorthand_syntax(prompt, {"foo", "bar"})
+    assert result == "#foo([[line1\n\n  line3]])\n#bar([[other]])"
+
+
+def test_double_colon_shorthand_unknown_name_ignored() -> None:
+    """Test that unknown names are not processed for double-colon."""
+    prompt = "#unknown:: some text"
+    result = preprocess_shorthand_syntax(prompt, {"foo"})
+    assert result == "#unknown:: some text"
+
+
+def test_double_colon_shorthand_not_mid_line() -> None:
+    """Test double-colon shorthand is not matched mid-line."""
+    prompt = "text before #foo:: hello"
+    result = preprocess_shorthand_syntax(prompt, {"foo"})
+    assert result == "text before #foo:: hello"
+
+
+# Tests for paren double-colon shorthand
+
+
+def test_paren_double_colon_shorthand_basic() -> None:
+    """Test #name(arg):: text → #name(arg, [[text]])."""
+    result = _preprocess_paren_shorthand("#test(arg1):: hello world", {"test"})
+    assert result == "#test(arg1, [[hello world]])"
+
+
+def test_paren_double_colon_shorthand_preserves_blank_lines() -> None:
+    """Test paren double-colon preserves blank lines in text."""
+    prompt = "#test(arg1):: line1\n\nline3"
+    result = _preprocess_paren_shorthand(prompt, {"test"})
+    assert result == "#test(arg1, [[line1\n\n  line3]])"
+
+
+def test_paren_double_colon_shorthand_empty_parens() -> None:
+    """Test #name():: text → #name([[text]])."""
+    result = _preprocess_paren_shorthand("#test():: hello world", {"test"})
+    assert result == "#test([[hello world]])"
+
+
+# Tests for mixed directives
+
+
+def test_mixed_double_colon_and_single_colon() -> None:
+    """Test double-colon and single-colon directives in same prompt."""
+    prompt = "#foo:: para one\n\npara two\n#bar: single line"
+    result = preprocess_shorthand_syntax(prompt, {"foo", "bar"})
+    assert result == "#foo([[para one\n\n  para two]])\n#bar([[single line]])"

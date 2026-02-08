@@ -4,6 +4,7 @@ import re
 
 from xprompt._jinja import validate_and_convert_args
 from xprompt._parsing import (
+    DOUBLE_COLON_SHORTHAND_PATTERN,
     SHORTHAND_PATTERN,
     _find_shorthand_text_end,
     preprocess_shorthand_syntax,
@@ -321,3 +322,19 @@ def test_preprocess_shorthand_preserves_trailing_content() -> None:
     result = preprocess_shorthand_syntax(prompt, {"foo"})
     # Should end at first \n\n, keeping the trailing \n before "more text"
     assert result == "#foo([[line one]])\n\n\nmore text"
+
+
+# --- Double-colon shorthand pattern tests ---
+
+
+def test_double_colon_shorthand_pattern_at_start() -> None:
+    """Test that DOUBLE_COLON_SHORTHAND_PATTERN matches at start of string."""
+    match = re.search(DOUBLE_COLON_SHORTHAND_PATTERN, "#foo:: some text")
+    assert match is not None
+    assert match.group(1) == "foo"
+
+
+def test_double_colon_shorthand_pattern_not_single_colon() -> None:
+    """Test that DOUBLE_COLON_SHORTHAND_PATTERN does NOT match single colon."""
+    match = re.search(DOUBLE_COLON_SHORTHAND_PATTERN, "#foo: some text")
+    assert match is None

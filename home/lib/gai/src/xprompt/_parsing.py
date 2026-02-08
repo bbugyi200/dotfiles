@@ -64,6 +64,19 @@ _PAREN_SHORTHAND_PATTERN = re.compile(
     r"(?:^|(?<=\n))" r"#([a-zA-Z_][a-zA-Z0-9_]*(?:/[a-zA-Z_][a-zA-Z0-9_]*)*)" r"\("
 )
 
+# Pattern to match double-colon shorthand: #name:: text (at beginning of line)
+DOUBLE_COLON_SHORTHAND_PATTERN = re.compile(
+    r"(?:^|(?<=\n))"  # Must be at start of string or after newline
+    r"#([a-zA-Z_][a-zA-Z0-9_]*(?:/[a-zA-Z_][a-zA-Z0-9_]*)*)"  # Group 1: name
+    r":: "  # Double colon followed by space
+)
+
+# Pattern to find the start of the next xprompt directive at a line boundary.
+# Used by double-colon shorthand to know where its text ends.
+_NEXT_DIRECTIVE_PATTERN = re.compile(
+    r"\n(?=#[a-zA-Z_][a-zA-Z0-9_]*(?:/[a-zA-Z_][a-zA-Z0-9_]*)*(?:\(|::? ))"
+)
+
 
 def _find_shorthand_text_end(prompt: str, start: int) -> int:
     """Find the end of shorthand text (at \\n\\n or end of string)."""
@@ -71,6 +84,19 @@ def _find_shorthand_text_end(prompt: str, start: int) -> int:
     if blank_line_pos == -1:
         return len(prompt)
     return blank_line_pos
+
+
+def _find_double_colon_text_end(prompt: str, start: int) -> int:
+    """Find the end of double-colon text (at next directive or end of string).
+
+    Unlike single-colon shorthand which terminates at blank lines, double-colon
+    text includes blank lines and only terminates at the next xprompt directive
+    at the start of a line, or at EOF.
+    """
+    match = _NEXT_DIRECTIVE_PATTERN.search(prompt, start)
+    if match is None:
+        return len(prompt)
+    return match.start()
 
 
 def _format_as_text_block(text: str) -> str:
@@ -103,13 +129,16 @@ def _preprocess_paren_shorthand(prompt: str, xprompt_names: set[str]) -> str:
         if paren_close is None:
             continue
 
-        # Check for "): " after the closing paren
+        # Check for "):: " (double-colon) or "): " (single-colon) after paren
         after_paren = prompt[paren_close + 1 :]
-        if not after_paren.startswith(": "):
+        if after_paren.startswith(":: "):
+            text_start = paren_close + 4  # skip "):: "
+            text_end = _find_double_colon_text_end(prompt, text_start)
+        elif after_paren.startswith(": "):
+            text_start = paren_close + 3  # skip "): "
+            text_end = _find_shorthand_text_end(prompt, text_start)
+        else:
             continue
-
-        text_start = paren_close + 3  # skip "): "
-        text_end = _find_shorthand_text_end(prompt, text_start)
         text = prompt[text_start:text_end].rstrip()
 
         text_block_content = _format_as_text_block(text)
@@ -128,10 +157,27 @@ def _preprocess_paren_shorthand(prompt: str, xprompt_names: set[str]) -> str:
 
 def preprocess_shorthand_syntax(prompt: str, xprompt_names: set[str]) -> str:
     """Convert shorthand #name: text syntax to #name([[text]]) format."""
-    # Pass 1: Handle paren shorthand (#name(args): text)
+    # Pass 1: Handle paren shorthand (#name(args): text and #name(args):: text)
     prompt = _preprocess_paren_shorthand(prompt, xprompt_names)
 
-    # Pass 2: Handle simple shorthand (#name: text)
+    # Pass 2: Handle simple double-colon shorthand (#name:: text)
+    matches = list(re.finditer(DOUBLE_COLON_SHORTHAND_PATTERN, prompt))
+
+    for match in reversed(matches):
+        name = match.group(1)
+        if name not in xprompt_names:
+            continue
+
+        text_start = match.end()
+        text_end = _find_double_colon_text_end(prompt, text_start)
+        text = prompt[text_start:text_end].rstrip()
+
+        text_block_content = _format_as_text_block(text)
+        replacement = f"#{name}([[{text_block_content}]])"
+
+        prompt = prompt[: match.start()] + replacement + prompt[text_end:]
+
+    # Pass 3: Handle simple single-colon shorthand (#name: text)
     matches = list(re.finditer(SHORTHAND_PATTERN, prompt))
 
     for match in reversed(matches):  # Process last-to-first to preserve positions
