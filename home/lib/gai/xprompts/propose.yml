@@ -51,13 +51,13 @@ steps:
       if [ "{{ check_changes.has_changes }}" = "false" ]; then
         echo "status=no_changes"
         echo "message=No local changes detected - proposal not created"
-      elif [ "{{ create_proposal.success | default(false) }}" = "true" ]; then
+      elif [ "{{ propose.success | default(false) }}" = "true" ]; then
         echo "status=created"
-        echo "message=Created proposal ({{ create_proposal.proposal_id | default('') }}) on CL {{ create_proposal.cl_name | default('') }}"
-        echo "meta_proposal_id={{ create_proposal.proposal_id | default('') }}"
-        echo "diff_path={{ create_proposal.diff_path | default('') }}"
+        echo "message=Created proposal ({{ propose.proposal_id | default('') }}) on CL {{ propose.cl_name | default('') }}"
+        echo "meta_proposal_id={{ propose.proposal_id | default('') }}"
+        echo "diff_path={{ propose.diff_path | default('') }}"
       else
         echo "status=error"
-        echo "message={{ create_proposal.error | default('Unknown error') }}"
+        echo "message={{ propose.error | default('Unknown error') }}"
       fi
     output: { status: word, message: text, meta_proposal_id: word, diff_path: path }

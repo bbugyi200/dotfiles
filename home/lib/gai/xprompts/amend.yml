@@ -51,13 +51,13 @@ steps:
       if [ "{{ check_changes.has_changes }}" = "false" ]; then
         echo "status=no_changes"
         echo "message=No local changes detected - CL not amended"
-      elif [ "{{ amend_cl.success | default(false) }}" = "true" ]; then
+      elif [ "{{ amend.success | default(false) }}" = "true" ]; then
         echo "status=amended"
-        echo "message=Amended CL {{ amend_cl.cl_name | default('') }} with COMMITS entry ({{ amend_cl.entry_id | default('') }})"
-        echo "meta_new_amend={{ amend_cl.entry_id | default('') }}"
-        echo "diff_path={{ amend_cl.diff_path | default('') }}"
+        echo "message=Amended CL {{ amend.cl_name | default('') }} with COMMITS entry ({{ amend.entry_id | default('') }})"
+        echo "meta_new_amend={{ amend.entry_id | default('') }}"
+        echo "diff_path={{ amend.diff_path | default('') }}"
       else
         echo "status=error"
-        echo "message={{ amend_cl.error | default('Unknown error') }}"
+        echo "message={{ amend.error | default('Unknown error') }}"
       fi
     output: { status: word, message: text, meta_new_amend: word, diff_path: path }

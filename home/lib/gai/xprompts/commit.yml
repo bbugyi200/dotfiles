@@ -50,13 +50,13 @@ steps:
       if [ "{{ check_changes.has_changes }}" = "false" ]; then
         echo "status=no_changes"
         echo "message=No local changes detected - CL not created"
-      elif [ "{{ create_cl.success | default(false) }}" = "true" ]; then
+      elif [ "{{ commit.success | default(false) }}" = "true" ]; then
         echo "status=created"
-        echo "message=Created CL {{ create_cl.full_cl_name | default('') }}: {{ create_cl.cl_url | default('') }}"
-        echo "meta_new_cl={{ create_cl.full_cl_name | default('') }} ({{ create_cl.cl_url | default('') }})"
-        echo "diff_path={{ create_cl.diff_path | default('') }}"
+        echo "message=Created CL {{ commit.full_cl_name | default('') }}: {{ commit.cl_url | default('') }}"
+        echo "meta_new_cl={{ commit.full_cl_name | default('') }} ({{ commit.cl_url | default('') }})"
+        echo "diff_path={{ commit.diff_path | default('') }}"
       else
         echo "status=error"
-        echo "message={{ create_cl.error | default('Unknown error') }}"
+        echo "message={{ commit.error | default('Unknown error') }}"
       fi
     output: { status: word, message: text, meta_new_cl: line, diff_path: path }
