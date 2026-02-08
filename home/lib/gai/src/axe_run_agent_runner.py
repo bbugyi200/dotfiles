@@ -248,6 +248,22 @@ def main() -> None:
 
             traceback.print_exc()
             success = False
+            # Write error done marker so TUI can display the error
+            try:
+                error_done: dict[str, Any] = {
+                    "cl_name": cl_name,
+                    "project_file": project_file,
+                    "timestamp": timestamp,
+                    "artifacts_timestamp": artifacts_timestamp,
+                    "outcome": "failed",
+                    "error": str(e),
+                    "workspace_num": workspace_num,
+                }
+                done_path = os.path.join(artifacts_dir, "done.json")
+                with open(done_path, "w", encoding="utf-8") as f:
+                    json.dump(error_done, f, indent=2)
+            except Exception:
+                pass  # Best effort
 
         end_time = time.time()
         elapsed_seconds = int(end_time - start_time)

@@ -12,7 +12,7 @@ from xprompt._parsing import (
     preprocess_shorthand_syntax,
 )
 from xprompt.loader import get_all_xprompts
-from xprompt.models import XPrompt
+from xprompt.models import OutputSpec, XPrompt
 from xprompt.workflow_models import Workflow, WorkflowStep, WorkflowValidationError
 
 # Pattern to match xprompt references (same as processor.py)
@@ -22,13 +22,31 @@ _XPROMPT_PATTERN = (
     r"(?:(\()|:([a-zA-Z0-9_.-]+)|(\+))?"
 )
 
-# Pattern to match {{ variable }} or {{ variable.field }} template references
-_TEMPLATE_VAR_PATTERN = re.compile(r"\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)")
+# Pattern to find {{ ... }} blocks (may contain multiple variable references)
+_JINJA_BLOCK_PATTERN = re.compile(r"\{\{(.*?)\}\}", re.DOTALL)
 
-# Pattern to capture full dotted paths like {{ research.prior_art.file_path }}
-_TEMPLATE_REF_PATTERN = re.compile(
-    r"\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)"
-)
+# Pattern to find dotted identifiers within a Jinja2 block
+_IDENT_PATTERN = re.compile(r"\b([a-zA-Z_]\w*(?:\.\w+)*)\b")
+
+
+def _extract_template_refs(content: str) -> list[str]:
+    """Extract all dotted identifier references from {{ ... }} blocks.
+
+    Handles compound expressions like ``{{ a.valid and b.valid }}``
+    by scanning each block for all dotted identifiers.
+
+    Args:
+        content: Template content string to scan.
+
+    Returns:
+        List of dotted identifier strings found in template blocks.
+    """
+    refs: list[str] = []
+    for block_match in _JINJA_BLOCK_PATTERN.finditer(content):
+        block_text = block_match.group(1)
+        for ident_match in _IDENT_PATTERN.finditer(block_text):
+            refs.append(ident_match.group(1))
+    return refs
 
 
 @dataclass
@@ -194,9 +212,8 @@ def _collect_used_variables(workflow: Workflow) -> set[str]:
 
     for step in workflow.steps:
         for content in _collect_step_content(step):
-            # Find all {{ variable }} or {{ variable.field }} references
-            for match in _TEMPLATE_VAR_PATTERN.finditer(content):
-                var_name = match.group(1)
+            for ref in _extract_template_refs(content):
+                var_name = ref.split(".")[0]
                 # Skip special variables like 'item' from for-loops
                 if var_name not in ("item", "loop"):
                     used_vars.add(var_name)
@@ -297,8 +314,7 @@ def _mark_output_refs(content: str, output_usage: dict[str, bool]) -> None:
         content: Template content string to scan.
         output_usage: Dict of output keys to used status (mutated in place).
     """
-    for match in _TEMPLATE_REF_PATTERN.finditer(content):
-        ref = match.group(1)
+    for ref in _extract_template_refs(content):
         parts = ref.split(".")
 
         if len(parts) == 1:
@@ -331,11 +347,17 @@ def _detect_unused_outputs(workflow: Workflow) -> list[str]:
         List of error messages for unused outputs.
     """
     output_usage: dict[str, bool] = {}
+    output_fields: dict[str, str] = {}  # key → comma-separated quoted field names
+
+    def _format_fields(output: OutputSpec) -> str:
+        props = output.schema.get("properties", {})
+        return ", ".join(f"'{f}'" for f in props)
 
     # Register all steps that have output
     for step in workflow.steps:
         if step.output:
             output_usage[step.name] = False
+            output_fields[step.name] = _format_fields(step.output)
         if step.parallel_config:
             # Only track nested outputs when join is "object" or unset AND no for_loop
             join = step.join
@@ -345,7 +367,9 @@ def _detect_unused_outputs(workflow: Workflow) -> list[str]:
             if not skip_nested:
                 for nested in step.parallel_config.steps:
                     if nested.output:
-                        output_usage[f"{step.name}.{nested.name}"] = False
+                        key = f"{step.name}.{nested.name}"
+                        output_usage[key] = False
+                        output_fields[key] = _format_fields(nested.output)
 
     # Scan all step content for references
     for step in workflow.steps:
@@ -378,7 +402,11 @@ def _detect_unused_outputs(workflow: Workflow) -> list[str]:
     errors: list[str] = []
     for key, used in output_usage.items():
         if not used and key not in exempt_keys:
-            errors.append(f"Step '{key}' has output but is never referenced")
+            fields = output_fields.get(key, "")
+            field_desc = f" {fields}" if fields else ""
+            errors.append(
+                f"Step '{key}' has output{field_desc} but is never referenced"
+            )
 
     return errors
 
@@ -448,8 +476,8 @@ def _detect_unused_xprompt_inputs(workflow: Workflow) -> list[str]:
 
         # Collect variable names used in this xprompt's content
         used_vars: set[str] = set()
-        for match in _TEMPLATE_VAR_PATTERN.finditer(xp.content):
-            used_vars.add(match.group(1))
+        for ref in _extract_template_refs(xp.content):
+            used_vars.add(ref.split(".")[0])
 
         for inp in xp.inputs:
             if inp.name not in used_vars:

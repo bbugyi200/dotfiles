@@ -14,6 +14,7 @@ from xprompt.workflow_validator import (
     _detect_unused_outputs,
     _detect_unused_xprompt_inputs,
     _detect_unused_xprompts,
+    _extract_template_refs,
     _extract_xprompt_calls,
     _validate_xprompt_call,
     _validate_xprompt_names,
@@ -677,3 +678,68 @@ def test_validate_workflow_raises_on_xprompt_missing_underscore() -> None:
         from xprompt.workflow_validator import validate_workflow
 
         validate_workflow(workflow)
+
+
+def test_extract_template_refs_compound_expression() -> None:
+    """Compound expression {{ a.valid and b.valid }} extracts both refs."""
+    refs = _extract_template_refs("{{ a.valid and b.valid }}")
+    dotted_refs = [r for r in refs if "." in r]
+    assert "a.valid" in dotted_refs
+    assert "b.valid" in dotted_refs
+
+
+def test_extract_template_refs_single() -> None:
+    """Single variable {{ foo }} extracts one ref."""
+    refs = _extract_template_refs("{{ foo }}")
+    assert "foo" in refs
+
+
+def test_extract_template_refs_dotted() -> None:
+    """Dotted path {{ step.field }} extracts one dotted ref."""
+    refs = _extract_template_refs("{{ step.field }}")
+    assert "step.field" in refs
+
+
+def test_detect_unused_outputs_compound_condition_ref() -> None:
+    """Compound if: condition {{ a.x and b.y }} marks both steps used."""
+    output_a = OutputSpec(
+        type="json_schema",
+        schema={"properties": {"x": {"type": "boolean"}}},
+    )
+    output_b = OutputSpec(
+        type="json_schema",
+        schema={"properties": {"y": {"type": "boolean"}}},
+    )
+    workflow = Workflow(
+        name="test",
+        steps=[
+            WorkflowStep(name="a", bash="echo a", output=output_a),
+            WorkflowStep(name="b", bash="echo b", output=output_b),
+            WorkflowStep(
+                name="final",
+                bash="echo done",
+                condition="{{ a.x and b.y }}",
+            ),
+        ],
+    )
+    errors = _detect_unused_outputs(workflow)
+    assert errors == []
+
+
+def test_detect_unused_outputs_error_includes_field_names() -> None:
+    """Error message includes output field names."""
+    output = OutputSpec(
+        type="json_schema",
+        schema={"properties": {"valid": {"type": "boolean"}}},
+    )
+    workflow = Workflow(
+        name="test",
+        steps=[
+            WorkflowStep(name="check", bash="echo hi", output=output),
+            WorkflowStep(name="final", bash="echo done"),
+        ],
+    )
+    errors = _detect_unused_outputs(workflow)
+    assert len(errors) == 1
+    assert "'valid'" in errors[0]
+    assert "check" in errors[0]

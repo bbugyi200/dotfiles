@@ -34,6 +34,7 @@ class WorkflowEntry:
     pid: int | None = None
     appears_as_agent: bool = False
     diff_path: str | None = None
+    error_message: str | None = None
 
     @property
     def display_type(self) -> str:

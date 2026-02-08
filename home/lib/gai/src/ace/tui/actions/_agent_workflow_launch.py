@@ -289,7 +289,11 @@ class AgentLaunchMixin:
             workflow_ref
         )
 
-        workflows = get_all_workflows()
+        project = None
+        if "/" in workflow_name:
+            project = workflow_name.split("/")[0]
+
+        workflows = get_all_workflows(project=project)
         if workflow_name not in workflows:
             return False
 

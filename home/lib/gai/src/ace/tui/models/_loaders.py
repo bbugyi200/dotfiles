@@ -313,12 +313,19 @@ def load_done_agents(
                 start_time = parse_timestamp_14_digit(timestamp_str)
 
                 cl_name = data.get("cl_name", "unknown")
+                outcome = data.get("outcome", "completed")
+                if outcome == "failed":
+                    status = "FAILED"
+                    error_message = data.get("error")
+                else:
+                    status = "DONE"
+                    error_message = None
                 agents.append(
                     Agent(
                         agent_type=AgentType.RUNNING,
                         cl_name=cl_name,
                         project_file=data.get("project_file", ""),
-                        status="DONE",
+                        status=status,
                         start_time=start_time,
                         workflow="ace(run)",
                         raw_suffix=timestamp_str,
@@ -328,6 +335,7 @@ def load_done_agents(
                         workspace_num=data.get("workspace_num"),
                         bug=bug_by_cl_name.get(cl_name),
                         cl_num=cl_by_cl_name.get(cl_name),
+                        error_message=error_message,
                     )
                 )
             except Exception:
@@ -459,6 +467,7 @@ def load_workflow_states() -> list[WorkflowEntry]:
                             pid=pid,
                             appears_as_agent=appears_as_agent,
                             diff_path=diff_path,
+                            error_message=data.get("error"),
                         )
                     )
                 except Exception:
@@ -563,6 +572,7 @@ def load_workflow_agents() -> list[Agent]:
                 appears_as_agent=entry.appears_as_agent,
                 artifacts_dir=entry.artifacts_dir,
                 diff_path=entry.diff_path,
+                error_message=entry.error_message,
             )
         )
 
