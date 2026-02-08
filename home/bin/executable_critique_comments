@@ -2,7 +2,6 @@
 
 # Exit codes
 readonly EXIT_SUCCESS=0
-readonly EXIT_USAGE=1
 readonly EXIT_MISSING_DEP=2
 readonly EXIT_INVALID_CL=3
 readonly EXIT_RPC_FAILURE=4
