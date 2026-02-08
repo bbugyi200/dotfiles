@@ -186,17 +186,20 @@ class CrsWorkflow(BaseWorkflow):
         print_artifact_created(self.response_path)
 
         # Execute post-steps from embedded workflows (proposal creation via #propose)
-        for post_steps, embedded_context in post_workflows:
-            embedded_context["_prompt"] = expanded_prompt
-            embedded_context["_response"] = response_content
+        for ewf_result in post_workflows:
+            ewf_result.context["_prompt"] = expanded_prompt
+            ewf_result.context["_response"] = response_content
             if self._who:
-                embedded_context["who"] = self._who
+                ewf_result.context["who"] = self._who
             execute_standalone_steps(
-                post_steps, embedded_context, "crs-embedded", artifacts_dir
+                ewf_result.post_steps,
+                ewf_result.context,
+                "crs-embedded",
+                artifacts_dir,
             )
 
             # Extract proposal_id from create_proposal step output
-            create_result = embedded_context.get("create_proposal", {})
+            create_result = ewf_result.context.get("create_proposal", {})
             if (
                 isinstance(create_result, dict)
                 and create_result.get("success") == "true"

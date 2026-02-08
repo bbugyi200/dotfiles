@@ -4,6 +4,7 @@ import json
 import os
 import re
 import tempfile
+from dataclasses import dataclass, field
 from typing import Any
 
 from chat_history import save_chat_history
@@ -16,6 +17,23 @@ from xprompt.workflow_models import WorkflowStep
 
 from ..utils import ensure_project_file_and_get_workspace_num
 
+
+@dataclass
+class EmbeddedWorkflowResult:
+    """Result from expanding an embedded workflow in a query.
+
+    Captures the pre/post steps, context, and positional metadata needed
+    to write step marker files for TUI visibility.
+    """
+
+    workflow_name: str
+    pre_steps: list[WorkflowStep]
+    post_steps: list[WorkflowStep]
+    context: dict[str, Any] = field(default_factory=dict)
+    prompt_part_index: int = 0
+    total_workflow_steps: int = 0
+
+
 # Pattern to match workflow references in prompts
 _WORKFLOW_REF_PATTERN = (
     r"(?:^|(?<=\s)|(?<=[(\[{\"']))"
@@ -27,7 +45,7 @@ _WORKFLOW_REF_PATTERN = (
 def expand_embedded_workflows_in_query(
     query: str,
     artifacts_dir: str | None = None,
-) -> tuple[str, list[tuple[list[WorkflowStep], dict[str, Any]]]]:
+) -> tuple[str, list[EmbeddedWorkflowResult]]:
     """Detect and expand embedded workflows in a query.
 
     For simple `gai run` queries, this handles workflows with `prompt_part`:
@@ -40,7 +58,7 @@ def expand_embedded_workflows_in_query(
         artifacts_dir: Optional directory for workflow artifacts.
 
     Returns:
-        Tuple of (expanded_query, list of (post_steps, context) tuples).
+        Tuple of (expanded_query, list of EmbeddedWorkflowResult objects).
     """
     from xprompt._parsing import find_matching_paren_for_args, parse_args
     from xprompt.loader import get_all_workflows
@@ -48,7 +66,7 @@ def expand_embedded_workflows_in_query(
     from xprompt.workflow_executor_utils import render_template
 
     workflows = get_all_workflows()
-    post_workflows: list[tuple[list[WorkflowStep], dict[str, Any]]] = []
+    post_workflows: list[EmbeddedWorkflowResult] = []
     expanded_metadata: list[dict[str, Any]] = []
 
     # Find all potential workflow references
@@ -137,9 +155,18 @@ def expand_embedded_workflows_in_query(
         # Replace the workflow reference with the prompt_part content
         query = query[: match.start()] + prompt_part_content + query[match_end:]
 
-        # Store post-steps for execution after the main prompt
-        if post_steps:
-            post_workflows.append((post_steps, embedded_context))
+        # Store workflow result for post-step execution and step markers
+        if pre_steps or post_steps:
+            post_workflows.append(
+                EmbeddedWorkflowResult(
+                    workflow_name=name,
+                    pre_steps=pre_steps,
+                    post_steps=post_steps,
+                    context=embedded_context,
+                    prompt_part_index=workflow.get_prompt_part_index() or 0,
+                    total_workflow_steps=len(workflow.steps),
+                )
+            )
 
     # Save embedded workflow metadata (reversed to restore original order)
     if artifacts_dir and expanded_metadata:
@@ -390,12 +417,15 @@ def run_query(
         response_content = ensure_str_content(ai_result.content)
 
         # Execute post-steps from embedded workflows
-        for post_steps, embedded_context in post_workflows:
+        for ewf_result in post_workflows:
             # Make agent prompt and response available to post-steps
-            embedded_context["_prompt"] = expanded_prompt
-            embedded_context["_response"] = response_content
+            ewf_result.context["_prompt"] = expanded_prompt
+            ewf_result.context["_response"] = response_content
             execute_standalone_steps(
-                post_steps, embedded_context, "run-embedded", artifacts_dir
+                ewf_result.post_steps,
+                ewf_result.context,
+                "run-embedded",
+                artifacts_dir,
             )
 
         # Prepare and save chat history

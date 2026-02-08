@@ -168,14 +168,14 @@ def main() -> int:
         who = f"fix-hook {history_ref} {display_command}"
 
         # Execute post-steps from embedded workflows (proposal creation via #propose)
-        for post_steps, embedded_context in post_workflows:
-            embedded_context["_prompt"] = expanded_prompt
-            embedded_context["_response"] = response_content
-            embedded_context["who"] = who
+        for ewf_result in post_workflows:
+            ewf_result.context["_prompt"] = expanded_prompt
+            ewf_result.context["_response"] = response_content
+            ewf_result.context["who"] = who
             try:
                 execute_standalone_steps(
-                    post_steps,
-                    embedded_context,
+                    ewf_result.post_steps,
+                    ewf_result.context,
                     "fix-hook-embedded",
                     artifacts_dir,
                 )
@@ -186,7 +186,7 @@ def main() -> int:
                 traceback.print_exc()
 
             # Always check for proposal_id (even if later steps failed)
-            create_result = embedded_context.get("create_proposal", {})
+            create_result = ewf_result.context.get("create_proposal", {})
             if (
                 isinstance(create_result, dict)
                 and create_result.get("success") == "true"

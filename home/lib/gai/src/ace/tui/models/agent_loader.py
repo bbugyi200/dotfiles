@@ -295,7 +295,11 @@ def load_all_agents() -> list[Agent]:
             result.append(agent)
             # Check if any agent steps belong to this agent (matching workflow+timestamp)
             if agent.agent_type == AgentType.WORKFLOW or (
-                agent.workflow and agent.workflow.startswith("workflow-")
+                agent.workflow
+                and (
+                    agent.workflow.startswith("workflow-")
+                    or agent.workflow == "ace(run)"
+                )
             ):
                 # Find matching agent steps by timestamp
                 matching_steps = [

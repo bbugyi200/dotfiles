@@ -606,7 +606,10 @@ def load_workflow_agent_steps() -> list[Agent]:
         for workflow_dir in artifacts_dir.iterdir():
             if not workflow_dir.is_dir():
                 continue
-            if not workflow_dir.name.startswith("workflow-"):
+            if not (
+                workflow_dir.name.startswith("workflow-")
+                or workflow_dir.name == "ace-run"
+            ):
                 continue
 
             # Look for timestamp directories with agent_step_*.json files

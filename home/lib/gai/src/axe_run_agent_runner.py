@@ -19,6 +19,7 @@ from axe_runner_utils import install_sigterm_handler, prepare_workspace  # noqa:
 from chat_history import save_chat_history  # noqa: E402
 from gemini_wrapper import invoke_agent  # noqa: E402
 from main.query_handler import (  # noqa: E402
+    EmbeddedWorkflowResult,
     execute_standalone_steps,
     expand_embedded_workflows_in_query,
 )
@@ -29,18 +30,19 @@ from shared_utils import (  # noqa: E402
     ensure_str_content,
 )
 from xprompt import process_xprompt_references  # noqa: E402
+from xprompt.workflow_models import WorkflowStep  # noqa: E402
 
 install_sigterm_handler("agent")
 
 
 def _extract_embedded_outputs(
-    post_workflows: list[tuple[list[Any], dict[str, Any]]],
+    post_workflows: list[EmbeddedWorkflowResult],
 ) -> tuple[str | None, dict[str, str]]:
     """Extract diff_path and meta_* fields from embedded workflow contexts."""
     diff_path: str | None = None
     meta_fields: dict[str, str] = {}
-    for _steps, ctx in post_workflows:
-        for value in ctx.values():
+    for ewf_result in post_workflows:
+        for value in ewf_result.context.values():
             if not isinstance(value, dict):
                 continue
             if "diff_path" in value and value["diff_path"]:
@@ -49,6 +51,132 @@ def _extract_embedded_outputs(
                 if k.startswith("meta_") and v:
                     meta_fields[k] = str(v)
     return diff_path, meta_fields
+
+
+def _write_step_marker(
+    artifacts_dir: str,
+    workflow_name: str,
+    step: WorkflowStep,
+    status: str,
+    step_index: int,
+    total_steps: int,
+    is_pre_prompt_step: bool,
+    output: dict[str, Any] | None = None,
+    error: str | None = None,
+) -> None:
+    """Write a single prompt_step_*.json marker file for TUI visibility.
+
+    Args:
+        artifacts_dir: Directory to write the marker file in.
+        workflow_name: Name of the parent workflow.
+        step: The workflow step to write a marker for.
+        status: Step status ("completed", "failed", or "pending").
+        step_index: 0-based index of the step in the workflow.
+        total_steps: Total number of steps in the workflow.
+        is_pre_prompt_step: True if this is a pre-prompt step.
+        output: Step output dict if completed.
+        error: Error message if step failed.
+    """
+    marker_path = os.path.join(artifacts_dir, f"prompt_step_{step.name}.json")
+
+    # Determine step type
+    step_type = "prompt"
+    step_source = None
+    if step.is_bash_step():
+        step_type = "bash"
+        step_source = step.bash
+    elif step.is_python_step():
+        step_type = "python"
+        step_source = step.python
+
+    marker_data = {
+        "workflow_name": workflow_name,
+        "step_name": step.name,
+        "status": status,
+        "output": output,
+        "artifacts_dir": artifacts_dir,
+        "step_type": step_type,
+        "step_source": step_source,
+        "step_index": step_index,
+        "total_steps": total_steps,
+        "parent_step_index": None,
+        "parent_total_steps": None,
+        "hidden": False,
+        "is_pre_prompt_step": is_pre_prompt_step,
+        "diff_path": None,
+        "output_types": None,
+        "error": error,
+    }
+    try:
+        with open(marker_path, "w", encoding="utf-8") as f:
+            json.dump(marker_data, f, indent=2, default=str)
+    except Exception:
+        pass  # Non-critical — just for TUI visibility
+
+
+def _write_embedded_step_markers(
+    artifacts_dir: str,
+    post_workflows: list[EmbeddedWorkflowResult],
+) -> None:
+    """Write step marker files for all embedded workflow steps.
+
+    Iterates all EmbeddedWorkflowResult objects and writes prompt_step_*.json
+    markers for both pre-steps and post-steps so the TUI can display them.
+
+    Args:
+        artifacts_dir: Directory to write marker files in.
+        post_workflows: List of embedded workflow results.
+    """
+    for ewf_result in post_workflows:
+        # Pre-steps: indices 0..N-1
+        for i, step in enumerate(ewf_result.pre_steps):
+            # Determine status from context
+            step_output = ewf_result.context.get(step.name)
+            if isinstance(step_output, dict):
+                status = "completed"
+            elif step_output is not None:
+                status = "completed"
+            else:
+                status = "pending"
+
+            _write_step_marker(
+                artifacts_dir=artifacts_dir,
+                workflow_name=ewf_result.workflow_name,
+                step=step,
+                status=status,
+                step_index=i,
+                total_steps=ewf_result.total_workflow_steps,
+                is_pre_prompt_step=True,
+                output=step_output if isinstance(step_output, dict) else None,
+            )
+
+        # Post-steps: indices start after prompt_part
+        for i, step in enumerate(ewf_result.post_steps):
+            step_index = ewf_result.prompt_part_index + 1 + i
+            step_output = ewf_result.context.get(step.name)
+
+            if isinstance(step_output, dict):
+                status = "completed"
+                error = None
+            elif step_output is not None:
+                status = "completed"
+                error = None
+            else:
+                # Not in context — either failed or never ran
+                status = "failed"
+                error = None
+
+            _write_step_marker(
+                artifacts_dir=artifacts_dir,
+                workflow_name=ewf_result.workflow_name,
+                step=step,
+                status=status,
+                step_index=step_index,
+                total_steps=ewf_result.total_workflow_steps,
+                is_pre_prompt_step=False,
+                output=step_output if isinstance(step_output, dict) else None,
+                error=error,
+            )
 
 
 def main() -> None:
@@ -195,13 +323,13 @@ def main() -> None:
 
             # Execute post-steps from embedded workflows
             post_step_error: str | None = None
-            for post_steps, embedded_context in post_workflows:
-                embedded_context["_prompt"] = expanded_prompt
-                embedded_context["_response"] = response_content
+            for ewf_result in post_workflows:
+                ewf_result.context["_prompt"] = expanded_prompt
+                ewf_result.context["_response"] = response_content
                 try:
                     execute_standalone_steps(
-                        post_steps,
-                        embedded_context,
+                        ewf_result.post_steps,
+                        ewf_result.context,
                         "ace-run-embedded",
                         artifacts_dir,
                     )
@@ -211,6 +339,9 @@ def main() -> None:
                         f"Warning: embedded workflow post-step failed: {e}",
                         file=sys.stderr,
                     )
+
+            # Write step markers for TUI visibility
+            _write_embedded_step_markers(artifacts_dir, post_workflows)
 
             # Extract outputs from embedded workflows (e.g., #propose)
             # Works even on partial success — extracts whatever completed
