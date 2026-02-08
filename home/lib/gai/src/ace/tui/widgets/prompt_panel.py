@@ -63,11 +63,14 @@ class AgentPromptPanel(Static):
             header_text.append("Workflow: ", style="bold #87D7FF")
             header_text.append(f"{agent.workflow}\n")
 
-        # Embedded Workflows (if available)
-        embedded_workflows = _load_embedded_workflows(agent)
-        if embedded_workflows:
-            header_text.append("Embedded Workflows: ", style="bold #87D7FF")
-            header_text.append(f"{_format_embedded_workflows(embedded_workflows)}\n")
+        # Embedded Workflows (if available) - only for agent/prompt steps
+        if agent.step_type not in ("bash", "python", "parallel"):
+            embedded_workflows = _load_embedded_workflows(agent)
+            if embedded_workflows:
+                header_text.append("Embedded Workflows: ", style="bold #87D7FF")
+                header_text.append(
+                    f"{_format_embedded_workflows(embedded_workflows)}\n"
+                )
 
         # PID (if available)
         if agent.pid:
