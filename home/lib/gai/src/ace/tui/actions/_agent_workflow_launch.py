@@ -352,6 +352,11 @@ class AgentLaunchMixin:
             # Execute workflow in background thread to not block TUI
             import threading
 
+            # Extract project from workflow_name (e.g., "eval/foo" → "eval")
+            project: str | None = None
+            if "/" in workflow_name:
+                project = workflow_name.split("/")[0]
+
             def run_workflow() -> None:
                 try:
                     execute_workflow(
@@ -360,6 +365,7 @@ class AgentLaunchMixin:
                         named_args,
                         artifacts_dir=str(artifacts_dir),
                         silent=True,
+                        project=project,
                     )
                 except Exception as e:
                     # Can't easily notify from background thread, so just log

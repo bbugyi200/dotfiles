@@ -9,6 +9,7 @@ the workspace upon completion.
 import json
 import os
 import sys
+from datetime import datetime
 
 # Add parent directory to path for imports (use abspath to handle relative __file__)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -17,6 +18,44 @@ from axe_runner_utils import install_sigterm_handler, prepare_workspace  # noqa:
 from running_field import release_workspace  # noqa: E402
 
 install_sigterm_handler("workflow")
+
+
+def _write_workflow_state(
+    artifacts_dir: str,
+    workflow_name: str,
+    cl_name: str,
+    status: str,
+    error: str | None = None,
+) -> None:
+    """Write a workflow_state.json so the TUI can track this workflow.
+
+    This is called early (before execute_workflow) to ensure the TUI can
+    always find and display the workflow entry, even if the process dies
+    before WorkflowExecutor creates its own state file.
+
+    Args:
+        artifacts_dir: Directory for workflow artifacts.
+        workflow_name: Name of the workflow being run.
+        cl_name: CL name for context.
+        status: Workflow status ("running" or "failed").
+        error: Optional error message (for "failed" status).
+    """
+    os.makedirs(artifacts_dir, exist_ok=True)
+    state_dict: dict[str, object] = {
+        "workflow_name": workflow_name,
+        "status": status,
+        "current_step_index": 0,
+        "steps": [],
+        "context": {"cl_name": cl_name},
+        "artifacts_dir": artifacts_dir,
+        "start_time": datetime.now().isoformat(),
+        "pid": os.getpid(),
+    }
+    if error is not None:
+        state_dict["error"] = error
+    state_path = os.path.join(artifacts_dir, "workflow_state.json")
+    with open(state_path, "w", encoding="utf-8") as f:
+        json.dump(state_dict, f, indent=2)
 
 
 def main() -> None:
@@ -51,24 +90,40 @@ def main() -> None:
     # Get CL name from update_target for logging/backup purposes
     cl_name = update_target or "workflow"
 
+    # Extract project from workflow_name (e.g., "eval/amend_commit_propose" → "eval")
+    project: str | None = None
+    if "/" in workflow_name:
+        project = workflow_name.split("/")[0]
+
     print(f"Starting workflow: {workflow_name}")
     print(f"Workspace: {workspace_dir}")
     print(f"Arguments: {positional_args}, {named_args}")
     print()
 
-    # Prepare workspace before running workflow (skip for home mode)
-    if update_target and not is_home_mode:
-        print("=== Preparing Workspace ===")
-        if not prepare_workspace(
-            workspace_dir, cl_name, update_target, backup_suffix="workflow"
-        ):
-            print("Failed to prepare workspace", file=sys.stderr)
-            sys.exit(1)
-        print("===========================")
-        print()
+    # Write initial workflow state so the TUI can track this entry immediately.
+    # WorkflowExecutor.execute() will overwrite this with its own richer state.
+    _write_workflow_state(artifacts_dir, workflow_name, cl_name, status="running")
 
     success = False
     try:
+        # Prepare workspace before running workflow (skip for home mode)
+        if update_target and not is_home_mode:
+            print("=== Preparing Workspace ===")
+            if not prepare_workspace(
+                workspace_dir, cl_name, update_target, backup_suffix="workflow"
+            ):
+                print("Failed to prepare workspace", file=sys.stderr)
+                _write_workflow_state(
+                    artifacts_dir,
+                    workflow_name,
+                    cl_name,
+                    status="failed",
+                    error="Failed to prepare workspace",
+                )
+                sys.exit(1)
+            print("===========================")
+            print()
+
         # Change to workspace directory
         os.chdir(workspace_dir)
 
@@ -88,6 +143,7 @@ def main() -> None:
             workflow_named_args,
             artifacts_dir=artifacts_dir,
             silent=True,
+            project=project,
         )
         success = True
         print(f"\nWorkflow '{workflow_name}' completed successfully")
@@ -98,6 +154,29 @@ def main() -> None:
 
         traceback.print_exc()
         success = False
+
+        # Write failed state if the executor hasn't already written one
+        # (e.g., workflow not found before executor even starts)
+        state_path = os.path.join(artifacts_dir, "workflow_state.json")
+        try:
+            with open(state_path, encoding="utf-8") as f:
+                existing = json.load(f)
+            if existing.get("status") != "failed":
+                _write_workflow_state(
+                    artifacts_dir,
+                    workflow_name,
+                    cl_name,
+                    status="failed",
+                    error=str(e),
+                )
+        except (OSError, json.JSONDecodeError):
+            _write_workflow_state(
+                artifacts_dir,
+                workflow_name,
+                cl_name,
+                status="failed",
+                error=str(e),
+            )
 
     finally:
         # Release workspace (skip for home mode - no workspace to release)
