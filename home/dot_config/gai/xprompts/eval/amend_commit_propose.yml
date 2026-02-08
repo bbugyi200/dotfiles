@@ -41,7 +41,7 @@ steps:
         echo "error=hg obslog does not contain 'Add converter support for foobar field'"
         exit 1
       fi
-    output: { valid: bool, error: text }
+    output: { valid: bool }
 
   # Step 5: Create proposal
   - name: create_proposal
@@ -72,7 +72,6 @@ steps:
           exit 1
         fi
       fi
-    output: { valid: bool, error: text }
 
   # Step 7: Summary report
   - name: report
