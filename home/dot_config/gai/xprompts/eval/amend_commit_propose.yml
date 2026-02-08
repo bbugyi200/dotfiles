@@ -1,5 +1,3 @@
-name: eval/amend_commit_propose
-
 steps:
   # Step 1: Create commit
   - name: create_commit
