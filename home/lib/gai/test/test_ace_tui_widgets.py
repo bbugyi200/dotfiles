@@ -1,5 +1,6 @@
 """Tests for the ace TUI widgets (section builders and TabBar)."""
 
+import json
 import time
 from pathlib import Path
 from typing import Any
@@ -10,7 +11,11 @@ from ace.tui import AceApp
 from ace.tui.models.agent import Agent, AgentType
 from ace.tui.widgets import TabBar
 from ace.tui.widgets.commits_builder import _should_show_commits_drawers
-from ace.tui.widgets.prompt_panel import AgentPromptPanel
+from ace.tui.widgets.prompt_panel import (
+    AgentPromptPanel,
+    _format_embedded_workflows,
+    _load_embedded_workflows,
+)
 
 
 def _make_changespec(
@@ -378,3 +383,106 @@ async def test_tab_bar_integration_tab_key() -> None:
             await pilot.press("tab")
             assert app.current_tab == "changespecs"
             assert tab_bar._current_tab == "changespecs"
+
+
+# --- Embedded Workflows Tests ---
+
+
+def test_load_embedded_workflows_with_args(tmp_path: Path) -> None:
+    """Loading embedded_workflows.json with args returns correct data."""
+    metadata = [
+        {"name": "propose", "args": {"note": "blah"}},
+        {"name": "cl", "args": {}},
+    ]
+    metadata_file = tmp_path / "embedded_workflows.json"
+    metadata_file.write_text(json.dumps(metadata))
+
+    agent = _make_agent(artifacts_dir=str(tmp_path))
+    result = _load_embedded_workflows(agent)
+
+    assert result == metadata
+
+
+def test_load_embedded_workflows_empty(tmp_path: Path) -> None:
+    """No embedded_workflows.json file returns None."""
+    agent = _make_agent(artifacts_dir=str(tmp_path))
+    result = _load_embedded_workflows(agent)
+
+    assert result is None
+
+
+def test_load_embedded_workflows_no_args(tmp_path: Path) -> None:
+    """Workflows without explicit args load correctly."""
+    metadata = [{"name": "cl", "args": {}}]
+    metadata_file = tmp_path / "embedded_workflows.json"
+    metadata_file.write_text(json.dumps(metadata))
+
+    agent = _make_agent(artifacts_dir=str(tmp_path))
+    result = _load_embedded_workflows(agent)
+
+    assert result == metadata
+
+
+def test_load_embedded_workflows_no_artifacts_dir() -> None:
+    """Agent with no artifacts_dir returns None."""
+    agent = _make_agent(artifacts_dir=None)
+    result = _load_embedded_workflows(agent)
+
+    assert result is None
+
+
+def test_format_embedded_workflows_single_no_args() -> None:
+    """Single workflow with no args formats as just the name."""
+    workflows = [{"name": "cl", "args": {}}]
+    assert _format_embedded_workflows(workflows) == "cl"
+
+
+def test_format_embedded_workflows_single_with_args() -> None:
+    """Single workflow with args formats as name(key=val)."""
+    workflows = [{"name": "propose", "args": {"note": "blah"}}]
+    assert _format_embedded_workflows(workflows) == "propose(note=blah)"
+
+
+def test_format_embedded_workflows_multiple() -> None:
+    """Multiple workflows joined with comma."""
+    workflows = [
+        {"name": "propose", "args": {"note": "blah"}},
+        {"name": "cl", "args": {}},
+    ]
+    assert _format_embedded_workflows(workflows) == "propose(note=blah), cl"
+
+
+def test_format_embedded_workflows_multiple_args() -> None:
+    """Workflow with multiple args formats correctly."""
+    workflows = [{"name": "foo", "args": {"bar": "2", "baz": "hello"}}]
+    assert _format_embedded_workflows(workflows) == "foo(bar=2, baz=hello)"
+
+
+def test_embedded_workflows_displayed_in_metadata(tmp_path: Path) -> None:
+    """Verify 'Embedded Workflows:' appears in rendered output."""
+    metadata = [
+        {"name": "propose", "args": {"note": "blah"}},
+        {"name": "cl", "args": {}},
+    ]
+    metadata_file = tmp_path / "embedded_workflows.json"
+    metadata_file.write_text(json.dumps(metadata))
+
+    agent = _make_agent(
+        artifacts_dir=str(tmp_path),
+        parent_workflow="olcr",
+        step_name="main",
+    )
+
+    panel = AgentPromptPanel.__new__(AgentPromptPanel)
+
+    with patch.object(panel, "update") as mock_update:
+        panel.update_display(agent)
+
+        assert mock_update.called
+        call_args = mock_update.call_args[0]
+        rendered = call_args[0]
+
+        # Extract text content from the rendered output
+        rendered_str = str(rendered)
+        assert "Embedded Workflows:" in rendered_str
+        assert "propose(note=blah), cl" in rendered_str

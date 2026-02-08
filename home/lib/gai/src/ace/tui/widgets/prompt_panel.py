@@ -63,6 +63,12 @@ class AgentPromptPanel(Static):
             header_text.append("Workflow: ", style="bold #87D7FF")
             header_text.append(f"{agent.workflow}\n")
 
+        # Embedded Workflows (if available)
+        embedded_workflows = _load_embedded_workflows(agent)
+        if embedded_workflows:
+            header_text.append("Embedded Workflows: ", style="bold #87D7FF")
+            header_text.append(f"{_format_embedded_workflows(embedded_workflows)}\n")
+
         # PID (if available)
         if agent.pid:
             header_text.append("PID: ", style="bold #87D7FF")
@@ -596,3 +602,53 @@ def _aggregate_meta_fields(
             display_name = f"{display_name} #{counters[raw_key]}"
         results.append((display_name, value))
     return results
+
+
+def _load_embedded_workflows(agent: Agent) -> list[dict[str, Any]] | None:
+    """Load embedded workflow metadata from embedded_workflows.json.
+
+    Args:
+        agent: The agent to load metadata for.
+
+    Returns:
+        List of workflow metadata dicts, or None if not found.
+    """
+    artifacts_dir = agent.get_artifacts_dir()
+    if artifacts_dir is None:
+        return None
+
+    metadata_file = Path(artifacts_dir) / "embedded_workflows.json"
+    if not metadata_file.exists():
+        return None
+
+    try:
+        with open(metadata_file, encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        return None
+
+    if not isinstance(data, list) or not data:
+        return None
+
+    return data
+
+
+def _format_embedded_workflows(workflows: list[dict[str, Any]]) -> str:
+    """Format embedded workflow metadata for display.
+
+    Args:
+        workflows: List of workflow metadata dicts with 'name' and 'args' keys.
+
+    Returns:
+        Formatted string like "propose(note=blah), cl".
+    """
+    parts: list[str] = []
+    for wf in workflows:
+        name = wf.get("name", "unknown")
+        args = wf.get("args", {})
+        if args:
+            args_str = ", ".join(f"{k}={v}" for k, v in args.items())
+            parts.append(f"{name}({args_str})")
+        else:
+            parts.append(name)
+    return ", ".join(parts)

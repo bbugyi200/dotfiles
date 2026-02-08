@@ -1,6 +1,8 @@
 """Embedded workflow step execution mixin."""
 
+import json
 import logging
+import os
 import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
@@ -294,6 +296,7 @@ class EmbeddedWorkflowMixin:
 
         workflows = get_all_workflows()
         embedded_workflows: list[EmbeddedWorkflowInfo] = []
+        expanded_metadata: list[dict[str, Any]] = []
         running_offset = pre_step_offset
 
         # Find all potential workflow references
@@ -345,6 +348,10 @@ class EmbeddedWorkflowMixin:
                     input_arg = workflow.inputs[i]
                     if input_arg.name not in args:
                         args[input_arg.name] = value
+
+            # Capture explicit args before applying defaults
+            explicit_args = dict(args)
+            expanded_metadata.append({"name": name, "args": explicit_args})
 
             # Apply defaults
             for input_arg in workflow.inputs:
@@ -408,6 +415,12 @@ class EmbeddedWorkflowMixin:
                         workflow_name=name,
                     )
                 )
+
+        # Save embedded workflow metadata (reversed to restore original order)
+        if expanded_metadata and os.path.isdir(self.artifacts_dir):
+            metadata_path = os.path.join(self.artifacts_dir, "embedded_workflows.json")
+            with open(metadata_path, "w", encoding="utf-8") as f:
+                json.dump(list(reversed(expanded_metadata)), f, indent=2)
 
         return prompt, embedded_workflows, running_offset - pre_step_offset
 

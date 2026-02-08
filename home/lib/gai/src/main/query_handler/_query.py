@@ -1,5 +1,6 @@
 """Core query execution logic."""
 
+import json
 import os
 import re
 import tempfile
@@ -48,6 +49,7 @@ def expand_embedded_workflows_in_query(
 
     workflows = get_all_workflows()
     post_workflows: list[tuple[list[WorkflowStep], dict[str, Any]]] = []
+    expanded_metadata: list[dict[str, Any]] = []
 
     # Find all potential workflow references
     matches = list(re.finditer(_WORKFLOW_REF_PATTERN, query, re.MULTILINE))
@@ -98,6 +100,10 @@ def expand_embedded_workflows_in_query(
                 if input_arg.name not in args:
                     args[input_arg.name] = value
 
+        # Capture explicit args before applying defaults
+        explicit_args = dict(args)
+        expanded_metadata.append({"name": name, "args": explicit_args})
+
         # Apply defaults
         for input_arg in workflow.inputs:
             if input_arg.name not in args and input_arg.default is not None:
@@ -134,6 +140,12 @@ def expand_embedded_workflows_in_query(
         # Store post-steps for execution after the main prompt
         if post_steps:
             post_workflows.append((post_steps, embedded_context))
+
+    # Save embedded workflow metadata (reversed to restore original order)
+    if artifacts_dir and expanded_metadata:
+        metadata_path = os.path.join(artifacts_dir, "embedded_workflows.json")
+        with open(metadata_path, "w", encoding="utf-8") as f:
+            json.dump(list(reversed(expanded_metadata)), f, indent=2)
 
     return query, post_workflows
 
