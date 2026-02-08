@@ -191,7 +191,12 @@ class Agent:
         elif self.agent_type == AgentType.WORKFLOW:
             # Workflow artifacts: workflow-{name}
             if self.workflow:
-                workflow_name = f"workflow-{self.workflow}"
+                base_workflow = (
+                    self.workflow.split("/")[-1]
+                    if "/" in self.workflow
+                    else self.workflow
+                )
+                workflow_name = f"workflow-{base_workflow}"
             else:
                 return None
         else:
