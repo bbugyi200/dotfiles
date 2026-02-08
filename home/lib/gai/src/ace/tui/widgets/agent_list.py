@@ -41,11 +41,7 @@ def _is_foldable_parent(agent: Agent) -> bool:
     Returns:
         True if this agent is a workflow parent that can be folded.
     """
-    return (
-        agent.agent_type == AgentType.WORKFLOW
-        and not agent.is_workflow_child
-        and not agent.appears_as_agent
-    )
+    return agent.agent_type == AgentType.WORKFLOW and not agent.is_workflow_child
 
 
 def _calculate_entry_display_width(

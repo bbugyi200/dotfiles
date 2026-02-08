@@ -99,20 +99,27 @@ def test_fully_expanded_shows_all_children() -> None:
     assert counts["ts1"] == (1, 1)
 
 
-def test_appears_as_agent_not_foldable() -> None:
-    """Test workflows that appear as agents don't fold."""
+def test_appears_as_agent_is_foldable() -> None:
+    """Test workflows that appear as agents are foldable."""
     agent = _make_appears_as_agent("ts1")
     child = _make_child("ts1", "step1")
     agents = [agent, child]
 
     mgr = FoldStateManager()
-    # Children are still filtered by parent_timestamp, but the parent
-    # is an appears_as_agent workflow - children should still be filtered
+    # Default is COLLAPSED - child should be hidden
     filtered, counts = filter_agents_by_fold_state(agents, mgr)
 
-    # Parent passes through, child is filtered by COLLAPSED
     assert len(filtered) == 1
     assert filtered[0] is agent
+    assert counts["ts1"] == (1, 0)
+
+    # Expand - child should now be visible
+    mgr.expand("ts1")
+    filtered, counts = filter_agents_by_fold_state(agents, mgr)
+
+    assert len(filtered) == 2
+    assert filtered[0] is agent
+    assert filtered[1] is child
     assert counts["ts1"] == (1, 0)
 
 

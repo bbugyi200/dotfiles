@@ -294,7 +294,6 @@ class AgentsMixinCore(
         if (
             agent.agent_type == AgentType.WORKFLOW
             and not agent.is_workflow_child
-            and not agent.appears_as_agent
             and agent.raw_suffix
         ):
             return agent.raw_suffix
