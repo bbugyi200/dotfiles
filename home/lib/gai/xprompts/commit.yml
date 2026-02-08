@@ -53,8 +53,9 @@ steps:
       elif [ "{{ create_cl.success | default(false) }}" = "true" ]; then
         echo "status=created"
         echo "message=Created CL {{ create_cl.full_cl_name | default('') }}: {{ create_cl.cl_url | default('') }}"
+        echo "meta_new_cl={{ create_cl.full_cl_name | default('') }} ({{ create_cl.cl_url | default('') }})"
       else
         echo "status=error"
         echo "message={{ create_cl.error | default('Unknown error') }}"
       fi
-    output: { status: word, message: text }
+    output: { status: word, message: text, meta_new_cl: line }

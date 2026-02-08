@@ -55,8 +55,9 @@ steps:
       elif [ "{{ create_proposal.success | default(false) }}" = "true" ]; then
         echo "status=created"
         echo "message=Created proposal ({{ create_proposal.proposal_id | default('') }}) on CL {{ create_proposal.cl_name | default('') }}"
+        echo "meta_proposal_id={{ create_proposal.proposal_id | default('') }}"
       else
         echo "status=error"
         echo "message={{ create_proposal.error | default('Unknown error') }}"
       fi
-    output: { status: word, message: text }
+    output: { status: word, message: text, meta_proposal_id: word }

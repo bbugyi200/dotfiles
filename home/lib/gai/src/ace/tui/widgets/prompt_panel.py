@@ -77,6 +77,15 @@ class AgentPromptPanel(Static):
         header_text.append("Timestamp: ", style="bold #87D7FF")
         header_text.append(f"{agent.start_time_display}\n", style="#D7D7FF")
 
+        # Meta fields from step output
+        if agent.step_output and isinstance(agent.step_output, dict):
+            meta_fields = _extract_meta_fields(agent.step_output)
+            if meta_fields:
+                header_text.append("\n")
+                for name, value in meta_fields:
+                    header_text.append(f"{name}: ", style="bold #87D7FF")
+                    header_text.append(f"{value}\n", style="#5FD75F")
+
         # Error message (for failed agents)
         if agent.error_message:
             header_text.append("\n")
@@ -295,6 +304,14 @@ class AgentPromptPanel(Static):
             header_text.append("PID: ", style="bold #87D7FF")
             header_text.append(f"{agent.pid}\n", style="#FF87D7 bold")
 
+        # Meta fields aggregated from all step outputs
+        meta_fields = self._load_workflow_meta_fields(agent)
+        if meta_fields:
+            header_text.append("\n")
+            for name, value in meta_fields:
+                header_text.append(f"{name}: ", style="bold #87D7FF")
+                header_text.append(f"{value}\n", style="#5FD75F")
+
         # Inputs (if available)
         inputs = self._load_workflow_inputs(agent)
         if inputs:
@@ -353,6 +370,32 @@ class AgentPromptPanel(Static):
             return None
 
         return data.get("inputs")
+
+    def _load_workflow_meta_fields(self, agent: Agent) -> list[tuple[str, str]]:
+        """Load aggregated meta_* fields from workflow step outputs.
+
+        Args:
+            agent: The workflow agent.
+
+        Returns:
+            List of (display_name, value) tuples.
+        """
+        artifacts_dir = agent.get_artifacts_dir()
+        if artifacts_dir is None:
+            return []
+
+        state_file = Path(artifacts_dir) / "workflow_state.json"
+        if not state_file.exists():
+            return []
+
+        try:
+            with open(state_file, encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            return []
+
+        steps = data.get("steps", [])
+        return _aggregate_meta_fields(steps)
 
     def _load_workflow_steps(self, agent: Agent) -> str | None:
         """Load and format workflow steps from workflow_state.json.
@@ -485,3 +528,71 @@ def _format_output(output: Any) -> str:
             return str(output)
     else:
         return str(output)
+
+
+def _format_meta_key(key: str) -> str:
+    """Format a meta_* key for display.
+
+    Strips the 'meta_' prefix, replaces underscores with spaces, and
+    title-cases the result.
+
+    Args:
+        key: The raw meta key (e.g. 'meta_new_cl').
+
+    Returns:
+        Formatted display name (e.g. 'New Cl').
+    """
+    return key.removeprefix("meta_").replace("_", " ").title()
+
+
+def _extract_meta_fields(output: dict[str, Any]) -> list[tuple[str, str]]:
+    """Extract meta_* fields from a step output dict.
+
+    Args:
+        output: A step output dictionary.
+
+    Returns:
+        List of (display_name, value) tuples for meta fields.
+    """
+    results: list[tuple[str, str]] = []
+    for key, value in output.items():
+        if key.startswith("meta_"):
+            results.append((_format_meta_key(key), str(value)))
+    return results
+
+
+def _aggregate_meta_fields(
+    steps: list[dict[str, Any]],
+) -> list[tuple[str, str]]:
+    """Aggregate meta_* fields from all workflow steps.
+
+    If a raw key appears in more than one step, each occurrence gets a
+    ' #N' suffix (N starting at 1).
+
+    Args:
+        steps: List of step state dicts (each may have an 'output' dict).
+
+    Returns:
+        List of (display_name, value) tuples.
+    """
+    # First pass: collect all (raw_key, display_name, value) triples and count keys
+    entries: list[tuple[str, str, str]] = []
+    key_counts: dict[str, int] = {}
+    for step in steps:
+        output = step.get("output")
+        if not isinstance(output, dict):
+            continue
+        for key, value in output.items():
+            if key.startswith("meta_"):
+                key_counts[key] = key_counts.get(key, 0) + 1
+                entries.append((key, _format_meta_key(key), str(value)))
+
+    # Second pass: build results, adding #N suffix for duplicates
+    counters: dict[str, int] = {}
+    results: list[tuple[str, str]] = []
+    for raw_key, display_name, value in entries:
+        if key_counts[raw_key] > 1:
+            counters[raw_key] = counters.get(raw_key, 0) + 1
+            display_name = f"{display_name} #{counters[raw_key]}"
+        results.append((display_name, value))
+    return results

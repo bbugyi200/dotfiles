@@ -55,8 +55,9 @@ steps:
       elif [ "{{ amend_cl.success | default(false) }}" = "true" ]; then
         echo "status=amended"
         echo "message=Amended CL {{ amend_cl.cl_name | default('') }} with COMMITS entry ({{ amend_cl.entry_id | default('') }})"
+        echo "meta_new_amend={{ amend_cl.entry_id | default('') }}"
       else
         echo "status=error"
         echo "message={{ amend_cl.error | default('Unknown error') }}"
       fi
-    output: { status: word, message: text }
+    output: { status: word, message: text, meta_new_amend: word }
