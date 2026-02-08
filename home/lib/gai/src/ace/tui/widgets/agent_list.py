@@ -130,14 +130,20 @@ class AgentList(OptionList):
 
         # Determine which parents have visible children in the filtered list
         parents_with_visible_children: set[str] = set()
+        fully_expanded_parents: set[str] = set()
         for agent in agents:
             if agent.is_workflow_child and agent.parent_timestamp:
                 parents_with_visible_children.add(agent.parent_timestamp)
+                if agent.is_hidden_step:
+                    fully_expanded_parents.add(agent.parent_timestamp)
 
         max_width = 0
         for i, agent in enumerate(agents):
             annotation = _compute_fold_annotation(
-                agent, fold_counts, parents_with_visible_children
+                agent,
+                fold_counts,
+                parents_with_visible_children,
+                fully_expanded_parents,
             )
             option = self._format_agent_option(
                 agent, i, is_selected=(i == current_idx), fold_annotation=annotation
@@ -240,12 +246,12 @@ class AgentList(OptionList):
 
         # Fold annotation for workflow parents
         if fold_annotation:
-            if fold_annotation.startswith(" (+"):
-                # EXPANDED: "(+N hidden)" in dim style
-                text.append(fold_annotation, style="dim")
-            else:
-                # COLLAPSED: "+N" in dim cyan
+            if "steps" in fold_annotation:
+                # COLLAPSED: "(+N steps)" in dim cyan
                 text.append(fold_annotation, style="dim #00D7D7")
+            else:
+                # EXPANDED/FULLY_EXPANDED: "(+N hidden)" or "(+N shown)" in dim
+                text.append(fold_annotation, style="dim")
 
         return Option(text, id=f"{index}:{agent.agent_type.value}:{agent.cl_name}")
 
@@ -267,6 +273,7 @@ def _compute_fold_annotation(
     agent: Agent,
     fold_counts: dict[str, tuple[int, int]] | None,
     parents_with_visible_children: set[str],
+    fully_expanded_parents: set[str] | None = None,
 ) -> str:
     """Compute fold annotation for a workflow parent.
 
@@ -275,6 +282,8 @@ def _compute_fold_annotation(
         fold_counts: Fold counts mapping raw_suffix -> (non_hidden, hidden).
         parents_with_visible_children: Set of parent raw_suffixes that have
             visible children in the current filtered list.
+        fully_expanded_parents: Set of parent raw_suffixes that are in
+            FULLY_EXPANDED state (hidden children are visible).
 
     Returns:
         Annotation string, or empty string if not applicable.
@@ -294,17 +303,26 @@ def _compute_fold_annotation(
     has_visible_children = agent.raw_suffix in parents_with_visible_children
 
     if not has_visible_children:
-        # COLLAPSED: show count of non-hidden children
+        # COLLAPSED: show total count of children
         if non_hidden > 0:
-            return f" +{non_hidden}"
+            return f" (+{non_hidden} steps)"
         if hidden > 0:
-            return f" +{hidden}"
+            return f" (+{hidden} steps)"
         return ""
 
     # Children are visible (EXPANDED or FULLY_EXPANDED)
+    is_fully_expanded = (
+        fully_expanded_parents is not None
+        and agent.raw_suffix in fully_expanded_parents
+    )
+
+    if hidden > 0 and is_fully_expanded:
+        # FULLY_EXPANDED: all children shown including hidden ones
+        return f" (+{hidden} shown)"
+
     if hidden > 0:
         # EXPANDED: some children still hidden
         return f" (+{hidden} hidden)"
 
-    # FULLY_EXPANDED: all children visible, no annotation needed
+    # All children visible, no hidden steps exist
     return ""

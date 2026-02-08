@@ -1,8 +1,9 @@
-"""Tests for filter_agents_by_fold_state."""
+"""Tests for filter_agents_by_fold_state and _compute_fold_annotation."""
 
 from ace.tui.models.agent import Agent, AgentType
 from ace.tui.models.agent_loader import filter_agents_by_fold_state
 from ace.tui.models.fold_state import FoldStateManager
+from ace.tui.widgets.agent_list import _compute_fold_annotation
 
 
 def _make_parent(raw_suffix: str, cl_name: str = "test_cl") -> Agent:
@@ -185,3 +186,98 @@ def test_empty_agents_list() -> None:
 
     assert filtered == []
     assert counts == {}
+
+
+# --- Tests for _compute_fold_annotation ---
+
+
+def test_annotation_collapsed_non_hidden_children() -> None:
+    """Test COLLAPSED annotation shows '(+N steps)' for non-hidden children."""
+    parent = _make_parent("ts1")
+    fold_counts = {"ts1": (3, 0)}
+    result = _compute_fold_annotation(parent, fold_counts, set())
+    assert result == " (+3 steps)"
+
+
+def test_annotation_collapsed_hidden_children_only() -> None:
+    """Test COLLAPSED annotation shows '(+N steps)' when only hidden children exist."""
+    parent = _make_parent("ts1")
+    fold_counts = {"ts1": (0, 5)}
+    result = _compute_fold_annotation(parent, fold_counts, set())
+    assert result == " (+5 steps)"
+
+
+def test_annotation_collapsed_mixed_children() -> None:
+    """Test COLLAPSED annotation uses non_hidden count when both exist."""
+    parent = _make_parent("ts1")
+    fold_counts = {"ts1": (2, 3)}
+    result = _compute_fold_annotation(parent, fold_counts, set())
+    assert result == " (+2 steps)"
+
+
+def test_annotation_expanded_hidden_remaining() -> None:
+    """Test EXPANDED annotation shows '(+N hidden)' for remaining hidden children."""
+    parent = _make_parent("ts1")
+    fold_counts = {"ts1": (2, 3)}
+    visible = {"ts1"}
+    result = _compute_fold_annotation(parent, fold_counts, visible)
+    assert result == " (+3 hidden)"
+
+
+def test_annotation_expanded_no_hidden() -> None:
+    """Test EXPANDED annotation is empty when no hidden children exist."""
+    parent = _make_parent("ts1")
+    fold_counts = {"ts1": (3, 0)}
+    visible = {"ts1"}
+    result = _compute_fold_annotation(parent, fold_counts, visible)
+    assert result == ""
+
+
+def test_annotation_fully_expanded_shows_hidden_count() -> None:
+    """Test FULLY_EXPANDED annotation shows '(+N shown)' for hidden children."""
+    parent = _make_parent("ts1")
+    fold_counts = {"ts1": (2, 3)}
+    visible = {"ts1"}
+    fully_expanded = {"ts1"}
+    result = _compute_fold_annotation(parent, fold_counts, visible, fully_expanded)
+    assert result == " (+3 shown)"
+
+
+def test_annotation_fully_expanded_no_hidden() -> None:
+    """Test FULLY_EXPANDED with no hidden steps returns empty annotation."""
+    parent = _make_parent("ts1")
+    fold_counts = {"ts1": (3, 0)}
+    visible = {"ts1"}
+    fully_expanded = {"ts1"}
+    result = _compute_fold_annotation(parent, fold_counts, visible, fully_expanded)
+    assert result == ""
+
+
+def test_annotation_non_workflow_agent() -> None:
+    """Test non-workflow agents get no annotation."""
+    running = Agent(
+        agent_type=AgentType.RUNNING,
+        cl_name="test",
+        project_file="/tmp/test.gp",
+        status="RUNNING",
+        start_time=None,
+        raw_suffix="ts1",
+    )
+    fold_counts = {"ts1": (3, 0)}
+    result = _compute_fold_annotation(running, fold_counts, set())
+    assert result == ""
+
+
+def test_annotation_no_fold_counts() -> None:
+    """Test returns empty when fold_counts is None."""
+    parent = _make_parent("ts1")
+    result = _compute_fold_annotation(parent, None, set())
+    assert result == ""
+
+
+def test_annotation_zero_total_children() -> None:
+    """Test returns empty when total children is zero."""
+    parent = _make_parent("ts1")
+    fold_counts = {"ts1": (0, 0)}
+    result = _compute_fold_annotation(parent, fold_counts, set())
+    assert result == ""
