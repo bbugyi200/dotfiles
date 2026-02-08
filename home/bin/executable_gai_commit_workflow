@@ -92,7 +92,7 @@ def _create_cl(
     name: str,
     bug_id: int,
     data_file: str,
-) -> tuple[bool, str, str, str]:
+) -> tuple[bool, str, str, str, str]:
     """Create a new CL from uncommitted changes.
 
     Args:
@@ -101,7 +101,7 @@ def _create_cl(
         data_file: Path to JSON file containing prompt and response from agent.
 
     Returns:
-        Tuple of (success, cl_url, full_cl_name, error_message)
+        Tuple of (success, cl_url, full_cl_name, error_message, diff_path)
     """
     from chat_history import save_chat_history
     from commit_utils.workspace import save_diff
@@ -122,7 +122,7 @@ def _create_cl(
     # Get project name
     project = _get_project_from_workspace()
     if not project:
-        return False, "", "", "Could not determine project from workspace"
+        return False, "", "", "Could not determine project from workspace", ""
 
     # Build full CL name with project prefix
     full_cl_name = name
@@ -138,6 +138,7 @@ def _create_cl(
             "",
             "",
             f"CL name conflicts with '{conflict_name}' (status: {conflict_status})",
+            "",
         )
 
     # Get parent branch (if on a named branch)
@@ -201,7 +202,7 @@ def _create_cl(
         commit_cmd = f'hg commit --name "{full_cl_name}" --logfile "{desc_file}"'
         commit_result = run_shell_command(commit_cmd, capture_output=True)
         if commit_result.returncode != 0:
-            return False, "", "", f"hg commit failed: {commit_result.stderr}"
+            return False, "", "", f"hg commit failed: {commit_result.stderr}", ""
 
         # Run hg fix (non-fatal if it fails)
         run_shell_command("hg fix", capture_output=True)
@@ -212,7 +213,7 @@ def _create_cl(
         # Get CL number
         cl_number = get_cl_number()
         if not cl_number:
-            return False, "", "", "Failed to get CL number after upload"
+            return False, "", "", "Failed to get CL number after upload", ""
         cl_url = f"http://cl/{cl_number}"
 
         # Get initial hooks
@@ -235,13 +236,13 @@ def _create_cl(
         )
 
         if not suffixed_name:
-            return False, "", "", "Failed to create ChangeSpec"
+            return False, "", "", "Failed to create ChangeSpec", ""
 
         # Rename the CL if needed to match the suffixed ChangeSpec name
         if suffixed_name != full_cl_name:
             run_shell_command(f'bb_hg_rename "{suffixed_name}"', capture_output=True)
 
-        return True, cl_url, suffixed_name, ""
+        return True, cl_url, suffixed_name, "", diff_path or ""
 
     finally:
         # Clean up temp files
@@ -271,12 +272,13 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.create:
-        success, cl_url, full_cl_name, error = _create_cl(
+        success, cl_url, full_cl_name, error, diff_path = _create_cl(
             args.name, args.bug_id, args.data_file
         )
         print(f"success={'true' if success else 'false'}")
         print(f"cl_url={cl_url}")
         print(f"full_cl_name={full_cl_name}")
+        print(f"diff_path={diff_path}")
         print(f"error={error}")
     else:
         parser.print_help()

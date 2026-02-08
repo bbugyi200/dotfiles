@@ -100,6 +100,7 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
                     "output": s.output,
                     "error": s.error,
                     "hidden": self.workflow.steps[i].hidden,
+                    "output_types": self._get_output_types(i),
                 }
                 for i, s in enumerate(self.state.steps)
             ],
@@ -113,6 +114,29 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
         os.makedirs(self.artifacts_dir, exist_ok=True)
         with open(state_path, "w", encoding="utf-8") as f:
             json.dump(state_dict, f, indent=2)
+
+    def _get_output_types(self, step_index: int) -> dict[str, str] | None:
+        """Get the output type mapping for a workflow step.
+
+        Extracts field name to type mappings from the step's OutputSpec schema.
+
+        Args:
+            step_index: Index of the step in the workflow.
+
+        Returns:
+            Dict mapping field names to type strings, or None if no output spec.
+        """
+        step = self.workflow.steps[step_index]
+        if step.output is None:
+            return None
+        properties = step.output.schema.get("properties")
+        if not properties or not isinstance(properties, dict):
+            return None
+        return {
+            name: prop.get("type", "text")
+            for name, prop in properties.items()
+            if isinstance(prop, dict)
+        }
 
     def execute(self) -> bool:
         """Execute all workflow steps sequentially.
@@ -189,6 +213,7 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
                 step_type,
                 step_index=i,
                 hidden=step.hidden,
+                output_types=self._get_output_types(i),
             )
 
             # Notify step start
@@ -248,6 +273,7 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
                     step_source,
                     i,
                     hidden=step.hidden,
+                    output_types=self._get_output_types(i),
                 )
 
                 # Notify step complete
@@ -364,6 +390,7 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
         is_pre_prompt_step: bool = False,
         diff_path: str | None = None,
         hidden: bool = False,
+        output_types: dict[str, str] | None = None,
     ) -> None:
         """Save a marker file for prompt steps to track them in the TUI.
 
@@ -411,6 +438,7 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
             "hidden": hidden,
             "is_pre_prompt_step": is_pre_prompt_step,
             "diff_path": diff_path,
+            "output_types": output_types,
             "error": step_state.error,
         }
         try:

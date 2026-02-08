@@ -43,7 +43,7 @@ def _amend_cl(
     who: str,
     note: str,
     data_file: str,
-) -> tuple[bool, str, str, str]:
+) -> tuple[bool, str, str, str, str]:
     """Amend the current CL with a HISTORY entry.
 
     Args:
@@ -52,7 +52,7 @@ def _amend_cl(
         data_file: Path to JSON file containing prompt and response from agent.
 
     Returns:
-        Tuple of (success, entry_id, cl_name, error_message)
+        Tuple of (success, entry_id, cl_name, error_message, diff_path)
     """
     from chat_history import save_chat_history
     from commit_utils import add_commit_entry, save_diff
@@ -69,17 +69,17 @@ def _amend_cl(
     # Get CL name from branch
     cl_name = _get_cl_name_from_branch()
     if not cl_name:
-        return False, "", "", "Could not determine CL name from branch"
+        return False, "", "", "Could not determine CL name from branch", ""
 
     # Get project name
     project = _get_project_from_workspace()
     if not project:
-        return False, "", "", "Could not determine project from workspace"
+        return False, "", "", "Could not determine project from workspace", ""
 
     # Get project file path
     project_file = get_project_file_path(project)
     if not os.path.exists(project_file):
-        return False, "", "", f"Project file not found: {project_file}"
+        return False, "", "", f"Project file not found: {project_file}", ""
 
     # Generate timestamp for consistent filenames
     timestamp = generate_timestamp()
@@ -87,7 +87,7 @@ def _amend_cl(
     # Save the current diff before amending
     diff_path = save_diff(cl_name, target_dir=None, timestamp=timestamp)
     if not diff_path:
-        return False, "", "", "No changes to amend (diff is empty)"
+        return False, "", "", "No changes to amend (diff is empty)", ""
 
     # Build note with [who] prefix
     if note:
@@ -127,9 +127,9 @@ def _amend_cl(
             check=False,
         )
         if result.returncode != 0:
-            return False, "", "", f"bb_hg_amend failed: {result.stderr}"
+            return False, "", "", f"bb_hg_amend failed: {result.stderr}", ""
     except FileNotFoundError:
-        return False, "", "", "bb_hg_amend command not found"
+        return False, "", "", "bb_hg_amend command not found", ""
 
     # Add HISTORY entry
     success = add_commit_entry(
@@ -142,7 +142,7 @@ def _amend_cl(
     )
 
     if not success:
-        return False, "", "", f"Failed to add HISTORY entry for {cl_name}"
+        return False, "", "", f"Failed to add HISTORY entry for {cl_name}", ""
 
     # Add test hooks if available
     add_test_hooks_if_available(project_file, cl_name)
@@ -154,7 +154,7 @@ def _amend_cl(
         lines = f.readlines()
     entry_id = str(get_next_commit_number(lines, cl_name) - 1)
 
-    return True, entry_id, cl_name, ""
+    return True, entry_id, cl_name, "", diff_path or ""
 
 
 def main() -> None:
@@ -174,10 +174,13 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    success, entry_id, cl_name, error = _amend_cl(args.who, args.note, args.data_file)
+    success, entry_id, cl_name, error, diff_path = _amend_cl(
+        args.who, args.note, args.data_file
+    )
     print(f"success={'true' if success else 'false'}")
     print(f"entry_id={entry_id}")
     print(f"cl_name={cl_name}")
+    print(f"diff_path={diff_path}")
     print(f"error={error}")
 
 

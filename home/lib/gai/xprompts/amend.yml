@@ -44,7 +44,7 @@ steps:
         --who "{{ who }}" \
         --note "{{ note }}" \
         --data-file "{{ save_response.data_file }}"
-    output: { success: bool, entry_id: word, cl_name: word, error: text }
+    output: { success: bool, entry_id: word, cl_name: word, diff_path: path, error: text }
 
   - name: report
     hidden: true

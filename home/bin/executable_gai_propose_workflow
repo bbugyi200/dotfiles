@@ -43,7 +43,7 @@ def _create_proposal(
     who: str,
     note: str,
     data_file: str,
-) -> tuple[bool, str, str, str]:
+) -> tuple[bool, str, str, str, str]:
     """Create a proposal entry on the current CL.
 
     Args:
@@ -52,7 +52,7 @@ def _create_proposal(
         data_file: Path to JSON file containing prompt and response from agent.
 
     Returns:
-        Tuple of (success, proposal_id, cl_name, error_message)
+        Tuple of (success, proposal_id, cl_name, error_message, diff_path)
     """
     from chat_history import save_chat_history
     from commit_utils.entries import add_proposed_commit_entry
@@ -70,17 +70,17 @@ def _create_proposal(
     # Get CL name from branch
     cl_name = _get_cl_name_from_branch()
     if not cl_name:
-        return False, "", "", "Could not determine CL name from branch"
+        return False, "", "", "Could not determine CL name from branch", ""
 
     # Get project name
     project = _get_project_from_workspace()
     if not project:
-        return False, "", "", "Could not determine project from workspace"
+        return False, "", "", "Could not determine project from workspace", ""
 
     # Get project file path
     project_file = get_project_file_path(project)
     if not os.path.exists(project_file):
-        return False, "", "", f"Project file not found: {project_file}"
+        return False, "", "", f"Project file not found: {project_file}", ""
 
     # Generate timestamp for consistent filenames
     timestamp = generate_timestamp()
@@ -88,7 +88,7 @@ def _create_proposal(
     # Save the current diff
     diff_path = save_diff(cl_name, target_dir=None, timestamp=timestamp)
     if not diff_path:
-        return False, "", "", "No changes to save (diff is empty)"
+        return False, "", "", "No changes to save (diff is empty)", ""
 
     # Build note with [who] prefix
     if note:
@@ -130,12 +130,12 @@ def _create_proposal(
     )
 
     if not success:
-        return False, "", "", f"Failed to add proposal entry to ChangeSpec for {cl_name}"
+        return False, "", "", f"Failed to add proposal entry to ChangeSpec for {cl_name}", ""
 
     # Clean the workspace (revert changes)
     clean_workspace(os.getcwd())
 
-    return True, proposal_id or "", cl_name, ""
+    return True, proposal_id or "", cl_name, "", diff_path or ""
 
 
 def main() -> None:
@@ -159,12 +159,13 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.create:
-        success, proposal_id, cl_name, error = _create_proposal(
+        success, proposal_id, cl_name, error, diff_path = _create_proposal(
             args.who, args.note, args.data_file
         )
         print(f"success={'true' if success else 'false'}")
         print(f"proposal_id={proposal_id}")
         print(f"cl_name={cl_name}")
+        print(f"diff_path={diff_path}")
         print(f"error={error}")
     else:
         parser.print_help()

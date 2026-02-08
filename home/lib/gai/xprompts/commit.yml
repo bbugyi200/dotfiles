@@ -42,7 +42,7 @@ steps:
         --name "{{ name }}" \
         --bug-id "{{ bug_id }}" \
         --data-file "{{ save_response.data_file }}"
-    output: { success: bool, cl_url: line, full_cl_name: word, error: text }
+    output: { success: bool, cl_url: line, full_cl_name: word, diff_path: path, error: text }
 
   - name: report
     hidden: true

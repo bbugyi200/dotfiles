@@ -54,6 +54,25 @@ def _get_cache_key(agent: Agent) -> str:
     return f"{agent.cl_name}:{agent.agent_type.value}"
 
 
+_EXTENSION_TO_LEXER: dict[str, str] = {
+    ".diff": "diff",
+    ".patch": "diff",
+    ".py": "python",
+    ".json": "json",
+    ".yml": "yaml",
+    ".yaml": "yaml",
+    ".sh": "bash",
+    ".bash": "bash",
+    ".js": "javascript",
+    ".ts": "typescript",
+    ".md": "markdown",
+    ".toml": "toml",
+    ".xml": "xml",
+    ".html": "html",
+    ".css": "css",
+}
+
+
 class AgentDiffPanel(Static):
     """Bottom panel showing the diff of agent's changes."""
 
@@ -379,6 +398,45 @@ class AgentDiffPanel(Static):
         syntax = Syntax(
             diff_with_header,
             "diff",
+            theme="monokai",
+            line_numbers=True,
+            word_wrap=True,
+        )
+        self.update(syntax)
+        self._has_displayed_content = True
+        self.post_message(DiffVisibilityChanged(has_diff=True))
+
+    def display_static_file(self, file_path: str) -> None:
+        """Display a static file with syntax highlighting (no auto-refresh).
+
+        Auto-detects the lexer from the file extension.
+
+        Args:
+            file_path: Path to the file (may use ~ for home).
+        """
+        expanded_path = os.path.expanduser(file_path)
+        try:
+            with open(expanded_path, encoding="utf-8") as f:
+                content = f.read()
+        except Exception:
+            text = Text("Could not read file.\n", style="dim italic")
+            self.update(text)
+            self.post_message(DiffVisibilityChanged(has_diff=False))
+            return
+
+        if not content.strip():
+            text = Text("File is empty.\n", style="dim italic")
+            self.update(text)
+            self.post_message(DiffVisibilityChanged(has_diff=False))
+            return
+
+        # Detect lexer from file extension
+        _, ext = os.path.splitext(expanded_path)
+        lexer = _EXTENSION_TO_LEXER.get(ext.lower(), "text")
+
+        syntax = Syntax(
+            content,
+            lexer,
             theme="monokai",
             line_numbers=True,
             word_wrap=True,

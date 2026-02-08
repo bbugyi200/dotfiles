@@ -432,6 +432,18 @@ def load_workflow_states() -> list[WorkflowEntry]:
                     # Read appears_as_agent flag
                     appears_as_agent = data.get("appears_as_agent", False)
 
+                    # Extract diff_path from the last path-typed output
+                    diff_path = None
+                    for step_data in data.get("steps", []):
+                        output_types = step_data.get("output_types") or {}
+                        step_output = step_data.get("output")
+                        if output_types and isinstance(step_output, dict):
+                            for field_name, field_type in output_types.items():
+                                if field_type == "path":
+                                    path_value = step_output.get(field_name)
+                                    if path_value:
+                                        diff_path = str(path_value)
+
                     entries.append(
                         WorkflowEntry(
                             workflow_name=data.get("workflow_name", "unknown"),
@@ -445,6 +457,7 @@ def load_workflow_states() -> list[WorkflowEntry]:
                             artifacts_dir=str(timestamp_dir),
                             pid=pid,
                             appears_as_agent=appears_as_agent,
+                            diff_path=diff_path,
                         )
                     )
                 except Exception:
@@ -548,6 +561,7 @@ def load_workflow_agents() -> list[Agent]:
                 pid=entry.pid,
                 appears_as_agent=entry.appears_as_agent,
                 artifacts_dir=entry.artifacts_dir,
+                diff_path=entry.diff_path,
             )
         )
 
@@ -642,6 +656,17 @@ def load_workflow_agent_steps() -> list[Agent]:
                         artifacts_dir_from_marker = data.get("artifacts_dir")
                         diff_path = data.get("diff_path")
                         error_message = data.get("error")
+
+                        # Also extract diff_path from output_types if not already set
+                        if not diff_path:
+                            output_types = data.get("output_types") or {}
+                            if output_types and isinstance(step_output, dict):
+                                for field_name, field_type in output_types.items():
+                                    if field_type == "path":
+                                        path_value = step_output.get(field_name)
+                                        if path_value:
+                                            diff_path = str(path_value)
+                                            break
 
                         agents.append(
                             Agent(

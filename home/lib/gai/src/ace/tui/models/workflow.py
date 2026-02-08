@@ -33,6 +33,7 @@ class WorkflowEntry:
     artifacts_dir: str
     pid: int | None = None
     appears_as_agent: bool = False
+    diff_path: str | None = None
 
     @property
     def display_type(self) -> str:

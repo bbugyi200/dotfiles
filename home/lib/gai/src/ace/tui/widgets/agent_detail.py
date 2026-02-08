@@ -69,9 +69,12 @@ class AgentDetail(Static):
                 agent, stale_threshold_seconds=stale_threshold_seconds
             )
         else:
-            # DONE, FAILED, REVIVED, etc. — no meaningful diff to show
-            diff_scroll.add_class("hidden")
-            prompt_scroll.add_class("expanded")
+            # DONE, FAILED, REVIVED, etc.
+            if agent.diff_path:
+                diff_panel.display_static_file(agent.diff_path)
+            else:
+                diff_scroll.add_class("hidden")
+                prompt_scroll.add_class("expanded")
 
     def show_empty(self) -> None:
         """Show empty state for both panels."""
