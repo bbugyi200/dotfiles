@@ -16,6 +16,7 @@ from xprompt.workflow_models import (
 )
 
 if TYPE_CHECKING:
+    from xprompt.workflow_executor_steps_embedded import EmbeddedWorkflowInfo
     from xprompt.workflow_output import WorkflowOutputHandler
 
 
@@ -37,6 +38,24 @@ def capture_git_diff() -> str | None:
     except Exception:
         pass
     return None
+
+
+def _collect_embedded_post_step_outputs(
+    embedded_workflows: list["EmbeddedWorkflowInfo"],
+) -> tuple[str | None, dict[str, str]]:
+    """Collect diff_path and meta_* fields from embedded post-step outputs."""
+    diff_path: str | None = None
+    meta_fields: dict[str, str] = {}
+    for info in embedded_workflows:
+        for value in info.context.values():
+            if not isinstance(value, dict):
+                continue
+            if "diff_path" in value and value["diff_path"]:
+                diff_path = str(value["diff_path"])
+            for k, v in value.items():
+                if k.startswith("meta_") and v:
+                    meta_fields[k] = str(v)
+    return diff_path, meta_fields
 
 
 class PromptStepMixin:
@@ -223,5 +242,27 @@ class PromptStepMixin:
 
         # Propagate output from last embedded workflow's last post-step
         self._propagate_last_embedded_output(embedded_workflows, step, step_state)
+
+        # Collect diff_path and meta_* from embedded post-step outputs and
+        # re-save the parent marker so the TUI can display them.
+        if embedded_workflows:
+            embedded_diff_path, embedded_meta = _collect_embedded_post_step_outputs(
+                embedded_workflows
+            )
+            resave_needed = False
+            if embedded_meta:
+                if step_state.output is None:
+                    step_state.output = {}
+                step_state.output.update(embedded_meta)
+                self.context[step.name] = step_state.output
+                self.state.context = dict(self.context)
+                resave_needed = True
+            if embedded_diff_path and not diff_path:
+                diff_path = embedded_diff_path
+                resave_needed = True
+            if resave_needed:
+                self._save_prompt_step_marker(
+                    step.name, step_state, diff_path=diff_path, hidden=step.hidden
+                )
 
         return True

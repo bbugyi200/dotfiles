@@ -418,9 +418,19 @@ class EmbeddedWorkflowMixin:
 
         # Save embedded workflow metadata (reversed to restore original order)
         if expanded_metadata and os.path.isdir(self.artifacts_dir):
+            ordered_metadata = list(reversed(expanded_metadata))
+            # Write shared file (backward compat for gai run agents)
             metadata_path = os.path.join(self.artifacts_dir, "embedded_workflows.json")
             with open(metadata_path, "w", encoding="utf-8") as f:
-                json.dump(list(reversed(expanded_metadata)), f, indent=2)
+                json.dump(ordered_metadata, f, indent=2)
+            # Write step-specific file for multi-step workflows
+            current_step_name = self.workflow.steps[self.state.current_step_index].name
+            step_metadata_path = os.path.join(
+                self.artifacts_dir,
+                f"embedded_workflows_{current_step_name}.json",
+            )
+            with open(step_metadata_path, "w", encoding="utf-8") as f:
+                json.dump(ordered_metadata, f, indent=2)
 
         return prompt, embedded_workflows, running_offset - pre_step_offset
 
