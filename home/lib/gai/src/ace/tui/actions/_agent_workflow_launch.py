@@ -337,13 +337,16 @@ class AgentLaunchMixin:
 
         # Create proper artifacts directory for workflow state persistence
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        base_workflow = (
+            workflow_name.split("/")[-1] if "/" in workflow_name else workflow_name
+        )
         artifacts_dir = (
             Path.home()
             / ".gai"
             / "projects"
             / "home"
             / "artifacts"
-            / f"workflow-{workflow_name}"
+            / f"workflow-{base_workflow}"
             / timestamp
         )
         artifacts_dir.mkdir(parents=True, exist_ok=True)
@@ -411,8 +414,11 @@ class AgentLaunchMixin:
         # Build artifacts directory using project context
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
         project_name = os.path.basename(os.path.dirname(ctx.project_file))
+        base_workflow = (
+            workflow_name.split("/")[-1] if "/" in workflow_name else workflow_name
+        )
         artifacts_dir = os.path.expanduser(
-            f"~/.gai/projects/{project_name}/artifacts/workflow-{workflow_name}/{timestamp}"
+            f"~/.gai/projects/{project_name}/artifacts/workflow-{base_workflow}/{timestamp}"
         )
         os.makedirs(artifacts_dir, exist_ok=True)
 
