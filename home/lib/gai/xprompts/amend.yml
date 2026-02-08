@@ -36,8 +36,7 @@ steps:
           print(f"data_file={f.name}")
     output: { data_file: path }
 
-  - name: amend_cl
-    hidden: true
+  - name: amend
     if: "{{ check_changes.has_changes }}"
     bash: |
       gai_amend_workflow \

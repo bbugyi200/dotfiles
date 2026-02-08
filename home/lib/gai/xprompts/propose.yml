@@ -36,8 +36,7 @@ steps:
           print(f"data_file={f.name}")
     output: { data_file: path }
 
-  - name: create_proposal
-    hidden: true
+  - name: propose
     if: "{{ check_changes.has_changes }}"
     bash: |
       gai_propose_workflow --create \
