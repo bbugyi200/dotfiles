@@ -125,7 +125,14 @@ AGENTS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
             ("r", "Revive chat as agent"),
             ("x", "Kill / dismiss agent"),
             ("e", "Edit chat in editor"),
-            ("l", "Toggle diff/prompt layout"),
+            ("p", "Toggle diff/prompt layout"),
+        ],
+    ),
+    (
+        "Workflow Folding",
+        [
+            ("l / h", "Expand / collapse workflow steps"),
+            ("L / H", "Expand / collapse all workflows"),
         ],
     ),
     (
@@ -208,6 +215,6 @@ TAB_DISPLAY_NAMES = {
 # Column split indices for each tab (left column gets indices < split, right gets >= split)
 COLUMN_SPLITS = {
     "changespecs": 2,  # Left: Navigation, CL Actions; Right: rest
-    "agents": 2,  # Left: Navigation, Agent Actions; Right: rest
+    "agents": 3,  # Left: Navigation, Agent Actions, Workflow Folding; Right: rest
     "axe": 3,  # Left: Navigation, BgCmds, Axe Control; Right: rest
 }

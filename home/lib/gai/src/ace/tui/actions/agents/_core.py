@@ -10,6 +10,7 @@ from ._revival import AgentRevivalMixin
 if TYPE_CHECKING:
     from ...models import Agent
     from ...models.agent import AgentType
+    from ...models.fold_state import FoldStateManager
 
 # Import ChangeSpec unconditionally since it's used as a type annotation
 # in attribute declarations (not just in function signatures)
@@ -37,9 +38,9 @@ def _is_always_visible(agent: Agent) -> bool:
     """
     from ...models.agent import AgentType
 
-    # Hidden workflow steps are hideable
-    if agent.is_hidden_step:
-        return False
+    # Workflow children: visibility managed by fold state, not hide toggle
+    if agent.is_workflow_child:
+        return True
 
     # Axe-spawned agents are hideable (hidden by default, shown with '.' toggle)
     if _is_axe_spawned_agent(agent):
@@ -108,6 +109,10 @@ class AgentsMixinCore(
     _revived_agents: list[Agent]
     _has_always_visible: bool
     _hidden_count: int
+
+    # Fold state for workflow steps
+    _fold_manager: FoldStateManager
+    _fold_counts: dict[str, tuple[int, int]]
 
     # Agent completion tracking for notifications
     _tracked_running_agents: set[tuple[AgentType, str, str | None]]
@@ -192,6 +197,13 @@ class AgentsMixinCore(
         else:
             self._agents = all_agents
 
+        # Apply fold-state filtering for workflow children
+        from ...models import filter_agents_by_fold_state
+
+        self._agents, self._fold_counts = filter_agents_by_fold_state(
+            self._agents, self._fold_manager
+        )
+
         # Calculate the new index
         # Use current_idx when on agents tab, otherwise use saved _agents_last_idx
         saved_idx = self.current_idx if on_agents_tab else self._agents_last_idx
@@ -229,7 +241,9 @@ class AgentsMixinCore(
         agent_detail = self.query_one("#agent-detail-panel", AgentDetail)  # type: ignore[attr-defined]
         footer_widget = self.query_one("#keybinding-footer", KeybindingFooter)  # type: ignore[attr-defined]
 
-        agent_list.update_list(self._agents, self.current_idx)
+        agent_list.update_list(
+            self._agents, self.current_idx, fold_counts=self._fold_counts
+        )
 
         current_agent = None
         if self._agents and 0 <= self.current_idx < len(self._agents):
@@ -243,12 +257,18 @@ class AgentsMixinCore(
         # Query file visibility for footer (must be done after update_display)
         file_visible = agent_detail.is_file_visible()
 
+        # Determine if any foldable workflows exist (for fold keybindings)
+        has_foldable = any(
+            key for key, (non_hidden, _) in self._fold_counts.items() if non_hidden > 0
+        )
+
         footer_widget.update_agent_bindings(
             current_agent,
             file_visible=file_visible,
             has_always_visible=self._has_always_visible,
             hidden_count=self._hidden_count,
             hide_non_run=self.hide_non_run_agents,
+            has_foldable=has_foldable,
         )
 
         self._update_agents_info_panel()
@@ -257,6 +277,122 @@ class AgentsMixinCore(
         """Toggle visibility of non-run agents and refresh the display."""
         self.hide_non_run_agents = not self.hide_non_run_agents
         self._load_agents()
+
+    def _get_workflow_key_for_agent(self, agent: Agent) -> str | None:
+        """Get the fold state key for an agent (workflow parent or child).
+
+        Args:
+            agent: The agent to get the key for.
+
+        Returns:
+            The workflow raw_suffix key, or None if not a foldable agent.
+        """
+        from ...models.agent import AgentType
+
+        if agent.is_workflow_child and agent.parent_timestamp:
+            return agent.parent_timestamp
+        if (
+            agent.agent_type == AgentType.WORKFLOW
+            and not agent.is_workflow_child
+            and not agent.appears_as_agent
+            and agent.raw_suffix
+        ):
+            return agent.raw_suffix
+        return None
+
+    def _get_all_workflow_keys(self) -> list[str]:
+        """Get all foldable workflow keys from current fold counts.
+
+        Returns:
+            List of workflow raw_suffix strings.
+        """
+        return list(self._fold_counts.keys())
+
+    def _expand_fold(self) -> None:
+        """Expand the fold for the selected workflow (one level)."""
+        if not self._agents or not (0 <= self.current_idx < len(self._agents)):
+            return
+
+        agent = self._agents[self.current_idx]
+        key = self._get_workflow_key_for_agent(agent)
+        if key is None:
+            return
+
+        if self._fold_manager.expand(key):
+            self._load_agents()
+
+    def _collapse_fold(self) -> None:
+        """Collapse the fold for the selected workflow (one level).
+
+        When collapsing and selected agent is a child, navigate selection to parent.
+        """
+        if not self._agents or not (0 <= self.current_idx < len(self._agents)):
+            return
+
+        agent = self._agents[self.current_idx]
+        key = self._get_workflow_key_for_agent(agent)
+        if key is None:
+            return
+
+        # If selected agent is a child and we're collapsing to COLLAPSED,
+        # navigate selection to parent before reloading
+        if agent.is_workflow_child and agent.parent_timestamp:
+            from ...models.fold_state import FoldLevel
+
+            if self._fold_manager.get(key) == FoldLevel.EXPANDED:
+                # Will collapse to COLLAPSED - find parent and select it
+                for idx, a in enumerate(self._agents):
+                    if (
+                        a.raw_suffix == agent.parent_timestamp
+                        and not a.is_workflow_child
+                    ):
+                        self.current_idx = idx
+                        break
+
+        if self._fold_manager.collapse(key):
+            self._load_agents()
+
+    def _expand_all_folds(self) -> None:
+        """Expand all workflow folds one level."""
+        keys = self._get_all_workflow_keys()
+        if not keys:
+            return
+
+        if self._fold_manager.expand_all(keys):
+            self._load_agents()
+
+    def _collapse_all_folds(self) -> None:
+        """Collapse all workflow folds one level."""
+        keys = self._get_all_workflow_keys()
+        if not keys:
+            return
+
+        if self._fold_manager.collapse_all(keys):
+            self._load_agents()
+
+    def action_expand_or_layout(self) -> None:
+        """Expand fold on agents tab, or no-op on other tabs (layout is now 'p')."""
+        if self.current_tab == "agents":
+            self._expand_fold()
+
+    def action_hooks_or_collapse(self) -> None:
+        """Collapse fold on agents tab, or edit hooks on CLs tab."""
+        if self.current_tab == "agents":
+            self._collapse_fold()
+        elif self.current_tab == "changespecs":
+            self.action_edit_hooks()  # type: ignore[attr-defined]
+
+    def action_hooks_or_collapse_all(self) -> None:
+        """Collapse all folds on agents tab, or hooks from failed on CLs tab."""
+        if self.current_tab == "agents":
+            self._collapse_all_folds()
+        elif self.current_tab == "changespecs":
+            self.action_hooks_from_failed()  # type: ignore[attr-defined]
+
+    def action_expand_all_folds(self) -> None:
+        """Expand all workflow folds one level (agents tab only)."""
+        if self.current_tab == "agents":
+            self._expand_all_folds()
 
     def _update_agents_info_panel(self) -> None:
         """Update the agents info panel with current position and countdown."""

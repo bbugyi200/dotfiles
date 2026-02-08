@@ -95,8 +95,8 @@ class AceApp(
         Binding("d", "show_diff", "Diff", show=False),
         Binding("w", "reword", "Reword", show=False),
         Binding("v", "view_files", "View", show=False),
-        Binding("h", "edit_hooks", "Hooks", show=False),
-        Binding("H", "hooks_from_failed", "Hooks (Failed)", show=False),
+        Binding("h", "hooks_or_collapse", "Hooks / Collapse", show=False),
+        Binding("H", "hooks_or_collapse_all", "Hooks / Collapse All", show=False),
         Binding("z", "start_fold_mode", "Fold", show=False),
         Binding("a", "accept_proposal", "Accept", show=False),
         Binding("b", "rebase", "Rebase", show=False),
@@ -143,7 +143,9 @@ class AceApp(
         Binding("u", "clear_marks", "Unmark All", show=False),
         Binding("S", "bulk_change_status", "Bulk Status", show=False),
         Binding("x", "kill_agent", "Kill", show=False),
-        Binding("l", "toggle_layout", "Layout", show=False),
+        Binding("l", "expand_or_layout", "Expand / Layout", show=False),
+        Binding("L", "expand_all_folds", "Expand All", show=False),
+        Binding("p", "toggle_layout", "Layout", show=False),
         # Copy to clipboard (changespecs tab - % followed by key)
         Binding("percent_sign", "copy_tab_content", "Copy", show=False),
         # Scroll to top/bottom (Axe tab)
@@ -249,6 +251,12 @@ class AceApp(
         self._revived_agents: list[Agent] = []
         self._has_always_visible: bool = False
         self._hidden_count: int = 0
+
+        # Fold state for nested workflow steps
+        from .models.fold_state import FoldStateManager
+
+        self._fold_manager = FoldStateManager()
+        self._fold_counts: dict[str, tuple[int, int]] = {}
 
         # Agent completion tracking for notifications
         from .dismissed_agents import load_dismissed_agents

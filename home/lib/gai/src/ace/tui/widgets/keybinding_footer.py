@@ -169,6 +169,7 @@ class KeybindingFooter(Horizontal):
         has_always_visible: bool = False,
         hidden_count: int = 0,
         hide_non_run: bool = True,
+        has_foldable: bool = False,
     ) -> None:
         """Update bindings for Agents tab context.
 
@@ -178,6 +179,7 @@ class KeybindingFooter(Horizontal):
             has_always_visible: Whether any always-visible agents exist
             hidden_count: Number of hidden hideable agents
             hide_non_run: Whether hideable agents are currently hidden
+            has_foldable: Whether any foldable workflow parents exist
         """
         bindings = self._compute_agent_bindings(
             agent,
@@ -185,6 +187,7 @@ class KeybindingFooter(Horizontal):
             has_always_visible=has_always_visible,
             hidden_count=hidden_count,
             hide_non_run=hide_non_run,
+            has_foldable=has_foldable,
         )
         text = self._format_bindings(bindings)
         self._update_display(text)
@@ -228,6 +231,7 @@ class KeybindingFooter(Horizontal):
         has_always_visible: bool = False,
         hidden_count: int = 0,
         hide_non_run: bool = True,
+        has_foldable: bool = False,
     ) -> list[tuple[str, str]]:
         """Compute available bindings for Agents tab.
 
@@ -237,6 +241,7 @@ class KeybindingFooter(Horizontal):
             has_always_visible: Whether any always-visible agents exist
             hidden_count: Number of hidden hideable agents
             hide_non_run: Whether hideable agents are currently hidden
+            has_foldable: Whether any foldable workflow parents exist
 
         Returns:
             List of (key, label) tuples
@@ -266,9 +271,14 @@ class KeybindingFooter(Horizontal):
                 else:
                     bindings.append(("x", "kill"))
 
+        # Workflow fold controls (only when foldable workflows exist)
+        if has_foldable:
+            bindings.append(("h/l", "fold"))
+            bindings.append(("H/L", "fold all"))
+
         # Layout toggle (only when file panel is visible)
         if file_visible:
-            bindings.append(("l", "layout"))
+            bindings.append(("p", "layout"))
 
         # Revive chat as agent
         bindings.append(("r", "revive chat"))

@@ -32,11 +32,31 @@ _DISMISSIBLE_STATUSES = (
 _CHILD_INDENT = "  └─ "
 
 
-def _calculate_entry_display_width(agent: Agent) -> int:
+def _is_foldable_parent(agent: Agent) -> bool:
+    """Check if an agent is a foldable workflow parent.
+
+    Args:
+        agent: The agent to check.
+
+    Returns:
+        True if this agent is a workflow parent that can be folded.
+    """
+    return (
+        agent.agent_type == AgentType.WORKFLOW
+        and not agent.is_workflow_child
+        and not agent.appears_as_agent
+    )
+
+
+def _calculate_entry_display_width(
+    agent: Agent,
+    fold_annotation: str = "",
+) -> int:
     """Calculate display width of an Agent entry in terminal cells.
 
     Args:
         agent: The Agent to measure
+        fold_annotation: Fold annotation text to append
 
     Returns:
         Width in terminal cells
@@ -65,6 +85,8 @@ def _calculate_entry_display_width(agent: Agent) -> int:
     parts.extend([f"[{agent.display_type}] ", agent.cl_name, " ", f"({agent.status})"])
     if agent.workspace_num is not None:
         parts.append(f" - #{agent.workspace_num}")
+    if fold_annotation:
+        parts.append(fold_annotation)
     text = Text("".join(parts))
     return text.cell_len
 
@@ -92,22 +114,40 @@ class AgentList(OptionList):
         self._agents: list[Agent] = []
         self._programmatic_update: bool = False
 
-    def update_list(self, agents: list[Agent], current_idx: int) -> None:
+    def update_list(
+        self,
+        agents: list[Agent],
+        current_idx: int,
+        fold_counts: dict[str, tuple[int, int]] | None = None,
+    ) -> None:
         """Update the list with new agents.
 
         Args:
             agents: List of Agents to display
             current_idx: Index of currently selected agent
+            fold_counts: Optional dict mapping workflow raw_suffix to
+                (non_hidden_count, hidden_count) for fold annotations
         """
         self._programmatic_update = True
         self._agents = agents
         self.clear_options()
 
+        # Determine which parents have visible children in the filtered list
+        parents_with_visible_children: set[str] = set()
+        for agent in agents:
+            if agent.is_workflow_child and agent.parent_timestamp:
+                parents_with_visible_children.add(agent.parent_timestamp)
+
         max_width = 0
         for i, agent in enumerate(agents):
-            option = self._format_agent_option(agent, i, is_selected=(i == current_idx))
+            annotation = _compute_fold_annotation(
+                agent, fold_counts, parents_with_visible_children
+            )
+            option = self._format_agent_option(
+                agent, i, is_selected=(i == current_idx), fold_annotation=annotation
+            )
             self.add_option(option)
-            width = _calculate_entry_display_width(agent)
+            width = _calculate_entry_display_width(agent, fold_annotation=annotation)
             max_width = max(max_width, width)
 
         # Add padding for border, scrollbar, visual comfort (~8 cells)
@@ -127,13 +167,19 @@ class AgentList(OptionList):
         self._programmatic_update = False
 
     def _format_agent_option(
-        self, agent: Agent, index: int, is_selected: bool
+        self,
+        agent: Agent,
+        index: int,
+        is_selected: bool,
+        fold_annotation: str = "",
     ) -> Option:
         """Format an agent as an option for display.
 
         Args:
             agent: The Agent to format
+            index: Index of the agent in the list
             is_selected: Whether this is the currently selected item
+            fold_annotation: Fold annotation text to append
 
         Returns:
             An Option for the OptionList
@@ -196,6 +242,15 @@ class AgentList(OptionList):
             text.append(" - #", style="dim")
             text.append(str(agent.workspace_num), style="#5FD7FF")
 
+        # Fold annotation for workflow parents
+        if fold_annotation:
+            if fold_annotation.startswith(" (+"):
+                # EXPANDED: "(+N hidden)" in dim style
+                text.append(fold_annotation, style="dim")
+            else:
+                # COLLAPSED: "+N" in dim cyan
+                text.append(fold_annotation, style="dim #00D7D7")
+
         return Option(text, id=f"{index}:{agent.agent_type.value}:{agent.cl_name}")
 
     def on_option_list_option_highlighted(
@@ -210,3 +265,50 @@ class AgentList(OptionList):
         """Handle option selection (mouse click or Enter)."""
         if event.option_index is not None:
             self.post_message(self.SelectionChanged(event.option_index))
+
+
+def _compute_fold_annotation(
+    agent: Agent,
+    fold_counts: dict[str, tuple[int, int]] | None,
+    parents_with_visible_children: set[str],
+) -> str:
+    """Compute fold annotation for a workflow parent.
+
+    Args:
+        agent: The agent to annotate.
+        fold_counts: Fold counts mapping raw_suffix -> (non_hidden, hidden).
+        parents_with_visible_children: Set of parent raw_suffixes that have
+            visible children in the current filtered list.
+
+    Returns:
+        Annotation string, or empty string if not applicable.
+    """
+    if not fold_counts or not _is_foldable_parent(agent) or not agent.raw_suffix:
+        return ""
+
+    counts = fold_counts.get(agent.raw_suffix)
+    if not counts:
+        return ""
+
+    non_hidden, hidden = counts
+    total = non_hidden + hidden
+    if total == 0:
+        return ""
+
+    has_visible_children = agent.raw_suffix in parents_with_visible_children
+
+    if not has_visible_children:
+        # COLLAPSED: show count of non-hidden children
+        if non_hidden > 0:
+            return f" +{non_hidden}"
+        if hidden > 0:
+            return f" +{hidden}"
+        return ""
+
+    # Children are visible (EXPANDED or FULLY_EXPANDED)
+    if hidden > 0:
+        # EXPANDED: some children still hidden
+        return f" (+{hidden} hidden)"
+
+    # FULLY_EXPANDED: all children visible, no annotation needed
+    return ""

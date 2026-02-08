@@ -62,4 +62,4 @@ def test_keybinding_footer_agent_bindings_file_visible() -> None:
     bindings = footer._compute_agent_bindings(agent, file_visible=True)
     binding_keys = [b[0] for b in bindings]
 
-    assert "l" in binding_keys  # Layout toggle is available
+    assert "p" in binding_keys  # Layout toggle is available
