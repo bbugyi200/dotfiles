@@ -52,7 +52,7 @@ def test_load_all_agents_deduplicates_by_timestamp() -> None:
             return_value=["/tmp/test.gp"],
         ),
         patch(
-            "ace.tui.models._loaders.get_claimed_workspaces",
+            "ace.tui.models._loaders._artifact_loaders.get_claimed_workspaces",
             return_value=[mock_claim],
         ),
         patch(
@@ -118,7 +118,7 @@ def test_load_all_agents_dedup_preserves_workspace_num() -> None:
             return_value=["/tmp/test.gp"],
         ),
         patch(
-            "ace.tui.models._loaders.get_claimed_workspaces",
+            "ace.tui.models._loaders._artifact_loaders.get_claimed_workspaces",
             return_value=[mock_claim],
         ),
         patch(
@@ -182,7 +182,7 @@ def test_load_all_agents_dedup_mentor_by_timestamp() -> None:
             return_value=["/tmp/test.gp"],
         ),
         patch(
-            "ace.tui.models._loaders.get_claimed_workspaces",
+            "ace.tui.models._loaders._artifact_loaders.get_claimed_workspaces",
             return_value=[mock_claim],
         ),
         patch(

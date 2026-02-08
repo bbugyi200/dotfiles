@@ -29,7 +29,7 @@ def test_load_all_agents_with_running_claims() -> None:
             return_value=["/tmp/test.gp"],
         ),
         patch(
-            "ace.tui.models._loaders.get_claimed_workspaces",
+            "ace.tui.models._loaders._artifact_loaders.get_claimed_workspaces",
             return_value=[mock_claim],
         ),
         patch("ace.tui.models.agent_loader.find_all_changespecs", return_value=[]),
@@ -61,7 +61,7 @@ def test_load_all_agents_sorting() -> None:
             return_value=["/tmp/test.gp"],
         ),
         patch(
-            "ace.tui.models._loaders.get_claimed_workspaces",
+            "ace.tui.models._loaders._artifact_loaders.get_claimed_workspaces",
             return_value=[mock_claim1, mock_claim2],
         ),
         patch("ace.tui.models.agent_loader.find_all_changespecs", return_value=[]),
@@ -274,7 +274,7 @@ def test_load_all_agents_filters_hook_processes() -> None:
             return_value=["/tmp/test.gp"],
         ),
         patch(
-            "ace.tui.models._loaders.get_claimed_workspaces",
+            "ace.tui.models._loaders._artifact_loaders.get_claimed_workspaces",
             return_value=[mock_claim],
         ),
         patch("ace.tui.models.agent_loader.find_all_changespecs", return_value=[]),
@@ -300,7 +300,7 @@ def test_load_all_agents_includes_axe_fix_hook() -> None:
             return_value=["/tmp/test.gp"],
         ),
         patch(
-            "ace.tui.models._loaders.get_claimed_workspaces",
+            "ace.tui.models._loaders._artifact_loaders.get_claimed_workspaces",
             return_value=[mock_claim],
         ),
         patch("ace.tui.models.agent_loader.find_all_changespecs", return_value=[]),
@@ -345,11 +345,11 @@ def test_workflow_dead_pid_marked_as_failed() -> None:
 
         with (
             patch(
-                "ace.tui.models._loaders.Path.home",
+                "ace.tui.models._loaders._workflow_loaders.Path.home",
                 return_value=Path(tmpdir).parent,
             ),
             patch(
-                "ace.tui.models._loaders.is_process_running",
+                "ace.tui.models._loaders._workflow_loaders.is_process_running",
                 return_value=False,
             ),
         ):
@@ -358,7 +358,7 @@ def test_workflow_dead_pid_marked_as_failed() -> None:
 
             # We need to patch the projects_dir path
             with patch(
-                "ace.tui.models._loaders.Path.home",
+                "ace.tui.models._loaders._workflow_loaders.Path.home",
                 return_value=Path(tmpdir),
             ):
                 # Create the expected directory structure: ~/.gai/projects/<name>
@@ -404,11 +404,11 @@ def test_workflow_alive_pid_stays_running() -> None:
 
         with (
             patch(
-                "ace.tui.models._loaders.Path.home",
+                "ace.tui.models._loaders._workflow_loaders.Path.home",
                 return_value=Path(tmpdir),
             ),
             patch(
-                "ace.tui.models._loaders.is_process_running",
+                "ace.tui.models._loaders._workflow_loaders.is_process_running",
                 return_value=True,
             ),
         ):
@@ -445,11 +445,11 @@ def test_workflow_waiting_hitl_dead_pid_marked_as_failed() -> None:
 
         with (
             patch(
-                "ace.tui.models._loaders.Path.home",
+                "ace.tui.models._loaders._workflow_loaders.Path.home",
                 return_value=Path(tmpdir),
             ),
             patch(
-                "ace.tui.models._loaders.is_process_running",
+                "ace.tui.models._loaders._workflow_loaders.is_process_running",
                 return_value=False,
             ),
         ):

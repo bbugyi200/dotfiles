@@ -34,7 +34,9 @@ def test_load_done_agents_reads_step_output(tmp_path: Path) -> None:
     # Symlink artifacts into the expected location
     (gai_dir / "artifacts").symlink_to(project_dir / "artifacts")
 
-    with patch("ace.tui.models._loaders.Path.home", return_value=tmp_path):
+    with patch(
+        "ace.tui.models._loaders._artifact_loaders.Path.home", return_value=tmp_path
+    ):
         agents = load_done_agents({}, {})
 
     assert len(agents) == 1
@@ -62,7 +64,9 @@ def test_load_done_agents_without_step_output(tmp_path: Path) -> None:
     with open(artifact_dir / "done.json", "w", encoding="utf-8") as f:
         json.dump(done_data, f)
 
-    with patch("ace.tui.models._loaders.Path.home", return_value=tmp_path):
+    with patch(
+        "ace.tui.models._loaders._artifact_loaders.Path.home", return_value=tmp_path
+    ):
         agents = load_done_agents({}, {})
 
     assert len(agents) == 1
