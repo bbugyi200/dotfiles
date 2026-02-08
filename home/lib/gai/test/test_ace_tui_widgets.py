@@ -458,6 +458,12 @@ def test_format_embedded_workflows_multiple_args() -> None:
     assert _format_embedded_workflows(workflows) == "foo(bar=2, baz=hello)"
 
 
+def test_format_embedded_workflows_filters_empty_args() -> None:
+    """Empty string args are filtered out from display."""
+    workflows = [{"name": "propose", "args": {"note": ""}}]
+    assert _format_embedded_workflows(workflows) == "propose"
+
+
 def test_embedded_workflows_displayed_in_metadata(tmp_path: Path) -> None:
     """Verify 'Embedded Workflows:' appears in rendered output."""
     metadata = [

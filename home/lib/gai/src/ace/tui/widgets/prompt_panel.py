@@ -646,6 +646,8 @@ def _format_embedded_workflows(workflows: list[dict[str, Any]]) -> str:
     for wf in workflows:
         name = wf.get("name", "unknown")
         args = wf.get("args", {})
+        # Filter out empty string values (e.g., from default args not provided)
+        args = {k: v for k, v in args.items() if v != ""}
         if args:
             args_str = ", ".join(f"{k}={v}" for k, v in args.items())
             parts.append(f"{name}({args_str})")
