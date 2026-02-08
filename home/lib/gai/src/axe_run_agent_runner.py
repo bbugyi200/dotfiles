@@ -63,6 +63,7 @@ def _write_step_marker(
     is_pre_prompt_step: bool,
     output: dict[str, Any] | None = None,
     error: str | None = None,
+    embedded_workflow_name: str | None = None,
 ) -> None:
     """Write a single prompt_step_*.json marker file for TUI visibility.
 
@@ -77,7 +78,11 @@ def _write_step_marker(
         output: Step output dict if completed.
         error: Error message if step failed.
     """
-    marker_path = os.path.join(artifacts_dir, f"prompt_step_{step.name}.json")
+    if embedded_workflow_name:
+        marker_filename = f"prompt_step_{embedded_workflow_name}__{step.name}.json"
+    else:
+        marker_filename = f"prompt_step_{step.name}.json"
+    marker_path = os.path.join(artifacts_dir, marker_filename)
 
     # Determine step type
     step_type = "prompt"
@@ -105,6 +110,7 @@ def _write_step_marker(
         "is_pre_prompt_step": is_pre_prompt_step,
         "diff_path": None,
         "output_types": None,
+        "embedded_workflow_name": embedded_workflow_name,
         "error": error,
     }
     try:
@@ -148,6 +154,7 @@ def _write_embedded_step_markers(
                 total_steps=ewf_result.total_workflow_steps,
                 is_pre_prompt_step=True,
                 output=step_output if isinstance(step_output, dict) else None,
+                embedded_workflow_name=ewf_result.workflow_name,
             )
 
         # Post-steps: indices start after prompt_part
@@ -176,6 +183,7 @@ def _write_embedded_step_markers(
                 is_pre_prompt_step=False,
                 output=step_output if isinstance(step_output, dict) else None,
                 error=error,
+                embedded_workflow_name=ewf_result.workflow_name,
             )
 
 

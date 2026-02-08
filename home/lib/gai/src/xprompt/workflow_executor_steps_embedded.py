@@ -160,6 +160,7 @@ class EmbeddedWorkflowMixin:
         parent_step_context: "ParentStepContext | None" = None,
         is_pre_prompt_step: bool = False,
         step_index_offset: int = 0,
+        embedded_workflow_name: str | None = None,
     ) -> bool:
         """Execute steps from an embedded workflow.
 
@@ -260,6 +261,7 @@ class EmbeddedWorkflowMixin:
                     ),
                     is_pre_prompt_step=is_pre_prompt_step,
                     hidden=step.hidden,
+                    embedded_workflow_name=embedded_workflow_name,
                 )
 
                 # Notify step complete
@@ -380,6 +382,7 @@ class EmbeddedWorkflowMixin:
                     parent_step_context=parent_ctx,
                     is_pre_prompt_step=True,
                     step_index_offset=running_offset,
+                    embedded_workflow_name=name,
                 )
                 if not success:
                     raise WorkflowExecutionError(

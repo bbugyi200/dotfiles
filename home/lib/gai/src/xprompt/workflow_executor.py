@@ -391,6 +391,7 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
         diff_path: str | None = None,
         hidden: bool = False,
         output_types: dict[str, str] | None = None,
+        embedded_workflow_name: str | None = None,
     ) -> None:
         """Save a marker file for prompt steps to track them in the TUI.
 
@@ -406,7 +407,11 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
                 workflow, which should be hidden in the Agents tab.
             diff_path: Path to the git diff file for this step, if available.
         """
-        marker_path = os.path.join(self.artifacts_dir, f"prompt_step_{step_name}.json")
+        if embedded_workflow_name:
+            marker_filename = f"prompt_step_{embedded_workflow_name}__{step_name}.json"
+        else:
+            marker_filename = f"prompt_step_{step_name}.json"
+        marker_path = os.path.join(self.artifacts_dir, marker_filename)
 
         # Read existing marker once for preserving fields not passed by caller.
         existing_marker: dict[str, Any] | None = None
@@ -447,6 +452,7 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
             "is_pre_prompt_step": is_pre_prompt_step,
             "diff_path": diff_path,
             "output_types": output_types,
+            "embedded_workflow_name": embedded_workflow_name,
             "error": step_state.error,
         }
         try:

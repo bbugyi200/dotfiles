@@ -56,6 +56,7 @@ def test_write_step_marker_creates_valid_json(tmp_path: Any) -> None:
     assert data["step_source"] == 'echo "check_files=done"'
     assert data["error"] is None
     assert data["hidden"] is False
+    assert data["embedded_workflow_name"] is None
 
 
 def test_write_step_marker_python_step_type(tmp_path: Any) -> None:
@@ -141,8 +142,8 @@ def test_write_embedded_step_markers_pre_and_post(tmp_path: Any) -> None:
 
     _write_embedded_step_markers(str(tmp_path), [ewf])
 
-    # Check pre-step marker
-    pre_marker = tmp_path / "prompt_step_setup.json"
+    # Check pre-step marker (namespaced by embedded workflow name)
+    pre_marker = tmp_path / "prompt_step_propose__setup.json"
     assert pre_marker.exists()
     with open(pre_marker, encoding="utf-8") as f:
         pre_data = json.load(f)
@@ -150,9 +151,10 @@ def test_write_embedded_step_markers_pre_and_post(tmp_path: Any) -> None:
     assert pre_data["is_pre_prompt_step"] is True
     assert pre_data["status"] == "completed"
     assert pre_data["total_steps"] == 3
+    assert pre_data["embedded_workflow_name"] == "propose"
 
-    # Check post-step marker
-    post_marker = tmp_path / "prompt_step_cleanup.json"
+    # Check post-step marker (namespaced by embedded workflow name)
+    post_marker = tmp_path / "prompt_step_propose__cleanup.json"
     assert post_marker.exists()
     with open(post_marker, encoding="utf-8") as f:
         post_data = json.load(f)
@@ -160,6 +162,7 @@ def test_write_embedded_step_markers_pre_and_post(tmp_path: Any) -> None:
     assert post_data["is_pre_prompt_step"] is False
     assert post_data["status"] == "completed"
     assert post_data["total_steps"] == 3
+    assert post_data["embedded_workflow_name"] == "propose"
 
 
 def test_step_numbering_uses_prompt_part_index_offset(tmp_path: Any) -> None:
@@ -186,15 +189,15 @@ def test_step_numbering_uses_prompt_part_index_offset(tmp_path: Any) -> None:
     _write_embedded_step_markers(str(tmp_path), [ewf])
 
     # step_a should be at index 3 (prompt_part_index=2 + 1 + 0)
-    with open(tmp_path / "prompt_step_step_a.json", encoding="utf-8") as f:
+    with open(tmp_path / "prompt_step_multi_step__step_a.json", encoding="utf-8") as f:
         assert json.load(f)["step_index"] == 3
 
     # step_b should be at index 4 (prompt_part_index=2 + 1 + 1)
-    with open(tmp_path / "prompt_step_step_b.json", encoding="utf-8") as f:
+    with open(tmp_path / "prompt_step_multi_step__step_b.json", encoding="utf-8") as f:
         assert json.load(f)["step_index"] == 4
 
     # step_c should be at index 5 (prompt_part_index=2 + 1 + 2)
-    with open(tmp_path / "prompt_step_step_c.json", encoding="utf-8") as f:
+    with open(tmp_path / "prompt_step_multi_step__step_c.json", encoding="utf-8") as f:
         assert json.load(f)["step_index"] == 5
 
 
@@ -213,7 +216,7 @@ def test_failed_post_step_status(tmp_path: Any) -> None:
 
     _write_embedded_step_markers(str(tmp_path), [ewf])
 
-    marker_path = tmp_path / "prompt_step_deploy.json"
+    marker_path = tmp_path / "prompt_step_propose__deploy.json"
     with open(marker_path, encoding="utf-8") as f:
         data = json.load(f)
 
@@ -245,10 +248,10 @@ def test_multiple_embedded_workflows(tmp_path: Any) -> None:
 
     _write_embedded_step_markers(str(tmp_path), [ewf1, ewf2])
 
-    # All 3 marker files should exist
-    assert (tmp_path / "prompt_step_gather_info.json").exists()
-    assert (tmp_path / "prompt_step_apply_changes.json").exists()
-    assert (tmp_path / "prompt_step_send_review.json").exists()
+    # All 3 marker files should exist (namespaced by embedded workflow name)
+    assert (tmp_path / "prompt_step_propose__gather_info.json").exists()
+    assert (tmp_path / "prompt_step_propose__apply_changes.json").exists()
+    assert (tmp_path / "prompt_step_review__send_review.json").exists()
 
 
 def test_pre_step_numbering_with_multiple_pre_steps(tmp_path: Any) -> None:
@@ -272,8 +275,61 @@ def test_pre_step_numbering_with_multiple_pre_steps(tmp_path: Any) -> None:
 
     _write_embedded_step_markers(str(tmp_path), [ewf])
 
-    with open(tmp_path / "prompt_step_init.json", encoding="utf-8") as f:
+    with open(tmp_path / "prompt_step_propose__init.json", encoding="utf-8") as f:
         assert json.load(f)["step_index"] == 0
 
-    with open(tmp_path / "prompt_step_validate.json", encoding="utf-8") as f:
+    with open(tmp_path / "prompt_step_propose__validate.json", encoding="utf-8") as f:
         assert json.load(f)["step_index"] == 1
+
+
+def test_multiple_embedded_workflows_no_name_collision(tmp_path: Any) -> None:
+    """Test that two workflows with same-named steps don't overwrite each other."""
+    ewf_commit = EmbeddedWorkflowResult(
+        workflow_name="commit",
+        pre_steps=[_make_bash_step("check_changes")],
+        post_steps=[_make_bash_step("save_response"), _make_bash_step("report")],
+        context={
+            "check_changes": {"has_changes": True},
+            "save_response": {"path": "/tmp/commit_resp"},
+            "report": {"status": "ok"},
+        },
+        prompt_part_index=1,
+        total_workflow_steps=4,
+    )
+    ewf_propose = EmbeddedWorkflowResult(
+        workflow_name="propose",
+        pre_steps=[_make_bash_step("check_changes")],
+        post_steps=[_make_bash_step("save_response"), _make_bash_step("report")],
+        context={
+            "check_changes": {"has_changes": False},
+            "save_response": {"path": "/tmp/propose_resp"},
+            "report": {"status": "skipped"},
+        },
+        prompt_part_index=1,
+        total_workflow_steps=4,
+    )
+
+    _write_embedded_step_markers(str(tmp_path), [ewf_commit, ewf_propose])
+
+    # Both workflows' markers should exist (no overwrites)
+    assert (tmp_path / "prompt_step_commit__check_changes.json").exists()
+    assert (tmp_path / "prompt_step_commit__save_response.json").exists()
+    assert (tmp_path / "prompt_step_commit__report.json").exists()
+    assert (tmp_path / "prompt_step_propose__check_changes.json").exists()
+    assert (tmp_path / "prompt_step_propose__save_response.json").exists()
+    assert (tmp_path / "prompt_step_propose__report.json").exists()
+
+    # Verify content is distinct (not overwritten)
+    with open(
+        tmp_path / "prompt_step_commit__check_changes.json", encoding="utf-8"
+    ) as f:
+        commit_data = json.load(f)
+    with open(
+        tmp_path / "prompt_step_propose__check_changes.json", encoding="utf-8"
+    ) as f:
+        propose_data = json.load(f)
+
+    assert commit_data["output"]["has_changes"] is True
+    assert propose_data["output"]["has_changes"] is False
+    assert commit_data["embedded_workflow_name"] == "commit"
+    assert propose_data["embedded_workflow_name"] == "propose"
