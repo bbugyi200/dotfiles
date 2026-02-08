@@ -291,6 +291,11 @@ class AgentPromptPanel(Static):
         header_text.append("ChangeSpec: ", style="bold #87D7FF")
         header_text.append(f"{agent.cl_name}\n", style="#00D7AF")
 
+        # Workspace (if available)
+        if agent.workspace_num is not None:
+            header_text.append("Workspace: ", style="bold #87D7FF")
+            header_text.append(f"#{agent.workspace_num}\n", style="#5FD7FF")
+
         # Status
         header_text.append("Status: ", style="bold #87D7FF")
         status_style = {

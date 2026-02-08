@@ -79,8 +79,6 @@ def _calculate_entry_display_width(
     if agent.status in _DISMISSIBLE_STATUSES:
         parts.append(f"{_DONE_ICON} ")
     parts.extend([f"[{agent.display_type}] ", agent.cl_name, " ", f"({agent.status})"])
-    if agent.workspace_num is not None:
-        parts.append(f" - #{agent.workspace_num}")
     if fold_annotation:
         parts.append(fold_annotation)
     text = Text("".join(parts))
@@ -238,11 +236,6 @@ class AgentList(OptionList):
         else:
             text.append(agent.status, style="dim")
         text.append(")", style="dim")
-
-        # Show workspace number if available
-        if agent.workspace_num is not None:
-            text.append(" - #", style="dim")
-            text.append(str(agent.workspace_num), style="#5FD7FF")
 
         # Fold annotation for workflow parents
         if fold_annotation:
