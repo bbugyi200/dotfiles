@@ -43,6 +43,7 @@ def _create_proposal(
     who: str,
     note: str,
     data_file: str,
+    start_timestamp: str = "",
 ) -> tuple[bool, str, str, str, str]:
     """Create a proposal entry on the current CL.
 
@@ -50,6 +51,8 @@ def _create_proposal(
         who: Identifier for who is creating the proposal (e.g., "man", "mentor:name").
         note: The note for the proposal (empty string to auto-generate).
         data_file: Path to JSON file containing prompt and response from agent.
+        start_timestamp: Optional start timestamp from the parent workflow for chat
+            duration calculation. If empty, uses the fresh timestamp.
 
     Returns:
         Tuple of (success, proposal_id, cl_name, error_message, diff_path)
@@ -112,11 +115,14 @@ def _create_proposal(
         note = f"[{who}] {summary}"
 
     # Save chat history with actual prompt
+    # Use start_timestamp for the chat file so that the CHAT duration
+    # (end_timestamp - chat_path_timestamp) reflects the full agent runtime.
+    chat_timestamp = start_timestamp if start_timestamp else timestamp
     chat_path = save_chat_history(
         prompt=prompt,
         response=response,
         workflow="propose",
-        timestamp=timestamp,
+        timestamp=chat_timestamp,
     )
 
     # Create the proposal entry
@@ -155,12 +161,17 @@ def main() -> None:
     parser.add_argument(
         "--data-file", required=True, help="Path to JSON file with prompt and response"
     )
+    parser.add_argument(
+        "--start-timestamp",
+        default="",
+        help="Start timestamp from the parent workflow (for chat duration calculation)",
+    )
 
     args = parser.parse_args()
 
     if args.create:
         success, proposal_id, cl_name, error, diff_path = _create_proposal(
-            args.who, args.note, args.data_file
+            args.who, args.note, args.data_file, args.start_timestamp
         )
         print(f"success={'true' if success else 'false'}")
         print(f"proposal_id={proposal_id}")

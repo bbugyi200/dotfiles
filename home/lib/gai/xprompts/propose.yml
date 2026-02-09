@@ -42,7 +42,8 @@ steps:
       gai_propose_workflow --create \
         --who "{{ who }}" \
         --note "{{ note }}" \
-        --data-file "{{ save_response.data_file }}"
+        --data-file "{{ save_response.data_file }}" \
+        --start-timestamp "{{ _start_timestamp | default('') }}"
     output: { success: bool, proposal_id: word, cl_name: word, diff_path: path, error: text }
 
   - name: report

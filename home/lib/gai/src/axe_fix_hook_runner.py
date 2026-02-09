@@ -172,6 +172,7 @@ def main() -> int:
             ewf_result.context["_prompt"] = expanded_prompt
             ewf_result.context["_response"] = response_content
             ewf_result.context["who"] = who
+            ewf_result.context["_start_timestamp"] = timestamp
             try:
                 execute_standalone_steps(
                     ewf_result.post_steps,
@@ -186,7 +187,7 @@ def main() -> int:
                 traceback.print_exc()
 
             # Always check for proposal_id (even if later steps failed)
-            create_result = ewf_result.context.get("create_proposal", {})
+            create_result = ewf_result.context.get("propose", {})
             if (
                 isinstance(create_result, dict)
                 and create_result.get("success") == "true"
@@ -195,7 +196,7 @@ def main() -> int:
                 exit_code = 0
 
         # Fallback: if context extraction failed, check ChangeSpec directly
-        # (the create_proposal step may have written the entry to disk even
+        # (the propose step may have written the entry to disk even
         # though embedded_context didn't capture the result properly)
         if not proposal_id:
             try:

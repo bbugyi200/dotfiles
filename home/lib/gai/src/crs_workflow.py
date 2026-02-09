@@ -191,6 +191,7 @@ class CrsWorkflow(BaseWorkflow):
             ewf_result.context["_response"] = response_content
             if self._who:
                 ewf_result.context["who"] = self._who
+            ewf_result.context["_start_timestamp"] = self._timestamp
             execute_standalone_steps(
                 ewf_result.post_steps,
                 ewf_result.context,
@@ -198,8 +199,8 @@ class CrsWorkflow(BaseWorkflow):
                 artifacts_dir,
             )
 
-            # Extract proposal_id from create_proposal step output
-            create_result = ewf_result.context.get("create_proposal", {})
+            # Extract proposal_id from propose step output
+            create_result = ewf_result.context.get("propose", {})
             if (
                 isinstance(create_result, dict)
                 and create_result.get("success") == "true"

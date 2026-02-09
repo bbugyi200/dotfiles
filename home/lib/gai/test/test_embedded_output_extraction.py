@@ -101,7 +101,7 @@ def test_partial_context_after_failure() -> None:
     # Early steps populated these values; later step failed before adding more
     ctx: dict[str, object] = {
         "save_response": {"saved": True},
-        "create_proposal": {
+        "propose": {
             "diff_path": "/tmp/partial.diff",
             "meta_proposal_id": "partial-123",
         },
