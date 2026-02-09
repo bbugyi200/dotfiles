@@ -183,9 +183,8 @@ xprompts:
     input: { feat_name: word, usage: line }
     content: |
       Can you help me add a new #feat named {{ feat_name }} to the java/com/google/ads/publisher/domain/entity/feature/publisher_features.textproto file?
-      This publisher feature will be used to {{ usage }}. #noc
-  noc: "You should make the necessary file changes, but should NOT create/amend a CL."
-  nocl: "#noc #cl"
+      This publisher feature will be used to {{ usage }}.
+  noc: "Do NOT make any file changes."
   p:
     input: { note: { type: line, default: "" } }
     content: "#propose(note='{{ note }}')"
