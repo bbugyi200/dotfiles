@@ -1,11 +1,14 @@
-"""Tests for CL updates, WIP suffix, and parent-child constraints."""
+"""Tests for CL updates, WIP suffix, parent-child constraints, and description updates."""
 
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from status_state_machine import transition_changespec_status
-from status_state_machine.field_updates import _apply_cl_update
+from status_state_machine.field_updates import (
+    _apply_cl_update,
+    _apply_description_update,
+)
 
 
 def _create_test_project_file_with_suffix(
@@ -441,3 +444,108 @@ TEST TARGETS: None
 
     finally:
         Path(project_file).unlink()
+
+
+# === DESCRIPTION update tests ===
+
+
+def test__apply_description_update_single_line() -> None:
+    """Test _apply_description_update replaces a single-line description."""
+    lines = [
+        "NAME: Test Feature\n",
+        "DESCRIPTION:\n",
+        "  Old description\n",
+        "PARENT: None\n",
+        "CL: 12345\n",
+        "STATUS: WIP\n",
+    ]
+    result = _apply_description_update(lines, "Test Feature", "New description")
+    assert "DESCRIPTION:\n" in result
+    assert "  New description\n" in result
+    assert "Old description" not in result
+    # Surrounding fields preserved
+    assert "PARENT: None\n" in result
+    assert "CL: 12345\n" in result
+    assert "STATUS: WIP\n" in result
+
+
+def test__apply_description_update_multi_line() -> None:
+    """Test _apply_description_update replaces a multi-line description with blank lines."""
+    lines = [
+        "NAME: Test Feature\n",
+        "DESCRIPTION:\n",
+        "  Old line one\n",
+        "\n",
+        "  Old line two\n",
+        "PARENT: None\n",
+        "STATUS: WIP\n",
+    ]
+    result = _apply_description_update(
+        lines, "Test Feature", "New line one\n\nNew line two"
+    )
+    assert "  New line one\n" in result
+    assert "  New line two\n" in result
+    assert "Old line one" not in result
+    assert "Old line two" not in result
+    assert "PARENT: None\n" in result
+    assert "STATUS: WIP\n" in result
+
+
+def test__apply_description_update_only_targets_correct_changespec() -> None:
+    """Test _apply_description_update only modifies the target ChangeSpec."""
+    lines = [
+        "NAME: First Feature\n",
+        "DESCRIPTION:\n",
+        "  First description\n",
+        "STATUS: WIP\n",
+        "\n",
+        "NAME: Second Feature\n",
+        "DESCRIPTION:\n",
+        "  Second description\n",
+        "STATUS: Drafted\n",
+    ]
+    result = _apply_description_update(lines, "Second Feature", "Updated second")
+    # First feature's description should be untouched
+    assert "  First description\n" in result
+    # Second feature's description should be updated
+    assert "  Updated second\n" in result
+    assert "  Second description" not in result
+
+
+def test__apply_description_update_preserves_surrounding_fields() -> None:
+    """Test that surrounding fields (PARENT, CL, STATUS) are preserved."""
+    lines = [
+        "NAME: Test Feature\n",
+        "DESCRIPTION:\n",
+        "  Old description line 1\n",
+        "  Old description line 2\n",
+        "PARENT: Parent CL\n",
+        "CL: 99999\n",
+        "STATUS: Drafted\n",
+        "TEST TARGETS: //foo:bar_test\n",
+    ]
+    result = _apply_description_update(lines, "Test Feature", "Brand new desc")
+    result_lines = result.splitlines(keepends=True)
+    # Verify all surrounding fields are present and in order
+    field_order = []
+    for line in result_lines:
+        if line.startswith("NAME:"):
+            field_order.append("NAME")
+        elif line.startswith("DESCRIPTION:"):
+            field_order.append("DESCRIPTION")
+        elif line.startswith("PARENT:"):
+            field_order.append("PARENT")
+        elif line.startswith("CL:"):
+            field_order.append("CL")
+        elif line.startswith("STATUS:"):
+            field_order.append("STATUS")
+        elif line.startswith("TEST TARGETS:"):
+            field_order.append("TEST TARGETS")
+    assert field_order == [
+        "NAME",
+        "DESCRIPTION",
+        "PARENT",
+        "CL",
+        "STATUS",
+        "TEST TARGETS",
+    ]

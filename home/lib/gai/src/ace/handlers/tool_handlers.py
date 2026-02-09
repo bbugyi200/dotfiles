@@ -14,6 +14,8 @@ from ..mail_ops import handle_mail as mail_ops_handle_mail
 from ..operations import update_to_changespec
 
 if TYPE_CHECKING:
+    from rich.console import Console
+
     from ..tui._workflow_context import WorkflowContext
 
 
@@ -51,6 +53,55 @@ def handle_show_diff(self: "WorkflowContext", changespec: ChangeSpec) -> None:
         subprocess.run(cmd, shell=True, cwd=target_dir, check=False)
     except Exception as e:
         self.console.print(f"[red]Error showing diff: {str(e)}[/red]")
+
+
+def _sync_description_after_reword(
+    workspace_dir: str, changespec: ChangeSpec, console: "Console"
+) -> None:
+    """Sync the ChangeSpec DESCRIPTION field after a successful reword.
+
+    Runs ``cl_desc -s`` to get the clean description from the commit message
+    and writes it back to the ``.gp`` file.  Errors are non-fatal (warnings
+    only) since the reword itself already succeeded.
+
+    Args:
+        workspace_dir: Path to the workspace directory.
+        changespec: The ChangeSpec whose description should be updated.
+        console: Rich console for output.
+    """
+    from status_state_machine import update_changespec_description_atomic
+
+    try:
+        desc_result = subprocess.run(
+            ["cl_desc", "-s"],
+            cwd=workspace_dir,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        console.print(
+            f"[yellow]Warning: could not read updated description: {e}[/yellow]"
+        )
+        return
+
+    new_description = desc_result.stdout.strip()
+    if not new_description:
+        console.print(
+            "[yellow]Warning: cl_desc -s returned empty output, "
+            "skipping DESCRIPTION sync[/yellow]"
+        )
+        return
+
+    success = update_changespec_description_atomic(
+        changespec.file_path, changespec.name, new_description
+    )
+    if success:
+        console.print("[green]Synced DESCRIPTION to project file[/green]")
+    else:
+        console.print(
+            "[yellow]Warning: failed to sync DESCRIPTION to project file[/yellow]"
+        )
 
 
 def handle_reword(self: "WorkflowContext", changespec: ChangeSpec) -> None:
@@ -140,6 +191,7 @@ def handle_reword(self: "WorkflowContext", changespec: ChangeSpec) -> None:
             )
             if reword_result.returncode == 0:
                 self.console.print("[green]CL description updated successfully[/green]")
+                _sync_description_after_reword(workspace_dir, changespec, self.console)
             else:
                 self.console.print(
                     f"[yellow]bb_hg_reword exited with code {reword_result.returncode}[/yellow]"

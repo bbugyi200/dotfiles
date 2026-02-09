@@ -1,7 +1,8 @@
 """
 Field update functions for ChangeSpec files.
 
-This module provides atomic update operations for STATUS, CL, and PARENT fields.
+This module provides atomic update operations for STATUS, CL, PARENT, and
+DESCRIPTION fields.
 """
 
 import logging
@@ -275,3 +276,128 @@ def update_parent_references_atomic(
             "".join(updated_lines),
             f"Update PARENT references from {old_name} to {new_name}",
         )
+
+
+_FIELD_HEADERS = (
+    "NAME:",
+    "DESCRIPTION:",
+    "PARENT:",
+    "CL:",
+    "BUG:",
+    "STATUS:",
+    "KICKSTART:",
+    "TEST TARGETS:",
+    "COMMITS:",
+    "HOOKS:",
+    "COMMENTS:",
+    "MENTORS:",
+)
+
+
+def _is_field_or_section_header(line: str) -> bool:
+    """Check if a line starts with a known ChangeSpec field/section header."""
+    return line.startswith(_FIELD_HEADERS)
+
+
+def _format_description_field(description: str) -> list[str]:
+    """Format a plain-text description into DESCRIPTION field lines.
+
+    Produces a ``DESCRIPTION:\\n`` header followed by 2-space-indented
+    continuation lines, matching the parser format.
+
+    Args:
+        description: Plain-text description (may contain newlines).
+
+    Returns:
+        List of formatted lines (each ending with ``\\n``).
+    """
+    result = ["DESCRIPTION:\n"]
+    for line in description.splitlines():
+        if line:
+            result.append(f"  {line}\n")
+        else:
+            result.append("\n")
+    return result
+
+
+def _apply_description_update(
+    lines: list[str], changespec_name: str, new_description: str
+) -> str:
+    """Apply DESCRIPTION field update to file lines.
+
+    Finds the target ChangeSpec by NAME, then replaces the DESCRIPTION header
+    and all its continuation lines (2-space-indented and blank lines) with
+    the newly formatted description.  Stops consuming old description lines
+    when it hits a known field header.
+
+    Args:
+        lines: Current file lines.
+        changespec_name: NAME of the ChangeSpec to update.
+        new_description: New plain-text description.
+
+    Returns:
+        Updated file content as a string.
+    """
+    updated_lines: list[str] = []
+    in_target_changespec = False
+    skipping_old_description = False
+
+    for line in lines:
+        # Track which ChangeSpec we're in
+        if line.startswith("NAME:"):
+            current_name = line.split(":", 1)[1].strip()
+            in_target_changespec = current_name == changespec_name
+
+        # When skipping old description lines, check for end of description
+        if skipping_old_description:
+            if _is_field_or_section_header(line):
+                # Hit the next field — stop skipping, emit this line normally
+                skipping_old_description = False
+                updated_lines.append(line)
+            # Otherwise it's a continuation line (2-space-indented or blank) — skip it
+            continue
+
+        # Replace DESCRIPTION header in the target ChangeSpec
+        if in_target_changespec and line.startswith("DESCRIPTION:"):
+            updated_lines.extend(_format_description_field(new_description))
+            skipping_old_description = True
+            continue
+
+        updated_lines.append(line)
+
+    return "".join(updated_lines)
+
+
+def update_changespec_description_atomic(
+    project_file: str, changespec_name: str, new_description: str
+) -> bool:
+    """Update the DESCRIPTION field of a specific ChangeSpec atomically.
+
+    Acquires a lock for the entire read-modify-write cycle.
+
+    Args:
+        project_file: Path to the ProjectSpec file.
+        changespec_name: NAME of the ChangeSpec to update.
+        new_description: New plain-text description.
+
+    Returns:
+        True if update succeeded, False otherwise.
+    """
+    try:
+        with changespec_lock(project_file):
+            with open(project_file, encoding="utf-8") as f:
+                lines = f.readlines()
+
+            updated_content = _apply_description_update(
+                lines, changespec_name, new_description
+            )
+
+            write_changespec_atomic(
+                project_file,
+                updated_content,
+                f"Update DESCRIPTION for {changespec_name}",
+            )
+            return True
+    except Exception:
+        logger.exception("Error updating DESCRIPTION for %s", changespec_name)
+        return False
