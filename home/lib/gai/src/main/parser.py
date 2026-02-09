@@ -58,26 +58,26 @@ def create_parser() -> argparse.ArgumentParser:
     axe_parser.add_argument(
         "--comment-check-interval",
         type=int,
-        default=60,
+        default=None,
         help="Comment check interval in seconds (default: 60 = 1 minute)",
     )
     axe_parser.add_argument(
         "--full-check-interval",
         type=int,
-        default=300,
+        default=None,
         help="Full check interval in seconds (default: 300 = 5 minutes)",
     )
     axe_parser.add_argument(
         "--hook-interval",
         type=int,
-        default=1,
+        default=None,
         help="Hook check interval in seconds (default: 1)",
     )
     axe_parser.add_argument(
         "-r",
         "--max-runners",
         type=int,
-        default=5,
+        default=None,
         help="Maximum concurrent runners (hooks, agents, mentors) globally (default: 5)",
     )
     axe_parser.add_argument(
@@ -90,7 +90,7 @@ def create_parser() -> argparse.ArgumentParser:
     axe_parser.add_argument(
         "--zombie-timeout",
         type=int,
-        default=7200,
+        default=None,
         help="Zombie detection timeout in seconds (default: 7200 = 2 hours). "
         "Hooks and CRS workflows running longer than this are marked as ZOMBIE.",
     )

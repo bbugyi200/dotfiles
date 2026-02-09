@@ -219,15 +219,37 @@ def main() -> NoReturn:
     # --- axe ---
     if args.command == "axe":
         from axe import AxeScheduler
+        from axe_config import load_axe_config
 
+        config = load_axe_config()
         try:
             scheduler = AxeScheduler(
-                full_check_interval=args.full_check_interval,
-                hook_interval=args.hook_interval,
-                zombie_timeout_seconds=args.zombie_timeout,
-                max_runners=args.max_runners,
+                full_check_interval=(
+                    args.full_check_interval
+                    if args.full_check_interval is not None
+                    else config.full_check_interval
+                ),
+                hook_interval=(
+                    args.hook_interval
+                    if args.hook_interval is not None
+                    else config.hook_interval
+                ),
+                zombie_timeout_seconds=(
+                    args.zombie_timeout
+                    if args.zombie_timeout is not None
+                    else config.zombie_timeout_seconds
+                ),
+                max_runners=(
+                    args.max_runners
+                    if args.max_runners is not None
+                    else config.max_runners
+                ),
                 query=args.query,
-                comment_check_interval=args.comment_check_interval,
+                comment_check_interval=(
+                    args.comment_check_interval
+                    if args.comment_check_interval is not None
+                    else config.comment_check_interval
+                ),
             )
         except QueryParseError as e:
             print(f"Error: Invalid query: {e}")

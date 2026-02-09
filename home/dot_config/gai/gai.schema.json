@@ -5,6 +5,38 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
+    "axe": {
+      "type": "object",
+      "description": "Configuration for the axe scheduler daemon",
+      "additionalProperties": false,
+      "properties": {
+        "full_check_interval": {
+          "type": "integer",
+          "description": "Full check interval in seconds",
+          "default": 300
+        },
+        "comment_check_interval": {
+          "type": "integer",
+          "description": "Comment check interval in seconds",
+          "default": 60
+        },
+        "hook_interval": {
+          "type": "integer",
+          "description": "Hook check interval in seconds",
+          "default": 1
+        },
+        "zombie_timeout_seconds": {
+          "type": "integer",
+          "description": "Zombie detection timeout in seconds. Hooks and CRS workflows running longer than this are marked as ZOMBIE.",
+          "default": 7200
+        },
+        "max_runners": {
+          "type": "integer",
+          "description": "Maximum concurrent runners (hooks, agents, mentors) globally",
+          "default": 5
+        }
+      }
+    },
     "metahooks": {
       "type": "array",
       "description": "Metahooks intercept failing hooks before the summarize agent runs",
