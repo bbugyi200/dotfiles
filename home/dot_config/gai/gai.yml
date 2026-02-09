@@ -158,7 +158,7 @@ xprompts:
     verify that:
       + New logic comes with new or strengthened tests (or a clear justification for why existing tests are
         sufficient).
-      + in the case of bug fixes, regressions are actively guarded against, not "accidentally avoided": include at
+      + In the case of bug fixes, regressions are actively guarded against, not "accidentally avoided": include at
         least one test that would have failed before the change.
   mentor/sql: |
     #mentor: Can you help me ensure that the SQL files added by this CL have file paths of the form
