@@ -170,9 +170,17 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.create:
-        success, proposal_id, cl_name, error, diff_path = _create_proposal(
-            args.who, args.note, args.data_file, args.start_timestamp
-        )
+        # Redirect stdout to stderr during proposal creation to prevent
+        # stray prints from corrupting the key=value output parsed by
+        # the parent process (parse_bash_output).
+        saved_stdout = sys.stdout
+        sys.stdout = sys.stderr
+        try:
+            success, proposal_id, cl_name, error, diff_path = _create_proposal(
+                args.who, args.note, args.data_file, args.start_timestamp
+            )
+        finally:
+            sys.stdout = saved_stdout
         print(f"success={'true' if success else 'false'}")
         print(f"proposal_id={proposal_id}")
         print(f"cl_name={cl_name}")

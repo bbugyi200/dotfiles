@@ -192,14 +192,21 @@ class CrsWorkflow(BaseWorkflow):
             if self._who:
                 ewf_result.context["who"] = self._who
             ewf_result.context["_start_timestamp"] = self._timestamp
-            execute_standalone_steps(
-                ewf_result.post_steps,
-                ewf_result.context,
-                "crs-embedded",
-                artifacts_dir,
-            )
+            try:
+                execute_standalone_steps(
+                    ewf_result.post_steps,
+                    ewf_result.context,
+                    "crs-embedded",
+                    artifacts_dir,
+                )
+            except Exception as step_error:
+                print(f"Warning: Some embedded workflow steps failed: {step_error}")
+                import traceback
+
+                traceback.print_exc()
 
             # Extract proposal_id from propose step output
+            # (runs even if later steps like 'report' failed)
             create_result = ewf_result.context.get("propose", {})
             if (
                 isinstance(create_result, dict)
