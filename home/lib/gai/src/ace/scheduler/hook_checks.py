@@ -142,7 +142,7 @@ def check_hooks(
                 changespec.name,
                 hook.command,
                 "ZOMBIE",
-                changespec.hooks,
+                hooks=None,  # Re-read fresh data under lock
                 suffix_type="error",
             )
             updates.append(

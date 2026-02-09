@@ -494,16 +494,15 @@ def _start_summarize_hook_workflow(
             f"Warning: No hook output file for summarize-hook on {changespec.name}",
             "yellow",
         )
-        if changespec.hooks:
-            set_hook_suffix(
-                changespec.file_path,
-                changespec.name,
-                hook.command,
-                "Hook Command Failed",
-                changespec.hooks,
-                entry_id=entry_id,
-                suffix_type="error",
-            )
+        set_hook_suffix(
+            changespec.file_path,
+            changespec.name,
+            hook.command,
+            "Hook Command Failed",
+            hooks=None,  # Re-read fresh data under lock
+            entry_id=entry_id,
+            suffix_type="error",
+        )
         return f"summarize-hook workflow '{hook.display_command}' ({entry_id}) -> no output to summarize"
 
     # Get output file path for workflow
@@ -541,16 +540,15 @@ def _start_summarize_hook_workflow(
 
         # Set timestamp suffix on hook status line to indicate workflow is running
         # Include PID in suffix for process management
-        if changespec.hooks:
-            set_hook_suffix(
-                changespec.file_path,
-                changespec.name,
-                hook.command,
-                f"summarize_hook-{pid}-{timestamp}",
-                changespec.hooks,
-                entry_id=entry_id,
-                suffix_type="running_agent",
-            )
+        set_hook_suffix(
+            changespec.file_path,
+            changespec.name,
+            hook.command,
+            f"summarize_hook-{pid}-{timestamp}",
+            hooks=None,  # Re-read fresh data under lock
+            entry_id=entry_id,
+            suffix_type="running_agent",
+        )
 
         return f"summarize-hook workflow -> RUNNING for '{hook.display_command}' ({entry_id})"
 

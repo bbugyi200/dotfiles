@@ -268,7 +268,7 @@ def check_and_complete_workflows(
                         changespec.name,
                         hook_command,
                         proposal_id,
-                        current_cs.hooks,
+                        hooks=None,  # Re-read fresh data under lock
                         entry_id=entry_id,
                         suffix_type="plain",
                         summary=current_summary,
