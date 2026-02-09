@@ -131,8 +131,7 @@ xprompts:
   launch/tests:
     input: { bug_id: int, feature: word }
     content: |
-      Can you help me add the {{ feature }} #feat to FEATURE_GROUP_ALL in the TestPublisherFeatureGroups.java file? Do
-      NOT run any tests; just make the required file changes and terminate. #commit(launch_tests, {{ bug_id }})
+      Can you help me add the {{ feature }} #feat to FEATURE_GROUP_ALL in the TestPublisherFeatureGroups.java file? #commit(launch_tests, {{ bug_id }})
   mentor/aaa: |
     #mentor: Can you help me enforce the AAA (arrange, act, assert) test method structure? In particular, find and fix Any test
     method modified by this CL that does NOT structure its statements using the Arrange, Act, Assert pattern. There
