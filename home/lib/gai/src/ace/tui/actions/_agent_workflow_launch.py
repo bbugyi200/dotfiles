@@ -35,6 +35,16 @@ class AgentLaunchMixin:
             self.notify("No prompt context - cannot launch", severity="error")  # type: ignore[attr-defined]
             return
 
+        # Save prompt to history IMMEDIATELY (before background subprocess)
+        from prompt_history import add_or_update_prompt
+
+        ctx = self._prompt_context
+        add_or_update_prompt(
+            prompt,
+            project_name=ctx.project_name,
+            branch_or_workspace=ctx.history_sort_key,
+        )
+
         # Unmount prompt bar first
         self._unmount_prompt_bar()  # type: ignore[attr-defined]
 
@@ -52,7 +62,6 @@ class AgentLaunchMixin:
                 self.call_later(self._load_agents)  # type: ignore[attr-defined]
                 return
 
-        ctx = self._prompt_context
         self._prompt_context = None
 
         # Launch single background agent

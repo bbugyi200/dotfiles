@@ -213,8 +213,8 @@ def main() -> None:
 
     # Optional parameters (empty string = not provided)
     update_target = sys.argv[9]
-    project_name_arg = sys.argv[10]
-    cl_name_for_history = sys.argv[11]
+    # sys.argv[10] (project_name) and sys.argv[11] (cl_name_for_history)
+    # are no longer used here; prompt history is saved by the TUI before launch.
     is_home_mode_arg = sys.argv[12]
     is_home_mode: bool = bool(is_home_mode_arg)
 
@@ -231,15 +231,6 @@ def main() -> None:
             os.unlink(prompt_file)
         except OSError:
             pass
-
-    # Save prompt to history for future gai run sessions
-    from prompt_history import add_or_update_prompt
-
-    add_or_update_prompt(
-        prompt,
-        project_name=project_name_arg or None,
-        branch_or_workspace=cl_name_for_history or None,
-    )
 
     start_time = time.time()
     success = False
