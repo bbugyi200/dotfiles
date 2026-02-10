@@ -146,9 +146,21 @@ def _convert_semantic_schema_to_json_schema(
             return
 
         # Check if this node has a semantic type
-        if "type" in node and node["type"] in _SEMANTIC_OUTPUT_TYPES:
-            type_map[path] = node["type"]
-            node["type"] = _SEMANTIC_TO_JSON_SCHEMA_TYPE.get(node["type"], node["type"])
+        if "type" in node:
+            if isinstance(node["type"], list):
+                converted_types = []
+                for t in node["type"]:
+                    if t in _SEMANTIC_OUTPUT_TYPES:
+                        type_map[path] = t
+                        converted_types.append(_SEMANTIC_TO_JSON_SCHEMA_TYPE.get(t, t))
+                    else:
+                        converted_types.append(t)
+                node["type"] = converted_types
+            elif node["type"] in _SEMANTIC_OUTPUT_TYPES:
+                type_map[path] = node["type"]
+                node["type"] = _SEMANTIC_TO_JSON_SCHEMA_TYPE.get(
+                    node["type"], node["type"]
+                )
 
         # Recurse into properties
         if "properties" in node and isinstance(node["properties"], dict):
@@ -366,14 +378,25 @@ def extract_semantic_type_hints(schema: Any, path: str = "") -> list[str]:
 
     # Check if this node has a semantic type
     type_val = schema.get("type", "")
+    is_nullable = False
+    if isinstance(type_val, list):
+        is_nullable = "null" in type_val
+        type_val = next((t for t in type_val if t in _SEMANTIC_OUTPUT_TYPES), "")
     if type_val in _SEMANTIC_OUTPUT_TYPES:
         field_desc = path if path else "root"
+        null_suffix = " (or null)" if is_nullable else ""
         if type_val == OutputType.WORD.value:
-            hints.append(f"- `{field_desc}`: must be a single word (no spaces)")
+            hints.append(
+                f"- `{field_desc}`: must be a single word (no spaces){null_suffix}"
+            )
         elif type_val == OutputType.LINE.value:
-            hints.append(f"- `{field_desc}`: must be a single line (no newlines)")
+            hints.append(
+                f"- `{field_desc}`: must be a single line (no newlines){null_suffix}"
+            )
         elif type_val == OutputType.PATH.value:
-            hints.append(f"- `{field_desc}`: must be a valid path (no spaces)")
+            hints.append(
+                f"- `{field_desc}`: must be a valid path (no spaces){null_suffix}"
+            )
         # text, bool, int, float have no special constraints to describe
 
     # Recurse into properties

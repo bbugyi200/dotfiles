@@ -535,6 +535,128 @@ class TestExtractSemanticTypeHints:
         assert len(parent_mentioned) == 1
 
 
+class TestConvertSemanticSchemaListTypes:
+    """Tests for _convert_semantic_schema_to_json_schema with list types."""
+
+    def test_convert_list_type_word_null(self) -> None:
+        """Test converting list type ['word', 'null'] to ['string', 'null']."""
+        schema = {
+            "type": "object",
+            "properties": {
+                "parent": {"type": ["word", "null"]},
+            },
+        }
+        converted, type_map = _convert_semantic_schema_to_json_schema(schema)
+        assert converted["properties"]["parent"]["type"] == ["string", "null"]
+        assert type_map.get("parent") == "word"
+
+    def test_convert_list_type_preserves_non_semantic(self) -> None:
+        """Test that non-semantic types in list are preserved."""
+        schema = {
+            "type": "object",
+            "properties": {
+                "count": {"type": ["integer", "null"]},
+            },
+        }
+        converted, type_map = _convert_semantic_schema_to_json_schema(schema)
+        assert converted["properties"]["count"]["type"] == ["integer", "null"]
+        assert len(type_map) == 0
+
+
+class TestValidateAgainstSchemaNullable:
+    """Tests for validate_against_schema with nullable fields."""
+
+    def test_nullable_field_accepts_null(self) -> None:
+        """Test that nullable field accepts null value."""
+        schema = {
+            "type": "object",
+            "properties": {
+                "parent": {"type": ["word", "null"]},
+            },
+        }
+        data = {"parent": None}
+        is_valid, error = validate_against_schema(data, schema)
+        assert is_valid is True
+        assert error is None
+
+    def test_nullable_field_accepts_string(self) -> None:
+        """Test that nullable field still accepts valid string."""
+        schema = {
+            "type": "object",
+            "properties": {
+                "parent": {"type": ["word", "null"]},
+            },
+        }
+        data = {"parent": "root"}
+        is_valid, error = validate_against_schema(data, schema)
+        assert is_valid is True
+        assert error is None
+
+    def test_non_nullable_field_rejects_null(self) -> None:
+        """Test that non-nullable field rejects null."""
+        schema = {
+            "type": "object",
+            "properties": {
+                "name": {"type": "word"},
+            },
+        }
+        data = {"name": None}
+        is_valid, error = validate_against_schema(data, schema)
+        assert is_valid is False
+        assert error is not None
+
+    def test_nullable_array_items(self) -> None:
+        """Test nullable fields within array items."""
+        schema = {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                    "name": {"type": "word"},
+                    "parent": {"type": ["word", "null"]},
+                },
+            },
+        }
+        data = [
+            {"name": "child1", "parent": "root"},
+            {"name": "root", "parent": None},
+        ]
+        is_valid, error = validate_against_schema(data, schema)
+        assert is_valid is True
+        assert error is None
+
+
+class TestExtractSemanticTypeHintsNullable:
+    """Tests for extract_semantic_type_hints with nullable types."""
+
+    def test_nullable_word_hint_includes_or_null(self) -> None:
+        """Test that nullable word type hint includes 'or null'."""
+        schema = {
+            "type": "object",
+            "properties": {
+                "parent": {"type": ["word", "null"]},
+            },
+        }
+        hints = extract_semantic_type_hints(schema)
+        assert len(hints) == 1
+        assert "parent" in hints[0]
+        assert "single word" in hints[0]
+        assert "or null" in hints[0]
+
+    def test_non_nullable_word_hint_no_or_null(self) -> None:
+        """Test that non-nullable word type hint does not include 'or null'."""
+        schema = {
+            "type": "object",
+            "properties": {
+                "name": {"type": "word"},
+            },
+        }
+        hints = extract_semantic_type_hints(schema)
+        assert len(hints) == 1
+        assert "or null" not in hints[0]
+
+
 class TestGenerateFormatInstructionsWithSemanticTypes:
     """Tests for generate_format_instructions with semantic types."""
 

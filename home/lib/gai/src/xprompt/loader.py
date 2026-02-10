@@ -193,12 +193,15 @@ def _parse_shortform_output(output_data: dict[str, Any] | list[Any]) -> OutputSp
         if not isinstance(item_spec, dict):
             return OutputSpec(type="json_schema", schema={"type": "array", "items": {}})
 
-        properties: dict[str, dict[str, str]] = {}
+        properties: dict[str, dict[str, Any]] = {}
         required: list[str] = []
 
         for field_name, field_value in item_spec.items():
             type_str, default = _parse_shortform_input_value(field_value)
-            properties[field_name] = {"type": type_str}
+            if default is None:
+                properties[field_name] = {"type": [type_str, "null"]}
+            else:
+                properties[field_name] = {"type": type_str}
             # Fields without defaults are required
             if default is UNSET:
                 required.append(field_name)
@@ -221,8 +224,11 @@ def _parse_shortform_output(output_data: dict[str, Any] | list[Any]) -> OutputSp
         # Object syntax: {name: word, desc: text}
         properties = {}
         for field_name, field_value in output_data.items():
-            type_str, _ = _parse_shortform_input_value(field_value)
-            properties[field_name] = {"type": type_str}
+            type_str, default = _parse_shortform_input_value(field_value)
+            if default is None:
+                properties[field_name] = {"type": [type_str, "null"]}
+            else:
+                properties[field_name] = {"type": type_str}
 
         return OutputSpec(
             type="json_schema",

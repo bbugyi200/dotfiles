@@ -15,7 +15,7 @@ steps:
         split_desc="{{ split_desc }}",
         should_chain_cls="{{ chain }}"
       )
-    output: [{ name: word, description: text, parent: { type: word, default: "" } }]
+    output: [{ name: word, description: text, parent: { type: word, default: null } }]
     hitl: true
 
   # Step 3: Format spec and navigate to parent

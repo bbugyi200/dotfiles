@@ -167,6 +167,37 @@ def test_parse_shortform_output_array_with_required() -> None:
     assert "parent" not in items["required"]
 
 
+def test_parse_shortform_output_array_nullable_field() -> None:
+    """Test that default: null produces a nullable type in array format."""
+    output = _parse_shortform_output(
+        [
+            {
+                "name": "word",
+                "parent": {"type": "word", "default": None},
+            }
+        ]
+    )
+    assert output.type == "json_schema"
+    items = output.schema["items"]
+    assert items["properties"]["parent"]["type"] == ["word", "null"]
+    # name has no default, so it's required; parent has default null, not required
+    assert "name" in items["required"]
+    assert "parent" not in items["required"]
+
+
+def test_parse_shortform_output_object_nullable_field() -> None:
+    """Test that default: null produces a nullable type in object format."""
+    output = _parse_shortform_output(
+        {
+            "name": "word",
+            "parent": {"type": "word", "default": None},
+        }
+    )
+    assert output.type == "json_schema"
+    assert output.schema["properties"]["parent"]["type"] == ["word", "null"]
+    assert output.schema["properties"]["name"]["type"] == "word"
+
+
 def test_parse_shortform_output_array_empty() -> None:
     """Test parsing empty array shortform."""
     output = _parse_shortform_output([])
