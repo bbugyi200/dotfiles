@@ -98,7 +98,7 @@ def _get_status_indicator(changespec: ChangeSpec) -> tuple[str, str, str]:
     elif has_running:
         prefix_color = "#FFAF00"
     elif has_process:
-        prefix_color = "#FFD700"
+        prefix_color = "#D7AF00"
     else:
         prefix_color = letter_color
 

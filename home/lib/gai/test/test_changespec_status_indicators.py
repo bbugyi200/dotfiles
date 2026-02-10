@@ -132,7 +132,7 @@ def test_get_status_indicator_wip_with_running_process() -> None:
     changespec = _make_changespec(status="WIP", hooks=_make_running_process_hook())
     indicator, prefix_color, letter_color = _get_status_indicator(changespec)
     assert indicator == "$W"
-    assert prefix_color == "#FFD700"  # Yellow for running process
+    assert prefix_color == "#D7AF00"  # Yellow for running process
     assert letter_color == "#FFD700"  # Gold for WIP
 
 
@@ -256,5 +256,5 @@ def test_get_status_indicator_running_process_with_mailed() -> None:
     changespec = _make_changespec(status="Mailed", hooks=_make_running_process_hook())
     indicator, prefix_color, letter_color = _get_status_indicator(changespec)
     assert indicator == "$M"
-    assert prefix_color == "#FFD700"  # Yellow for running process
+    assert prefix_color == "#D7AF00"  # Yellow for running process
     assert letter_color == "#00D787"  # Cyan-green for Mailed
