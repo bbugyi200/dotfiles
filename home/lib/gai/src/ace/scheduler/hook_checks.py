@@ -447,7 +447,8 @@ def check_hooks(
     #
     # Important: Unlimited hooks (those with !-prefix, i.e., skip_fix_hook=True)
     # always start regardless of the runner limit. Only limited hooks are subject
-    # to the --max-runners limit.
+    # to the --max-runners limit. Each entry receives a per-hook slot count so it
+    # only starts as many limited hooks as the remaining budget allows.
     if entries_needing_hooks and not is_terminal_status:
         # Check global concurrency limit before starting any hooks
         # Include runners started this cycle (across all ChangeSpecs) that aren't
@@ -457,11 +458,9 @@ def check_hooks(
         limit_logged = False
 
         for entry_id in entries_needing_hooks:
-            # Determine if we should skip limited hooks for this entry
-            # Unlimited (!-prefixed) hooks always start; limited hooks respect the limit
-            skip_limited = hooks_started >= available_slots
+            remaining_slots = max(0, available_slots - hooks_started)
 
-            if skip_limited and not limit_logged:
+            if remaining_slots == 0 and not limit_logged:
                 if available_slots == 0:
                     log(
                         f"At runner limit ({current_running} running, "
@@ -480,10 +479,14 @@ def check_hooks(
             if entry is None:
                 continue
             stale_updates, stale_hooks, limited_count = start_stale_hooks(
-                changespec, entry_id, entry, log, skip_limited=skip_limited
+                changespec,
+                entry_id,
+                entry,
+                log,
+                remaining_limited_slots=remaining_slots,
             )
             updates.extend(stale_updates)
-            hooks_started += limited_count  # Only count limited hooks toward the limit
+            hooks_started += limited_count
 
             # Merge stale hooks into updated_hooks and modified_hooks
             # Replace any stale hooks with their started versions
