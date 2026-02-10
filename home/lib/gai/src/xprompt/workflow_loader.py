@@ -13,7 +13,7 @@ from xprompt.loader import (
     parse_shortform_inputs,
     parse_xprompt_entries,
 )
-from xprompt.models import InputArg, InputType, OutputSpec
+from xprompt.models import UNSET, InputArg, InputType, OutputSpec
 from xprompt.workflow_models import (
     LoopConfig,
     ParallelConfig,
@@ -505,7 +505,7 @@ def _load_workflow_from_file(file_path: Path) -> Workflow | None:
             implicit_input = InputArg(
                 name=step.name,
                 type=InputType.LINE,  # Type doesn't matter for step inputs
-                default=None,  # Not required by default
+                default=UNSET,  # Not required by default
                 is_step_input=True,
                 output_schema=step.output,
             )
