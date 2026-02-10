@@ -29,8 +29,27 @@ def load_saved_queries() -> dict[str, str]:
         return {}
 
 
+def find_slot_for_query(query: str) -> str | None:
+    """Find the slot containing a given query.
+
+    Args:
+        query: The canonical query string to search for.
+
+    Returns:
+        The slot number string if found, or None if the query is not saved.
+    """
+    queries = load_saved_queries()
+    for slot, saved_query in queries.items():
+        if saved_query == query:
+            return slot
+    return None
+
+
 def save_query(slot: str, query: str) -> bool:
     """Save a query to a specific slot.
+
+    If the query already exists in a different slot, it is removed from the old
+    slot (i.e. the query is moved, not duplicated).
 
     Args:
         slot: The slot number ("0"-"9")
@@ -43,6 +62,11 @@ def save_query(slot: str, query: str) -> bool:
         return False
 
     queries = load_saved_queries()
+    # Remove query from old slot if it exists elsewhere
+    for old_slot, saved_query in list(queries.items()):
+        if saved_query == query and old_slot != slot:
+            del queries[old_slot]
+            break
     queries[slot] = query
     return _write_queries(queries)
 

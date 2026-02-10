@@ -7,6 +7,7 @@ from ace.saved_queries import (
     KEY_ORDER,
     _write_queries,
     delete_query,
+    find_slot_for_query,
     get_next_available_slot,
     load_saved_queries,
     save_query,
@@ -184,3 +185,44 @@ def test_save_last_query_creates_parent_directory(tmp_path: Path) -> None:
 
         assert save_last_query("test query")
         assert test_file.exists()
+
+
+def test_find_slot_for_query_found(tmp_path: Path) -> None:
+    """Test finding an existing query returns its slot."""
+    test_file = tmp_path / "saved_queries.json"
+    with patch("ace.saved_queries._SAVED_QUERIES_FILE", test_file):
+        save_query("2", '"target"')
+        save_query("5", '"other"')
+        result = find_slot_for_query('"target"')
+        assert result == "2"
+
+
+def test_find_slot_for_query_not_found(tmp_path: Path) -> None:
+    """Test that find_slot_for_query returns None when query is absent."""
+    test_file = tmp_path / "saved_queries.json"
+    with patch("ace.saved_queries._SAVED_QUERIES_FILE", test_file):
+        save_query("1", '"something"')
+        result = find_slot_for_query('"missing"')
+        assert result is None
+
+
+def test_save_query_moves_from_old_slot(tmp_path: Path) -> None:
+    """Test that saving a query to a new slot removes it from the old slot."""
+    test_file = tmp_path / "saved_queries.json"
+    with patch("ace.saved_queries._SAVED_QUERIES_FILE", test_file):
+        save_query("2", '"moveme"')
+        save_query("5", '"moveme"')
+        result = load_saved_queries()
+        assert "2" not in result
+        assert result["5"] == '"moveme"'
+
+
+def test_save_query_same_slot_no_change(tmp_path: Path) -> None:
+    """Test that saving to the same slot just overwrites (no removal)."""
+    test_file = tmp_path / "saved_queries.json"
+    with patch("ace.saved_queries._SAVED_QUERIES_FILE", test_file):
+        save_query("3", '"stay"')
+        save_query("3", '"stay"')
+        result = load_saved_queries()
+        assert result["3"] == '"stay"'
+        assert len(result) == 1

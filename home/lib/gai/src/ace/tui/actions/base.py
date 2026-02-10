@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Literal
 from ...query import QueryParseError, parse_query, to_canonical_string
 from ...saved_queries import (
     delete_query,
+    find_slot_for_query,
     get_next_available_slot,
     load_saved_queries,
     save_query,
@@ -583,9 +584,13 @@ class BaseActionsMixin:
                     return
 
                 # Determine slot
+                existing_slot = find_slot_for_query(canonical)
                 if slot_specified:
                     slot = slot_specified
                 else:
+                    if existing_slot is not None:
+                        self.notify(f"Query already saved in slot {existing_slot}")  # type: ignore[attr-defined]
+                        return
                     queries = load_saved_queries()
                     slot = get_next_available_slot(queries)
                     if slot is None:
@@ -593,7 +598,12 @@ class BaseActionsMixin:
                         return
 
                 if save_query(slot, canonical):
-                    self.notify(f"Saved to slot {slot}: {canonical}")  # type: ignore[attr-defined]
+                    if existing_slot is not None and existing_slot != slot:
+                        self.notify(  # type: ignore[attr-defined]
+                            f"Moved query from slot {existing_slot} to slot {slot}: {canonical}"
+                        )
+                    else:
+                        self.notify(f"Saved to slot {slot}: {canonical}")  # type: ignore[attr-defined]
                 else:
                     self.notify("Failed to save query", severity="error")  # type: ignore[attr-defined]
             else:
