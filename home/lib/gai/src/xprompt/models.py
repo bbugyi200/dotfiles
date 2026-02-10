@@ -11,6 +11,14 @@ if TYPE_CHECKING:
     from xprompt.workflow_models import Workflow
 
 
+UNSET = object()
+"""Sentinel for 'no default specified' (required input).
+
+Use ``UNSET`` when an input has no default (i.e. it is required).
+``None`` means the YAML value was explicitly ``null`` (pass-through to callee).
+"""
+
+
 class InputType(Enum):
     """Supported input argument types for XPrompt files."""
 
@@ -61,14 +69,16 @@ class InputArg:
     Attributes:
         name: The argument name (used for named args like `name=value`).
         type: The expected type of the argument value.
-        default: Default value if argument is not provided (None means required).
+        default: Default value if argument is not provided.
+            ``UNSET`` means required (no default).
+            ``None`` means null/pass-through (use callee's default).
         is_step_input: True for implicit step inputs (generated from step outputs).
         output_schema: For step inputs, the output schema to validate against.
     """
 
     name: str
     type: InputType = InputType.LINE
-    default: Any = None
+    default: Any = UNSET
     is_step_input: bool = False
     output_schema: OutputSpec | None = None
 

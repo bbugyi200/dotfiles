@@ -10,7 +10,7 @@ from xprompt.loader import (
     _parse_yaml_front_matter,
     get_all_xprompts,
 )
-from xprompt.models import InputType, XPrompt
+from xprompt.models import UNSET, InputType, XPrompt
 
 # Tests for _load_xprompt_from_file
 
@@ -192,7 +192,7 @@ xprompts:
 
     name_input = next(i for i in xprompts["with_input"].inputs if i.name == "name")
     assert name_input.type == InputType.WORD
-    assert name_input.default is None
+    assert name_input.default is UNSET
 
     count_input = next(i for i in xprompts["with_input"].inputs if i.name == "count")
     assert count_input.type == InputType.INT

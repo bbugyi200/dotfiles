@@ -12,7 +12,7 @@ from xprompt._parsing import (
     preprocess_shorthand_syntax,
 )
 from xprompt.loader import get_all_xprompts
-from xprompt.models import OutputSpec, XPrompt
+from xprompt.models import UNSET, OutputSpec, XPrompt
 from xprompt.workflow_models import Workflow, WorkflowStep, WorkflowValidationError
 
 # Pattern to match xprompt references (same as processor.py)
@@ -151,7 +151,7 @@ def _validate_xprompt_call(
     # Find missing required args (those without defaults)
     missing_required: list[str] = []
     for inp in xprompt.inputs:
-        if inp.default is None and inp.name not in provided_names:
+        if inp.default is UNSET and inp.name not in provided_names:
             # Skip check if a template variable could provide it at runtime
             # (but we still report it since we can't be sure)
             missing_required.append(inp.name)

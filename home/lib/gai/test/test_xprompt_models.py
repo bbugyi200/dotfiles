@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from xprompt.models import (
+    UNSET,
     InputArg,
     InputType,
     XPrompt,
@@ -161,10 +162,10 @@ def test_input_arg_default_type_is_line() -> None:
     assert arg.type == InputType.LINE
 
 
-def test_input_arg_default_is_none() -> None:
-    """Test that default value is None."""
+def test_input_arg_default_is_unset() -> None:
+    """Test that default value is UNSET when not specified."""
     arg = InputArg(name="test")
-    assert arg.default is None
+    assert arg.default is UNSET
 
 
 def test_input_arg_with_default_value() -> None:

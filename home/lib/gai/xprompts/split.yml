@@ -1,4 +1,4 @@
-input: { split_desc: { type: line, default: "multiple CLs" }, chain: { type: bool, default: false } }
+input: { split_desc: { type: line, default: null }, chain: { type: bool, default: null } }
 steps:
   # Step 1: Setup - gather metadata from current branch
   - name: setup

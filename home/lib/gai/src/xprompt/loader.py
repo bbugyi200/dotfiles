@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 import yaml  # type: ignore[import-untyped]
 
-from .models import InputArg, InputType, OutputSpec, XPrompt
+from .models import UNSET, InputArg, InputType, OutputSpec, XPrompt
 
 if TYPE_CHECKING:
     from xprompt.workflow_models import Workflow
@@ -103,15 +103,16 @@ def _parse_shortform_input_value(value: str | dict[str, Any]) -> tuple[str, Any]
             optional 'default' keys (e.g., {"type": "line", "default": ""}).
 
     Returns:
-        Tuple of (type_str, default_value). default_value is None if no default.
+        Tuple of (type_str, default_value). default_value is UNSET if no default,
+        None if the YAML value was explicitly null.
     """
     if isinstance(value, dict):
         type_str = str(value.get("type", "line"))
-        default = value.get("default")
+        default = value.get("default", UNSET)
         return type_str, default
 
     # Simple string type without default
-    return str(value).strip(), None
+    return str(value).strip(), UNSET
 
 
 def parse_shortform_inputs(
@@ -199,7 +200,7 @@ def _parse_shortform_output(output_data: dict[str, Any] | list[Any]) -> OutputSp
             type_str, default = _parse_shortform_input_value(field_value)
             properties[field_name] = {"type": type_str}
             # Fields without defaults are required
-            if default is None:
+            if default is UNSET:
                 required.append(field_name)
 
         items_schema: dict[str, Any] = {
@@ -261,7 +262,7 @@ def _parse_inputs_from_front_matter(
 
         name = str(item["name"])
         type_str = str(item.get("type", "line"))
-        default = item.get("default")
+        default = item.get("default", UNSET)
 
         inputs.append(
             InputArg(

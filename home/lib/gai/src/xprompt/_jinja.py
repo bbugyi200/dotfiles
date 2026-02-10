@@ -8,7 +8,7 @@ from jinja2 import BaseLoader, Environment, StrictUndefined, TemplateError
 from rich_utils import print_status
 
 from ._exceptions import XPromptArgumentError
-from .models import XPrompt, XPromptValidationError
+from .models import UNSET, XPrompt, XPromptValidationError
 
 # Lazy-initialized Jinja2 environment
 _jinja_env: Environment | None = None
@@ -70,7 +70,11 @@ def validate_and_convert_args(
     # Process positional args
     for i, value in enumerate(positional_args):
         input_def = xprompt.get_input_by_position(i)
-        if input_def:
+        if input_def and value == "null":
+            # Null pass-through: keep raw value in positional list but don't
+            # add to converted_named so the callee's own default applies.
+            converted_positional.append(value)
+        elif input_def:
             try:
                 converted_value = input_def.validate_and_convert(value)
                 converted_positional.append(converted_value)
@@ -87,6 +91,9 @@ def validate_and_convert_args(
 
     # Process named args
     for name, value in named_args.items():
+        if value == "null":
+            # Null pass-through: skip so the callee's own default applies.
+            continue
         input_def = xprompt.get_input_by_name(name)
         if input_def:
             try:
@@ -103,7 +110,7 @@ def validate_and_convert_args(
     # Apply defaults for missing required inputs
     for input_def in xprompt.inputs:
         if input_def.name not in used_input_names:
-            if input_def.default is not None:
+            if input_def.default is not UNSET:
                 converted_named[input_def.name] = input_def.default
             # Don't error on missing required - let Jinja2/legacy handle it
 

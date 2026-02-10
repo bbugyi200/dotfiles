@@ -20,7 +20,7 @@ from ._parsing import (
     preprocess_shorthand_syntax,
 )
 from .loader import get_all_workflows, get_all_xprompts
-from .models import XPrompt
+from .models import UNSET, XPrompt
 from .workflow_models import WorkflowStep, WorkflowValidationError
 
 # Maximum number of expansion iterations to prevent infinite loops
@@ -331,8 +331,11 @@ def execute_workflow(
 
     # Apply defaults for missing args
     for input_arg in workflow.inputs:
-        if input_arg.name not in args and input_arg.default is not None:
-            args[input_arg.name] = str(input_arg.default)
+        if input_arg.name not in args and input_arg.default is not UNSET:
+            if input_arg.default is None:
+                args[input_arg.name] = "null"
+            else:
+                args[input_arg.name] = str(input_arg.default)
 
     # Handle simple xprompts (converted xprompts with single prompt_part step)
     # Execute them as direct prompts through run_query instead of workflow executor
@@ -443,8 +446,11 @@ def expand_workflow_for_embedding(
 
     # Apply defaults for missing args
     for input_arg in workflow.inputs:
-        if input_arg.name not in args and input_arg.default is not None:
-            args[input_arg.name] = str(input_arg.default)
+        if input_arg.name not in args and input_arg.default is not UNSET:
+            if input_arg.default is None:
+                args[input_arg.name] = "null"
+            else:
+                args[input_arg.name] = str(input_arg.default)
 
     # Get pre and post steps
     pre_steps = workflow.get_pre_prompt_steps()

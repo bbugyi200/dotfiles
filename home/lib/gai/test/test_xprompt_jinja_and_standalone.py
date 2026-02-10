@@ -441,6 +441,40 @@ def test_validate_and_convert_args_named_error() -> None:
         validate_and_convert_args(xp, [], {"n": "not_a_number"})
 
 
+def test_validate_and_convert_args_null_named_arg_uses_default() -> None:
+    """Test that named arg 'null' is skipped so callee's default applies."""
+    xp = XPrompt(
+        name="test",
+        content="hello",
+        inputs=[InputArg(name="x", type=InputType.LINE, default="fallback")],
+    )
+    _, named = validate_and_convert_args(xp, [], {"x": "null"})
+    assert named == {"x": "fallback"}
+
+
+def test_validate_and_convert_args_null_positional_arg_uses_default() -> None:
+    """Test that positional arg 'null' is skipped so callee's default applies."""
+    xp = XPrompt(
+        name="test",
+        content="hello",
+        inputs=[InputArg(name="x", type=InputType.LINE, default="fallback")],
+    )
+    pos, named = validate_and_convert_args(xp, ["null"], {})
+    assert pos == ["null"]
+    assert named == {"x": "fallback"}
+
+
+def test_validate_and_convert_args_null_value_no_default_skipped() -> None:
+    """Test that 'null' with no callee default leaves arg out of result."""
+    xp = XPrompt(
+        name="test",
+        content="hello",
+        inputs=[InputArg(name="x", type=InputType.LINE)],
+    )
+    _, named = validate_and_convert_args(xp, [], {"x": "null"})
+    assert "x" not in named
+
+
 # Tests for skipped step context in execute_standalone_steps
 
 

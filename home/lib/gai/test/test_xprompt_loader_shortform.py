@@ -8,7 +8,7 @@ from xprompt.loader import (
     parse_output_from_front_matter,
     parse_shortform_inputs,
 )
-from xprompt.models import InputType
+from xprompt.models import UNSET, InputType
 
 # Tests for _parse_shortform_input_value
 
@@ -17,7 +17,7 @@ def test_parse_shortform_input_value_simple_type() -> None:
     """Test parsing a simple type without default."""
     type_str, default = _parse_shortform_input_value("word")
     assert type_str == "word"
-    assert default is None
+    assert default is UNSET
 
 
 def test_parse_shortform_input_value_dict_with_empty_string_default() -> None:
@@ -77,6 +77,13 @@ def test_parse_shortform_input_value_dict_without_default() -> None:
     """Test parsing dict without default key."""
     type_str, default = _parse_shortform_input_value({"type": "word"})
     assert type_str == "word"
+    assert default is UNSET
+
+
+def test_parse_shortform_input_value_null_default() -> None:
+    """Test parsing dict with explicit null default."""
+    type_str, default = _parse_shortform_input_value({"type": "line", "default": None})
+    assert type_str == "line"
     assert default is None
 
 
@@ -99,7 +106,7 @@ def test_parse_shortform_inputs_basic() -> None:
 
     name_input = next(i for i in inputs if i.name == "name")
     assert name_input.type == InputType.WORD
-    assert name_input.default is None
+    assert name_input.default is UNSET
 
 
 def test_parse_shortform_inputs_with_defaults() -> None:
