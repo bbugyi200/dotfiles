@@ -1,7 +1,5 @@
 """Tests for xprompt._parsing functions."""
 
-import pytest
-from xprompt._exceptions import XPromptArgumentError
 from xprompt._parsing import (
     _find_double_colon_text_end,
     _find_shorthand_text_end,
@@ -63,10 +61,16 @@ def test_process_text_block_empty_lines() -> None:
     assert result == "first\n\nthird"
 
 
-def test_process_text_block_bad_indent() -> None:
-    """Test _process_text_block raises on bad indentation."""
-    with pytest.raises(XPromptArgumentError, match="must start with 2 spaces"):
-        _process_text_block("[[first\nbad indent]]")
+def test_process_text_block_no_indent() -> None:
+    """Test _process_text_block with zero indentation on continuation lines."""
+    result = _process_text_block("[[first\nsecond]]")
+    assert result == "first\nsecond"
+
+
+def test_process_text_block_mixed_indent() -> None:
+    """Test _process_text_block preserves relative indentation."""
+    result = _process_text_block("[[first\n  second\n    third]]")
+    assert result == "first\nsecond\n  third"
 
 
 # Tests for _find_shorthand_text_end

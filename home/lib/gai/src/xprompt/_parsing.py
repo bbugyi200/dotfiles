@@ -2,8 +2,6 @@
 
 import re
 
-from ._exceptions import XPromptArgumentError
-
 
 def escape_for_xprompt(text: str) -> str:
     """Escape text for use in an xprompt argument string.
@@ -22,8 +20,9 @@ def escape_for_xprompt(text: str) -> str:
 def _process_text_block(value: str) -> str:
     """Process a value that may be a text block [[...]].
 
-    Strips mandatory 2-space indentation from each line.
-    Raises error if indentation is missing.
+    Strips leading whitespace from the first line and dedents continuation
+    lines by their minimum common indentation, preserving relative indentation.
+    Empty lines are preserved as-is.
     """
     if not (value.startswith("[[") and value.endswith("]]")):
         return value
@@ -31,22 +30,31 @@ def _process_text_block(value: str) -> str:
     content = value[2:-2]  # Remove [[ and ]]
     lines = content.split("\n")
 
-    processed_lines: list[str] = []
-    for i, line in enumerate(lines):
-        if i == 0:
-            # First line after [[ - strip leading whitespace
-            processed_lines.append(line.lstrip())
-        elif line.strip() == "":
-            # Empty line - preserve as empty
+    if not lines:
+        return ""
+
+    # First line after [[ - strip leading whitespace
+    first_line = lines[0].lstrip()
+    continuation_lines = lines[1:]
+
+    # Find minimum indentation among non-empty continuation lines
+    min_indent = None
+    for line in continuation_lines:
+        if line.strip() == "":
+            continue
+        indent = len(line) - len(line.lstrip())
+        if min_indent is None or indent < min_indent:
+            min_indent = indent
+
+    if min_indent is None:
+        min_indent = 0
+
+    processed_lines: list[str] = [first_line]
+    for line in continuation_lines:
+        if line.strip() == "":
             processed_lines.append("")
         else:
-            # Strip exactly 2 spaces from beginning
-            if line.startswith("  "):
-                processed_lines.append(line[2:])
-            else:
-                raise XPromptArgumentError(
-                    f"Text block line must start with 2 spaces: {line!r}"
-                )
+            processed_lines.append(line[min_indent:])
 
     return "\n".join(processed_lines).strip()
 
