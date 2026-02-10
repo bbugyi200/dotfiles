@@ -87,7 +87,7 @@ def check_hooks(
     zombie_timeout_seconds: int = DEFAULT_ZOMBIE_TIMEOUT_SECONDS,
     max_runners: int = 5,
     runners_started_this_cycle: int = 0,
-) -> tuple[list[str], int]:
+) -> tuple[list[str], int, int]:
     """Check and run hooks for a ChangeSpec.
 
     This method handles hooks in two phases:
@@ -106,14 +106,15 @@ def check_hooks(
             ChangeSpecs). Added to the global count to avoid exceeding the limit.
 
     Returns:
-        Tuple of (update messages, number of hooks started by this call).
+        Tuple of (update messages, number of hooks started, number of hooks queued).
     """
     updates: list[str] = []
     hooks_started = 0
+    hooks_queued = 0
 
     # Hooks should exist at this point since we checked in should_check_hooks
     if not changespec.hooks:
-        return updates, hooks_started
+        return updates, hooks_started, hooks_queued
 
     # For terminal statuses (Reverted, Submitted, Archived), we still check completion
     # of RUNNING hooks, but we don't start new hooks
@@ -460,6 +461,9 @@ def check_hooks(
         for entry_id in entries_needing_hooks:
             remaining_slots = max(0, available_slots - hooks_started)
 
+            if remaining_slots == 0:
+                hooks_queued += 1
+
             if remaining_slots == 0 and not limit_logged:
                 if available_slots == 0:
                     log(
@@ -530,4 +534,4 @@ def check_hooks(
     if not has_running_hooks(updated_hooks):
         release_entry_workspaces(changespec, log)
 
-    return updates, hooks_started
+    return updates, hooks_started, hooks_queued

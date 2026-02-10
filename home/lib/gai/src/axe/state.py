@@ -36,6 +36,7 @@ class AxeStatus:
     total_changespecs: int
     filtered_changespecs: int
     uptime_seconds: int
+    queued_runners: int = 0
 
 
 @dataclass

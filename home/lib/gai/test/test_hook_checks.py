@@ -68,7 +68,7 @@ def test_check_hooks_skips_reverted() -> None:
     )
     log = MagicMock()
 
-    updates, hooks_started = check_hooks(cs, log)
+    updates, hooks_started, _hooks_queued = check_hooks(cs, log)
 
     # No updates since hook is already PASSED (not RUNNING, not stale)
     assert updates == []
@@ -91,7 +91,7 @@ def test_check_hooks_skips_submitted() -> None:
     )
     log = MagicMock()
 
-    updates, hooks_started = check_hooks(cs, log)
+    updates, hooks_started, _hooks_queued = check_hooks(cs, log)
 
     # No updates since hook is already PASSED (not RUNNING, not stale)
     assert updates == []
@@ -103,7 +103,7 @@ def test_check_hooks_no_hooks() -> None:
     cs = _make_changespec(hooks=None)
     log = MagicMock()
 
-    updates, hooks_started = check_hooks(cs, log)
+    updates, hooks_started, _hooks_queued = check_hooks(cs, log)
 
     assert updates == []
     assert hooks_started == 0
@@ -114,7 +114,7 @@ def test_check_hooks_empty_hooks() -> None:
     cs = _make_changespec(hooks=[])
     log = MagicMock()
 
-    updates, hooks_started = check_hooks(cs, log)
+    updates, hooks_started, _hooks_queued = check_hooks(cs, log)
 
     assert updates == []
     assert hooks_started == 0
@@ -221,7 +221,7 @@ def test_check_hooks_logs_warning_on_merge_failure() -> None:
         patch("ace.scheduler.hook_checks.is_process_running", return_value=True),
         patch("ace.scheduler.hook_checks.merge_hook_updates", return_value=False),
     ):
-        updates, hooks_started = check_hooks(cs, log)
+        updates, hooks_started, _hooks_queued = check_hooks(cs, log)
 
     # Verify that the warning was logged
     log.assert_any_call(

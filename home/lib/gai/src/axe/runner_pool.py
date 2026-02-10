@@ -27,11 +27,13 @@ class RunnerPool:
         self.max_runners = max_runners
         self._lock = Lock()
         self._started_this_tick = 0
+        self._queued_this_tick = 0
 
     def reset_tick(self) -> None:
-        """Reset per-tick counter. Call at start of each scheduler tick."""
+        """Reset per-tick counters. Call at start of each scheduler tick."""
         with self._lock:
             self._started_this_tick = 0
+            self._queued_this_tick = 0
 
     def get_started_this_tick(self) -> int:
         """Get the number of runners started this tick.
@@ -101,6 +103,24 @@ class RunnerPool:
         """
         with self._lock:
             self._started_this_tick += count
+
+    def add_queued(self, count: int) -> None:
+        """Add to the queued count for this tick.
+
+        Args:
+            count: Number of runners that were deferred/queued.
+        """
+        with self._lock:
+            self._queued_this_tick += count
+
+    def get_queued_count(self) -> int:
+        """Get the number of runners queued (deferred) this tick.
+
+        Returns:
+            Number of runners deferred due to the runner limit.
+        """
+        with self._lock:
+            return self._queued_this_tick
 
     def is_at_limit(self) -> bool:
         """Check if runner limit has been reached.

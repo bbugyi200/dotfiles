@@ -542,7 +542,7 @@ def check_mentors(
     zombie_timeout_seconds: int,
     max_runners: int,
     runners_started_this_cycle: int = 0,
-) -> tuple[list[str], int]:
+) -> tuple[list[str], int, int]:
     """Check and run mentors for a ChangeSpec.
 
     Phase 1: Check completion status of RUNNING mentors
@@ -558,14 +558,15 @@ def check_mentors(
             all ChangeSpecs). Added to the global count to avoid exceeding the limit.
 
     Returns:
-        Tuple of (update messages, number of mentors started by this call).
+        Tuple of (update messages, number of mentors started, number of mentors queued).
     """
     updates: list[str] = []
     mentors_started = 0
+    mentors_queued = 0
 
     # Don't check mentors for terminal statuses
     if changespec.status in ("Reverted", "Submitted", "Archived"):
-        return updates, mentors_started
+        return updates, mentors_started, mentors_queued
 
     # Phase 1: Check completion of running mentors
     completion_updates = _check_mentor_completion(
@@ -582,7 +583,7 @@ def check_mentors(
     profiles_to_run = _get_mentor_profiles_to_run(changespec)
 
     if not profiles_to_run:
-        return updates, mentors_started
+        return updates, mentors_started, mentors_queued
 
     # Check global concurrency limit
     # Include runners started this cycle (across all ChangeSpecs) that aren't
@@ -597,19 +598,21 @@ def check_mentors(
             f"(limit: {max_runners})",
             "dim",
         )
-        return updates, mentors_started
+        mentors_queued = len(profiles_to_run)
+        return updates, mentors_started, mentors_queued
 
     available_slots = max_runners - current_running
 
     # Import start_mentor here to avoid circular imports
     from .mentor_runner import start_mentors_for_profile
 
-    for entry_id, profile in profiles_to_run:
+    for i, (entry_id, profile) in enumerate(profiles_to_run):
         if mentors_started >= available_slots:
             log(
                 f"Reached runner limit ({max_runners}), deferring remaining mentors",
                 "dim",
             )
+            mentors_queued = len(profiles_to_run) - i
             break
 
         # Get mentors already started for this entry
@@ -627,4 +630,4 @@ def check_mentors(
         updates.extend(start_updates)
         mentors_started += started_count
 
-    return updates, mentors_started
+    return updates, mentors_started, mentors_queued

@@ -132,6 +132,12 @@ class _AxeStatusSection(Static):
                     f"{self._status.current_runners}/{self._status.max_runners}",
                     style="#00D7AF",
                 )
+                if self._status.queued_runners > 0:
+                    text.append("  ", style="")
+                    text.append("(", style="dim")
+                    text.append("QUEUED: ", style="bold #FFD700")
+                    text.append(f"{self._status.queued_runners}", style="#FFD700 bold")
+                    text.append(")", style="dim")
             else:
                 text.append("...", style="#00D7AF")
 
