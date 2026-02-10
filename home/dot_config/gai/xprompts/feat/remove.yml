@@ -12,7 +12,10 @@ steps:
       #_remove_refs(Dart) #commit(remove_{{ short_feat }}_dart, {{ bug_id }})
   - name: java_refs
     prompt: |
-      #_remove_refs(Java) #commit(remove_{{ short_feat }}_java, {{ bug_id }})
+      #_remove_refs(Java) Also, do NOT remove the reference contained in the TestPublisherFeatureGroups.java file. #commit(remove_{{ short_feat }}_java, {{ bug_id }})
+  - name: test_ref
+    prompt: |
+      Can you help me remove the reference to {{ feature }} from the TestPublisherFeatureGroups.java file? #commit(remove_{{ short_feat }}_test_ref, {{ bug_id }})
   - name: final
     prompt: |
       Can you help me remove the {{ feature }} #feat from the publisher_features.textproto file and make the necessary
