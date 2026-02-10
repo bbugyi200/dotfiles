@@ -160,33 +160,6 @@ def strip_hook_prefix(hook_command: str) -> str:
     return hook_command.lstrip("!$")
 
 
-def get_context_files(directory: str | None) -> list[str]:
-    """Get list of context file paths (.md, .txt) from a directory.
-
-    Scans the directory for .md and .txt files and returns their full paths.
-
-    Args:
-        directory: Path to context directory, or None.
-
-    Returns:
-        Sorted list of full paths to .md and .txt files.
-        Returns empty list if directory is None or doesn't exist.
-    """
-    if not directory or not os.path.isdir(directory):
-        return []
-
-    try:
-        return sorted(
-            [
-                os.path.join(directory, f)
-                for f in os.listdir(directory)
-                if f.endswith((".md", ".txt"))
-            ]
-        )
-    except OSError:
-        return []
-
-
 def run_workspace_command(
     cmd: list[str], workspace_dir: str, capture_output: bool = True
 ) -> tuple[bool, str | None]:

@@ -2,10 +2,8 @@
 
 import os
 import sys
-from pathlib import Path
 from typing import NoReturn
 
-from gai_utils import get_context_files
 from gemini_wrapper import invoke_agent
 from main.query_handler import (
     execute_standalone_steps,
@@ -64,29 +62,17 @@ def _create_critique_comments_artifact(
     return artifact_path
 
 
-def _build_crs_prompt(
-    critique_comments_path: str, context_file_directory: str | None = None
-) -> str:
+def _build_crs_prompt(critique_comments_path: str) -> str:
     """Build the change request prompt using the crs xprompt.
 
     Args:
         critique_comments_path: Path to the critique comments JSON file
-        context_file_directory: Optional directory containing context files
 
     Returns:
         The formatted prompt string
     """
-    # Build context files section if directory provided
-    context_files_section = ""
-    context_files = get_context_files(context_file_directory)
-    if context_files:
-        context_files_section = "\n### ADDITIONAL CONTEXT\n"
-        for context_file in context_files:
-            context_files_section += f"+ @{context_file}\n"
-
     escaped_path = escape_for_xprompt(critique_comments_path)
-    escaped_section = escape_for_xprompt(context_files_section)
-    prompt_text = f'#crs(critique_comments_path="{escaped_path}", context_files_section="{escaped_section}")'
+    prompt_text = f'#crs(critique_comments_path="{escaped_path}")'
     return process_xprompt_references(prompt_text)
 
 
@@ -95,22 +81,22 @@ class CrsWorkflow(BaseWorkflow):
 
     def __init__(
         self,
-        context_file_directory: str | None = None,
         comments_file: str | None = None,
         timestamp: str | None = None,
         who: str | None = None,
+        project_name: str | None = None,
     ) -> None:
         """Initialize CRS workflow.
 
         Args:
-            context_file_directory: Optional directory containing markdown files to add to the prompt
             comments_file: Optional path to existing comments JSON file.
                 If provided, copy from this file instead of running critique_comments.
             timestamp: Optional timestamp for artifacts directory (YYmmdd_HHMMSS format).
                 When provided, ensures the artifacts directory matches the agent suffix timestamp.
             who: Optional identifier for who is creating the proposal (e.g., "crs (ref)").
+            project_name: Optional project name for artifacts directory.
         """
-        self.context_file_directory = context_file_directory
+        self.project_name = project_name
         self.comments_file = comments_file
         self._timestamp = timestamp
         self._who = who
@@ -131,12 +117,8 @@ class CrsWorkflow(BaseWorkflow):
         # Initialize workflow context
         if self._timestamp:
             # Use provided timestamp to ensure artifacts match agent suffix
-            if self.context_file_directory:
-                project_name = Path(self.context_file_directory).parent.name
-            else:
-                project_name = None
             artifacts_dir = create_artifacts_directory(
-                "crs", project_name=project_name, timestamp=self._timestamp
+                "crs", project_name=self.project_name, timestamp=self._timestamp
             )
             workflow_tag = generate_workflow_tag()
             print_workflow_header("crs", workflow_tag)
@@ -157,7 +139,7 @@ class CrsWorkflow(BaseWorkflow):
 
         # Build the prompt
         print_status("Building change request prompt...", "progress")
-        prompt = _build_crs_prompt(critique_artifact, self.context_file_directory)
+        prompt = _build_crs_prompt(critique_artifact)
         self.last_prompt = prompt
 
         # Expand embedded workflows (#propose from crs.md)

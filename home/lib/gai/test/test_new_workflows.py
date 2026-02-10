@@ -41,32 +41,8 @@ class TestCrsWorkflow:
 class TestCrsWorkflowAdvanced:
     """Additional tests for the CRS workflow."""
 
-    def test_workflow_init_with_context_file(self) -> None:
-        """Test that workflow can be initialized with context file directory."""
-        workflow = CrsWorkflow(context_file_directory="/path/to/context")
-        assert workflow.context_file_directory == "/path/to/context"
+    def test_workflow_init_with_project_name(self) -> None:
+        """Test that workflow can be initialized with project name."""
+        workflow = CrsWorkflow(project_name="my_project")
+        assert workflow.project_name == "my_project"
         assert workflow.name == "crs"
-
-    def test_build_crs_prompt_with_context_directory(self) -> None:
-        """Test building CRS prompt with context directory."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            # Create a test markdown file for context
-            test_file = os.path.join(tmpdir, "context.md")
-            with open(test_file, "w") as f:
-                f.write("# Test Context\n")
-
-            # Create a comments file
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".json", delete=False
-            ) as f:
-                f.write('{"comments": []}\n')
-                comments_file = f.name
-
-            try:
-                prompt = _build_crs_prompt(comments_file, tmpdir)
-                # Context files should be included in the prompt
-                assert "context.md" in prompt
-                # #propose reference should be present for later workflow expansion
-                assert "#propose" in prompt
-            finally:
-                os.unlink(comments_file)

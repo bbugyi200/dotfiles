@@ -93,12 +93,6 @@ def run_crs_workflow(
         # (this ensures the workflow runs in the correct directory)
         os.chdir(target_dir)
 
-        # Set context file directory to ~/.gai/projects/<project>/context/
-        # (CrsWorkflow will copy these files to local bb/gai/context/ directory)
-        context_file_directory = os.path.expanduser(
-            f"~/.gai/projects/{changespec.project_basename}/context/"
-        )
-
         # Set timestamp suffix on comment entry to indicate CRS is running
         crs_start_timestamp = generate_timestamp()
         if changespec.comments:
@@ -114,9 +108,9 @@ def run_crs_workflow(
         # Run the CRS workflow
         console.print("[cyan]Running CRS workflow...[/cyan]")
         workflow = CrsWorkflow(
-            context_file_directory=context_file_directory,
             comments_file=comments_file,
             timestamp=crs_start_timestamp,
+            project_name=changespec.project_basename,
         )
         workflow_succeeded = workflow.run()
 

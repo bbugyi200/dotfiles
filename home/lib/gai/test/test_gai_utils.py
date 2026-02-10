@@ -2,14 +2,12 @@
 
 import os
 import re
-import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from gai_utils import (
     ensure_gai_directory,
     generate_timestamp,
-    get_context_files,
     get_gai_directory,
     get_next_suffix_number,
     get_workspace_directory_for_changespec,
@@ -224,73 +222,6 @@ def test_strip_hook_prefix_multiple() -> None:
     assert strip_hook_prefix("!!!bb_test") == "bb_test"
     assert strip_hook_prefix("$$$bb_test") == "bb_test"
     assert strip_hook_prefix("!$!$bb_test") == "bb_test"
-
-
-# Tests for get_context_files
-def test_get_context_files_none() -> None:
-    """Test get_context_files returns empty list for None."""
-    assert get_context_files(None) == []
-
-
-def test_get_context_files_nonexistent_dir() -> None:
-    """Test get_context_files returns empty list for non-existent directory."""
-    assert get_context_files("/nonexistent/path") == []
-
-
-def test_get_context_files_empty_dir() -> None:
-    """Test get_context_files returns empty list for empty directory."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        result = get_context_files(tmpdir)
-        assert result == []
-
-
-def test_get_context_files_with_md_files() -> None:
-    """Test get_context_files finds .md files."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        (Path(tmpdir) / "file1.md").touch()
-        (Path(tmpdir) / "file2.md").touch()
-
-        result = get_context_files(tmpdir)
-        assert len(result) == 2
-        assert all(f.endswith(".md") for f in result)
-
-
-def test_get_context_files_with_txt_files() -> None:
-    """Test get_context_files finds .txt files."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        (Path(tmpdir) / "file1.txt").touch()
-        (Path(tmpdir) / "file2.txt").touch()
-
-        result = get_context_files(tmpdir)
-        assert len(result) == 2
-        assert all(f.endswith(".txt") for f in result)
-
-
-def test_get_context_files_mixed_extensions() -> None:
-    """Test get_context_files finds both .md and .txt files."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        (Path(tmpdir) / "readme.md").touch()
-        (Path(tmpdir) / "notes.txt").touch()
-        (Path(tmpdir) / "script.py").touch()  # should be ignored
-
-        result = get_context_files(tmpdir)
-        assert len(result) == 2
-        filenames = [os.path.basename(f) for f in result]
-        assert "readme.md" in filenames
-        assert "notes.txt" in filenames
-        assert "script.py" not in filenames
-
-
-def test_get_context_files_sorted() -> None:
-    """Test get_context_files returns sorted list."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        (Path(tmpdir) / "z_file.md").touch()
-        (Path(tmpdir) / "a_file.md").touch()
-        (Path(tmpdir) / "m_file.txt").touch()
-
-        result = get_context_files(tmpdir)
-        filenames = [os.path.basename(f) for f in result]
-        assert filenames == sorted(filenames)
 
 
 # Tests for has_suffix
