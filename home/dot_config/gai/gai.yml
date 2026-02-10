@@ -127,7 +127,7 @@ xprompts:
     input: { bug_id: int, feature: word }
     content: |
       Can you help me enable the {{ feature }} #feat for the SMALL_BUSINESS_BETA (ID: 20) feature group?
-      #clref:839234152 #commit(launch_beta, {{ bug_id }})
+      #clref:868137057 #commit(launch_beta, {{ bug_id }})
   launch/tests:
     input: { bug_id: int, feature: word }
     content: |
