@@ -1,13 +1,18 @@
 input: { feature: word, short_feat: word, bug_id: int }
+xprompts:
+  _remove_refs:
+    input: { lang: word }
+    content: |
+      Can you help me remove all {{ lang }} references to the {{ feature }} #feat? Make sure to also remove any
+      variables / logic that only exists to support this feature. Don't touch references in other files (I will remove
+      those later).
 steps:
   - name: dart_refs
     prompt: |
-      Can you help me remove all Dart references to the {{ feature }} #feat? Don't touch references in other files (I
-      will remove those later). #commit(remove_{{ short_feat }}_dart, {{ bug_id }})
+      #_remove_refs(Dart) #commit(remove_{{ short_feat }}_dart, {{ bug_id }})
   - name: java_refs
     prompt: |
-      Can you help me remove all Java references to the {{ feature }} #feat? Don't touch references in other files (I
-      will remove those later). #commit(remove_{{ short_feat }}_java, {{ bug_id }})
+      #_remove_refs(Java) #commit(remove_{{ short_feat }}_java, {{ bug_id }})
   - name: final
     prompt: |
       Can you help me remove the {{ feature }} #feat from the publisher_features.textproto file and make the necessary
