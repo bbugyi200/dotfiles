@@ -3,9 +3,9 @@ xprompts:
   _remove_refs:
     input: { lang: word }
     content: |
-      Can you help me remove all {{ lang }} references to the {{ feature }} #feat? Make sure to also remove any
-      variables / logic that only exists to support this feature. Don't touch references in other files (I will remove
-      those later).
+      Can you help me remove all {{ lang }} references to the {{ feature }} #feat? This feature is enabled on ALL
+      networks now, so make sure to also remove any variables / logic that only exist to support the case where the
+      feature flag is disabled. Don't touch references in other files (I will remove those later).
 steps:
   - name: dart_refs
     prompt: |
