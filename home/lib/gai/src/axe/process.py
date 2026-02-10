@@ -158,7 +158,6 @@ def get_axe_status() -> dict | None:
         "total_changespecs": status.total_changespecs,
         "filtered_changespecs": status.filtered_changespecs,
         "uptime_seconds": status.uptime_seconds,
-        "queued_runners": status.queued_runners,
     }
 
 
