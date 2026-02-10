@@ -26,7 +26,7 @@ def _calculate_entry_display_width(changespec: ChangeSpec, is_marked: bool) -> i
     Returns:
         Width in terminal cells
     """
-    indicator, _ = _get_status_indicator(changespec)
+    indicator, *_ = _get_status_indicator(changespec)
     # Format: "[✓] [{indicator}] {name} ({cl})" (with mark prefix if marked)
     parts = []
     if is_marked:
@@ -39,88 +39,70 @@ def _calculate_entry_display_width(changespec: ChangeSpec, is_marked: bool) -> i
     return text.cell_len
 
 
-def _get_status_indicator(changespec: ChangeSpec) -> tuple[str, str]:
-    """Get a status indicator symbol and color for a ChangeSpec.
+def _get_status_letter_and_color(
+    status: str, *, has_ready_to_mail: bool
+) -> tuple[str, str]:
+    """Map a status string to its letter and natural color.
+
+    Args:
+        status: The ChangeSpec status string
+        has_ready_to_mail: Whether the status has a ready-to-mail suffix
+
+    Returns:
+        Tuple of (letter, color)
+    """
+    if has_ready_to_mail:
+        return "*", "#00D787"
+    if "..." in status:
+        return "~", "#87AFFF"
+    elif status.startswith("Drafted"):
+        return "D", "#87D700"
+    elif status.startswith("Mailed"):
+        return "M", "#00D787"
+    elif status.startswith("Submitted"):
+        return "S", "#00AF00"
+    elif status.startswith("Reverted"):
+        return "X", "#808080"
+    elif status.startswith("Archived"):
+        return "A", "#606060"
+    return "W", "#FFD700"
+
+
+def _get_status_indicator(changespec: ChangeSpec) -> tuple[str, str, str]:
+    """Get a status indicator symbol and colors for a ChangeSpec.
 
     Color priority: error (red) > running_agent (orange) > running_process (yellow) > status-based
 
     Returns:
-        Tuple of (symbol, color)
+        Tuple of (indicator, prefix_color, letter_color)
     """
     status = changespec.status
     has_running = has_any_running_agent(changespec)
     has_process = has_any_running_process(changespec)
     has_error = has_any_error_suffix(changespec)
+    ready_to_mail = has_ready_to_mail_suffix(status)
+
+    letter, letter_color = _get_status_letter_and_color(
+        status, has_ready_to_mail=ready_to_mail
+    )
 
     # Build prefix components
     error_prefix = "!" if has_error else ""
     running_prefix = "@" if has_running else ""
     process_prefix = "$" if has_process else ""
+    indicator = f"{error_prefix}{running_prefix}{process_prefix}{letter}"
 
-    # Check for error suffixes in COMMITS/HOOKS/COMMENTS (with status-specific suffix)
-    # Red takes priority over orange/yellow
+    # Determine prefix color based on priority
     if has_error:
-        if status.startswith("Drafted"):
-            return f"{error_prefix}{running_prefix}{process_prefix}D", "#FF5F5F"
-        elif status.startswith("Mailed"):
-            return f"{error_prefix}{running_prefix}{process_prefix}M", "#FF5F5F"
-        return f"{error_prefix}{running_prefix}{process_prefix}W", "#FF5F5F"
+        prefix_color = "#FF5F5F"
+    elif has_running:
+        prefix_color = "#FFAF00"
+    elif has_process:
+        prefix_color = "#FFD700"
+    else:
+        prefix_color = letter_color
 
-    # Running agents get orange color (when no error)
-    if has_running:
-        if has_ready_to_mail_suffix(status):
-            return f"{running_prefix}{process_prefix}*", "#FFAF00"
-        if "..." in status:
-            return f"{running_prefix}{process_prefix}~", "#FFAF00"
-        elif status.startswith("Drafted"):
-            return f"{running_prefix}{process_prefix}D", "#FFAF00"
-        elif status.startswith("Mailed"):
-            return f"{running_prefix}{process_prefix}M", "#FFAF00"
-        elif status.startswith("Submitted"):
-            return f"{running_prefix}{process_prefix}S", "#FFAF00"
-        elif status.startswith("Reverted"):
-            return f"{running_prefix}{process_prefix}X", "#FFAF00"
-        elif status.startswith("Archived"):
-            return f"{running_prefix}{process_prefix}A", "#FFAF00"
-        return f"{running_prefix}{process_prefix}W", "#FFAF00"
-
-    # Running processes get yellow color (when no error, no running_agent)
-    if has_process:
-        if has_ready_to_mail_suffix(status):
-            return f"{process_prefix}*", "#FFD700"  # Yellow for running process
-        if "..." in status:
-            return f"{process_prefix}~", "#FFD700"  # Yellow for running process
-        elif status.startswith("Drafted"):
-            return f"{process_prefix}D", "#FFD700"  # Yellow for running process
-        elif status.startswith("Mailed"):
-            return f"{process_prefix}M", "#FFD700"  # Yellow for running process
-        elif status.startswith("Submitted"):
-            return f"{process_prefix}S", "#FFD700"  # Yellow for running process
-        elif status.startswith("Reverted"):
-            return f"{process_prefix}X", "#FFD700"  # Yellow for running process
-        elif status.startswith("Archived"):
-            return f"{process_prefix}A", "#FFD700"  # Yellow for running process
-        return f"{process_prefix}W", "#FFD700"  # Yellow for running process
-
-    # Check for READY TO MAIL (no running, no error)
-    if has_ready_to_mail_suffix(status):
-        return "*", "#00D787"  # Cyan-green for ready to mail
-
-    # Status-based indicators (no running, no error)
-    if "..." in status:
-        return "~", "#87AFFF"  # Blue for in-progress
-    elif status.startswith("Drafted"):
-        return "D", "#87D700"  # Green
-    elif status.startswith("Mailed"):
-        return "M", "#00D787"  # Cyan-green
-    elif status.startswith("Submitted"):
-        return "S", "#00AF00"  # Dark green
-    elif status.startswith("Reverted"):
-        return "X", "#808080"  # Gray
-    elif status.startswith("Archived"):
-        return "A", "#606060"  # Darker gray
-
-    return "W", "#FFD700"  # WIP - gold
+    return indicator, prefix_color, letter_color
 
 
 class ChangeSpecList(OptionList):
@@ -211,8 +193,14 @@ class ChangeSpecList(OptionList):
             text.append("[✓] ", style="bold #00D700")
 
         # Status indicator
-        indicator, color = _get_status_indicator(changespec)
-        text.append(f"[{indicator}] ", style=f"bold {color}")
+        indicator, prefix_color, letter_color = _get_status_indicator(changespec)
+        text.append("[", style=f"bold {prefix_color}")
+        for ch in indicator:
+            if ch in ("!", "@", "$"):
+                text.append(ch, style=f"bold {prefix_color}")
+            else:
+                text.append(ch, style=f"bold {letter_color}")
+        text.append("] ", style=f"bold {prefix_color}")
 
         # Name
         name_style = "bold #00D7AF" if is_selected else "#00D7AF"
