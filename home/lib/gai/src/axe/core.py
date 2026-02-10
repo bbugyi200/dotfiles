@@ -322,7 +322,6 @@ class AxeScheduler:
             query=self.query,
             zombie_timeout=self.zombie_timeout_seconds,
             current_runners=self.runner_pool.get_current_runners(),
-            queued_runners=self.runner_pool.get_queued_count(),
             last_full_cycle=(
                 self._last_full_cycle.isoformat() if self._last_full_cycle else None
             ),

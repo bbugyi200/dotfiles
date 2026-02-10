@@ -80,7 +80,7 @@ class HookJobRunner:
             if not changespec.hooks:
                 continue
 
-            hook_updates, hooks_started, hooks_queued = check_hooks(
+            hook_updates, hooks_started = check_hooks(
                 changespec,
                 self._log,
                 self.zombie_timeout_seconds,
@@ -89,7 +89,6 @@ class HookJobRunner:
             )
 
             self.runner_pool.add_started(hooks_started)
-            self.runner_pool.add_queued(hooks_queued)
             self.metrics.hooks_started += hooks_started
             self.metrics.total_updates += len(hook_updates)
 
@@ -103,7 +102,7 @@ class HookJobRunner:
             filtered_changespecs: List of changespecs to check.
         """
         for changespec in filtered_changespecs:
-            mentor_updates, mentors_started, mentors_queued = check_mentors(
+            mentor_updates, mentors_started = check_mentors(
                 changespec,
                 self._log,
                 self.zombie_timeout_seconds,
@@ -112,7 +111,6 @@ class HookJobRunner:
             )
 
             self.runner_pool.add_started(mentors_started)
-            self.runner_pool.add_queued(mentors_queued)
             self.metrics.mentors_started += mentors_started
             self.metrics.total_updates += len(mentor_updates)
 
@@ -134,7 +132,7 @@ class HookJobRunner:
                 self._log(f"* {changespec.name}: {update}", "green bold")
 
             # Start stale workflows
-            start_updates, started, _, workflows_queued = start_stale_workflows(
+            start_updates, started, _ = start_stale_workflows(
                 changespec,
                 self._log,
                 self.max_runners,
@@ -142,7 +140,6 @@ class HookJobRunner:
             )
 
             self.runner_pool.add_started(started)
-            self.runner_pool.add_queued(workflows_queued)
             self.metrics.workflows_started += started
             self.metrics.total_updates += len(start_updates)
 
