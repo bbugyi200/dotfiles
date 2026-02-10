@@ -206,7 +206,12 @@ class BaseActionsMixin:
         else:
             self.notify(f"Error: {error_msg}", severity="error")  # type: ignore[attr-defined]
 
-        self._reload_and_reposition()  # type: ignore[attr-defined]
+        if success and may_have_sibling_reverts:
+            # Name changed from e.g. "foo_bar__1" to "foo_bar" during suffix strip
+            new_name = strip_reverted_suffix(changespec.name)
+            self._reload_and_reposition(current_name=new_name)  # type: ignore[attr-defined]
+        else:
+            self._reload_and_reposition()  # type: ignore[attr-defined]
 
     # --- Workflow Actions ---
 
