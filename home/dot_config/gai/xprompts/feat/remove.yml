@@ -1,0 +1,14 @@
+input: { feature: word, short_feat: word, bug_id: int }
+steps:
+  - name: dart_refs
+    prompt: |
+      Can you help me remove all Dart references to the {{ feature }} #feat? Don't touch references in other files (I
+      will remove those later). #commit(remove_{{ short_feat }}_dart, {{ bug_id }})
+  - name: java_refs
+    prompt: |
+      Can you help me remove all Java references to the {{ feature }} #feat? Don't touch references in other files (I
+      will remove those later). #commit(remove_{{ short_feat }}_java, {{ bug_id }})
+  - name: final
+    prompt: |
+      Can you help me remove the {{ feature }} #feat from the publisher_features.textproto file and make the necessary
+      SQL changes to fully obsolete this feature? #clref:853434697 #commit(remove_{{ short_feat }}_final, {{ bug_id }})
