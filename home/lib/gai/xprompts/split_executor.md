@@ -33,7 +33,7 @@ For each entry in the split specification (process in the order shown - parents 
 
 3. **Create the description file** at `bb/gai/<name>_desc.txt` with the description from the spec.
 
-4. **Run:** `gai commit {{ bug_flag }}-n "{{ note }}" <name> bb/gai/<name>_desc.txt`
+4. **Run:** `gai commit {{ bug_flag ~ " " }}-n "{{ note }}" <name> bb/gai/<name>_desc.txt`
 
 5. **Repeat** for the next entry.
 
