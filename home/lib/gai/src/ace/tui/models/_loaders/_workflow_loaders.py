@@ -293,6 +293,8 @@ def load_workflow_agent_steps() -> list[Agent]:
                         diff_path = data.get("diff_path")
                         error_message = data.get("error")
 
+                        response_path = data.get("response_path")
+
                         # Also extract diff_path from output_types if not already set
                         if not diff_path:
                             output_types = data.get("output_types") or {}
@@ -327,6 +329,7 @@ def load_workflow_agent_steps() -> list[Agent]:
                                 artifacts_dir=artifacts_dir_from_marker,
                                 diff_path=diff_path,
                                 error_message=error_message,
+                                response_path=response_path,
                             )
                         )
                     except Exception:

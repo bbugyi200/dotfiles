@@ -394,6 +394,7 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
         hidden: bool = False,
         output_types: dict[str, str] | None = None,
         embedded_workflow_name: str | None = None,
+        response_path: str | None = None,
     ) -> None:
         """Save a marker file for prompt steps to track them in the TUI.
 
@@ -443,6 +444,10 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
         if output_types is None and existing_marker:
             output_types = existing_marker.get("output_types")
 
+        # Preserve response_path from existing marker when not provided.
+        if response_path is None and existing_marker:
+            response_path = existing_marker.get("response_path")
+
         marker_data = {
             "workflow_name": self.workflow.name,
             "step_name": step_name,
@@ -460,6 +465,7 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
             "diff_path": diff_path,
             "output_types": output_types,
             "embedded_workflow_name": embedded_workflow_name,
+            "response_path": response_path,
             "error": step_state.error,
         }
         try:

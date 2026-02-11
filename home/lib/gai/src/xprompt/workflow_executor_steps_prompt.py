@@ -167,6 +167,20 @@ class PromptStepMixin:
         )
         response_text = ensure_str_content(response.content)
 
+        # Save chat history for TUI display
+        response_path: str | None = None
+        try:
+            from chat_history import save_chat_history
+
+            response_path = save_chat_history(
+                prompt=expanded_prompt,
+                response=response_text,
+                workflow=self.workflow.name,
+                agent=step.name,
+            )
+        except Exception:
+            pass
+
         # Parse and validate output
         output: dict[str, Any] = {}
 
@@ -187,7 +201,12 @@ class PromptStepMixin:
             step_state.status = StepStatus.WAITING_HITL
             self.state.status = "waiting_hitl"
             self._save_state()
-            self._save_prompt_step_marker(step.name, step_state, hidden=step.hidden)
+            self._save_prompt_step_marker(
+                step.name,
+                step_state,
+                hidden=step.hidden,
+                response_path=response_path,
+            )
 
             result = self.hitl_handler.prompt(
                 step.name, "prompt", output, has_output=step.output is not None
@@ -228,7 +247,11 @@ class PromptStepMixin:
 
         # Save prompt step marker for TUI visibility
         self._save_prompt_step_marker(
-            step.name, step_state, diff_path=diff_path, hidden=step.hidden
+            step.name,
+            step_state,
+            diff_path=diff_path,
+            hidden=step.hidden,
+            response_path=response_path,
         )
 
         # Execute post-steps from embedded workflows
@@ -294,7 +317,11 @@ class PromptStepMixin:
                 resave_needed = True
             if resave_needed:
                 self._save_prompt_step_marker(
-                    step.name, step_state, diff_path=diff_path, hidden=step.hidden
+                    step.name,
+                    step_state,
+                    diff_path=diff_path,
+                    hidden=step.hidden,
+                    response_path=response_path,
                 )
 
         return True
