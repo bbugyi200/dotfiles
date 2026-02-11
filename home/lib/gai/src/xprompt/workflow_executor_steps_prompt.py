@@ -47,13 +47,20 @@ def _collect_embedded_post_step_outputs(
     diff_path: str | None = None
     meta_fields: dict[str, str] = {}
     for info in embedded_workflows:
+        # Collect meta_* from ALL post-steps
         for step in info.post_steps:
             step_output = info.context.get(step.name)
-            if not isinstance(step_output, dict):
-                continue
-            # Extract first path-typed field using OutputSpec
-            if step.output is not None and diff_path is None:
-                properties = step.output.schema.get("properties")
+            if isinstance(step_output, dict):
+                for k, v in step_output.items():
+                    if k.startswith("meta_") and v:
+                        meta_fields[k] = str(v)
+        # Extract path-type output from LAST post-step only
+        # (first embedded workflow with post-steps wins)
+        if info.post_steps and diff_path is None:
+            last_step = info.post_steps[-1]
+            step_output = info.context.get(last_step.name)
+            if isinstance(step_output, dict) and last_step.output is not None:
+                properties = last_step.output.schema.get("properties")
                 if properties and isinstance(properties, dict):
                     for field_name, prop in properties.items():
                         if isinstance(prop, dict) and prop.get("type") == "path":
@@ -61,10 +68,6 @@ def _collect_embedded_post_step_outputs(
                             if path_value:
                                 diff_path = str(path_value)
                                 break
-            # Collect meta_* fields
-            for k, v in step_output.items():
-                if k.startswith("meta_") and v:
-                    meta_fields[k] = str(v)
     return diff_path, meta_fields
 
 
@@ -272,9 +275,19 @@ class PromptStepMixin:
                 self.context[step.name] = step_state.output
                 self.state.context = dict(self.context)
                 resave_needed = True
-            if embedded_diff_path and not diff_path:
+            # When embedded workflows appended post-steps, their path output
+            # exclusively determines the file panel content for DONE entries
+            has_appended_steps = any(info.post_steps for info in embedded_workflows)
+            if has_appended_steps:
+                diff_path = embedded_diff_path  # May be None → hides file panel
+                if embedded_diff_path:
+                    if step_state.output is None:
+                        step_state.output = {}
+                    step_state.output["diff_path"] = embedded_diff_path
+                resave_needed = True
+            elif embedded_diff_path and not diff_path:
+                # Embedded workflows without post-steps but with path (defensive)
                 diff_path = embedded_diff_path
-                # Also store in step output so it flows into workflow_state.json
                 if step_state.output is None:
                     step_state.output = {}
                 step_state.output["diff_path"] = embedded_diff_path

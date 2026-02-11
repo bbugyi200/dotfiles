@@ -147,3 +147,51 @@ def test_step_not_in_context_skipped() -> None:
     )
     assert diff_path is None
     assert meta == {}
+
+
+def test_only_last_post_step_checked_for_path() -> None:
+    """Only the last post-step is checked for path output (simulates propose/amend)."""
+    # First step has a path-type output (like save_response.data_file)
+    step1 = _make_step("save_response", {"data_file": {"type": "path"}})
+    # Last step has the actual diff path (like report.diff_path)
+    step2 = _make_step("report", {"diff_path": {"type": "path"}})
+    ctx: dict[str, object] = {
+        "save_response": {"data_file": "/tmp/response.json"},
+        "report": {"diff_path": "/tmp/actual.diff"},
+    }
+    diff_path, meta = _collect_embedded_post_step_outputs(
+        [_make_info(ctx, post_steps=[step1, step2])]
+    )
+    assert diff_path == "/tmp/actual.diff"
+
+
+def test_intermediate_path_step_ignored() -> None:
+    """Intermediate step has path output but last step doesn't → returns None."""
+    step1 = _make_step("save_response", {"data_file": {"type": "path"}})
+    step2 = _make_step("report")  # No path-type output
+    ctx: dict[str, object] = {
+        "save_response": {"data_file": "/tmp/response.json"},
+        "report": {"meta_status": "ok"},
+    }
+    diff_path, meta = _collect_embedded_post_step_outputs(
+        [_make_info(ctx, post_steps=[step1, step2])]
+    )
+    assert diff_path is None
+    assert meta == {"meta_status": "ok"}
+
+
+def test_meta_collected_from_all_steps_while_path_from_last() -> None:
+    """Meta fields come from all steps, path only from last."""
+    step1 = _make_step("check", {"data_file": {"type": "path"}})
+    step2 = _make_step("save", {"result_file": {"type": "path"}})
+    step3 = _make_step("report", {"diff_path": {"type": "path"}})
+    ctx: dict[str, object] = {
+        "check": {"data_file": "/tmp/check.json", "meta_check": "passed"},
+        "save": {"result_file": "/tmp/save.json", "meta_saved": "yes"},
+        "report": {"diff_path": "/tmp/final.diff", "meta_status": "done"},
+    }
+    diff_path, meta = _collect_embedded_post_step_outputs(
+        [_make_info(ctx, post_steps=[step1, step2, step3])]
+    )
+    assert diff_path == "/tmp/final.diff"
+    assert meta == {"meta_check": "passed", "meta_saved": "yes", "meta_status": "done"}
