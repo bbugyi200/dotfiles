@@ -188,9 +188,7 @@ class ChangeSpecList(OptionList):
 
         # Status indicator
         indicator, letter_color = _get_status_indicator(changespec)
-        text.append(
-            "[", style=f"bold {_PREFIX_CHAR_COLORS.get(indicator[0], letter_color)}"
-        )
+        text.append("[", style=f"bold {letter_color}")
         for ch in indicator:
             text.append(ch, style=f"bold {_PREFIX_CHAR_COLORS.get(ch, letter_color)}")
         text.append("] ", style=f"bold {letter_color}")
