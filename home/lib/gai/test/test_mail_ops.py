@@ -193,6 +193,45 @@ Bug: b/12345"""
     assert "Third paragraph" in result
 
 
+def test_modify_description_body_content_matching_tag_pattern() -> None:
+    """Test that body content like 'Screenshots: ...' is not mistaken for a footer tag.
+
+    Regression test: The tag-finding logic used to scan top-down and would match
+    body lines like 'Screenshots: [before][1]' as tags, causing the startblock
+    section to be inserted between the title and body instead of before the
+    actual footer tags.
+    """
+    description = """[pat] Fix rendering bug
+
+Screenshots: [before][1]
+See also: http://example.com
+
+R=startblock
+Bug: b/12345
+Test: manual"""
+
+    result = _modify_description_for_mailing(description, ["reviewer1"], True, "123456")
+
+    lines = result.split("\n")
+    screenshots_idx = None
+    startblock_idx = None
+    bug_idx = None
+
+    for i, line in enumerate(lines):
+        if "Screenshots:" in line:
+            screenshots_idx = i
+        if "### Startblock Conditions" in line:
+            startblock_idx = i
+        if "Bug:" in line:
+            bug_idx = i
+
+    assert screenshots_idx is not None
+    assert startblock_idx is not None
+    assert bug_idx is not None
+    assert screenshots_idx < startblock_idx, "Screenshots should come before startblock"
+    assert startblock_idx < bug_idx, "Startblock section should come before footer tags"
+
+
 def test_modify_description_with_key_value_tags() -> None:
     """Test handling of KEY=value format tags (e.g., BUG=, R=, MARKDOWN=)."""
     description = """[pat] Test CL with KEY=value tags

@@ -199,11 +199,16 @@ def _modify_description_for_mailing(
     lines = description.split("\n")
     tag_pattern = re.compile(r"^[A-Z][A-Za-z_\s-]*[=:]")
 
-    # Find the index where tags start (or end of content if no tags)
+    # Find contiguous block of tag lines at the end (scanning from bottom)
     tags_start_idx = len(lines)
-    for idx, line in enumerate(lines):
-        if tag_pattern.match(line.strip()):
+    last_non_blank = len(lines) - 1
+    while last_non_blank >= 0 and lines[last_non_blank].strip() == "":
+        last_non_blank -= 1
+
+    for idx in range(last_non_blank, -1, -1):
+        if tag_pattern.match(lines[idx].strip()):
             tags_start_idx = idx
+        else:
             break
 
     # Split into content (before tags) and tags (from tags onward)
