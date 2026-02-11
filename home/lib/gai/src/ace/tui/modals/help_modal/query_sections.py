@@ -46,7 +46,7 @@ def add_saved_queries_section(
         max_query_active = content_width - slot_prefix_width - active_indicator_width
         max_query_inactive = content_width - slot_prefix_width
 
-        for slot in KEY_ORDER:
+        for slot in KEY_ORDER[1:] + KEY_ORDER[:1]:
             if slot in queries:
                 query = queries[slot]
                 is_active = active_query is not None and query == active_query
