@@ -959,7 +959,7 @@ RunnersModal {
 
 RunnersModal > Container {
     width: 90%;
-    max-width: 128;
+    max-width: 200;
     height: 70%;
     border: double $primary;
     background: $surface;

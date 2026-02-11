@@ -19,10 +19,11 @@ from ...changespec import (
 )
 from .base import CopyModeForwardingMixin
 
-# Box dimensions: total width = 120 chars
-# Layout: "  │  " (5 chars) + content (113 chars) + " │" (2 chars) = 120 chars
-_BOX_WIDTH = 120
-_CONTENT_WIDTH = 113
+# Dynamic box sizing constants
+_CSS_MAX_WIDTH = 200  # Must match max-width in styles.tcss for RunnersModal
+_CSS_CHROME = 8  # Border (2) + padding (2*2) + extra (2) from CSS container
+_PREFIX_SUFFIX = 7  # "  │  " (5 chars) + " │" (2 chars)
+_MIN_BOX_WIDTH = 60
 
 
 @dataclass
@@ -308,8 +309,20 @@ class RunnersModal(CopyModeForwardingMixin, ModalScreen[None]):
         ("ctrl+u", "scroll_up", "Scroll up"),
     ]
 
+    def _compute_box_width(self) -> int:
+        """Compute box width dynamically based on terminal size.
+
+        Returns:
+            The box width in characters.
+        """
+        terminal_width = self.app.size.width
+        box_width = min(int(terminal_width * 0.9), _CSS_MAX_WIDTH) - _CSS_CHROME
+        return max(box_width, _MIN_BOX_WIDTH)
+
     def compose(self) -> ComposeResult:
         """Compose the modal layout."""
+        self._box_width = self._compute_box_width()
+        self._content_width = self._box_width - _PREFIX_SUFFIX
         with Container(id="runners-modal-container"):
             yield Static(self._build_title(), id="runners-title")
             with VerticalScroll(id="runners-content-scroll"):
@@ -370,8 +383,8 @@ class RunnersModal(CopyModeForwardingMixin, ModalScreen[None]):
         text.append("  \u250c\u2500 ", style=f"dim {color}")
         text.append(title, style=f"bold {color}")
         text.append(" ", style="")
-        # 5 (prefix) + len(title) + 1 (space) + remaining + 1 (corner) = _BOX_WIDTH
-        remaining = _BOX_WIDTH - 5 - len(title) - 1 - 1
+        # 5 (prefix) + len(title) + 1 (space) + remaining + 1 (corner) = box_width
+        remaining = self._box_width - 5 - len(title) - 1 - 1
         text.append("\u2500" * remaining + "\u2510", style=f"dim {color}")
         text.append("\n")
 
@@ -383,9 +396,9 @@ class RunnersModal(CopyModeForwardingMixin, ModalScreen[None]):
             color: The color for the box drawing.
         """
         # Footer: "  └─────────────────────────────────────────────────────┘"
-        # "  └" = 3 chars, dashes + "┘" fills to _BOX_WIDTH
+        # "  └" = 3 chars, dashes + "┘" fills to box_width
         text.append("  \u2514", style=f"dim {color}")
-        text.append("\u2500" * (_BOX_WIDTH - 4), style=f"dim {color}")
+        text.append("\u2500" * (self._box_width - 4), style=f"dim {color}")
         text.append("\u2518", style=f"dim {color}")
         text.append("\n")
 
@@ -399,7 +412,7 @@ class RunnersModal(CopyModeForwardingMixin, ModalScreen[None]):
         """
         # "  │  " = 5 chars prefix, message, padding, " │" = 2 chars suffix
         text.append("  \u2502  ", style=f"dim {color}")
-        padding = _CONTENT_WIDTH - len(message)
+        padding = self._content_width - len(message)
         text.append(message, style="dim")
         text.append(" " * padding, style="")
         text.append(" \u2502", style=f"dim {color}")
@@ -455,14 +468,33 @@ class RunnersModal(CopyModeForwardingMixin, ModalScreen[None]):
         parts.append((pid_duration, "dim"))
         content_len += len(pid_duration)
 
+        # Truncate content if it exceeds the available width
+        if content_len > self._content_width:
+            max_len = self._content_width - 3  # reserve for "..."
+            truncated_parts: list[tuple[str, str]] = []
+            running_len = 0
+            for part_text, part_style in parts:
+                if running_len >= max_len:
+                    break
+                remaining = max_len - running_len
+                if len(part_text) <= remaining:
+                    truncated_parts.append((part_text, part_style))
+                    running_len += len(part_text)
+                else:
+                    truncated_parts.append((part_text[:remaining], part_style))
+                    running_len += remaining
+            truncated_parts.append(("...", "dim"))
+            parts = truncated_parts
+            content_len = self._content_width
+
         # Write row with proper borders
         text.append("  \u2502  ", style=f"dim {color}")
         for part_text, part_style in parts:
             text.append(part_text, style=part_style)
 
-        # Pad to _CONTENT_WIDTH and add right border
-        if content_len < _CONTENT_WIDTH:
-            text.append(" " * (_CONTENT_WIDTH - content_len), style="")
+        # Pad to content_width and add right border
+        if content_len < self._content_width:
+            text.append(" " * (self._content_width - content_len), style="")
         text.append(" \u2502", style=f"dim {color}")
         text.append("\n")
 
