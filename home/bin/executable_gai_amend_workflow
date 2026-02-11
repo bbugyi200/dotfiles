@@ -174,14 +174,24 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    success, entry_id, cl_name, error, diff_path = _amend_cl(
-        args.who, args.note, args.data_file
-    )
-    print(f"success={'true' if success else 'false'}")
-    print(f"entry_id={entry_id}")
-    print(f"cl_name={cl_name}")
-    print(f"diff_path={diff_path}")
-    print(f"error={error}")
+    # Redirect stdout to stderr during CL amend to prevent
+    # stray prints from corrupting the JSON output parsed by
+    # the parent process (parse_bash_output).
+    saved_stdout = sys.stdout
+    sys.stdout = sys.stderr
+    try:
+        success, entry_id, cl_name, error, diff_path = _amend_cl(
+            args.who, args.note, args.data_file
+        )
+    finally:
+        sys.stdout = saved_stdout
+    print(json.dumps({
+        "success": success,
+        "entry_id": entry_id,
+        "cl_name": cl_name,
+        "diff_path": diff_path,
+        "error": error,
+    }))
 
 
 if __name__ == "__main__":

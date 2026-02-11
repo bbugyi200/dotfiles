@@ -272,14 +272,24 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.create:
-        success, cl_url, full_cl_name, error, diff_path = _create_cl(
-            args.name, args.bug_id, args.data_file
-        )
-        print(f"success={'true' if success else 'false'}")
-        print(f"cl_url={cl_url}")
-        print(f"full_cl_name={full_cl_name}")
-        print(f"diff_path={diff_path}")
-        print(f"error={error}")
+        # Redirect stdout to stderr during CL creation to prevent
+        # stray prints from corrupting the JSON output parsed by
+        # the parent process (parse_bash_output).
+        saved_stdout = sys.stdout
+        sys.stdout = sys.stderr
+        try:
+            success, cl_url, full_cl_name, error, diff_path = _create_cl(
+                args.name, args.bug_id, args.data_file
+            )
+        finally:
+            sys.stdout = saved_stdout
+        print(json.dumps({
+            "success": success,
+            "cl_url": cl_url,
+            "full_cl_name": full_cl_name,
+            "diff_path": diff_path,
+            "error": error,
+        }))
     else:
         parser.print_help()
         sys.exit(1)

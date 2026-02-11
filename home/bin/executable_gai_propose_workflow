@@ -181,11 +181,13 @@ def main() -> None:
             )
         finally:
             sys.stdout = saved_stdout
-        print(f"success={'true' if success else 'false'}")
-        print(f"proposal_id={proposal_id}")
-        print(f"cl_name={cl_name}")
-        print(f"diff_path={diff_path}")
-        print(f"error={error}")
+        print(json.dumps({
+            "success": success,
+            "proposal_id": proposal_id,
+            "cl_name": cl_name,
+            "diff_path": diff_path,
+            "error": error,
+        }))
     else:
         parser.print_help()
         sys.exit(1)
