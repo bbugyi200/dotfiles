@@ -6,7 +6,7 @@ from textual.app import ComposeResult
 from textual.containers import Vertical, VerticalScroll
 from textual.widgets import Static
 
-from ..models.agent import Agent, AgentType
+from ..models.agent import Agent
 from .file_panel import AgentFilePanel, FileVisibilityChanged
 from .prompt_panel import AgentPromptPanel
 
@@ -47,16 +47,6 @@ class AgentDetail(Static):
 
         # Hide file panel for bash/python workflow steps - they don't have files
         if agent.is_workflow_child and agent.step_type in ("bash", "python"):
-            file_scroll.add_class("hidden")
-            prompt_scroll.add_class("expanded")
-            return
-
-        # Hide file panel for workflow parent entries (containers, not individual agents)
-        if (
-            agent.agent_type == AgentType.WORKFLOW
-            and not agent.is_workflow_child
-            and not agent.appears_as_agent
-        ):
             file_scroll.add_class("hidden")
             prompt_scroll.add_class("expanded")
             return
