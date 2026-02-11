@@ -7,9 +7,20 @@ from typing import Any
 from jinja2 import Environment, StrictUndefined
 
 
+def _finalize_value(value: Any) -> Any:
+    """Convert Python booleans to lowercase strings for bash compatibility.
+
+    Jinja2 renders Python True/False as "True"/"False", but bash expects
+    "true"/"false" for comparisons like [ "$var" = "true" ].
+    """
+    if isinstance(value, bool):
+        return str(value).lower()
+    return value
+
+
 def create_jinja_env() -> Environment:
     """Create a Jinja2 environment for template rendering."""
-    env = Environment(undefined=StrictUndefined)
+    env = Environment(undefined=StrictUndefined, finalize=_finalize_value)
     # Add tojson filter
     env.filters["tojson"] = json.dumps
     return env

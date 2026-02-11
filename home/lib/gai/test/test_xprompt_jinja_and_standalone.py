@@ -18,7 +18,7 @@ from xprompt.models import (
     XPromptValidationError,
     xprompt_to_workflow,
 )
-from xprompt.workflow_executor_utils import parse_bash_output
+from xprompt.workflow_executor_utils import parse_bash_output, render_template
 
 
 def test_evaluate_standalone_condition_truthy_string() -> None:
@@ -515,4 +515,31 @@ def test_skipped_step_accessible_via_jinja2_default_filter() -> None:
     context: dict[str, object] = {"flag": False}
     result = execute_standalone_steps(steps, context, "test_workflow")
     assert result["maybe_run"] == {}
-    assert result["report"]["result"] == "False"
+    assert result["report"]["result"] == "false"
+
+
+# Tests for render_template with boolean values
+
+
+def test_render_template_bool_true_renders_lowercase() -> None:
+    """Test that Python True renders as 'true' (not 'True') for bash compat."""
+    result = render_template("{{ flag }}", {"flag": True})
+    assert result == "true"
+
+
+def test_render_template_bool_false_renders_lowercase() -> None:
+    """Test that Python False renders as 'false' (not 'False') for bash compat."""
+    result = render_template("{{ flag }}", {"flag": False})
+    assert result == "false"
+
+
+def test_render_template_bool_default_filter_renders_lowercase() -> None:
+    """Test that default(false) renders as 'false' when key is missing."""
+    result = render_template("{{ missing.key | default(false) }}", {"missing": {}})
+    assert result == "false"
+
+
+def test_render_template_bool_tojson_unaffected() -> None:
+    """Test that tojson filter still produces valid JSON booleans."""
+    result = render_template("{{ flag | tojson }}", {"flag": True})
+    assert result == "true"
