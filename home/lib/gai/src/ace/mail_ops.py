@@ -453,6 +453,20 @@ def prepare_mail(
     else:
         console.print("[cyan]No reviewers provided - skipping reword step[/cyan]")
 
+    # Display current CL description for user review
+    success, current_desc = _get_cl_description(changespec.name, target_dir, console)
+    if success and current_desc:
+        from rich.panel import Panel
+
+        console.print(
+            Panel(
+                current_desc.rstrip(),
+                title="CL Description",
+                border_style="cyan",
+                padding=(1, 2),
+            )
+        )
+
     # Prompt user before mailing
     console.print("\n[cyan]Do you want to mail the CL now? (y/n):[/cyan] ", end="")
     try:
