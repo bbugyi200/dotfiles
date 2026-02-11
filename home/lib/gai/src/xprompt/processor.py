@@ -235,19 +235,20 @@ def is_workflow_reference(name: str) -> bool:
 def _flatten_anonymous_workflow(
     workflow: "Workflow",
     project: str | None = None,
-) -> "Workflow | None":
+) -> "tuple[Workflow, list[str], dict[str, str]] | None":
     """Flatten an anonymous workflow that wraps a single workflow reference.
 
     If the anonymous workflow's single prompt step is entirely a ``#name(args)``
     reference to a pure multi-step workflow (one without a prompt_part), return
-    that referenced workflow with args applied. Otherwise return None.
+    that referenced workflow with the parsed args. Otherwise return None.
 
     Args:
         workflow: The anonymous workflow to check.
         project: Optional project name for loading prompts.
 
     Returns:
-        The referenced workflow if flattening is appropriate, None otherwise.
+        Tuple of (referenced_workflow, positional_args, named_args) if
+        flattening is appropriate, None otherwise.
     """
     from .loader import get_all_prompts
 
@@ -278,25 +279,7 @@ def _flatten_anonymous_workflow(
     if referenced.has_prompt_part():
         return None
 
-    # Build args dict and apply to the referenced workflow
-    from .models import UNSET
-
-    args: dict[str, str] = dict(named_args)
-    for i, value in enumerate(positional_args):
-        if i < len(referenced.inputs):
-            input_arg = referenced.inputs[i]
-            if input_arg.name not in args:
-                args[input_arg.name] = value
-
-    # Apply defaults
-    for input_arg in referenced.inputs:
-        if input_arg.name not in args and input_arg.default is not UNSET:
-            if input_arg.default is None:
-                args[input_arg.name] = "null"
-            else:
-                args[input_arg.name] = str(input_arg.default)
-
-    return referenced
+    return referenced, positional_args, named_args
 
 
 def _write_failed_workflow_state(
@@ -434,7 +417,7 @@ def execute_workflow(
     if _is_anonymous_workflow_name(workflow.name):
         flattened = _flatten_anonymous_workflow(workflow, project=project)
         if flattened is not None:
-            workflow = flattened
+            workflow, positional_args, named_args = flattened
             name = workflow.name
 
     # Compile-time validation with error state on failure

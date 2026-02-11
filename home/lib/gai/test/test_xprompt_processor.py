@@ -1,6 +1,7 @@
 """Tests for the xprompt.processor module."""
 
 import re
+from unittest.mock import MagicMock, patch
 
 from xprompt._jinja import validate_and_convert_args
 from xprompt._parsing import (
@@ -10,7 +11,13 @@ from xprompt._parsing import (
     preprocess_shorthand_syntax,
 )
 from xprompt.models import InputArg, InputType, XPrompt
-from xprompt.processor import _XPROMPT_PATTERN
+from xprompt.processor import (
+    _XPROMPT_PATTERN,
+    WorkflowResult,
+    _flatten_anonymous_workflow,
+    _is_anonymous_workflow_name,
+)
+from xprompt.workflow_models import Workflow, WorkflowStep
 
 
 def test_xprompt_pattern_simple_name() -> None:
@@ -338,3 +345,178 @@ def test_double_colon_shorthand_pattern_not_single_colon() -> None:
     """Test that DOUBLE_COLON_SHORTHAND_PATTERN does NOT match single colon."""
     match = re.search(DOUBLE_COLON_SHORTHAND_PATTERN, "#foo: some text")
     assert match is None
+
+
+# --- _is_anonymous_workflow_name tests ---
+
+
+def test_is_anonymous_workflow_name_true_for_tmp_prefix() -> None:
+    """Test that tmp_* names are recognized as anonymous."""
+    assert _is_anonymous_workflow_name("tmp_abc123") is True
+    assert _is_anonymous_workflow_name("tmp_") is True
+
+
+def test_is_anonymous_workflow_name_false_for_non_matching() -> None:
+    """Test that non-tmp_* names are not anonymous."""
+    assert _is_anonymous_workflow_name("split") is False
+    assert _is_anonymous_workflow_name("temporary") is False
+    assert _is_anonymous_workflow_name("") is False
+    assert _is_anonymous_workflow_name("TMP_foo") is False
+
+
+# --- WorkflowResult tests ---
+
+
+def test_workflow_result_construction() -> None:
+    """Test basic WorkflowResult dataclass construction."""
+    result = WorkflowResult(
+        output='{"key": "value"}',
+        response_text="Some response",
+        artifacts_dir="/tmp/artifacts",
+    )
+    assert result.output == '{"key": "value"}'
+    assert result.response_text == "Some response"
+    assert result.artifacts_dir == "/tmp/artifacts"
+
+
+def test_workflow_result_none_response_text() -> None:
+    """Test WorkflowResult with None response_text."""
+    result = WorkflowResult(output="", response_text=None, artifacts_dir="/tmp/x")
+    assert result.response_text is None
+
+
+# --- _flatten_anonymous_workflow tests ---
+
+
+def _make_anonymous_workflow(prompt: str) -> Workflow:
+    """Helper to create an anonymous workflow with a single prompt step."""
+    return Workflow(
+        name="tmp_abc123",
+        steps=[WorkflowStep(name="main", prompt=prompt)],
+    )
+
+
+def test_flatten_anonymous_workflow_returns_none_for_non_single_step() -> None:
+    """Test that multi-step workflows are not flattened."""
+    workflow = Workflow(
+        name="tmp_abc",
+        steps=[
+            WorkflowStep(name="step1", prompt="first"),
+            WorkflowStep(name="step2", prompt="second"),
+        ],
+    )
+    result = _flatten_anonymous_workflow(workflow)
+    assert result is None
+
+
+def test_flatten_anonymous_workflow_returns_none_for_non_prompt_step() -> None:
+    """Test that non-prompt steps (e.g., bash) are not flattened."""
+    workflow = Workflow(
+        name="tmp_abc",
+        steps=[WorkflowStep(name="main", bash="echo hello")],
+    )
+    result = _flatten_anonymous_workflow(workflow)
+    assert result is None
+
+
+def test_flatten_anonymous_workflow_returns_none_for_non_hash_prompt() -> None:
+    """Test that prompts not starting with # are not flattened."""
+    workflow = _make_anonymous_workflow("just a plain prompt")
+    result = _flatten_anonymous_workflow(workflow)
+    assert result is None
+
+
+@patch("xprompt.loader.get_all_prompts")
+def test_flatten_anonymous_workflow_returns_none_for_unknown_ref(
+    mock_get_all_prompts: MagicMock,
+) -> None:
+    """Test that references to unknown workflows return None."""
+    mock_get_all_prompts.return_value = {}
+    workflow = _make_anonymous_workflow("#unknown_workflow")
+    result = _flatten_anonymous_workflow(workflow)
+    assert result is None
+
+
+@patch("xprompt.loader.get_all_prompts")
+def test_flatten_anonymous_workflow_returns_none_for_prompt_part_ref(
+    mock_get_all_prompts: MagicMock,
+) -> None:
+    """Test that references to simple xprompts (with prompt_part) return None."""
+    # A simple xprompt has a prompt_part step, not a prompt step
+    simple_xprompt_wf = Workflow(
+        name="greeting",
+        steps=[WorkflowStep(name="main", prompt_part="Hello {{ name }}")],
+    )
+    mock_get_all_prompts.return_value = {"greeting": simple_xprompt_wf}
+    workflow = _make_anonymous_workflow("#greeting")
+    result = _flatten_anonymous_workflow(workflow)
+    assert result is None
+
+
+@patch("xprompt.loader.get_all_prompts")
+def test_flatten_anonymous_workflow_returns_workflow_for_pure_multistep(
+    mock_get_all_prompts: MagicMock,
+) -> None:
+    """Test that a pure multi-step workflow reference is flattened."""
+    target_wf = Workflow(
+        name="split",
+        inputs=[InputArg(name="desc", type=InputType.LINE)],
+        steps=[
+            WorkflowStep(name="analyze", prompt="Analyze: {{ desc }}"),
+            WorkflowStep(name="execute", prompt="Execute based on analysis"),
+        ],
+    )
+    mock_get_all_prompts.return_value = {"split": target_wf}
+    workflow = _make_anonymous_workflow("#split")
+    result = _flatten_anonymous_workflow(workflow)
+    assert result is not None
+    ref_wf, pos_args, named_args = result
+    assert ref_wf.name == "split"
+    assert pos_args == []
+    assert named_args == {}
+
+
+@patch("xprompt.loader.get_all_prompts")
+def test_flatten_anonymous_workflow_passes_positional_args(
+    mock_get_all_prompts: MagicMock,
+) -> None:
+    """Test that positional args from the reference are returned."""
+    target_wf = Workflow(
+        name="split",
+        inputs=[InputArg(name="split_desc", type=InputType.LINE)],
+        steps=[
+            WorkflowStep(name="analyze", prompt="Analyze: {{ split_desc }}"),
+            WorkflowStep(name="execute", prompt="Execute"),
+        ],
+    )
+    mock_get_all_prompts.return_value = {"split": target_wf}
+    workflow = _make_anonymous_workflow("#split(my description)")
+    result = _flatten_anonymous_workflow(workflow)
+    assert result is not None
+    ref_wf, pos_args, named_args = result
+    assert ref_wf.name == "split"
+    assert pos_args == ["my description"]
+    assert named_args == {}
+
+
+@patch("xprompt.loader.get_all_prompts")
+def test_flatten_anonymous_workflow_passes_named_args(
+    mock_get_all_prompts: MagicMock,
+) -> None:
+    """Test that named args from the reference are returned."""
+    target_wf = Workflow(
+        name="split",
+        inputs=[InputArg(name="split_desc", type=InputType.LINE)],
+        steps=[
+            WorkflowStep(name="analyze", prompt="Analyze: {{ split_desc }}"),
+            WorkflowStep(name="execute", prompt="Execute"),
+        ],
+    )
+    mock_get_all_prompts.return_value = {"split": target_wf}
+    workflow = _make_anonymous_workflow("#split(split_desc='test value')")
+    result = _flatten_anonymous_workflow(workflow)
+    assert result is not None
+    ref_wf, pos_args, named_args = result
+    assert ref_wf.name == "split"
+    assert pos_args == []
+    assert named_args == {"split_desc": "test value"}
