@@ -328,15 +328,18 @@ def run_query(
     query: str,
     previous_history: str | None = None,
 ) -> None:
-    """Execute a query through Gemini, optionally continuing a previous conversation.
+    """Execute a query through the unified workflow path.
+
+    Creates an anonymous workflow and routes through WorkflowExecutor,
+    producing workflow_state.json and step markers for TUI visibility.
 
     Args:
         query: The query to send to the agent.
         previous_history: Optional previous conversation history to continue from.
     """
     from gai_utils import generate_timestamp
-    from gemini_wrapper.wrapper import invoke_agent
-    from shared_utils import ensure_str_content
+    from xprompt.models import create_anonymous_workflow
+    from xprompt.processor import execute_workflow
 
     # Get project info for workspace claiming (creates project file if needed)
     project_file, workspace_num, _ = ensure_project_file_and_get_workspace_num()
@@ -366,8 +369,6 @@ def run_query(
         # Convert escaped newlines to actual newlines
         full_prompt = full_prompt.replace("\\n", "\n")
 
-        agent_type = "run" if previous_history is None else "run-continue"
-
         # Capture start timestamp for accurate duration calculation
         shared_timestamp = generate_timestamp()
 
@@ -393,40 +394,18 @@ def run_query(
                 artifacts_timestamp=artifacts_timestamp,
             )
 
-        # Expand xprompts FIRST, so workflow references like #propose can be produced
-        # from aliases like #p before workflow expansion looks for them
-        from xprompt import process_xprompt_references
-
-        full_prompt = process_xprompt_references(full_prompt)
-
-        # Expand embedded workflows (workflows with prompt_part)
-        # This executes pre-steps and replaces workflow refs with prompt_part content
-        expanded_prompt, post_workflows = expand_embedded_workflows_in_query(
-            full_prompt, artifacts_dir
-        )
-
-        ai_result = invoke_agent(
-            expanded_prompt,
-            agent_type=agent_type,
-            model_size="big",
+        # Create anonymous workflow and execute through WorkflowExecutor
+        anon_workflow = create_anonymous_workflow(full_prompt)
+        result = execute_workflow(
+            anon_workflow.name,
+            [],
+            {},
             artifacts_dir=artifacts_dir,
-            timestamp=shared_timestamp,
+            workflow_obj=anon_workflow,
         )
 
-        # Get response content before executing post-steps
-        response_content = ensure_str_content(ai_result.content)
-
-        # Execute post-steps from embedded workflows
-        for ewf_result in post_workflows:
-            # Make agent prompt and response available to post-steps
-            ewf_result.context["_prompt"] = expanded_prompt
-            ewf_result.context["_response"] = response_content
-            execute_standalone_steps(
-                ewf_result.post_steps,
-                ewf_result.context,
-                "run-embedded",
-                artifacts_dir,
-            )
+        # Extract response text for chat history
+        response_content = result.response_text or ""
 
         # Prepare and save chat history
         saved_path = save_chat_history(

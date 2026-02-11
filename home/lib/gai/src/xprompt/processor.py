@@ -2,7 +2,8 @@
 
 import re
 import sys
-from typing import Any
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
 
 from rich_utils import print_status
 from shared_utils import apply_section_marker_handling
@@ -17,11 +18,15 @@ from ._jinja import (
 from ._parsing import (
     find_matching_paren_for_args,
     parse_args,
+    parse_workflow_reference,
     preprocess_shorthand_syntax,
 )
 from .loader import get_all_workflows, get_all_xprompts
 from .models import UNSET, XPrompt
 from .workflow_models import WorkflowStep, WorkflowValidationError
+
+if TYPE_CHECKING:
+    from .workflow_models import Workflow
 
 # Maximum number of expansion iterations to prevent infinite loops
 _MAX_EXPANSION_ITERATIONS = 100
@@ -227,6 +232,73 @@ def is_workflow_reference(name: str) -> bool:
     return name in workflows
 
 
+def _flatten_anonymous_workflow(
+    workflow: "Workflow",
+    project: str | None = None,
+) -> "Workflow | None":
+    """Flatten an anonymous workflow that wraps a single workflow reference.
+
+    If the anonymous workflow's single prompt step is entirely a ``#name(args)``
+    reference to a pure multi-step workflow (one without a prompt_part), return
+    that referenced workflow with args applied. Otherwise return None.
+
+    Args:
+        workflow: The anonymous workflow to check.
+        project: Optional project name for loading prompts.
+
+    Returns:
+        The referenced workflow if flattening is appropriate, None otherwise.
+    """
+    from .loader import get_all_prompts
+
+    # Only flatten single-step prompt workflows
+    if len(workflow.steps) != 1 or not workflow.steps[0].is_prompt_step():
+        return None
+
+    prompt_text = (workflow.steps[0].prompt or "").strip()
+
+    # Must be exactly a single #name or #name(args) reference
+    if not prompt_text.startswith("#"):
+        return None
+
+    # Reject if there's extra text beyond the reference
+    ref_text = prompt_text[1:]  # Strip leading #
+    wf_name, positional_args, named_args = parse_workflow_reference(ref_text)
+
+    # Reconstruct what the reference should look like and verify it matches
+    # (i.e., no extra text around the reference)
+    prompts = get_all_prompts(project=project)
+    if wf_name not in prompts:
+        return None
+
+    referenced = prompts[wf_name]
+
+    # Only flatten pure multi-step workflows (no prompt_part)
+    # Workflows with prompt_part are handled by embedded workflow expansion
+    if referenced.has_prompt_part():
+        return None
+
+    # Build args dict and apply to the referenced workflow
+    from .models import UNSET
+
+    args: dict[str, str] = dict(named_args)
+    for i, value in enumerate(positional_args):
+        if i < len(referenced.inputs):
+            input_arg = referenced.inputs[i]
+            if input_arg.name not in args:
+                args[input_arg.name] = value
+
+    # Apply defaults
+    for input_arg in referenced.inputs:
+        if input_arg.name not in args and input_arg.default is not UNSET:
+            if input_arg.default is None:
+                args[input_arg.name] = "null"
+            else:
+                args[input_arg.name] = str(input_arg.default)
+
+    return referenced
+
+
 def _write_failed_workflow_state(
     workflow_name: str,
     artifacts_dir: str,
@@ -257,6 +329,33 @@ def _write_failed_workflow_state(
         json.dump(state_dict, f, indent=2)
 
 
+@dataclass
+class WorkflowResult:
+    """Result from executing a workflow.
+
+    Attributes:
+        output: JSON string of the last step's output.
+        response_text: Raw response text from the last prompt step, if any.
+        artifacts_dir: Path to the artifacts directory.
+    """
+
+    output: str
+    response_text: str | None
+    artifacts_dir: str
+
+
+def _is_anonymous_workflow_name(name: str) -> bool:
+    """Check if a workflow name is an anonymous workflow name.
+
+    Args:
+        name: The workflow name to check.
+
+    Returns:
+        True if the name matches the anonymous naming pattern (tmp_*).
+    """
+    return name.startswith("tmp_")
+
+
 def execute_workflow(
     name: str,
     positional_args: list[str],
@@ -265,8 +364,9 @@ def execute_workflow(
     *,
     silent: bool = False,
     project: str | None = None,
-) -> str:
-    """Execute a workflow and return its final output.
+    workflow_obj: "Workflow | None" = None,
+) -> WorkflowResult:
+    """Execute a workflow and return its result.
 
     Args:
         name: The workflow name (can be a workflow or converted xprompt).
@@ -275,9 +375,12 @@ def execute_workflow(
         artifacts_dir: Optional directory for workflow artifacts.
         silent: If True, disable console output and use auto-approve for HITL.
             Use this when running workflows from non-interactive contexts (e.g., TUI).
+        project: Optional project name for loading prompts.
+        workflow_obj: Optional pre-built Workflow object (e.g., anonymous workflows).
+            When provided, skips the name-based lookup.
 
     Returns:
-        The workflow's final output as a string.
+        WorkflowResult with output, response text, and artifacts directory.
 
     Raises:
         WorkflowExecutionError: If workflow execution fails.
@@ -295,18 +398,44 @@ def execute_workflow(
     from .workflow_output import WorkflowOutputHandler
     from .workflow_validator import validate_workflow
 
-    # Use unified loader to get both workflows and converted xprompts
-    prompts = get_all_prompts(project=project)
-    if name not in prompts:
-        raise WorkflowExecutionError(f"Workflow '{name}' not found")
-
-    workflow = prompts[name]
+    if workflow_obj is not None:
+        workflow = workflow_obj
+    else:
+        # Use unified loader to get both workflows and converted xprompts
+        prompts = get_all_prompts(project=project)
+        if name not in prompts:
+            raise WorkflowExecutionError(f"Workflow '{name}' not found")
+        workflow = prompts[name]
 
     # Create artifacts_dir early so we can write state on validation failure
     if artifacts_dir is None:
         artifacts_dir = tempfile.mkdtemp(prefix=f"workflow-{name}-")
     else:
         os.makedirs(artifacts_dir, exist_ok=True)
+
+    # Handle simple xprompts: convert prompt_part to prompt step so they go
+    # through WorkflowExecutor (producing workflow_state.json and markers)
+    if workflow.is_simple_xprompt():
+        from xprompt.workflow_executor_utils import render_template
+        from xprompt.workflow_models import Workflow as WfModel
+
+        content = workflow.get_prompt_part_content()
+        rendered = render_template(content, named_args)
+        workflow = WfModel(
+            name=workflow.name,
+            inputs=workflow.inputs,
+            steps=[WorkflowStep(name="main", prompt=rendered)],
+            source_path=workflow.source_path,
+            xprompts=workflow.xprompts,
+        )
+
+    # Flatten anonymous workflows that wrap a single multi-step workflow
+    # reference (e.g., "gai run '#split(...)'" → execute split directly)
+    if _is_anonymous_workflow_name(workflow.name):
+        flattened = _flatten_anonymous_workflow(workflow, project=project)
+        if flattened is not None:
+            workflow = flattened
+            name = workflow.name
 
     # Compile-time validation with error state on failure
     try:
@@ -337,21 +466,6 @@ def execute_workflow(
             else:
                 args[input_arg.name] = str(input_arg.default)
 
-    # Handle simple xprompts (converted xprompts with single prompt_part step)
-    # Execute them as direct prompts through run_query instead of workflow executor
-    if workflow.is_simple_xprompt():
-        from main.query_handler._query import run_query
-
-        from xprompt.workflow_executor_utils import render_template
-
-        # Render the prompt_part content with args substituted
-        content = workflow.get_prompt_part_content()
-        rendered = render_template(content, args)
-
-        # Execute as a direct prompt through the standard run_query path
-        run_query(rendered)
-        return ""
-
     # Process step inputs: load from @file or parse inline YAML/JSON
     # Step inputs allow users to skip steps by providing their outputs directly
     processed_args: dict[str, Any] = {}
@@ -369,9 +483,18 @@ def execute_workflow(
     args = processed_args
 
     # Create handlers based on silent mode
+    # Suppress workflow output for single-step anonymous workflows
+    # (e.g., "gai run hello" shouldn't show "[Step 1/1: main]")
+    is_anonymous_single_step = (
+        _is_anonymous_workflow_name(workflow.name) and len(workflow.steps) == 1
+    )
+
     hitl_handler: TUIHITLHandler | CLIHITLHandler
     if silent:
         hitl_handler = TUIHITLHandler(artifacts_dir)
+        output_handler = None
+    elif is_anonymous_single_step:
+        hitl_handler = CLIHITLHandler()
         output_handler = None
     else:
         hitl_handler = CLIHITLHandler()
@@ -391,13 +514,22 @@ def execute_workflow(
     if not success:
         raise WorkflowExecutionError(f"Workflow '{name}' was rejected or failed")
 
-    # Return the final step's output as formatted string
+    # Extract output and response text
+    output_str = ""
+    response_text: str | None = None
     if executor.state.steps:
         last_step = executor.state.steps[-1]
         if last_step.output:
-            return json.dumps(last_step.output, indent=2)
+            output_str = json.dumps(last_step.output, indent=2)
+            # Extract raw response text from _raw key if present
+            if isinstance(last_step.output, dict) and "_raw" in last_step.output:
+                response_text = last_step.output["_raw"]
 
-    return ""
+    return WorkflowResult(
+        output=output_str,
+        response_text=response_text,
+        artifacts_dir=artifacts_dir,
+    )
 
 
 def expand_workflow_for_embedding(
@@ -469,6 +601,7 @@ def expand_workflow_for_embedding(
 
 
 __all__ = [
+    "WorkflowResult",
     "execute_workflow",
     "expand_workflow_for_embedding",
     "is_jinja2_template",

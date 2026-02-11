@@ -21,7 +21,7 @@ from .models import (
     OutputSpec,
     XPrompt,
     XPromptValidationError,
-    create_adhoc_workflow,
+    create_anonymous_workflow,
     xprompt_to_workflow,
 )
 from .output_validation import (
@@ -33,6 +33,7 @@ from .output_validation import (
     validate_response,
 )
 from .processor import (
+    WorkflowResult,
     execute_workflow,
     expand_workflow_for_embedding,
     is_jinja2_template,
@@ -61,7 +62,7 @@ __all__ = [
     "OutputSpec",
     "XPrompt",
     "XPromptValidationError",
-    "create_adhoc_workflow",
+    "create_anonymous_workflow",
     "xprompt_to_workflow",
     # Output validation
     "OutputValidationError",
@@ -79,6 +80,7 @@ __all__ = [
     "escape_for_xprompt",
     "parse_workflow_reference",
     # Processor
+    "WorkflowResult",
     "execute_workflow",
     "expand_workflow_for_embedding",
     "is_jinja2_template",

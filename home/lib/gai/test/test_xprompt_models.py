@@ -9,7 +9,7 @@ from xprompt.models import (
     InputType,
     XPrompt,
     XPromptValidationError,
-    create_adhoc_workflow,
+    create_anonymous_workflow,
     xprompt_to_workflow,
 )
 
@@ -317,14 +317,14 @@ def test_xprompt_to_workflow_is_simple_xprompt() -> None:
     assert workflow.get_prompt_part_content() == "Simple prompt"
 
 
-# Tests for create_adhoc_workflow
+# Tests for create_anonymous_workflow
 
 
-def test_create_adhoc_workflow_basic() -> None:
-    """Test basic adhoc workflow creation."""
-    workflow = create_adhoc_workflow("Hello world")
+def test_create_anonymous_workflow_basic() -> None:
+    """Test basic anonymous workflow creation."""
+    workflow = create_anonymous_workflow("Hello world")
 
-    assert workflow.name == "_adhoc"
+    assert workflow.name.startswith("tmp_")
     assert len(workflow.steps) == 1
     assert workflow.steps[0].name == "main"
     assert workflow.steps[0].prompt == "Hello world"
@@ -333,22 +333,22 @@ def test_create_adhoc_workflow_basic() -> None:
     assert workflow.inputs == []
 
 
-def test_create_adhoc_workflow_not_simple_xprompt() -> None:
-    """Test that adhoc workflow is NOT a simple xprompt (uses prompt, not prompt_part)."""
-    workflow = create_adhoc_workflow("Test query")
+def test_create_anonymous_workflow_not_simple_xprompt() -> None:
+    """Test that anonymous workflow is NOT a simple xprompt (uses prompt, not prompt_part)."""
+    workflow = create_anonymous_workflow("Test query")
 
-    # Adhoc workflows use 'prompt' (full prompt step), not 'prompt_part'
+    # Anonymous workflows use 'prompt' (full prompt step), not 'prompt_part'
     assert not workflow.is_simple_xprompt()
     assert not workflow.has_prompt_part()
     assert workflow.steps[0].prompt is not None
 
 
-def test_create_adhoc_workflow_multiline_query() -> None:
-    """Test adhoc workflow with multiline query."""
+def test_create_anonymous_workflow_multiline_query() -> None:
+    """Test anonymous workflow with multiline query."""
     query = """Please review this code:
 
 def foo():
     pass"""
-    workflow = create_adhoc_workflow(query)
+    workflow = create_anonymous_workflow(query)
 
     assert workflow.steps[0].prompt == query

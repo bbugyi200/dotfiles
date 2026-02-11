@@ -220,11 +220,11 @@ def xprompt_to_workflow(xprompt: XPrompt) -> Workflow:
     )
 
 
-def create_adhoc_workflow(query: str) -> Workflow:
-    """Create an ephemeral workflow for a raw query string.
+def create_anonymous_workflow(query: str) -> Workflow:
+    """Create an anonymous workflow for a raw query string.
 
     This allows raw queries (like "gai run 'hello'") to be treated
-    as workflows with a single prompt step.
+    as workflows with a single prompt step routed through WorkflowExecutor.
 
     Args:
         query: The raw query string.
@@ -232,10 +232,13 @@ def create_adhoc_workflow(query: str) -> Workflow:
     Returns:
         A Workflow object with a single prompt step containing the query.
     """
+    from datetime import datetime
+
     from xprompt.workflow_models import Workflow, WorkflowStep
 
+    name = f"tmp_{datetime.now().strftime('%y%m%d_%H%M%S')}"
     return Workflow(
-        name="_adhoc",
+        name=name,
         inputs=[],
         steps=[
             WorkflowStep(

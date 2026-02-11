@@ -291,7 +291,7 @@ class AgentLaunchMixin:
         Returns:
             True if workflow was executed, False if not a valid workflow reference.
         """
-        from xprompt import get_all_workflows, parse_workflow_reference
+        from xprompt import get_all_prompts, parse_workflow_reference
 
         workflow_ref = prompt[1:]  # Strip the #
         workflow_name, positional_args, named_args = parse_workflow_reference(
@@ -302,8 +302,9 @@ class AgentLaunchMixin:
         if "/" in workflow_name:
             project = workflow_name.split("/")[0]
 
-        workflows = get_all_workflows(project=project)
-        if workflow_name not in workflows:
+        # Use get_all_prompts() to detect both workflows and simple xprompts
+        prompts = get_all_prompts(project=project)
+        if workflow_name not in prompts:
             return False
 
         # Check if we have changespec context (not home mode)
