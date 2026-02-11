@@ -185,6 +185,8 @@ class TestPythonStepExecution:
             assert call_args[0][1] == "python"
             # Output should have approved flag set
             assert executor.context["python_step"]["approved"] is True
+            # Workflow status should be completed, not stuck on waiting_hitl
+            assert executor.state.status == "completed"
 
     def test_python_step_with_hitl_reject(self) -> None:
         """Test Python step with HITL that rejects."""

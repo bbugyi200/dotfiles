@@ -190,6 +190,10 @@ class PromptStepMixin:
                 # Continue with edited output
             # Future: handle feedback for regeneration
 
+            # Resume running status after HITL acceptance
+            self.state.status = "running"
+            self._save_state()
+
         # Mark step completed after HITL (prompt work is done)
         step_state.status = StepStatus.COMPLETED
 

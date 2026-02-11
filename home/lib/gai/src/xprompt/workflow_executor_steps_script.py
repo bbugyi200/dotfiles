@@ -155,6 +155,10 @@ class ScriptStepMixin:
                 # Continue with edited output
             # Future: handle rerun
 
+            # Resume running status after HITL acceptance
+            self.state.status = "running"
+            self._save_state()
+
         # Mark step completed after HITL
         step_state.status = StepStatus.COMPLETED
         self._save_prompt_step_marker(
@@ -264,6 +268,10 @@ class ScriptStepMixin:
                     output = result_hitl.edited_output
                 # Continue with edited output
             # Future: handle rerun
+
+            # Resume running status after HITL acceptance
+            self.state.status = "running"
+            self._save_state()
 
         # Mark step completed after HITL
         step_state.status = StepStatus.COMPLETED
