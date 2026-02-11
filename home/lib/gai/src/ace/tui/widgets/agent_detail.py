@@ -49,6 +49,8 @@ class AgentDetail(Static):
         if agent.is_workflow_child and agent.step_type in ("bash", "python"):
             file_scroll.add_class("hidden")
             prompt_scroll.add_class("expanded")
+            prompt_scroll.remove_class("layout-priority")
+            file_scroll.remove_class("layout-secondary")
             return
 
         if agent.status in ("RUNNING", "WAITING INPUT"):
@@ -65,6 +67,8 @@ class AgentDetail(Static):
             else:
                 file_scroll.add_class("hidden")
                 prompt_scroll.add_class("expanded")
+                prompt_scroll.remove_class("layout-priority")
+                file_scroll.remove_class("layout-secondary")
 
     def show_empty(self) -> None:
         """Show empty state for both panels."""
