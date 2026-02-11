@@ -3,7 +3,7 @@
 source ~/lib/bugyi.sh
 
 export USAGE_GRAMMAR=(
-  "[-v] [-s]"
+  "[-v] [-s] [-r <revision>]"
   "-h"
 )
 
@@ -17,6 +17,9 @@ Optional Arguments
 -h | --help
     View this help message.
 
+-r <revision> | --revision <revision>
+    Use the given revision instead of the current branch name.
+
 -s | --short
     Output shortened description: removes the first word (e.g. [tag]),
     KEY=VALUE lines at the bottom, and trailing newlines.
@@ -29,12 +32,18 @@ EOM
 function run() {
   parse_cli_args "$@"
 
-  if [[ -z "$(branch_name)" ]]; then
-    die "No CL branch currently checked out (use \`bb_hg_update <CL_NAME>\`)."
+  local rev
+  if [[ -n "$REVISION" ]]; then
+    rev="$REVISION"
+  else
+    if [[ -z "$(branch_name)" ]]; then
+      die "No CL branch currently checked out (use \`bb_hg_update <CL_NAME>\`)."
+    fi
+    rev="$(branch_name)"
   fi
 
   local desc
-  desc=$(hg --pager=never log -r "$(branch_name)" --template '{desc}')
+  desc=$(hg --pager=never log -r "$rev" --template '{desc}')
 
   if $SHORT; then
     # Remove first word, KEY=VALUE lines, and trailing newlines
@@ -49,15 +58,20 @@ function run() {
 function parse_cli_args() {
   log::debug "Command-Line Arguments: ($*)"
 
-  eval set -- "$(getopt -o "h,s,v" -l "help,short,verbose" -- "$@")"
+  eval set -- "$(getopt -o "h,r:,s,v" -l "help,revision:,short,verbose" -- "$@")"
 
   VERBOSE=0
   SHORT=false
+  REVISION=""
   while [[ -n "$1" ]]; do
     case $1 in
     -h | --help)
       echo "${DOC}"
       exit 0
+      ;;
+    -r | --revision)
+      shift
+      REVISION="$1"
       ;;
     -s | --short)
       SHORT=true
@@ -79,6 +93,7 @@ function parse_cli_args() {
   fi
 
   readonly DOC
+  readonly REVISION
   readonly SHORT
   readonly VERBOSE
 }

@@ -52,11 +52,14 @@ def _has_valid_parent(changespec: ChangeSpec) -> tuple[bool, ChangeSpec | None]:
     return False, None
 
 
-def _get_cl_description(target_dir: str, console: Console) -> tuple[bool, str | None]:
-    """Get the current CL description using hdesc command.
+def _get_cl_description(
+    revision: str, target_dir: str, console: Console
+) -> tuple[bool, str | None]:
+    """Get the CL description for a specific revision using cl_desc command.
 
     Args:
-        target_dir: Directory to run hdesc in
+        revision: The revision/branch name to get the description for
+        target_dir: Directory to run cl_desc in
         console: Rich console for output
 
     Returns:
@@ -64,7 +67,7 @@ def _get_cl_description(target_dir: str, console: Console) -> tuple[bool, str | 
     """
     try:
         result = subprocess.run(
-            ["hdesc"],
+            ["cl_desc", "-r", revision],
             cwd=target_dir,
             capture_output=True,
             text=True,
@@ -72,16 +75,16 @@ def _get_cl_description(target_dir: str, console: Console) -> tuple[bool, str | 
         )
         return True, result.stdout
     except subprocess.CalledProcessError as e:
-        error_msg = f"hdesc failed (exit code {e.returncode})"
+        error_msg = f"cl_desc failed (exit code {e.returncode})"
         if e.stderr:
             error_msg += f": {e.stderr.strip()}"
         console.print(f"[red]{error_msg}[/red]")
         return False, None
     except FileNotFoundError:
-        console.print("[red]hdesc command not found[/red]")
+        console.print("[red]cl_desc command not found[/red]")
         return False, None
     except Exception as e:
-        console.print(f"[red]Unexpected error running hdesc: {str(e)}[/red]")
+        console.print(f"[red]Unexpected error running cl_desc: {str(e)}[/red]")
         return False, None
 
 
@@ -358,7 +361,7 @@ def prepare_mail(
     if reviewers:
         # Get current CL description
         console.print("[cyan]Getting CL description...[/cyan]")
-        success, description = _get_cl_description(target_dir, console)
+        success, description = _get_cl_description(changespec.name, target_dir, console)
         if not success or not description:
             return None
 
