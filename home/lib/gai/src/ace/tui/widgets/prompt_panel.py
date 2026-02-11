@@ -615,8 +615,9 @@ def _aggregate_meta_fields(
 def _load_embedded_workflows(agent: Agent) -> list[dict[str, Any]] | None:
     """Load embedded workflow metadata from embedded_workflows.json.
 
-    Prefers the step-specific file ``embedded_workflows_{step_name}.json``
-    when the agent has a ``step_name``, falling back to the shared file.
+    Uses the step-specific file ``embedded_workflows_{step_name}.json``
+    when the agent has a ``step_name``; falls back to the shared file
+    only when ``step_name`` is None.
 
     Args:
         agent: The agent to load metadata for.
@@ -641,8 +642,10 @@ def _load_embedded_workflows(agent: Agent) -> list[dict[str, Any]] | None:
                     return data
             except Exception:
                 pass
+        # Step has no embedded workflows — don't fall back to shared file
+        return None
 
-    # Fall back to shared file
+    # Fall back to shared file (only for agents without step_name)
     metadata_file = artifacts_path / "embedded_workflows.json"
     if not metadata_file.exists():
         return None

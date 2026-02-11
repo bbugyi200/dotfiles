@@ -471,7 +471,7 @@ def test_embedded_workflows_displayed_in_metadata(tmp_path: Path) -> None:
         {"name": "propose", "args": {"note": "blah"}},
         {"name": "cl", "args": {}},
     ]
-    metadata_file = tmp_path / "embedded_workflows.json"
+    metadata_file = tmp_path / "embedded_workflows_main.json"
     metadata_file.write_text(json.dumps(metadata))
 
     agent = _make_agent(

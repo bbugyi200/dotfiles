@@ -36,15 +36,15 @@ def test_step_specific_file_takes_priority(tmp_path: Path) -> None:
     assert result == step_data
 
 
-def test_falls_back_to_shared_when_step_file_missing(tmp_path: Path) -> None:
-    """Falls back to shared file when step-specific file doesn't exist."""
+def test_returns_none_when_step_file_missing(tmp_path: Path) -> None:
+    """Returns None when step-specific file is missing (no shared file fallback)."""
     shared_data = [{"name": "propose", "args": {}}]
     shared_file = tmp_path / "embedded_workflows.json"
     shared_file.write_text(json.dumps(shared_data))
 
     agent = _make_agent(str(tmp_path), step_name="create_commit")
     result = _load_embedded_workflows(agent)  # type: ignore[arg-type]
-    assert result == shared_data
+    assert result is None
 
 
 def test_falls_back_to_shared_when_step_name_is_none(tmp_path: Path) -> None:
