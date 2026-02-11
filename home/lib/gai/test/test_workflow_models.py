@@ -161,3 +161,32 @@ def test_workflow_not_simple_xprompt_empty_steps() -> None:
         steps=[],
     )
     assert workflow.is_simple_xprompt() is False
+
+
+# ============================================================================
+# Workflow.is_anonymous() tests
+# ============================================================================
+
+
+def test_workflow_is_anonymous_with_tmp_prefix() -> None:
+    """Test that tmp_* names are recognized as anonymous."""
+    workflow = Workflow(name="tmp_260210_205800", steps=[])
+    assert workflow.is_anonymous() is True
+
+
+def test_workflow_is_anonymous_with_bare_tmp_prefix() -> None:
+    """Test that bare tmp_ prefix is recognized as anonymous."""
+    workflow = Workflow(name="tmp_", steps=[])
+    assert workflow.is_anonymous() is True
+
+
+def test_workflow_not_anonymous_named_workflow() -> None:
+    """Test that named workflows are not anonymous."""
+    workflow = Workflow(name="split", steps=[])
+    assert workflow.is_anonymous() is False
+
+
+def test_workflow_not_anonymous_empty_name() -> None:
+    """Test that empty name is not anonymous."""
+    workflow = Workflow(name="", steps=[])
+    assert workflow.is_anonymous() is False

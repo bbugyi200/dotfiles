@@ -15,7 +15,6 @@ from xprompt.processor import (
     _XPROMPT_PATTERN,
     WorkflowResult,
     _flatten_anonymous_workflow,
-    _is_anonymous_workflow_name,
 )
 from xprompt.workflow_models import Workflow, WorkflowStep
 
@@ -345,23 +344,6 @@ def test_double_colon_shorthand_pattern_not_single_colon() -> None:
     """Test that DOUBLE_COLON_SHORTHAND_PATTERN does NOT match single colon."""
     match = re.search(DOUBLE_COLON_SHORTHAND_PATTERN, "#foo: some text")
     assert match is None
-
-
-# --- _is_anonymous_workflow_name tests ---
-
-
-def test_is_anonymous_workflow_name_true_for_tmp_prefix() -> None:
-    """Test that tmp_* names are recognized as anonymous."""
-    assert _is_anonymous_workflow_name("tmp_abc123") is True
-    assert _is_anonymous_workflow_name("tmp_") is True
-
-
-def test_is_anonymous_workflow_name_false_for_non_matching() -> None:
-    """Test that non-tmp_* names are not anonymous."""
-    assert _is_anonymous_workflow_name("split") is False
-    assert _is_anonymous_workflow_name("temporary") is False
-    assert _is_anonymous_workflow_name("") is False
-    assert _is_anonymous_workflow_name("TMP_foo") is False
 
 
 # --- WorkflowResult tests ---

@@ -196,6 +196,10 @@ class Workflow:
         visible_steps = [s for s in self.steps if not s.hidden]
         return len(visible_steps) == 1 and visible_steps[0].is_prompt_step()
 
+    def is_anonymous(self) -> bool:
+        """Check if this is an anonymous (temporary) workflow."""
+        return self.name.startswith("tmp_")
+
     def is_simple_xprompt(self) -> bool:
         """Check if workflow is a simple xprompt (single prompt_part step only).
 

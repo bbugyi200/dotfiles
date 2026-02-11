@@ -105,8 +105,9 @@ def load_workflow_states() -> list[WorkflowEntry]:
                     ):
                         display_status = "FAILED"
 
-                    # Read appears_as_agent flag
+                    # Read appears_as_agent and is_anonymous flags
                     appears_as_agent = data.get("appears_as_agent", False)
+                    is_anonymous = data.get("is_anonymous", False)
 
                     # Extract diff_path from the last path-typed output
                     diff_path = None
@@ -143,6 +144,7 @@ def load_workflow_states() -> list[WorkflowEntry]:
                             artifacts_dir=str(timestamp_dir),
                             pid=pid,
                             appears_as_agent=appears_as_agent,
+                            is_anonymous=is_anonymous,
                             diff_path=diff_path,
                             error_message=data.get("error"),
                         )
@@ -192,6 +194,7 @@ def load_workflow_agents() -> list[Agent]:
                 raw_suffix=raw_suffix,
                 pid=entry.pid,
                 appears_as_agent=entry.appears_as_agent,
+                is_anonymous=entry.is_anonymous,
                 artifacts_dir=entry.artifacts_dir,
                 diff_path=entry.diff_path,
                 error_message=entry.error_message,

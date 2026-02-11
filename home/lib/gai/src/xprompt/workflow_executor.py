@@ -111,6 +111,7 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
             "start_time": self.state.start_time,
             "pid": os.getpid(),
             "appears_as_agent": self.workflow.appears_as_agent(),
+            "is_anonymous": self.workflow.is_anonymous(),
         }
         os.makedirs(self.artifacts_dir, exist_ok=True)
         with open(state_path, "w", encoding="utf-8") as f:

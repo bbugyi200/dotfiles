@@ -281,3 +281,53 @@ def test_annotation_zero_total_children() -> None:
     fold_counts = {"ts1": (0, 0)}
     result = _compute_fold_annotation(parent, fold_counts, set())
     assert result == ""
+
+
+# --- Anonymous workflow fold annotation suppression tests ---
+
+
+def _make_anonymous_parent(raw_suffix: str) -> Agent:
+    """Create an anonymous workflow parent that appears as agent."""
+    return Agent(
+        agent_type=AgentType.WORKFLOW,
+        cl_name="test_cl",
+        project_file="/tmp/test.gp",
+        status="RUNNING",
+        start_time=None,
+        raw_suffix=raw_suffix,
+        appears_as_agent=True,
+        is_anonymous=True,
+    )
+
+
+def test_annotation_suppressed_anonymous_single_prompt() -> None:
+    """Test annotation suppressed for collapsed anonymous single-prompt workflow."""
+    parent = _make_anonymous_parent("ts1")
+    fold_counts = {"ts1": (1, 0)}  # total == 1
+    result = _compute_fold_annotation(parent, fold_counts, set())
+    assert result == ""
+
+
+def test_annotation_shown_anonymous_multi_prompt() -> None:
+    """Test annotation shown for collapsed anonymous multi-prompt workflow."""
+    parent = _make_anonymous_parent("ts1")
+    fold_counts = {"ts1": (3, 0)}  # total > 1
+    result = _compute_fold_annotation(parent, fold_counts, set())
+    assert result == " (+3 steps)"
+
+
+def test_annotation_not_suppressed_non_anonymous_single_child() -> None:
+    """Test non-anonymous single-child workflow NOT suppressed."""
+    parent = Agent(
+        agent_type=AgentType.WORKFLOW,
+        cl_name="test_cl",
+        project_file="/tmp/test.gp",
+        status="RUNNING",
+        start_time=None,
+        raw_suffix="ts1",
+        appears_as_agent=True,
+        is_anonymous=False,
+    )
+    fold_counts = {"ts1": (1, 0)}  # total == 1
+    result = _compute_fold_annotation(parent, fold_counts, set())
+    assert result == " (+1 steps)"

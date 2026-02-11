@@ -306,6 +306,7 @@ def _write_failed_workflow_state(
         "start_time": datetime.now().isoformat(),
         "pid": os.getpid(),
         "error": error_message,
+        "is_anonymous": workflow_name.startswith("tmp_"),
     }
     state_path = os.path.join(artifacts_dir, "workflow_state.json")
     with open(state_path, "w", encoding="utf-8") as f:
@@ -325,18 +326,6 @@ class WorkflowResult:
     output: str
     response_text: str | None
     artifacts_dir: str
-
-
-def _is_anonymous_workflow_name(name: str) -> bool:
-    """Check if a workflow name is an anonymous workflow name.
-
-    Args:
-        name: The workflow name to check.
-
-    Returns:
-        True if the name matches the anonymous naming pattern (tmp_*).
-    """
-    return name.startswith("tmp_")
 
 
 def execute_workflow(
@@ -414,7 +403,7 @@ def execute_workflow(
 
     # Flatten anonymous workflows that wrap a single multi-step workflow
     # reference (e.g., "gai run '#split(...)'" → execute split directly)
-    if _is_anonymous_workflow_name(workflow.name):
+    if workflow.is_anonymous():
         flattened = _flatten_anonymous_workflow(workflow, project=project)
         if flattened is not None:
             workflow, positional_args, named_args = flattened
@@ -468,9 +457,7 @@ def execute_workflow(
     # Create handlers based on silent mode
     # Suppress workflow output for single-step anonymous workflows
     # (e.g., "gai run hello" shouldn't show "[Step 1/1: main]")
-    is_anonymous_single_step = (
-        _is_anonymous_workflow_name(workflow.name) and len(workflow.steps) == 1
-    )
+    is_anonymous_single_step = workflow.is_anonymous() and len(workflow.steps) == 1
 
     hitl_handler: TUIHITLHandler | CLIHITLHandler
     if silent:

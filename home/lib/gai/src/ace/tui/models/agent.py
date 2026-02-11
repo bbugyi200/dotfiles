@@ -92,22 +92,33 @@ class Agent:
     # Workflow that looks like an agent (all non-prompt steps hidden)
     appears_as_agent: bool = False
 
+    # Anonymous (temporary) workflow created for ad-hoc runs
+    is_anonymous: bool = False
+
     # Error message for failed agents (from HookStatusLine.suffix)
     error_message: str | None = None
 
     # Explicit artifacts directory path (for workflow steps loaded from marker files)
     artifacts_dir: str | None = None
 
-    @property
-    def display_type(self) -> str:
-        """Human-readable agent type for display."""
+    def get_display_type(self, *, is_expanded: bool = False) -> str:
+        """Compute display type with optional fold-state context.
+
+        For anonymous workflows: [run] when collapsed, [workflow] when expanded.
+        For non-anonymous: unchanged behavior.
+        """
         if self.appears_as_agent:
-            # Use workflow name if available (e.g., "fix-hook"), otherwise "run"
+            if self.is_anonymous:
+                return "workflow" if is_expanded else "run"
             return self.workflow if self.workflow else "run"
-        # For workflow children, use step_type (bash/python/prompt)
         if self.is_workflow_child and self.step_type:
             return self.step_type
         return self.agent_type.value
+
+    @property
+    def display_type(self) -> str:
+        """Human-readable agent type for display (default: collapsed context)."""
+        return self.get_display_type(is_expanded=False)
 
     @property
     def display_label(self) -> str:

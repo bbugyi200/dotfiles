@@ -33,6 +33,7 @@ class WorkflowEntry:
     artifacts_dir: str
     pid: int | None = None
     appears_as_agent: bool = False
+    is_anonymous: bool = False
     diff_path: str | None = None
     error_message: str | None = None
 

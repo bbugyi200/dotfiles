@@ -47,12 +47,14 @@ def _is_foldable_parent(agent: Agent) -> bool:
 def _calculate_entry_display_width(
     agent: Agent,
     fold_annotation: str = "",
+    is_expanded: bool = False,
 ) -> int:
     """Calculate display width of an Agent entry in terminal cells.
 
     Args:
         agent: The Agent to measure
         fold_annotation: Fold annotation text to append
+        is_expanded: Whether this agent's fold state is expanded
 
     Returns:
         Width in terminal cells
@@ -78,7 +80,8 @@ def _calculate_entry_display_width(
                 parts.append(f"{step_num}/{agent.total_steps} ")
     if agent.status in _DISMISSIBLE_STATUSES:
         parts.append(f"{_DONE_ICON} ")
-    parts.extend([f"[{agent.display_type}] ", agent.cl_name, " ", f"({agent.status})"])
+    dt = agent.get_display_type(is_expanded=is_expanded)
+    parts.extend([f"[{dt}] ", agent.cl_name, " ", f"({agent.status})"])
     if fold_annotation:
         parts.append(fold_annotation)
     text = Text("".join(parts))
@@ -137,6 +140,10 @@ class AgentList(OptionList):
 
         max_width = 0
         for i, agent in enumerate(agents):
+            is_expanded = (
+                agent.raw_suffix is not None
+                and agent.raw_suffix in parents_with_visible_children
+            )
             annotation = _compute_fold_annotation(
                 agent,
                 fold_counts,
@@ -144,10 +151,16 @@ class AgentList(OptionList):
                 fully_expanded_parents,
             )
             option = self._format_agent_option(
-                agent, i, is_selected=(i == current_idx), fold_annotation=annotation
+                agent,
+                i,
+                is_selected=(i == current_idx),
+                fold_annotation=annotation,
+                is_expanded=is_expanded,
             )
             self.add_option(option)
-            width = _calculate_entry_display_width(agent, fold_annotation=annotation)
+            width = _calculate_entry_display_width(
+                agent, fold_annotation=annotation, is_expanded=is_expanded
+            )
             max_width = max(max_width, width)
 
         # Add padding for border, scrollbar, visual comfort (~8 cells)
@@ -172,6 +185,7 @@ class AgentList(OptionList):
         index: int,
         is_selected: bool,
         fold_annotation: str = "",
+        is_expanded: bool = False,
     ) -> Option:
         """Format an agent as an option for display.
 
@@ -180,6 +194,7 @@ class AgentList(OptionList):
             index: Index of the agent in the list
             is_selected: Whether this is the currently selected item
             fold_annotation: Fold annotation text to append
+            is_expanded: Whether this agent's fold state is expanded
 
         Returns:
             An Option for the OptionList
@@ -212,12 +227,14 @@ class AgentList(OptionList):
             text.append(f"{_DONE_ICON} ", style="bold red")
 
         # Agent type indicator with color
-        # Workflows appearing as agents use RUNNING color
-        if agent.appears_as_agent:
+        dt = agent.get_display_type(is_expanded=is_expanded)
+
+        # Color: RUNNING blue for appears_as_agent (except anonymous when expanded → WORKFLOW pink)
+        if agent.appears_as_agent and not (agent.is_anonymous and is_expanded):
             color = _AGENT_TYPE_COLORS[AgentType.RUNNING]
         else:
             color = _AGENT_TYPE_COLORS.get(agent.agent_type, "#FFFFFF")
-        text.append(f"[{agent.display_type}] ", style=f"bold {color}")
+        text.append(f"[{dt}] ", style=f"bold {color}")
 
         # CL name
         name_style = "bold #00D7AF" if is_selected else "#00D7AF"
@@ -296,6 +313,9 @@ def _compute_fold_annotation(
     has_visible_children = agent.raw_suffix in parents_with_visible_children
 
     if not has_visible_children:
+        # COLLAPSED: suppress annotation for anonymous single-prompt workflows
+        if agent.is_anonymous and agent.appears_as_agent and total == 1:
+            return ""
         # COLLAPSED: show total count of children
         if non_hidden > 0:
             return f" (+{non_hidden} steps)"
