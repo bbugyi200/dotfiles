@@ -45,18 +45,11 @@ steps:
     output: { success: bool, cl_url: line, full_cl_name: word, diff_path: path, error: text }
 
   - name: report
+    if: "{{ check_changes.has_changes }}"
     hidden: true
     bash: |
-      if [ "{{ check_changes.has_changes | string | lower }}" = "false" ]; then
-        echo "status=no_changes"
-        echo "message=No local changes detected - CL not created"
-      elif [ "{{ commit.success | default(false) | string | lower }}" = "true" ]; then
-        echo "status=created"
-        echo "message=Created CL {{ commit.full_cl_name | default('') }}: {{ commit.cl_url | default('') }}"
-        echo "meta_new_cl={{ commit.full_cl_name | default('') }} ({{ commit.cl_url | default('') }})"
-        echo "diff_path={{ commit.diff_path | default('') }}"
-      else
-        echo "status=error"
-        echo "message={{ commit.error | default('Unknown error') }}"
-      fi
+      echo "status=created"
+      echo "message=Created CL {{ commit.full_cl_name | default('') }}: {{ commit.cl_url | default('') }}"
+      echo "meta_new_cl={{ commit.full_cl_name | default('') }} ({{ commit.cl_url | default('') }})"
+      echo "diff_path={{ commit.diff_path | default('') }}"
     output: { status: word, message: text, meta_new_cl: line, diff_path: path }

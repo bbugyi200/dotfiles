@@ -46,18 +46,11 @@ steps:
     output: { success: bool, entry_id: word, cl_name: word, diff_path: path, error: text }
 
   - name: report
+    if: "{{ check_changes.has_changes }}"
     hidden: true
     bash: |
-      if [ "{{ check_changes.has_changes | string | lower }}" = "false" ]; then
-        echo "status=no_changes"
-        echo "message=No local changes detected - CL not amended"
-      elif [ "{{ amend.success | default(false) | string | lower }}" = "true" ]; then
-        echo "status=amended"
-        echo "message=Amended CL {{ amend.cl_name | default('') }} with COMMITS entry ({{ amend.entry_id | default('') }})"
-        echo "meta_new_amend={{ amend.entry_id | default('') }}"
-        echo "diff_path={{ amend.diff_path | default('') }}"
-      else
-        echo "status=error"
-        echo "message={{ amend.error | default('Unknown error') }}"
-      fi
+      echo "status=amended"
+      echo "message=Amended CL {{ amend.cl_name | default('') }} with COMMITS entry ({{ amend.entry_id | default('') }})"
+      echo "meta_new_amend={{ amend.entry_id | default('') }}"
+      echo "diff_path={{ amend.diff_path | default('') }}"
     output: { status: word, message: text, meta_new_amend: word, diff_path: path }

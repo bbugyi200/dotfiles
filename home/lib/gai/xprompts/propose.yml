@@ -47,18 +47,11 @@ steps:
     output: { success: bool, proposal_id: word, cl_name: word, diff_path: path, error: text }
 
   - name: report
+    if: "{{ check_changes.has_changes }}"
     hidden: true
     bash: |
-      if [ "{{ check_changes.has_changes | string | lower }}" = "false" ]; then
-        echo "status=no_changes"
-        echo "message=No local changes detected - proposal not created"
-      elif [ "{{ propose.success | default(false) | string | lower }}" = "true" ]; then
-        echo "status=created"
-        echo "message=Created proposal ({{ propose.proposal_id | default('') }}) on CL {{ propose.cl_name | default('') }}"
-        echo "meta_proposal_id={{ propose.proposal_id | default('') }}"
-        echo "diff_path={{ propose.diff_path | default('') }}"
-      else
-        echo "status=error"
-        echo "message={{ propose.error | default('Unknown error') }}"
-      fi
+      echo "status=created"
+      echo "message=Created proposal ({{ propose.proposal_id | default('') }}) on CL {{ propose.cl_name | default('') }}"
+      echo "meta_proposal_id={{ propose.proposal_id | default('') }}"
+      echo "diff_path={{ propose.diff_path | default('') }}"
     output: { status: word, message: text, meta_proposal_id: word, diff_path: path }
