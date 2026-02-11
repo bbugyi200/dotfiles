@@ -190,9 +190,9 @@ class CrsWorkflow(BaseWorkflow):
             # Extract proposal_id from propose step output
             # (runs even if later steps like 'report' failed)
             create_result = ewf_result.context.get("propose", {})
-            if (
-                isinstance(create_result, dict)
-                and create_result.get("success") == "true"
+            if isinstance(create_result, dict) and create_result.get("success") in (
+                True,
+                "true",
             ):
                 self.proposal_id = create_result.get("proposal_id")
 

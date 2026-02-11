@@ -188,9 +188,9 @@ def main() -> int:
 
             # Always check for proposal_id (even if later steps failed)
             create_result = ewf_result.context.get("propose", {})
-            if (
-                isinstance(create_result, dict)
-                and create_result.get("success") == "true"
+            if isinstance(create_result, dict) and create_result.get("success") in (
+                True,
+                "true",
             ):
                 proposal_id = create_result.get("proposal_id")
                 exit_code = 0
