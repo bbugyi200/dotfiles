@@ -432,50 +432,11 @@ def prepare_mail(
             description, reviewers, has_valid_parent_flag, parent_branch_number
         )
 
-        # Copy modified description to clipboard
-        console.print("[cyan]Copying modified CL description to clipboard...[/cyan]")
-
-        # Determine clipboard command based on platform
-        if sys.platform == "darwin":
-            clipboard_cmd = ["pbcopy"]
-        elif sys.platform.startswith("linux"):
-            clipboard_cmd = ["xclip", "-selection", "clipboard"]
-        else:
-            console.print(
-                f"[red]FATAL: Unsupported platform for clipboard: {sys.platform}[/red]"
-            )
-            console.print("[red]Aborting gai work...[/red]")
-            sys.exit(1)
-
+        # Update CL description using bb_hg_reword
+        console.print("[cyan]Updating CL description with bb_hg_reword...[/cyan]")
         try:
             subprocess.run(
-                clipboard_cmd,
-                input=modified_description,
-                text=True,
-                check=True,
-            )
-            console.print(
-                "[green]✓ Modified CL description copied to clipboard![/green]"
-            )
-        except subprocess.CalledProcessError as e:
-            console.print(
-                f"[red]FATAL: {clipboard_cmd[0]} failed "
-                f"(exit code {e.returncode})[/red]"
-            )
-            console.print("[red]Aborting gai work...[/red]")
-            sys.exit(1)
-        except FileNotFoundError:
-            console.print(f"[red]FATAL: {clipboard_cmd[0]} command not found[/red]")
-            console.print("[red]Aborting gai work...[/red]")
-            sys.exit(1)
-
-        # Update CL description using bb_hg_reword (opens nvim for editing)
-        console.print(
-            "[cyan]Opening nvim to edit CL description with bb_hg_reword...[/cyan]"
-        )
-        try:
-            subprocess.run(
-                ["bb_hg_reword"],
+                ["bb_hg_reword", modified_description],
                 cwd=target_dir,
                 check=True,
             )

@@ -3,7 +3,7 @@
 set -x
 
 if [[ -n "$1" ]]; then
-    eval hg reword -m \$\'$1\'
+    hg reword -m "$1"
 else
     hg reword
 fi
