@@ -36,8 +36,7 @@ Refer to the following files for guidance:
 
 <!-- prettier-ignore -->
 {%- if should_chain_cls -%}
-3. **CREATE A CHAIN OF CLS**: Plan the split in such a way that each CL depends on the previous one (i.e. uses the
-   previous CL as its parent).
+3. **CREATE A CHAIN OF CLS**: Plan the split in such a way that each CL depends on the previous one (i.e. uses the previous CL as its parent).
 {% else -%}
 
 <!-- prettier-ignore -->
