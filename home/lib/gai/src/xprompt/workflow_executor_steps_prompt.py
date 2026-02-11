@@ -173,7 +173,7 @@ class PromptStepMixin:
             from chat_history import save_chat_history
 
             response_path = save_chat_history(
-                prompt=expanded_prompt,
+                prompt=rendered_prompt,
                 response=response_text,
                 workflow=self.workflow.name,
                 agent=step.name,
