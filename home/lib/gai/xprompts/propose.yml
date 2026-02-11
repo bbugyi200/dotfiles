@@ -49,10 +49,10 @@ steps:
   - name: report
     hidden: true
     bash: |
-      if [ "{{ check_changes.has_changes }}" = "false" ]; then
+      if [ "{{ check_changes.has_changes | string | lower }}" = "false" ]; then
         echo "status=no_changes"
         echo "message=No local changes detected - proposal not created"
-      elif [ "{{ propose.success | default(false) }}" = "true" ]; then
+      elif [ "{{ propose.success | default(false) | string | lower }}" = "true" ]; then
         echo "status=created"
         echo "message=Created proposal ({{ propose.proposal_id | default('') }}) on CL {{ propose.cl_name | default('') }}"
         echo "meta_proposal_id={{ propose.proposal_id | default('') }}"

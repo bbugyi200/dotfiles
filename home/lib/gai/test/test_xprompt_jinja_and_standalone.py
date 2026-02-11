@@ -509,7 +509,7 @@ def test_skipped_step_accessible_via_jinja2_default_filter() -> None:
         ),
         WorkflowStep(
             name="report",
-            bash="echo 'result={{ maybe_run.success | default(false) }}'",
+            bash="echo 'result={{ maybe_run.success | default(false) | string | lower }}'",
         ),
     ]
     context: dict[str, object] = {"flag": False}
@@ -542,4 +542,38 @@ def test_render_template_bool_default_filter_renders_lowercase() -> None:
 def test_render_template_bool_tojson_unaffected() -> None:
     """Test that tojson filter still produces valid JSON booleans."""
     result = render_template("{{ flag | tojson }}", {"flag": True})
+    assert result == "true"
+
+
+def test_render_template_string_lower_true() -> None:
+    """Test that | string | lower on Python True produces 'true'."""
+    result = render_template("{{ flag | string | lower }}", {"flag": True})
+    assert result == "true"
+
+
+def test_render_template_string_lower_false() -> None:
+    """Test that | string | lower on Python False produces 'false'."""
+    result = render_template("{{ flag | string | lower }}", {"flag": False})
+    assert result == "false"
+
+
+def test_bool_roundtrip_bash_to_template() -> None:
+    """End-to-end: bash output → parse → schema converts to bool → render with | string | lower."""
+    from xprompt.output_validation import (
+        _convert_data_types,
+        _convert_semantic_schema_to_json_schema,
+    )
+
+    # Simulate bash outputting success=true
+    data = parse_bash_output("success=true")
+    assert data == {"success": "true"}
+
+    # Schema as produced by _parse_shortform_output from {success: bool}
+    schema: dict[str, object] = {"properties": {"success": {"type": "bool"}}}
+    _, type_map = _convert_semantic_schema_to_json_schema(schema)
+    converted = _convert_data_types(data, schema, type_map, "")
+    assert converted["success"] is True
+
+    # Render with | string | lower — should produce lowercase "true"
+    result = render_template("{{ s.success | string | lower }}", {"s": converted})
     assert result == "true"

@@ -47,10 +47,10 @@ steps:
   - name: report
     hidden: true
     bash: |
-      if [ "{{ check_changes.has_changes }}" = "false" ]; then
+      if [ "{{ check_changes.has_changes | string | lower }}" = "false" ]; then
         echo "status=no_changes"
         echo "message=No local changes detected - CL not created"
-      elif [ "{{ commit.success | default(false) }}" = "true" ]; then
+      elif [ "{{ commit.success | default(false) | string | lower }}" = "true" ]; then
         echo "status=created"
         echo "message=Created CL {{ commit.full_cl_name | default('') }}: {{ commit.cl_url | default('') }}"
         echo "meta_new_cl={{ commit.full_cl_name | default('') }} ({{ commit.cl_url | default('') }})"

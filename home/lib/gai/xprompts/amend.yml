@@ -48,10 +48,10 @@ steps:
   - name: report
     hidden: true
     bash: |
-      if [ "{{ check_changes.has_changes }}" = "false" ]; then
+      if [ "{{ check_changes.has_changes | string | lower }}" = "false" ]; then
         echo "status=no_changes"
         echo "message=No local changes detected - CL not amended"
-      elif [ "{{ amend.success | default(false) }}" = "true" ]; then
+      elif [ "{{ amend.success | default(false) | string | lower }}" = "true" ]; then
         echo "status=amended"
         echo "message=Amended CL {{ amend.cl_name | default('') }} with COMMITS entry ({{ amend.entry_id | default('') }})"
         echo "meta_new_amend={{ amend.entry_id | default('') }}"
