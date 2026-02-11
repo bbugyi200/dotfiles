@@ -351,6 +351,109 @@ class TestEmbeddedWorkflowExpansion:
                 assert "\n\n### Section Header" in expanded
 
 
+class TestOutputTypesPreservation:
+    """Tests for output_types preservation in _save_prompt_step_marker."""
+
+    def test_output_types_preserved_when_not_provided(self) -> None:
+        """Test that output_types from existing marker is preserved when caller doesn't pass it."""
+        import json
+        import os
+
+        step = WorkflowStep(
+            name="step1",
+            prompt="Test",
+            output=OutputSpec(
+                type="json_schema",
+                schema={
+                    "type": "object",
+                    "properties": {
+                        "diff_file": {"type": "path"},
+                        "summary": {"type": "text"},
+                    },
+                },
+            ),
+        )
+        workflow = _create_test_workflow(steps=[step])
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            executor = WorkflowExecutor(
+                workflow=workflow,
+                args={},
+                artifacts_dir=tmpdir,
+            )
+
+            from xprompt.workflow_models import StepState, StepStatus
+
+            step_state = StepState(name="step1", status=StepStatus.IN_PROGRESS)
+
+            # First save: includes output_types
+            executor._save_prompt_step_marker(
+                "step1",
+                step_state,
+                "prompt",
+                step_index=0,
+                output_types={"diff_file": "path", "summary": "text"},
+            )
+
+            marker_path = os.path.join(tmpdir, "prompt_step_step1.json")
+            with open(marker_path, encoding="utf-8") as f:
+                data = json.load(f)
+            assert data["output_types"] == {"diff_file": "path", "summary": "text"}
+
+            # Second save: does NOT pass output_types (simulates _execute_prompt_step)
+            step_state.status = StepStatus.COMPLETED
+            executor._save_prompt_step_marker(
+                "step1",
+                step_state,
+                "prompt",
+            )
+
+            with open(marker_path, encoding="utf-8") as f:
+                data = json.load(f)
+            # output_types should be preserved from the first save
+            assert data["output_types"] == {"diff_file": "path", "summary": "text"}
+
+    def test_output_types_overwritten_when_explicitly_provided(self) -> None:
+        """Test that explicitly provided output_types overwrites existing."""
+        import json
+        import os
+
+        step = WorkflowStep(name="step1", prompt="Test")
+        workflow = _create_test_workflow(steps=[step])
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            executor = WorkflowExecutor(
+                workflow=workflow,
+                args={},
+                artifacts_dir=tmpdir,
+            )
+
+            from xprompt.workflow_models import StepState, StepStatus
+
+            step_state = StepState(name="step1", status=StepStatus.IN_PROGRESS)
+
+            # First save with output_types
+            executor._save_prompt_step_marker(
+                "step1",
+                step_state,
+                "prompt",
+                output_types={"old_field": "text"},
+            )
+
+            # Second save with different output_types
+            executor._save_prompt_step_marker(
+                "step1",
+                step_state,
+                "prompt",
+                output_types={"new_field": "path"},
+            )
+
+            marker_path = os.path.join(tmpdir, "prompt_step_step1.json")
+            with open(marker_path, encoding="utf-8") as f:
+                data = json.load(f)
+            assert data["output_types"] == {"new_field": "path"}
+
+
 class TestSubstepSuffix:
     """Tests for the get_substep_suffix helper function."""
 

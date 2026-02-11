@@ -438,6 +438,11 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
         if diff_path is None and existing_marker:
             diff_path = existing_marker.get("diff_path")
 
+        # Preserve output_types from existing marker when not provided,
+        # so that intermediate saves from _execute_prompt_step don't clobber it.
+        if output_types is None and existing_marker:
+            output_types = existing_marker.get("output_types")
+
         marker_data = {
             "workflow_name": self.workflow.name,
             "step_name": step_name,

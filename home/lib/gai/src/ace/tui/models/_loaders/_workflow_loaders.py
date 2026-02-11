@@ -177,7 +177,7 @@ def load_workflow_agents() -> list[Agent]:
         # Extract step_output from last completed step so that
         # appears_as_agent workflows expose meta_* fields in the TUI.
         step_output: dict[str, Any] | None = None
-        if entry.appears_as_agent and entry.steps:
+        if entry.steps:
             for step in reversed(entry.steps):
                 if step.output and isinstance(step.output, dict):
                     step_output = step.output

@@ -26,6 +26,59 @@ from shared_utils import (  # noqa: E402
 install_sigterm_handler("agent")
 
 
+def _extract_step_output_and_diff_path(
+    artifacts_dir: str,
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Extract step_output and diff_path from workflow_state.json.
+
+    Reads the workflow state written by execute_workflow() and extracts:
+    - step_output: the last completed step's output dict
+    - diff_path: path value from output_types with field_type=="path",
+      or fallback to direct diff_path key in step outputs
+
+    Args:
+        artifacts_dir: Path to the artifacts directory containing workflow_state.json.
+
+    Returns:
+        Tuple of (step_output, diff_path).
+    """
+    state_path = os.path.join(artifacts_dir, "workflow_state.json")
+    try:
+        with open(state_path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None, None
+
+    # Extract step_output: last step with a dict output
+    step_output: dict[str, Any] | None = None
+    for step_data in reversed(data.get("steps", [])):
+        output = step_data.get("output")
+        if output and isinstance(output, dict):
+            step_output = output
+            break
+
+    # Extract diff_path: scan for output_types with field_type == "path"
+    diff_path: str | None = None
+    for step_data in data.get("steps", []):
+        output_types = step_data.get("output_types") or {}
+        step_out = step_data.get("output")
+        if output_types and isinstance(step_out, dict):
+            for field_name, field_type in output_types.items():
+                if field_type == "path":
+                    path_value = step_out.get(field_name)
+                    if path_value:
+                        diff_path = str(path_value)
+
+    # Fallback: check for direct diff_path key in step outputs
+    if not diff_path:
+        for step_data in data.get("steps", []):
+            step_out = step_data.get("output")
+            if isinstance(step_out, dict) and step_out.get("diff_path"):
+                diff_path = str(step_out["diff_path"])
+
+    return step_output, diff_path
+
+
 def main() -> None:
     """Run agent workflow and release workspace on completion."""
     # Accept 13 args: cl_name, project_file, workspace_dir, output_path,
@@ -157,6 +210,9 @@ def main() -> None:
             )
             print(f"\nChat history saved to: {saved_path}")
 
+            # Extract step_output and diff_path from workflow_state.json
+            step_output, diff_path = _extract_step_output_and_diff_path(artifacts_dir)
+
             # Write done marker
             done_marker: dict[str, Any] = {
                 "cl_name": cl_name,
@@ -166,6 +222,8 @@ def main() -> None:
                 "response_path": saved_path,
                 "outcome": "completed",
                 "workspace_num": workspace_num,
+                "step_output": step_output,
+                "diff_path": diff_path,
             }
             done_path = os.path.join(artifacts_dir, "done.json")
             with open(done_path, "w", encoding="utf-8") as f:

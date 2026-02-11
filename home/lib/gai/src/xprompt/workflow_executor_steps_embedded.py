@@ -249,6 +249,18 @@ class EmbeddedWorkflowMixin:
                     if step_type == "bash"
                     else (step.python if step_type == "python" else None)
                 )
+
+                # Compute output_types from embedded step's OutputSpec
+                output_types: dict[str, str] | None = None
+                if step.output is not None:
+                    properties = step.output.schema.get("properties")
+                    if properties and isinstance(properties, dict):
+                        output_types = {
+                            name: prop.get("type", "text")
+                            for name, prop in properties.items()
+                            if isinstance(prop, dict)
+                        }
+
                 self._save_prompt_step_marker(
                     step.name,
                     temp_state,
@@ -263,6 +275,7 @@ class EmbeddedWorkflowMixin:
                     ),
                     is_pre_prompt_step=is_pre_prompt_step,
                     hidden=step.hidden,
+                    output_types=output_types,
                     embedded_workflow_name=embedded_workflow_name,
                 )
 
