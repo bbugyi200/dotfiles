@@ -121,7 +121,7 @@ class AgentInteractionMixin:
             subprocess.run([editor, file_path], check=False)
 
     def action_toggle_layout(self) -> None:
-        """Toggle the layout between prompt-priority and diff-priority."""
+        """Toggle the layout between prompt-priority and file-priority."""
         if self.current_tab != "agents":
             return
 

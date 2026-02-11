@@ -112,8 +112,8 @@ AGENTS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
         "Navigation",
         [
             ("j / k", "Move to next / previous agent"),
-            ("g / G", "Scroll diff panel to top / bottom"),
-            ("Ctrl+D / U", "Scroll diff panel down / up"),
+            ("g / G", "Scroll file panel to top / bottom"),
+            ("Ctrl+D / U", "Scroll file panel down / up"),
             ("Ctrl+F / B", "Scroll prompt panel down / up"),
         ],
     ),
@@ -125,7 +125,7 @@ AGENTS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
             ("r", "Revive chat as agent"),
             ("x", "Kill / dismiss agent"),
             ("e", "Edit chat in editor"),
-            ("p", "Toggle diff/prompt layout"),
+            ("p", "Toggle file/prompt layout"),
         ],
     ),
     (
