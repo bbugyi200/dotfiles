@@ -57,24 +57,26 @@ def _extract_step_output_and_diff_path(
             step_output = output
             break
 
-    # Extract diff_path: scan for output_types with field_type == "path"
+    # Extract diff_path: last step's first path-typed output
     diff_path: str | None = None
-    for step_data in data.get("steps", []):
-        output_types = step_data.get("output_types") or {}
-        step_out = step_data.get("output")
+    steps_list = data.get("steps", [])
+    if steps_list:
+        last_step = steps_list[-1]
+        output_types = last_step.get("output_types") or {}
+        step_out = last_step.get("output")
         if output_types and isinstance(step_out, dict):
             for field_name, field_type in output_types.items():
                 if field_type == "path":
                     path_value = step_out.get(field_name)
                     if path_value:
                         diff_path = str(path_value)
+                        break
 
-    # Fallback: check for direct diff_path key in step outputs
-    if not diff_path:
-        for step_data in data.get("steps", []):
-            step_out = step_data.get("output")
-            if isinstance(step_out, dict) and step_out.get("diff_path"):
-                diff_path = str(step_out["diff_path"])
+    # Fallback: check for literal diff_path key in last step
+    if not diff_path and steps_list:
+        last_out = steps_list[-1].get("output")
+        if isinstance(last_out, dict) and last_out.get("diff_path"):
+            diff_path = str(last_out["diff_path"])
 
     return step_output, diff_path
 

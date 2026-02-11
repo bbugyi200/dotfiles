@@ -109,27 +109,28 @@ def load_workflow_states() -> list[WorkflowEntry]:
                     appears_as_agent = data.get("appears_as_agent", False)
                     is_anonymous = data.get("is_anonymous", False)
 
-                    # Extract diff_path from the last path-typed output
+                    # Extract diff_path from the last step's first path-typed output
                     diff_path = None
-                    for step_data in data.get("steps", []):
-                        output_types = step_data.get("output_types") or {}
-                        step_output = step_data.get("output")
+                    steps_list = data.get("steps", [])
+                    if steps_list:
+                        last_step = steps_list[-1]
+                        output_types = last_step.get("output_types") or {}
+                        step_output = last_step.get("output")
                         if output_types and isinstance(step_output, dict):
                             for field_name, field_type in output_types.items():
                                 if field_type == "path":
                                     path_value = step_output.get(field_name)
                                     if path_value:
                                         diff_path = str(path_value)
+                                        break
 
-                    # Fallback: check for direct diff_path key in step outputs
-                    # (e.g. from embedded workflow outputs stored in step_state)
-                    if not diff_path:
-                        for sd in data.get("steps", []):
-                            sd_output = sd.get("output")
-                            if isinstance(sd_output, dict) and sd_output.get(
-                                "diff_path"
-                            ):
-                                diff_path = str(sd_output["diff_path"])
+                    # Fallback: check for any path-looking key in last step output
+                    if not diff_path and steps_list:
+                        last_output = steps_list[-1].get("output")
+                        if isinstance(last_output, dict) and last_output.get(
+                            "diff_path"
+                        ):
+                            diff_path = str(last_output["diff_path"])
 
                     entries.append(
                         WorkflowEntry(

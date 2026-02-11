@@ -47,12 +47,22 @@ def _collect_embedded_post_step_outputs(
     diff_path: str | None = None
     meta_fields: dict[str, str] = {}
     for info in embedded_workflows:
-        for value in info.context.values():
-            if not isinstance(value, dict):
+        for step in info.post_steps:
+            step_output = info.context.get(step.name)
+            if not isinstance(step_output, dict):
                 continue
-            if "diff_path" in value and value["diff_path"]:
-                diff_path = str(value["diff_path"])
-            for k, v in value.items():
+            # Extract first path-typed field using OutputSpec
+            if step.output is not None and diff_path is None:
+                properties = step.output.schema.get("properties")
+                if properties and isinstance(properties, dict):
+                    for field_name, prop in properties.items():
+                        if isinstance(prop, dict) and prop.get("type") == "path":
+                            path_value = step_output.get(field_name)
+                            if path_value:
+                                diff_path = str(path_value)
+                                break
+            # Collect meta_* fields
+            for k, v in step_output.items():
                 if k.startswith("meta_") and v:
                     meta_fields[k] = str(v)
     return diff_path, meta_fields

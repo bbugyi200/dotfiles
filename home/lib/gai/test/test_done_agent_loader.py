@@ -101,7 +101,7 @@ def test_extract_step_output_from_workflow_state(tmp_path: Path) -> None:
 
 
 def test_extract_diff_path_from_output_types(tmp_path: Path) -> None:
-    """Verify diff_path is extracted from path-typed output fields."""
+    """Verify diff_path is extracted from path-typed output in last step only."""
     state_data = {
         "workflow_name": "test",
         "status": "completed",
@@ -109,9 +109,15 @@ def test_extract_diff_path_from_output_types(tmp_path: Path) -> None:
             {
                 "name": "step1",
                 "status": "completed",
+                "output": {"ignored_path": "/tmp/early.patch"},
+                "output_types": {"ignored_path": "path"},
+            },
+            {
+                "name": "step2",
+                "status": "completed",
                 "output": {"proposal_path": "/tmp/diff.patch"},
                 "output_types": {"proposal_path": "path"},
-            }
+            },
         ],
     }
     state_path = tmp_path / "workflow_state.json"
@@ -124,8 +130,66 @@ def test_extract_diff_path_from_output_types(tmp_path: Path) -> None:
     assert diff_path == "/tmp/diff.patch"
 
 
+def test_extract_diff_path_last_step_multiple_paths_first_wins(
+    tmp_path: Path,
+) -> None:
+    """Verify first path-typed output wins when last step has multiple."""
+    state_data = {
+        "workflow_name": "test",
+        "status": "completed",
+        "steps": [
+            {
+                "name": "step1",
+                "status": "completed",
+                "output": {
+                    "first_path": "/tmp/first.patch",
+                    "second_path": "/tmp/second.patch",
+                },
+                "output_types": {"first_path": "path", "second_path": "path"},
+            }
+        ],
+    }
+    state_path = tmp_path / "workflow_state.json"
+    with open(state_path, "w", encoding="utf-8") as f:
+        json.dump(state_data, f)
+
+    _step_output, diff_path = _extract_step_output_and_diff_path(str(tmp_path))
+
+    assert diff_path == "/tmp/first.patch"
+
+
+def test_extract_diff_path_not_from_non_last_step(tmp_path: Path) -> None:
+    """Verify path output in non-last step is NOT extracted."""
+    state_data = {
+        "workflow_name": "test",
+        "status": "completed",
+        "steps": [
+            {
+                "name": "step1",
+                "status": "completed",
+                "output": {"proposal_path": "/tmp/diff.patch"},
+                "output_types": {"proposal_path": "path"},
+            },
+            {
+                "name": "step2",
+                "status": "completed",
+                "output": {"result": "ok"},
+                "output_types": {"result": "text"},
+            },
+        ],
+    }
+    state_path = tmp_path / "workflow_state.json"
+    with open(state_path, "w", encoding="utf-8") as f:
+        json.dump(state_data, f)
+
+    step_output, diff_path = _extract_step_output_and_diff_path(str(tmp_path))
+
+    assert step_output == {"result": "ok"}
+    assert diff_path is None
+
+
 def test_extract_diff_path_fallback_to_direct_key(tmp_path: Path) -> None:
-    """Verify diff_path fallback reads direct diff_path key from step output."""
+    """Verify diff_path fallback reads direct diff_path key from last step output."""
     state_data = {
         "workflow_name": "test",
         "status": "completed",
@@ -141,9 +205,36 @@ def test_extract_diff_path_fallback_to_direct_key(tmp_path: Path) -> None:
     with open(state_path, "w", encoding="utf-8") as f:
         json.dump(state_data, f)
 
-    step_output, diff_path = _extract_step_output_and_diff_path(str(tmp_path))
+    _step_output, diff_path = _extract_step_output_and_diff_path(str(tmp_path))
 
     assert diff_path == "/tmp/changes.diff"
+
+
+def test_extract_diff_path_fallback_ignores_non_last_step(tmp_path: Path) -> None:
+    """Verify diff_path fallback only checks the last step."""
+    state_data = {
+        "workflow_name": "test",
+        "status": "completed",
+        "steps": [
+            {
+                "name": "step1",
+                "status": "completed",
+                "output": {"diff_path": "/tmp/early.diff"},
+            },
+            {
+                "name": "step2",
+                "status": "completed",
+                "output": {"result": "ok"},
+            },
+        ],
+    }
+    state_path = tmp_path / "workflow_state.json"
+    with open(state_path, "w", encoding="utf-8") as f:
+        json.dump(state_data, f)
+
+    _step_output, diff_path = _extract_step_output_and_diff_path(str(tmp_path))
+
+    assert diff_path is None
 
 
 def test_extract_returns_none_without_workflow_state(tmp_path: Path) -> None:
