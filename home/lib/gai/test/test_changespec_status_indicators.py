@@ -85,15 +85,14 @@ def _make_error_hook() -> list[HookEntry]:
 def test_get_status_indicator_wip_returns_w() -> None:
     """Test that WIP status returns 'W' indicator."""
     changespec = _make_changespec(status="WIP")
-    indicator, prefix_color, letter_color = _get_status_indicator(changespec)
+    indicator, letter_color = _get_status_indicator(changespec)
     assert indicator == "W"
 
 
 def test_get_status_indicator_wip_color_is_gold() -> None:
     """Test that WIP status uses gold color."""
     changespec = _make_changespec(status="WIP")
-    indicator, prefix_color, letter_color = _get_status_indicator(changespec)
-    assert prefix_color == "#FFD700"
+    indicator, letter_color = _get_status_indicator(changespec)
     assert letter_color == "#FFD700"
 
 
@@ -121,27 +120,24 @@ def test_get_simple_status_indicator_unknown_returns_w() -> None:
 def test_get_status_indicator_wip_with_running_agent() -> None:
     """Test WIP with running agent shows @W."""
     changespec = _make_changespec(status="WIP", hooks=_make_running_agent_hook())
-    indicator, prefix_color, letter_color = _get_status_indicator(changespec)
+    indicator, letter_color = _get_status_indicator(changespec)
     assert indicator == "@W"
-    assert prefix_color == "#FFAF00"  # Orange for running agent
     assert letter_color == "#FFD700"  # Gold for WIP
 
 
 def test_get_status_indicator_wip_with_running_process() -> None:
     """Test WIP with running process shows $W."""
     changespec = _make_changespec(status="WIP", hooks=_make_running_process_hook())
-    indicator, prefix_color, letter_color = _get_status_indicator(changespec)
+    indicator, letter_color = _get_status_indicator(changespec)
     assert indicator == "$W"
-    assert prefix_color == "#D7AF00"  # Yellow for running process
     assert letter_color == "#FFD700"  # Gold for WIP
 
 
 def test_get_status_indicator_wip_with_error() -> None:
     """Test WIP with error shows !W."""
     changespec = _make_changespec(status="WIP", hooks=_make_error_hook())
-    indicator, prefix_color, letter_color = _get_status_indicator(changespec)
+    indicator, letter_color = _get_status_indicator(changespec)
     assert indicator == "!W"
-    assert prefix_color == "#FF5F5F"  # Red for error
     assert letter_color == "#FFD700"  # Gold for WIP
 
 
@@ -151,36 +147,32 @@ def test_get_status_indicator_wip_with_error() -> None:
 def test_get_status_indicator_drafted() -> None:
     """Test Drafted status returns 'D' with green color."""
     changespec = _make_changespec(status="Drafted")
-    indicator, prefix_color, letter_color = _get_status_indicator(changespec)
+    indicator, letter_color = _get_status_indicator(changespec)
     assert indicator == "D"
-    assert prefix_color == "#87D700"
     assert letter_color == "#87D700"
 
 
 def test_get_status_indicator_mailed() -> None:
     """Test Mailed status returns 'M' with cyan-green color."""
     changespec = _make_changespec(status="Mailed")
-    indicator, prefix_color, letter_color = _get_status_indicator(changespec)
+    indicator, letter_color = _get_status_indicator(changespec)
     assert indicator == "M"
-    assert prefix_color == "#00D787"
     assert letter_color == "#00D787"
 
 
 def test_get_status_indicator_submitted() -> None:
     """Test Submitted status returns 'S' with dark green color."""
     changespec = _make_changespec(status="Submitted")
-    indicator, prefix_color, letter_color = _get_status_indicator(changespec)
+    indicator, letter_color = _get_status_indicator(changespec)
     assert indicator == "S"
-    assert prefix_color == "#00AF00"
     assert letter_color == "#00AF00"
 
 
 def test_get_status_indicator_reverted() -> None:
     """Test Reverted status returns 'X' with gray color."""
     changespec = _make_changespec(status="Reverted")
-    indicator, prefix_color, letter_color = _get_status_indicator(changespec)
+    indicator, letter_color = _get_status_indicator(changespec)
     assert indicator == "X"
-    assert prefix_color == "#808080"
     assert letter_color == "#808080"
 
 
@@ -218,43 +210,38 @@ def test_get_simple_status_indicator_reverted() -> None:
 def test_get_status_indicator_error_with_drafted() -> None:
     """Test error prefix with Drafted status: letter color stays green."""
     changespec = _make_changespec(status="Drafted", hooks=_make_error_hook())
-    indicator, prefix_color, letter_color = _get_status_indicator(changespec)
+    indicator, letter_color = _get_status_indicator(changespec)
     assert indicator == "!D"
-    assert prefix_color == "#FF5F5F"  # Red for error
     assert letter_color == "#87D700"  # Green for Drafted
 
 
 def test_get_status_indicator_error_with_mailed() -> None:
     """Test error prefix with Mailed status: letter color stays cyan-green."""
     changespec = _make_changespec(status="Mailed", hooks=_make_error_hook())
-    indicator, prefix_color, letter_color = _get_status_indicator(changespec)
+    indicator, letter_color = _get_status_indicator(changespec)
     assert indicator == "!M"
-    assert prefix_color == "#FF5F5F"  # Red for error
     assert letter_color == "#00D787"  # Cyan-green for Mailed
 
 
 def test_get_status_indicator_error_with_submitted() -> None:
     """Test error prefix with Submitted status: letter color stays dark green."""
     changespec = _make_changespec(status="Submitted", hooks=_make_error_hook())
-    indicator, prefix_color, letter_color = _get_status_indicator(changespec)
+    indicator, letter_color = _get_status_indicator(changespec)
     assert indicator == "!S"
-    assert prefix_color == "#FF5F5F"  # Red for error
     assert letter_color == "#00AF00"  # Dark green for Submitted
 
 
 def test_get_status_indicator_running_agent_with_drafted() -> None:
     """Test running agent prefix with Drafted: letter color stays green."""
     changespec = _make_changespec(status="Drafted", hooks=_make_running_agent_hook())
-    indicator, prefix_color, letter_color = _get_status_indicator(changespec)
+    indicator, letter_color = _get_status_indicator(changespec)
     assert indicator == "@D"
-    assert prefix_color == "#FFAF00"  # Orange for running agent
     assert letter_color == "#87D700"  # Green for Drafted
 
 
 def test_get_status_indicator_running_process_with_mailed() -> None:
     """Test running process prefix with Mailed: letter color stays cyan-green."""
     changespec = _make_changespec(status="Mailed", hooks=_make_running_process_hook())
-    indicator, prefix_color, letter_color = _get_status_indicator(changespec)
+    indicator, letter_color = _get_status_indicator(changespec)
     assert indicator == "$M"
-    assert prefix_color == "#D7AF00"  # Yellow for running process
     assert letter_color == "#00D787"  # Cyan-green for Mailed

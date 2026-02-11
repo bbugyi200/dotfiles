@@ -15,6 +15,12 @@ from ...changespec import (
     has_ready_to_mail_suffix,
 )
 
+_PREFIX_CHAR_COLORS: dict[str, str] = {
+    "!": "#FF5F5F",  # Red for error
+    "@": "#FFAF00",  # Orange for running agent
+    "$": "#D7AF00",  # Darker yellow for running process
+}
+
 
 def _calculate_entry_display_width(changespec: ChangeSpec, is_marked: bool) -> int:
     """Calculate display width of a ChangeSpec entry in terminal cells.
@@ -26,7 +32,7 @@ def _calculate_entry_display_width(changespec: ChangeSpec, is_marked: bool) -> i
     Returns:
         Width in terminal cells
     """
-    indicator, *_ = _get_status_indicator(changespec)
+    indicator, _ = _get_status_indicator(changespec)
     # Format: "[✓] [{indicator}] {name} ({cl})" (with mark prefix if marked)
     parts = []
     if is_marked:
@@ -68,13 +74,11 @@ def _get_status_letter_and_color(
     return "W", "#FFD700"
 
 
-def _get_status_indicator(changespec: ChangeSpec) -> tuple[str, str, str]:
-    """Get a status indicator symbol and colors for a ChangeSpec.
-
-    Color priority: error (red) > running_agent (orange) > running_process (yellow) > status-based
+def _get_status_indicator(changespec: ChangeSpec) -> tuple[str, str]:
+    """Get a status indicator symbol and letter color for a ChangeSpec.
 
     Returns:
-        Tuple of (indicator, prefix_color, letter_color)
+        Tuple of (indicator, letter_color)
     """
     status = changespec.status
     has_running = has_any_running_agent(changespec)
@@ -92,17 +96,7 @@ def _get_status_indicator(changespec: ChangeSpec) -> tuple[str, str, str]:
     process_prefix = "$" if has_process else ""
     indicator = f"{error_prefix}{running_prefix}{process_prefix}{letter}"
 
-    # Determine prefix color based on priority
-    if has_error:
-        prefix_color = "#FF5F5F"
-    elif has_running:
-        prefix_color = "#FFAF00"
-    elif has_process:
-        prefix_color = "#D7AF00"
-    else:
-        prefix_color = letter_color
-
-    return indicator, prefix_color, letter_color
+    return indicator, letter_color
 
 
 class ChangeSpecList(OptionList):
@@ -193,14 +187,13 @@ class ChangeSpecList(OptionList):
             text.append("[✓] ", style="bold #00D700")
 
         # Status indicator
-        indicator, prefix_color, letter_color = _get_status_indicator(changespec)
-        text.append("[", style=f"bold {prefix_color}")
+        indicator, letter_color = _get_status_indicator(changespec)
+        text.append(
+            "[", style=f"bold {_PREFIX_CHAR_COLORS.get(indicator[0], letter_color)}"
+        )
         for ch in indicator:
-            if ch in ("!", "@", "$"):
-                text.append(ch, style=f"bold {prefix_color}")
-            else:
-                text.append(ch, style=f"bold {letter_color}")
-        text.append("] ", style=f"bold {prefix_color}")
+            text.append(ch, style=f"bold {_PREFIX_CHAR_COLORS.get(ch, letter_color)}")
+        text.append("] ", style=f"bold {letter_color}")
 
         # Name
         name_style = "bold #00D7AF" if is_selected else "#00D7AF"
