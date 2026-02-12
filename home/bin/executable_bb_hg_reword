@@ -64,7 +64,11 @@ function run() {
     hg reword
   fi
 
+  # hg evolve --any may fail if there are no orphan changesets to evolve.
+  set +e
   hg evolve --any
+  set -e
+
   hg upload tree
 }
 
