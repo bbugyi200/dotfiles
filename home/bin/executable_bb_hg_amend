@@ -1,24 +1,88 @@
 #!/bin/bash
 
-set -e
+source ~/lib/bugyi.sh
 
-should_upload=true
-if [[ "$1" == "-U" || "$1" == "--no-upload" ]]; then
-  should_upload=false
-  shift
-fi
+export USAGE_GRAMMAR=(
+  "[-v] [-U]"
+  "-h"
+)
 
-set -x
-# Prevents content divergence errors (ex: if another agents amended this CL in another workspace).
-hg update $(branch_name)
-# Add new/removed files to the commit.
-hg addremove
-# Amend the last commit with the staged changes.
-hg amend -n "$@"
-set +x
+read -r -d '' DOC <<EOM
+$(usage)
 
-if $should_upload; then
-  set -x
-  bb_hg_upload
-  set +x
+Amend the current hg commit with all pending changes and upload.
+
+Optional Arguments
+------------------
+-h | --help
+    View this help message.
+
+-U | --no-upload
+    Skip uploading after amending.
+
+-v | --verbose
+    Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
+
+Examples
+--------
+bb_hg_amend            # Amend and upload
+bb_hg_amend -U         # Amend without uploading
+bb_hg_amend -vv        # Amend and upload with verbose tracing
+
+EOM
+
+function run() {
+  parse_cli_args "$@"
+
+  # Prevents content divergence errors (ex: if another agent amended this CL in another workspace).
+  hg update $(branch_name)
+  # Add new/removed files to the commit.
+  hg addremove
+  # Amend the last commit with the staged changes.
+  hg amend -n
+
+  if ${SHOULD_UPLOAD}; then
+    bb_hg_upload
+  fi
+}
+
+function parse_cli_args() {
+  log::debug "Command-Line Arguments: ($*)"
+
+  eval set -- "$(getopt -o "h,U,v" -l "help,no-upload,verbose" -- "$@")"
+
+  VERBOSE=0
+  SHOULD_UPLOAD=true
+  while [[ -n "$1" ]]; do
+    case $1 in
+    -h | --help)
+      echo "${DOC}"
+      exit 0
+      ;;
+    -U | --no-upload)
+      SHOULD_UPLOAD=false
+      ;;
+    -v | --verbose)
+      VERBOSE=$((VERBOSE + 1))
+      ;;
+    --)
+      shift
+      break
+      ;;
+    esac
+    shift
+  done
+
+  if [[ "${VERBOSE}" -gt 1 ]]; then
+    PS4='$LINENO: '
+    set -x
+  fi
+
+  readonly DOC
+  readonly VERBOSE
+  readonly SHOULD_UPLOAD
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+  run "$@"
 fi
