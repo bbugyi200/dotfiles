@@ -77,12 +77,16 @@ class AgentInteractionMixin:
     def _refresh_agent_file(self) -> None:
         """Refresh the file for the currently selected agent."""
         from ...widgets import AgentDetail
+        from ._core import DISMISSABLE_STATUSES
 
         if not self._agents or not (0 <= self.current_idx < len(self._agents)):
             self.notify("No agent selected", severity="warning")  # type: ignore[attr-defined]
             return
 
         agent = self._agents[self.current_idx]
+        if agent.status in DISMISSABLE_STATUSES:
+            return
+
         agent_detail = self.query_one("#agent-detail-panel", AgentDetail)  # type: ignore[attr-defined]
         agent_detail.refresh_current_file(agent)
 
