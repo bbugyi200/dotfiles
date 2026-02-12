@@ -3,7 +3,7 @@
 source ~/lib/bugyi.sh
 
 export USAGE_GRAMMAR=(
-  "[-v] [-U]"
+  "[-v] [-U] NOTE"
   "-h"
 )
 
@@ -11,6 +11,11 @@ read -r -d '' DOC <<EOM
 $(usage)
 
 Amend the current hg commit with all pending changes and upload.
+
+Positional Arguments
+--------------------
+NOTE
+    An amend note describing the changes (similar to a commit message).
 
 Optional Arguments
 ------------------
@@ -25,9 +30,9 @@ Optional Arguments
 
 Examples
 --------
-bb_hg_amend            # Amend and upload
-bb_hg_amend -U         # Amend without uploading
-bb_hg_amend -vv        # Amend and upload with verbose tracing
+bb_hg_amend "Fix typo"           # Amend and upload
+bb_hg_amend -U "Fix typo"       # Amend without uploading
+bb_hg_amend -vv "Fix typo"      # Amend and upload with verbose tracing
 
 EOM
 
@@ -39,7 +44,7 @@ function run() {
   # Add new/removed files to the commit.
   hg addremove
   # Amend the last commit with the staged changes.
-  hg amend -n
+  hg amend -n "${NOTE}"
 
   if ${SHOULD_UPLOAD}; then
     bb_hg_upload
@@ -77,6 +82,13 @@ function parse_cli_args() {
     PS4='$LINENO: '
     set -x
   fi
+
+  if [[ $# -ne 1 ]]; then
+    die "$(usage)" 2
+  fi
+
+  readonly NOTE="$1"
+  shift
 
   readonly DOC
   readonly VERBOSE
