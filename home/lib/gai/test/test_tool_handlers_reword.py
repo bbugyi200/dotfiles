@@ -1,10 +1,10 @@
-"""Tests for handle_reword and its helpers in tool_handlers."""
+"""Tests for handle_reword and its helpers in the reword module."""
 
 import os
 import subprocess
 from unittest.mock import MagicMock, patch
 
-from ace.handlers.tool_handlers import (
+from ace.handlers.reword import (
     _add_prettier_ignore_before_tags,
     _fetch_cl_description,
     _open_editor_with_content,
@@ -58,7 +58,7 @@ def test_strip_prettier_ignore_no_comment_unchanged() -> None:
 # === Tests for _fetch_cl_description ===
 
 
-@patch("ace.handlers.tool_handlers.subprocess.run")
+@patch("ace.handlers.reword.subprocess.run")
 @patch("running_field.get_workspace_directory")
 def test_fetch_cl_description_success(
     mock_get_ws: MagicMock, mock_run: MagicMock
@@ -80,7 +80,7 @@ def test_fetch_cl_description_success(
     )
 
 
-@patch("ace.handlers.tool_handlers.subprocess.run")
+@patch("ace.handlers.reword.subprocess.run")
 @patch("running_field.get_workspace_directory")
 def test_fetch_cl_description_workspace_error(
     mock_get_ws: MagicMock, mock_run: MagicMock
@@ -95,7 +95,7 @@ def test_fetch_cl_description_workspace_error(
     mock_run.assert_not_called()
 
 
-@patch("ace.handlers.tool_handlers.subprocess.run")
+@patch("ace.handlers.reword.subprocess.run")
 @patch("running_field.get_workspace_directory")
 def test_fetch_cl_description_cl_desc_fails(
     mock_get_ws: MagicMock, mock_run: MagicMock
@@ -110,7 +110,7 @@ def test_fetch_cl_description_cl_desc_fails(
     assert result is None
 
 
-@patch("ace.handlers.tool_handlers.subprocess.run")
+@patch("ace.handlers.reword.subprocess.run")
 @patch("running_field.get_workspace_directory")
 def test_fetch_cl_description_command_not_found(
     mock_get_ws: MagicMock, mock_run: MagicMock
@@ -128,8 +128,8 @@ def test_fetch_cl_description_command_not_found(
 # === Tests for _open_editor_with_content ===
 
 
-@patch("ace.handlers.tool_handlers.get_editor", return_value="cat")
-@patch("ace.handlers.tool_handlers.subprocess.run")
+@patch("ace.handlers.reword.get_editor", return_value="cat")
+@patch("ace.handlers.reword.subprocess.run")
 def test_open_editor_with_content_success(
     mock_run: MagicMock, _mock_editor: MagicMock
 ) -> None:
@@ -142,8 +142,8 @@ def test_open_editor_with_content_success(
     assert result == "hello world"
 
 
-@patch("ace.handlers.tool_handlers.get_editor", return_value="false")
-@patch("ace.handlers.tool_handlers.subprocess.run")
+@patch("ace.handlers.reword.get_editor", return_value="false")
+@patch("ace.handlers.reword.subprocess.run")
 def test_open_editor_with_content_editor_fails(
     mock_run: MagicMock, _mock_editor: MagicMock
 ) -> None:
@@ -156,8 +156,8 @@ def test_open_editor_with_content_editor_fails(
     assert result is None
 
 
-@patch("ace.handlers.tool_handlers.get_editor", return_value="cat")
-@patch("ace.handlers.tool_handlers.subprocess.run")
+@patch("ace.handlers.reword.get_editor", return_value="cat")
+@patch("ace.handlers.reword.subprocess.run")
 def test_open_editor_with_content_cleans_up_temp_file(
     mock_run: MagicMock, _mock_editor: MagicMock
 ) -> None:
@@ -221,9 +221,9 @@ def test_handle_reword_no_cl(mock_base: MagicMock) -> None:
     assert "requires a CL" in ctx.console.print.call_args[0][0]
 
 
-@patch("ace.handlers.tool_handlers._open_editor_with_content", return_value=None)
+@patch("ace.handlers.reword._open_editor_with_content", return_value=None)
 @patch(
-    "ace.handlers.tool_handlers._fetch_cl_description",
+    "ace.handlers.reword._fetch_cl_description",
     return_value="Original desc\n",
 )
 @patch("ace.changespec.get_base_status", return_value="WIP")
@@ -238,8 +238,8 @@ def test_handle_reword_editor_returns_none(
     assert "cancelled" in ctx.console.print.call_args[0][0].lower()
 
 
-@patch("ace.handlers.tool_handlers._open_editor_with_content")
-@patch("ace.handlers.tool_handlers._fetch_cl_description")
+@patch("ace.handlers.reword._open_editor_with_content")
+@patch("ace.handlers.reword._fetch_cl_description")
 @patch("ace.changespec.get_base_status", return_value="Drafted")
 def test_handle_reword_description_unchanged_no_workspace(
     _mock_base: MagicMock, mock_fetch: MagicMock, mock_editor: MagicMock
@@ -256,8 +256,8 @@ def test_handle_reword_description_unchanged_no_workspace(
     assert "unchanged" in ctx.console.print.call_args[0][0].lower()
 
 
-@patch("ace.handlers.tool_handlers._open_editor_with_content")
-@patch("ace.handlers.tool_handlers._fetch_cl_description")
+@patch("ace.handlers.reword._open_editor_with_content")
+@patch("ace.handlers.reword._fetch_cl_description")
 @patch("ace.changespec.get_base_status", return_value="Drafted")
 def test_handle_reword_trailing_newline_no_false_diff(
     _mock_base: MagicMock, mock_fetch: MagicMock, mock_editor: MagicMock
@@ -272,9 +272,9 @@ def test_handle_reword_trailing_newline_no_false_diff(
         mock_claim.assert_not_called()
 
 
-@patch("ace.handlers.tool_handlers._sync_description_after_reword")
-@patch("ace.handlers.tool_handlers.subprocess.run")
-@patch("ace.handlers.tool_handlers.run_bb_hg_clean", return_value=(True, None))
+@patch("ace.handlers.reword._sync_description_after_reword")
+@patch("ace.handlers.reword.subprocess.run")
+@patch("ace.handlers.reword.run_bb_hg_clean", return_value=(True, None))
 @patch(
     "running_field.get_workspace_directory_for_num",
     return_value=("/ws", "fig_101"),
@@ -283,11 +283,11 @@ def test_handle_reword_trailing_newline_no_false_diff(
 @patch("running_field.get_first_available_axe_workspace", return_value=101)
 @patch("running_field.release_workspace")
 @patch(
-    "ace.handlers.tool_handlers._open_editor_with_content",
+    "ace.handlers.reword._open_editor_with_content",
     return_value="New description\n",
 )
 @patch(
-    "ace.handlers.tool_handlers._fetch_cl_description",
+    "ace.handlers.reword._fetch_cl_description",
     return_value="Old description\n",
 )
 @patch("ace.changespec.get_base_status", return_value="WIP")
@@ -321,7 +321,7 @@ def test_handle_reword_changed_runs_full_flow(
     mock_release.assert_called_once()
 
 
-@patch("ace.handlers.tool_handlers._fetch_cl_description", return_value=None)
+@patch("ace.handlers.reword._fetch_cl_description", return_value=None)
 @patch("ace.changespec.get_base_status", return_value="WIP")
 def test_handle_reword_fetch_fails_returns_early(
     _mock_base: MagicMock, _mock_fetch: MagicMock
@@ -329,6 +329,6 @@ def test_handle_reword_fetch_fails_returns_early(
     """Test early return when description fetch fails."""
     ctx, cs = _make_context_and_changespec()
 
-    with patch("ace.handlers.tool_handlers._open_editor_with_content") as mock_editor:
+    with patch("ace.handlers.reword._open_editor_with_content") as mock_editor:
         handle_reword(ctx, cs)
         mock_editor.assert_not_called()
