@@ -9,7 +9,7 @@ from commit_workflow.changespec_operations import (
     add_changespec_to_project_file,
 )
 from commit_workflow.changespec_queries import changespec_exists, project_file_exists
-from commit_workflow.editor_utils import _get_editor
+from commit_workflow.editor_utils import get_editor
 from workflow_utils import get_project_file_path
 
 
@@ -170,13 +170,13 @@ def test_add_changespec_to_project_file_none_parent() -> None:
 
 
 def test_get_editor_uses_env_variable() -> None:
-    """Test that _get_editor uses EDITOR environment variable."""
+    """Test that get_editor uses EDITOR environment variable."""
     with patch.dict("os.environ", {"EDITOR": "emacs"}):
-        assert _get_editor() == "emacs"
+        assert get_editor() == "emacs"
 
 
 def test_get_editor_falls_back_to_nvim() -> None:
-    """Test that _get_editor falls back to nvim if EDITOR not set."""
+    """Test that get_editor falls back to nvim if EDITOR not set."""
     with patch.dict("os.environ", {}, clear=True):
         mock_result = MagicMock()
         mock_result.returncode = 0
@@ -187,18 +187,18 @@ def test_get_editor_falls_back_to_nvim() -> None:
 
                 if "EDITOR" in os.environ:
                     del os.environ["EDITOR"]
-                result = _get_editor()
+                result = get_editor()
                 # Should be nvim since which nvim succeeds
                 assert result == "nvim"
 
 
 def test_get_editor_falls_back_to_vim() -> None:
-    """Test that _get_editor falls back to vim if nvim not found."""
+    """Test that get_editor falls back to vim if nvim not found."""
     with patch.dict("os.environ", {}, clear=True):
         mock_result = MagicMock()
         mock_result.returncode = 1  # nvim not found
         with patch("subprocess.run", return_value=mock_result):
-            result = _get_editor()
+            result = get_editor()
             assert result == "vim"
 
 

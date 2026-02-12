@@ -3,11 +3,13 @@
 import os
 import subprocess
 import sys
+import tempfile
 from typing import TYPE_CHECKING
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from commit_utils import run_bb_hg_clean
+from commit_workflow.editor_utils import get_editor
 
 from ..changespec import ChangeSpec
 from ..mail_ops import handle_mail as mail_ops_handle_mail
@@ -104,11 +106,96 @@ def _sync_description_after_reword(
         )
 
 
+def _fetch_cl_description(
+    project_basename: str, changespec_name: str, console: "Console"
+) -> str | None:
+    """Fetch the CL description from the primary workspace without claiming it.
+
+    Gets the primary workspace (#1) and runs ``cl_desc -r <name>`` to retrieve
+    the current commit description.
+
+    Args:
+        project_basename: The project basename for workspace lookup.
+        changespec_name: The changespec name (revision) to fetch.
+        console: Rich console for output.
+
+    Returns:
+        The description string, or None on failure.
+    """
+    from running_field import get_workspace_directory as get_primary_workspace
+
+    try:
+        target_dir = get_primary_workspace(project_basename, 1)
+    except RuntimeError as e:
+        console.print(f"[red]Error getting workspace: {e}[/red]")
+        return None
+
+    try:
+        result = subprocess.run(
+            ["cl_desc", "-r", changespec_name],
+            cwd=target_dir,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return result.stdout
+    except subprocess.CalledProcessError as e:
+        error_msg = f"cl_desc failed (exit code {e.returncode})"
+        if e.stderr:
+            error_msg += f": {e.stderr.strip()}"
+        console.print(f"[red]{error_msg}[/red]")
+        return None
+    except FileNotFoundError:
+        console.print("[red]cl_desc command not found[/red]")
+        return None
+
+
+def _open_editor_with_content(content: str, console: "Console") -> str | None:
+    """Open the user's editor with initial content and return the edited result.
+
+    Creates a temporary file, writes *content* to it, opens the editor, reads
+    back the (possibly modified) content, and cleans up the temp file.
+
+    Args:
+        content: Initial text to populate the editor with.
+        console: Rich console for output.
+
+    Returns:
+        The edited content string, or None if the editor failed.
+    """
+    fd, temp_path = tempfile.mkstemp(suffix=".md", prefix="gai_reword_")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(content)
+    except Exception as e:
+        console.print(f"[red]Failed to write temp file: {e}[/red]")
+        os.close(fd)
+        return None
+
+    editor = get_editor()
+
+    try:
+        result = subprocess.run([editor, temp_path], check=False)
+        if result.returncode != 0:
+            console.print("[red]Editor exited with non-zero status.[/red]")
+            return None
+
+        with open(temp_path, encoding="utf-8") as f:
+            return f.read()
+    except Exception as e:
+        console.print(f"[red]Failed to open editor: {e}[/red]")
+        return None
+    finally:
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
+
+
 def handle_reword(self: "WorkflowContext", changespec: ChangeSpec) -> None:
     """Handle 'w' (reword) action to change CL description.
 
-    Claims a workspace in the 100-199 range, checks out the CL,
-    runs bb_hg_reword (interactive), then releases the workspace.
+    Fetches the current description and opens an editor immediately (fast),
+    then only claims a workspace and runs bb_hg_reword if the description
+    was actually changed.
 
     Args:
         self: The WorkflowContext instance
@@ -136,7 +223,24 @@ def handle_reword(self: "WorkflowContext", changespec: ChangeSpec) -> None:
         self.console.print("[yellow]reword option requires a CL to be set[/yellow]")
         return
 
-    # Claim a workspace in the 100-199 range
+    # --- Fast path: fetch description and open editor immediately ---
+    original = _fetch_cl_description(
+        changespec.project_basename, changespec.name, self.console
+    )
+    if original is None:
+        return
+
+    edited = _open_editor_with_content(original, self.console)
+    if edited is None:
+        self.console.print("[yellow]Reword cancelled.[/yellow]")
+        return
+
+    # Compare (ignore trailing newline differences)
+    if original.rstrip("\n") == edited.rstrip("\n"):
+        self.console.print("[yellow]Description unchanged, nothing to do.[/yellow]")
+        return
+
+    # --- Slow path: description changed, claim workspace and apply ---
     workspace_num = get_first_available_axe_workspace(changespec.file_path)
 
     if not claim_workspace(
@@ -146,7 +250,6 @@ def handle_reword(self: "WorkflowContext", changespec: ChangeSpec) -> None:
         return
 
     try:
-        # Get workspace directory
         workspace_dir, workspace_suffix = get_workspace_directory_for_num(
             workspace_num, changespec.project_basename
         )
@@ -181,13 +284,13 @@ def handle_reword(self: "WorkflowContext", changespec: ChangeSpec) -> None:
             self.console.print("[red]bb_hg_update command not found[/red]")
             return
 
-        # Run bb_hg_reword (interactive - opens editor)
+        # Run bb_hg_reword with the edited description (non-interactive)
         self.console.print("[cyan]Running bb_hg_reword...[/cyan]")
         try:
             reword_result = subprocess.run(
-                ["bb_hg_reword"],
+                ["bb_hg_reword", edited],
                 cwd=workspace_dir,
-                check=False,  # Don't raise on non-zero exit
+                check=False,
             )
             if reword_result.returncode == 0:
                 self.console.print("[green]CL description updated successfully[/green]")

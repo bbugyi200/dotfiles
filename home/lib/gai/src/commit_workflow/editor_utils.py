@@ -7,7 +7,7 @@ import tempfile
 from rich_utils import print_status
 
 
-def _get_editor() -> str:
+def get_editor() -> str:
     """Get the editor to use for commit messages.
 
     Returns:
@@ -44,7 +44,7 @@ def open_editor_for_commit_message() -> str | None:
     fd, temp_path = tempfile.mkstemp(suffix=".txt", prefix="gai_commit_")
     os.close(fd)
 
-    editor = _get_editor()
+    editor = get_editor()
 
     try:
         # Open editor with the temporary file
