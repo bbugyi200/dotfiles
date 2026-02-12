@@ -334,6 +334,54 @@ class BaseActionsMixin:
 
         self._reload_and_reposition()  # type: ignore[attr-defined]
 
+    def action_add_tag(self) -> None:
+        """Add a tag to the current ChangeSpec's CL description."""
+        from ...changespec import get_base_status
+        from ...saved_tag_names import load_saved_tag_names, save_tag_name
+        from ..modals import TagInputModal
+
+        if not self.changespecs:
+            return
+
+        changespec = self.changespecs[self.current_idx]
+
+        # Validate CL is set
+        if changespec.cl is None:
+            self.notify("CL is not set", severity="warning")  # type: ignore[attr-defined]
+            return
+
+        # Validate status is WIP, Drafted, or Mailed
+        base_status = get_base_status(changespec.status)
+        if base_status not in ("WIP", "Drafted", "Mailed"):
+            self.notify(  # type: ignore[attr-defined]
+                "Add tag is only available for WIP, Drafted, or Mailed ChangeSpecs",
+                severity="warning",
+            )
+            return
+
+        saved_names = load_saved_tag_names()
+
+        def on_dismiss(result: tuple[str, str] | None) -> None:
+            if result is None:
+                return
+
+            tag_name, tag_value = result
+            save_tag_name(tag_name)
+
+            from ...handlers import handle_add_tag
+            from .._workflow_context import WorkflowContext
+
+            def run_handler() -> None:
+                ctx = WorkflowContext()
+                handle_add_tag(ctx, changespec, tag_name, tag_value)  # type: ignore[arg-type]
+
+            with self.suspend():  # type: ignore[attr-defined]
+                run_handler()
+
+            self._reload_and_reposition()  # type: ignore[attr-defined]
+
+        self.push_screen(TagInputModal(saved_names), on_dismiss)  # type: ignore[attr-defined]
+
     def action_mail(self) -> None:
         """Mail the current ChangeSpec."""
         from ...changespec import has_ready_to_mail_suffix

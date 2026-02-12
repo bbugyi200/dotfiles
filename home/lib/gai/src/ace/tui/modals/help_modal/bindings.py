@@ -39,6 +39,7 @@ CLS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
             ("u", "Clear all marks"),
             ("v", "View files"),
             ("w", "Reword CL description"),
+            ("W", "Add tag to CL description"),
             ("Y", "Sync workspace"),
             ("e", "Edit spec file"),
         ],

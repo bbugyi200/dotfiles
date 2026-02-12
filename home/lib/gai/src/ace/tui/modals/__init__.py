@@ -17,6 +17,7 @@ from .query_edit_modal import QueryEditModal
 from .rename_cl_modal import RenameCLModal
 from .runners_modal import RunnersModal, get_runner_count
 from .status_modal import StatusModal
+from .tag_input_modal import TagInputModal
 from .workflow_hitl_modal import WorkflowHITLInput, WorkflowHITLModal
 from .workflow_select_modal import WorkflowSelectModal
 from .workspace_input_modal import WorkspaceInputModal
@@ -43,6 +44,7 @@ __all__ = [
     "SelectionItem",
     "StatusModal",
     "TabName",
+    "TagInputModal",
     "XPromptSelectModal",
     "WorkflowHITLInput",
     "WorkflowHITLModal",

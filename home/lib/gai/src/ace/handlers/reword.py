@@ -194,6 +194,98 @@ def _open_editor_with_content(content: str, console: "Console") -> str | None:
             os.unlink(temp_path)
 
 
+def handle_add_tag(
+    self: "WorkflowContext", changespec: ChangeSpec, tag_name: str, tag_value: str
+) -> None:
+    """Handle 'W' (add tag) action to append a tag to the CL description.
+
+    Claims a workspace, checks out the CL, runs bb_hg_reword --add-tag,
+    and syncs the description back to the project file.
+
+    Args:
+        self: The WorkflowContext instance
+        changespec: Current ChangeSpec
+        tag_name: The tag name (e.g. "BUG")
+        tag_value: The tag value (e.g. "12345")
+    """
+    from running_field import (
+        claim_workspace,
+        get_first_available_axe_workspace,
+        get_workspace_directory_for_num,
+        release_workspace,
+    )
+
+    workspace_num = get_first_available_axe_workspace(changespec.file_path)
+
+    if not claim_workspace(
+        changespec.file_path, workspace_num, "add_tag", os.getpid(), changespec.name
+    ):
+        self.console.print("[red]Failed to claim workspace[/red]")
+        return
+
+    try:
+        workspace_dir, workspace_suffix = get_workspace_directory_for_num(
+            workspace_num, changespec.project_basename
+        )
+
+        if workspace_suffix:
+            self.console.print(f"[cyan]Using workspace: {workspace_suffix}[/cyan]")
+
+        # Clean workspace before switching branches
+        clean_success, clean_error = run_bb_hg_clean(
+            workspace_dir, f"{changespec.name}-add_tag"
+        )
+        if not clean_success:
+            self.console.print(
+                f"[yellow]Warning: bb_hg_clean failed: {clean_error}[/yellow]"
+            )
+
+        # Update to the changespec (checkout the CL)
+        self.console.print(f"[cyan]Checking out {changespec.name}...[/cyan]")
+        try:
+            subprocess.run(
+                ["bb_hg_update", changespec.name],
+                cwd=workspace_dir,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        except subprocess.CalledProcessError as e:
+            error_msg = e.stderr.strip() if e.stderr else e.stdout.strip()
+            self.console.print(f"[red]Error checking out CL: {error_msg}[/red]")
+            return
+        except FileNotFoundError:
+            self.console.print("[red]bb_hg_update command not found[/red]")
+            return
+
+        # Run bb_hg_reword --add-tag
+        self.console.print(f"[cyan]Adding tag {tag_name}={tag_value}...[/cyan]")
+        try:
+            result = subprocess.run(
+                ["bb_hg_reword", "--add-tag", tag_name, tag_value],
+                cwd=workspace_dir,
+                check=False,
+            )
+            if result.returncode == 0:
+                self.console.print(
+                    f"[green]Tag {tag_name}={tag_value} added successfully[/green]"
+                )
+                _sync_description_after_reword(workspace_dir, changespec, self.console)
+            else:
+                self.console.print(
+                    f"[yellow]bb_hg_reword exited with code {result.returncode}[/yellow]"
+                )
+        except FileNotFoundError:
+            self.console.print("[red]bb_hg_reword command not found[/red]")
+        except Exception as e:
+            self.console.print(f"[red]Error running bb_hg_reword: {str(e)}[/red]")
+
+    finally:
+        release_workspace(
+            changespec.file_path, workspace_num, "add_tag", changespec.name
+        )
+
+
 def handle_reword(self: "WorkflowContext", changespec: ChangeSpec) -> None:
     """Handle 'w' (reword) action to change CL description.
 

@@ -94,6 +94,7 @@ class AceApp(
         Binding("M", "mail", "Mail", show=False),
         Binding("d", "show_diff", "Diff", show=False),
         Binding("w", "reword", "Reword", show=False),
+        Binding("W", "add_tag", "Add Tag", show=False),
         Binding("v", "view_files", "View", show=False),
         Binding("h", "hooks_or_collapse", "Hooks / Collapse", show=False),
         Binding("H", "hooks_or_collapse_all", "Hooks / Collapse All", show=False),
