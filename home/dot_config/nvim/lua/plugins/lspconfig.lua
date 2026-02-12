@@ -9,13 +9,13 @@ return {
 		dependencies = {
 			"onsails/lspkind.nvim",
 		},
-		init = function()
+		config = function()
 			local bb = require("bb_utils")
-			local cfg = require("lspconfig")
+
+			local servers = { "bashls", "lua_ls", "vimls", "yamlls" }
 
 			if bb.is_goog_machine() then
 				-- CiderLSP
-				local configs = require("lspconfig.configs")
 				local capabilities =
 					require("cmp_nvim_lsp").default_capabilities(vim.lsp.protocol.make_client_capabilities())
 				-- ─────────────────────────── configure ciderlsp ───────────────────────────
@@ -42,45 +42,41 @@ return {
 					"yaml",
 				}
 
-				configs.ciderlsp = {
-					default_config = {
-						cmd = {
-							"/google/bin/releases/cider/ciderlsp/ciderlsp",
-							"--tooltag=nvim-cmp",
-							"--noforward_sync_responses",
-						},
-						filetypes = ciderlsp_filetypes,
-						root_dir = cfg.util.root_pattern(".citc"),
-						settings = {},
+				vim.lsp.config("ciderlsp", {
+					cmd = {
+						"/google/bin/releases/cider/ciderlsp/ciderlsp",
+						"--tooltag=nvim-cmp",
+						"--noforward_sync_responses",
 					},
-				}
-
-				cfg.ciderlsp.setup({
+					filetypes = ciderlsp_filetypes,
+					root_markers = { ".citc" },
+					settings = {},
 					capabilities = capabilities,
 				})
 
 				-- ───────────────────────── confgure analysislsp ──────────────────────
-				configs.analysislsp = {
-					default_config = {
-						cmd = {
-							"/google/bin/users/lerm/glint-ale/analysis_lsp/server",
-							"--lint_on_save=false",
-							"--max_qps=10",
-						},
-						filetypes = ciderlsp_filetypes,
-						-- root_dir = lspconfig.util.root_pattern('BUILD'),
-						root_dir = function(fname)
-							return string.match(fname, "(/google/src/cloud/[%w_-]+/[%w_-]+/).+$")
-						end,
-						settings = {},
+				vim.lsp.config("analysislsp", {
+					cmd = {
+						"/google/bin/users/lerm/glint-ale/analysis_lsp/server",
+						"--lint_on_save=false",
+						"--max_qps=10",
 					},
-				}
-
-				cfg.analysislsp.setup({
+					filetypes = ciderlsp_filetypes,
+					root_dir = function(bufnr, on_dir)
+						local fname = vim.api.nvim_buf_get_name(bufnr)
+						local root = string.match(fname, "(/google/src/cloud/[%w_-]+/[%w_-]+/).+$")
+						if root then
+							on_dir(root)
+						end
+					end,
+					settings = {},
 					capabilities = capabilities,
 				})
+
+				table.insert(servers, "ciderlsp")
+				table.insert(servers, "analysislsp")
 			else
-				cfg.jedi_language_server.setup({
+				vim.lsp.config("jedi_language_server", {
 					init_options = {
 						completion = {
 							disableSnippets = false,
@@ -94,7 +90,7 @@ return {
 						},
 					},
 				})
-				cfg.ruff.setup({
+				vim.lsp.config("ruff", {
 					init_options = {
 						settings = {
 							-- Any extra CLI arguments for `ruff` go here.
@@ -102,16 +98,19 @@ return {
 						},
 					},
 				})
+
+				table.insert(servers, "jedi_language_server")
+				table.insert(servers, "ruff")
 			end
 
 			-- bash-language-server
-			cfg.bashls.setup({
+			vim.lsp.config("bashls", {
 				filetypes = { "bash", "sh", "sh.chezmoitmpl", "zsh" },
 				cmd = { "bash-language-server", "start" },
 			})
 
 			-- lua-language-server
-			cfg.lua_ls.setup({
+			vim.lsp.config("lua_ls", {
 				on_init = function(client)
 					if client.workspace_folders then
 						local path = client.workspace_folders[1].name
@@ -144,14 +143,14 @@ return {
 			})
 
 			-- vim-language-server
-			cfg.vimls.setup({
+			vim.lsp.config("vimls", {
 				cmd = { "vim-language-server", "--stdio" },
 				filetypes = { "vim" },
-				root_dir = cfg.util.root_pattern("vimrc", ".vimrc", "package.json", ".git"),
+				root_markers = { "vimrc", ".vimrc", "package.json", ".git" },
 			})
 
 			-- yaml-language-server
-			cfg.yamlls.setup({
+			vim.lsp.config("yamlls", {
 				settings = {
 					yaml = {
 						schemas = {
@@ -169,6 +168,8 @@ return {
 					},
 				},
 			})
+
+			vim.lsp.enable(servers)
 		end,
 	},
 }
