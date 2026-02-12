@@ -87,7 +87,14 @@ function parse_cli_args() {
     die "$(usage)" 2
   fi
 
-  readonly NOTE="$1"
+  NOTE="$1"
+  local byte_len
+  byte_len=$(printf '%s' "${NOTE}" | wc -c)
+  if [[ ${byte_len} -gt 255 ]]; then
+    log::warn "Note exceeds 255 bytes (${byte_len}). Trimming to fit hg amend limit."
+    NOTE=$(printf '%s' "${NOTE}" | head -c 255)
+  fi
+  readonly NOTE
   shift
 
   readonly DOC
