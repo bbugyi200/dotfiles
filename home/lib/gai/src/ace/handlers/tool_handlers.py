@@ -1,6 +1,7 @@
 """Handler functions for tool-related operations in the work subcommand."""
 
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -12,7 +13,7 @@ from commit_utils import run_bb_hg_clean
 from commit_workflow.editor_utils import get_editor
 
 from ..changespec import ChangeSpec
-from ..mail_ops import escape_for_hg_reword, normalize_cl_tags
+from ..mail_ops import escape_for_hg_reword
 from ..mail_ops import handle_mail as mail_ops_handle_mail
 from ..operations import update_to_changespec
 
@@ -151,6 +152,46 @@ def _fetch_cl_description(
         return None
 
 
+def _add_prettier_ignore_before_tags(description: str) -> str:
+    """Insert ``<!-- prettier-ignore -->`` before the contiguous CL tag block.
+
+    The tag block is the contiguous run of ``KEY=value`` / ``Key: value``
+    lines at the very end of *description* (blank trailing lines are
+    skipped first).  If no tag block is found the description is returned
+    unchanged.
+    """
+    lines = description.split("\n")
+    tag_pattern = re.compile(r"^[A-Z][A-Za-z_\s-]*[=:]")
+
+    # Skip trailing blank lines
+    last_non_blank = len(lines) - 1
+    while last_non_blank >= 0 and lines[last_non_blank].strip() == "":
+        last_non_blank -= 1
+
+    # Scan upward to find contiguous tag block
+    tags_start_idx = len(lines)
+    for idx in range(last_non_blank, -1, -1):
+        if tag_pattern.match(lines[idx].strip()):
+            tags_start_idx = idx
+        else:
+            break
+
+    if tags_start_idx >= len(lines):
+        return description
+
+    # Insert prettier-ignore comment before the tag block
+    before = lines[:tags_start_idx]
+    after = lines[tags_start_idx:]
+    return "\n".join(before + ["<!-- prettier-ignore -->"] + after)
+
+
+def _strip_prettier_ignore(content: str) -> str:
+    """Remove any ``<!-- prettier-ignore -->`` lines from *content*."""
+    lines = content.split("\n")
+    filtered = [line for line in lines if line.strip() != "<!-- prettier-ignore -->"]
+    return "\n".join(filtered)
+
+
 def _open_editor_with_content(content: str, console: "Console") -> str | None:
     """Open the user's editor with initial content and return the edited result.
 
@@ -230,12 +271,15 @@ def handle_reword(self: "WorkflowContext", changespec: ChangeSpec) -> None:
     )
     if original is None:
         return
-    original = normalize_cl_tags(original)
 
-    edited = _open_editor_with_content(original, self.console)
+    content_for_editor = _add_prettier_ignore_before_tags(original)
+    edited = _open_editor_with_content(content_for_editor, self.console)
     if edited is None:
         self.console.print("[yellow]Reword cancelled.[/yellow]")
         return
+
+    # Strip prettier-ignore immediately after editor returns
+    edited = _strip_prettier_ignore(edited)
 
     # Compare (ignore trailing newline differences)
     if original.rstrip("\n") == edited.rstrip("\n"):

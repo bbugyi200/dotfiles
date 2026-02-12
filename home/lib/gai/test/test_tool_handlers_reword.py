@@ -5,10 +5,55 @@ import subprocess
 from unittest.mock import MagicMock, patch
 
 from ace.handlers.tool_handlers import (
+    _add_prettier_ignore_before_tags,
     _fetch_cl_description,
     _open_editor_with_content,
+    _strip_prettier_ignore,
     handle_reword,
 )
+
+# === Tests for _add_prettier_ignore_before_tags ===
+
+
+def test_add_prettier_ignore_inserts_before_tag_block() -> None:
+    """Test that prettier-ignore is inserted before the contiguous tag block."""
+    description = "Fix rendering bug\n\nBUG=12345\nR=startblock\nMARKDOWN=true"
+    result = _add_prettier_ignore_before_tags(description)
+    assert result == (
+        "Fix rendering bug\n\n<!-- prettier-ignore -->\nBUG=12345\nR=startblock\nMARKDOWN=true"
+    )
+
+
+def test_add_prettier_ignore_no_tags_unchanged() -> None:
+    """Test that description without tags is returned unchanged."""
+    description = "Fix rendering bug\n\nThis is just a description."
+    result = _add_prettier_ignore_before_tags(description)
+    assert result == description
+
+
+def test_add_prettier_ignore_with_trailing_blank_lines() -> None:
+    """Test that trailing blank lines don't prevent finding the tag block."""
+    description = "Fix bug\n\nBUG=12345\nR=startblock\n\n"
+    result = _add_prettier_ignore_before_tags(description)
+    assert result == "Fix bug\n\n<!-- prettier-ignore -->\nBUG=12345\nR=startblock\n\n"
+
+
+# === Tests for _strip_prettier_ignore ===
+
+
+def test_strip_prettier_ignore_removes_comment() -> None:
+    """Test that prettier-ignore comment lines are removed."""
+    content = "Fix bug\n\n<!-- prettier-ignore -->\nBUG=12345\nR=startblock"
+    result = _strip_prettier_ignore(content)
+    assert result == "Fix bug\n\nBUG=12345\nR=startblock"
+
+
+def test_strip_prettier_ignore_no_comment_unchanged() -> None:
+    """Test that content without prettier-ignore is returned unchanged."""
+    content = "Fix bug\n\nBUG=12345\nR=startblock"
+    result = _strip_prettier_ignore(content)
+    assert result == content
+
 
 # === Tests for _fetch_cl_description ===
 
