@@ -137,24 +137,14 @@ class AgentFilePanel(Static):
         Args:
             agent: The Agent to refresh file for.
         """
-        self._current_agent = agent
-
-        # Check for existing cache to display while refreshing
+        # Clear cache entry
         cache_key = _get_cache_key(agent)
-        cache_entry = _file_cache.get(cache_key)
+        if cache_key in _file_cache:
+            del _file_cache[cache_key]
 
-        if cache_entry is not None:
-            # Show existing content with "(refreshing...)" indicator
-            self._is_background_refreshing = True
-            self._display_file_with_timestamp(
-                cache_entry.diff_output,
-                cache_entry.fetch_time,
-                post_visibility_message=True,
-                is_stale=True,
-            )
-        else:
-            # No cache - show loading for first-time loads
-            self._show_loading()
+        # Show loading and start fetch
+        self._current_agent = agent
+        self._show_loading()
 
         # Cancel any existing worker
         if self._current_worker is not None and self._current_worker.is_running:
