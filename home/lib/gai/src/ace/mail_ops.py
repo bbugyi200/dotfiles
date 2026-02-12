@@ -29,6 +29,22 @@ class MailPrepResult:
     should_mail: bool
 
 
+def escape_for_hg_reword(description: str) -> str:
+    """Escape a description string for bb_hg_reword's $'...' quoting.
+
+    bb_hg_reword uses bash -c "hg reword -m $'$1'" which interprets
+    ANSI-C escape sequences. Python passes actual newline chars, but the
+    script needs literal \\n sequences that $'...' converts back.
+    """
+    return (
+        description.replace("\\", "\\\\")  # backslashes first
+        .replace("'", "\\'")
+        .replace("\n", "\\n")
+        .replace("\t", "\\t")
+        .replace("\r", "\\r")
+    )
+
+
 def _has_valid_parent(changespec: ChangeSpec) -> tuple[bool, ChangeSpec | None]:
     """Check if the ChangeSpec has a valid parent (not "Submitted").
 
@@ -436,7 +452,7 @@ def prepare_mail(
         console.print("[cyan]Updating CL description with bb_hg_reword...[/cyan]")
         try:
             subprocess.run(
-                ["bb_hg_reword", modified_description],
+                ["bb_hg_reword", escape_for_hg_reword(modified_description)],
                 cwd=target_dir,
                 check=True,
             )

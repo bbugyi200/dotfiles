@@ -12,6 +12,7 @@ from commit_utils import run_bb_hg_clean
 from commit_workflow.editor_utils import get_editor
 
 from ..changespec import ChangeSpec
+from ..mail_ops import escape_for_hg_reword
 from ..mail_ops import handle_mail as mail_ops_handle_mail
 from ..operations import update_to_changespec
 
@@ -288,7 +289,7 @@ def handle_reword(self: "WorkflowContext", changespec: ChangeSpec) -> None:
         self.console.print("[cyan]Running bb_hg_reword...[/cyan]")
         try:
             reword_result = subprocess.run(
-                ["bb_hg_reword", edited],
+                ["bb_hg_reword", escape_for_hg_reword(edited)],
                 cwd=workspace_dir,
                 check=False,
             )

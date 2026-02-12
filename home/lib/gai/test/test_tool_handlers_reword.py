@@ -269,9 +269,9 @@ def test_handle_reword_changed_runs_full_flow(
     handle_reword(ctx, cs)
 
     mock_claim.assert_called_once()
-    # Verify bb_hg_reword was called with the edited description
+    # Verify bb_hg_reword was called with the escaped description
     reword_call = mock_run.call_args_list[1]
-    assert reword_call[0][0] == ["bb_hg_reword", "New description\n"]
+    assert reword_call[0][0] == ["bb_hg_reword", "New description\\n"]
     mock_sync.assert_called_once()
     mock_release.assert_called_once()
 
