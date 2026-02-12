@@ -4,6 +4,7 @@ from ace.mail_ops import (
     MailPrepResult,
     _modify_description_for_mailing,
     escape_for_hg_reword,
+    normalize_cl_tags,
 )
 
 
@@ -276,6 +277,52 @@ WANT_LGTM=all"""
     assert "MARKDOWN=true" in result
     assert "STARTBLOCK_AUTOSUBMIT=yes" in result
     assert "WANT_LGTM=all" in result
+
+
+def test_normalize_cl_tags_splits_multiple_tags_on_one_line() -> None:
+    """Test that multiple KEY=value tags on one line get split."""
+    description = (
+        "Fix rendering bug\n"
+        "\n"
+        "AUTOSUBMIT_BEHAVIOR=SYNC_SUBMIT BUG=350330301 R=startblock "
+        "MARKDOWN=true STARTBLOCK_AUTOSUBMIT=yes WANT_LGTM=all"
+    )
+    result = normalize_cl_tags(description)
+    assert result == (
+        "Fix rendering bug\n"
+        "\n"
+        "AUTOSUBMIT_BEHAVIOR=SYNC_SUBMIT\n"
+        "BUG=350330301\n"
+        "R=startblock\n"
+        "MARKDOWN=true\n"
+        "STARTBLOCK_AUTOSUBMIT=yes\n"
+        "WANT_LGTM=all"
+    )
+
+
+def test_normalize_cl_tags_preserves_value_with_spaces() -> None:
+    """Test that a single tag whose value contains spaces is not split."""
+    description = (
+        "Fix bug\n\nNO_RELNOTES=The YieldPartner and YieldGroup OP services\nBUG=12345"
+    )
+    result = normalize_cl_tags(description)
+    assert result == description
+
+
+def test_normalize_cl_tags_noop_when_already_separate() -> None:
+    """Test no-op when tags are already on separate lines."""
+    description = (
+        "Fix bug\n\nAUTOSUBMIT_BEHAVIOR=SYNC_SUBMIT\nBUG=350330301\nR=startblock"
+    )
+    result = normalize_cl_tags(description)
+    assert result == description
+
+
+def test_normalize_cl_tags_no_tags() -> None:
+    """Test description with no tags at all."""
+    description = "Fix rendering bug\n\nThis is just a description."
+    result = normalize_cl_tags(description)
+    assert result == description
 
 
 def test_escape_for_hg_reword_newlines() -> None:

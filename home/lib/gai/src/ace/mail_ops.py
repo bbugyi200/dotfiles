@@ -29,6 +29,47 @@ class MailPrepResult:
     should_mail: bool
 
 
+def normalize_cl_tags(description: str) -> str:
+    """Normalize CL tags so each KEY=value tag is on its own line.
+
+    Splits lines containing multiple space-separated CL tags
+    (e.g., 'BUG=123 R=startblock') into individual lines.
+    Only operates on the contiguous tag block at the end of the description.
+    """
+    lines = description.split("\n")
+    tag_pattern = re.compile(r"^[A-Z][A-Za-z_\s-]*[=:]")
+
+    # Find contiguous block of tag lines at the end (scanning from bottom)
+    tags_start_idx = len(lines)
+    last_non_blank = len(lines) - 1
+    while last_non_blank >= 0 and lines[last_non_blank].strip() == "":
+        last_non_blank -= 1
+
+    for idx in range(last_non_blank, -1, -1):
+        if tag_pattern.match(lines[idx].strip()):
+            tags_start_idx = idx
+        else:
+            break
+
+    # No tags found — return as-is
+    if tags_start_idx >= len(lines):
+        return description
+
+    # Split any tag lines that have multiple KEY=value tags on one line
+    content_lines = lines[:tags_start_idx]
+    new_tag_lines: list[str] = []
+    for line in lines[tags_start_idx:]:
+        stripped = line.strip()
+        if stripped and tag_pattern.match(stripped):
+            # Split at spaces before KEY= patterns
+            parts = re.split(r" (?=[A-Z][A-Z_]*=)", stripped)
+            new_tag_lines.extend(parts)
+        else:
+            new_tag_lines.append(line)
+
+    return "\n".join(content_lines + new_tag_lines)
+
+
 def escape_for_hg_reword(description: str) -> str:
     """Escape a description string for bb_hg_reword's $'...' quoting.
 
@@ -380,6 +421,7 @@ def prepare_mail(
         success, description = _get_cl_description(changespec.name, target_dir, console)
         if not success or not description:
             return None
+        description = normalize_cl_tags(description)
 
         # Check if parent is valid
         has_valid_parent_flag, parent_cs = _has_valid_parent(changespec)

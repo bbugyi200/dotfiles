@@ -12,7 +12,7 @@ from commit_utils import run_bb_hg_clean
 from commit_workflow.editor_utils import get_editor
 
 from ..changespec import ChangeSpec
-from ..mail_ops import escape_for_hg_reword
+from ..mail_ops import escape_for_hg_reword, normalize_cl_tags
 from ..mail_ops import handle_mail as mail_ops_handle_mail
 from ..operations import update_to_changespec
 
@@ -230,6 +230,7 @@ def handle_reword(self: "WorkflowContext", changespec: ChangeSpec) -> None:
     )
     if original is None:
         return
+    original = normalize_cl_tags(original)
 
     edited = _open_editor_with_content(original, self.console)
     if edited is None:
