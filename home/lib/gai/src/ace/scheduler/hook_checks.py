@@ -445,7 +445,7 @@ def check_hooks(
     # Skip for terminal statuses - don't start new hooks for Reverted/Submitted
     # Start hooks for EACH entry that needs them (each gets its own workspace)
     #
-    # Important: Unlimited hooks (those with !-prefix, i.e., skip_fix_hook=True)
+    # Important: Unlimited hooks (those with $-prefix, i.e., is_unlimited=True)
     # always start regardless of the runner limit. Only limited hooks are subject
     # to the --max-runners limit. Each entry receives a per-hook slot count so it
     # only starts as many limited hooks as the remaining budget allows.

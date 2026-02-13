@@ -164,8 +164,8 @@ def start_stale_hooks(
         entry: The CommitEntry object for this entry.
         log: Logging callback for status messages.
         remaining_limited_slots: Number of limited hooks that can still be started
-            before hitting the --max-runners limit. Unlimited hooks (!-prefix,
-            i.e., skip_fix_hook=True) always start regardless of this value.
+            before hitting the --max-runners limit. Unlimited hooks ($-prefix,
+            i.e., is_unlimited=True) always start regardless of this value.
 
     Returns:
         Tuple of (update messages, list of started HookEntry objects, count of
@@ -228,7 +228,7 @@ def _start_stale_hooks_for_proposal(
         project_basename: The project basename for workspace lookup.
         log: Logging callback for status messages.
         remaining_limited_slots: Number of limited hooks that can still be started
-            before hitting the --max-runners limit. Unlimited hooks (!-prefix)
+            before hitting the --max-runners limit. Unlimited hooks ($-prefix)
             always start regardless of this value.
 
     Returns:
@@ -264,8 +264,8 @@ def _start_stale_hooks_for_proposal(
             # Skip $ prefixed hooks for proposals
             if hook.skip_proposal_runs:
                 continue
-            # Only consider unlimited hooks (! prefix)
-            if not hook.skip_fix_hook:
+            # Only consider unlimited hooks ($ prefix)
+            if not hook.is_unlimited:
                 continue
             # Check if this hook actually needs to run
             if not hook_needs_run(hook, entry_id):
@@ -416,8 +416,8 @@ def _start_stale_hooks_for_proposal(
                 continue
 
             # Skip limited hooks that exceed the remaining runner slots
-            # Unlimited (!-prefixed) hooks always start regardless of the limit
-            if not hook.skip_fix_hook and limited_count >= remaining_limited_slots:
+            # Unlimited ($-prefixed) hooks always start regardless of the limit
+            if not hook.is_unlimited and limited_count >= remaining_limited_slots:
                 continue
 
             # Only start hooks that need to run
@@ -440,7 +440,7 @@ def _start_stale_hooks_for_proposal(
             started_hooks.append(updated_hook)
 
             # Track limited hooks separately for runner limit tracking
-            if not hook.skip_fix_hook:
+            if not hook.is_unlimited:
                 limited_count += 1
 
             updates.append(
@@ -498,7 +498,7 @@ def _start_stale_hooks_shared_workspace(
         project_basename: The project basename for workspace lookup.
         log: Logging callback for status messages.
         remaining_limited_slots: Number of limited hooks that can still be started
-            before hitting the --max-runners limit. Unlimited hooks (!-prefix)
+            before hitting the --max-runners limit. Unlimited hooks ($-prefix)
             always start regardless of this value.
 
     Returns:
@@ -518,8 +518,8 @@ def _start_stale_hooks_shared_workspace(
     if remaining_limited_slots <= 0:
         has_unlimited_hooks_to_start = False
         for hook in changespec.hooks:
-            # Only consider unlimited hooks (! prefix)
-            if not hook.skip_fix_hook:
+            # Only consider unlimited hooks ($ prefix)
+            if not hook.is_unlimited:
                 continue
             # Check if this hook actually needs to run
             if not hook_needs_run(hook, entry_id):
@@ -642,8 +642,8 @@ def _start_stale_hooks_shared_workspace(
         # Start stale hooks in background
         for hook in changespec.hooks:
             # Skip limited hooks that exceed the remaining runner slots
-            # Unlimited (!-prefixed) hooks always start regardless of the limit
-            if not hook.skip_fix_hook and limited_count >= remaining_limited_slots:
+            # Unlimited ($-prefixed) hooks always start regardless of the limit
+            if not hook.is_unlimited and limited_count >= remaining_limited_slots:
                 continue
 
             # Only start hooks that need to run
@@ -666,7 +666,7 @@ def _start_stale_hooks_shared_workspace(
             started_hooks.append(updated_hook)
 
             # Track limited hooks separately for runner limit tracking
-            if not hook.skip_fix_hook:
+            if not hook.is_unlimited:
                 limited_count += 1
 
             updates.append(

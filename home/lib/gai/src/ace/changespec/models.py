@@ -263,8 +263,9 @@ class HookEntry:
 
     Command prefixes:
     - "!" prefix: FAILED status lines auto-append "- (!: Hook Command Failed)"
-      to skip fix-hook hints.
+      to skip fix-hook hints. Also excluded from mentor eligibility.
     - "$" prefix: Hook is NOT run for proposed COMMITS entries (e.g., "1a").
+      Also marks hook as "unlimited" (not subject to --max-runners limit).
 
     Prefixes can be combined as "!$" (e.g., "!$bb_hg_presubmit").
     All prefixes are stripped when displaying or running the command.
@@ -291,6 +292,11 @@ class HookEntry:
     @property
     def skip_proposal_runs(self) -> bool:
         """Check if '$' prefix is present (skip for proposal entries)."""
+        return "$" in self._get_prefix()
+
+    @property
+    def is_unlimited(self) -> bool:
+        """Check if '$' prefix is present (not subject to runner limits)."""
         return "$" in self._get_prefix()
 
     @property

@@ -132,6 +132,14 @@ def test_hook_entry_no_prefix() -> None:
     assert hook.run_command == "some_command"
 
 
+def test_hook_entry_is_unlimited_with_dollar() -> None:
+    """Test is_unlimited is True when command has '$' prefix."""
+    assert HookEntry(command="$some_command").is_unlimited is True
+    assert HookEntry(command="!$some_command").is_unlimited is True
+    assert HookEntry(command="!some_command").is_unlimited is False
+    assert HookEntry(command="some_command").is_unlimited is False
+
+
 def test_hook_needs_run_skips_dollar_prefix_for_proposals() -> None:
     """Test that '$' prefixed hooks are skipped for proposal entries."""
     # Hook with $ prefix should be skipped for proposal entries
