@@ -37,7 +37,7 @@ function run() {
 
   # Split into words and group into chunks.
   local -a words
-  read -r -a words <<<"${original_clip}"
+  read -r -d '' -a words <<<"${original_clip}"
 
   local total=${#words[@]}
   if [[ ${total} -eq 0 ]]; then
