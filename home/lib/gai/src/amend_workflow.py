@@ -5,6 +5,7 @@ import subprocess
 import sys
 from typing import NoReturn
 
+from ace.hooks.processes import kill_and_persist_all_running_processes
 from commit_utils import (
     add_commit_entry,
     add_proposed_commit_entry,
@@ -15,6 +16,7 @@ from rich_utils import print_status
 from workflow_base import BaseWorkflow
 from workflow_utils import (
     add_test_hooks_if_available,
+    get_changespec_from_file,
     get_cl_name_from_branch,
     get_project_file_path,
     get_project_from_workspace,
@@ -162,6 +164,18 @@ class AmendWorkflow(BaseWorkflow):
         Returns:
             True if successful, False otherwise.
         """
+        # Kill any running hook/agent/mentor processes before amending
+        if os.path.isfile(project_file):
+            changespec = get_changespec_from_file(project_file, cl_name)
+            if changespec:
+                kill_and_persist_all_running_processes(
+                    changespec,
+                    project_file,
+                    cl_name,
+                    f"Killed stale process before amend: {self._note}",
+                    log_fn=lambda msg: print_status(msg, "progress"),
+                )
+
         # Run bb_hg_amend
         print_status(f"Amending commit with note: {self._note}", "progress")
         try:
