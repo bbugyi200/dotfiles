@@ -23,7 +23,7 @@ CLS_BINDINGS: list[tuple[str, list[tuple[str, str]]]] = [
     (
         "CL Actions",
         [
-            ("a", "Accept proposal"),
+            ("a", "Accept (! = spec only, @ = mail)"),
             ("b", "Rebase CL onto parent"),
             ("C / c1-c9", "Checkout CL (workspace 1-9)"),
             ("d", "Show diff"),

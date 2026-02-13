@@ -8,15 +8,51 @@ from ....changespec import ChangeSpec
 from ._types import HintMixinBase
 
 
+def _strip_accept_suffixes(
+    args: list[str],
+) -> tuple[list[str] | None, bool, bool]:
+    """Strip ``!`` and ``@`` suffixes from the last arg.
+
+    Returns:
+        A tuple of ``(cleaned_args, should_mail, skip_amend)``.
+        ``cleaned_args`` is ``None`` when the args are invalid (empty after
+        stripping).
+    """
+    should_mail = False
+    skip_amend = False
+    if not args:
+        return None, should_mail, skip_amend
+
+    last_arg = args[-1]
+    while last_arg.endswith(("!", "@")):
+        if last_arg[-1] == "!":
+            skip_amend = True
+        else:
+            should_mail = True
+        last_arg = last_arg[:-1]
+    args[-1] = last_arg
+
+    # Remove empty last arg, error if no args left
+    if not args[-1]:
+        args.pop()
+    if not args:
+        return None, should_mail, skip_amend
+
+    return args, should_mail, skip_amend
+
+
 class AcceptMailMixin(HintMixinBase):
     """Mixin providing accept and mail workflow actions."""
 
     def _process_accept_input(self, user_input: str) -> None:
         """Process accept proposal input.
 
-        Supports the @ suffix for triggering mail after accept:
-        - "a b c@" - accept proposals a, b, c and then mail the CL
-        - "@" alone - run full mail flow (mail prep first, then mark ready, then mail)
+        Supports suffixes on the last proposal argument:
+        - ``!`` — skip the checkout/apply/amend steps (bookkeeping only)
+        - ``@`` — trigger mail after accept
+        - ``!@`` or ``@!`` — combine both (any order)
+        - ``@`` alone — run full mail flow (mail prep first, then mark ready,
+          then mail)
         """
         if not user_input:
             return
@@ -29,22 +65,13 @@ class AcceptMailMixin(HintMixinBase):
             self._handle_at_alone_mail_flow(changespec)
             return
 
-        # Split input into args
+        # Split input into args and strip suffixes
         args = user_input.split()
-
-        # Check if the last argument ends with "@" (trigger mail after accept)
-        should_mail = False
-        if args and args[-1].endswith("@"):
-            should_mail = True
-            # Strip the "@" suffix from the last argument
-            args[-1] = args[-1][:-1]
-            # If the last arg is now empty (it was just "@"), remove it
-            if not args[-1]:
-                args.pop()
-            # If no args left after removing "@", that's an error
-            if not args:
-                self.notify("Invalid format", severity="warning")  # type: ignore[attr-defined]
-                return
+        cleaned, should_mail, skip_amend = _strip_accept_suffixes(args)
+        if cleaned is None:
+            self.notify("Invalid format", severity="warning")  # type: ignore[attr-defined]
+            return
+        args = cleaned
 
         # Try to expand shorthand and parse
         expanded = expand_shorthand_proposals(args, self._accept_last_base)
@@ -65,7 +92,10 @@ class AcceptMailMixin(HintMixinBase):
 
         # Run the accept workflow (with mark_ready_to_mail flag if @ suffix was used)
         self._run_accept_workflow(  # type: ignore[attr-defined]
-            changespec, entries, mark_ready_to_mail=should_mail
+            changespec,
+            entries,
+            mark_ready_to_mail=should_mail,
+            skip_amend=skip_amend,
         )
 
         # If should_mail is True, the workflow already marked as ready to mail.

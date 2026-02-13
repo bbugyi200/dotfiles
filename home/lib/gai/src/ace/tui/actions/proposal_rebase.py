@@ -240,6 +240,7 @@ class ProposalRebaseMixin:
         changespec: ChangeSpec,
         entries: list[tuple[str, str | None]],
         mark_ready_to_mail: bool = False,
+        skip_amend: bool = False,
     ) -> None:
         """Run the accept workflow with parsed entries.
 
@@ -248,6 +249,8 @@ class ProposalRebaseMixin:
             entries: List of (proposal_id, msg) tuples.
             mark_ready_to_mail: If True, also reject remaining proposals and add
                 READY TO MAIL suffix to STATUS, all in the same atomic write.
+            skip_amend: If True, skip checkout/apply/amend steps and only do
+                bookkeeping (renumber commit entries, etc.).
         """
         from accept_workflow import AcceptWorkflow
         from accept_workflow.conflict_check import format_conflict_message
@@ -258,21 +261,22 @@ class ProposalRebaseMixin:
         def run_handler() -> None:
             nonlocal workflow, success
             # Build display message
+            suffix = ""
+            if skip_amend:
+                suffix = " (bookkeeping only)"
             if len(entries) == 1:
                 proposal_id, _ = entries[0]
                 if mark_ready_to_mail:
-                    msg = (
-                        f"Accepting proposal {proposal_id} and marking ready to mail..."
-                    )
+                    msg = f"Accepting proposal {proposal_id} and marking ready to mail{suffix}..."
                 else:
-                    msg = f"Accepting proposal {proposal_id}..."
+                    msg = f"Accepting proposal {proposal_id}{suffix}..."
                 self.notify(msg)  # type: ignore[attr-defined]
             else:
                 ids = ", ".join(e[0] for e in entries)
                 if mark_ready_to_mail:
-                    msg = f"Accepting proposals {ids} and marking ready to mail..."
+                    msg = f"Accepting proposals {ids} and marking ready to mail{suffix}..."
                 else:
-                    msg = f"Accepting proposals {ids}..."
+                    msg = f"Accepting proposals {ids}{suffix}..."
                 self.notify(msg)  # type: ignore[attr-defined]
 
             # Run accept workflow
@@ -281,6 +285,7 @@ class ProposalRebaseMixin:
                 cl_name=changespec.name,
                 project_file=changespec.file_path,
                 mark_ready_to_mail=mark_ready_to_mail,
+                skip_amend=skip_amend,
             )
             success = workflow.run()
 

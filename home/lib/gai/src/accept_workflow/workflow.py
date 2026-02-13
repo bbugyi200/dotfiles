@@ -5,7 +5,7 @@ import subprocess
 import sys
 from typing import NoReturn
 
-from ace.changespec import CommitEntry
+from ace.changespec import ChangeSpec, CommitEntry
 from ace.hooks.processes import kill_and_persist_all_running_processes
 from ace.operations import update_to_changespec
 from commit_utils import apply_diff_to_workspace, clean_workspace, run_bb_hg_clean
@@ -40,6 +40,7 @@ class AcceptWorkflow(BaseWorkflow):
         cl_name: str | None = None,
         project_file: str | None = None,
         mark_ready_to_mail: bool = False,
+        skip_amend: bool = False,
     ) -> None:
         """Initialize the accept workflow.
 
@@ -52,11 +53,14 @@ class AcceptWorkflow(BaseWorkflow):
             mark_ready_to_mail: If True, also reject remaining proposals and add
                 READY TO MAIL suffix to STATUS, all in the same atomic write
                 with the commit entry renumbering.
+            skip_amend: If True, skip the checkout/apply/amend steps and only
+                perform bookkeeping (renumber commit entries, etc.).
         """
         self._proposals = proposals
         self._cl_name = cl_name
         self._project_file = project_file
         self._mark_ready_to_mail = mark_ready_to_mail
+        self._skip_amend = skip_amend
         self._conflict_result: ConflictCheckResult | None = None
 
     @property
@@ -144,7 +148,7 @@ class AcceptWorkflow(BaseWorkflow):
                     f"Proposal ({base_num}{letter}) not found in COMMITS.", "error"
                 )
                 return False
-            if not entry.diff:
+            if not self._skip_amend and not entry.diff:
                 print_status(
                     f"Proposal ({base_num}{letter}) has no DIFF path.", "error"
                 )
@@ -152,7 +156,101 @@ class AcceptWorkflow(BaseWorkflow):
 
             validated_proposals.append((base_num, letter, msg, entry))
 
+        if self._skip_amend:
+            # Skip checkout/apply/amend — just build the accepted list directly
+            accepted_proposals = [
+                (bn, letter) for bn, letter, _, _ in validated_proposals
+            ]
+            extra_msgs = [msg for _, _, msg, _ in validated_proposals]
+        else:
+            # Full workflow: claim workspace, checkout, apply diffs, amend
+            amend_result = self._run_amend_workflow(
+                validated_proposals, project_file, project, cl_name, changespec
+            )
+            if amend_result[0] is None:
+                return False
+            accepted_proposals, extra_msgs = amend_result
+
+        bookkeeping_suffix = " (bookkeeping only)" if self._skip_amend else ""
+
+        # Renumber commit entries once for all accepted proposals
+        # If mark_ready_to_mail is True, this also rejects remaining proposals
+        # and adds READY TO MAIL suffix in the same atomic write
+        if self._mark_ready_to_mail:
+            print_status(
+                f"Renumbering COMMITS entries and marking ready to mail{bookkeeping_suffix}...",
+                "progress",
+            )
+        else:
+            print_status(
+                f"Renumbering COMMITS entries{bookkeeping_suffix}...", "progress"
+            )
+        if renumber_commit_entries(
+            project_file,
+            cl_name,
+            accepted_proposals,
+            extra_msgs,
+            mark_ready_to_mail=self._mark_ready_to_mail,
+        ):
+            if self._mark_ready_to_mail:
+                print_status(
+                    "COMMITS entries renumbered and marked ready to mail.",
+                    "success",
+                )
+            else:
+                print_status("COMMITS entries renumbered successfully.", "success")
+        else:
+            print_status("Failed to renumber COMMITS entries.", "warning")
+
+        # Add any new test target hooks from changed_test_targets
+        add_test_hooks_if_available(project_file, cl_name)
+
+        # Release axe(hooks)-* workspaces for accepted proposals
+        # The proposals are now renumbered to regular entries, so the old
+        # axe(hooks)-<proposal_id> workspace claims are stale
+        for base_num, letter in accepted_proposals:
+            old_workflow = f"axe(hooks)-{base_num}{letter}"
+            for claim in get_claimed_workspaces(project_file):
+                if claim.cl_name == cl_name and claim.workflow == old_workflow:
+                    release_workspace(
+                        project_file, claim.workspace_num, old_workflow, cl_name
+                    )
+                    print_status(
+                        f"Released workspace #{claim.workspace_num}", "progress"
+                    )
+
+        # Build summary message
+        if len(accepted_proposals) == 1:
+            base_num, letter = accepted_proposals[0]
+            print_status(
+                f"Successfully accepted proposal ({base_num}{letter}){bookkeeping_suffix}!",
+                "success",
+            )
+        else:
+            ids = ", ".join(f"({num}{ltr})" for num, ltr in accepted_proposals)
+            print_status(
+                f"Successfully accepted proposals {ids}{bookkeeping_suffix}!",
+                "success",
+            )
+
+        return True
+
+    def _run_amend_workflow(
+        self,
+        validated_proposals: list[tuple[int, str, str | None, CommitEntry]],
+        project_file: str,
+        project: str | None,
+        cl_name: str,
+        changespec: ChangeSpec,
+    ) -> tuple[list[tuple[int, str]], list[str | None]] | tuple[None, None]:
+        """Run the workspace checkout/apply/amend steps.
+
+        Returns:
+            ``(accepted_proposals, extra_msgs)`` on success, or
+            ``(None, None)`` on failure.
+        """
         # Claim an available workspace
+        assert project is not None
         workspace_num = get_first_available_axe_workspace(project_file)
         workspace_dir, workspace_suffix = get_workspace_directory_for_num(
             workspace_num, project
@@ -168,7 +266,7 @@ class AcceptWorkflow(BaseWorkflow):
         )
         if not claim_success:
             print_status("Error: Failed to claim workspace", "error")
-            return False
+            return None, None
 
         if workspace_suffix:
             print_status(f"Using workspace share: {workspace_suffix}", "progress")
@@ -195,7 +293,7 @@ class AcceptWorkflow(BaseWorkflow):
             )
             if not success:
                 print_status(f"Failed to update to branch: {error_msg}", "error")
-                return False
+                return None, None
 
             # Run conflict check for 2+ proposals (single proposal can't conflict)
             if len(validated_proposals) >= 2:
@@ -203,7 +301,7 @@ class AcceptWorkflow(BaseWorkflow):
                     workspace_dir, validated_proposals
                 )
                 if not self._conflict_result.success:
-                    return False
+                    return None, None
 
             # Process each proposal in order
             accepted_proposals: list[tuple[int, str]] = []
@@ -227,7 +325,7 @@ class AcceptWorkflow(BaseWorkflow):
                         "error",
                     )
                     clean_workspace(workspace_dir)
-                    return False
+                    return None, None
 
                 print_status(f"Applied proposal ({base_num}{letter}).", "success")
 
@@ -260,69 +358,15 @@ class AcceptWorkflow(BaseWorkflow):
                     if result.returncode != 0:
                         print_status(f"bb_hg_amend failed: {result.stderr}", "error")
                         clean_workspace(workspace_dir)
-                        return False
+                        return None, None
                 except FileNotFoundError:
                     print_status("bb_hg_amend command not found", "error")
-                    return False
+                    return None, None
 
                 accepted_proposals.append((base_num, letter))
                 extra_msgs.append(msg)
 
-            # Renumber commit entries once for all accepted proposals
-            # If mark_ready_to_mail is True, this also rejects remaining proposals
-            # and adds READY TO MAIL suffix in the same atomic write
-            if self._mark_ready_to_mail:
-                print_status(
-                    "Renumbering COMMITS entries and marking ready to mail...",
-                    "progress",
-                )
-            else:
-                print_status("Renumbering COMMITS entries...", "progress")
-            if renumber_commit_entries(
-                project_file,
-                cl_name,
-                accepted_proposals,
-                extra_msgs,
-                mark_ready_to_mail=self._mark_ready_to_mail,
-            ):
-                if self._mark_ready_to_mail:
-                    print_status(
-                        "COMMITS entries renumbered and marked ready to mail.",
-                        "success",
-                    )
-                else:
-                    print_status("COMMITS entries renumbered successfully.", "success")
-            else:
-                print_status("Failed to renumber COMMITS entries.", "warning")
-
-            # Add any new test target hooks from changed_test_targets
-            add_test_hooks_if_available(project_file, cl_name)
-
-            # Release axe(hooks)-* workspaces for accepted proposals
-            # The proposals are now renumbered to regular entries, so the old
-            # axe(hooks)-<proposal_id> workspace claims are stale
-            for base_num, letter in accepted_proposals:
-                old_workflow = f"axe(hooks)-{base_num}{letter}"
-                for claim in get_claimed_workspaces(project_file):
-                    if claim.cl_name == cl_name and claim.workflow == old_workflow:
-                        release_workspace(
-                            project_file, claim.workspace_num, old_workflow, cl_name
-                        )
-                        print_status(
-                            f"Released workspace #{claim.workspace_num}", "progress"
-                        )
-
-            # Build summary message
-            if len(accepted_proposals) == 1:
-                base_num, letter = accepted_proposals[0]
-                print_status(
-                    f"Successfully accepted proposal ({base_num}{letter})!", "success"
-                )
-            else:
-                ids = ", ".join(f"({num}{ltr})" for num, ltr in accepted_proposals)
-                print_status(f"Successfully accepted proposals {ids}!", "success")
-
-            return True
+            return accepted_proposals, extra_msgs
 
         finally:
             # Always restore original directory and release workspace
