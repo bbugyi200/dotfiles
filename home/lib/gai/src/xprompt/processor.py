@@ -43,7 +43,7 @@ _MAX_EXPANSION_ITERATIONS = 100
 _XPROMPT_PATTERN = (
     r"(?:^|(?<=\s)|(?<=[(\[{\"']))"  # Must be at start, after whitespace, or after ([{"'
     r"#([a-zA-Z_][a-zA-Z0-9_]*(?:/[a-zA-Z_][a-zA-Z0-9_]*)*)"  # Group 1: xprompt name with optional namespace
-    r"(?:(\()|:(`[^`]*`|[a-zA-Z0-9_.-]+)|(\+))?"  # Group 2: open paren OR Group 3: colon arg (backtick or word) OR Group 4: plus
+    r"(?:(\()|:(`[^`]*`|[a-zA-Z0-9_.-]*[a-zA-Z0-9_-])|(\+))?"  # Group 2: open paren OR Group 3: colon arg (backtick or word) OR Group 4: plus
 )
 
 

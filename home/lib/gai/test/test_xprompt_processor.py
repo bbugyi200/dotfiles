@@ -120,6 +120,14 @@ def test_xprompt_pattern_after_quote() -> None:
     assert match.group(1) == "mentor/aaa"
 
 
+def test_xprompt_pattern_colon_arg_strips_trailing_period() -> None:
+    """Test that trailing period is not captured in colon arg."""
+    match = re.search(_XPROMPT_PATTERN, "#clr:832098883.")
+    assert match is not None
+    assert match.group(1) == "clr"
+    assert match.group(3) == "832098883"
+
+
 def test_xprompt_pattern_not_after_letter() -> None:
     """Test that xprompts don't match after letter (e.g., C#)."""
     match = re.search(_XPROMPT_PATTERN, "C#mentor")
