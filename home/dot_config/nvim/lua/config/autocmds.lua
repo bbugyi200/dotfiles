@@ -163,3 +163,11 @@ vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
 		vim.bo.filetype = "bugged"
 	end,
 })
+
+-- AUTOCMD: set ft=markdown.hgcommit for gai_reword temp files
+vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
+	pattern = "/tmp/gai_reword*.md",
+	callback = function()
+		vim.bo.filetype = "markdown.hgcommit"
+	end,
+})
