@@ -107,11 +107,13 @@ xprompts:
     input: { include_chat: { type: bool, default: false } }
     content: |
       ### Context Files Related to this CL
-      + #x(cl_changes.diff, hg pdiff $(branch_changes | grep -v -E 'png$|fingerprint$') | perl -nE 'print s{google3/}{}gr') : Contains a diff of the changes made by the current CL.
+      + #cld : Contains a diff of the changes made by the current CL.
       + #x(cl_desc, cl_desc --short) : Contains the current CL's change description.
       {%- if include_chat %}
       + #chat: Contains the initial conversation with Gemini that resulted in the creation of this CL.
       {%- endif %}
+  cld: |
+    #x(cl_changes.diff, hg pdiff $(branch_changes | grep -v -E 'png$|fingerprint$') | perl -nE 'print s{google3/}{}gr')
   clr:
     input: { cl_id: int }
     content: "cl/{{ cl_id }} (see the #x(cl_desc_and_diff.diff, p4 diff -c '{{ cl_id }}') file)"
@@ -122,7 +124,8 @@ xprompts:
   duckie: "Make sure to use your ask-duckie tool to perform some research before deciding on a solution."
   duckref: "See the agent chat in #duck for some initial ideas."
   feat: >-
-    publisher feature (see contentads/drx/fe/g3doc/admin/publisher_features.md for more information on publisher features)
+    publisher feature (see contentads/drx/fe/g3doc/admin/publisher_features.md for more information on publisher
+    features)
   launch/beta:
     input: { bug_id: int, feature: word }
     content: |
