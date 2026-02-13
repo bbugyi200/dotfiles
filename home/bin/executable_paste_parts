@@ -1,0 +1,156 @@
+#!/bin/bash
+
+source ~/lib/bugyi.sh
+
+export USAGE_GRAMMAR=(
+  "[-n WORDS] [-s DELAY] [-v]"
+  "-h"
+)
+
+read -r -d '' DOC <<EOM
+$(usage)
+
+Read clipboard contents, split into word-based chunks, and paste each chunk
+sequentially into the active application with a small delay. Useful for
+applications that struggle with large pastes or have paste-size restrictions.
+
+Optional Arguments
+------------------
+-h | --help
+    View this help message.
+
+-n WORDS | --num-words WORDS
+    Number of words per chunk (default: 5).
+
+-s DELAY | --sleep DELAY
+    Delay in seconds between pastes (default: 0.1).
+
+-v | --verbose
+    Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
+EOM
+
+function run() {
+  parse_cli_args "$@"
+
+  local original_clip
+  original_clip="$(paste_clip)"
+
+  # Split into words and group into chunks.
+  local -a words
+  read -r -a words <<<"${original_clip}"
+
+  local total=${#words[@]}
+  if [[ ${total} -eq 0 ]]; then
+    die "Clipboard is empty."
+  fi
+
+  log::info "Pasting ${total} words in chunks of ${NUM_WORDS}..."
+
+  # Give user time to focus the target application.
+  sleep 1
+
+  local i=0
+  while [[ ${i} -lt ${total} ]]; do
+    local chunk="${words[*]:i:NUM_WORDS}"
+
+    # Add a trailing space unless this is the last chunk.
+    if [[ $((i + NUM_WORDS)) -lt ${total} ]]; then
+      chunk="${chunk} "
+    fi
+
+    log::debug "Pasting chunk (words ${i}–$((i + NUM_WORDS - 1))): '${chunk}'"
+
+    copy_clip <<<"${chunk}"
+    simulate_paste
+    sleep "${SLEEP_DELAY}"
+
+    i=$((i + NUM_WORDS))
+  done
+
+  # Restore original clipboard contents.
+  copy_clip <<<"${original_clip}"
+  log::info "Done. Original clipboard restored."
+}
+
+# Print contents of system clipboard to STDOUT.
+function paste_clip() {
+  if command -v pbpaste &>/dev/null; then
+    pbpaste
+  elif command -v xclip &>/dev/null; then
+    xclip -selection clipboard -out
+  else
+    die "At least one of pbpaste OR xclip MUST be installed."
+  fi
+}
+
+# Copy STDIN to system clipboard.
+function copy_clip() {
+  if command -v pbcopy &>/dev/null; then
+    pbcopy
+  elif command -v xclip &>/dev/null; then
+    xclip -selection clipboard
+  else
+    die "At least one of pbcopy OR xclip MUST be installed."
+  fi
+}
+
+# Simulate a paste keystroke in the active application.
+function simulate_paste() {
+  if [[ "$OSTYPE" == darwin* ]]; then
+    osascript -e 'tell application "System Events" to keystroke "v" using command down'
+  else
+    xdotool key ctrl+v
+  fi
+}
+
+function parse_cli_args() {
+  log::debug "Command-Line Arguments: ($*)"
+
+  eval set -- "$(getopt -o "h,n:,s:,v" -l "help,num-words:,sleep:,verbose" -- "$@")"
+
+  VERBOSE=0
+  NUM_WORDS=5
+  SLEEP_DELAY=0.1
+  while [[ -n "$1" ]]; do
+    case $1 in
+    -h | --help)
+      echo "${DOC}"
+      exit 0
+      ;;
+    -n | --num-words)
+      shift
+      NUM_WORDS="$1"
+      ;;
+    -s | --sleep)
+      shift
+      SLEEP_DELAY="$1"
+      ;;
+    -v | --verbose)
+      VERBOSE=$((VERBOSE + 1))
+      ;;
+    --)
+      shift
+      break
+      ;;
+    esac
+    shift
+  done
+
+  if [[ "${VERBOSE}" -gt 1 ]]; then
+    PS4='$LINENO: '
+    set -x
+  fi
+
+  if [[ $# -ne 0 ]]; then
+    die "$(usage)" 2
+  fi
+
+  readonly DOC
+  readonly VERBOSE
+  readonly NUM_WORDS
+  readonly SLEEP_DELAY
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+  run "$@"
+fi
