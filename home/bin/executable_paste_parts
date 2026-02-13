@@ -46,77 +46,45 @@ function run() {
   # Give user time to focus the target application.
   sleep 1
 
-  # Build a flat token array: words interspersed with newline markers.
-  # A newline marker (NL_MRK) is placed between every pair of adjacent lines,
-  # including empty lines (which contribute a marker but no words).
-  local NL_MRK=$'\x01'
-  local -a tokens=()
-  local line_idx=0
+  local first_line=1
   while IFS= read -r line || [[ -n "${line}" ]]; do
-    if [[ ${line_idx} -gt 0 ]]; then
-      tokens+=("${NL_MRK}")
+    # Simulate Shift+Enter before each line except the first.
+    if [[ ${first_line} -eq 1 ]]; then
+      first_line=0
+    else
+      log::debug "Simulating newline (Shift+Enter)"
+      simulate_newline
+      sleep "${SLEEP_DELAY}"
     fi
-    if [[ -n "${line}" ]]; then
-      local -a line_words
-      read -r -a line_words <<<"${line}"
-      tokens+=("${line_words[@]}")
+
+    # Empty line: newline already simulated above, nothing else to paste.
+    if [[ -z "${line}" ]]; then
+      continue
     fi
-    line_idx=$((line_idx + 1))
-  done <<<"${original_clip}"
 
-  # Paste tokens in chunks of NUM_WORDS words.
-  # Newline markers don't count toward the word limit.
-  # After each chunk, if the next token is a newline marker, pull it (and
-  # consecutive markers plus one following word) into the current chunk so
-  # that newlines are always embedded between content.
-  local i=0
-  local num_tokens=${#tokens[@]}
-  local chunk_num=0
+    local -a words
+    read -r -a words <<<"${line}"
+    local line_total=${#words[@]}
 
-  while [[ ${i} -lt ${num_tokens} ]]; do
-    local chunk=""
-    local word_count=0
-    chunk_num=$((chunk_num + 1))
+    local i=0
+    while [[ ${i} -lt ${line_total} ]]; do
+      local chunk="${words[*]:i:NUM_WORDS}"
+      local remaining=$((line_total - i))
 
-    # Build chunk up to NUM_WORDS words.
-    while [[ ${i} -lt ${num_tokens} ]] && [[ ${word_count} -lt ${NUM_WORDS} ]]; do
-      if [[ "${tokens[i]}" == "${NL_MRK}" ]]; then
-        chunk+=$'\n'
-        i=$((i + 1))
-      else
-        if [[ -n "${chunk}" ]] && [[ "${chunk: -1}" != $'\n' ]]; then
-          chunk+=" "
-        fi
-        chunk+="${tokens[i]}"
-        word_count=$((word_count + 1))
-        i=$((i + 1))
+      if [[ ${remaining} -gt ${NUM_WORDS} ]]; then
+        # Not the last chunk on this line: append trailing space.
+        chunk="${chunk} "
       fi
+
+      log::debug "Pasting chunk: '${chunk}'"
+
+      printf '%s' "${chunk}" | copy_clip
+      simulate_paste
+      sleep "${SLEEP_DELAY}"
+
+      i=$((i + NUM_WORDS))
     done
-
-    # Pull trailing newline markers + one word to keep newlines embedded.
-    while [[ ${i} -lt ${num_tokens} ]] && [[ "${tokens[i]}" == "${NL_MRK}" ]]; do
-      while [[ ${i} -lt ${num_tokens} ]] && [[ "${tokens[i]}" == "${NL_MRK}" ]]; do
-        chunk+=$'\n'
-        i=$((i + 1))
-      done
-      if [[ ${i} -lt ${num_tokens} ]]; then
-        chunk+="${tokens[i]}"
-        word_count=$((word_count + 1))
-        i=$((i + 1))
-      fi
-    done
-
-    # Trailing space if the next token is a word (same-line continuation).
-    if [[ ${i} -lt ${num_tokens} ]] && [[ "${tokens[i]}" != "${NL_MRK}" ]]; then
-      chunk+=" "
-    fi
-
-    log::debug "Pasting chunk #${chunk_num} (${word_count} words): '${chunk}'"
-
-    printf '%s' "${chunk}" | copy_clip
-    simulate_paste
-    sleep "${SLEEP_DELAY}"
-  done
+  done < <(printf '%s' "${original_clip}")
 
   # Restore original clipboard contents.
   copy_clip <<<"${original_clip}"
@@ -142,6 +110,15 @@ function copy_clip() {
     xclip -selection clipboard
   else
     die "At least one of pbcopy OR xclip MUST be installed."
+  fi
+}
+
+# Simulate pressing Shift+Enter to insert a newline without submitting forms.
+function simulate_newline() {
+  if [[ "$OSTYPE" == darwin* ]]; then
+    osascript -e 'tell application "System Events" to key code 36 using shift down'
+  else
+    xdotool key shift+Return
   fi
 }
 
