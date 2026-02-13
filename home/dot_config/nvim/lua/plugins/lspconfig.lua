@@ -49,7 +49,12 @@ return {
 						"--noforward_sync_responses",
 					},
 					filetypes = ciderlsp_filetypes,
-					root_markers = { ".citc" },
+					root_dir = function(bufnr, on_dir)
+						local root = vim.fs.root(bufnr, ".citc")
+						if root then
+							on_dir(root)
+						end
+					end,
 					settings = {},
 					capabilities = capabilities,
 				})
