@@ -55,7 +55,9 @@ function run() {
     current_desc="$(cl_desc)"
     local upper_tag
     upper_tag="$(echo "${TAG_NAME}" | tr '[:lower:]' '[:upper:]')"
-    local new_desc="${current_desc}"$'\n'"${upper_tag}=${TAG_VALUE}"
+    local filtered_desc
+    filtered_desc="$(echo "${current_desc}" | grep -v "^${upper_tag}=")"
+    local new_desc="${filtered_desc}"$'\n'"${upper_tag}=${TAG_VALUE}"
     log::debug "New description:\n%s" "${new_desc}"
     hg reword -m "${new_desc}"
   elif [[ -n "${CL_DESCRIPTION}" ]]; then
