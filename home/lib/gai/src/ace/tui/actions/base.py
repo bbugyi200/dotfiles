@@ -668,6 +668,7 @@ class BaseActionsMixin:
                     new_canonical = to_canonical_string(new_parsed)
                     # Only update if the canonical form changed
                     if new_canonical != current_canonical:
+                        self._save_selection_for_current_query()  # type: ignore[attr-defined]
                         # Push current query to prev stack before changing
                         push_to_prev_stack(current_canonical, self._query_history)  # type: ignore[attr-defined]
                         save_query_history(self._query_history)  # type: ignore[attr-defined]
@@ -675,6 +676,7 @@ class BaseActionsMixin:
                         self.query_string = new_query
                         self.parsed_query = new_parsed
                         self._load_changespecs()  # type: ignore[attr-defined]
+                        self._restore_selection_for_current_query()  # type: ignore[attr-defined]
                         self._save_current_query()  # type: ignore[attr-defined]
                         self.notify("Query updated")  # type: ignore[attr-defined]
                 except QueryParseError as e:

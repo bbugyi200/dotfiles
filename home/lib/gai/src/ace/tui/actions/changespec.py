@@ -35,6 +35,7 @@ class ChangeSpecMixin:
     _hook_hint_to_idx: dict[int, int]
     _hint_to_entry_id: dict[int, str]
     _query_history: QueryHistoryStacks
+    _query_selections: dict[str, str]
     _all_changespecs: list[ChangeSpec]
     _ancestor_keys: dict[str, str]
     _children_keys: dict[str, str]
@@ -147,12 +148,14 @@ class ChangeSpecMixin:
             # Only push to history if query actually changes
             current_canonical = self.canonical_query_string  # type: ignore[attr-defined]
             if new_canonical != current_canonical:
+                self._save_selection_for_current_query()
                 push_to_prev_stack(current_canonical, self._query_history)
                 save_query_history(self._query_history)
 
             self.parsed_query = new_parsed
             self.query_string = query
             self._load_changespecs()
+            self._restore_selection_for_current_query()
             self._save_current_query()
         except Exception as e:
             self.notify(f"Error loading query: {e}", severity="error")  # type: ignore[attr-defined]
@@ -210,6 +213,7 @@ class ChangeSpecMixin:
             return
 
         current_canonical = self.canonical_query_string  # type: ignore[attr-defined]
+        self._save_selection_for_current_query()
         prev_query = navigate_prev(current_canonical, self._query_history)
         if prev_query is None:
             self.notify("No previous query", severity="warning")  # type: ignore[attr-defined]
@@ -219,6 +223,7 @@ class ChangeSpecMixin:
             self.parsed_query = parse_query(prev_query)
             self.query_string = prev_query
             self._load_changespecs()
+            self._restore_selection_for_current_query()
             self._save_current_query()
             save_query_history(self._query_history)
         except Exception as e:
@@ -233,6 +238,7 @@ class ChangeSpecMixin:
             return
 
         current_canonical = self.canonical_query_string  # type: ignore[attr-defined]
+        self._save_selection_for_current_query()
         next_query = navigate_next(current_canonical, self._query_history)
         if next_query is None:
             self.notify("No next query", severity="warning")  # type: ignore[attr-defined]
@@ -242,6 +248,7 @@ class ChangeSpecMixin:
             self.parsed_query = parse_query(next_query)
             self.query_string = next_query
             self._load_changespecs()
+            self._restore_selection_for_current_query()
             self._save_current_query()
             save_query_history(self._query_history)
         except Exception as e:
@@ -377,6 +384,29 @@ class ChangeSpecMixin:
         args.append(file_path)
         with self.suspend():  # type: ignore[attr-defined]
             subprocess.run(args, check=False)
+
+    def _save_selection_for_current_query(self) -> None:
+        """Save the current ChangeSpec selection keyed by current query."""
+        from ...query_selection import save_query_selections
+
+        if self.changespecs:
+            name = self.changespecs[self.current_idx].name
+            canonical = self.canonical_query_string  # type: ignore[attr-defined]
+            # Pop and re-insert to mark as recently used
+            self._query_selections.pop(canonical, None)
+            self._query_selections[canonical] = name
+            save_query_selections(self._query_selections)
+
+    def _restore_selection_for_current_query(self) -> None:
+        """Restore the saved ChangeSpec selection for the current query."""
+        canonical = self.canonical_query_string  # type: ignore[attr-defined]
+        saved_name = self._query_selections.get(canonical)
+        if saved_name is None:
+            return
+        for idx, cs in enumerate(self.changespecs):
+            if cs.name == saved_name:
+                self.current_idx = idx
+                return
 
     def action_toggle_hide_reverted(self) -> None:
         """Toggle visibility of reverted CLs or non-run agents."""

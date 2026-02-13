@@ -286,6 +286,11 @@ class AceApp(
 
         self._query_history = load_query_history()
 
+        # Per-query ChangeSpec selection persistence
+        from ..query_selection import load_query_selections
+
+        self._query_selections = load_query_selections()
+
         # ChangeSpec history stacks for ctrl+o/ctrl+i navigation (session-based)
         from .changespec_history import create_empty_stacks as create_cs_history_stacks
 
@@ -390,6 +395,7 @@ class AceApp(
         if self.changespecs:
             changespec = self.changespecs[self.current_idx]
             save_last_selection(changespec.name)
+            self._save_selection_for_current_query()
 
     def _restore_last_selection(self) -> None:
         """Restore the previously selected ChangeSpec if it exists."""
