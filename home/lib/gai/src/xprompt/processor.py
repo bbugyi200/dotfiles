@@ -409,7 +409,7 @@ def execute_workflow(
         rendered = render_template(content, render_ctx)
         workflow = WfModel(
             name=workflow.name,
-            inputs=workflow.inputs,
+            inputs=[],
             steps=[WorkflowStep(name="main", prompt=rendered)],
             source_path=workflow.source_path,
             xprompts=workflow.xprompts,

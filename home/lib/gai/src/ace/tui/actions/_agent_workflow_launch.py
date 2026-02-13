@@ -56,11 +56,14 @@ class AgentLaunchMixin:
         # Check for workflow reference (e.g., #test_workflow or #split(arg1, arg2))
         if prompt.startswith("#"):
             workflow_result = self._try_execute_workflow(prompt)
-            if workflow_result:
-                # Workflow executed successfully
+            if workflow_result is True:
+                # Full workflow executed successfully
                 self._prompt_context = None
                 self.call_later(self._load_agents)  # type: ignore[attr-defined]
                 return
+            elif isinstance(workflow_result, str):
+                # Simple xprompt expanded inline — use as regular prompt
+                prompt = workflow_result
 
         self._prompt_context = None
 
@@ -282,14 +285,15 @@ class AgentLaunchMixin:
                     process.kill()
                 return
 
-    def _try_execute_workflow(self, prompt: str) -> bool:
+    def _try_execute_workflow(self, prompt: str) -> bool | str:
         """Try to execute a workflow reference.
 
         Args:
             prompt: The prompt starting with # (e.g., "#test_workflow" or "#split(arg)").
 
         Returns:
-            True if workflow was executed, False if not a valid workflow reference.
+            True if workflow was executed, False if not a valid workflow reference,
+            or a str with the rendered prompt for simple xprompts.
         """
         from xprompt import get_all_prompts, parse_workflow_reference
 
@@ -306,6 +310,27 @@ class AgentLaunchMixin:
         prompts = get_all_prompts(project=project)
         if workflow_name not in prompts:
             return False
+
+        workflow = prompts[workflow_name]
+
+        # Simple xprompts: expand inline instead of spawning workflow
+        if workflow.is_simple_xprompt():
+            from xprompt.models import UNSET
+            from xprompt.workflow_executor_utils import render_template
+
+            render_ctx: dict[str, object] = dict(named_args)
+            for i, value in enumerate(positional_args):
+                if i < len(workflow.inputs):
+                    input_arg = workflow.inputs[i]
+                    if input_arg.name not in render_ctx:
+                        render_ctx[input_arg.name] = value
+            for input_arg in workflow.inputs:
+                if input_arg.name not in render_ctx and input_arg.default is not UNSET:
+                    render_ctx[input_arg.name] = (
+                        "null" if input_arg.default is None else str(input_arg.default)
+                    )
+            content = workflow.get_prompt_part_content()
+            return render_template(content, render_ctx)
 
         # Check if we have changespec context (not home mode)
         ctx = self._prompt_context
