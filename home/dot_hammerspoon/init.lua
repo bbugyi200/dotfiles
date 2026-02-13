@@ -1,4 +1,4 @@
-hs.hotkey.bind({"cmd", "alt", "ctrl"}, "V", function()
+hs.hotkey.bind({"cmd", "alt", "ctrl"}, "V", nil, function()
   local text = hs.pasteboard.getContents()
   if not text or text == "" then
     hs.alert.show("Clipboard is empty")
@@ -45,6 +45,5 @@ hs.hotkey.bind({"cmd", "alt", "ctrl"}, "V", function()
     hs.timer.doAfter(sleepDelay, pasteNextChunk)
   end
 
-  -- Short delay to let modifier keys release before first paste
-  hs.timer.doAfter(0.2, pasteNextChunk)
+  pasteNextChunk()
 end)
