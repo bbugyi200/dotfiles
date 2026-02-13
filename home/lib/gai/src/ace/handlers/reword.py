@@ -271,6 +271,13 @@ def handle_add_tag(
                     f"[green]Tag {tag_name}={tag_value} added successfully[/green]"
                 )
                 _sync_description_after_reword(workspace_dir, changespec, self.console)
+                from ..hooks import reset_dollar_hooks
+
+                reset_dollar_hooks(
+                    changespec.file_path,
+                    changespec.name,
+                    log_fn=lambda msg: self.console.print(f"[cyan]{msg}[/cyan]"),
+                )
             else:
                 self.console.print(
                     f"[yellow]bb_hg_reword exited with code {result.returncode}[/yellow]"
@@ -395,6 +402,13 @@ def handle_reword(self: "WorkflowContext", changespec: ChangeSpec) -> None:
             if reword_result.returncode == 0:
                 self.console.print("[green]CL description updated successfully[/green]")
                 _sync_description_after_reword(workspace_dir, changespec, self.console)
+                from ..hooks import reset_dollar_hooks
+
+                reset_dollar_hooks(
+                    changespec.file_path,
+                    changespec.name,
+                    log_fn=lambda msg: self.console.print(f"[cyan]{msg}[/cyan]"),
+                )
             else:
                 self.console.print(
                     f"[yellow]bb_hg_reword exited with code {reword_result.returncode}[/yellow]"

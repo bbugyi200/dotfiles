@@ -1,6 +1,7 @@
 """Hook mutations - suffix operations, bulk operations, and file queries."""
 
 import re
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from ..changespec import HookEntry, HookStatusLine, changespec_lock
@@ -441,3 +442,64 @@ def get_failed_hooks_file_path(changespec: "ChangeSpec") -> str | None:
                     result = match.group(0)
 
     return result
+
+
+def reset_dollar_hooks(
+    project_file: str,
+    changespec_name: str,
+    log_fn: Callable[[str], None] | None = None,
+) -> bool:
+    """Reset $-prefixed hooks so gai axe re-runs them.
+
+    After sync/reword/add-tag operations, $-prefixed hooks (skip_proposal_runs)
+    need fresh results. This kills any running processes/agents on those hooks
+    and deletes status lines for the most recent COMMITS entry ID.
+
+    Args:
+        project_file: Path to the project file.
+        changespec_name: Name of the ChangeSpec.
+        log_fn: Optional callback for logging messages.
+
+    Returns:
+        True if reset succeeded or was a no-op, False on error.
+    """
+    from ..changespec import parse_project_file
+    from .history import get_last_history_entry_id
+    from .processes import kill_running_processes_for_hooks
+
+    changespecs = parse_project_file(project_file)
+    cs = next((c for c in changespecs if c.name == changespec_name), None)
+    if cs is None or not cs.hooks:
+        return True
+
+    last_entry_id = get_last_history_entry_id(cs)
+    if last_entry_id is None:
+        return True
+
+    # Identify $-prefixed hooks
+    dollar_hook_indices: set[int] = set()
+    dollar_commands: set[str] = set()
+    for idx, hook in enumerate(cs.hooks):
+        if hook.skip_proposal_runs:
+            dollar_hook_indices.add(idx)
+            dollar_commands.add(hook.command)
+
+    if not dollar_commands:
+        return True
+
+    if log_fn:
+        log_fn(f"Resetting {len(dollar_commands)} $-prefixed hook(s)...")
+
+    # Kill running processes/agents on dollar hooks
+    killed = kill_running_processes_for_hooks(cs.hooks, dollar_hook_indices)
+    if killed and log_fn:
+        log_fn(f"Killed {killed} running process(es)")
+
+    # Clear status lines for the last entry ID
+    return rerun_delete_hooks_by_command(
+        project_file,
+        changespec_name,
+        commands_to_rerun=dollar_commands,
+        commands_to_delete=set(),
+        entry_ids_to_clear={last_entry_id},
+    )

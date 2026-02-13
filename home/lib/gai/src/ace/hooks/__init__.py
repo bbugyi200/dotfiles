@@ -30,6 +30,7 @@ from .mutations import (
     clear_hook_suffix,
     get_failed_hooks_file_path,
     rerun_delete_hooks_by_command,
+    reset_dollar_hooks,
     set_hook_suffix,
     try_claim_hook_for_fix,
 )
@@ -133,6 +134,7 @@ __all__ = [
     "merge_hook_updates",
     "has_failing_test_target_hooks",
     "rerun_delete_hooks_by_command",
+    "reset_dollar_hooks",
     "set_hook_suffix",
     "start_hook_background",
     "try_claim_hook_for_fix",

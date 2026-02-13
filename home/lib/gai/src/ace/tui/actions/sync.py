@@ -146,6 +146,9 @@ class SyncMixin:
             success, message = run_handler()
 
         if success:
+            from ...hooks import reset_dollar_hooks
+
+            reset_dollar_hooks(changespec.file_path, changespec.name)
             self.notify(message)  # type: ignore[attr-defined]
         else:
             self.notify(f"Sync failed: {message}", severity="error")  # type: ignore[attr-defined]
