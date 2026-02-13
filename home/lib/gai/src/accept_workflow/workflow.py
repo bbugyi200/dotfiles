@@ -6,7 +6,6 @@ import sys
 from typing import NoReturn
 
 from ace.changespec import ChangeSpec, CommitEntry
-from ace.hooks.processes import kill_and_persist_all_running_processes
 from ace.operations import update_to_changespec
 from commit_utils import apply_diff_to_workspace, clean_workspace, run_bb_hg_clean
 from rich_utils import print_status
@@ -117,16 +116,6 @@ class AcceptWorkflow(BaseWorkflow):
         if not changespec:
             print_status(f"ChangeSpec not found: {cl_name}", "error")
             return False
-
-        # Kill any running hook/agent/mentor processes before accepting
-        proposal_ids = " ".join(p[0] for p in self._proposals)
-        kill_and_persist_all_running_processes(
-            changespec,
-            project_file,
-            cl_name,
-            f"Killed stale hook after accepting proposals: {proposal_ids}",
-            log_fn=lambda msg: print_status(msg, "progress"),
-        )
 
         # Validate ALL proposals upfront before making any changes
         validated_proposals: list[tuple[int, str, str | None, CommitEntry]] = []
