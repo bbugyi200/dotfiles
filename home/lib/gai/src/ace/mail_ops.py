@@ -448,6 +448,26 @@ def prepare_mail(
             description, reviewers, has_valid_parent_flag, parent_branch_number
         )
 
+        # Ensure we're on the correct branch before rewording
+        console.print(f"[cyan]Checking out {changespec.name}...[/cyan]")
+        try:
+            subprocess.run(
+                ["bb_hg_update", changespec.name],
+                cwd=target_dir,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        except subprocess.CalledProcessError as e:
+            error_msg = e.stderr.strip() if e.stderr else str(e)
+            console.print(
+                f"[red]Error checking out {changespec.name}: {error_msg}[/red]"
+            )
+            return None
+        except FileNotFoundError:
+            console.print("[red]bb_hg_update command not found[/red]")
+            return None
+
         # Update CL description using bb_hg_reword
         console.print("[cyan]Updating CL description with bb_hg_reword...[/cyan]")
         try:
