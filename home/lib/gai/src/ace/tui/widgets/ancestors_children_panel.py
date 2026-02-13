@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from gai_utils import has_suffix, strip_reverted_suffix
+from gai_utils import strip_reverted_suffix
 from rich.text import Text
 from textual.widgets import Static
 
@@ -91,7 +92,7 @@ class AncestorsChildrenPanel(Static):
             changespec.name, all_changespecs, hide_reverted
         )
 
-        # Build siblings (same base name with __<N> suffix)
+        # Build siblings (same base name, with or without __<N> suffix)
         self._siblings = self._find_siblings(changespec, all_changespecs, hide_reverted)
 
         # Assign keybindings
@@ -165,10 +166,11 @@ class AncestorsChildrenPanel(Static):
         all_changespecs: list[ChangeSpec],
         hide_reverted: bool = False,
     ) -> list[str]:
-        """Find all sibling ChangeSpecs (same base name with __<N> suffix).
+        """Find all sibling ChangeSpecs (same base name, with or without __<N> suffix).
 
         Siblings are ChangeSpecs that share the same base name after stripping
-        the __<N> suffix. Only ChangeSpecs WITH a suffix can have siblings.
+        the __<N> suffix. Both suffixed and non-suffixed ChangeSpecs can have
+        siblings (e.g., a Drafted "foo" and its Reverted "foo__1" are siblings).
 
         Args:
             changespec: The starting ChangeSpec
@@ -180,20 +182,14 @@ class AncestorsChildrenPanel(Static):
         """
         self._sibling_statuses = {}
 
-        # Only ChangeSpecs WITH a suffix can have siblings
-        if not has_suffix(changespec.name):
-            return []
-
         # Get base name for comparison (case-insensitive)
         base_name = strip_reverted_suffix(changespec.name).lower()
 
-        # Find all siblings (same base name, different suffix, not self)
+        # Find all siblings (same base name, different name, not self)
         siblings: list[tuple[int, str, str]] = []  # (suffix_num, name, status)
         for cs in all_changespecs:
             if cs.name.lower() == changespec.name.lower():
                 continue  # Skip self
-            if not has_suffix(cs.name):
-                continue  # Skip non-suffixed names
             if strip_reverted_suffix(cs.name).lower() != base_name:
                 continue  # Different base name
 
@@ -205,8 +201,6 @@ class AncestorsChildrenPanel(Static):
                 continue
 
             # Extract suffix number for sorting
-            import re
-
             match = re.match(r"^.+__(\d+)$", cs.name)
             suffix_num = int(match.group(1)) if match else 0
             siblings.append((suffix_num, cs.name, cs.status))
