@@ -35,11 +35,8 @@ function run() {
   local original_clip
   original_clip="$(paste_clip)"
 
-  # Split into words and group into chunks.
-  local -a words
-  read -r -d '' -a words <<<"${original_clip}"
-
-  local total=${#words[@]}
+  local total
+  total=$(printf '%s' "${original_clip}" | wc -w | tr -d ' ')
   if [[ ${total} -eq 0 ]]; then
     die "Clipboard is empty."
   fi
@@ -49,23 +46,56 @@ function run() {
   # Give user time to focus the target application.
   sleep 1
 
-  local i=0
-  while [[ ${i} -lt ${total} ]]; do
-    local chunk="${words[*]:i:NUM_WORDS}"
+  local total_lines
+  total_lines=$(printf '%s\n' "${original_clip}" | wc -l | tr -d ' ')
 
-    # Add a trailing space unless this is the last chunk.
-    if [[ $((i + NUM_WORDS)) -lt ${total} ]]; then
-      chunk="${chunk} "
+  local line_num=0
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    line_num=$((line_num + 1))
+    local is_last_line=0
+    if [[ ${line_num} -eq ${total_lines} ]]; then
+      is_last_line=1
     fi
 
-    log::debug "Pasting chunk (words ${i}–$((i + NUM_WORDS - 1))): '${chunk}'"
+    # Empty line: paste just a newline (unless it's the last line).
+    if [[ -z "${line}" ]]; then
+      if [[ ${is_last_line} -eq 0 ]]; then
+        log::debug "Pasting empty line"
+        printf '%s' $'\n' | copy_clip
+        simulate_paste
+        sleep "${SLEEP_DELAY}"
+      fi
+      continue
+    fi
 
-    copy_clip <<<"${chunk}"
-    simulate_paste
-    sleep "${SLEEP_DELAY}"
+    local -a words
+    read -r -a words <<<"${line}"
+    local line_total=${#words[@]}
 
-    i=$((i + NUM_WORDS))
-  done
+    local i=0
+    while [[ ${i} -lt ${line_total} ]]; do
+      local chunk="${words[*]:i:NUM_WORDS}"
+      local remaining=$((line_total - i))
+
+      if [[ ${remaining} -le ${NUM_WORDS} ]]; then
+        # Last chunk of this line: append newline unless it's the last line.
+        if [[ ${is_last_line} -eq 0 ]]; then
+          chunk="${chunk}"$'\n'
+        fi
+      else
+        # Not the last chunk: append trailing space.
+        chunk="${chunk} "
+      fi
+
+      log::debug "Pasting chunk (line ${line_num}, words ${i}–$((i + NUM_WORDS - 1))): '${chunk}'"
+
+      printf '%s' "${chunk}" | copy_clip
+      simulate_paste
+      sleep "${SLEEP_DELAY}"
+
+      i=$((i + NUM_WORDS))
+    done
+  done <<<"${original_clip}"
 
   # Restore original clipboard contents.
   copy_clip <<<"${original_clip}"
