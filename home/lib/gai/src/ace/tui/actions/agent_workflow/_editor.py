@@ -71,7 +71,6 @@ class EditorMixin:
             "# yaml-language-server: $schema="
             + os.path.expanduser("~/lib/gai/xprompts/workflow.schema.json")
             + "\n"
-            f"name: {default_name}\n"
             "\n"
             "steps:\n"
             "  - name: main\n"
@@ -115,7 +114,7 @@ class EditorMixin:
             if not isinstance(data, dict):
                 return None
 
-            workflow_name = str(data.get("name", default_name))
+            workflow_name = default_name
 
             # Save to ~/.xprompts/
             xprompts_dir = os.path.expanduser("~/.xprompts")
