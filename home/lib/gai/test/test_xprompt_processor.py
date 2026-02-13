@@ -10,12 +10,13 @@ from xprompt._parsing import (
     _find_shorthand_text_end,
     preprocess_shorthand_syntax,
 )
-from xprompt.models import InputArg, InputType, XPrompt
+from xprompt.models import UNSET, InputArg, InputType, XPrompt
 from xprompt.processor import (
     _XPROMPT_PATTERN,
     WorkflowResult,
     _flatten_anonymous_workflow,
 )
+from xprompt.workflow_executor_utils import render_template
 from xprompt.workflow_models import Workflow, WorkflowStep
 
 
@@ -510,3 +511,110 @@ def test_flatten_anonymous_workflow_passes_named_args(
     assert ref_wf.name == "split"
     assert pos_args == []
     assert named_args == {"split_desc": "test value"}
+
+
+# --- Simple xprompt positional arg rendering tests ---
+
+
+def _build_simple_xprompt_render_ctx(
+    workflow: Workflow,
+    positional_args: list[str],
+    named_args: dict[str, str],
+) -> dict[str, object]:
+    """Replicate the render context logic from execute_workflow for testing."""
+    render_ctx: dict[str, object] = dict(named_args)
+    for i, value in enumerate(positional_args):
+        if i < len(workflow.inputs):
+            input_arg = workflow.inputs[i]
+            if input_arg.name not in render_ctx:
+                render_ctx[input_arg.name] = value
+    for input_arg in workflow.inputs:
+        if input_arg.name not in render_ctx and input_arg.default is not UNSET:
+            render_ctx[input_arg.name] = (
+                "null" if input_arg.default is None else str(input_arg.default)
+            )
+    return render_ctx
+
+
+def test_simple_xprompt_positional_arg_renders_template() -> None:
+    """Test that positional args are mapped to input names for simple xprompts.
+
+    This exercises the fix for the #presubmit xprompt bug where positional args
+    were not mapped before render_template was called.
+    """
+    workflow = Workflow(
+        name="presubmit",
+        inputs=[InputArg(name="presubmit_output_path", type=InputType.PATH)],
+        steps=[
+            WorkflowStep(
+                name="main",
+                prompt_part=("Fix the errors in @{{ presubmit_output_path }} file."),
+            )
+        ],
+    )
+    positional_args = ["~/.gai/hooks/presubmit.out"]
+    named_args: dict[str, str] = {}
+
+    render_ctx = _build_simple_xprompt_render_ctx(workflow, positional_args, named_args)
+    content = workflow.get_prompt_part_content()
+    rendered = render_template(content, render_ctx)
+
+    assert rendered == "Fix the errors in @~/.gai/hooks/presubmit.out file."
+
+
+def test_simple_xprompt_named_arg_takes_precedence() -> None:
+    """Test that named args take precedence over positional for simple xprompts."""
+    workflow = Workflow(
+        name="test",
+        inputs=[InputArg(name="path", type=InputType.PATH)],
+        steps=[WorkflowStep(name="main", prompt_part="Check @{{ path }}.")],
+    )
+    positional_args = ["positional_path"]
+    named_args = {"path": "named_path"}
+
+    render_ctx = _build_simple_xprompt_render_ctx(workflow, positional_args, named_args)
+    content = workflow.get_prompt_part_content()
+    rendered = render_template(content, render_ctx)
+
+    assert rendered == "Check @named_path."
+
+
+def test_simple_xprompt_default_applied_when_no_arg() -> None:
+    """Test that defaults are applied for missing inputs in simple xprompts."""
+    workflow = Workflow(
+        name="test",
+        inputs=[
+            InputArg(name="path", type=InputType.PATH),
+            InputArg(name="mode", type=InputType.LINE, default="strict"),
+        ],
+        steps=[
+            WorkflowStep(
+                name="main",
+                prompt_part="Check @{{ path }} in {{ mode }} mode.",
+            )
+        ],
+    )
+    positional_args = ["/some/file"]
+    named_args: dict[str, str] = {}
+
+    render_ctx = _build_simple_xprompt_render_ctx(workflow, positional_args, named_args)
+    content = workflow.get_prompt_part_content()
+    rendered = render_template(content, render_ctx)
+
+    assert rendered == "Check @/some/file in strict mode."
+
+
+def test_simple_xprompt_null_default_renders_as_null() -> None:
+    """Test that None defaults render as 'null' string."""
+    workflow = Workflow(
+        name="test",
+        inputs=[
+            InputArg(name="val", type=InputType.LINE, default=None),
+        ],
+        steps=[WorkflowStep(name="main", prompt_part="Value is {{ val }}.")],
+    )
+    render_ctx = _build_simple_xprompt_render_ctx(workflow, [], {})
+    content = workflow.get_prompt_part_content()
+    rendered = render_template(content, render_ctx)
+
+    assert rendered == "Value is null."
