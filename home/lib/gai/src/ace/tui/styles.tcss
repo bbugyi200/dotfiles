@@ -943,6 +943,31 @@ ProcessSelectModal #process-list {
     border: solid $secondary;
 }
 
+/* ===== Tag Input Modal Styling ===== */
+
+TagInputModal {
+    align: center middle;
+}
+
+TagInputModal > Container {
+    width: 60;
+    height: auto;
+    border: thick $primary;
+    background: $surface;
+    padding: 1 2;
+}
+
+TagInputModal #modal-title {
+    text-style: bold;
+    margin-bottom: 1;
+}
+
+TagInputModal #tag-name-history {
+    height: auto;
+    max-height: 8;
+    margin-bottom: 1;
+}
+
 /* Move notifications to top-right corner */
 ToastRack {
     dock: top;

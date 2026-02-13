@@ -337,7 +337,7 @@ class BaseActionsMixin:
     def action_add_tag(self) -> None:
         """Add a tag to the current ChangeSpec's CL description."""
         from ...changespec import get_base_status
-        from ...saved_tag_names import load_saved_tag_names, save_tag_name
+        from ...saved_tag_names import load_saved_tags, save_tag
         from ..modals import TagInputModal
 
         if not self.changespecs:
@@ -359,14 +359,14 @@ class BaseActionsMixin:
             )
             return
 
-        saved_names = load_saved_tag_names()
+        saved_tags = load_saved_tags()
 
         def on_dismiss(result: tuple[str, str] | None) -> None:
             if result is None:
                 return
 
             tag_name, tag_value = result
-            save_tag_name(tag_name)
+            save_tag(tag_name, tag_value)
 
             from ...handlers import handle_add_tag
             from .._workflow_context import WorkflowContext
@@ -380,7 +380,7 @@ class BaseActionsMixin:
 
             self._reload_and_reposition()  # type: ignore[attr-defined]
 
-        self.push_screen(TagInputModal(saved_names), on_dismiss)  # type: ignore[attr-defined]
+        self.push_screen(TagInputModal(saved_tags), on_dismiss)  # type: ignore[attr-defined]
 
     def action_mail(self) -> None:
         """Mail the current ChangeSpec."""
