@@ -209,10 +209,10 @@ xprompts:
     input: { note: { type: line, default: "" } }
     content: "#propose(note='{{ note }}')"
   presubmit:
-    input: { presubmit_output_path: path }
+    input: { output_path: path }
     content: |
-      Can you help me fix the presubmit errors shown in the @{{ presubmit_output_path }} file, which were introduced by
-      the current CL? #propose
+      Can you help me fix the presubmit errors shown in the @{{ output_path }} file, which were introduced by the
+      current CL? #propose
   reporting: |
     Refer to the `contentads/drx/reporting/g3doc/**/*.md` files for documentation on how the reporting stack works.
   scuba: "Make sure all related tests pass, except for some scuba diff tests, which are expected to fail."
