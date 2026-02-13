@@ -492,11 +492,12 @@ def prepare_mail(
     # Display current CL description for user review
     success, current_desc = _get_cl_description(changespec.name, target_dir, console)
     if success and current_desc:
+        from rich.markup import escape as escape_markup
         from rich.panel import Panel
 
         console.print(
             Panel(
-                current_desc.rstrip(),
+                escape_markup(current_desc.rstrip()),
                 title="CL Description",
                 border_style="cyan",
                 padding=(1, 2),
