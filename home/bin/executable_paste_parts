@@ -57,12 +57,11 @@ function run() {
       is_last_line=1
     fi
 
-    # Empty line: paste just a newline (unless it's the last line).
+    # Empty line: simulate pressing Enter (unless it's the last line).
     if [[ -z "${line}" ]]; then
       if [[ ${is_last_line} -eq 0 ]]; then
         log::debug "Pasting empty line"
-        printf '%s' $'\n' | copy_clip
-        simulate_paste
+        simulate_newline
         sleep "${SLEEP_DELAY}"
       fi
       continue
@@ -77,12 +76,7 @@ function run() {
       local chunk="${words[*]:i:NUM_WORDS}"
       local remaining=$((line_total - i))
 
-      if [[ ${remaining} -le ${NUM_WORDS} ]]; then
-        # Last chunk of this line: append newline unless it's the last line.
-        if [[ ${is_last_line} -eq 0 ]]; then
-          chunk="${chunk}"$'\n'
-        fi
-      else
+      if [[ ${remaining} -gt ${NUM_WORDS} ]]; then
         # Not the last chunk: append trailing space.
         chunk="${chunk} "
       fi
@@ -92,6 +86,12 @@ function run() {
       printf '%s' "${chunk}" | copy_clip
       simulate_paste
       sleep "${SLEEP_DELAY}"
+
+      # If this is the last chunk of a non-last line, simulate pressing Enter.
+      if [[ ${remaining} -le ${NUM_WORDS} ]] && [[ ${is_last_line} -eq 0 ]]; then
+        simulate_newline
+        sleep "${SLEEP_DELAY}"
+      fi
 
       i=$((i + NUM_WORDS))
     done
@@ -121,6 +121,15 @@ function copy_clip() {
     xclip -selection clipboard
   else
     die "At least one of pbcopy OR xclip MUST be installed."
+  fi
+}
+
+# Simulate pressing Shift+Enter to insert a newline without submitting forms.
+function simulate_newline() {
+  if [[ "$OSTYPE" == darwin* ]]; then
+    osascript -e 'tell application "System Events" to keystroke return using shift down'
+  else
+    xdotool key shift+Return
   fi
 }
 
