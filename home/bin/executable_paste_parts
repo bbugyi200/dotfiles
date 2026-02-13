@@ -49,6 +49,7 @@ function run() {
   local total_lines
   total_lines=$(printf '%s\n' "${original_clip}" | wc -l | tr -d ' ')
 
+  local pending_newlines=""
   local line_num=0
   while IFS= read -r line || [[ -n "${line}" ]]; do
     line_num=$((line_num + 1))
@@ -57,12 +58,10 @@ function run() {
       is_last_line=1
     fi
 
-    # Empty line: simulate pressing Enter (unless it's the last line).
     if [[ -z "${line}" ]]; then
       if [[ ${is_last_line} -eq 0 ]]; then
-        log::debug "Pasting empty line"
-        simulate_newline
-        sleep "${SLEEP_DELAY}"
+        log::debug "Queuing empty line"
+        pending_newlines+=$'\n'
       fi
       continue
     fi
@@ -76,6 +75,12 @@ function run() {
       local chunk="${words[*]:i:NUM_WORDS}"
       local remaining=$((line_total - i))
 
+      # First chunk of this line: prepend any pending newlines.
+      if [[ ${i} -eq 0 ]] && [[ -n "${pending_newlines}" ]]; then
+        chunk="${pending_newlines}${chunk}"
+        pending_newlines=""
+      fi
+
       if [[ ${remaining} -gt ${NUM_WORDS} ]]; then
         # Not the last chunk: append trailing space.
         chunk="${chunk} "
@@ -87,14 +92,13 @@ function run() {
       simulate_paste
       sleep "${SLEEP_DELAY}"
 
-      # If this is the last chunk of a non-last line, simulate pressing Enter.
-      if [[ ${remaining} -le ${NUM_WORDS} ]] && [[ ${is_last_line} -eq 0 ]]; then
-        simulate_newline
-        sleep "${SLEEP_DELAY}"
-      fi
-
       i=$((i + NUM_WORDS))
     done
+
+    # Queue a newline for the next line (unless this is the last line).
+    if [[ ${is_last_line} -eq 0 ]]; then
+      pending_newlines+=$'\n'
+    fi
   done <<<"${original_clip}"
 
   # Restore original clipboard contents.
@@ -121,15 +125,6 @@ function copy_clip() {
     xclip -selection clipboard
   else
     die "At least one of pbcopy OR xclip MUST be installed."
-  fi
-}
-
-# Simulate pressing Shift+Enter to insert a newline without submitting forms.
-function simulate_newline() {
-  if [[ "$OSTYPE" == darwin* ]]; then
-    osascript -e 'tell application "System Events" to keystroke return using shift down'
-  else
-    xdotool key shift+Return
   fi
 }
 
