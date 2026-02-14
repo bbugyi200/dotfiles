@@ -36,8 +36,7 @@ consumer call sites.
 - Extract prompt pre-processing pipeline (xprompt, command substitution, file refs, jinja2, prettier, HTML comments)
   from `GeminiCommandWrapper.invoke()` into `src/llm_provider/preprocessing.py` — these are already delegated to
   separate modules, so this is lifting the sequential call chain into a standalone function
-- Extract post-processing (artifact logging, chat history, audio notification) into
-  `src/llm_provider/postprocessing.py`
+- Extract post-processing (artifact logging, chat history, audio notification) into `src/llm_provider/postprocessing.py`
 - Create `src/llm_provider/gemini.py` — `GeminiProvider(LLMProvider)` with only Gemini-specific logic (CLI command,
   subprocess streaming, env vars)
 - Keep `invoke_agent()` working exactly as before internally using `GeminiProvider`
@@ -110,10 +109,8 @@ terminology.
 
 - Produce a reference table of every VCS call site: file, command, conceptual category, and tier (Core / Google-internal
   / Composite)
-- Core = has git equivalent (`hg diff`, `hg update`, `hg addremove`, `hg import`, `hg commit`, `hg amend`,
-  `hg rebase`)
-- Google-internal = no git equivalent (`hg evolve`, `hg upload tree`, `hg cls-*`, `hg fix`, `hg lint`,
-  `hg presubmit`)
+- Core = has git equivalent (`hg diff`, `hg update`, `hg addremove`, `hg import`, `hg commit`, `hg amend`, `hg rebase`)
+- Google-internal = no git equivalent (`hg evolve`, `hg upload tree`, `hg cls-*`, `hg fix`, `hg lint`, `hg presubmit`)
 - Composite = shell scripts chaining multiple ops (`bb_hg_clean`, `bb_hg_amend`, `bb_hg_sync`, etc.)
 - Also catalog VCS-coupled shell helpers: `branch_name`, `branch_number`, `get_all_cl_names`, `cl_desc`,
   `branch_local_changes`
