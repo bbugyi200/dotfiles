@@ -14,6 +14,24 @@ from shared_utils import dump_yaml
 
 from xprompt.workflow_executor_types import HITLResult
 
+_EXTENSION_TO_LEXER: dict[str, str] = {
+    ".diff": "diff",
+    ".patch": "diff",
+    ".py": "python",
+    ".json": "json",
+    ".yml": "yaml",
+    ".yaml": "yaml",
+    ".sh": "bash",
+    ".bash": "bash",
+    ".js": "javascript",
+    ".ts": "typescript",
+    ".md": "markdown",
+    ".toml": "toml",
+    ".xml": "xml",
+    ".html": "html",
+    ".css": "css",
+}
+
 # Poll interval for TUI HITL handler (seconds)
 _TUI_HITL_POLL_INTERVAL = 0.5
 # Timeout for TUI HITL handler (seconds) - 1 hour
@@ -42,6 +60,7 @@ class TUIHITLHandler:
         output: Any,
         *,
         has_output: bool = False,
+        output_types: dict[str, str] | None = None,
     ) -> HITLResult:
         """Write HITL request and block waiting for response.
 
@@ -50,6 +69,7 @@ class TUIHITLHandler:
             step_type: Either "prompt" or "bash".
             output: The step's output data.
             has_output: Whether the step has an output field defined.
+            output_types: Mapping of field names to their types (e.g. "path").
 
         Returns:
             HITLResult based on the user's response from the TUI.
@@ -62,12 +82,14 @@ class TUIHITLHandler:
             os.unlink(response_path)
 
         # Write the request file
-        request_data = {
+        request_data: dict[str, Any] = {
             "step_name": step_name,
             "step_type": step_type,
             "output": output,
             "has_output": has_output,
         }
+        if output_types is not None:
+            request_data["output_types"] = output_types
         with open(request_path, "w", encoding="utf-8") as f:
             json.dump(request_data, f, indent=2, default=str)
 
@@ -130,6 +152,7 @@ class CLIHITLHandler:
         output: Any,
         *,
         has_output: bool = False,
+        output_types: dict[str, str] | None = None,
     ) -> HITLResult:
         """Prompt the user for action on step output.
 
@@ -138,6 +161,7 @@ class CLIHITLHandler:
             step_type: Either "prompt" or "bash".
             output: The step's output data.
             has_output: Whether the step has an output field defined.
+            output_types: Mapping of field names to their types (e.g. "path").
 
         Returns:
             HITLResult indicating the user's decision.
@@ -158,6 +182,14 @@ class CLIHITLHandler:
             self.console.print(syntax)
         else:
             self.console.print(str(output))
+
+        # Display file contents for path-typed output fields
+        if output_types and isinstance(output, dict):
+            for field_name, field_type in output_types.items():
+                if field_type == "path":
+                    path_value = output.get(field_name)
+                    if path_value and os.path.isfile(str(path_value)):
+                        self._display_path_file(str(path_value), field_name)
 
         self.console.print("[dim]" + "─" * 60 + "[/dim]")
 
@@ -203,6 +235,30 @@ class CLIHITLHandler:
         else:
             # Default to accept for empty input
             return HITLResult(action="accept", approved=True)
+
+    def _display_path_file(self, file_path: str, field_name: str) -> None:
+        """Display the contents of a path-typed output file with syntax highlighting.
+
+        Args:
+            file_path: Path to the file to display.
+            field_name: Name of the output field (for the header).
+        """
+        self.console.print()
+        self.console.print(
+            f"[bold green]File contents ({field_name}):[/bold green] {file_path}"
+        )
+        self.console.print("[dim]" + "─" * 60 + "[/dim]")
+        try:
+            with open(file_path, encoding="utf-8") as f:
+                content = f.read()
+            ext = os.path.splitext(file_path)[1].lower()
+            lexer = _EXTENSION_TO_LEXER.get(ext, "text")
+            syntax = Syntax(
+                content, lexer, theme="monokai", line_numbers=True, word_wrap=True
+            )
+            self.console.print(syntax)
+        except Exception as e:
+            self.console.print(f"[red]Error reading file: {e}[/red]")
 
     def _edit_output(self, output: Any) -> Any | None:
         """Open output in editor for user modification.

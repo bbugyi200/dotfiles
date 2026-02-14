@@ -1,6 +1,7 @@
 """Workflow HITL modal for the ace TUI."""
 
-from dataclasses import dataclass
+import os
+from dataclasses import dataclass, field
 from typing import Any
 
 from rich.syntax import Syntax
@@ -10,6 +11,24 @@ from textual.containers import Container, Horizontal, ScrollableContainer
 from textual.screen import ModalScreen
 from textual.widgets import Button, Label, Static
 from xprompt import HITLResult
+
+_EXTENSION_TO_LEXER: dict[str, str] = {
+    ".diff": "diff",
+    ".patch": "diff",
+    ".py": "python",
+    ".json": "json",
+    ".yml": "yaml",
+    ".yaml": "yaml",
+    ".sh": "bash",
+    ".bash": "bash",
+    ".js": "javascript",
+    ".ts": "typescript",
+    ".md": "markdown",
+    ".toml": "toml",
+    ".xml": "xml",
+    ".html": "html",
+    ".css": "css",
+}
 
 
 @dataclass
@@ -21,6 +40,7 @@ class WorkflowHITLInput:
     output: Any
     workflow_name: str
     has_output: bool = False  # Whether step has output field defined
+    output_types: dict[str, str] = field(default_factory=dict)
 
 
 class WorkflowHITLModal(ModalScreen[HITLResult | None]):
@@ -46,6 +66,9 @@ class WorkflowHITLModal(ModalScreen[HITLResult | None]):
 
     def compose(self) -> ComposeResult:
         """Compose the modal layout."""
+        # Determine path files to display
+        path_files = self._get_path_files()
+
         with Container(id="hitl-container"):
             yield Label(
                 "[bold cyan]Workflow Step Review[/bold cyan]",
@@ -67,6 +90,18 @@ class WorkflowHITLModal(ModalScreen[HITLResult | None]):
                     output_str = str(self.input_data.output)
                 syntax = Syntax(output_str, "yaml", theme="monokai", word_wrap=True)
                 yield Static(syntax, id="output-content")
+
+            # File content preview for path-typed fields
+            for field_name, file_path, content, lexer in path_files:
+                yield Label(
+                    f"[bold green]{field_name}:[/bold green] {file_path}",
+                    classes="file-content-label",
+                )
+                with ScrollableContainer(classes="file-content-preview"):
+                    file_syntax = Syntax(
+                        content, lexer, theme="monokai", word_wrap=True
+                    )
+                    yield Static(file_syntax)
 
             # Action hints
             # Edit option for agent steps, or bash/python with output field
@@ -90,6 +125,34 @@ class WorkflowHITLModal(ModalScreen[HITLResult | None]):
                     yield Button("Edit (e)", id="edit-btn", variant="warning")
                 if self.input_data.step_type in ("bash", "python"):
                     yield Button("Rerun (r)", id="rerun-btn", variant="warning")
+
+    def _get_path_files(self) -> list[tuple[str, str, str, str]]:
+        """Get file contents for path-typed output fields.
+
+        Returns:
+            List of (field_name, file_path, content, lexer) tuples.
+        """
+        result: list[tuple[str, str, str, str]] = []
+        if not self.input_data.output_types or not isinstance(
+            self.input_data.output, dict
+        ):
+            return result
+        for field_name, field_type in self.input_data.output_types.items():
+            if field_type != "path":
+                continue
+            path_value = self.input_data.output.get(field_name)
+            if not path_value or not os.path.isfile(str(path_value)):
+                continue
+            file_path = str(path_value)
+            try:
+                with open(file_path, encoding="utf-8") as f:
+                    content = f.read()
+            except Exception:
+                content = f"[Error reading file: {file_path}]"
+            ext = os.path.splitext(file_path)[1].lower()
+            lexer = _EXTENSION_TO_LEXER.get(ext, "text")
+            result.append((field_name, file_path, content, lexer))
+        return result
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press."""

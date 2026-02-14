@@ -121,6 +121,65 @@ StatusModal > Container, QueryEditModal > Container, WorkflowSelectModal > Conta
     padding: 1 2;
 }
 
+/* Workflow HITL Modal styling */
+WorkflowHITLModal {
+    align: center middle;
+}
+
+#hitl-container {
+    width: 90%;
+    max-width: 120;
+    height: auto;
+    max-height: 85%;
+    border: thick $primary;
+    background: $surface;
+    padding: 1 2;
+}
+
+WorkflowHITLModal #modal-title {
+    text-style: bold;
+    margin-bottom: 1;
+}
+
+WorkflowHITLModal #step-info {
+    color: $text-muted;
+    margin-bottom: 1;
+}
+
+WorkflowHITLModal #output-preview {
+    height: auto;
+    max-height: 15;
+    border: solid $secondary;
+    padding: 0 1;
+    margin-bottom: 1;
+}
+
+WorkflowHITLModal .file-content-label {
+    margin-bottom: 0;
+}
+
+WorkflowHITLModal .file-content-preview {
+    height: auto;
+    max-height: 20;
+    border: solid green;
+    padding: 0 1;
+    margin-bottom: 1;
+}
+
+WorkflowHITLModal #action-hints {
+    margin: 1 0;
+}
+
+WorkflowHITLModal #button-row {
+    align: center middle;
+    height: auto;
+    margin-top: 1;
+}
+
+WorkflowHITLModal Button {
+    margin: 0 1;
+}
+
 /* Confirm Kill Modal styling */
 ConfirmKillModal #confirm-message {
     margin: 1 0;

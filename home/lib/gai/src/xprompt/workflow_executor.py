@@ -9,7 +9,11 @@ from typing import TYPE_CHECKING, Any
 from xprompt.workflow_executor_loops import LoopMixin
 from xprompt.workflow_executor_parallel import ParallelMixin
 from xprompt.workflow_executor_steps import StepMixin
-from xprompt.workflow_executor_types import HITLHandler, HITLResult
+from xprompt.workflow_executor_types import (
+    HITLHandler,
+    HITLResult,
+    output_types_from_step,
+)
 from xprompt.workflow_executor_utils import create_jinja_env
 from xprompt.workflow_models import (
     StepState,
@@ -128,17 +132,7 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
         Returns:
             Dict mapping field names to type strings, or None if no output spec.
         """
-        step = self.workflow.steps[step_index]
-        if step.output is None:
-            return None
-        properties = step.output.schema.get("properties")
-        if not properties or not isinstance(properties, dict):
-            return None
-        return {
-            name: prop.get("type", "text")
-            for name, prop in properties.items()
-            if isinstance(prop, dict)
-        }
+        return output_types_from_step(self.workflow.steps[step_index])
 
     def execute(self) -> bool:
         """Execute all workflow steps sequentially.

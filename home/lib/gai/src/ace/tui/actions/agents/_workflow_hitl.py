@@ -126,6 +126,7 @@ class AgentWorkflowHITLMixin:
             output=request_data.get("output", {}),
             workflow_name=agent.workflow or "unknown",
             has_output=request_data.get("has_output", False),
+            output_types=request_data.get("output_types") or {},
         )
 
         # Show the HITL modal

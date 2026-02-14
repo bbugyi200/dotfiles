@@ -1,6 +1,34 @@
 """HITL (Human-in-the-Loop) types for workflow execution."""
 
-from typing import Any, Protocol
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Protocol
+
+if TYPE_CHECKING:
+    from xprompt.workflow_models import WorkflowStep
+
+
+def output_types_from_step(step: WorkflowStep) -> dict[str, str] | None:
+    """Get the output type mapping for a workflow step.
+
+    Extracts field name to type mappings from the step's OutputSpec schema.
+
+    Args:
+        step: The workflow step definition.
+
+    Returns:
+        Dict mapping field names to type strings, or None if no output spec.
+    """
+    if step.output is None:
+        return None
+    properties = step.output.schema.get("properties")
+    if not properties or not isinstance(properties, dict):
+        return None
+    return {
+        name: prop.get("type", "text")
+        for name, prop in properties.items()
+        if isinstance(prop, dict)
+    }
 
 
 class HITLHandler(Protocol):
@@ -13,7 +41,8 @@ class HITLHandler(Protocol):
         output: Any,
         *,
         has_output: bool = False,
-    ) -> "HITLResult":
+        output_types: dict[str, str] | None = None,
+    ) -> HITLResult:
         """Prompt the user for action on step output.
 
         Args:
@@ -21,6 +50,7 @@ class HITLHandler(Protocol):
             step_type: Either "prompt" or "bash".
             output: The step's output data.
             has_output: Whether the step has an output field defined.
+            output_types: Mapping of field names to their types (e.g. "path").
 
         Returns:
             HITLResult indicating the user's decision.

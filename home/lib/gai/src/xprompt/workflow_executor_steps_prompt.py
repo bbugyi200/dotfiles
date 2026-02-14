@@ -4,7 +4,7 @@ import os
 import subprocess
 from typing import TYPE_CHECKING, Any
 
-from xprompt.workflow_executor_types import HITLHandler
+from xprompt.workflow_executor_types import HITLHandler, output_types_from_step
 from xprompt.workflow_executor_utils import render_template
 from xprompt.workflow_models import (
     StepState,
@@ -209,7 +209,11 @@ class PromptStepMixin:
             )
 
             result = self.hitl_handler.prompt(
-                step.name, "prompt", output, has_output=step.output is not None
+                step.name,
+                "prompt",
+                output,
+                has_output=step.output is not None,
+                output_types=output_types_from_step(step),
             )
 
             if result.action == "reject":

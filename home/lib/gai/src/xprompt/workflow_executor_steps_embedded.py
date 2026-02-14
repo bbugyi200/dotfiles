@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any
 from shared_utils import apply_section_marker_handling
 
 from xprompt.models import OutputSpec
-from xprompt.workflow_executor_types import HITLHandler
+from xprompt.workflow_executor_types import HITLHandler, output_types_from_step
 from xprompt.workflow_executor_utils import render_template
 from xprompt.workflow_models import (
     StepState,
@@ -251,15 +251,7 @@ class EmbeddedWorkflowMixin:
                 )
 
                 # Compute output_types from embedded step's OutputSpec
-                output_types: dict[str, str] | None = None
-                if step.output is not None:
-                    properties = step.output.schema.get("properties")
-                    if properties and isinstance(properties, dict):
-                        output_types = {
-                            name: prop.get("type", "text")
-                            for name, prop in properties.items()
-                            if isinstance(prop, dict)
-                        }
+                output_types = output_types_from_step(step)
 
                 self._save_prompt_step_marker(
                     step.name,

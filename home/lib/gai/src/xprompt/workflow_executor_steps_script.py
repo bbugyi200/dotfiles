@@ -5,7 +5,7 @@ import subprocess
 import sys
 from typing import TYPE_CHECKING, Any
 
-from xprompt.workflow_executor_types import HITLHandler
+from xprompt.workflow_executor_types import HITLHandler, output_types_from_step
 from xprompt.workflow_executor_utils import parse_bash_output, render_template
 from xprompt.workflow_models import (
     StepState,
@@ -141,7 +141,11 @@ class ScriptStepMixin:
             )
 
             result_hitl = self.hitl_handler.prompt(
-                step.name, "bash", output, has_output=step.output is not None
+                step.name,
+                "bash",
+                output,
+                has_output=step.output is not None,
+                output_types=output_types_from_step(step),
             )
 
             if result_hitl.action == "reject":
@@ -255,7 +259,11 @@ class ScriptStepMixin:
             )
 
             result_hitl = self.hitl_handler.prompt(
-                step.name, "python", output, has_output=step.output is not None
+                step.name,
+                "python",
+                output,
+                has_output=step.output is not None,
+                output_types=output_types_from_step(step),
             )
 
             if result_hitl.action == "reject":
