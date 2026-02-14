@@ -58,9 +58,9 @@ function claim_lock() {
     local lock_pid
     lock_pid="$(cat "${LOCK_FILE}" 2>/dev/null || echo "unknown")"
     attempt=$((attempt + 1))
-    log::warn "Lock file exists (held by PID %s). Attempt %d/%d, retrying in 60s..." \
+    log::warn "Lock file exists (held by PID %s). Attempt %d/%d, retrying in 15s..." \
       "${lock_pid}" "${attempt}" "${MAX_ATTEMPTS}"
-    sleep 60
+    sleep 15
   done
 
   die "Failed to claim lock after %d attempts." "${MAX_ATTEMPTS}"
