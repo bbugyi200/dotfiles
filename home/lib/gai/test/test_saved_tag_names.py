@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
-from ace.saved_tag_names import load_saved_tags, save_tag
+from ace.saved_tag_names import delete_tag, load_saved_tags, save_tag
 
 # --- load_saved_tags tests ---
 
@@ -168,3 +168,58 @@ def test_save_tag_appends_new(tmp_path: Path) -> None:
         save_tag("feature")
         data = json.loads(fake_file.read_text())
         assert data == {"BUG": "12345", "FEATURE": ""}
+
+
+# --- delete_tag tests ---
+
+
+def test_delete_tag_existing(tmp_path: Path) -> None:
+    """Delete one tag, other tags remain."""
+    fake_file = tmp_path / "saved_tag_names.json"
+    fake_file.write_text(json.dumps({"BUG": "12345", "FEATURE": "v2"}))
+    with patch("ace.saved_tag_names._SAVED_TAG_NAMES_FILE", fake_file):
+        result = delete_tag("BUG")
+        assert result is True
+        data = json.loads(fake_file.read_text())
+        assert data == {"FEATURE": "v2"}
+
+
+def test_delete_tag_nonexistent(tmp_path: Path) -> None:
+    """Return True and leave file unchanged when tag doesn't exist."""
+    fake_file = tmp_path / "saved_tag_names.json"
+    fake_file.write_text(json.dumps({"BUG": "12345"}))
+    with patch("ace.saved_tag_names._SAVED_TAG_NAMES_FILE", fake_file):
+        result = delete_tag("NOPE")
+        assert result is True
+        data = json.loads(fake_file.read_text())
+        assert data == {"BUG": "12345"}
+
+
+def test_delete_tag_uppercases(tmp_path: Path) -> None:
+    """Lowercased input still deletes uppercase key."""
+    fake_file = tmp_path / "saved_tag_names.json"
+    fake_file.write_text(json.dumps({"BUG": "12345"}))
+    with patch("ace.saved_tag_names._SAVED_TAG_NAMES_FILE", fake_file):
+        result = delete_tag("bug")
+        assert result is True
+        data = json.loads(fake_file.read_text())
+        assert data == {}
+
+
+def test_delete_tag_last_item(tmp_path: Path) -> None:
+    """Deleting the only tag results in empty dict."""
+    fake_file = tmp_path / "saved_tag_names.json"
+    fake_file.write_text(json.dumps({"ONLY": "one"}))
+    with patch("ace.saved_tag_names._SAVED_TAG_NAMES_FILE", fake_file):
+        result = delete_tag("ONLY")
+        assert result is True
+        data = json.loads(fake_file.read_text())
+        assert data == {}
+
+
+def test_delete_tag_no_file(tmp_path: Path) -> None:
+    """Return True when file doesn't exist."""
+    fake_file = tmp_path / "saved_tag_names.json"
+    with patch("ace.saved_tag_names._SAVED_TAG_NAMES_FILE", fake_file):
+        result = delete_tag("BUG")
+        assert result is True

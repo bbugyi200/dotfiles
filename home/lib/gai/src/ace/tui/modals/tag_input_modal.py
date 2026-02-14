@@ -7,6 +7,8 @@ from textual.containers import Container
 from textual.screen import ModalScreen
 from textual.widgets import Input, Label, OptionList
 
+from ace.saved_tag_names import delete_tag
+
 
 class _TagNameInput(Input):
     """Tag name input with readline-style key bindings and tag list navigation."""
@@ -16,6 +18,7 @@ class _TagNameInput(Input):
         ("ctrl+b", "cursor_left", "Backward"),
         ("ctrl+n", "next_tag", "Next tag"),
         ("ctrl+p", "prev_tag", "Prev tag"),
+        ("ctrl+d", "delete_tag", "Delete tag"),
     ]
 
     def action_next_tag(self) -> None:
@@ -29,6 +32,12 @@ class _TagNameInput(Input):
         modal = self.screen
         assert isinstance(modal, TagInputModal)
         modal._navigate_tag_list(-1)
+
+    def action_delete_tag(self) -> None:
+        """Delete the currently highlighted tag from the history list."""
+        modal = self.screen
+        assert isinstance(modal, TagInputModal)
+        modal._delete_highlighted_tag()
 
 
 class _TagValueInput(Input):
@@ -139,6 +148,34 @@ class TagInputModal(ModalScreen[tuple[str, str] | None]):
                 self.notify("Tag value cannot be empty", severity="error")
                 return
             self.dismiss((name.upper(), value))
+
+    def _delete_highlighted_tag(self) -> None:
+        """Delete the currently highlighted tag from history."""
+        try:
+            option_list = self.query_one("#tag-name-history", OptionList)
+        except Exception:
+            return
+
+        highlighted = option_list.highlighted
+        if highlighted is None:
+            return
+
+        tag_name = self._saved_names[highlighted]
+        delete_tag(tag_name)
+
+        del self._saved_tags[tag_name]
+        del self._saved_names[highlighted]
+
+        option_list.remove_option_at_index(highlighted)
+
+        # Clear inputs if they showed the deleted tag
+        name_input = self.query_one("#tag-name-input", _TagNameInput)
+        if name_input.value == tag_name:
+            name_input.value = ""
+            value_input = self.query_one("#tag-value-input", _TagValueInput)
+            value_input.placeholder = "e.g. 12345"
+
+        self.notify(f"Deleted tag: {tag_name}")
 
     def action_cancel(self) -> None:
         """Cancel the modal."""

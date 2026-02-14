@@ -41,9 +41,39 @@ def save_tag(name: str, value: str = "") -> None:
     upper_name = name.upper()
     tags = load_saved_tags()
     tags[upper_name] = value
+    _write_tags(tags)
+
+
+def delete_tag(name: str) -> bool:
+    """Delete a tag name from saved tags.
+
+    Args:
+        name: The tag name to delete (will be uppercased).
+
+    Returns:
+        True if deleted (or tag didn't exist), False on write error.
+    """
+    upper_name = name.upper()
+    tags = load_saved_tags()
+    if upper_name in tags:
+        del tags[upper_name]
+        return _write_tags(tags)
+    return True
+
+
+def _write_tags(tags: dict[str, str]) -> bool:
+    """Write tags to disk.
+
+    Args:
+        tags: Dictionary mapping tag names to values.
+
+    Returns:
+        True if written successfully, False otherwise.
+    """
     try:
         _SAVED_TAG_NAMES_FILE.parent.mkdir(parents=True, exist_ok=True)
         with open(_SAVED_TAG_NAMES_FILE, "w") as f:
             json.dump(tags, f, indent=2)
+        return True
     except OSError:
-        pass
+        return False
