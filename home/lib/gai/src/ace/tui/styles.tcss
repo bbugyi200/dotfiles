@@ -128,56 +128,44 @@ WorkflowHITLModal {
 
 #hitl-container {
     width: 90%;
-    max-width: 120;
-    height: auto;
-    max-height: 85%;
-    border: thick $primary;
+    max-width: 150;
+    height: 85%;
+    border: double $primary;
     background: $surface;
     padding: 1 2;
 }
 
-WorkflowHITLModal #modal-title {
+#hitl-title {
+    text-align: center;
     text-style: bold;
-    margin-bottom: 1;
-}
-
-WorkflowHITLModal #step-info {
-    color: $text-muted;
-    margin-bottom: 1;
-}
-
-WorkflowHITLModal #output-preview {
     height: auto;
-    max-height: 15;
-    border: solid $secondary;
-    padding: 0 1;
     margin-bottom: 1;
 }
 
-WorkflowHITLModal .file-content-label {
-    margin-bottom: 0;
-}
-
-WorkflowHITLModal .file-content-preview {
-    height: auto;
-    max-height: 20;
-    border: solid green;
-    padding: 0 1;
+#step-info {
     margin-bottom: 1;
 }
 
-WorkflowHITLModal #action-hints {
-    margin: 1 0;
+#hitl-content-scroll {
+    height: 1fr;
+    scrollbar-gutter: stable;
 }
 
-WorkflowHITLModal #button-row {
-    align: center middle;
-    height: auto;
+.hitl-section-header {
     margin-top: 1;
 }
 
-WorkflowHITLModal Button {
-    margin: 0 1;
+#output-content {
+    margin-bottom: 1;
+}
+
+#hitl-footer {
+    text-align: center;
+    color: $text-muted;
+    height: auto;
+    margin-top: 1;
+    border-top: solid $secondary;
+    padding-top: 1;
 }
 
 /* Confirm Kill Modal styling */
