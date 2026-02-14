@@ -35,7 +35,7 @@ steps:
           print(f"data_file={f.name}")
     output: { data_file: path }
 
-  - name: check_make_cl_desc
+  - name: check_gai_new_cl_desc
     hidden: true
     if: "{{ check_changes.has_changes }}"
     python: |
@@ -43,15 +43,15 @@ steps:
       sys.path.insert(0, os.path.join(os.path.expanduser('~'), 'lib', 'gai', 'src'))
       try:
           from xprompt.loader import get_all_xprompts
-          has = 'make_cl_desc' in get_all_xprompts()
+          has = 'gai_new_cl_desc' in get_all_xprompts()
       except Exception:
           has = False
-      print(f"has_make_cl_desc={'true' if has else 'false'}")
-    output: { has_make_cl_desc: bool }
+      print(f"has_gai_new_cl_desc={'true' if has else 'false'}")
+    output: { has_gai_new_cl_desc: bool }
 
   - name: gen_cl_desc
-    if: "{{ check_changes.has_changes and check_make_cl_desc.has_make_cl_desc }}"
-    prompt: "#make_cl_desc #file:new_cl_desc"
+    if: "{{ check_changes.has_changes and check_gai_new_cl_desc.has_gai_new_cl_desc }}"
+    prompt: "#gai_new_cl_desc #file:new_cl_desc"
     output: { desc_file: path }
 
   - name: commit

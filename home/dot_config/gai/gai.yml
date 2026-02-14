@@ -137,7 +137,7 @@ xprompts:
     input: { bug_id: int, feature: word }
     content: |
       Can you help me add the {{ feature }} #feat to FEATURE_GROUP_ALL in the TestPublisherFeatureGroups.java file? #commit(launch_tests, {{ bug_id }})
-  make_cl_desc: |
+  gai_new_cl_desc: |
     Can you review the changes made by this CL (see the #cl_local_diff file) and suggest a new CL description that conforms with
     the advice given in the @~/bb/docs/cl_descriptions.md document?
   mentor/aaa: |
