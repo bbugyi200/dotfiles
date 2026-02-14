@@ -128,6 +128,9 @@ xprompts:
   feat: >-
     publisher feature (see contentads/drx/fe/g3doc/admin/publisher_features.md for more information on publisher
     features)
+  gai_new_cl_desc: |
+    Can you review the changes made by this CL (see the #cl_local_diff file) and suggest a new CL description that conforms with
+    the advice given in the @~/bb/docs/cl_descriptions.md document?
   launch/beta:
     input: { bug_id: int, feature: word }
     content: |
@@ -137,9 +140,6 @@ xprompts:
     input: { bug_id: int, feature: word }
     content: |
       Can you help me add the {{ feature }} #feat to FEATURE_GROUP_ALL in the TestPublisherFeatureGroups.java file? #commit(launch_tests, {{ bug_id }})
-  gai_new_cl_desc: |
-    Can you review the changes made by this CL (see the #cl_local_diff file) and suggest a new CL description that conforms with
-    the advice given in the @~/bb/docs/cl_descriptions.md document?
   mentor/aaa: |
     #mentor: Can you help me enforce the AAA (arrange, act, assert) test method structure? In particular, find and fix Any test
     method modified by this CL that does NOT structure its statements using the Arrange, Act, Assert pattern. There
