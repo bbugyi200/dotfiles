@@ -1,7 +1,3 @@
-# LLM provider configuration.
-llm_provider:
-  provider: gemini
-
 # Axe scheduler configuration.
 axe:
   full_check_interval: 300
