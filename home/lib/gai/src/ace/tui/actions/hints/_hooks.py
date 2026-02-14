@@ -278,6 +278,9 @@ class HookEditingMixin(HintMixinBase):
         )
 
         if success:
+            from hook_history import add_or_update_hook
+
+            add_or_update_hook(hook_command)
             self.notify(f"Added hook: {hook_command}")  # type: ignore[attr-defined]
         else:
             self.notify("Error adding hook", severity="error")  # type: ignore[attr-defined]

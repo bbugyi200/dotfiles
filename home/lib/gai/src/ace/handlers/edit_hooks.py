@@ -163,6 +163,9 @@ def handle_edit_hooks(
             self.console.print("[red]Error adding hook[/red]")
             return changespecs, current_idx
 
+        from hook_history import add_or_update_hook
+
+        add_or_update_hook(user_input)
         self.console.print(f"[green]Added hook: {user_input}[/green]")
         changespecs, current_idx = self._reload_and_reposition(changespecs, changespec)
         return changespecs, current_idx

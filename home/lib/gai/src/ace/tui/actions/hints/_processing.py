@@ -94,6 +94,10 @@ class InputProcessingMixin(HintMixinBase):
         if not user_input:
             return
 
+        if user_input == ".":
+            self._show_hook_history_modal()
+            return
+
         changespec = self.changespecs[self.current_idx]
 
         if is_rerun_input(user_input):
@@ -152,6 +156,32 @@ class InputProcessingMixin(HintMixinBase):
             )
             if success:
                 self._reload_and_reposition()  # type: ignore[attr-defined]
+
+    def _show_hook_history_modal(self) -> None:
+        """Show the hook history modal for selecting a previously used hook."""
+        from hook_history import add_or_update_hook
+
+        from ....hooks import add_hook_to_changespec
+        from ...modals import HookHistoryModal
+
+        def _on_hook_selected(command: str | None) -> None:
+            if command is None:
+                return
+            changespec = self.changespecs[self.current_idx]
+            success = add_hook_to_changespec(
+                changespec.file_path,
+                changespec.name,
+                command,
+                None,
+            )
+            if success:
+                add_or_update_hook(command)
+                self.notify(f"Added hook: {command}")  # type: ignore[attr-defined]
+                self._reload_and_reposition()  # type: ignore[attr-defined]
+            else:
+                self.notify("Error adding hook", severity="error")  # type: ignore[attr-defined]
+
+        self.app.push_screen(HookHistoryModal(), _on_hook_selected)  # type: ignore[attr-defined]
 
     def _process_failed_hooks_input(self, user_input: str) -> None:
         """Process failed hooks input to add selected targets as hooks.

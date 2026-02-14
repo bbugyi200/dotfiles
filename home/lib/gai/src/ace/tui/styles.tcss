@@ -656,6 +656,52 @@ CommandHistoryModal #command-history-hints {
     margin-top: 1;
 }
 
+/* Hook history modal styling */
+HookHistoryModal {
+    align: center middle;
+}
+
+HookHistoryModal > Container {
+    width: 70%;
+    height: 60%;
+    border: thick $primary;
+    background: $surface;
+    padding: 1 2;
+}
+
+HookHistoryModal #modal-title {
+    text-style: bold;
+    margin-bottom: 1;
+}
+
+HookHistoryModal #hook-history-filter-input {
+    width: 100%;
+    margin-bottom: 1;
+}
+
+HookHistoryModal #hook-history-list-panel {
+    width: 100%;
+    height: 1fr;
+}
+
+HookHistoryModal #hook-history-list-label {
+    color: $text-muted;
+    text-style: bold;
+    height: 1;
+}
+
+HookHistoryModal OptionList {
+    height: 1fr;
+    border: solid $secondary;
+}
+
+HookHistoryModal #hook-history-hints {
+    height: 1;
+    color: $text-muted;
+    text-align: center;
+    margin-top: 1;
+}
+
 /* Chat select modal styling */
 ChatSelectModal {
     align: center middle;
