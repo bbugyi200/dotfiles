@@ -296,7 +296,7 @@
           "description": "Status (RUNNING, PASSED, FAILED)"
         },
         "timestamp": {
-          "type": "string",
+          "type": ["string", "null"],
           "description": "Timestamp in YYmmdd_HHMMSS format"
         },
         "duration": {
