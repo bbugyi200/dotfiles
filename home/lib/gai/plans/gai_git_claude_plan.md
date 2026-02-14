@@ -78,6 +78,70 @@ abstraction layer exists.
 - `src/ace/mail_ops.py` (bb_hg_reword, upload)
 - Shell scripts: `home/bin/executable_bb_hg_*`
 
+### Phase 3.1: Complete VCS Operation Audit
+
+**Goal:** Finalize the catalog of every VCS touchpoint with classification.
+
+- Produce a reference table of every VCS call site: file, command, conceptual category, and tier (Core / Google-internal
+  / Composite)
+- Core = has git equivalent (`hg diff`, `hg update`, `hg addremove`, `hg import`, `hg commit`, `hg amend`,
+  `hg rebase`)
+- Google-internal = no git equivalent (`hg evolve`, `hg upload tree`, `hg cls-*`, `hg fix`, `hg lint`,
+  `hg presubmit`)
+- Composite = shell scripts chaining multiple ops (`bb_hg_clean`, `bb_hg_amend`, `bb_hg_sync`, etc.)
+- Also catalog VCS-coupled shell helpers: `branch_name`, `branch_number`, `get_all_cl_names`, `cl_desc`,
+  `branch_local_changes`
+
+### Phase 3.2: Define VCSProvider Interface & Data Types
+
+**Goal:** Create the abstract `VCSProvider` ABC and supporting types in a new `src/vcs_provider/` package, without
+touching existing consumers.
+
+- New files: `_base.py` (ABC), `_types.py` (`CommandResult` dataclass), `_registry.py` (factory w/ auto-detect),
+  `_errors.py`, `__init__.py`
+- Follow the `BaseWorkflow(ABC)` pattern from `src/workflow_base.py`
+- Group methods by category: core ops (diff, checkout, apply_patch, clean, add_remove, commit, amend, reword, rebase,
+  rename_branch), composite ops (stash_and_clean, amend_and_upload, sync, archive, prune, unamend), info queries
+  (get_branch_name, get_description, has_local_changes), and Google-internal ops (upload, evolve, fix, lint, presubmit —
+  with default `NotImplementedError`)
+- All methods take explicit `cwd` parameter, return `CommandResult(success, error, stdout, stderr)` — matching existing
+  `(bool, str)` conventions in `gai_utils.py`
+
+### Phase 3.3: Implement HgProvider
+
+**Goal:** Implement `HgProvider(VCSProvider)` by extracting existing subprocess logic into provider methods. No call
+sites change yet.
+
+- New file: `src/vcs_provider/_hg.py`
+- Mechanical extraction: lift subprocess calls from `commit_utils/workspace.py`, `ace/operations.py`,
+  `ace/handlers/show_diff.py`, `commit_workflow/workflow.py`, `commit_workflow/branch_info.py`
+- Wrap `bb_hg_*` script invocations for composite ops
+- Register with auto-detect: check for `.hg/` directory
+- Unit tests: `test/test_vcs_provider_hg.py` — mock subprocess, verify correct commands
+
+### Phase 3.4: Migrate Call Sites to VCSProvider
+
+**Goal:** Replace all direct `hg`/`bb_hg_*` calls in Python with `VCSProvider` method calls.
+
+- Migrate in tiers:
+  1. Low-level utils: `commit_utils/workspace.py`, `commit_workflow/branch_info.py`
+  2. Core ops: `ace/operations.py`, `ace/handlers/show_diff.py`
+  3. Workflows: `commit_workflow/workflow.py`, `amend_workflow.py`, `rewind_workflow/workflow.py`,
+     `accept_workflow/workflow.py`
+  4. TUI/scheduler: `ace/handlers/` (mail, reword, workflow_handlers), `ace/mail_ops.py`, `ace/archive.py`,
+     `ace/scheduler/` (hooks_runner, mentor_runner, workflows_runner), `ace/tui/actions/`
+- Provider obtained via `get_vcs_provider(cwd)` — most call sites already have `workspace_dir`
+- Update existing test mocks accordingly
+
+### Phase 3.5: Validation & Cleanup
+
+**Goal:** Verify no direct VCS calls remain, remove dead code, ensure tests pass.
+
+- Grep for residual `bb_hg_`/`"hg "` calls outside `_hg.py` — should find zero
+- Remove superseded functions from `workspace.py`, `operations.py` if fully delegated
+- Run `make test-python-gai` and `make lint-python-lite`
+- Maintain test coverage threshold
+
 ---
 
 ## Phase 4: Git VCS Provider Implementation
