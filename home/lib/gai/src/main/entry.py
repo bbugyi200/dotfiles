@@ -1,7 +1,7 @@
 """Main entry point for the GAI CLI tool."""
 
 import sys
-from typing import NoReturn
+from typing import Literal, NoReturn, cast
 
 from ace.query import QueryParseError
 
@@ -205,9 +205,18 @@ def main() -> NoReturn:
         from ace.tui import AceApp
 
         try:
+            # Resolve model tier: prefer --model-tier, fall back to --model-size
+            model_tier_override = getattr(args, "model_tier", None)
+            if model_tier_override is None:
+                old_size = getattr(args, "model_size", None)
+                if old_size is not None:
+                    model_tier_override = {"big": "large", "little": "small"}[old_size]
+
             app = AceApp(
                 query=args.query,
-                model_size_override=getattr(args, "model_size", None),
+                model_tier_override=cast(
+                    Literal["large", "small"] | None, model_tier_override
+                ),
                 refresh_interval=args.refresh_interval,
             )
         except QueryParseError as e:

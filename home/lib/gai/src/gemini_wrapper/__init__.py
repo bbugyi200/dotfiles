@@ -1,4 +1,9 @@
-"""Gemini wrapper module for invoking Gemini agents."""
+"""Gemini wrapper module for invoking Gemini agents.
+
+.. deprecated::
+    Use :mod:`llm_provider` directly for new code. This module delegates
+    to the LLM provider abstraction layer.
+"""
 
 from xprompt import (
     is_jinja2_template,

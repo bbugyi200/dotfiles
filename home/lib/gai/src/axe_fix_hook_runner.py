@@ -25,7 +25,7 @@ from ace.changespec import ChangeSpec, parse_project_file
 from ace.hooks import contract_test_target_command, set_hook_suffix
 from axe_runner_utils import finalize_axe_runner
 from gai_utils import shorten_path, strip_hook_prefix
-from gemini_wrapper import invoke_agent
+from llm_provider import invoke_agent
 from main.query_handler import (
     execute_standalone_steps,
     expand_embedded_workflows_in_query,
@@ -154,7 +154,7 @@ def main() -> int:
         response = invoke_agent(
             expanded_prompt,
             agent_type="fix-hook",
-            model_size="big",
+            model_tier="large",
             workflow="fix-hook",
             artifacts_dir=artifacts_dir,
             timestamp=timestamp,

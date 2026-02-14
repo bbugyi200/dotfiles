@@ -4,7 +4,7 @@ import os
 import sys
 from typing import NoReturn
 
-from gemini_wrapper import invoke_agent
+from llm_provider import invoke_agent
 from main.query_handler import (
     execute_standalone_steps,
     expand_embedded_workflows_in_query,
@@ -152,7 +152,7 @@ class CrsWorkflow(BaseWorkflow):
         response = invoke_agent(
             expanded_prompt,
             agent_type="crs",
-            model_size="big",
+            model_tier="large",
             iteration=1,
             workflow_tag=workflow_tag,
             artifacts_dir=artifacts_dir,

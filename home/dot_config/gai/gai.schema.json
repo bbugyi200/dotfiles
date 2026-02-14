@@ -132,6 +132,32 @@
         }
       }
     },
+    "llm_provider": {
+      "type": "object",
+      "description": "Configuration for the LLM provider abstraction layer",
+      "additionalProperties": false,
+      "properties": {
+        "provider": {
+          "type": "string",
+          "description": "Name of the LLM provider to use (e.g., 'gemini', 'claude')",
+          "default": "gemini"
+        },
+        "model_tier_map": {
+          "type": "object",
+          "description": "Mapping from model tiers to specific model identifiers",
+          "properties": {
+            "large": {
+              "type": "string",
+              "description": "Model identifier for the 'large' tier"
+            },
+            "small": {
+              "type": "string",
+              "description": "Model identifier for the 'small' tier"
+            }
+          }
+        }
+      }
+    },
     "xprompts": {
       "type": "object",
       "description": "Reusable text templates that can be referenced in prompts",
