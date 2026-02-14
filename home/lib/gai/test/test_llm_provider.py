@@ -9,8 +9,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from llm_provider._invoke import invoke_agent
+from llm_provider._subprocess import stream_process_output
 from llm_provider.base import LLMProvider
-from llm_provider.gemini import GeminiProvider, stream_process_output
+from llm_provider.claude import ClaudeCodeProvider
+from llm_provider.gemini import GeminiProvider
 from llm_provider.postprocessing import log_prompt_and_response, save_prompt_to_file
 from llm_provider.registry import _REGISTRY, get_provider, register_provider
 from llm_provider.types import _MODEL_SIZE_TO_TIER, LoggingContext, ModelTier
@@ -521,3 +523,139 @@ def test_llm_provider_invoke_agent_importable() -> None:
     from llm_provider import invoke_agent as llm_invoke_agent
 
     assert callable(llm_invoke_agent)
+
+
+# --- claude.py tests ---
+
+
+def test_claude_provider_is_llm_provider() -> None:
+    """Test that ClaudeCodeProvider is a proper LLMProvider subclass."""
+    provider = ClaudeCodeProvider()
+    assert isinstance(provider, LLMProvider)
+
+
+def test_claude_provider_registered() -> None:
+    """Test that ClaudeCodeProvider is registered as 'claude'."""
+    provider = get_provider("claude")
+    assert isinstance(provider, ClaudeCodeProvider)
+
+
+@patch("llm_provider.claude.stream_process_output")
+@patch("llm_provider.claude.subprocess.Popen")
+@patch("llm_provider.claude.gemini_timer")
+def test_claude_provider_builds_correct_command_large(
+    mock_timer: MagicMock,
+    mock_popen: MagicMock,
+    mock_stream: MagicMock,
+) -> None:
+    """Test that ClaudeCodeProvider builds the correct command for large tier."""
+    mock_process = MagicMock()
+    mock_popen.return_value = mock_process
+    mock_stream.return_value = ("response text", "", 0)
+
+    provider = ClaudeCodeProvider()
+    result = provider.invoke("test prompt", model_tier="large", suppress_output=True)
+
+    # Verify Popen was called with correct args
+    call_args = mock_popen.call_args
+    cmd = call_args[0][0]
+    assert cmd[0] == "claude"
+    assert "-p" in cmd
+    assert "--model" in cmd
+    model_idx = cmd.index("--model")
+    assert cmd[model_idx + 1] == "opus"
+    assert "--output-format" in cmd
+    fmt_idx = cmd.index("--output-format")
+    assert cmd[fmt_idx + 1] == "text"
+    assert "--dangerously-skip-permissions" in cmd
+
+    assert result == "response text"
+
+
+@patch("llm_provider.claude.stream_process_output")
+@patch("llm_provider.claude.subprocess.Popen")
+@patch("llm_provider.claude.gemini_timer")
+def test_claude_provider_builds_correct_command_small(
+    mock_timer: MagicMock,
+    mock_popen: MagicMock,
+    mock_stream: MagicMock,
+) -> None:
+    """Test that ClaudeCodeProvider uses sonnet for small tier."""
+    mock_process = MagicMock()
+    mock_popen.return_value = mock_process
+    mock_stream.return_value = ("response text", "", 0)
+
+    provider = ClaudeCodeProvider()
+    provider.invoke("test prompt", model_tier="small", suppress_output=True)
+
+    call_args = mock_popen.call_args
+    cmd = call_args[0][0]
+    model_idx = cmd.index("--model")
+    assert cmd[model_idx + 1] == "sonnet"
+
+
+@patch.dict(os.environ, {"GAI_CLAUDE_LARGE_ARGS": "--verbose --debug"})
+@patch("llm_provider.claude.stream_process_output")
+@patch("llm_provider.claude.subprocess.Popen")
+@patch("llm_provider.claude.gemini_timer")
+def test_claude_provider_extra_args_from_env_large(
+    mock_timer: MagicMock,
+    mock_popen: MagicMock,
+    mock_stream: MagicMock,
+) -> None:
+    """Test that GAI_CLAUDE_LARGE_ARGS env var is parsed into command."""
+    mock_process = MagicMock()
+    mock_popen.return_value = mock_process
+    mock_stream.return_value = ("response", "", 0)
+
+    provider = ClaudeCodeProvider()
+    provider.invoke("test", model_tier="large", suppress_output=True)
+
+    call_args = mock_popen.call_args
+    cmd = call_args[0][0]
+    assert "--verbose" in cmd
+    assert "--debug" in cmd
+
+
+@patch.dict(os.environ, {"GAI_CLAUDE_SMALL_ARGS": "--max-tokens 1000"})
+@patch("llm_provider.claude.stream_process_output")
+@patch("llm_provider.claude.subprocess.Popen")
+@patch("llm_provider.claude.gemini_timer")
+def test_claude_provider_extra_args_from_env_small(
+    mock_timer: MagicMock,
+    mock_popen: MagicMock,
+    mock_stream: MagicMock,
+) -> None:
+    """Test that GAI_CLAUDE_SMALL_ARGS env var is parsed into command."""
+    mock_process = MagicMock()
+    mock_popen.return_value = mock_process
+    mock_stream.return_value = ("response", "", 0)
+
+    provider = ClaudeCodeProvider()
+    provider.invoke("test", model_tier="small", suppress_output=True)
+
+    call_args = mock_popen.call_args
+    cmd = call_args[0][0]
+    assert "--max-tokens" in cmd
+    assert "1000" in cmd
+
+
+@patch("llm_provider.claude.stream_process_output")
+@patch("llm_provider.claude.subprocess.Popen")
+@patch("llm_provider.claude.gemini_timer")
+def test_claude_provider_raises_on_failure(
+    mock_timer: MagicMock,
+    mock_popen: MagicMock,
+    mock_stream: MagicMock,
+) -> None:
+    """Test that ClaudeCodeProvider raises CalledProcessError on non-zero exit."""
+    mock_process = MagicMock()
+    mock_popen.return_value = mock_process
+    mock_stream.return_value = ("", "some error", 1)
+
+    provider = ClaudeCodeProvider()
+    with pytest.raises(subprocess.CalledProcessError) as exc_info:
+        provider.invoke("test", model_tier="large", suppress_output=True)
+
+    assert exc_info.value.returncode == 1
+    assert exc_info.value.stderr == "some error"

@@ -1,8 +1,4 @@
-"""Gemini LLM provider implementation.
-
-Extracts only the Gemini-specific subprocess logic from the old
-GeminiCommandWrapper.invoke() method.
-"""
+"""Claude Code LLM provider implementation."""
 
 import os
 import subprocess
@@ -13,9 +9,15 @@ from ._subprocess import stream_process_output
 from .base import LLMProvider
 from .types import ModelTier
 
+# Map model tiers to Claude CLI aliases
+_TIER_TO_MODEL: dict[ModelTier, str] = {
+    "large": "opus",
+    "small": "sonnet",
+}
 
-class GeminiProvider(LLMProvider):
-    """LLM provider that invokes Google's Gemini CLI tool."""
+
+class ClaudeCodeProvider(LLMProvider):
+    """LLM provider that invokes the Claude Code CLI tool."""
 
     def invoke(
         self,
@@ -24,7 +26,7 @@ class GeminiProvider(LLMProvider):
         model_tier: ModelTier,
         suppress_output: bool = False,
     ) -> str:
-        """Invoke Gemini CLI with the given prompt.
+        """Invoke Claude Code CLI with the given prompt.
 
         Args:
             prompt: The preprocessed prompt to send.
@@ -32,22 +34,29 @@ class GeminiProvider(LLMProvider):
             suppress_output: If True, suppress real-time output to console.
 
         Returns:
-            The response text from Gemini.
+            The response text from Claude.
 
         Raises:
-            subprocess.CalledProcessError: If the Gemini CLI process fails.
+            subprocess.CalledProcessError: If the Claude CLI process fails.
         """
+        model_alias = _TIER_TO_MODEL[model_tier]
+
         # Build base command arguments
         base_args = [
-            "/google/bin/releases/gemini-cli/tools/gemini",
-            "--yolo",
+            "claude",
+            "-p",
+            "--model",
+            model_alias,
+            "--output-format",
+            "text",
+            "--dangerously-skip-permissions",
         ]
 
         # Parse additional args from environment variable based on tier
         if model_tier == "large":
-            extra_args_env = os.environ.get("GAI_BIG_GEMINI_ARGS")
+            extra_args_env = os.environ.get("GAI_CLAUDE_LARGE_ARGS")
         else:
-            extra_args_env = os.environ.get("GAI_LITTLE_GEMINI_ARGS")
+            extra_args_env = os.environ.get("GAI_CLAUDE_SMALL_ARGS")
 
         if extra_args_env:
             for arg in extra_args_env.split():
@@ -55,7 +64,7 @@ class GeminiProvider(LLMProvider):
 
         # Start the process and stream output in real-time with timer
         timer_context = (
-            gemini_timer("Waiting for Gemini") if not suppress_output else None
+            gemini_timer("Waiting for Claude") if not suppress_output else None
         )
 
         if timer_context:
@@ -72,7 +81,7 @@ class GeminiProvider(LLMProvider):
 
         # Check if process failed
         if return_code != 0:
-            error_content = f"Error running gemini command (exit code {return_code})"
+            error_content = f"Error running claude command (exit code {return_code})"
             if stderr_content:
                 error_content += f": {stderr_content.strip()}"
             raise subprocess.CalledProcessError(
@@ -90,7 +99,7 @@ class GeminiProvider(LLMProvider):
         prompt: str,
         suppress_output: bool,
     ) -> tuple[str, str, int]:
-        """Run the Gemini CLI subprocess.
+        """Run the Claude CLI subprocess.
 
         Args:
             args: Command-line arguments.

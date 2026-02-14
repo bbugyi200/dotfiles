@@ -158,7 +158,7 @@ def invoke_agent(
         return AIMessage(content=response_content)
 
     except subprocess.CalledProcessError as e:
-        error_content = f"Error running gemini command: {e.stderr}"
+        error_content = f"Error running LLM provider command: {e.stderr}"
 
         postprocess_error(
             prompt=query,

@@ -52,8 +52,10 @@ def _get_default_provider_name() -> str:
 
 def _register_builtin_providers() -> None:
     """Register the built-in providers."""
+    from .claude import ClaudeCodeProvider
     from .gemini import GeminiProvider
 
+    register_provider("claude", ClaudeCodeProvider)
     register_provider("gemini", GeminiProvider)
 
 
