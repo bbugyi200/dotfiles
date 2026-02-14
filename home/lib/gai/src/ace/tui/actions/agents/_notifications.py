@@ -42,6 +42,9 @@ class AgentNotificationMixin:
         current_dismissible_non_axe: set[tuple[AgentType, str, str | None]] = set()
 
         for agent in all_agents:
+            # Skip workflow children — only top-level agents trigger notifications
+            if agent.is_workflow_child:
+                continue
             is_axe = is_axe_spawned_agent(agent)
             is_dismissible = agent.status in DISMISSABLE_STATUSES
 
@@ -123,6 +126,9 @@ class AgentNotificationMixin:
         # Collect all dismissable non-axe agents
         current_dismissible_non_axe: set[tuple[AgentType, str, str | None]] = set()
         for agent in all_agents:
+            # Skip workflow children — only top-level agents trigger notifications
+            if agent.is_workflow_child:
+                continue
             is_axe = is_axe_spawned_agent(agent)
             is_dismissible = agent.status in DISMISSABLE_STATUSES
 
