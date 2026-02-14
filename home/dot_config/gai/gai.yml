@@ -114,6 +114,8 @@ xprompts:
       {%- endif %}
   cld: |
     #x(cl_changes.diff, hg pdiff $(branch_changes | grep -v -E 'png$|fingerprint$') | perl -nE 'print s{google3/}{}gr')
+  cl_local_diff: |
+    #x(cl_changes.diff, hg diff $(branch_local_changes | grep -v -E 'png$|fingerprint$') | perl -nE 'print s{google3/}{}gr')
   clr:
     input: { cl_id: int }
     content: "cl/{{ cl_id }} (see the #x(cl_desc_and_diff.diff, p4 diff -c '{{ cl_id }}') file)"
@@ -136,7 +138,7 @@ xprompts:
     content: |
       Can you help me add the {{ feature }} #feat to FEATURE_GROUP_ALL in the TestPublisherFeatureGroups.java file? #commit(launch_tests, {{ bug_id }})
   make_cl_desc: |
-    Can you review the changes made by this CL (see the #cld file) and suggest a new CL description that conforms with
+    Can you review the changes made by this CL (see the #cl_local_diff file) and suggest a new CL description that conforms with
     the advice given in the @~/bb/docs/cl_descriptions.md document?
   mentor/aaa: |
     #mentor: Can you help me enforce the AAA (arrange, act, assert) test method structure? In particular, find and fix Any test
