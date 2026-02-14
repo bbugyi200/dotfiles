@@ -1,14 +1,13 @@
 """Gemini command wrapper and agent invocation utilities."""
 
 import os
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from gai_utils import generate_timestamp
 from langchain_core.messages import AIMessage, HumanMessage
 from llm_provider import (
     LLMInvocationError,
     LoggingContext,
-    ModelTier,
     get_provider,
     load_llm_provider_config,
     preprocess_prompt,
@@ -16,7 +15,6 @@ from llm_provider import (
     run_postprocessing,
     save_prompt_to_file,
 )
-from llm_provider import invoke_agent as _canonical_invoke_agent
 from rich_utils import print_decision_counts, print_prompt_and_response
 
 
@@ -24,7 +22,7 @@ def invoke_agent(
     prompt: str,
     *,
     agent_type: str,
-    model_tier: ModelTier = "big",
+    model_size: Literal["little", "big"] = "big",
     iteration: int | None = None,
     workflow_tag: str | None = None,
     artifacts_dir: str | None = None,
@@ -35,48 +33,55 @@ def invoke_agent(
 ) -> AIMessage:
     """Invoke an LLM agent with standard logging context.
 
-    .. deprecated::
-        Import ``invoke_agent`` from ``llm_provider`` instead.
+    The provider is selected via the ``llm_provider.provider`` key in
+    ``gai.yml`` (defaults to ``"gemini"``).
+
+    This is a convenience function that wraps the common pattern of:
+    1. Creating a GeminiCommandWrapper
+    2. Setting logging context
+    3. Invoking with a HumanMessage prompt
+
+    Args:
+        prompt: The prompt to send to the agent.
+        agent_type: Type of agent (e.g., "editor", "planner", "research").
+        model_size: Model size ("little" or "big").
+        iteration: Optional iteration number.
+        workflow_tag: Optional workflow tag.
+        artifacts_dir: Optional artifacts directory for logging.
+        workflow: Optional workflow name for chat history.
+        suppress_output: If True, suppress output display.
+        timestamp: Optional timestamp for chat file naming (YYmmdd_HHMMSS format).
+        is_home_mode: If True, skip file copying for @ file references.
+
+    Returns:
+        The AIMessage response from the agent.
     """
-    return _canonical_invoke_agent(
-        prompt,
+    model = GeminiCommandWrapper(model_size=model_size)
+    model.set_logging_context(
         agent_type=agent_type,
-        model_tier=model_tier,
         iteration=iteration,
         workflow_tag=workflow_tag,
         artifacts_dir=artifacts_dir,
-        workflow=workflow,
         suppress_output=suppress_output,
+        workflow=workflow,
         timestamp=timestamp,
         is_home_mode=is_home_mode,
     )
+    messages: list[HumanMessage | AIMessage] = [HumanMessage(content=prompt)]
+    return model.invoke(messages)
 
 
 class GeminiCommandWrapper:
-    """Orchestrator for LLM invocations with logging and pre/post-processing.
-
-    .. deprecated::
-        Use ``llm_provider.invoke_agent()`` directly instead.
-    """
-
-    def __init__(self, model_tier: ModelTier = "big") -> None:
+    def __init__(self, model_size: Literal["little", "big"] = "big") -> None:
         self.decision_counts: dict[str, Any] | None = None
         # Check for global override first, then use constructor arg
-        override = os.environ.get("GAI_MODEL_TIER_OVERRIDE") or os.environ.get(
-            "GAI_MODEL_SIZE_OVERRIDE"
+        override = os.environ.get("GAI_MODEL_SIZE_OVERRIDE")
+        self.model_size: Literal["little", "big"] = (
+            cast(Literal["little", "big"], override) if override else model_size
         )
-        self.model_tier: ModelTier = (
-            cast(ModelTier, override) if override else model_tier
-        )
-        self._context = LoggingContext(model_tier=self.model_tier)
+        self._context = LoggingContext(model_size=self.model_size)
         config = load_llm_provider_config()
         self._provider = get_provider(config.provider)
-
-    # Backward-compatible alias
-    @property
-    def model_size(self) -> ModelTier:
-        """Return model_tier (backward-compatible alias)."""
-        return self.model_tier
 
     def set_decision_counts(self, decision_counts: dict[str, Any]) -> None:
         """Set the decision counts for display after prompts."""
@@ -107,7 +112,7 @@ class GeminiCommandWrapper:
         """
         self._context = LoggingContext(
             agent_type=agent_type,
-            model_tier=self.model_tier,
+            model_size=self.model_size,
             iteration=iteration,
             workflow_tag=workflow_tag,
             artifacts_dir=artifacts_dir,
@@ -173,9 +178,9 @@ class GeminiCommandWrapper:
         # Preprocessing pipeline
         query = preprocess_prompt(query, is_home_mode=self._context.is_home_mode)
 
-        # Build agent type with model tier suffix
-        tier_label = "BIG" if self.model_tier == "big" else "LITTLE"
-        agent_type_with_tier = f"{self._context.agent_type} [{tier_label}]"
+        # Build agent type with model size suffix
+        model_size_label = "BIG" if self.model_size == "big" else "LITTLE"
+        agent_type_with_size = f"{self._context.agent_type} [{model_size_label}]"
 
         # Display decision counts before the prompt if available
         if not self._context.suppress_output:
@@ -186,7 +191,7 @@ class GeminiCommandWrapper:
             print_prompt_and_response(
                 prompt=query,
                 response="",
-                agent_type=agent_type_with_tier,
+                agent_type=agent_type_with_size,
                 iteration=self._context.iteration,
                 show_prompt=True,
                 show_response=False,
@@ -206,7 +211,7 @@ class GeminiCommandWrapper:
         try:
             response_content = self._provider.invoke_llm(
                 query,
-                model_size=self.model_tier,
+                model_size=self.model_size,
                 suppress_output=self._context.suppress_output,
             )
 
@@ -225,7 +230,7 @@ class GeminiCommandWrapper:
                 query=query,
                 error_content=error_content,
                 context=self._context,
-                agent_type_with_size=agent_type_with_tier,
+                agent_type_with_size=agent_type_with_size,
                 start_timestamp=start_timestamp,
             )
 
@@ -237,7 +242,7 @@ class GeminiCommandWrapper:
                 query=query,
                 error_content=error_content,
                 context=self._context,
-                agent_type_with_size=agent_type_with_tier,
+                agent_type_with_size=agent_type_with_size,
                 start_timestamp=start_timestamp,
             )
 

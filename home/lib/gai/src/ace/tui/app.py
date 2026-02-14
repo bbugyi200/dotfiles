@@ -185,14 +185,14 @@ class AceApp(
     def __init__(
         self,
         query: str = '"(!: "',
-        model_tier_override: Literal["little", "big"] | None = None,
+        model_size_override: Literal["little", "big"] | None = None,
         refresh_interval: int = 10,
     ) -> None:
         """Initialize the ace TUI app.
 
         Args:
             query: Query string for filtering ChangeSpecs
-            model_tier_override: Override model tier for all LLM invocations
+            model_size_override: Override model size for all GeminiCommandWrapper instances
             refresh_interval: Auto-refresh interval in seconds (0 to disable)
         """
         super().__init__()
@@ -295,9 +295,9 @@ class AceApp(
 
         self._changespec_history = create_cs_history_stacks()
 
-        # Set global model tier override in environment if specified
-        if model_tier_override:
-            os.environ["GAI_MODEL_TIER_OVERRIDE"] = model_tier_override
+        # Set global model size override in environment if specified
+        if model_size_override:
+            os.environ["GAI_MODEL_SIZE_OVERRIDE"] = model_size_override
 
     @property
     def canonical_query_string(self) -> str:

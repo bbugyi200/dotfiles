@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 
-from .types import ModelTier
+from .types import ModelSize
 
 
 class LLMProvider(ABC):
@@ -13,7 +13,7 @@ class LLMProvider(ABC):
         self,
         query: str,
         *,
-        model_size: ModelTier,
+        model_size: ModelSize,
         suppress_output: bool = False,
     ) -> str:
         """Invoke the LLM with a preprocessed query.

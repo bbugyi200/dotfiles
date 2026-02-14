@@ -215,29 +215,19 @@ def test_gemini_command_wrapper_set_logging_context() -> None:
     assert wrapper.workflow == "my-workflow"
 
 
-def test_gemini_command_wrapper_model_tier_override() -> None:
-    """Test that model tier can be overridden by environment variable."""
+def test_gemini_command_wrapper_model_size_override() -> None:
+    """Test that model size can be overridden by environment variable."""
     from gemini_wrapper import GeminiCommandWrapper
 
     # Test default
-    wrapper = GeminiCommandWrapper(model_tier="little")
-    assert wrapper.model_tier == "little"
-    # Backward-compat alias
+    wrapper = GeminiCommandWrapper(model_size="little")
     assert wrapper.model_size == "little"
 
-    # Test override via new env var
-    os.environ["GAI_MODEL_TIER_OVERRIDE"] = "big"
-    try:
-        wrapper = GeminiCommandWrapper(model_tier="little")
-        assert wrapper.model_tier == "big"
-    finally:
-        del os.environ["GAI_MODEL_TIER_OVERRIDE"]
-
-    # Test override via legacy env var
+    # Test override
     os.environ["GAI_MODEL_SIZE_OVERRIDE"] = "big"
     try:
-        wrapper = GeminiCommandWrapper(model_tier="little")
-        assert wrapper.model_tier == "big"
+        wrapper = GeminiCommandWrapper(model_size="little")
+        assert wrapper.model_size == "big"
     finally:
         del os.environ["GAI_MODEL_SIZE_OVERRIDE"]
 
@@ -273,12 +263,12 @@ def test_gemini_command_wrapper_display_decision_counts(
         mock_print.assert_called_once_with({"yes": 5, "no": 3})
 
 
-def test_gemini_command_wrapper_big_model_tier() -> None:
-    """Test creating wrapper with big model tier."""
+def test_gemini_command_wrapper_big_model_size() -> None:
+    """Test creating wrapper with big model size."""
     from gemini_wrapper import GeminiCommandWrapper
 
-    wrapper = GeminiCommandWrapper(model_tier="big")
-    assert wrapper.model_tier == "big"
+    wrapper = GeminiCommandWrapper(model_size="big")
+    assert wrapper.model_size == "big"
     assert wrapper.agent_type == "agent"
     assert wrapper.iteration is None
     assert wrapper.workflow_tag is None

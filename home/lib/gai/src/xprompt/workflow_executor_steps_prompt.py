@@ -159,7 +159,7 @@ class PromptStepMixin:
         Returns:
             True if step succeeded, False if rejected by user.
         """
-        from llm_provider import invoke_agent
+        from gemini_wrapper import invoke_agent
         from shared_utils import ensure_str_content
 
         from xprompt import (

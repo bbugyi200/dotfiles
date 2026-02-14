@@ -3,7 +3,7 @@
 import sys
 from typing import NoReturn
 
-from llm_provider import invoke_agent
+from gemini_wrapper import invoke_agent
 from shared_utils import ensure_str_content
 from workflow_base import BaseWorkflow
 from xprompt import escape_for_xprompt, process_xprompt_references
@@ -104,7 +104,7 @@ class SummarizeWorkflow(BaseWorkflow):
         response = invoke_agent(
             prompt,
             agent_type="summarize",
-            model_tier="big",
+            model_size="big",
             suppress_output=self.suppress_output,
             workflow="summarize",
             artifacts_dir=self.artifacts_dir,

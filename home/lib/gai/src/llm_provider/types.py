@@ -3,10 +3,7 @@
 from dataclasses import dataclass
 from typing import Any, Literal
 
-ModelTier = Literal["little", "big"]
-
-# Backward-compatible alias.
-ModelSize = ModelTier
+ModelSize = Literal["little", "big"]
 
 
 class LLMInvocationError(Exception):
@@ -18,7 +15,7 @@ class LoggingContext:
     """Consolidates all metadata needed for logging prompts and responses."""
 
     agent_type: str = "agent"
-    model_tier: ModelTier = "big"
+    model_size: ModelSize = "big"
     iteration: int | None = None
     workflow_tag: str | None = None
     artifacts_dir: str | None = None

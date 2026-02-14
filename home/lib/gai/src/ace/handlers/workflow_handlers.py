@@ -13,7 +13,7 @@ from change_actions import (
 from chat_history import save_chat_history
 from commit_utils import run_bb_hg_clean
 from gai_utils import generate_timestamp, strip_hook_prefix
-from llm_provider import invoke_agent
+from gemini_wrapper import invoke_agent
 from running_field import (
     claim_workspace,
     get_first_available_workspace,
@@ -306,7 +306,7 @@ def handle_run_fix_hook_workflow(
         response = invoke_agent(
             prompt,
             agent_type="fix-hook",
-            model_tier="big",
+            model_size="big",
             workflow="fix-hook",
         )
         self.console.print(f"\n[green]Agent Response:[/green]\n{response.content}\n")
