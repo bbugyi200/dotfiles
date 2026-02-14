@@ -1,3 +1,7 @@
+input:
+  cl_name: { type: line, default: "" }
+  project_file: { type: path, default: "" }
+
 steps:
   - name: gen_desc
     prompt: |
