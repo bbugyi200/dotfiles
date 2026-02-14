@@ -59,4 +59,5 @@ def _ensure_providers_loaded() -> None:
     if _PROVIDERS:
         return
     # Import triggers register_provider() at module level
+    from . import _git as _git  # noqa: F401
     from . import _hg as _hg  # noqa: F401
