@@ -1,6 +1,8 @@
 """Tests for gemini_wrapper module."""
 
 import os
+import subprocess
+import sys
 import tempfile
 from typing import TYPE_CHECKING
 from unittest.mock import patch
@@ -181,6 +183,166 @@ def testprocess_file_references_at_not_in_middle_of_word() -> None:
     assert result == prompt_no_space  # Unchanged (@ not after space)
 
 
+def test_log_prompt_and_response_basic() -> None:
+    """Test basic logging of prompt and response."""
+    from gemini_wrapper.wrapper import _log_prompt_and_response
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _log_prompt_and_response(
+            prompt="Test prompt",
+            response="Test response",
+            artifacts_dir=tmpdir,
+            agent_type="test_agent",
+        )
+
+        # Check that the log file was created
+        log_file = os.path.join(tmpdir, "gai.md")
+        assert os.path.exists(log_file)
+
+        # Check contents
+        with open(log_file) as f:
+            content = f.read()
+        assert "Test prompt" in content
+        assert "Test response" in content
+        assert "test_agent" in content
+
+
+def test_log_prompt_and_response_with_iteration() -> None:
+    """Test logging with iteration number."""
+    from gemini_wrapper.wrapper import _log_prompt_and_response
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _log_prompt_and_response(
+            prompt="Test prompt",
+            response="Test response",
+            artifacts_dir=tmpdir,
+            agent_type="editor",
+            iteration=5,
+        )
+
+        log_file = os.path.join(tmpdir, "gai.md")
+        with open(log_file) as f:
+            content = f.read()
+        assert "iteration 5" in content
+
+
+def test_log_prompt_and_response_with_workflow_tag() -> None:
+    """Test logging with workflow tag."""
+    from gemini_wrapper.wrapper import _log_prompt_and_response
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _log_prompt_and_response(
+            prompt="Test prompt",
+            response="Test response",
+            artifacts_dir=tmpdir,
+            agent_type="planner",
+            workflow_tag="crs",
+        )
+
+        log_file = os.path.join(tmpdir, "gai.md")
+        with open(log_file) as f:
+            content = f.read()
+        assert "tag crs" in content
+
+
+def test_log_prompt_and_response_appends() -> None:
+    """Test that multiple logs are appended to the same file."""
+    from gemini_wrapper.wrapper import _log_prompt_and_response
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _log_prompt_and_response(
+            prompt="First prompt",
+            response="First response",
+            artifacts_dir=tmpdir,
+        )
+        _log_prompt_and_response(
+            prompt="Second prompt",
+            response="Second response",
+            artifacts_dir=tmpdir,
+        )
+
+        log_file = os.path.join(tmpdir, "gai.md")
+        with open(log_file) as f:
+            content = f.read()
+        assert "First prompt" in content
+        assert "Second prompt" in content
+        assert "First response" in content
+        assert "Second response" in content
+
+
+def test_log_prompt_and_response_handles_error(
+    capsys: "CaptureFixture[str]",
+) -> None:
+    """Test that logging errors are handled gracefully."""
+    from gemini_wrapper.wrapper import _log_prompt_and_response
+
+    # Try to log to a non-existent directory that can't be created
+    _log_prompt_and_response(
+        prompt="Test prompt",
+        response="Test response",
+        artifacts_dir="/nonexistent/path/that/cannot/exist",
+    )
+
+    # Should print a warning but not raise
+    captured = capsys.readouterr()
+    assert "Warning" in captured.out
+
+
+def test_stream_process_output_basic() -> None:
+    """Test basic streaming of process output."""
+    from gemini_wrapper.wrapper import _stream_process_output
+
+    # Create a simple process that outputs to stdout
+    process = subprocess.Popen(
+        ["echo", "hello world"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    stdout, stderr, return_code = _stream_process_output(process, suppress_output=True)
+
+    assert "hello world" in stdout
+    assert stderr == ""
+    assert return_code == 0
+
+
+def test_stream_process_output_stderr() -> None:
+    """Test streaming of process stderr."""
+    from gemini_wrapper.wrapper import _stream_process_output
+
+    # Create a process that outputs to stderr
+    process = subprocess.Popen(
+        [sys.executable, "-c", "import sys; sys.stderr.write('error message\\n')"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    stdout, stderr, return_code = _stream_process_output(process, suppress_output=True)
+
+    assert stdout == ""
+    assert "error message" in stderr
+    assert return_code == 0
+
+
+def test_stream_process_output_nonzero_exit() -> None:
+    """Test streaming when process exits with non-zero code."""
+    from gemini_wrapper.wrapper import _stream_process_output
+
+    # Create a process that exits with error
+    process = subprocess.Popen(
+        [sys.executable, "-c", "import sys; sys.exit(42)"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    stdout, stderr, return_code = _stream_process_output(process, suppress_output=True)
+
+    assert return_code == 42
+
+
 def test_gemini_command_wrapper_set_decision_counts() -> None:
     """Test setting decision counts on the wrapper."""
     from gemini_wrapper import GeminiCommandWrapper
@@ -250,6 +412,7 @@ def test_gemini_command_wrapper_display_decision_counts(
     from gemini_wrapper import GeminiCommandWrapper
 
     wrapper = GeminiCommandWrapper()
+    wrapper.suppress_output = False
 
     # With no counts set, should do nothing
     wrapper._display_decision_counts()
