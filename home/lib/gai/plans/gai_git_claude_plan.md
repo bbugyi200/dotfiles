@@ -26,21 +26,47 @@ abstraction layer exists.
 
 **Goal:** Extract an abstract interface from the existing Gemini code so that LLM provider is pluggable.
 
-- Define an `LLMProvider` abstract base class (or Protocol) with methods matching what `invoke_agent()` currently does:
-  submit prompt, stream response, return result
-- Refactor `GeminiCommandWrapper` to implement this interface
-- Create a provider registry/factory that returns the configured provider
-- Replace all 7 direct `invoke_agent()` call sites to go through the abstraction
-- Generalize model size concept — instead of "big"/"little", use a provider-agnostic tier system (e.g., "large"/"small")
-  that each provider maps to its own models
+### Phase 1.1: Define Abstract Interface & Refactor GeminiProvider
 
-**Key files:**
+**Goal:** Create the `LLMProvider` abstraction and refactor existing Gemini code to implement it, without changing any
+consumer call sites.
 
-- `src/gemini_wrapper/wrapper.py` → extract interface, keep as Gemini impl
-- `src/gemini_wrapper/__init__.py` → re-export the abstract interface
-- New: `src/llm_provider/` package (base class, registry, gemini impl)
-- Consumers: `mentor_workflow.py`, `crs_workflow.py`, `summarize_workflow.py`, `axe_fix_hook_runner.py`,
-  `xprompt/workflow_executor_steps_prompt.py`, `main/query_handler/_query.py`
+- Create `src/llm_provider/` package: `base.py` (LLMProvider ABC with `invoke()` method), `types.py` (ModelTier type +
+  LoggingContext dataclass), `__init__.py`
+- Extract prompt pre-processing pipeline (xprompt, command substitution, file refs, jinja2, prettier, HTML comments)
+  from `GeminiCommandWrapper.invoke()` into `src/llm_provider/preprocessing.py` — these are already delegated to
+  separate modules, so this is lifting the sequential call chain into a standalone function
+- Extract post-processing (artifact logging, chat history, audio notification) into
+  `src/llm_provider/postprocessing.py`
+- Create `src/llm_provider/gemini.py` — `GeminiProvider(LLMProvider)` with only Gemini-specific logic (CLI command,
+  subprocess streaming, env vars)
+- Keep `invoke_agent()` working exactly as before internally using `GeminiProvider`
+- Add unit tests
+
+### Phase 1.2: Provider Registry & Configuration
+
+**Goal:** Create a registry/factory so the active provider is selected via configuration.
+
+- Create `src/llm_provider/registry.py` — maps provider names to LLMProvider subclasses
+- Register `GeminiProvider` as `"gemini"` (default)
+- Add `llm_provider` section to `gai.yml` config + update `gai.schema.json`
+- Update `invoke_agent()` to use registry lookup instead of hardcoding GeminiProvider
+- Add tests
+
+### Phase 1.3: Migrate Consumers & Generalize Model Tiers
+
+**Goal:** Replace all direct `invoke_agent()` imports with the new abstraction and retire `"big"`/`"little"`
+terminology.
+
+- Update all 7 consumer imports from `from gemini_wrapper import invoke_agent` to
+  `from llm_provider import invoke_agent`
+- Replace `model_size: Literal["little", "big"]` with `model_tier: ModelTier` across consumers
+- Move `invoke_agent()` canonical location to `llm_provider/__init__.py`, keep backward-compat re-export in
+  `gemini_wrapper`
+- Update CLI `--model-size` → `--model-tier` (keep old as deprecated alias)
+- Update `ace/tui/app.py` model size override logic
+- Deprecate/remove `GeminiCommandWrapper` class
+- Update existing tests, ensure `make test-python-gai` and `make lint-python-lite` pass
 
 ---
 
