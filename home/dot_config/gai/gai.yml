@@ -236,6 +236,7 @@ xprompts:
       targets (e.g., Baz).
     - Additionally, simplify `FooDtoConverter` by using `ignoreField` for `estimated_value` and
       `usage_percentage` instead of empty manual overrides.
+    ```
 
     But prefer a single-sentence body over a multi-line body when it is sufficient to describe the change (don't delve too much into implementation details). For example, consider the following CL description:
 
