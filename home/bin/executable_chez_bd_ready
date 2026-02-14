@@ -42,10 +42,8 @@ function run() {
     fi
 
     iter=$((iter + 1))
-    if [[ "${VERBOSE}" -gt 0 ]]; then
-      log::info "No beads ready. Attempt %d/%d, retrying in %ds..." \
-        "${iter}" "${MAX_ITERS}" "${SLEEP_SECS}"
-    fi
+    log::info "No beads ready. Attempt %d/%d, retrying in %ds..." \
+      "${iter}" "${MAX_ITERS}" "${SLEEP_SECS}"
     sleep "${SLEEP_SECS}"
   done
 
