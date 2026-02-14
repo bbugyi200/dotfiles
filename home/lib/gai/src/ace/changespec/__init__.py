@@ -130,7 +130,8 @@ def find_all_changespecs() -> list[ChangeSpec]:
     """Find all ChangeSpecs in all project files.
 
     Returns:
-        List of all ChangeSpec objects from ~/.gai/projects/<project>/<project>.gp files
+        List of all ChangeSpec objects from ~/.gai/projects/<project>/ files
+        (.yaml preferred over .gp when both exist)
     """
     projects_dir = Path.home() / ".gai" / "projects"
 
@@ -144,11 +145,15 @@ def find_all_changespecs() -> list[ChangeSpec]:
         if not project_dir.is_dir():
             continue
 
-        # Look for <project>.gp file inside the project directory
+        # Look for project file: prefer .yaml over .gp
         project_name = project_dir.name
+        yaml_file = project_dir / f"{project_name}.yaml"
         gp_file = project_dir / f"{project_name}.gp"
 
-        if gp_file.exists():
+        if yaml_file.exists():
+            changespecs = parse_project_file(str(yaml_file))
+            all_changespecs.extend(changespecs)
+        elif gp_file.exists():
             changespecs = parse_project_file(str(gp_file))
             all_changespecs.extend(changespecs)
 
