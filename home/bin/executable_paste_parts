@@ -32,6 +32,10 @@ EOM
 function run() {
   parse_cli_args "$@"
 
+  # Kill Clipy clipboard manager to prevent interference.
+  killall Clipy 2>/dev/null
+  trap 'open -a Clipy' EXIT
+
   local original_clip
   original_clip="$(paste_clip)"
 
