@@ -31,7 +31,8 @@ For each entry in the split specification (process in the order shown - parents 
    - Use the description to understand what this CL should contain
    - Apply EXACTLY the portions of the diff that logically belong to this CL
 
-3. **Create the description file** at `bb/gai/<name>_desc.txt` with the description from the spec.
+3. **Create the description file** at `bb/gai/<name>_desc.txt` with ONLY the description text from the spec. Do NOT
+   include the CL name — only the description that follows it.
 
 4. **Run:** `gai commit {{ bug_flag ~ " " }}-n "{{ note }}" <name> bb/gai/<name>_desc.txt`
 
