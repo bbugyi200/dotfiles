@@ -22,3 +22,9 @@ bd update <id> --status in_progress  # Claim work
 bd close <id>         # Complete work
 bd sync               # Sync with git
 ```
+
+## Chezmoi Lock
+
+Before making any file changes (edits, writes, etc.), you MUST run `chez_lock claim` via Bash. This acquires a
+file-based lock to prevent concurrent chezmoi operations across tmux panes. Only run this once per session, before your
+first file modification. Do not release the lock manually — it is released automatically by the stop hook.

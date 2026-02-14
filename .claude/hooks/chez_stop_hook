@@ -61,6 +61,7 @@ function run() {
     # If marker file exists from previous commit prompt, skip all checks
     if [ -f "$STORED_DIFF_FILE" ]; then
         rm -f "$STORED_DIFF_FILE"
+        chez_lock release
         return 0
     fi
 
@@ -252,6 +253,7 @@ function run() {
         return 2
     fi
 
+    chez_lock release
     return 0
 }
 
