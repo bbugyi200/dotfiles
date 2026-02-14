@@ -141,6 +141,7 @@ def main() -> None:
         # Inject cl_name into named_args so it's available in workflow context
         workflow_named_args = dict(named_args)
         workflow_named_args["cl_name"] = cl_name
+        workflow_named_args["project_file"] = project_file
 
         execute_workflow(
             workflow_name,

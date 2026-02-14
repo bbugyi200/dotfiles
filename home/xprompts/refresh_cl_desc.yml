@@ -7,5 +7,5 @@ steps:
 
   - name: reword
     bash: |
-      gai_refresh_cl_desc {{ gen_desc.desc_file }}
+      gai_refresh_cl_desc {{ gen_desc.desc_file }} {{ cl_name }} {{ project_file }}
     output: { success: bool }
