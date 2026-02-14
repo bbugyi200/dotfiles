@@ -71,6 +71,45 @@ def _collect_embedded_post_step_outputs(
     return diff_path, meta_fields
 
 
+def _resolve_embedded_path_fields(
+    output: dict[str, Any],
+    step: WorkflowStep,
+    embedded_workflows: list["EmbeddedWorkflowInfo"],
+) -> None:
+    """Populate missing path-type output fields from embedded workflow contexts.
+
+    When a parent step declares path-type output fields (e.g., {desc_file: path}),
+    the actual file paths may come from embedded workflow pre-steps. This resolves
+    those paths before HITL review so file contents can be displayed.
+    """
+    from xprompt.workflow_executor_steps_embedded import map_output_by_type
+
+    parent_output_types = output_types_from_step(step)
+    if not parent_output_types:
+        return
+
+    path_fields = {k for k, v in parent_output_types.items() if v == "path"}
+    if not path_fields:
+        return
+
+    for info in embedded_workflows:
+        for pre_step in info.pre_steps:
+            if not pre_step.output:
+                continue
+            pre_step_output = info.context.get(pre_step.name)
+            if not isinstance(pre_step_output, dict):
+                continue
+            # step.output is guaranteed non-None here because
+            # output_types_from_step() returned a non-None dict above.
+            assert step.output is not None
+            mapped = map_output_by_type(step.output, pre_step.output, pre_step_output)
+            if mapped is None:
+                continue
+            for field_name in path_fields:
+                if field_name in mapped and field_name not in output:
+                    output[field_name] = mapped[field_name]
+
+
 class PromptStepMixin:
     """Mixin class providing prompt step execution.
 
@@ -195,6 +234,10 @@ class PromptStepMixin:
                 output = {"_raw": response_text}
         else:
             output = {"_raw": response_text}
+
+        # Resolve path fields from embedded contexts before HITL
+        if step.hitl and embedded_workflows:
+            _resolve_embedded_path_fields(output, step, embedded_workflows)
 
         # HITL review if required
         if step.hitl and self.hitl_handler:
