@@ -8,7 +8,7 @@ import sys
 from rich_utils import gemini_timer
 
 from .base import LLMProvider
-from .types import LLMInvocationError, ModelSize
+from .types import LLMInvocationError, ModelTier
 
 _GEMINI_CLI_PATH = "/google/bin/releases/gemini-cli/tools/gemini"
 
@@ -91,7 +91,7 @@ class GeminiProvider(LLMProvider):
         self,
         query: str,
         *,
-        model_size: ModelSize,
+        model_size: ModelTier,
         suppress_output: bool = False,
     ) -> str:
         """Invoke Gemini CLI with the given query.

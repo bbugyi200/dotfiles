@@ -173,7 +173,7 @@ def test_logging_context_defaults() -> None:
     """Test LoggingContext has sensible defaults."""
     ctx = LoggingContext()
     assert ctx.agent_type == "agent"
-    assert ctx.model_size == "big"
+    assert ctx.model_tier == "big"
     assert ctx.iteration is None
     assert ctx.workflow_tag is None
     assert ctx.artifacts_dir is None
@@ -189,7 +189,7 @@ def test_logging_context_custom_values() -> None:
     counts = {"yes": 2, "no": 1}
     ctx = LoggingContext(
         agent_type="editor",
-        model_size="little",
+        model_tier="little",
         iteration=3,
         workflow_tag="tag1",
         artifacts_dir="/tmp/arts",
@@ -200,7 +200,7 @@ def test_logging_context_custom_values() -> None:
         decision_counts=counts,
     )
     assert ctx.agent_type == "editor"
-    assert ctx.model_size == "little"
+    assert ctx.model_tier == "little"
     assert ctx.iteration == 3
     assert ctx.workflow_tag == "tag1"
     assert ctx.artifacts_dir == "/tmp/arts"
@@ -485,7 +485,7 @@ def test_registry_register_custom_provider() -> None:
         get_provider,
         register_provider,
     )
-    from llm_provider.types import ModelSize
+    from llm_provider.types import ModelTier
 
     class _FakeProvider(LLMProvider):
         @property
@@ -496,7 +496,7 @@ def test_registry_register_custom_provider() -> None:
             self,
             query: str,
             *,
-            model_size: ModelSize,
+            model_size: ModelTier,
             suppress_output: bool = False,
         ) -> str:
             return "fake response"

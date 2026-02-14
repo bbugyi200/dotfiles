@@ -37,9 +37,15 @@ def create_parser() -> argparse.ArgumentParser:
     # Options for 'ace' (keep sorted alphabetically by long option name)
     ace_parser.add_argument(
         "-m",
+        "--model-tier",
+        choices=["big", "little"],
+        help="Override model tier for all LLM invocations (big or little)",
+    )
+    ace_parser.add_argument(
         "--model-size",
         choices=["big", "little"],
-        help="Override model size for ALL GeminiCommandWrapper instances (big or little)",
+        dest="model_tier",
+        help=argparse.SUPPRESS,
     )
     ace_parser.add_argument(
         "-r",

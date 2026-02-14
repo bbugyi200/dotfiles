@@ -9,7 +9,7 @@ from typing import NoReturn
 from ace.changespec import find_all_changespecs
 from commit_utils import run_bb_hg_clean
 from gai_utils import generate_timestamp
-from gemini_wrapper import invoke_agent
+from llm_provider import invoke_agent
 from main.query_handler import (
     execute_standalone_steps,
     expand_embedded_workflows_in_query,
@@ -267,7 +267,7 @@ class MentorWorkflow(BaseWorkflow):
             response = invoke_agent(
                 expanded_prompt,
                 agent_type=f"mentor-{self.mentor_name}",
-                model_size="big",
+                model_tier="big",
                 iteration=1,
                 workflow_tag=workflow_tag,
                 artifacts_dir=artifacts_dir,

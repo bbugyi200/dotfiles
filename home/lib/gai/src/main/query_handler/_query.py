@@ -297,7 +297,7 @@ def execute_standalone_steps(
             context[step.name] = output
 
         elif step.is_prompt_step() and step.prompt:
-            from gemini_wrapper import invoke_agent
+            from llm_provider import invoke_agent
             from shared_utils import ensure_str_content
             from xprompt import process_xprompt_references
 

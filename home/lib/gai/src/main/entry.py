@@ -207,7 +207,7 @@ def main() -> NoReturn:
         try:
             app = AceApp(
                 query=args.query,
-                model_size_override=getattr(args, "model_size", None),
+                model_tier_override=getattr(args, "model_tier", None),
                 refresh_interval=args.refresh_interval,
             )
         except QueryParseError as e:
