@@ -56,6 +56,7 @@ function run() {
   validate_staged_changes
   do_commit
   do_push
+  do_beads_sync
   send_notification
 }
 
@@ -150,6 +151,14 @@ function do_commit() {
 function do_push() {
   log::debug "Pushing to remote"
   git push
+}
+
+# Sync beads issue tracker state after push.
+function do_beads_sync() {
+  if command -v bd >/dev/null 2>&1 && [ -d .beads ]; then
+    log::debug "Syncing beads"
+    bd sync 2>/dev/null || true
+  fi
 }
 
 # Send Mac notification with commit details.
