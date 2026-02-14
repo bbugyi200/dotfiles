@@ -37,7 +37,7 @@ class AgentInteractionMixin:
 
         agent = self._agents[self.current_idx]
 
-        # Handle completed/revived agents with dismiss (no confirmation needed)
+        # Handle completed agents with dismiss (no confirmation needed)
         from ._core import DISMISSABLE_STATUSES
 
         if agent.status in DISMISSABLE_STATUSES:
@@ -109,8 +109,8 @@ class AgentInteractionMixin:
 
         agent = self._agents[self.current_idx]
 
-        # Only available for completed or revived agents
-        if agent.status not in ("DONE", "REVIVED"):
+        # Only available for completed agents
+        if agent.status not in ("DONE",):
             self.notify("Agent not finished yet", severity="warning")  # type: ignore[attr-defined]
             return
 

@@ -8,7 +8,6 @@ from ._folding import AgentFoldingMixin
 from ._interaction import AgentInteractionMixin
 from ._killing import AgentKillingMixin
 from ._notifications import AgentNotificationMixin
-from ._revival import AgentRevivalMixin
 from ._workflow_hitl import AgentWorkflowHITLMixin
 
 if TYPE_CHECKING:
@@ -26,7 +25,6 @@ TabName = Literal["changespecs", "agents", "axe"]
 # Statuses that indicate an agent is dismissable (shows "x dismiss" in footer)
 DISMISSABLE_STATUSES = {
     "DONE",
-    "REVIVED",
     "FAILED",
 }
 
@@ -98,7 +96,6 @@ class AgentsMixinCore(
     AgentWorkflowHITLMixin,
     AgentNotificationMixin,
     AgentKillingMixin,
-    AgentRevivalMixin,
 ):
     """Core mixin providing agent loading, display, and user interaction methods.
 
@@ -114,7 +111,6 @@ class AgentsMixinCore(
     _countdown_remaining: int
     _agents: list[Agent]
     _agents_last_idx: int
-    _revived_agents: list[Agent]
     _has_always_visible: bool
     _hidden_count: int
 
@@ -129,7 +125,7 @@ class AgentsMixinCore(
     _dismissed_agents: set[tuple[AgentType, str, str | None]]
 
     def _load_agents(self) -> None:
-        """Load agents from all sources including revived agents."""
+        """Load agents from all sources."""
         from ...models import load_all_agents
         from ...models.agent import AgentType
 
@@ -143,9 +139,6 @@ class AgentsMixinCore(
 
         # Load fresh agent list
         all_agents = load_all_agents()
-
-        # Merge revived agents (they appear at the end of the list)
-        all_agents.extend(self._revived_agents)
 
         # Filter out dismissed agents
         all_agents = [a for a in all_agents if a.identity not in self._dismissed_agents]

@@ -55,7 +55,6 @@ class AgentKillingMixin:
     current_idx: int
 
     # Agent state (needed for _dismiss_done_agent)
-    _revived_agents: list[Agent]
     _viewed_agents: set[tuple[AgentType, str, str | None]]
     _dismissed_agents: set[tuple[AgentType, str, str | None]]
 
@@ -326,31 +325,18 @@ class AgentKillingMixin:
         save_dismissed_agents(self._dismissed_agents)  # type: ignore[attr-defined]
 
     def _dismiss_done_agent(self, agent: Agent) -> None:
-        """Dismiss a DONE, REVIVED, or completed workflow agent.
+        """Dismiss a DONE or completed workflow agent.
 
-        For REVIVED agents: removes from _revived_agents list and saves.
         For workflow agents: removes the workflow artifacts directory.
         For other agents: removes the done.json file.
 
         Args:
-            agent: The DONE, REVIVED, or completed agent to dismiss.
+            agent: The DONE or completed agent to dismiss.
         """
         import shutil
         from pathlib import Path
 
         from ...models.agent import AgentType
-
-        # Handle REVIVED agents differently
-        if agent.status == "REVIVED":
-            self._revived_agents = [  # type: ignore[attr-defined]
-                a
-                for a in self._revived_agents
-                if a.identity != agent.identity  # type: ignore[attr-defined]
-            ]
-            self._save_revived_agents()  # type: ignore[attr-defined]
-            self.notify(f"Dismissed revived agent for {agent.cl_name}")  # type: ignore[attr-defined]
-            self._load_agents()  # type: ignore[attr-defined]
-            return
 
         if agent.raw_suffix is None:
             self.notify("Cannot dismiss agent: no timestamp", severity="error")  # type: ignore[attr-defined]

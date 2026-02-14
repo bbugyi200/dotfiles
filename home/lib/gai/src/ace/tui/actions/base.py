@@ -217,11 +217,6 @@ class BaseActionsMixin:
 
     def action_run_workflow(self) -> None:
         """Run a workflow on the current ChangeSpec."""
-        # On agents tab, dispatch to revive_agent instead
-        if self.current_tab == "agents":
-            self.action_revive_agent()  # type: ignore[attr-defined]
-            return
-
         # On axe tab, dispatch to show_runners instead
         if self.current_tab == "axe":
             self.action_show_runners()  # type: ignore[attr-defined]

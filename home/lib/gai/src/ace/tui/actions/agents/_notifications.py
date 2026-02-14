@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
-    from ...models import Agent
     from ...models.agent import AgentType
 
 # Type alias for tab names
@@ -22,7 +21,6 @@ class AgentNotificationMixin:
     _pending_attention_count: int
     _viewed_agents: set[tuple[AgentType, str, str | None]]
     _dismissed_agents: set[tuple[AgentType, str, str | None]]
-    _revived_agents: list[Agent]
     current_tab: TabName
 
     def _poll_agent_completions(self) -> None:
@@ -36,7 +34,6 @@ class AgentNotificationMixin:
         from ._core import DISMISSABLE_STATUSES, is_axe_spawned_agent
 
         all_agents = load_all_agents()
-        all_agents.extend(self._revived_agents)
 
         current_running: set[tuple[AgentType, str, str | None]] = set()
         current_dismissible_non_axe: set[tuple[AgentType, str, str | None]] = set()
@@ -121,7 +118,6 @@ class AgentNotificationMixin:
         from ._core import DISMISSABLE_STATUSES, is_axe_spawned_agent
 
         all_agents = load_all_agents()
-        all_agents.extend(self._revived_agents)
 
         # Collect all dismissable non-axe agents
         current_dismissible_non_axe: set[tuple[AgentType, str, str | None]] = set()

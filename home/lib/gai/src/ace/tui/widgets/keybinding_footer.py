@@ -252,7 +252,6 @@ class KeybindingFooter(Horizontal):
         if agent is not None:
             if agent.status in (
                 "DONE",
-                "REVIVED",
                 "FAILED",
             ):
                 bindings.append(("x", "dismiss"))
@@ -279,9 +278,6 @@ class KeybindingFooter(Horizontal):
         # Layout toggle (only when file panel is visible)
         if file_visible:
             bindings.append(("p", "layout"))
-
-        # Revive chat as agent
-        bindings.append(("r", "revive chat"))
 
         # Show/hide hideable agents (only when both always-visible and hideable exist)
         if has_always_visible and (hidden_count > 0 or not hide_non_run):

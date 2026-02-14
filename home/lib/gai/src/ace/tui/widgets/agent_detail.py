@@ -61,7 +61,7 @@ class AgentDetail(Static):
                 agent, stale_threshold_seconds=stale_threshold_seconds
             )
         else:
-            # DONE, FAILED, REVIVED, etc.
+            # DONE, FAILED, etc.
             if agent.diff_path:
                 file_panel.display_static_file(agent.diff_path)
             else:

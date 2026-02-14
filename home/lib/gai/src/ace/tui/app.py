@@ -249,7 +249,6 @@ class AceApp(
         self._changespecs_last_idx: int = 0
         self._agents_last_idx: int = 0
         self._agents: list[Agent] = []
-        self._revived_agents: list[Agent] = []
         self._has_always_visible: bool = False
         self._hidden_count: int = 0
 
@@ -347,9 +346,6 @@ class AceApp(
 
     def on_mount(self) -> None:
         """Set up the app on mount."""
-        # Load revived agents from persistence
-        self._load_revived_agents()
-
         # Initialize agent tracking for completion notifications
         self._initialize_agent_tracking()
 
@@ -381,7 +377,6 @@ class AceApp(
         from .models import load_all_agents
 
         all_agents = load_all_agents()
-        all_agents.extend(self._revived_agents)
 
         # Track all currently running agents
         for agent in all_agents:

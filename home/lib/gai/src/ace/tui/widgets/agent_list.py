@@ -24,7 +24,6 @@ _AGENT_TYPE_COLORS: dict[AgentType, str] = {
 _DONE_ICON = "✘"
 _DISMISSIBLE_STATUSES = (
     "DONE",
-    "REVIVED",
     "FAILED",
 )
 
@@ -246,8 +245,6 @@ class AgentList(OptionList):
             text.append(agent.status, style="bold #FFD700")  # Gold
         elif agent.status == "DONE":
             text.append(agent.status, style="bold #5FD75F")  # Green
-        elif agent.status == "REVIVED":
-            text.append(agent.status, style="bold #D7AF5F")  # Gold/amber
         elif agent.status == "FAILED":
             text.append(agent.status, style="bold #FF5F5F")  # Red
         else:
