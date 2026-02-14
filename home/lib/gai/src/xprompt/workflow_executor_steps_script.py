@@ -124,6 +124,15 @@ class ScriptStepMixin:
                     f"Bash step '{step.name}' output validation failed: {validation_err}"
                 )
 
+        # Make path fields absolute for cross-process HITL communication
+        step_output_types = output_types_from_step(step)
+        if step_output_types:
+            for field_name, field_type in step_output_types.items():
+                if field_type == "path" and field_name in output:
+                    path_val = str(output[field_name])
+                    if not os.path.isabs(path_val):
+                        output[field_name] = os.path.abspath(path_val)
+
         # HITL review if required
         if step.hitl and self.hitl_handler:
             step_state.status = StepStatus.WAITING_HITL
@@ -241,6 +250,15 @@ class ScriptStepMixin:
                     f"Python step '{step.name}' output validation failed: "
                     f"{validation_err}"
                 )
+
+        # Make path fields absolute for cross-process HITL communication
+        step_output_types = output_types_from_step(step)
+        if step_output_types:
+            for field_name, field_type in step_output_types.items():
+                if field_type == "path" and field_name in output:
+                    path_val = str(output[field_name])
+                    if not os.path.isabs(path_val):
+                        output[field_name] = os.path.abspath(path_val)
 
         # HITL review if required
         if step.hitl and self.hitl_handler:
