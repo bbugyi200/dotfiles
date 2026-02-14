@@ -283,6 +283,11 @@ function M.get_markdown_snippets()
 					.. " failures (if any), and repeat until the command is successful."
 			),
 		}),
+		-- SNIPPET: yolo
+		s(
+			{ trig = "yolo", desc = "I'll let you figure out how to make this work reliablely." },
+			{ t("I'll let you figure out how to make this work reliablely.") }
+		),
 	}
 end
 
