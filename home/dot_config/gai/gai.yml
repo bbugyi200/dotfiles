@@ -134,7 +134,7 @@ xprompts:
     multiline descriptions. For example, consider the following CL description:
 
     ```
-    [foo-service] Refactor FooModule Bar table modules and use proto-based field mappings.
+    Refactor FooModule Bar table modules and use proto-based field mappings.
 
     Remove manual field mappings for `name`, `label`, `type`, and `status` from
     `FooModule`, as these are now defined via annotations in `foo_messages.proto`.
@@ -150,7 +150,7 @@ xprompts:
     This is less desirable than:
 
     ```
-    [foo-service] Refactor FooModule Bar table modules and use proto-based field mappings.
+    Refactor FooModule Bar table modules and use proto-based field mappings.
 
     - Remove manual field mappings for `name`, `label`, `type`, and `status` from `FooModule`,
       as these are now defined via annotations in `foo_messages.proto`.
