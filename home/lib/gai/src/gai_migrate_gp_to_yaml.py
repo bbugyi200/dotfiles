@@ -6,6 +6,7 @@ old .gp files.
 """
 
 import argparse
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -133,6 +134,13 @@ def _migrate_single_project(gp_file: Path, dry_run: bool, remove_old: bool) -> b
         return False
 
     print(f"  OK   {project_name}: {gp_file.name} -> {yaml_file.name}")
+
+    # Format the YAML file if yamlfmt is available
+    if shutil.which("yamlfmt"):
+        try:
+            subprocess.run(["yamlfmt", str(yaml_file)], check=True, capture_output=True)
+        except subprocess.CalledProcessError as e:
+            print(f"  WARN {project_name}: yamlfmt failed: {e}")
 
     if remove_old:
         gp_file.unlink()
