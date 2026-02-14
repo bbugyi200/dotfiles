@@ -280,7 +280,7 @@
     },
     "mentor_status_line": {
       "type": "object",
-      "required": ["profile_name", "mentor_name", "status", "timestamp"],
+      "required": ["profile_name", "mentor_name", "status"],
       "additionalProperties": false,
       "properties": {
         "profile_name": {
