@@ -28,6 +28,10 @@ steps:
       result = subprocess.run(['cl_desc'], capture_output=True, text=True, check=True)
       current_full = result.stdout.rstrip('\n')
 
+      # Extract project prefix (e.g., "yserve" from "[yserve] ...")
+      project_match = re.match(r'^\[([^\]]+)\]', current_full)
+      project = project_match.group(1) if project_match else None
+
       # Extract metadata tag block from end of current description
       lines = current_full.split('\n')
       tag_pattern = re.compile(r'^[A-Z][A-Za-z_\s-]*[=:]')
@@ -47,8 +51,12 @@ steps:
 
       tag_block = '\n'.join(lines[tags_start:]) if tags_start < len(lines) else ''
 
+      # Prepend project prefix
+      if project:
+          new_desc = f"[{project}] {new_desc}"
+
       # Combine new description with original metadata tags
-      full_desc = (new_desc + '\n' + tag_block) if tag_block else new_desc
+      full_desc = (new_desc + '\n\n<!-- prettier-ignore -->\n' + tag_block) if tag_block else new_desc
 
       escaped = escape_for_hg_reword(full_desc)
       subprocess.run(['bb_hg_reword', escaped], check=True)
