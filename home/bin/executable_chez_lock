@@ -5,7 +5,7 @@ source ~/lib/bugyi.sh
 LOCK_FILE="/tmp/chez.lock"
 
 export USAGE_GRAMMAR=(
-  "[-n N] [-s SECS] [-v] {claim|release}"
+  "[-n N] [-s SECS] [-v] {claim|check|release}"
   "-h"
 )
 
@@ -18,7 +18,8 @@ concurrent chezmoi operations (e.g., multiple tmux panes) don't conflict.
 Positional Arguments
 --------------------
 ACTION
-    The action to perform: 'claim' to acquire the lock, 'release' to free it.
+    The action to perform: 'claim' to acquire the lock, 'check' to inspect
+    lock status, or 'release' to free it.
 
 Optional Arguments
 ------------------
@@ -41,6 +42,9 @@ function run() {
   case "${ACTION}" in
   claim)
     claim_lock
+    ;;
+  check)
+    check_lock
     ;;
   release)
     release_lock
@@ -67,6 +71,45 @@ function claim_lock() {
   done
 
   die "Failed to claim lock after %d attempts." "${MAX_ATTEMPTS}"
+}
+
+function check_lock() {
+  local header separator
+  local reset='\033[0m'
+  local bold='\033[1m'
+  local green='\033[32m'
+  local red='\033[31m'
+  local yellow='\033[33m'
+  local dim='\033[2m'
+
+  if [[ -f "${LOCK_FILE}" ]]; then
+    local lock_pid
+    lock_pid="$(cat "${LOCK_FILE}" 2>/dev/null || echo "unknown")"
+
+    header=$(printf " \xF0\x9F\x94\x92 Lock Status: %s" "${LOCK_FILE}")
+    separator=$(printf '%0.s\xe2\x94\x80' {1..33})
+
+    if [[ "${lock_pid}" != "unknown" ]] && kill -0 "${lock_pid}" 2>/dev/null; then
+      printf "%b\n" "${bold}${header}${reset}"
+      printf "%b\n" "${dim}${separator}${reset}"
+      printf "  Status:  %b\n" "${red}LOCKED${reset}"
+      printf "  PID:     %b\n" "${bold}${lock_pid}${reset} ${green}(active)${reset}"
+    else
+      printf "%b\n" "${bold}${header}${reset}"
+      printf "%b\n" "${dim}${separator}${reset}"
+      printf "  Status:  %b\n" "${red}LOCKED${reset} ${yellow}(stale)${reset}"
+      printf "  PID:     %b\n" "${bold}${lock_pid}${reset} ${dim}(not running)${reset}"
+    fi
+    return 1
+  else
+    header=$(printf " \xF0\x9F\x94\x93 Lock Status: %s" "${LOCK_FILE}")
+    separator=$(printf '%0.s\xe2\x94\x80' {1..33})
+
+    printf "%b\n" "${bold}${header}${reset}"
+    printf "%b\n" "${dim}${separator}${reset}"
+    printf "  Status:  %b\n" "${green}FREE${reset}"
+    return 0
+  fi
 }
 
 function release_lock() {
@@ -123,8 +166,8 @@ function parse_cli_args() {
   ACTION="$1"
   shift
 
-  if [[ "${ACTION}" != "claim" && "${ACTION}" != "release" ]]; then
-    die "Invalid action '%s'. Must be 'claim' or 'release'." "${ACTION}"
+  if [[ "${ACTION}" != "claim" && "${ACTION}" != "check" && "${ACTION}" != "release" ]]; then
+    die "Invalid action '%s'. Must be 'claim', 'check', or 'release'." "${ACTION}"
   fi
 
   readonly ACTION
