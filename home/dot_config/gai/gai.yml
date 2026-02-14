@@ -129,8 +129,37 @@ xprompts:
     publisher feature (see contentads/drx/fe/g3doc/admin/publisher_features.md for more information on publisher
     features)
   gai_new_cl_desc: |
-    Can you review the changes made by this CL (see the #cl_local_diff file) and suggest a new CL description that conforms with
-    the advice given in the @~/bb/docs/cl_descriptions.md document?
+    Can you review the changes made by this CL (see the #cl_local_diff file) and suggest a new CL description that
+    conforms with the advice given in the @~/bb/docs/cl_descriptions.md document? Prefer bullets when constructing
+    multiline descriptions. For example, consider the following CL description:
+
+    ```
+    [foo-service] Refactor FooModule Bar table modules and use proto-based field mappings.
+
+    Remove manual field mappings for `name`, `label`, `type`, and `status` from
+    `FooModule`, as these are now defined via annotations in `foo_messages.proto`.
+
+    Consolidate module definitions by deleting `FooServiceBarModule` and merging its dependencies
+    and scope into `FooModule`. This simplifies the configuration and ensures consistent usage
+    across targets (e.g., Baz).
+
+    Additionally, simplify `FooDtoConverter` by using `ignoreField` for `estimated_value` and
+    `usage_percentage` instead of empty manual overrides.
+    ```
+
+    This is less desirable than:
+
+    ```
+    [foo-service] Refactor FooModule Bar table modules and use proto-based field mappings.
+
+    - Remove manual field mappings for `name`, `label`, `type`, and `status` from `FooModule`,
+      as these are now defined via annotations in `foo_messages.proto`.
+    - Consolidate module definitions by deleting `FooServiceBarModule` and merging its dependencies and
+      scope into `FooModule`. This simplifies the configuration and ensures consistent usage across
+      targets (e.g., Baz).
+    - Additionally, simplify `FooDtoConverter` by using `ignoreField` for `estimated_value` and
+      `usage_percentage` instead of empty manual overrides.
+    ````
   launch/beta:
     input: { bug_id: int, feature: word }
     content: |
