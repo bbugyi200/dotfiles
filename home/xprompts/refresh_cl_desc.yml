@@ -4,7 +4,6 @@ steps:
       Can you review the changes made by this CL (see the #cl_diff file) and suggest a new CL description that conforms
       with the advice given in the @~/bb/docs/cl_descriptions.md document? #file:new_cl_desc
     output: { desc_file: path }
-    hitl: true
 
   - name: reword
     python: |
