@@ -26,17 +26,17 @@ function get_changed_files() {
     } | sort -u
 }
 
-# Check if any changed files match a pattern
+# Check if any changed files match a pattern (reads from cached $CHANGED_FILES)
 function has_changes_matching() {
     local pattern="$1"
-    get_changed_files | grep -qE "$pattern"
+    echo "$CHANGED_FILES" | grep -qE "$pattern"
 }
 
 # Print the command we are about to run.
 function print_cmd_to_user() {
-    local cmd="$1"
-    shift
-    echo "[chez_stop_hook] Running \`$cmd\`..."
+    local group="$1"
+    local cmd="$2"
+    echo "[chez_stop_hook:${group}] Running \`$cmd\`..."
 }
 
 # Send Mac notification for failures
@@ -68,8 +68,11 @@ function run() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_stop_hook ran" >>"$SCRIPT_DIR/../hooks.log"
 
     # Apply chezmoi changes first
-    print_cmd_to_user "chezmoi apply --force"
+    echo "[chez_stop_hook] Running \`chezmoi apply --force\`..."
     chezmoi apply --force
+
+    # Cache changed files once (eliminates redundant git calls)
+    CHANGED_FILES="$(get_changed_files)"
 
     # Check which types of files have changed
     local has_python_changes=false
@@ -90,72 +93,149 @@ function run() {
         has_md_changes=true
     fi
 
-    # Collect errors
-    local errors=""
-    local output
+    # Create temp directory for parallel job output
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    trap 'rm -rf "$tmpdir"' RETURN
+
+    local pids=()
 
     # Run Lua linters and tests if Lua files changed
     if [ "$has_lua_changes" = true ]; then
-        print_cmd_to_user "make lint-llscheck"
-        if ! output=$(make lint-llscheck 2>&1); then
-            errors+="make lint-llscheck FAILED:\n$output\n\n"
-        fi
+        (
+            local errors=""
+            local output
 
-        print_cmd_to_user "make lint-luacheck"
-        if ! output=$(make lint-luacheck 2>&1); then
-            errors+="make lint-luacheck FAILED:\n$output\n\n"
-        fi
+            # Run lint-llscheck and lint-luacheck in parallel
+            local lua_lint_pids=()
 
-        # Run nvim tests - can hang after completion, so use short timeout
-        print_cmd_to_user "make test-nvim"
-        if ! output=$(timeout 30 make test-nvim 2>&1); then
-            local exit_code=$?
-            # Only report if it's not just the timeout killing hanging nvim
-            if [ $exit_code -ne 124 ]; then
-                errors+="make test-nvim FAILED:\n$output\n\n"
-            else
-                # Timeout occurred - check if tests passed before timeout
-                if ! echo "$output" | grep -q "0 failures"; then
-                    errors+="make test-nvim FAILED (or hung before completing):\n$output\n\n"
+            print_cmd_to_user "lua" "make lint-llscheck"
+            (
+                if ! output=$(make lint-llscheck 2>&1); then
+                    echo "make lint-llscheck FAILED:\n$output\n\n" >"$tmpdir/lua_llscheck_errors"
+                fi
+            ) &
+            lua_lint_pids+=($!)
+
+            print_cmd_to_user "lua" "make lint-luacheck"
+            (
+                if ! output=$(make lint-luacheck 2>&1); then
+                    echo "make lint-luacheck FAILED:\n$output\n\n" >"$tmpdir/lua_luacheck_errors"
+                fi
+            ) &
+            lua_lint_pids+=($!)
+
+            # Wait for both linters to finish
+            for pid in "${lua_lint_pids[@]}"; do
+                wait "$pid"
+            done
+
+            # Collect linter errors
+            for f in "$tmpdir"/lua_llscheck_errors "$tmpdir"/lua_luacheck_errors; do
+                if [ -f "$f" ]; then
+                    errors+="$(cat "$f")"
+                fi
+            done
+
+            # Run nvim tests sequentially after linters
+            print_cmd_to_user "lua" "make test-nvim"
+            if ! output=$(timeout 30 make test-nvim 2>&1); then
+                local exit_code=$?
+                # Only report if it's not just the timeout killing hanging nvim
+                if [ $exit_code -ne 124 ]; then
+                    errors+="make test-nvim FAILED:\n$output\n\n"
+                else
+                    # Timeout occurred - check if tests passed before timeout
+                    if ! echo "$output" | grep -q "0 failures"; then
+                        errors+="make test-nvim FAILED (or hung before completing):\n$output\n\n"
+                    fi
                 fi
             fi
-        fi
+
+            if [ -n "$errors" ]; then
+                printf '%s' "$errors" >"$tmpdir/lua_errors"
+            fi
+        ) &
+        pids+=($!)
     fi
 
     # Run Python linters and tests if Python files changed
     if [ "$has_python_changes" = true ]; then
-        print_cmd_to_user "make lint-python"
-        if ! output=$(make lint-python 2>&1); then
-            errors+="make lint-python FAILED:\n$output\n\n"
-        fi
+        (
+            local errors=""
+            local output
 
-        # Run python tests (can take 60+ seconds)
-        print_cmd_to_user "make test-python"
-        if ! output=$(timeout 120 make test-python 2>&1); then
-            local exit_code=$?
-            if [ $exit_code -eq 124 ]; then
-                errors+="make test-python TIMED OUT after 120 seconds\n\n"
-            else
-                errors+="make test-python FAILED:\n$output\n\n"
+            print_cmd_to_user "python" "make lint-python"
+            if ! output=$(make lint-python 2>&1); then
+                errors+="make lint-python FAILED:\n$output\n\n"
             fi
-        fi
+
+            # Run python tests (can take 60+ seconds)
+            print_cmd_to_user "python" "make test-python"
+            if ! output=$(timeout 120 make test-python 2>&1); then
+                local exit_code=$?
+                if [ $exit_code -eq 124 ]; then
+                    errors+="make test-python TIMED OUT after 120 seconds\n\n"
+                else
+                    errors+="make test-python FAILED:\n$output\n\n"
+                fi
+            fi
+
+            if [ -n "$errors" ]; then
+                printf '%s' "$errors" >"$tmpdir/python_errors"
+            fi
+        ) &
+        pids+=($!)
     fi
 
     # Run bash tests if bash files changed
     if [ "$has_bash_changes" = true ]; then
-        print_cmd_to_user "make test-bash"
-        if ! output=$(make test-bash 2>&1); then
-            errors+="make test-bash FAILED:\n$output\n\n"
-        fi
+        (
+            local errors=""
+            local output
+
+            print_cmd_to_user "bash" "make test-bash"
+            if ! output=$(make test-bash 2>&1); then
+                errors+="make test-bash FAILED:\n$output\n\n"
+            fi
+
+            if [ -n "$errors" ]; then
+                printf '%s' "$errors" >"$tmpdir/bash_errors"
+            fi
+        ) &
+        pids+=($!)
     fi
 
     # Run markdown linter if markdown files changed
     if [ "$has_md_changes" = true ]; then
-        print_cmd_to_user "make lint-md"
-        if ! output=$(make lint-md 2>&1); then
-            errors+="make lint-md FAILED:\n$output\n\n"
-        fi
+        (
+            local errors=""
+            local output
+
+            print_cmd_to_user "md" "make lint-md"
+            if ! output=$(make lint-md 2>&1); then
+                errors+="make lint-md FAILED:\n$output\n\n"
+            fi
+
+            if [ -n "$errors" ]; then
+                printf '%s' "$errors" >"$tmpdir/md_errors"
+            fi
+        ) &
+        pids+=($!)
     fi
+
+    # Wait for all background jobs to complete
+    for pid in "${pids[@]}"; do
+        wait "$pid"
+    done
+
+    # Collect errors from all groups
+    local errors=""
+    for f in "$tmpdir"/lua_errors "$tmpdir"/python_errors "$tmpdir"/bash_errors "$tmpdir"/md_errors; do
+        if [ -f "$f" ]; then
+            errors+="$(cat "$f")"
+        fi
+    done
 
     # If any errors occurred, block and report
     if [ -n "$errors" ]; then
@@ -164,8 +244,8 @@ function run() {
         return 2 # Exit code 2 blocks Claude and shows stderr
     fi
 
-    # Check if there are any uncommitted changes
-    if get_changed_files | grep -q .; then
+    # Check if there are any uncommitted changes (uses cached file list)
+    if echo "$CHANGED_FILES" | grep -q .; then
         # Create marker file and request commit
         touch "$STORED_DIFF_FILE"
         echo "All checks passed. If you made any file changes, please use your /commit skill to commit them now." >&2
