@@ -174,17 +174,48 @@ sites change yet.
 
 **Goal:** Implement the git backend against the Phase 3 abstraction.
 
-- Implement `GitProvider` class mapping each VCS operation to git equivalents:
-  - `hg diff` → `git diff`
-  - `bb_hg_update <CL>` → `git checkout <branch>` / `git switch <branch>`
-  - `bb_hg_amend` → `git commit --amend`
-  - `bb_hg_reword` → `git commit --amend` (message only)
-  - `bb_hg_clean` → `git stash` or `git checkout -- .`
-  - `bb_hg_archive` → `git branch -d` + tag for archival
-  - `hg import --no-commit` → `git apply`
-  - Workspace management: `hg` workspaces → `git worktrees`
-- Create `bb_git_*` wrapper scripts where needed, or inline logic into the provider
-- Handle differences in diff format between hg and git (already partially supported in `mentor_checks.py`)
+### Phase 4.1: Core Operations, Info Queries & Google-Internal Stubs
+
+**Goal:** Create `GitProvider(VCSProvider)` with all straightforward git mappings, info queries, and Google-internal
+stubs.
+
+- New file: `src/vcs_provider/_git.py`
+- Core ops with direct git mappings:
+  - `diff` → `git diff HEAD`
+  - `checkout` → `git switch <branch>`
+  - `apply_patch` → `git apply <patch_file>`
+  - `clean` → `git checkout -- .` + `git clean -fd`
+  - `add_remove` → `git add -A`
+  - `commit` → `git add -A && git commit -m <msg>`
+  - `amend` → `git add -A && git commit --amend -m <msg>` (no push)
+  - `reword` → `git commit --amend -m <new_message>` (message-only)
+  - `rebase` → `git rebase --onto <dest>`
+  - `rename_branch` → `git branch -m <old> <new>`
+- Info queries:
+  - `get_branch_name` → `git rev-parse --abbrev-ref HEAD`
+  - `get_description` → `git log -1 --format=%B`
+  - `has_local_changes` → `git status --porcelain` (non-empty = True)
+- Stub Google-internal ops (`upload`, `evolve`, `fix`, `lint`, `presubmit`) with `raise NotImplementedError`
+- Register with `.git/` auto-detect in `_registry.py`
+- Unit tests: `test/test_vcs_provider_git.py`
+
+### Phase 4.2: Composite Operations, Workspace Management & Validation
+
+**Goal:** Implement composite operations that chain multiple git commands or require git-specific design decisions, add
+workspace management, and validate.
+
+- Composite ops:
+  - `stash_and_clean` → save `git diff` to file, then `git checkout -- . && git clean -fd`
+  - `amend_and_upload` → `git commit --amend` + `git push --force-with-lease`
+  - `sync` → `git fetch origin && git rebase origin/main` (with `git rebase --abort` on conflict)
+  - `archive` → optionally `git tag archived/<name>`, then `git branch -d <branch>`
+  - `prune` → save diff to file, then `git branch -D <branch>`
+  - `unamend` → `git reset --soft HEAD@{1}` (save local changes to patch first if needed)
+- Workspace management: map `hg` workspaces → `git worktree add/remove/list`
+- Inline all logic into `GitProvider` (no `bb_git_*` wrapper scripts needed)
+- Verify existing git diff format support in `mentor_checks.py` is sufficient
+- Additional unit tests for composite ops
+- Validation: `make test-python-gai` and `make lint-python-lite`
 
 ---
 
