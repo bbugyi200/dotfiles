@@ -13,6 +13,9 @@ prefix.
 
 This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get started.
 
+IMPORTANT: Make sure to claim beads before starting or planning work on them and make sure to close beads after
+completing the work (ex: necessary file changes) associated with them.
+
 ### Quick Reference
 
 ```bash
