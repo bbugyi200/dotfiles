@@ -2,12 +2,7 @@ steps:
   - name: gen_desc
     prompt: |
       Can you review the changes made by this CL (see the #cl_diff file) and suggest a new CL description that conforms
-      with the advice given in the @~/bb/docs/cl_descriptions.md document? The current CL description is shown below for
-      context:
-
-      #x(current_cl_desc, cl_desc --short)
-
-      #file:new_cl_desc
+      with the advice given in the @~/bb/docs/cl_descriptions.md document? #file:new_cl_desc
     output: { desc_file: path }
     hitl: true
 
