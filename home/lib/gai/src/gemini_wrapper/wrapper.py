@@ -6,9 +6,10 @@ from typing import Any, Literal, cast
 from gai_utils import generate_timestamp
 from langchain_core.messages import AIMessage, HumanMessage
 from llm_provider import (
-    GeminiProvider,
     LLMInvocationError,
     LoggingContext,
+    get_provider,
+    load_llm_provider_config,
     preprocess_prompt,
     run_error_postprocessing,
     run_postprocessing,
@@ -30,7 +31,10 @@ def invoke_agent(
     timestamp: str | None = None,
     is_home_mode: bool = False,
 ) -> AIMessage:
-    """Invoke a Gemini agent with standard logging context.
+    """Invoke an LLM agent with standard logging context.
+
+    The provider is selected via the ``llm_provider.provider`` key in
+    ``gai.yml`` (defaults to ``"gemini"``).
 
     This is a convenience function that wraps the common pattern of:
     1. Creating a GeminiCommandWrapper
@@ -76,7 +80,8 @@ class GeminiCommandWrapper:
             cast(Literal["little", "big"], override) if override else model_size
         )
         self._context = LoggingContext(model_size=self.model_size)
-        self._provider = GeminiProvider()
+        config = load_llm_provider_config()
+        self._provider = get_provider(config.provider)
 
     def set_decision_counts(self, decision_counts: dict[str, Any]) -> None:
         """Set the decision counts for display after prompts."""

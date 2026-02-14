@@ -74,12 +74,35 @@ terminology.
 
 **Goal:** Implement the Claude Code backend against the Phase 1 abstraction.
 
-- Implement `ClaudeCodeProvider` class (subprocess to `claude` CLI, stdin/stdout protocol)
-- Map model tiers to Claude models (large→opus, small→haiku or sonnet)
-- Handle Claude Code-specific flags, environment variables, and output format
-- Add provider selection to `gai.yml` config + update `gai.schema.json`
-- Update CLI `--model-size` arg to work with the new tier system
-- Ensure prompt pre-processing (xprompt expansion, file references, Jinja2) remains provider-agnostic
+**Note:** Provider registry, config schema (`llm_provider` section in `gai.schema.json`), config loading
+(`LLMProviderConfig`), and pre/post-processing pipelines are already provider-agnostic from Phase 1. Phase 2 only needs
+to implement the provider class itself and register it.
+
+### Phase 2.1: ClaudeCodeProvider Core Implementation
+
+**Goal:** Create a working `ClaudeCodeProvider` class that invokes the Claude Code CLI, following the `GeminiProvider`
+pattern.
+
+- Create `src/llm_provider/claude.py` with `ClaudeCodeProvider(LLMProvider)`
+- Implement `invoke_llm()` via subprocess: `claude -p --model <model> --output-format text` with prompt on stdin
+  - Use `--dangerously-skip-permissions` since gai runs non-interactively
+  - Reuse `_stream_process_output()` from `gemini.py` for real-time output streaming
+- Map model tiers: `big` → `opus`, `little` → `sonnet` (using alias names recognized by `claude --model`)
+- Support extra CLI args via env vars: `GAI_BIG_CLAUDE_ARGS`, `GAI_LITTLE_CLAUDE_ARGS` (mirrors Gemini pattern)
+- Register as `"claude"` in `llm_provider/__init__.py`
+- Add unit tests in `test/test_llm_provider_claude.py` (mock subprocess, verify command construction and output
+  handling)
+
+### Phase 2.2: Integration Testing & Validation
+
+**Goal:** Verify the Claude provider integrates correctly with the existing infrastructure and handle edge cases.
+
+- Test config-driven provider switching: set `llm_provider.provider: claude` in `gai.yml`, verify `get_provider()`
+  returns `ClaudeCodeProvider`
+- Test error handling: Claude CLI not found on PATH, authentication failures, non-zero exit codes
+- Verify pre/post-processing pipelines (prompt preprocessing, artifact logging, chat history) work unchanged with the
+  Claude provider
+- Run `make test-python-gai` and `make lint-python-lite`
 
 ---
 

@@ -452,3 +452,113 @@ def test_gemini_provider_name() -> None:
 
     provider = GeminiProvider()
     assert provider.name == "gemini"
+
+
+# --- Registry tests ---
+
+
+def test_registry_gemini_registered() -> None:
+    """Test that 'gemini' is registered by default via __init__.py import."""
+    from llm_provider.registry import get_provider, get_registered_providers
+
+    providers = get_registered_providers()
+    assert "gemini" in providers
+
+    provider = get_provider("gemini")
+    assert provider.name == "gemini"
+
+
+def test_registry_unknown_provider_raises() -> None:
+    """Test that requesting an unknown provider raises KeyError."""
+    import pytest
+    from llm_provider.registry import get_provider
+
+    with pytest.raises(KeyError, match="Unknown LLM provider 'nonexistent'"):
+        get_provider("nonexistent")
+
+
+def test_registry_register_custom_provider() -> None:
+    """Test registering and retrieving a custom provider."""
+    from llm_provider.base import LLMProvider
+    from llm_provider.registry import (
+        _REGISTRY,
+        get_provider,
+        register_provider,
+    )
+    from llm_provider.types import ModelSize
+
+    class _FakeProvider(LLMProvider):
+        @property
+        def name(self) -> str:
+            return "fake"
+
+        def invoke_llm(
+            self,
+            query: str,
+            *,
+            model_size: ModelSize,
+            suppress_output: bool = False,
+        ) -> str:
+            return "fake response"
+
+    register_provider("fake", _FakeProvider)
+    try:
+        provider = get_provider("fake")
+        assert provider.name == "fake"
+        assert isinstance(provider, _FakeProvider)
+    finally:
+        # Clean up to avoid polluting other tests.
+        _REGISTRY.pop("fake", None)
+
+
+# --- Config tests ---
+
+
+def test_llm_provider_config_defaults() -> None:
+    """Test LLMProviderConfig has sensible defaults."""
+    from llm_provider.config import LLMProviderConfig
+
+    cfg = LLMProviderConfig()
+    assert cfg.provider == "gemini"
+
+
+def test_load_llm_provider_config_missing_file() -> None:
+    """Test loading config when gai.yml does not exist."""
+    from llm_provider.config import load_llm_provider_config
+
+    with patch(
+        "llm_provider.config._get_config_path",
+        return_value="/nonexistent/gai.yml",
+    ):
+        cfg = load_llm_provider_config()
+    assert cfg.provider == "gemini"
+
+
+def test_load_llm_provider_config_no_section() -> None:
+    """Test loading config when llm_provider section is absent."""
+    from llm_provider.config import load_llm_provider_config
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+        f.write("axe:\n  hook_interval: 1\n")
+        f.flush()
+        try:
+            with patch("llm_provider.config._get_config_path", return_value=f.name):
+                cfg = load_llm_provider_config()
+            assert cfg.provider == "gemini"
+        finally:
+            os.unlink(f.name)
+
+
+def test_load_llm_provider_config_custom_provider() -> None:
+    """Test loading config with a custom provider name."""
+    from llm_provider.config import load_llm_provider_config
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+        f.write("llm_provider:\n  provider: claude\n")
+        f.flush()
+        try:
+            with patch("llm_provider.config._get_config_path", return_value=f.name):
+                cfg = load_llm_provider_config()
+            assert cfg.provider == "claude"
+        finally:
+            os.unlink(f.name)

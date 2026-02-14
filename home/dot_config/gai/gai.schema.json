@@ -5,6 +5,18 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
+    "llm_provider": {
+      "type": "object",
+      "description": "LLM provider configuration",
+      "additionalProperties": false,
+      "properties": {
+        "provider": {
+          "type": "string",
+          "description": "Name of the LLM provider to use (e.g. 'gemini', 'claude')",
+          "default": "gemini"
+        }
+      }
+    },
     "axe": {
       "type": "object",
       "description": "Configuration for the axe scheduler daemon",
