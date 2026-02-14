@@ -1,0 +1,105 @@
+#!/bin/bash
+
+source ~/lib/bugyi.sh
+
+export USAGE_GRAMMAR=(
+  "[-s SECS] [-m N] [-v]"
+  "-h"
+)
+
+read -r -d '' DOC <<EOM
+$(usage)
+
+Poll 'bd ready' until beads are available or a max iteration count is reached.
+Useful for waiting on blocked work to become unblocked (e.g., waiting for
+dependencies to be closed by other agents/sessions).
+
+Optional Arguments
+------------------
+-h | --help
+    View this help message.
+
+-m N | --max-iters N
+    Maximum number of retry iterations. Defaults to 480.
+
+-s SECS | --sleep-secs SECS
+    Seconds to sleep between retries. Defaults to 15.
+
+-v | --verbose
+    Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
+EOM
+
+function run() {
+  parse_cli_args "$@"
+
+  local iter=0
+  while [[ ${iter} -lt ${MAX_ITERS} ]]; do
+    local output
+    output="$(bd ready 2>/dev/null)"
+    if [[ $? -eq 0 ]] && ! echo "${output}" | grep -q "No ready work"; then
+      echo "${output}"
+      return 0
+    fi
+
+    iter=$((iter + 1))
+    if [[ "${VERBOSE}" -gt 0 ]]; then
+      log::info "No beads ready. Attempt %d/%d, retrying in %ds..." \
+        "${iter}" "${MAX_ITERS}" "${SLEEP_SECS}"
+    fi
+    sleep "${SLEEP_SECS}"
+  done
+
+  die "No beads became ready after %d iterations." "${MAX_ITERS}"
+}
+
+function parse_cli_args() {
+  log::debug "Command-Line Arguments: ($*)"
+
+  eval set -- "$(getopt -o "h,m:,s:,v" -l "help,max-iters:,sleep-secs:,verbose" -- "$@")"
+
+  VERBOSE=0
+  MAX_ITERS=480
+  SLEEP_SECS=15
+  while [[ -n "$1" ]]; do
+    case $1 in
+    -h | --help)
+      echo "${DOC}"
+      exit 0
+      ;;
+    -m | --max-iters)
+      shift
+      MAX_ITERS="$1"
+      ;;
+    -s | --sleep-secs)
+      shift
+      SLEEP_SECS="$1"
+      ;;
+    -v | --verbose)
+      VERBOSE=$((VERBOSE + 1))
+      ;;
+    --)
+      shift
+      break
+      ;;
+    esac
+    shift
+  done
+
+  if [[ "${VERBOSE}" -gt 1 ]]; then
+    PS4='$LINENO: '
+    set -x
+  fi
+
+  if [[ $# -ne 0 ]]; then
+    die "$(usage)" 2
+  fi
+
+  readonly DOC
+  readonly MAX_ITERS
+  readonly SLEEP_SECS
+  readonly VERBOSE
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+  run "$@"
+fi
