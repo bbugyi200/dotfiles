@@ -28,7 +28,14 @@ from .models import (
     parse_commit_entry_id,
 )
 from .parser import parse_project_file
-from .project_spec import ProjectSpec, WorkspaceClaim
+from .project_spec import (
+    ProjectSpec,
+    WorkspaceClaim,
+    parse_project_spec,
+    read_and_update_project_spec,
+    serialize_project_spec,
+    write_project_spec_atomic,
+)
 from .raw_text import get_raw_changespec_text
 from .structured_updates import (
     add_changespec_commit_entry,
@@ -68,6 +75,10 @@ __all__ = [
     "MentorStatusLine",
     "ProjectSpec",
     "WorkspaceClaim",
+    "parse_project_spec",
+    "read_and_update_project_spec",
+    "serialize_project_spec",
+    "write_project_spec_atomic",
     # Constants
     "ERROR_SUFFIX_MESSAGES",
     "READY_TO_MAIL_SUFFIX",
