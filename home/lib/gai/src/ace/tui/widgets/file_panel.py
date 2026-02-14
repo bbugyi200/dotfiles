@@ -405,7 +405,7 @@ class AgentFilePanel(Static):
             return
 
         # Display diff with file path header
-        header = Text(expanded_path, style="bold underline")
+        header = Text(expanded_path, style="bold #D7AF5F underline")
         diff_with_header = f"# Static diff (from saved file)\n\n{diff_content}"
         syntax = Syntax(
             diff_with_header,
@@ -446,7 +446,7 @@ class AgentFilePanel(Static):
         _, ext = os.path.splitext(expanded_path)
         lexer = _EXTENSION_TO_LEXER.get(ext.lower(), "text")
 
-        header = Text(expanded_path, style="bold underline")
+        header = Text(expanded_path, style="bold #D7AF5F underline")
         syntax = Syntax(
             content,
             lexer,
