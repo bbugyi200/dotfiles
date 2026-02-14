@@ -98,6 +98,9 @@ end, {
 -- KEYMAP: *
 vim.keymap.set("n", "*", "/\\v\\C<<C-R><C-W>><CR>zv", { desc = "Search for word under cursor." })
 
+-- KEYMAP: <leader>F
+vim.keymap.set("n", "<leader>F", "<cmd>Format<cr>", { desc = "Format the current buffer." })
+
 -- ──────────────────────── Maps to save / exit. ─────────────────────
 -- KEYMAP: <leader>e
 vim.keymap.set(
