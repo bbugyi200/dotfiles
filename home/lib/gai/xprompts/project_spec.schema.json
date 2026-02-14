@@ -28,6 +28,7 @@
     "suffix_type": {
       "type": ["string", "null"],
       "enum": [
+        "entry_ref",
         "error",
         "running_agent",
         "killed_agent",
