@@ -240,7 +240,7 @@ xprompts:
     But prefer a single-sentence body over a multi-line body when it is sufficient to describe the change (don't delve too much into implementation details). For example, consider the following CL description:
 
     ```
-    Refactor FooEnumConverters to use shared BarEnumConverters.
+    Use shared BarEnumConverters in FooEnumConverters.
 
     - Replace local definitions of `StatusConverter`, `FormatConverter`, and
       `TypeConverter` with shared implementations from `BarEnumConverters`
