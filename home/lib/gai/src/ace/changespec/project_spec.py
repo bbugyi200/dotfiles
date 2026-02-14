@@ -220,6 +220,60 @@ def write_project_spec_atomic(
     write_changespec_atomic(project_file, content, commit_message)
 
 
+def convert_gp_to_project_spec(gp_file_path: str, yaml_file_path: str) -> ProjectSpec:
+    """Convert a .gp project file to a ProjectSpec suitable for YAML output.
+
+    Bridges the .gp parser output and RUNNING field data into a single
+    ProjectSpec dataclass, ready for serialization to YAML.
+
+    Args:
+        gp_file_path: Path to the existing .gp file.
+        yaml_file_path: Path that will be used for the output .yaml file
+            (set on the ProjectSpec and all ChangeSpecs as metadata).
+
+    Returns:
+        A ProjectSpec populated from the .gp file contents.
+    """
+    # Lazy import to avoid circular: project_spec → running_field → __init__
+    from running_field import get_claimed_workspaces
+
+    from .parser import parse_gp_project_file
+
+    changespecs = parse_gp_project_file(gp_file_path)
+
+    # Extract top-level bug from first ChangeSpec (YAML has it at project level)
+    bug: str | None = None
+    if changespecs:
+        bug = changespecs[0].bug
+
+    # Rewrite metadata on each ChangeSpec to point at the new YAML file
+    for cs in changespecs:
+        cs.file_path = yaml_file_path
+        cs.line_number = 0
+
+    # Convert running_field workspace claims → WorkspaceClaim (project_spec)
+    gp_claims = get_claimed_workspaces(gp_file_path)
+    running: list[WorkspaceClaim] | None = None
+    if gp_claims:
+        running = [
+            WorkspaceClaim(
+                workspace_num=c.workspace_num,
+                pid=c.pid,
+                workflow=c.workflow,
+                cl_name=c.cl_name,
+                artifacts_timestamp=c.artifacts_timestamp,
+            )
+            for c in gp_claims
+        ]
+
+    return ProjectSpec(
+        file_path=yaml_file_path,
+        bug=bug,
+        running=running,
+        changespecs=changespecs if changespecs else None,
+    )
+
+
 @contextmanager
 def read_and_update_project_spec(
     project_file: str,

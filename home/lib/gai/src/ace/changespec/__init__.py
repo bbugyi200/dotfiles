@@ -31,6 +31,7 @@ from .parser import parse_project_file
 from .project_spec import (
     ProjectSpec,
     WorkspaceClaim,
+    convert_gp_to_project_spec,
     parse_project_spec,
     read_and_update_project_spec,
     serialize_project_spec,
@@ -78,6 +79,7 @@ __all__ = [
     "parse_project_spec",
     "read_and_update_project_spec",
     "serialize_project_spec",
+    "convert_gp_to_project_spec",
     "write_project_spec_atomic",
     # Constants
     "ERROR_SUFFIX_MESSAGES",
