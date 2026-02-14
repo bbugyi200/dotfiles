@@ -223,8 +223,26 @@ def test_display_static_file_reads_and_renders(tmp_path: Any) -> None:
     # Test the method logic by calling it on the mock
     AgentFilePanel.display_static_file(panel, str(diff_file))
 
-    # Verify update was called (with a Syntax object)
+    # Verify update was called with a Group containing the path header and syntax
     assert panel.update.called
+    from rich.console import Group
+
+    group = panel.update.call_args[0][0]
+    assert isinstance(group, Group)
+    renderables = list(group._renderables)
+    assert len(renderables) == 3
+    # First element is the path header
+    from rich.text import Text
+
+    assert isinstance(renderables[0], Text)
+    assert str(renderables[0]) == str(diff_file)
+    # Second element is an empty separator line
+    assert isinstance(renderables[1], Text)
+    assert str(renderables[1]) == ""
+    # Third element is the Syntax content
+    from rich.syntax import Syntax
+
+    assert isinstance(renderables[2], Syntax)
     # Verify visibility message was posted
     panel.post_message.assert_called()
 

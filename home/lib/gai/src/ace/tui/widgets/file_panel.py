@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from rich.console import Group
 from rich.syntax import Syntax
 from rich.text import Text
 from running_field import get_workspace_directory
@@ -403,7 +404,8 @@ class AgentFilePanel(Static):
             self.post_message(FileVisibilityChanged(has_file=False))
             return
 
-        # Display diff with "static" indicator instead of timestamp
+        # Display diff with file path header
+        header = Text(expanded_path, style="bold underline")
         diff_with_header = f"# Static diff (from saved file)\n\n{diff_content}"
         syntax = Syntax(
             diff_with_header,
@@ -412,7 +414,7 @@ class AgentFilePanel(Static):
             line_numbers=True,
             word_wrap=True,
         )
-        self.update(syntax)
+        self.update(Group(header, Text(""), syntax))
         self._has_displayed_content = True
         self.post_message(FileVisibilityChanged(has_file=True))
 
@@ -444,6 +446,7 @@ class AgentFilePanel(Static):
         _, ext = os.path.splitext(expanded_path)
         lexer = _EXTENSION_TO_LEXER.get(ext.lower(), "text")
 
+        header = Text(expanded_path, style="bold underline")
         syntax = Syntax(
             content,
             lexer,
@@ -451,6 +454,6 @@ class AgentFilePanel(Static):
             line_numbers=True,
             word_wrap=True,
         )
-        self.update(syntax)
+        self.update(Group(header, Text(""), syntax))
         self._has_displayed_content = True
         self.post_message(FileVisibilityChanged(has_file=True))
