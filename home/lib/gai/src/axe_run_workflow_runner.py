@@ -60,14 +60,14 @@ def _write_workflow_state(
 
 def main() -> None:
     """Run workflow and release workspace on completion."""
-    # Accept 9 args: workflow_name, positional_args_json, named_args_json,
-    # project_file, workspace_dir, workspace_num, artifacts_dir,
-    # update_target, is_home_mode
-    if len(sys.argv) != 10:
+    # Accept 9 required args + 1 optional: workflow_name, positional_args_json,
+    # named_args_json, project_file, workspace_dir, workspace_num, artifacts_dir,
+    # update_target, is_home_mode[, hitl_override]
+    if not (10 <= len(sys.argv) <= 11):
         print(
             f"Usage: {sys.argv[0]} <workflow_name> <positional_args_json> "
             "<named_args_json> <project_file> <workspace_dir> <workspace_num> "
-            "<artifacts_dir> <update_target> <is_home_mode>",
+            "<artifacts_dir> <update_target> <is_home_mode> [<hitl_override>]",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -86,6 +86,11 @@ def main() -> None:
     positional_args: list[str] = json.loads(positional_args_json)
     named_args: dict[str, str] = json.loads(named_args_json)
     is_home_mode: bool = bool(is_home_mode_arg)
+
+    # Parse optional hitl_override: "1" → True, "0" → False, "" or missing → None
+    hitl_override: bool | None = None
+    if len(sys.argv) == 11 and sys.argv[10]:
+        hitl_override = sys.argv[10] == "1"
 
     # Get CL name from update_target for logging/backup purposes
     cl_name = update_target or "workflow"
@@ -144,6 +149,7 @@ def main() -> None:
             artifacts_dir=artifacts_dir,
             silent=True,
             project=project,
+            hitl_override=hitl_override,
         )
         success = True
         print(f"\nWorkflow '{workflow_name}' completed successfully")

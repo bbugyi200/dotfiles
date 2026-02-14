@@ -143,6 +143,7 @@ class PromptStepMixin:
     _propagate_last_embedded_output: (
         Any  # (embedded_workflows, step, step_state) -> None
     )
+    _should_hitl: Any  # (step: WorkflowStep) -> bool
 
     def _execute_prompt_step(
         self,
@@ -236,7 +237,7 @@ class PromptStepMixin:
             output = {"_raw": response_text}
 
         # Resolve path fields from embedded contexts before HITL
-        if step.hitl and embedded_workflows:
+        if self._should_hitl(step) and embedded_workflows:
             _resolve_embedded_path_fields(output, step, embedded_workflows)
 
         # Make path fields absolute for cross-process HITL communication
@@ -249,7 +250,7 @@ class PromptStepMixin:
                         output[field_name] = os.path.abspath(path_val)
 
         # HITL review if required
-        if step.hitl and self.hitl_handler:
+        if self._should_hitl(step) and self.hitl_handler:
             step_state.status = StepStatus.WAITING_HITL
             self.state.status = "waiting_hitl"
             self._save_state()

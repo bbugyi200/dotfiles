@@ -12,6 +12,7 @@ from xprompt._parsing import (
     parse_args,
     parse_workflow_reference,
     preprocess_shorthand_syntax,
+    strip_hitl_suffix,
 )
 
 
@@ -409,6 +410,79 @@ def test_double_colon_shorthand_not_mid_line() -> None:
     prompt = "text before #foo:: hello"
     result = preprocess_shorthand_syntax(prompt, {"foo"})
     assert result == "text before #foo:: hello"
+
+
+# Tests for strip_hitl_suffix
+
+
+def test_strip_hitl_suffix_no_suffix() -> None:
+    """Test strip_hitl_suffix returns None when no suffix present."""
+    ref, override = strip_hitl_suffix("myworkflow")
+    assert ref == "myworkflow"
+    assert override is None
+
+
+def test_strip_hitl_suffix_double_bang() -> None:
+    """Test strip_hitl_suffix with !! suffix returns True."""
+    ref, override = strip_hitl_suffix("foo!!")
+    assert ref == "foo"
+    assert override is True
+
+
+def test_strip_hitl_suffix_double_question() -> None:
+    """Test strip_hitl_suffix with ?? suffix returns False."""
+    ref, override = strip_hitl_suffix("foo??")
+    assert ref == "foo"
+    assert override is False
+
+
+def test_strip_hitl_suffix_with_paren_args() -> None:
+    """Test strip_hitl_suffix with parenthesis args."""
+    ref, override = strip_hitl_suffix("foo!!(arg)")
+    assert ref == "foo(arg)"
+    assert override is True
+
+
+def test_strip_hitl_suffix_with_colon_arg() -> None:
+    """Test strip_hitl_suffix with colon arg."""
+    ref, override = strip_hitl_suffix("foo!!:arg")
+    assert ref == "foo:arg"
+    assert override is True
+
+
+def test_strip_hitl_suffix_with_plus() -> None:
+    """Test strip_hitl_suffix with plus syntax."""
+    ref, override = strip_hitl_suffix("foo!!+")
+    assert ref == "foo+"
+    assert override is True
+
+
+def test_strip_hitl_suffix_namespaced() -> None:
+    """Test strip_hitl_suffix with namespaced workflow."""
+    ref, override = strip_hitl_suffix("eval/split!!")
+    assert ref == "eval/split"
+    assert override is True
+
+
+def test_strip_hitl_suffix_single_bang_no_match() -> None:
+    """Test strip_hitl_suffix with single ! does not match."""
+    ref, override = strip_hitl_suffix("foo!")
+    assert ref == "foo!"
+    assert override is None
+
+
+def test_strip_hitl_suffix_single_question_no_match() -> None:
+    """Test strip_hitl_suffix with single ? does not match."""
+    ref, override = strip_hitl_suffix("foo?")
+    assert ref == "foo?"
+    assert override is None
+
+
+def test_strip_hitl_suffix_question_with_paren_args() -> None:
+    """Test strip_hitl_suffix ?? with parenthesis args."""
+    ref, override = strip_hitl_suffix("foo??(a, b)")
+    assert ref == "foo(a, b)"
+    assert override is False
 
 
 # Tests for paren double-colon shorthand

@@ -67,8 +67,10 @@ def handle_run_special_cases(args_after_run: list[str]) -> bool:
                 execute_workflow,
                 get_all_prompts,
                 parse_workflow_reference,
+                strip_hitl_suffix,
             )
 
+            workflow_ref, hitl_override = strip_hitl_suffix(workflow_ref)
             workflow_name, positional_args, named_args = parse_workflow_reference(
                 workflow_ref
             )
@@ -96,6 +98,7 @@ def handle_run_special_cases(args_after_run: list[str]) -> bool:
                         named_args,
                         artifacts_dir=artifacts_dir,
                         project=project,
+                        hitl_override=hitl_override,
                     )
                     sys.exit(0)
                 except Exception as e:

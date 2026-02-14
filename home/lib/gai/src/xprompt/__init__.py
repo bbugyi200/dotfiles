@@ -8,7 +8,7 @@ This module provides a replacement for the legacy snippet system, adding:
 - YAML workflow support for multi-step agent workflows
 """
 
-from ._parsing import escape_for_xprompt, parse_workflow_reference
+from ._parsing import escape_for_xprompt, parse_workflow_reference, strip_hitl_suffix
 from .loader import (
     get_all_prompts,
     get_all_workflows,
@@ -79,6 +79,7 @@ __all__ = [
     # Parsing
     "escape_for_xprompt",
     "parse_workflow_reference",
+    "strip_hitl_suffix",
     # Processor
     "WorkflowResult",
     "execute_workflow",

@@ -44,6 +44,7 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
         artifacts_dir: str,
         hitl_handler: HITLHandler | None = None,
         output_handler: "WorkflowOutputHandler | None" = None,
+        hitl_override: bool | None = None,
     ) -> None:
         """Initialize the workflow executor.
 
@@ -53,12 +54,16 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
             artifacts_dir: Directory for workflow artifacts.
             hitl_handler: Optional handler for HITL prompts.
             output_handler: Optional handler for verbose output display.
+            hitl_override: Force HITL on (True) or off (False) for all steps,
+                overriding individual step ``hitl`` settings.  None preserves
+                per-step behavior.
         """
         self.workflow = workflow
         self.context: dict[str, Any] = dict(args)
         self.artifacts_dir = artifacts_dir
         self.hitl_handler = hitl_handler
         self.output_handler = output_handler
+        self.hitl_override = hitl_override
         self._current_embedded_workflow_name: str | None = None
 
         # Detect step inputs - args that match step names with output schemas
@@ -81,6 +86,22 @@ class WorkflowExecutor(StepMixin, LoopMixin, ParallelMixin):
             artifacts_dir=artifacts_dir,
             start_time=datetime.now().isoformat(),
         )
+
+    def _should_hitl(self, step: WorkflowStep) -> bool:
+        """Determine whether HITL review is required for a step.
+
+        Checks the executor-level override first; falls back to the step's own
+        ``hitl`` flag.
+
+        Args:
+            step: The workflow step to check.
+
+        Returns:
+            True if HITL review should be triggered for this step.
+        """
+        if self.hitl_override is not None:
+            return self.hitl_override
+        return step.hitl
 
     def _save_state(self) -> None:
         """Save workflow state to JSON file."""

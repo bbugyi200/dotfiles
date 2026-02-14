@@ -295,9 +295,10 @@ class AgentLaunchMixin:
             True if workflow was executed, False if not a valid workflow reference,
             or a str with the rendered prompt for simple xprompts.
         """
-        from xprompt import get_all_prompts, parse_workflow_reference
+        from xprompt import get_all_prompts, parse_workflow_reference, strip_hitl_suffix
 
         workflow_ref = prompt[1:]  # Strip the #
+        workflow_ref, hitl_override = strip_hitl_suffix(workflow_ref)
         workflow_name, positional_args, named_args = parse_workflow_reference(
             workflow_ref
         )
@@ -341,12 +342,12 @@ class AgentLaunchMixin:
         if has_changespec_context:
             # Launch as subprocess with workspace claiming
             return self._launch_workflow_subprocess(
-                workflow_name, positional_args, named_args
+                workflow_name, positional_args, named_args, hitl_override=hitl_override
             )
 
         # Original behavior: daemon thread for home mode or no context
         return self._execute_workflow_in_thread(
-            workflow_name, positional_args, named_args
+            workflow_name, positional_args, named_args, hitl_override=hitl_override
         )
 
     def _execute_workflow_in_thread(
@@ -354,6 +355,7 @@ class AgentLaunchMixin:
         workflow_name: str,
         positional_args: list[str],
         named_args: dict[str, str],
+        hitl_override: bool | None = None,
     ) -> bool:
         """Execute workflow in a daemon thread (for home mode).
 
@@ -404,6 +406,7 @@ class AgentLaunchMixin:
                         artifacts_dir=str(artifacts_dir),
                         silent=True,
                         project=project,
+                        hitl_override=hitl_override,
                     )
                 except Exception as e:
                     # Can't easily notify from background thread, so just log
@@ -424,6 +427,7 @@ class AgentLaunchMixin:
         workflow_name: str,
         positional_args: list[str],
         named_args: dict[str, str],
+        hitl_override: bool | None = None,
     ) -> bool:
         """Launch workflow as subprocess with workspace claiming.
 
@@ -487,6 +491,11 @@ class AgentLaunchMixin:
                         artifacts_dir,
                         ctx.update_target or "",
                         "",  # not home mode
+                        (
+                            "1"
+                            if hitl_override is True
+                            else ("0" if hitl_override is False else "")
+                        ),
                     ],
                     cwd=ctx.workspace_dir,
                     stdout=output_file,

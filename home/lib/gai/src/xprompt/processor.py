@@ -337,6 +337,7 @@ def execute_workflow(
     silent: bool = False,
     project: str | None = None,
     workflow_obj: "Workflow | None" = None,
+    hitl_override: bool | None = None,
 ) -> WorkflowResult:
     """Execute a workflow and return its result.
 
@@ -350,6 +351,9 @@ def execute_workflow(
         project: Optional project name for loading prompts.
         workflow_obj: Optional pre-built Workflow object (e.g., anonymous workflows).
             When provided, skips the name-based lookup.
+        hitl_override: Force HITL on (True) or off (False) for all steps,
+            overriding individual step ``hitl`` settings.  None preserves
+            per-step behavior.
 
     Returns:
         WorkflowResult with output, response text, and artifacts directory.
@@ -491,6 +495,7 @@ def execute_workflow(
         artifacts_dir=artifacts_dir,
         hitl_handler=hitl_handler,
         output_handler=output_handler,
+        hitl_override=hitl_override,
     )
 
     success = executor.execute()

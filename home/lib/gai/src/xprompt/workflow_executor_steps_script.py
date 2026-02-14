@@ -41,6 +41,10 @@ class ScriptStepMixin:
     state: WorkflowState
 
     # Method stubs for type checking - implemented in main class
+    def _should_hitl(self, step: "WorkflowStep") -> bool:
+        """Determine whether HITL review is required for a step."""
+        raise NotImplementedError
+
     def _save_state(self) -> None:
         """Save workflow state to JSON file."""
         raise NotImplementedError
@@ -134,7 +138,7 @@ class ScriptStepMixin:
                         output[field_name] = os.path.abspath(path_val)
 
         # HITL review if required
-        if step.hitl and self.hitl_handler:
+        if self._should_hitl(step) and self.hitl_handler:
             step_state.status = StepStatus.WAITING_HITL
             self.state.status = "waiting_hitl"
             self._save_state()
@@ -261,7 +265,7 @@ class ScriptStepMixin:
                         output[field_name] = os.path.abspath(path_val)
 
         # HITL review if required
-        if step.hitl and self.hitl_handler:
+        if self._should_hitl(step) and self.hitl_handler:
             step_state.status = StepStatus.WAITING_HITL
             self.state.status = "waiting_hitl"
             self._save_state()

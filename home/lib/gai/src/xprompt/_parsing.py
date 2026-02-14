@@ -307,6 +307,34 @@ def _parse_named_arg(token: str) -> tuple[str | None, str]:
     return None, token
 
 
+def strip_hitl_suffix(workflow_ref: str) -> tuple[str, bool | None]:
+    """Extract !! or ?? HITL override suffix from a workflow reference.
+
+    The suffix is expected on the name portion of the reference (before any
+    ``(``, ``:``, or ``+`` delimiter).
+
+    Args:
+        workflow_ref: The workflow reference string (without leading ``#``).
+
+    Returns:
+        Tuple of (cleaned_ref, hitl_override) where hitl_override is True
+        for ``!!``, False for ``??``, or None if no suffix was present.
+    """
+    # Find name boundary (first (, :, or +)
+    name_end = len(workflow_ref)
+    for i, ch in enumerate(workflow_ref):
+        if ch in ("(", ":", "+"):
+            name_end = i
+            break
+    name_part = workflow_ref[:name_end]
+    rest = workflow_ref[name_end:]
+    if name_part.endswith("!!"):
+        return name_part[:-2] + rest, True
+    if name_part.endswith("??"):
+        return name_part[:-2] + rest, False
+    return workflow_ref, None
+
+
 def parse_workflow_reference(
     workflow_ref: str,
 ) -> tuple[str, list[str], dict[str, str]]:

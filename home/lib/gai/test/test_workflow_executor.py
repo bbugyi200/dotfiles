@@ -44,6 +44,51 @@ def _create_mock_hitl_handler(action: str = "accept") -> HITLHandler:
     return handler
 
 
+class TestShouldHitl:
+    """Tests for the _should_hitl method on WorkflowExecutor."""
+
+    def test_should_hitl_no_override_respects_step(self) -> None:
+        """Test _should_hitl returns step.hitl when no override set."""
+        step_hitl = WorkflowStep(name="s1", bash="echo ok", hitl=True)
+        step_no_hitl = WorkflowStep(name="s2", bash="echo ok", hitl=False)
+        workflow = _create_test_workflow(steps=[step_hitl, step_no_hitl])
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            executor = WorkflowExecutor(
+                workflow=workflow, args={}, artifacts_dir=tmpdir
+            )
+            assert executor._should_hitl(step_hitl) is True
+            assert executor._should_hitl(step_no_hitl) is False
+
+    def test_should_hitl_override_true_forces_hitl(self) -> None:
+        """Test _should_hitl returns True when override is True."""
+        step = WorkflowStep(name="s1", bash="echo ok", hitl=False)
+        workflow = _create_test_workflow(steps=[step])
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            executor = WorkflowExecutor(
+                workflow=workflow,
+                args={},
+                artifacts_dir=tmpdir,
+                hitl_override=True,
+            )
+            assert executor._should_hitl(step) is True
+
+    def test_should_hitl_override_false_skips_hitl(self) -> None:
+        """Test _should_hitl returns False when override is False."""
+        step = WorkflowStep(name="s1", bash="echo ok", hitl=True)
+        workflow = _create_test_workflow(steps=[step])
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            executor = WorkflowExecutor(
+                workflow=workflow,
+                args={},
+                artifacts_dir=tmpdir,
+                hitl_override=False,
+            )
+            assert executor._should_hitl(step) is False
+
+
 class TestPythonStepExecution:
     """Tests for Python step execution."""
 
