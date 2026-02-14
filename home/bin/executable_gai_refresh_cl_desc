@@ -116,7 +116,7 @@ def main() -> None:
 
     # Combine new description with original metadata tags
     full_desc = (
-        (new_desc + "\n\n<!-- prettier-ignore -->\n" + tag_block)
+        (new_desc + "\n\n" + tag_block)
         if tag_block
         else new_desc
     )
