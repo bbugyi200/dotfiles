@@ -20,7 +20,7 @@ Optional Arguments
     View this help message.
 
 -n WORDS | --num-words WORDS
-    Number of words per chunk (default: 5).
+    Number of words per chunk (default: 7).
 
 -s DELAY | --sleep DELAY
     Delay in seconds between pastes (default: 0.1).
@@ -141,7 +141,7 @@ function parse_cli_args() {
   eval set -- "$(getopt -o "h,n:,s:,v" -l "help,num-words:,sleep:,verbose" -- "$@")"
 
   VERBOSE=0
-  NUM_WORDS=5
+  NUM_WORDS=7
   SLEEP_DELAY=0.1
   while [[ -n "$1" ]]; do
     case $1 in
