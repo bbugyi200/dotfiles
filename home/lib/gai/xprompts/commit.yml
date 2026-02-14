@@ -35,13 +35,33 @@ steps:
           print(f"data_file={f.name}")
     output: { data_file: path }
 
+  - name: check_make_cl_desc
+    hidden: true
+    if: "{{ check_changes.has_changes }}"
+    python: |
+      import sys, os
+      sys.path.insert(0, os.path.join(os.path.expanduser('~'), 'lib', 'gai', 'src'))
+      try:
+          from xprompt.loader import get_all_xprompts
+          has = 'make_cl_desc' in get_all_xprompts()
+      except Exception:
+          has = False
+      print(f"has_make_cl_desc={'true' if has else 'false'}")
+    output: { has_make_cl_desc: bool }
+
+  - name: gen_cl_desc
+    if: "{{ check_changes.has_changes and check_make_cl_desc.has_make_cl_desc }}"
+    prompt: "#make_cl_desc #file:new_cl_desc"
+    output: { desc_file: path }
+
   - name: commit
     if: "{{ check_changes.has_changes }}"
     bash: |
       gai_commit_workflow --create \
         --name "{{ name }}" \
         --bug-id "{{ bug_id }}" \
-        --data-file "{{ save_response.data_file }}"
+        --data-file "{{ save_response.data_file }}" \
+        --generated-desc-file "{{ gen_cl_desc.desc_file | default('') }}"
     output: { success: bool, cl_url: line, full_cl_name: word, diff_path: path, error: text }
 
   - name: report

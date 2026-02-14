@@ -88,10 +88,39 @@ def _run_command(cmd: str, capture_output: bool = True) -> subprocess.CompletedP
     )
 
 
+def _get_cl_description(response: str, generated_desc_file: str = "") -> str:
+    """Get CL description from pre-generated file or by summarizing response."""
+    if generated_desc_file and os.path.isfile(generated_desc_file):
+        with open(generated_desc_file, "r", encoding="utf-8") as f:
+            description = f.read().strip()
+        if description:
+            return description
+    # Fall back to summarization
+    fd_response, response_tmp = tempfile.mkstemp(
+        suffix=".md", prefix="gai_commit_response_"
+    )
+    try:
+        with os.fdopen(fd_response, "w", encoding="utf-8") as f:
+            f.write(response)
+        from summarize_utils import get_file_summary
+
+        return get_file_summary(
+            response_tmp,
+            usage="a concise description of what changes were made to the codebase",
+            fallback="Changes made by agent",
+        )
+    finally:
+        try:
+            os.unlink(response_tmp)
+        except OSError:
+            pass
+
+
 def _create_cl(
     name: str,
     bug_id: int,
     data_file: str,
+    generated_desc_file: str = "",
 ) -> tuple[bool, str, str, str, str]:
     """Create a new CL from uncommitted changes.
 
@@ -99,6 +128,7 @@ def _create_cl(
         name: The CL name (without project prefix).
         bug_id: Bug ID to link (0 for no bug).
         data_file: Path to JSON file containing prompt and response from agent.
+        generated_desc_file: Path to pre-generated CL description file (optional).
 
     Returns:
         Tuple of (success, cl_url, full_cl_name, error_message, diff_path)
@@ -110,7 +140,6 @@ def _create_cl(
     from commit_workflow.cl_formatting import format_cl_description
     from gai_utils import generate_timestamp
     from shared_utils import run_shell_command
-    from summarize_utils import get_file_summary
     from workflow_utils import get_initial_hooks_for_changespec, get_project_file_path
 
     # Load prompt and response from data file
@@ -156,21 +185,8 @@ def _create_cl(
         timestamp=timestamp,
     )
 
-    # Write response to temp file for get_file_summary (which expects a file path)
-    fd_response, response_tmp = tempfile.mkstemp(suffix=".md", prefix="gai_commit_response_")
-    try:
-        with os.fdopen(fd_response, "w", encoding="utf-8") as f:
-            f.write(response)
-    except Exception:
-        os.close(fd_response)
-        raise
-
-    # Generate description from response
-    description = get_file_summary(
-        response_tmp,
-        usage="a concise description of what changes were made to the codebase",
-        fallback="Changes made by agent",
-    )
+    # Generate description from pre-generated file or by summarizing response
+    description = _get_cl_description(response, generated_desc_file)
 
     # Write description to temp file for hg commit
     fd, desc_file = tempfile.mkstemp(suffix=".txt", prefix="gai_commit_desc_")
@@ -245,12 +261,11 @@ def _create_cl(
         return True, cl_url, suffixed_name, "", diff_path or ""
 
     finally:
-        # Clean up temp files
-        for tmp_file in [desc_file, response_tmp]:
-            try:
-                os.unlink(tmp_file)
-            except OSError:
-                pass
+        # Clean up temp file
+        try:
+            os.unlink(desc_file)
+        except OSError:
+            pass
 
 
 def main() -> None:
@@ -268,6 +283,11 @@ def main() -> None:
     parser.add_argument(
         "--data-file", required=True, help="Path to JSON file with prompt and response"
     )
+    parser.add_argument(
+        "--generated-desc-file",
+        default="",
+        help="Path to pre-generated CL description file",
+    )
 
     args = parser.parse_args()
 
@@ -279,7 +299,10 @@ def main() -> None:
         sys.stdout = sys.stderr
         try:
             success, cl_url, full_cl_name, error, diff_path = _create_cl(
-                args.name, args.bug_id, args.data_file
+                args.name,
+                args.bug_id,
+                args.data_file,
+                args.generated_desc_file,
             )
         finally:
             sys.stdout = saved_stdout

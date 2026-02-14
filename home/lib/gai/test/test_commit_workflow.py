@@ -1,6 +1,9 @@
 """Tests for commit workflow operations."""
 
+import importlib.machinery
+import importlib.util
 import tempfile
+import types
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -338,3 +341,70 @@ def test_add_changespec_no_parent_placed_at_bottom() -> None:
         assert pos_existing < pos_new
     finally:
         Path(project_file).unlink()
+
+
+# --- Tests for _get_cl_description from executable_gai_commit_workflow ---
+
+
+def _load_commit_workflow_module() -> types.ModuleType:
+    """Load executable_gai_commit_workflow as a Python module."""
+    script_path = str(
+        Path(__file__).parent.parent.parent.parent
+        / "bin"
+        / "executable_gai_commit_workflow"
+    )
+    loader = importlib.machinery.SourceFileLoader("gai_commit_workflow", script_path)
+    spec = importlib.util.spec_from_loader("gai_commit_workflow", loader)
+    assert spec is not None
+    mod = importlib.util.module_from_spec(spec)
+    loader.exec_module(mod)
+    return mod
+
+
+def test_get_cl_description_valid_file() -> None:
+    """Test that a valid pre-generated description file is used."""
+    mod = _load_commit_workflow_module()
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".md") as f:
+        f.write("Pre-generated CL description\n")
+        desc_file = f.name
+    try:
+        result = mod._get_cl_description("some response", desc_file)
+        assert result == "Pre-generated CL description"
+    finally:
+        Path(desc_file).unlink()
+
+
+def test_get_cl_description_empty_path_falls_back() -> None:
+    """Test that empty string path falls back to get_file_summary."""
+    mod = _load_commit_workflow_module()
+    with patch(
+        "summarize_utils.get_file_summary", return_value="Summarized description"
+    ):
+        result = mod._get_cl_description("some response", "")
+    assert result == "Summarized description"
+
+
+def test_get_cl_description_nonexistent_file_falls_back() -> None:
+    """Test that a nonexistent file path falls back to get_file_summary."""
+    mod = _load_commit_workflow_module()
+    with patch(
+        "summarize_utils.get_file_summary", return_value="Summarized description"
+    ):
+        result = mod._get_cl_description("some response", "/nonexistent/path.md")
+    assert result == "Summarized description"
+
+
+def test_get_cl_description_empty_file_falls_back() -> None:
+    """Test that an empty file falls back to get_file_summary."""
+    mod = _load_commit_workflow_module()
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".md") as f:
+        f.write("")
+        desc_file = f.name
+    try:
+        with patch(
+            "summarize_utils.get_file_summary", return_value="Summarized description"
+        ):
+            result = mod._get_cl_description("some response", desc_file)
+        assert result == "Summarized description"
+    finally:
+        Path(desc_file).unlink()
