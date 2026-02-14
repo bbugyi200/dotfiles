@@ -205,7 +205,8 @@ xprompts:
     be. For example, if a method is only used within its own class, it should be marked as private instead of public
     or protected. Dead code (unused public functionality that was added by this CL) should also be removed.
   my_cl_desc_advice: |
-    ### Use Bullets for Multiline CL Description Body
+    ### Advice for Writing CL Descriptions
+    #### Use Bullets for Multiline CL Description Body
     Prefer bullets when constructing CL descriptions with multiple lines in the body. For example, consider the
     following CL description:
 
