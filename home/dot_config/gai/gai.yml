@@ -236,7 +236,28 @@ xprompts:
       targets (e.g., Baz).
     - Additionally, simplify `FooDtoConverter` by using `ignoreField` for `estimated_value` and
       `usage_percentage` instead of empty manual overrides.
-    ````
+
+    But prefer a single-sentence body over a multi-line body when it is sufficient to describe the change (don't delve too much into implementation details). For example, consider the following CL description:
+
+    ```
+    Refactor FooEnumConverters to use shared BarEnumConverters.
+
+    - Replace local definitions of `StatusConverter`, `FormatConverter`, and
+      `TypeConverter` with shared implementations from `BarEnumConverters`
+      to reduce code duplication and ensure consistency.
+    - Remove the now-redundant inner classes from `FooEnumConverters.java`.
+    - Update `BUILD` dependencies to include
+      `//java/com/example/api/service/common/bar`.
+    ```
+
+    This is less desirable than:
+
+    ```
+    Use shared BarEnumConverters in FooEnumConverters.
+
+    Remove local definitions of `StatusConverter`, `FormatConverter`, and `TypeConverter`
+    from `FooEnumConverters` in favor of the shared implementations from `BarEnumConverters`.
+    ```
   newfeat:
     input: { feat_name: word, usage: line }
     content: |
