@@ -1,0 +1,61 @@
+steps:
+  - name: gen_desc
+    prompt: |
+      Can you review the changes made by this CL (see the #cl_diff file) and suggest a new CL description that conforms
+      with the advice given in the @~/bb/docs/cl_descriptions.md document? The current CL description is shown below for
+      context:
+
+      #x(current_cl_desc, cl_desc --short)
+
+      #file:new_cl_desc
+    output: { desc_file: path }
+    hitl: true
+
+  - name: reword
+    python: |
+      import re
+      import subprocess
+
+      def escape_for_hg_reword(desc):
+          return (
+              desc.replace("\\", "\\\\")
+              .replace("'", "\\'")
+              .replace("\n", "\\n")
+              .replace("\t", "\\t")
+              .replace("\r", "\\r")
+          )
+
+      # Read AI-generated description
+      with open({{ gen_desc.desc_file | tojson }}) as f:
+          new_desc = f.read().strip()
+
+      # Get current full description to preserve metadata tags
+      result = subprocess.run(['cl_desc'], capture_output=True, text=True, check=True)
+      current_full = result.stdout.rstrip('\n')
+
+      # Extract metadata tag block from end of current description
+      lines = current_full.split('\n')
+      tag_pattern = re.compile(r'^[A-Z][A-Za-z_\s-]*[=:]')
+
+      # Skip trailing blank lines
+      last_non_blank = len(lines) - 1
+      while last_non_blank >= 0 and lines[last_non_blank].strip() == '':
+          last_non_blank -= 1
+
+      # Scan upward to find contiguous tag block
+      tags_start = len(lines)
+      for i in range(last_non_blank, -1, -1):
+          if tag_pattern.match(lines[i].strip()):
+              tags_start = i
+          else:
+              break
+
+      tag_block = '\n'.join(lines[tags_start:]) if tags_start < len(lines) else ''
+
+      # Combine new description with original metadata tags
+      full_desc = (new_desc + '\n' + tag_block) if tag_block else new_desc
+
+      escaped = escape_for_hg_reword(full_desc)
+      subprocess.run(['bb_hg_reword', escaped], check=True)
+      print("success=true")
+    output: { success: bool }
