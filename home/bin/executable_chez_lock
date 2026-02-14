@@ -5,7 +5,7 @@ source ~/lib/bugyi.sh
 LOCK_FILE="/tmp/chez.lock"
 
 export USAGE_GRAMMAR=(
-  "[-n N] [-v] {claim|release}"
+  "[-n N] [-s SECS] [-v] {claim|release}"
   "-h"
 )
 
@@ -27,6 +27,9 @@ Optional Arguments
 
 -n N | --max-attempts N
     Maximum number of retry attempts when claiming the lock. Defaults to 480.
+
+-s SECS | --sleep-secs SECS
+    Seconds to sleep between retries. Defaults to 15.
 
 -v | --verbose
     Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
@@ -58,9 +61,9 @@ function claim_lock() {
     local lock_pid
     lock_pid="$(cat "${LOCK_FILE}" 2>/dev/null || echo "unknown")"
     attempt=$((attempt + 1))
-    log::warn "Lock file exists (held by PID %s). Attempt %d/%d, retrying in 15s..." \
-      "${lock_pid}" "${attempt}" "${MAX_ATTEMPTS}"
-    sleep 15
+    log::warn "Lock file exists (held by PID %s). Attempt %d/%d, retrying in %ds..." \
+      "${lock_pid}" "${attempt}" "${MAX_ATTEMPTS}" "${SLEEP_SECS}"
+    sleep "${SLEEP_SECS}"
   done
 
   die "Failed to claim lock after %d attempts." "${MAX_ATTEMPTS}"
@@ -78,10 +81,11 @@ function release_lock() {
 function parse_cli_args() {
   log::debug "Command-Line Arguments: ($*)"
 
-  eval set -- "$(getopt -o "h,n:,v" -l "help,max-attempts:,verbose" -- "$@")"
+  eval set -- "$(getopt -o "h,n:,s:,v" -l "help,max-attempts:,sleep-secs:,verbose" -- "$@")"
 
   VERBOSE=0
   MAX_ATTEMPTS=480
+  SLEEP_SECS=15
   while [[ -n "$1" ]]; do
     case $1 in
     -h | --help)
@@ -91,6 +95,10 @@ function parse_cli_args() {
     -n | --max-attempts)
       shift
       MAX_ATTEMPTS="$1"
+      ;;
+    -s | --sleep-secs)
+      shift
+      SLEEP_SECS="$1"
       ;;
     -v | --verbose)
       VERBOSE=$((VERBOSE + 1))
@@ -122,6 +130,7 @@ function parse_cli_args() {
   readonly ACTION
   readonly DOC
   readonly MAX_ATTEMPTS
+  readonly SLEEP_SECS
   readonly VERBOSE
 }
 
