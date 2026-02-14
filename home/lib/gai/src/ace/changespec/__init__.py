@@ -28,6 +28,7 @@ from .models import (
     parse_commit_entry_id,
 )
 from .parser import parse_project_file
+from .project_spec import ProjectSpec, WorkspaceClaim
 from .raw_text import get_raw_changespec_text
 from .validation import (
     all_hooks_passed_for_entries,
@@ -51,6 +52,8 @@ __all__ = [
     "CommentEntry",
     "MentorEntry",
     "MentorStatusLine",
+    "ProjectSpec",
+    "WorkspaceClaim",
     # Constants
     "ERROR_SUFFIX_MESSAGES",
     "READY_TO_MAIL_SUFFIX",

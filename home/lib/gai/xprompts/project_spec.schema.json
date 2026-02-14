@@ -1,0 +1,313 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GAI Project Spec",
+  "description": "Schema for gai project specification YAML files",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "bug": {
+      "type": ["string", "null"],
+      "description": "Bug tracker reference for the project"
+    },
+    "running": {
+      "type": "array",
+      "description": "Active workspace claims",
+      "items": {
+        "$ref": "#/definitions/workspace_claim"
+      }
+    },
+    "changespecs": {
+      "type": "array",
+      "description": "List of ChangeSpec entries",
+      "items": {
+        "$ref": "#/definitions/changespec"
+      }
+    }
+  },
+  "definitions": {
+    "suffix_type": {
+      "type": ["string", "null"],
+      "enum": [
+        "error",
+        "running_agent",
+        "killed_agent",
+        "running_process",
+        "pending_dead_process",
+        "killed_process",
+        "plain",
+        "summarize_complete",
+        "timeout",
+        "cancelled",
+        null
+      ]
+    },
+    "workspace_claim": {
+      "type": "object",
+      "required": ["workspace_num", "pid", "workflow"],
+      "additionalProperties": false,
+      "properties": {
+        "workspace_num": {
+          "type": "integer",
+          "description": "Workspace number"
+        },
+        "pid": {
+          "type": "integer",
+          "description": "Process ID of the claiming process"
+        },
+        "workflow": {
+          "type": "string",
+          "description": "Name of the workflow"
+        },
+        "cl_name": {
+          "type": ["string", "null"],
+          "description": "ChangeSpec name being worked on"
+        },
+        "artifacts_timestamp": {
+          "type": ["string", "null"],
+          "description": "Timestamp for artifacts (YYmmdd_HHMMSS format)"
+        }
+      }
+    },
+    "changespec": {
+      "type": "object",
+      "required": ["name", "description", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "ChangeSpec name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the change"
+        },
+        "parent": {
+          "type": ["string", "null"],
+          "description": "Parent ChangeSpec name"
+        },
+        "cl": {
+          "type": ["string", "null"],
+          "description": "CL reference"
+        },
+        "status": {
+          "type": "string",
+          "description": "Current status (e.g., WIP, Drafted, Mailed)"
+        },
+        "bug": {
+          "type": ["string", "null"],
+          "description": "Bug tracker reference for this ChangeSpec"
+        },
+        "test_targets": {
+          "type": ["array", "null"],
+          "items": {
+            "type": "string"
+          },
+          "description": "List of test targets"
+        },
+        "kickstart": {
+          "type": ["string", "null"],
+          "description": "Kickstart command"
+        },
+        "commits": {
+          "type": ["array", "null"],
+          "items": {
+            "$ref": "#/definitions/commit_entry"
+          },
+          "description": "List of commit entries"
+        },
+        "hooks": {
+          "type": ["array", "null"],
+          "items": {
+            "$ref": "#/definitions/hook_entry"
+          },
+          "description": "List of hook entries"
+        },
+        "comments": {
+          "type": ["array", "null"],
+          "items": {
+            "$ref": "#/definitions/comment_entry"
+          },
+          "description": "List of comment entries"
+        },
+        "mentors": {
+          "type": ["array", "null"],
+          "items": {
+            "$ref": "#/definitions/mentor_entry"
+          },
+          "description": "List of mentor entries"
+        }
+      }
+    },
+    "commit_entry": {
+      "type": "object",
+      "required": ["number", "note"],
+      "additionalProperties": false,
+      "properties": {
+        "number": {
+          "type": "integer",
+          "description": "Commit entry number (1-based)"
+        },
+        "note": {
+          "type": "string",
+          "description": "Commit note text"
+        },
+        "chat": {
+          "type": ["string", "null"],
+          "description": "Chat reference"
+        },
+        "diff": {
+          "type": ["string", "null"],
+          "description": "Diff reference"
+        },
+        "proposal_letter": {
+          "type": ["string", "null"],
+          "description": "Proposal letter (e.g., 'a', 'b') for proposed entries"
+        },
+        "suffix": {
+          "type": ["string", "null"],
+          "description": "Suffix message"
+        },
+        "suffix_type": {
+          "$ref": "#/definitions/suffix_type"
+        }
+      }
+    },
+    "hook_entry": {
+      "type": "object",
+      "required": ["command"],
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "Hook command to execute"
+        },
+        "status_lines": {
+          "type": ["array", "null"],
+          "items": {
+            "$ref": "#/definitions/hook_status_line"
+          },
+          "description": "Status lines for this hook"
+        }
+      }
+    },
+    "hook_status_line": {
+      "type": "object",
+      "required": ["commit_entry_num", "timestamp", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "commit_entry_num": {
+          "type": "string",
+          "description": "COMMITS entry ID (e.g., '1', '1a', '2')"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp in YYmmdd_HHMMSS format"
+        },
+        "status": {
+          "type": "string",
+          "description": "Status (RUNNING, PASSED, FAILED, KILLED)"
+        },
+        "duration": {
+          "type": ["string", "null"],
+          "description": "Duration (e.g., '1m23s')"
+        },
+        "suffix": {
+          "type": ["string", "null"],
+          "description": "Suffix message"
+        },
+        "suffix_type": {
+          "$ref": "#/definitions/suffix_type"
+        },
+        "summary": {
+          "type": ["string", "null"],
+          "description": "Summary from summarize_hook workflow"
+        }
+      }
+    },
+    "comment_entry": {
+      "type": "object",
+      "required": ["reviewer", "file_path"],
+      "additionalProperties": false,
+      "properties": {
+        "reviewer": {
+          "type": "string",
+          "description": "Comment type (e.g., 'critique')"
+        },
+        "file_path": {
+          "type": "string",
+          "description": "Path to the comments JSON file"
+        },
+        "suffix": {
+          "type": ["string", "null"],
+          "description": "Suffix message"
+        },
+        "suffix_type": {
+          "$ref": "#/definitions/suffix_type"
+        }
+      }
+    },
+    "mentor_entry": {
+      "type": "object",
+      "required": ["entry_id", "profiles"],
+      "additionalProperties": false,
+      "properties": {
+        "entry_id": {
+          "type": "string",
+          "description": "Matches COMMITS entry ID"
+        },
+        "profiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Profile names triggered for this entry"
+        },
+        "status_lines": {
+          "type": ["array", "null"],
+          "items": {
+            "$ref": "#/definitions/mentor_status_line"
+          },
+          "description": "Status lines for this mentor entry"
+        },
+        "is_wip": {
+          "type": "boolean",
+          "description": "Whether entry was created during WIP status"
+        }
+      }
+    },
+    "mentor_status_line": {
+      "type": "object",
+      "required": ["profile_name", "mentor_name", "status", "timestamp"],
+      "additionalProperties": false,
+      "properties": {
+        "profile_name": {
+          "type": "string",
+          "description": "Mentor profile name"
+        },
+        "mentor_name": {
+          "type": "string",
+          "description": "Mentor name within the profile"
+        },
+        "status": {
+          "type": "string",
+          "description": "Status (RUNNING, PASSED, FAILED)"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp in YYmmdd_HHMMSS format"
+        },
+        "duration": {
+          "type": ["string", "null"],
+          "description": "Duration (e.g., '0h2m15s')"
+        },
+        "suffix": {
+          "type": ["string", "null"],
+          "description": "Suffix message"
+        },
+        "suffix_type": {
+          "$ref": "#/definitions/suffix_type"
+        }
+      }
+    }
+  }
+}
