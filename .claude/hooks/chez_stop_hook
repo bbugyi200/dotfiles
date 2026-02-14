@@ -253,7 +253,6 @@ function run() {
         return 2
     fi
 
-    chez_lock release
     return 0
 }
 
