@@ -68,11 +68,18 @@ function run() {
 
     local -a words
     read -r -a words <<<"${line}"
+    local indent="${line%%[^[:space:]]*}"
     local line_total=${#words[@]}
 
     local i=0
     while [[ ${i} -lt ${line_total} ]]; do
       local chunk="${words[*]:i:NUM_WORDS}"
+
+      # Preserve leading whitespace on the first chunk of each line.
+      if [[ ${i} -eq 0 ]]; then
+        chunk="${indent}${chunk}"
+      fi
+
       local remaining=$((line_total - i))
 
       if [[ ${remaining} -gt ${NUM_WORDS} ]]; then
