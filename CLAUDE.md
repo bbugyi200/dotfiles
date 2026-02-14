@@ -28,9 +28,10 @@ bd sync               # Sync with git
 
 ## Chezmoi Lock
 
-- Before making any file changes (edits, writes, etc.), you MUST run `chez_lock claim` via Bash. This acquires a
-  file-based lock to prevent concurrent edits from multiple agents. Only run this once per session, before your first
-  file modification. Do not release the lock manually — it is released automatically by the stop hook.
+- Before making any file changes (edits, writes, creating or changing beads etc.), you MUST run `chez_lock claim` via
+  Bash. This acquires a file-based lock to prevent concurrent edits from multiple agents. Only run this once per
+  session, before your first file modification. Do not release the lock manually — it is released automatically by the
+  stop hook.
 - If the lock is held, this script will periodically poll for the lock to be released. After a max number of iterations,
   it will exit with an error. In which case, you should terminate without making any file changes.
 - Do NOT run `chez_lock claim` in a background process! It MUST block the main thread to ensure that no file changes are
