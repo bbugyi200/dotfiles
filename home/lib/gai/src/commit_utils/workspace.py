@@ -1,7 +1,6 @@
 """Workspace and diff management utilities."""
 
 import os
-import subprocess
 from pathlib import Path
 
 from gai_utils import (
@@ -10,6 +9,7 @@ from gai_utils import (
     make_safe_filename,
     strip_reverted_suffix,
 )
+from vcs_provider import get_vcs_provider
 
 
 def save_diff(
@@ -17,41 +17,29 @@ def save_diff(
     target_dir: str | None = None,
     timestamp: str | None = None,
 ) -> str | None:
-    """Save the current hg diff to a file.
+    """Save the current diff to a file.
 
     Args:
         cl_name: The CL name (used in filename).
-        target_dir: Optional directory to run hg diff in.
+        target_dir: Optional directory to run diff in.
         timestamp: Optional timestamp for filename (YYmmdd_HHMMSS format).
 
     Returns:
         Path to the saved diff file (with ~ for home), or None if no changes.
     """
+    cwd = target_dir or os.getcwd()
+    provider = get_vcs_provider(cwd)
     diffs_dir = ensure_gai_directory("diffs")
 
-    # Run hg addremove to track new/deleted files before creating diff
+    # Run addremove to track new/deleted files before creating diff
     try:
-        subprocess.run(
-            ["hg", "addremove"],
-            capture_output=True,
-            text=True,
-            cwd=target_dir,
-        )
+        provider.add_remove(cwd)
     except Exception:
         pass  # Continue even if addremove fails
 
-    # Run hg diff
-    try:
-        result = subprocess.run(
-            ["hg", "diff"],
-            capture_output=True,
-            text=True,
-            cwd=target_dir,
-        )
-        if result.returncode != 0 or not result.stdout.strip():
-            return None
-        diff_content = result.stdout
-    except Exception:
+    # Run diff
+    success, diff_content = provider.diff(cwd)
+    if not success or not diff_content:
         return None
 
     # Generate filename: cl_name-timestamp.diff
@@ -71,7 +59,7 @@ def save_diff(
 
 
 def apply_diff_to_workspace(workspace_dir: str, diff_path: str) -> tuple[bool, str]:
-    """Apply a saved diff to the workspace using hg import.
+    """Apply a saved diff to the workspace.
 
     Args:
         workspace_dir: The workspace directory to apply the diff in.
@@ -80,28 +68,17 @@ def apply_diff_to_workspace(workspace_dir: str, diff_path: str) -> tuple[bool, s
     Returns:
         Tuple of (success, error_message). error_message is empty on success.
     """
-    expanded_path = os.path.expanduser(diff_path)
-    if not os.path.exists(expanded_path):
-        return False, f"Diff file not found: {diff_path}"
-
-    try:
-        result = subprocess.run(
-            ["hg", "import", "--no-commit", expanded_path],
-            cwd=workspace_dir,
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            return False, result.stderr.strip() or "hg import failed"
-        return True, ""
-    except Exception as e:
-        return False, str(e)
+    provider = get_vcs_provider(workspace_dir)
+    success, error = provider.apply_patch(diff_path, workspace_dir)
+    if not success:
+        return False, error or "apply_patch failed"
+    return True, ""
 
 
 def apply_diffs_to_workspace(
     workspace_dir: str, diff_paths: list[str]
 ) -> tuple[bool, str]:
-    """Apply multiple saved diffs to the workspace using a single hg import.
+    """Apply multiple saved diffs to the workspace.
 
     Args:
         workspace_dir: The workspace directory to apply the diffs in.
@@ -112,33 +89,15 @@ def apply_diffs_to_workspace(
     """
     if not diff_paths:
         return True, ""
-
-    expanded_paths = []
-    for diff_path in diff_paths:
-        expanded = os.path.expanduser(diff_path)
-        if not os.path.exists(expanded):
-            return False, f"Diff file not found: {diff_path}"
-        expanded_paths.append(expanded)
-
-    try:
-        result = subprocess.run(
-            ["hg", "import", "--no-commit"] + expanded_paths,
-            cwd=workspace_dir,
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            return False, result.stderr.strip() or "hg import failed"
-        return True, ""
-    except Exception as e:
-        return False, str(e)
+    provider = get_vcs_provider(workspace_dir)
+    success, error = provider.apply_patches(diff_paths, workspace_dir)
+    if not success:
+        return False, error or "apply_patches failed"
+    return True, ""
 
 
 def clean_workspace(workspace_dir: str) -> bool:
     """Clean the workspace by reverting all uncommitted changes.
-
-    This runs `hg update --clean .` to revert tracked changes,
-    followed by `hg clean` to remove untracked files.
 
     Args:
         workspace_dir: The workspace directory to clean.
@@ -147,33 +106,18 @@ def clean_workspace(workspace_dir: str) -> bool:
         True if successful, False otherwise.
     """
     try:
-        # Revert all tracked changes
-        result = subprocess.run(
-            ["hg", "update", "--clean", "."],
-            cwd=workspace_dir,
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            return False
-
-        # Remove untracked files
-        result = subprocess.run(
-            ["hg", "clean"],
-            cwd=workspace_dir,
-            capture_output=True,
-            text=True,
-        )
-        return result.returncode == 0
+        provider = get_vcs_provider(workspace_dir)
+        success, _ = provider.clean_workspace(workspace_dir)
+        return success
     except Exception:
         return False
 
 
 def run_bb_hg_clean(workspace_dir: str, diff_name: str) -> tuple[bool, str]:
-    """Run bb_hg_clean to save changes and clean the workspace.
+    """Save changes and clean the workspace.
 
     This saves any uncommitted changes to a diff file before cleaning.
-    Should be called BEFORE bb_hg_update when switching branches.
+    Should be called BEFORE switching branches.
 
     Args:
         workspace_dir: The workspace directory to clean.
@@ -183,22 +127,10 @@ def run_bb_hg_clean(workspace_dir: str, diff_name: str) -> tuple[bool, str]:
         Tuple of (success, error_message).
     """
     try:
-        result = subprocess.run(
-            ["bb_hg_clean", diff_name],
-            cwd=workspace_dir,
-            capture_output=True,
-            text=True,
-            timeout=300,
-        )
-        if result.returncode != 0:
-            error_output = (
-                result.stderr.strip() or result.stdout.strip() or "no error output"
-            )
-            return False, error_output
+        provider = get_vcs_provider(workspace_dir)
+        success, error = provider.stash_and_clean(diff_name, workspace_dir)
+        if not success:
+            return False, error or "stash_and_clean failed"
         return True, ""
-    except subprocess.TimeoutExpired:
-        return False, "bb_hg_clean timed out"
-    except FileNotFoundError:
-        return False, "bb_hg_clean command not found"
     except Exception as e:
         return False, str(e)

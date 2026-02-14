@@ -1,7 +1,6 @@
 """Workflow for amending Mercurial commits with COMMITS tracking."""
 
 import os
-import subprocess
 import sys
 from typing import NoReturn
 
@@ -13,6 +12,7 @@ from commit_utils import (
     save_diff,
 )
 from rich_utils import print_status
+from vcs_provider import get_vcs_provider
 from workflow_base import BaseWorkflow
 from workflow_utils import (
     add_test_hooks_if_available,
@@ -178,17 +178,10 @@ class AmendWorkflow(BaseWorkflow):
 
         # Run bb_hg_amend
         print_status(f"Amending commit with note: {self._note}", "progress")
-        try:
-            result = subprocess.run(
-                ["bb_hg_amend", self._note],
-                capture_output=True,
-                text=True,
-            )
-            if result.returncode != 0:
-                print_status(f"bb_hg_amend failed: {result.stderr}", "error")
-                return False
-        except FileNotFoundError:
-            print_status("bb_hg_amend command not found", "error")
+        provider = get_vcs_provider(os.getcwd())
+        amend_ok, amend_err = provider.amend(self._note, os.getcwd())
+        if not amend_ok:
+            print_status(f"bb_hg_amend failed: {amend_err}", "error")
             return False
 
         # Add COMMITS entry

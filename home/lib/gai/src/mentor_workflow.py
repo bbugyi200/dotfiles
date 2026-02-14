@@ -1,7 +1,6 @@
 """Workflow for running mentor agents on CLs."""
 
 import os
-import subprocess
 import sys
 from pathlib import Path
 from typing import NoReturn
@@ -35,6 +34,7 @@ from shared_utils import (
     initialize_gai_log,
     run_bam_command,
 )
+from vcs_provider import get_vcs_provider
 from workflow_base import BaseWorkflow
 from workflow_utils import get_cl_name_from_branch
 from xprompt import process_xprompt_references
@@ -226,14 +226,12 @@ class MentorWorkflow(BaseWorkflow):
                     )
 
                 print_status(f"Checking out CL: {resolved_cl_name}", "progress")
-                result = subprocess.run(
-                    ["bb_hg_update", resolved_cl_name],
-                    capture_output=True,
-                    text=True,
+                provider = get_vcs_provider(workspace_dir)
+                checkout_ok, checkout_err = provider.checkout(
+                    resolved_cl_name, workspace_dir
                 )
-                if result.returncode != 0:
-                    error_msg = result.stderr.strip() or result.stdout.strip()
-                    print_status(f"Error: bb_hg_update failed: {error_msg}", "error")
+                if not checkout_ok:
+                    print_status(f"Error: bb_hg_update failed: {checkout_err}", "error")
                     return False
 
             # Generate timestamp if not provided (interactive mode)

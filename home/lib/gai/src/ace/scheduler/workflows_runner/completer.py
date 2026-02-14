@@ -1,13 +1,12 @@
 """Workflow completion handling logic for the axe scheduler."""
 
-import subprocess
-
 from gai_utils import shorten_path
 from running_field import (
     get_claimed_workspaces,
     get_workspace_directory_for_num,
     release_workspace,
 )
+from vcs_provider import get_vcs_provider
 
 from ...changespec import (
     ChangeSpec,
@@ -104,18 +103,10 @@ def _auto_accept_proposal(
         return False
 
     # Amend the commit
-    try:
-        result = subprocess.run(
-            ["bb_hg_amend", entry.note],
-            capture_output=True,
-            text=True,
-            cwd=workspace_dir,
-        )
-        if result.returncode != 0:
-            log(f"bb_hg_amend failed: {result.stderr.strip()}", "yellow")
-            return False
-    except FileNotFoundError:
-        log("bb_hg_amend command not found", "yellow")
+    provider = get_vcs_provider(workspace_dir)
+    amend_ok, amend_err = provider.amend(entry.note, workspace_dir)
+    if not amend_ok:
+        log(f"bb_hg_amend failed: {amend_err}", "yellow")
         return False
 
     # Renumber history entries

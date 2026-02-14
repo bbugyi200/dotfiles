@@ -1,7 +1,6 @@
 """Core ChangeSpec operations for updating, extracting, and validating."""
 
 import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -135,30 +134,11 @@ def update_to_changespec(
         # Default: Use PARENT field if set, otherwise use p4head
         update_target = changespec.parent if changespec.parent else "p4head"
 
-    # Run bb_hg_update command
-    try:
-        subprocess.run(
-            ["bb_hg_update", update_target],
-            cwd=target_dir,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        return (True, None)
-    except subprocess.CalledProcessError as e:
-        error_msg = f"bb_hg_update failed in {target_dir} (exit code {e.returncode})"
-        if e.stderr:
-            error_msg += f": {e.stderr.strip()}"
-        elif e.stdout:
-            error_msg += f": {e.stdout.strip()}"
-        return (False, error_msg)
-    except FileNotFoundError:
-        return (False, f"bb_hg_update command not found (cwd: {target_dir})")
-    except Exception as e:
-        return (
-            False,
-            f"Unexpected error running bb_hg_update in {target_dir}: {str(e)}",
-        )
+    # Run checkout via VCS provider
+    from vcs_provider import get_vcs_provider
+
+    provider = get_vcs_provider(target_dir)
+    return provider.checkout(update_target, target_dir)
 
 
 def has_active_children(
@@ -253,22 +233,17 @@ def save_diff_to_file(
     diff_file = target_dir / f"{new_name}.diff"
 
     try:
-        result = subprocess.run(
-            ["hg", "diff", "-c", changespec.name],
-            cwd=workspace_dir,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        from vcs_provider import get_vcs_provider
 
-        if result.returncode != 0:
-            return (False, f"hg diff failed: {result.stderr.strip()}")
+        provider = get_vcs_provider(workspace_dir)
+        success, diff_text = provider.diff_revision(changespec.name, workspace_dir)
+
+        if not success:
+            return (False, f"hg diff failed: {diff_text}")
 
         with open(diff_file, "w", encoding="utf-8") as f:
-            f.write(result.stdout)
+            f.write(diff_text if diff_text else "")
 
         return (True, None)
-    except FileNotFoundError:
-        return (False, "hg command not found")
     except Exception as e:
         return (False, f"Error saving diff: {e}")

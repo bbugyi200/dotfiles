@@ -1,7 +1,6 @@
 """Hook starting and workspace management for the axe scheduler."""
 
 import os
-import subprocess
 import time
 from collections.abc import Callable
 
@@ -18,6 +17,7 @@ from running_field import (
     get_workspace_directory_for_num,
     release_workspace,
 )
+from vcs_provider import get_vcs_provider
 
 from ..changespec import (
     ChangeSpec,
@@ -341,36 +341,14 @@ def _start_stale_hooks_for_proposal(
                     "yellow",
                 )
 
-            try:
-                result = subprocess.run(
-                    ["bb_hg_update", changespec.name],
-                    cwd=workspace_dir,
-                    capture_output=True,
-                    text=True,
-                    timeout=300,
-                )
-                if result.returncode != 0:
-                    error_output = (
-                        result.stderr.strip()
-                        or result.stdout.strip()
-                        or "no error output"
-                    )
-                    log(
-                        f"[WS#{workspace_num}] Warning: bb_hg_update failed for "
-                        f"{changespec.name}: {error_output}",
-                        "yellow",
-                    )
-                    release_workspace(
-                        changespec.file_path,
-                        workspace_num,
-                        proposal_workflow,
-                        changespec.name,
-                    )
-                    return updates, started_hooks, limited_count
-            except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+            provider = get_vcs_provider(workspace_dir)
+            checkout_ok, checkout_err = provider.checkout(
+                changespec.name, workspace_dir
+            )
+            if not checkout_ok:
                 log(
-                    f"[WS#{workspace_num}] Warning: bb_hg_update error for "
-                    f"{changespec.name}: {e}",
+                    f"[WS#{workspace_num}] Warning: bb_hg_update failed for "
+                    f"{changespec.name}: {checkout_err}",
                     "yellow",
                 )
                 release_workspace(
@@ -595,39 +573,12 @@ def _start_stale_hooks_shared_workspace(
             )
 
         # Run bb_hg_update to switch to the ChangeSpec's branch
-        try:
-            result = subprocess.run(
-                ["bb_hg_update", changespec.name],
-                cwd=workspace_dir,
-                capture_output=True,
-                text=True,
-                timeout=300,  # 5 minute timeout
-            )
-            if result.returncode != 0:
-                error_output = (
-                    result.stderr.strip() or result.stdout.strip() or "no error output"
-                )
-                log(
-                    f"[WS#{workspace_num}] Warning: bb_hg_update failed for "
-                    f"{changespec.name}: {error_output}",
-                    "yellow",
-                )
-                if should_release_on_error:
-                    release_workspace(
-                        changespec.file_path,
-                        workspace_num,
-                        entry_workflow,
-                        changespec.name,
-                    )
-                return updates, started_hooks, limited_count
-        except (subprocess.TimeoutExpired, FileNotFoundError) as e:
-            msg = (
-                "timed out"
-                if isinstance(e, subprocess.TimeoutExpired)
-                else "command not found"
-            )
+        provider = get_vcs_provider(workspace_dir)
+        checkout_ok, checkout_err = provider.checkout(changespec.name, workspace_dir)
+        if not checkout_ok:
             log(
-                f"[WS#{workspace_num}] Warning: bb_hg_update {msg} for {changespec.name}",
+                f"[WS#{workspace_num}] Warning: bb_hg_update failed for "
+                f"{changespec.name}: {checkout_err}",
                 "yellow",
             )
             if should_release_on_error:

@@ -19,9 +19,9 @@ from ace.hooks.processes import (
     mark_mentor_agents_as_killed,
 )
 from ace.mentors import update_changespec_mentors_field
-from gai_utils import run_shell_command
 from rich.console import Console
 from running_field import get_claimed_workspaces, release_workspace
+from vcs_provider import get_vcs_provider
 
 # Type for change action prompt results
 ChangeAction = Literal["accept", "promote", "reject", "purge"]
@@ -154,8 +154,9 @@ def prompt_for_change_action(
     )
 
     # Check for uncommitted changes using branch_local_changes
-    result = run_shell_command("branch_local_changes", capture_output=True)
-    if not result.stdout.strip():
+    provider = get_vcs_provider(target_dir)
+    _changes_ok, changes_output = provider.has_local_changes(target_dir)
+    if not changes_output:
         return None  # No changes
 
     # Check if there's a branch to propose to
@@ -163,10 +164,8 @@ def prompt_for_change_action(
     if cl_name:
         branch_name = cl_name
     else:
-        branch_result = run_shell_command("branch_name", capture_output=True)
-        branch_name = (
-            branch_result.stdout.strip() if branch_result.returncode == 0 else ""
-        )
+        branch_ok, branch_result = provider.get_branch_name(target_dir)
+        branch_name = branch_result if branch_ok and branch_result else ""
 
     proposal_id: str | None = None
     saved_diff_path: str | None = None  # Track the saved diff path for 'd' option
@@ -188,12 +187,8 @@ def prompt_for_change_action(
         if project_file:
             resolved_project_file = os.path.expanduser(project_file)
         else:
-            workspace_result = run_shell_command("workspace_name", capture_output=True)
-            project = (
-                workspace_result.stdout.strip()
-                if workspace_result.returncode == 0
-                else None
-            )
+            ws_ok, ws_name = provider.get_workspace_name(target_dir)
+            project = ws_name if ws_ok and ws_name else None
             if project:
                 resolved_project_file = os.path.expanduser(
                     f"~/.gai/projects/{project}/{project}.gp"
@@ -399,15 +394,12 @@ def execute_change_action(
         base_num, letter = parsed
 
         # Get project file - prefer explicit path over workspace inference
+        provider = get_vcs_provider(target_dir)
         if project_file:
             resolved_project_file = os.path.expanduser(project_file)
         else:
-            workspace_result = run_shell_command("workspace_name", capture_output=True)
-            project = (
-                workspace_result.stdout.strip()
-                if workspace_result.returncode == 0
-                else None
-            )
+            ws_ok, ws_name = provider.get_workspace_name(target_dir)
+            project = ws_name if ws_ok and ws_name else None
             if not project:
                 console.print("[red]Failed to get project name[/red]")
                 return False
@@ -415,8 +407,8 @@ def execute_change_action(
                 f"~/.gai/projects/{project}/{project}.gp"
             )
 
-        branch_result = run_shell_command("branch_name", capture_output=True)
-        cl_name = branch_result.stdout.strip() if branch_result.returncode == 0 else ""
+        branch_ok, branch_result_val = provider.get_branch_name(target_dir)
+        cl_name = branch_result_val if branch_ok and branch_result_val else ""
         if not cl_name:
             console.print("[red]Failed to get branch name[/red]")
             return False
@@ -505,18 +497,9 @@ def execute_change_action(
 
         # Run bb_hg_amend with the amend note
         console.print("[cyan]Amending commit...[/cyan]")
-        try:
-            result = subprocess.run(
-                ["bb_hg_amend", amend_note],
-                capture_output=True,
-                text=True,
-                cwd=target_dir,
-            )
-            if result.returncode != 0:
-                console.print(f"[red]bb_hg_amend failed: {result.stderr}[/red]")
-                return False
-        except FileNotFoundError:
-            console.print("[red]bb_hg_amend command not found[/red]")
+        amend_ok, amend_err = provider.amend(amend_note, target_dir)
+        if not amend_ok:
+            console.print(f"[red]bb_hg_amend failed: {amend_err}[/red]")
             return False
 
         # Renumber history entries (pass extra_msg to append to COMMITS note)
@@ -550,21 +533,18 @@ def execute_change_action(
         from status_state_machine import transition_changespec_status
         from workflow_utils import get_cl_name_from_branch
 
-        cl_name = get_cl_name_from_branch()
+        cl_name = get_cl_name_from_branch() or ""
         if not cl_name:
             console.print("[red]Error: Not on a branch[/red]")
             return False
 
         # Get project file - prefer explicit path over workspace inference
+        provider = get_vcs_provider(target_dir)
         if project_file:
             resolved_project_file = os.path.expanduser(project_file)
         else:
-            workspace_result = run_shell_command("workspace_name", capture_output=True)
-            project = (
-                workspace_result.stdout.strip()
-                if workspace_result.returncode == 0
-                else None
-            )
+            ws_ok, ws_name = provider.get_workspace_name(target_dir)
+            project = ws_name if ws_ok and ws_name else None
             if not project:
                 console.print("[red]Failed to get project name[/red]")
                 return False
@@ -618,15 +598,12 @@ def execute_change_action(
         base_num, letter = parsed
 
         # Get project file - prefer explicit path over workspace inference
+        provider = get_vcs_provider(target_dir)
         if project_file:
             resolved_project_file = os.path.expanduser(project_file)
         else:
-            workspace_result = run_shell_command("workspace_name", capture_output=True)
-            project = (
-                workspace_result.stdout.strip()
-                if workspace_result.returncode == 0
-                else None
-            )
+            ws_ok, ws_name = provider.get_workspace_name(target_dir)
+            project = ws_name if ws_ok and ws_name else None
             if not project:
                 console.print("[red]Failed to get project name[/red]")
                 return False
@@ -634,8 +611,8 @@ def execute_change_action(
                 f"~/.gai/projects/{project}/{project}.gp"
             )
 
-        branch_result = run_shell_command("branch_name", capture_output=True)
-        cl_name = branch_result.stdout.strip() if branch_result.returncode == 0 else ""
+        branch_ok, branch_result_val = provider.get_branch_name(target_dir)
+        cl_name = branch_result_val if branch_ok and branch_result_val else ""
         if not cl_name:
             console.print("[red]Failed to get branch name[/red]")
             return False

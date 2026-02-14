@@ -16,6 +16,7 @@ from gai_utils import (
 from running_field import (
     update_running_field_cl_name,
 )
+from vcs_provider import get_vcs_provider
 
 from .changespec import ChangeSpec, find_all_changespecs
 from .revert import update_changespec_name_atomic
@@ -175,9 +176,8 @@ def restore_changespec(
         console.print(f"[cyan]Updating to: {update_target}[/cyan]")
 
     # Run bb_hg_update
-    success, error = run_workspace_command(
-        ["bb_hg_update", update_target], workspace_dir
-    )
+    provider = get_vcs_provider(workspace_dir)
+    success, error = provider.checkout(update_target, workspace_dir)
     if not success:
         return (False, error)
 
@@ -196,9 +196,7 @@ def restore_changespec(
         console.print(f"[cyan]Importing diff: {diff_file}[/cyan]")
 
     # Run hg import
-    success, error = run_workspace_command(
-        ["hg", "import", "--no-commit", str(diff_file)], workspace_dir
-    )
+    success, error = provider.apply_patch(str(diff_file), workspace_dir)
     if not success:
         return (False, error)
 

@@ -9,106 +9,112 @@ from commit_workflow.branch_info import (
 
 
 # Tests for get_parent_branch_name
-@patch("commit_workflow.branch_info.run_shell_command")
-def test_get_parent_branch_name_success(mock_run_shell: MagicMock) -> None:
+@patch("commit_workflow.branch_info.get_vcs_provider")
+def test_get_parent_branch_name_success(mock_get_provider: MagicMock) -> None:
     """Test get_parent_branch_name with successful command."""
-    mock_result = MagicMock()
-    mock_result.returncode = 0
-    mock_result.stdout = "parent_branch\n"
-    mock_run_shell.return_value = mock_result
+    mock_provider = MagicMock()
+    mock_provider.get_branch_name.return_value = (True, "parent_branch\n")
+    mock_get_provider.return_value = mock_provider
 
-    result = get_parent_branch_name()
+    result = get_parent_branch_name(cwd="/fake/dir")
 
     assert result == "parent_branch"
-    mock_run_shell.assert_called_once_with("branch_name", capture_output=True)
+    mock_provider.get_branch_name.assert_called_once_with("/fake/dir")
 
 
-@patch("commit_workflow.branch_info.run_shell_command")
-def test_get_parent_branch_name_failure(mock_run_shell: MagicMock) -> None:
+@patch("commit_workflow.branch_info.get_vcs_provider")
+def test_get_parent_branch_name_failure(mock_get_provider: MagicMock) -> None:
     """Test get_parent_branch_name when command fails."""
-    mock_result = MagicMock()
-    mock_result.returncode = 1
-    mock_run_shell.return_value = mock_result
+    mock_provider = MagicMock()
+    mock_provider.get_branch_name.return_value = (False, "command failed")
+    mock_get_provider.return_value = mock_provider
 
-    result = get_parent_branch_name()
+    result = get_parent_branch_name(cwd="/fake/dir")
 
     assert result is None
 
 
-@patch("commit_workflow.branch_info.run_shell_command")
-def test_get_parent_branch_name_empty_output(mock_run_shell: MagicMock) -> None:
+@patch("commit_workflow.branch_info.get_vcs_provider")
+def test_get_parent_branch_name_empty_output(mock_get_provider: MagicMock) -> None:
     """Test get_parent_branch_name with empty output."""
-    mock_result = MagicMock()
-    mock_result.returncode = 0
-    mock_result.stdout = "\n"
-    mock_run_shell.return_value = mock_result
+    mock_provider = MagicMock()
+    mock_provider.get_branch_name.return_value = (True, "\n")
+    mock_get_provider.return_value = mock_provider
 
-    result = get_parent_branch_name()
+    result = get_parent_branch_name(cwd="/fake/dir")
 
     assert result is None
 
 
-@patch("commit_workflow.branch_info.run_shell_command")
-def test_get_parent_branch_name_whitespace_only(mock_run_shell: MagicMock) -> None:
+@patch("commit_workflow.branch_info.get_vcs_provider")
+def test_get_parent_branch_name_whitespace_only(mock_get_provider: MagicMock) -> None:
     """Test get_parent_branch_name with whitespace only output."""
-    mock_result = MagicMock()
-    mock_result.returncode = 0
-    mock_result.stdout = "   \n"
-    mock_run_shell.return_value = mock_result
+    mock_provider = MagicMock()
+    mock_provider.get_branch_name.return_value = (True, "   \n")
+    mock_get_provider.return_value = mock_provider
 
-    result = get_parent_branch_name()
+    result = get_parent_branch_name(cwd="/fake/dir")
+
+    assert result is None
+
+
+@patch("commit_workflow.branch_info.get_vcs_provider")
+def test_get_parent_branch_name_none_result(mock_get_provider: MagicMock) -> None:
+    """Test get_parent_branch_name with None result."""
+    mock_provider = MagicMock()
+    mock_provider.get_branch_name.return_value = (True, None)
+    mock_get_provider.return_value = mock_provider
+
+    result = get_parent_branch_name(cwd="/fake/dir")
 
     assert result is None
 
 
 # Tests for get_cl_number
-@patch("commit_workflow.branch_info.run_shell_command")
-def test_get_cl_number_success(mock_run_shell: MagicMock) -> None:
+@patch("commit_workflow.branch_info.get_vcs_provider")
+def test_get_cl_number_success(mock_get_provider: MagicMock) -> None:
     """Test get_cl_number with successful command."""
-    mock_result = MagicMock()
-    mock_result.returncode = 0
-    mock_result.stdout = "12345\n"
-    mock_run_shell.return_value = mock_result
+    mock_provider = MagicMock()
+    mock_provider.get_cl_number.return_value = (True, "12345\n")
+    mock_get_provider.return_value = mock_provider
 
-    result = get_cl_number()
+    result = get_cl_number(cwd="/fake/dir")
 
     assert result == "12345"
-    mock_run_shell.assert_called_once_with("branch_number", capture_output=True)
+    mock_provider.get_cl_number.assert_called_once_with("/fake/dir")
 
 
-@patch("commit_workflow.branch_info.run_shell_command")
-def test_get_cl_number_failure(mock_run_shell: MagicMock) -> None:
+@patch("commit_workflow.branch_info.get_vcs_provider")
+def test_get_cl_number_failure(mock_get_provider: MagicMock) -> None:
     """Test get_cl_number when command fails."""
-    mock_result = MagicMock()
-    mock_result.returncode = 1
-    mock_run_shell.return_value = mock_result
+    mock_provider = MagicMock()
+    mock_provider.get_cl_number.return_value = (False, "command failed")
+    mock_get_provider.return_value = mock_provider
 
-    result = get_cl_number()
+    result = get_cl_number(cwd="/fake/dir")
 
     assert result is None
 
 
-@patch("commit_workflow.branch_info.run_shell_command")
-def test_get_cl_number_non_digit(mock_run_shell: MagicMock) -> None:
+@patch("commit_workflow.branch_info.get_vcs_provider")
+def test_get_cl_number_non_digit(mock_get_provider: MagicMock) -> None:
     """Test get_cl_number returns None for non-digit output."""
-    mock_result = MagicMock()
-    mock_result.returncode = 0
-    mock_result.stdout = "abc123\n"
-    mock_run_shell.return_value = mock_result
+    mock_provider = MagicMock()
+    mock_provider.get_cl_number.return_value = (True, "abc123\n")
+    mock_get_provider.return_value = mock_provider
 
-    result = get_cl_number()
+    result = get_cl_number(cwd="/fake/dir")
 
     assert result is None
 
 
-@patch("commit_workflow.branch_info.run_shell_command")
-def test_get_cl_number_empty_output(mock_run_shell: MagicMock) -> None:
+@patch("commit_workflow.branch_info.get_vcs_provider")
+def test_get_cl_number_empty_output(mock_get_provider: MagicMock) -> None:
     """Test get_cl_number with empty output."""
-    mock_result = MagicMock()
-    mock_result.returncode = 0
-    mock_result.stdout = "\n"
-    mock_run_shell.return_value = mock_result
+    mock_provider = MagicMock()
+    mock_provider.get_cl_number.return_value = (True, "\n")
+    mock_get_provider.return_value = mock_provider
 
-    result = get_cl_number()
+    result = get_cl_number(cwd="/fake/dir")
 
     assert result is None

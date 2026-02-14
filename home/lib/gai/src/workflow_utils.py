@@ -4,7 +4,7 @@ import os
 import subprocess
 
 from ace.changespec import ChangeSpec, parse_project_file
-from shared_utils import run_shell_command
+from vcs_provider import get_vcs_provider
 
 
 def get_project_file_path(project: str) -> str:
@@ -25,10 +25,11 @@ def get_cl_name_from_branch() -> str | None:
     Returns:
         The CL name, or None if not on a branch.
     """
-    result = run_shell_command("branch_name", capture_output=True)
-    if result.returncode != 0:
+    cwd = os.getcwd()
+    provider = get_vcs_provider(cwd)
+    success, branch_name = provider.get_branch_name(cwd)
+    if not success:
         return None
-    branch_name = result.stdout.strip()
     return branch_name if branch_name else None
 
 
@@ -38,10 +39,12 @@ def get_project_from_workspace() -> str | None:
     Returns:
         The project name, or None if command fails.
     """
-    result = run_shell_command("workspace_name", capture_output=True)
-    if result.returncode != 0:
+    cwd = os.getcwd()
+    provider = get_vcs_provider(cwd)
+    success, ws_name = provider.get_workspace_name(cwd)
+    if not success:
         return None
-    return result.stdout.strip() or None
+    return ws_name or None
 
 
 def _get_changed_test_targets(verbose: bool = False) -> str | None:

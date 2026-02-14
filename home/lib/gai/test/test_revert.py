@@ -114,14 +114,15 @@ def test_revert_changespec_success(make_changespec) -> None:  # type: ignore[no-
     changespec = make_changespec.create_with_file()
     console = MagicMock()
 
+    mock_provider = MagicMock()
+    mock_provider.prune.return_value = (True, None)
+
     with patch("ace.revert.find_all_changespecs", return_value=[changespec]):
         with patch(
             "ace.revert.get_workspace_directory_for_changespec", return_value="/tmp"
         ):
             with patch("ace.revert.save_diff_to_file", return_value=(True, None)):
-                with patch(
-                    "ace.revert.run_workspace_command", return_value=(True, None)
-                ):
+                with patch("ace.revert.get_vcs_provider", return_value=mock_provider):
                     with patch(
                         "ace.revert.update_changespec_name_atomic"
                     ) as mock_rename:
@@ -164,15 +165,15 @@ def test_revert_changespec_fails_on_prune_error(make_changespec) -> None:  # typ
     """Test revert_changespec fails when prune fails."""
     changespec = make_changespec.create_with_file()
 
+    mock_provider = MagicMock()
+    mock_provider.prune.return_value = (False, "prune failed")
+
     with patch("ace.revert.find_all_changespecs", return_value=[changespec]):
         with patch(
             "ace.revert.get_workspace_directory_for_changespec", return_value="/tmp"
         ):
             with patch("ace.revert.save_diff_to_file", return_value=(True, None)):
-                with patch(
-                    "ace.revert.run_workspace_command",
-                    return_value=(False, "prune failed"),
-                ):
+                with patch("ace.revert.get_vcs_provider", return_value=mock_provider):
                     success, error = revert_changespec(changespec)
 
     assert success is False
@@ -186,14 +187,15 @@ def test_revert_changespec_calls_kill_and_persist(make_changespec) -> None:  # t
     """Test revert_changespec calls kill_and_persist_all_running_processes."""
     changespec = make_changespec.create_with_file()
 
+    mock_provider = MagicMock()
+    mock_provider.prune.return_value = (True, None)
+
     with patch("ace.revert.find_all_changespecs", return_value=[changespec]):
         with patch(
             "ace.revert.get_workspace_directory_for_changespec", return_value="/tmp"
         ):
             with patch("ace.revert.save_diff_to_file", return_value=(True, None)):
-                with patch(
-                    "ace.revert.run_workspace_command", return_value=(True, None)
-                ):
+                with patch("ace.revert.get_vcs_provider", return_value=mock_provider):
                     with patch("ace.revert.update_changespec_name_atomic"):
                         with patch(
                             "ace.revert.transition_changespec_status",

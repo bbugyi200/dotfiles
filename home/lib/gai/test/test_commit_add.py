@@ -3,6 +3,7 @@
 import os
 import tempfile
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 from commit_utils import (
     add_commit_entry,
@@ -158,11 +159,15 @@ def test_add_commit_entry_no_optional_fields() -> None:
 
 
 # Tests for save_diff
-def test_save_diff_no_changes(tmp_path: Path) -> None:
+@patch("commit_utils.workspace.get_vcs_provider")
+def test_save_diff_no_changes(mock_get_provider: MagicMock, tmp_path: Path) -> None:
     """Test save_diff when there are no changes (returns None)."""
-    # Create a temporary directory that's not an hg repo
+    mock_provider = MagicMock()
+    mock_provider.add_remove.return_value = (True, None)
+    mock_provider.diff.return_value = (True, None)
+    mock_get_provider.return_value = mock_provider
+
     result = save_diff("test_cl", str(tmp_path))
-    # Should return None since not in an hg repo or no changes
     assert result is None
 
 

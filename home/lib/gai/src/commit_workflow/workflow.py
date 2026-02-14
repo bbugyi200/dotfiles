@@ -6,7 +6,7 @@ import tempfile
 
 from commit_utils import add_commit_entry, get_next_commit_number, save_diff
 from rich_utils import print_status
-from shared_utils import run_shell_command
+from vcs_provider import get_vcs_provider
 from workflow_base import BaseWorkflow
 from workflow_utils import get_initial_hooks_for_changespec, get_project_file_path
 
@@ -79,30 +79,32 @@ class CommitWorkflow(BaseWorkflow):
         if self._bug:
             return self._bug
 
-        result = run_shell_command("branch_bug", capture_output=True)
-        if result.returncode != 0:
+        provider = get_vcs_provider(os.getcwd())
+        success, result = provider.get_bug_number(os.getcwd())
+        if not success:
             print_status(
                 "Failed to get bug number from 'branch_bug' command. "
                 "Use -b to specify manually.",
                 "error",
             )
             sys.exit(1)
-        return result.stdout.strip()
+        return result.strip() if result else ""
 
     def _get_project(self) -> str:
         """Get the project name, either from init or from workspace_name command."""
         if self._project:
             return self._project
 
-        result = run_shell_command("workspace_name", capture_output=True)
-        if result.returncode != 0:
+        provider = get_vcs_provider(os.getcwd())
+        success, result = provider.get_workspace_name(os.getcwd())
+        if not success:
             print_status(
                 "Failed to get project name from 'workspace_name' command. "
                 "Use -p to specify manually.",
                 "error",
             )
             sys.exit(1)
-        return result.stdout.strip()
+        return result.strip() if result else ""
 
     def run(self) -> bool:
         """Run the commit workflow.
@@ -177,40 +179,37 @@ class CommitWorkflow(BaseWorkflow):
 
         # Create the commit
         print_status(f"Creating Mercurial commit with name: {full_name}", "progress")
+        cwd = os.getcwd()
+        provider = get_vcs_provider(cwd)
         # Checkout parent to handle case where another agent amended parent CL
         if parent_branch:
             print_status(f"Checking out parent branch: {parent_branch}", "progress")
-            update_result = run_shell_command(
-                f'bb_hg_update "{parent_branch}"', capture_output=True
-            )
-            if update_result.returncode != 0:
+            update_ok, update_err = provider.checkout(parent_branch, cwd)
+            if not update_ok:
                 print_status(
-                    f"Warning: Failed to checkout parent: {update_result.stderr}",
+                    f"Warning: Failed to checkout parent: {update_err}",
                     "warning",
                 )
                 # Continue anyway - commit may still work
-        commit_cmd = f'hg commit --name "{full_name}" --logfile "{file_path}"'
-        commit_result = run_shell_command(commit_cmd, capture_output=True)
+        commit_ok, commit_err = provider.commit(full_name, file_path, cwd)
 
-        if commit_result.returncode != 0:
-            print_status(
-                f"Failed to create Mercurial commit: {commit_result.stderr}", "error"
-            )
+        if not commit_ok:
+            print_status(f"Failed to create Mercurial commit: {commit_err}", "error")
             self._cleanup_temp_file(file_path)
             return False
 
         # Run hg fix
         print_status("Running hg fix...", "progress")
-        fix_result = run_shell_command("hg fix", capture_output=True)
-        if fix_result.returncode != 0:
-            print_status(f"hg fix failed: {fix_result.stderr}", "warning")
+        fix_ok, fix_err = provider.fix(cwd)
+        if not fix_ok:
+            print_status(f"hg fix failed: {fix_err}", "warning")
             # Continue anyway
 
         # Run hg upload tree
         print_status("Running hg upload tree...", "progress")
-        upload_result = run_shell_command("hg upload tree", capture_output=True)
-        if upload_result.returncode != 0:
-            print_status(f"hg upload tree failed: {upload_result.stderr}", "warning")
+        upload_ok, upload_err = provider.upload(cwd)
+        if not upload_ok:
+            print_status(f"hg upload tree failed: {upload_err}", "warning")
             # Continue anyway
 
         # Remove bb/branch_name.txt if it exists
@@ -221,8 +220,8 @@ class CommitWorkflow(BaseWorkflow):
 
         # Retrieve CL number (display to user)
         print_status("Retrieving CL number...", "progress")
-        branch_number_result = run_shell_command("branch_number", capture_output=False)
-        if branch_number_result.returncode != 0:
+        cl_num_ok, cl_num_result = provider.get_cl_number(cwd)
+        if not cl_num_ok or not cl_num_result:
             print_status("Failed to retrieve CL number.", "error")
             self._cleanup_temp_file(file_path)
             return False
@@ -259,12 +258,10 @@ class CommitWorkflow(BaseWorkflow):
             if suffixed_name:
                 # Rename the CL to match the suffixed ChangeSpec name
                 if suffixed_name != full_name:
-                    rename_result = run_shell_command(
-                        f'bb_hg_rename "{suffixed_name}"', capture_output=True
-                    )
-                    if rename_result.returncode != 0:
+                    rename_ok, rename_err = provider.rename_branch(suffixed_name, cwd)
+                    if not rename_ok:
                         print_status(
-                            f"Warning: Failed to rename CL: {rename_result.stderr}",
+                            f"Warning: Failed to rename CL: {rename_err}",
                             "warning",
                         )
 

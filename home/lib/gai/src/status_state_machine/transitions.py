@@ -5,13 +5,13 @@ This module contains the core transition_changespec_status function and related 
 """
 
 import logging
-import subprocess
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ace.changespec import changespec_lock, write_changespec_atomic
+from vcs_provider import get_vcs_provider
 
 from .constants import VALID_TRANSITIONS, is_valid_transition
 from .field_updates import apply_status_update, read_status_from_lines
@@ -157,31 +157,17 @@ def _handle_suffix_strip(
     try:
         workspace_dir = get_workspace_directory(project_basename)
 
+        provider = get_vcs_provider(workspace_dir)
+
         # First checkout the CL we want to rename
-        update_result = subprocess.run(
-            ["bb_hg_update", suffixed_name],
-            cwd=workspace_dir,
-            capture_output=True,
-            text=True,
-            timeout=300,
-        )
-        if update_result.returncode != 0:
-            logger.warning(
-                f"Failed to checkout CL {suffixed_name}: {update_result.stderr}"
-            )
+        checkout_ok, checkout_err = provider.checkout(suffixed_name, workspace_dir)
+        if not checkout_ok:
+            logger.warning(f"Failed to checkout CL {suffixed_name}: {checkout_err}")
         else:
             # Now rename the CL
-            rename_result = subprocess.run(
-                ["bb_hg_rename", base_name],
-                cwd=workspace_dir,
-                capture_output=True,
-                text=True,
-                timeout=300,
-            )
-            if rename_result.returncode != 0:
-                logger.warning(f"Failed to rename CL: {rename_result.stderr}")
-    except subprocess.TimeoutExpired:
-        logger.warning("bb_hg_update or bb_hg_rename timed out")
+            rename_ok, rename_err = provider.rename_branch(base_name, workspace_dir)
+            if not rename_ok:
+                logger.warning(f"Failed to rename CL: {rename_err}")
     except RuntimeError as e:
         logger.warning(f"Could not get workspace directory: {e}")
 
@@ -222,29 +208,17 @@ def _handle_suffix_append(
     try:
         workspace_dir = get_workspace_directory(project_basename)
 
+        provider = get_vcs_provider(workspace_dir)
+
         # First checkout the CL we want to rename
-        update_result = subprocess.run(
-            ["bb_hg_update", base_name],
-            cwd=workspace_dir,
-            capture_output=True,
-            text=True,
-            timeout=300,
-        )
-        if update_result.returncode != 0:
-            logger.warning(f"Failed to checkout CL {base_name}: {update_result.stderr}")
+        checkout_ok, checkout_err = provider.checkout(base_name, workspace_dir)
+        if not checkout_ok:
+            logger.warning(f"Failed to checkout CL {base_name}: {checkout_err}")
         else:
             # Now rename the CL
-            rename_result = subprocess.run(
-                ["bb_hg_rename", suffixed_name],
-                cwd=workspace_dir,
-                capture_output=True,
-                text=True,
-                timeout=300,
-            )
-            if rename_result.returncode != 0:
-                logger.warning(f"Failed to rename CL: {rename_result.stderr}")
-    except subprocess.TimeoutExpired:
-        logger.warning("bb_hg_update or bb_hg_rename timed out")
+            rename_ok, rename_err = provider.rename_branch(suffixed_name, workspace_dir)
+            if not rename_ok:
+                logger.warning(f"Failed to rename CL: {rename_err}")
     except RuntimeError as e:
         logger.warning(f"Could not get workspace directory: {e}")
 

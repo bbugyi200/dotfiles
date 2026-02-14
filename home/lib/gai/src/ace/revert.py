@@ -10,12 +10,12 @@ from rich.console import Console
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from gai_utils import (
     get_workspace_directory_for_changespec,
-    run_workspace_command,
 )
 from status_state_machine import (
     reset_changespec_cl,
     transition_changespec_status,
 )
+from vcs_provider import get_vcs_provider
 
 from .changespec import (
     ChangeSpec,
@@ -145,9 +145,8 @@ def revert_changespec(
         console.print(f"[green]Saved diff to: {diff_path}[/green]")
 
     # Run bb_hg_prune
-    success, error = run_workspace_command(
-        ["bb_hg_prune", changespec.name], workspace_dir
-    )
+    provider = get_vcs_provider(workspace_dir)
+    success, error = provider.prune(changespec.name, workspace_dir)
     if not success:
         return (False, f"Failed to prune revision: {error}")
 

@@ -1,12 +1,12 @@
 """Shared utilities for axe runner scripts."""
 
 import signal
-import subprocess
 import sys
 from collections.abc import Callable
 
 from ace.changespec import ChangeSpec, parse_project_file
 from running_field import release_workspace
+from vcs_provider import get_vcs_provider
 
 # Global state for SIGTERM handler
 _killed_state: dict[str, bool] = {"killed": False}
@@ -64,24 +64,10 @@ def prepare_workspace(
 
     # Update workspace to target
     print(f"Updating workspace to {update_target}...")
-    try:
-        result = subprocess.run(
-            ["bb_hg_update", update_target],
-            cwd=workspace_dir,
-            capture_output=True,
-            text=True,
-            timeout=300,
-        )
-
-        if result.returncode != 0:
-            error_msg = result.stderr.strip() or result.stdout.strip()
-            print(f"bb_hg_update failed: {error_msg}", file=sys.stderr)
-            return False
-    except subprocess.TimeoutExpired:
-        print("bb_hg_update timed out", file=sys.stderr)
-        return False
-    except Exception as e:
-        print(f"bb_hg_update error: {e}", file=sys.stderr)
+    provider = get_vcs_provider(workspace_dir)
+    checkout_ok, checkout_err = provider.checkout(update_target, workspace_dir)
+    if not checkout_ok:
+        print(f"bb_hg_update failed: {checkout_err}", file=sys.stderr)
         return False
 
     print("Workspace ready")

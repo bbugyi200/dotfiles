@@ -1,7 +1,6 @@
 """AcceptWorkflow class and main entry point for accepting proposals."""
 
 import os
-import subprocess
 import sys
 from typing import NoReturn
 
@@ -16,6 +15,7 @@ from running_field import (
     get_workspace_directory_for_num,
     release_workspace,
 )
+from vcs_provider import get_vcs_provider
 from workflow_base import BaseWorkflow
 from workflow_utils import (
     add_test_hooks_if_available,
@@ -329,27 +329,17 @@ class AcceptWorkflow(BaseWorkflow):
                 # uploads when accepting multiple proposals
                 is_last = idx == total_proposals - 1
                 if is_last:
-                    amend_cmd = ["bb_hg_amend", amend_note]
+                    print_status("Amending commit...", "progress")
                 else:
-                    amend_cmd = ["bb_hg_amend", "--no-upload", amend_note]
                     print_status("Amending commit (skipping upload)...", "progress")
 
-                if is_last:
-                    print_status("Amending commit...", "progress")
-
-                try:
-                    result = subprocess.run(
-                        amend_cmd,
-                        capture_output=True,
-                        text=True,
-                        cwd=workspace_dir,
-                    )
-                    if result.returncode != 0:
-                        print_status(f"bb_hg_amend failed: {result.stderr}", "error")
-                        clean_workspace(workspace_dir)
-                        return None, None
-                except FileNotFoundError:
-                    print_status("bb_hg_amend command not found", "error")
+                provider = get_vcs_provider(workspace_dir)
+                amend_ok, amend_err = provider.amend(
+                    amend_note, workspace_dir, no_upload=not is_last
+                )
+                if not amend_ok:
+                    print_status(f"bb_hg_amend failed: {amend_err}", "error")
+                    clean_workspace(workspace_dir)
                     return None, None
 
                 accepted_proposals.append((base_num, letter))

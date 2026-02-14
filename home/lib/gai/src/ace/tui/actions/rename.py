@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import os
-import subprocess
 from typing import TYPE_CHECKING
 
 from commit_utils import run_bb_hg_clean
+from vcs_provider import get_vcs_provider
 
 if TYPE_CHECKING:
     from ...changespec import ChangeSpec
@@ -138,41 +138,22 @@ class RenameMixin:
 
                 # Checkout the CL
                 print(f"Checking out {old_name}...")
-                try:
-                    result = subprocess.run(
-                        ["bb_hg_update", old_name],
-                        cwd=workspace_dir,
-                        capture_output=False,
-                        timeout=300,
+                provider = get_vcs_provider(workspace_dir)
+                checkout_ok, checkout_err = provider.checkout(old_name, workspace_dir)
+                if not checkout_ok:
+                    return (
+                        False,
+                        f"bb_hg_update failed: {checkout_err}",
                     )
-                    if result.returncode != 0:
-                        return (
-                            False,
-                            f"bb_hg_update failed with return code {result.returncode}",
-                        )
-                except subprocess.TimeoutExpired:
-                    return (False, "bb_hg_update timed out")
-                except FileNotFoundError:
-                    return (False, "bb_hg_update command not found")
 
                 # Rename the CL in Mercurial
                 print(f"Renaming to {new_name}...")
-                try:
-                    result = subprocess.run(
-                        ["bb_hg_rename", new_name],
-                        cwd=workspace_dir,
-                        capture_output=False,
-                        timeout=300,
+                rename_ok, rename_err = provider.rename_branch(new_name, workspace_dir)
+                if not rename_ok:
+                    return (
+                        False,
+                        f"bb_hg_rename failed: {rename_err}",
                     )
-                    if result.returncode != 0:
-                        return (
-                            False,
-                            f"bb_hg_rename failed with return code {result.returncode}",
-                        )
-                except subprocess.TimeoutExpired:
-                    return (False, "bb_hg_rename timed out")
-                except FileNotFoundError:
-                    return (False, "bb_hg_rename command not found")
 
                 # Update spec file references
                 print("Updating spec file references...")

@@ -12,6 +12,7 @@ from running_field import (
     get_first_available_axe_workspace,
     get_workspace_directory_for_num,
 )
+from vcs_provider import get_vcs_provider
 
 from ...changespec import (
     ChangeSpec,
@@ -161,28 +162,12 @@ def _start_crs_workflow(
         )
 
     # Run bb_hg_update to switch to the ChangeSpec's branch
-    try:
-        result = subprocess.run(
-            ["bb_hg_update", changespec.name],
-            cwd=workspace_dir,
-            capture_output=True,
-            text=True,
-            timeout=300,
-        )
-        if result.returncode != 0:
-            error_output = (
-                result.stderr.strip() or result.stdout.strip() or "no error output"
-            )
-            log(
-                f"[WS#{workspace_num}] Warning: bb_hg_update failed for "
-                f"{changespec.name}: {error_output}",
-                "yellow",
-            )
-            return None
-    except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+    provider = get_vcs_provider(workspace_dir)
+    checkout_ok, checkout_err = provider.checkout(changespec.name, workspace_dir)
+    if not checkout_ok:
         log(
-            f"[WS#{workspace_num}] Warning: bb_hg_update error for "
-            f"{changespec.name}: {e}",
+            f"[WS#{workspace_num}] Warning: bb_hg_update failed for "
+            f"{changespec.name}: {checkout_err}",
             "yellow",
         )
         return None
@@ -346,28 +331,12 @@ def start_fix_hook_workflow(
         )
 
     # Run bb_hg_update to switch to the ChangeSpec's branch
-    try:
-        result = subprocess.run(
-            ["bb_hg_update", changespec.name],
-            cwd=workspace_dir,
-            capture_output=True,
-            text=True,
-            timeout=300,
-        )
-        if result.returncode != 0:
-            error_output = (
-                result.stderr.strip() or result.stdout.strip() or "no error output"
-            )
-            log(
-                f"[WS#{workspace_num}] Warning: bb_hg_update failed for "
-                f"{changespec.name}: {error_output}",
-                "yellow",
-            )
-            return None
-    except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+    provider = get_vcs_provider(workspace_dir)
+    checkout_ok, checkout_err = provider.checkout(changespec.name, workspace_dir)
+    if not checkout_ok:
         log(
-            f"[WS#{workspace_num}] Warning: bb_hg_update error for "
-            f"{changespec.name}: {e}",
+            f"[WS#{workspace_num}] Warning: bb_hg_update failed for "
+            f"{changespec.name}: {checkout_err}",
             "yellow",
         )
         return None

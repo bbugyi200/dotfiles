@@ -152,14 +152,12 @@ def test_prepare_workspace_clean_fails() -> None:
 
 def test_prepare_workspace_update_timeout() -> None:
     """Test prepare_workspace returns False on bb_hg_update timeout."""
-    import subprocess
+    mock_provider = MagicMock()
+    mock_provider.checkout.return_value = (False, "bb_hg_update timed out")
 
     with (
         patch("commit_utils.run_bb_hg_clean", return_value=(True, None)),
-        patch(
-            "axe_runner_utils.subprocess.run",
-            side_effect=subprocess.TimeoutExpired(cmd="bb_hg_update", timeout=300),
-        ),
+        patch("axe_runner_utils.get_vcs_provider", return_value=mock_provider),
     ):
         result = prepare_workspace("/workspace", "my_cl", "p4head", backup_suffix="ace")
         assert result is False
@@ -167,14 +165,12 @@ def test_prepare_workspace_update_timeout() -> None:
 
 def test_prepare_workspace_update_fails() -> None:
     """Test prepare_workspace returns False when bb_hg_update returns non-zero."""
-    mock_result = MagicMock()
-    mock_result.returncode = 1
-    mock_result.stderr = "update error"
-    mock_result.stdout = ""
+    mock_provider = MagicMock()
+    mock_provider.checkout.return_value = (False, "bb_hg_update failed: update error")
 
     with (
         patch("commit_utils.run_bb_hg_clean", return_value=(True, None)),
-        patch("axe_runner_utils.subprocess.run", return_value=mock_result),
+        patch("axe_runner_utils.get_vcs_provider", return_value=mock_provider),
     ):
         result = prepare_workspace("/workspace", "my_cl", "p4head", backup_suffix="ace")
         assert result is False
@@ -182,12 +178,15 @@ def test_prepare_workspace_update_fails() -> None:
 
 def test_prepare_workspace_update_exception() -> None:
     """Test prepare_workspace returns False on unexpected exception."""
+    mock_provider = MagicMock()
+    mock_provider.checkout.return_value = (
+        False,
+        "bb_hg_update command not found",
+    )
+
     with (
         patch("commit_utils.run_bb_hg_clean", return_value=(True, None)),
-        patch(
-            "axe_runner_utils.subprocess.run",
-            side_effect=OSError("command not found"),
-        ),
+        patch("axe_runner_utils.get_vcs_provider", return_value=mock_provider),
     ):
         result = prepare_workspace("/workspace", "my_cl", "p4head", backup_suffix="ace")
         assert result is False
@@ -195,12 +194,12 @@ def test_prepare_workspace_update_exception() -> None:
 
 def test_prepare_workspace_success() -> None:
     """Test prepare_workspace returns True on success with correct backup suffix."""
-    mock_result = MagicMock()
-    mock_result.returncode = 0
+    mock_provider = MagicMock()
+    mock_provider.checkout.return_value = (True, None)
 
     with (
         patch("commit_utils.run_bb_hg_clean", return_value=(True, None)) as mock_clean,
-        patch("axe_runner_utils.subprocess.run", return_value=mock_result),
+        patch("axe_runner_utils.get_vcs_provider", return_value=mock_provider),
     ):
         result = prepare_workspace(
             "/workspace", "my_cl", "p4head", backup_suffix="workflow"

@@ -83,16 +83,21 @@ def test_restore_changespec_success(make_changespec) -> None:  # type: ignore[no
     )
     console = MagicMock()
 
+    mock_provider = MagicMock()
+    mock_provider.checkout.return_value = (True, None)
+    mock_provider.apply_patch.return_value = (True, None)
+
     with patch(
         "ace.restore.get_workspace_directory_for_changespec", return_value="/tmp"
     ):
         with patch("os.path.isdir", return_value=True):
             with patch("ace.restore.update_changespec_name_atomic") as mock_rename:
-                with patch(
-                    "ace.restore.run_workspace_command", return_value=(True, None)
-                ):
-                    with patch("pathlib.Path.exists", return_value=True):
-                        success, error = restore_changespec(changespec, console)
+                with patch("ace.restore.get_vcs_provider", return_value=mock_provider):
+                    with patch(
+                        "ace.restore.run_workspace_command", return_value=(True, None)
+                    ):
+                        with patch("pathlib.Path.exists", return_value=True):
+                            success, error = restore_changespec(changespec, console)
 
     assert success is True
     assert error is None
@@ -107,19 +112,24 @@ def test_restore_changespec_with_parent(make_changespec) -> None:  # type: ignor
         name="test_project_feature__1", status="Reverted", parent="parent_branch"
     )
 
+    mock_provider = MagicMock()
+    mock_provider.checkout.return_value = (True, None)
+    mock_provider.apply_patch.return_value = (True, None)
+
     with patch(
         "ace.restore.get_workspace_directory_for_changespec", return_value="/tmp"
     ):
         with patch("os.path.isdir", return_value=True):
             with patch("ace.restore.update_changespec_name_atomic"):
-                with patch(
-                    "ace.restore.run_workspace_command", return_value=(True, None)
-                ) as mock_update:
-                    with patch("pathlib.Path.exists", return_value=True):
-                        restore_changespec(changespec)
+                with patch("ace.restore.get_vcs_provider", return_value=mock_provider):
+                    with patch(
+                        "ace.restore.run_workspace_command", return_value=(True, None)
+                    ):
+                        with patch("pathlib.Path.exists", return_value=True):
+                            restore_changespec(changespec)
 
-    # First call should be bb_hg_update with parent
-    mock_update.assert_any_call(["bb_hg_update", "parent_branch"], "/tmp")
+    # Provider checkout should be called with parent
+    mock_provider.checkout.assert_called_once_with("parent_branch", "/tmp")
 
 
 def test_restore_changespec_without_parent_uses_p4head(make_changespec) -> None:  # type: ignore[no-untyped-def]
@@ -128,19 +138,24 @@ def test_restore_changespec_without_parent_uses_p4head(make_changespec) -> None:
         name="test_project_feature__1", status="Reverted", parent=None
     )
 
+    mock_provider = MagicMock()
+    mock_provider.checkout.return_value = (True, None)
+    mock_provider.apply_patch.return_value = (True, None)
+
     with patch(
         "ace.restore.get_workspace_directory_for_changespec", return_value="/tmp"
     ):
         with patch("os.path.isdir", return_value=True):
             with patch("ace.restore.update_changespec_name_atomic"):
-                with patch(
-                    "ace.restore.run_workspace_command", return_value=(True, None)
-                ) as mock_update:
-                    with patch("pathlib.Path.exists", return_value=True):
-                        restore_changespec(changespec)
+                with patch("ace.restore.get_vcs_provider", return_value=mock_provider):
+                    with patch(
+                        "ace.restore.run_workspace_command", return_value=(True, None)
+                    ):
+                        with patch("pathlib.Path.exists", return_value=True):
+                            restore_changespec(changespec)
 
-    # First call should be bb_hg_update with p4head
-    mock_update.assert_any_call(["bb_hg_update", "p4head"], "/tmp")
+    # Provider checkout should be called with p4head
+    mock_provider.checkout.assert_called_once_with("p4head", "/tmp")
 
 
 def test_restore_changespec_bb_hg_update_fails(make_changespec) -> None:  # type: ignore[no-untyped-def]
@@ -149,15 +164,15 @@ def test_restore_changespec_bb_hg_update_fails(make_changespec) -> None:  # type
         name="test_project_feature__1", status="Reverted"
     )
 
+    mock_provider = MagicMock()
+    mock_provider.checkout.return_value = (False, "update failed")
+
     with patch(
         "ace.restore.get_workspace_directory_for_changespec", return_value="/tmp"
     ):
         with patch("os.path.isdir", return_value=True):
             with patch("ace.restore.update_changespec_name_atomic"):
-                with patch(
-                    "ace.restore.run_workspace_command",
-                    return_value=(False, "update failed"),
-                ):
+                with patch("ace.restore.get_vcs_provider", return_value=mock_provider):
                     success, error = restore_changespec(changespec)
 
     assert success is False
@@ -170,14 +185,15 @@ def test_restore_changespec_diff_not_found(make_changespec) -> None:  # type: ig
         name="test_project_feature__1", status="Reverted"
     )
 
+    mock_provider = MagicMock()
+    mock_provider.checkout.return_value = (True, None)
+
     with patch(
         "ace.restore.get_workspace_directory_for_changespec", return_value="/tmp"
     ):
         with patch("os.path.isdir", return_value=True):
             with patch("ace.restore.update_changespec_name_atomic"):
-                with patch(
-                    "ace.restore.run_workspace_command", return_value=(True, None)
-                ):
+                with patch("ace.restore.get_vcs_provider", return_value=mock_provider):
                     with patch("pathlib.Path.exists", return_value=False):
                         success, error = restore_changespec(changespec)
 
@@ -192,15 +208,16 @@ def test_restore_changespec_hg_import_fails(make_changespec) -> None:  # type: i
         name="test_project_feature__1", status="Reverted"
     )
 
+    mock_provider = MagicMock()
+    mock_provider.checkout.return_value = (True, None)
+    mock_provider.apply_patch.return_value = (False, "hg failed: import failed")
+
     with patch(
         "ace.restore.get_workspace_directory_for_changespec", return_value="/tmp"
     ):
         with patch("os.path.isdir", return_value=True):
             with patch("ace.restore.update_changespec_name_atomic"):
-                with patch(
-                    "ace.restore.run_workspace_command",
-                    side_effect=[(True, None), (False, "hg failed: import failed")],
-                ):
+                with patch("ace.restore.get_vcs_provider", return_value=mock_provider):
                     with patch("pathlib.Path.exists", return_value=True):
                         success, error = restore_changespec(changespec)
 
@@ -215,21 +232,22 @@ def test_restore_changespec_gai_commit_fails(make_changespec) -> None:  # type: 
         name="test_project_feature__1", status="Reverted"
     )
 
+    mock_provider = MagicMock()
+    mock_provider.checkout.return_value = (True, None)
+    mock_provider.apply_patch.return_value = (True, None)
+
     with patch(
         "ace.restore.get_workspace_directory_for_changespec", return_value="/tmp"
     ):
         with patch("os.path.isdir", return_value=True):
             with patch("ace.restore.update_changespec_name_atomic"):
-                with patch(
-                    "ace.restore.run_workspace_command",
-                    side_effect=[
-                        (True, None),
-                        (True, None),
-                        (False, "gai failed: commit failed"),
-                    ],
-                ):
-                    with patch("pathlib.Path.exists", return_value=True):
-                        success, error = restore_changespec(changespec)
+                with patch("ace.restore.get_vcs_provider", return_value=mock_provider):
+                    with patch(
+                        "ace.restore.run_workspace_command",
+                        return_value=(False, "gai failed: commit failed"),
+                    ):
+                        with patch("pathlib.Path.exists", return_value=True):
+                            success, error = restore_changespec(changespec)
 
     assert success is False
     assert error is not None

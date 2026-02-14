@@ -242,10 +242,14 @@ def test_update_to_changespec_path_not_directory() -> None:
         assert "not a directory" in error
 
 
-@patch("subprocess.run")
-def test_update_to_changespec_success_with_revision(mock_run: MagicMock) -> None:
+@patch("vcs_provider.get_vcs_provider")
+def test_update_to_changespec_success_with_revision(
+    mock_get_provider: MagicMock,
+) -> None:
     """Test update_to_changespec succeeds with specified revision."""
-    mock_run.return_value = MagicMock(returncode=0)
+    mock_provider = MagicMock()
+    mock_provider.checkout.return_value = (True, None)
+    mock_get_provider.return_value = mock_provider
 
     with tempfile.TemporaryDirectory() as tmpdir:
         mock_changespec = MagicMock()
@@ -256,16 +260,17 @@ def test_update_to_changespec_success_with_revision(mock_run: MagicMock) -> None
 
         assert success is True
         assert error is None
-        mock_run.assert_called_once()
-        call_args = mock_run.call_args
-        assert call_args[0][0] == ["bb_hg_update", "my_revision"]
-        assert call_args[1]["cwd"] == tmpdir
+        mock_provider.checkout.assert_called_once_with("my_revision", tmpdir)
 
 
-@patch("subprocess.run")
-def test_update_to_changespec_uses_parent_revision(mock_run: MagicMock) -> None:
+@patch("vcs_provider.get_vcs_provider")
+def test_update_to_changespec_uses_parent_revision(
+    mock_get_provider: MagicMock,
+) -> None:
     """Test update_to_changespec uses parent when no revision specified."""
-    mock_run.return_value = MagicMock(returncode=0)
+    mock_provider = MagicMock()
+    mock_provider.checkout.return_value = (True, None)
+    mock_get_provider.return_value = mock_provider
 
     with tempfile.TemporaryDirectory() as tmpdir:
         mock_changespec = MagicMock()
@@ -274,14 +279,17 @@ def test_update_to_changespec_uses_parent_revision(mock_run: MagicMock) -> None:
         success, error = update_to_changespec(mock_changespec, workspace_dir=tmpdir)
 
         assert success is True
-        call_args = mock_run.call_args
-        assert call_args[0][0] == ["bb_hg_update", "parent_rev"]
+        mock_provider.checkout.assert_called_once_with("parent_rev", tmpdir)
 
 
-@patch("subprocess.run")
-def test_update_to_changespec_uses_p4head_default(mock_run: MagicMock) -> None:
+@patch("vcs_provider.get_vcs_provider")
+def test_update_to_changespec_uses_p4head_default(
+    mock_get_provider: MagicMock,
+) -> None:
     """Test update_to_changespec uses p4head when no parent or revision."""
-    mock_run.return_value = MagicMock(returncode=0)
+    mock_provider = MagicMock()
+    mock_provider.checkout.return_value = (True, None)
+    mock_get_provider.return_value = mock_provider
 
     with tempfile.TemporaryDirectory() as tmpdir:
         mock_changespec = MagicMock()
@@ -290,19 +298,17 @@ def test_update_to_changespec_uses_p4head_default(mock_run: MagicMock) -> None:
         success, error = update_to_changespec(mock_changespec, workspace_dir=tmpdir)
 
         assert success is True
-        call_args = mock_run.call_args
-        assert call_args[0][0] == ["bb_hg_update", "p4head"]
+        mock_provider.checkout.assert_called_once_with("p4head", tmpdir)
 
 
-@patch("subprocess.run")
-def test_update_to_changespec_command_fails_stderr(mock_run: MagicMock) -> None:
-    """Test update_to_changespec handles command failure with stderr."""
-    import subprocess
-
-    err = subprocess.CalledProcessError(returncode=1, cmd=["bb_hg_update"])
-    err.stderr = "Update failed"
-    err.stdout = ""
-    mock_run.side_effect = err
+@patch("vcs_provider.get_vcs_provider")
+def test_update_to_changespec_command_fails_stderr(
+    mock_get_provider: MagicMock,
+) -> None:
+    """Test update_to_changespec handles command failure with error message."""
+    mock_provider = MagicMock()
+    mock_provider.checkout.return_value = (False, "bb_hg_update failed: Update failed")
+    mock_get_provider.return_value = mock_provider
 
     with tempfile.TemporaryDirectory() as tmpdir:
         mock_changespec = MagicMock()
@@ -316,15 +322,17 @@ def test_update_to_changespec_command_fails_stderr(mock_run: MagicMock) -> None:
         assert "Update failed" in error
 
 
-@patch("subprocess.run")
-def test_update_to_changespec_command_fails_stdout(mock_run: MagicMock) -> None:
-    """Test update_to_changespec handles command failure with stdout only."""
-    import subprocess
-
-    err = subprocess.CalledProcessError(returncode=1, cmd=["bb_hg_update"])
-    err.stderr = ""
-    err.stdout = "Conflict detected"
-    mock_run.side_effect = err
+@patch("vcs_provider.get_vcs_provider")
+def test_update_to_changespec_command_fails_stdout(
+    mock_get_provider: MagicMock,
+) -> None:
+    """Test update_to_changespec handles command failure with stdout-based error."""
+    mock_provider = MagicMock()
+    mock_provider.checkout.return_value = (
+        False,
+        "bb_hg_update failed: Conflict detected",
+    )
+    mock_get_provider.return_value = mock_provider
 
     with tempfile.TemporaryDirectory() as tmpdir:
         mock_changespec = MagicMock()
@@ -337,10 +345,17 @@ def test_update_to_changespec_command_fails_stdout(mock_run: MagicMock) -> None:
         assert "Conflict detected" in error
 
 
-@patch("subprocess.run")
-def test_update_to_changespec_command_not_found(mock_run: MagicMock) -> None:
+@patch("vcs_provider.get_vcs_provider")
+def test_update_to_changespec_command_not_found(
+    mock_get_provider: MagicMock,
+) -> None:
     """Test update_to_changespec handles command not found."""
-    mock_run.side_effect = FileNotFoundError()
+    mock_provider = MagicMock()
+    mock_provider.checkout.return_value = (
+        False,
+        "bb_hg_update failed: bb_hg_update command not found",
+    )
+    mock_get_provider.return_value = mock_provider
 
     with tempfile.TemporaryDirectory() as tmpdir:
         mock_changespec = MagicMock()
@@ -353,10 +368,17 @@ def test_update_to_changespec_command_not_found(mock_run: MagicMock) -> None:
         assert "not found" in error
 
 
-@patch("subprocess.run")
-def test_update_to_changespec_unexpected_error(mock_run: MagicMock) -> None:
-    """Test update_to_changespec handles unexpected errors."""
-    mock_run.side_effect = OSError("Disk full")
+@patch("vcs_provider.get_vcs_provider")
+def test_update_to_changespec_unexpected_error(
+    mock_get_provider: MagicMock,
+) -> None:
+    """Test update_to_changespec handles unexpected errors from provider."""
+    mock_provider = MagicMock()
+    mock_provider.checkout.return_value = (
+        False,
+        "bb_hg_update failed: Unexpected error: Disk full",
+    )
+    mock_get_provider.return_value = mock_provider
 
     with tempfile.TemporaryDirectory() as tmpdir:
         mock_changespec = MagicMock()
@@ -366,5 +388,4 @@ def test_update_to_changespec_unexpected_error(mock_run: MagicMock) -> None:
 
         assert success is False
         assert error is not None
-        assert "Unexpected error" in error
         assert "Disk full" in error

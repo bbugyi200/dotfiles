@@ -8,7 +8,6 @@ from rich.console import Console
 
 # Add parent directory to path for status_state_machine import
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from gai_utils import run_workspace_command
 from running_field import (
     claim_workspace,
     get_first_available_axe_workspace,
@@ -16,6 +15,7 @@ from running_field import (
     release_workspace,
 )
 from status_state_machine import transition_changespec_status
+from vcs_provider import get_vcs_provider
 
 from .changespec import (
     ChangeSpec,
@@ -108,9 +108,8 @@ def archive_changespec(
         if console:
             console.print(f"[cyan]Checking out {changespec.name}...[/cyan]")
 
-        success, error = run_workspace_command(
-            ["bb_hg_update", changespec.name], workspace_dir
-        )
+        provider = get_vcs_provider(workspace_dir)
+        success, error = provider.checkout(changespec.name, workspace_dir)
         if not success:
             return (False, f"Failed to checkout CL: {error}")
 
@@ -135,9 +134,7 @@ def archive_changespec(
             console.print(f"[green]Saved diff to: {diff_path}[/green]")
 
         # Run bb_hg_archive
-        success, error = run_workspace_command(
-            ["bb_hg_archive", changespec.name], workspace_dir
-        )
+        success, error = provider.archive(changespec.name, workspace_dir)
         if not success:
             return (False, f"Failed to archive revision: {error}")
 

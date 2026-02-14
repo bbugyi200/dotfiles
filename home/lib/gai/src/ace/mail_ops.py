@@ -2,7 +2,6 @@
 
 import os
 import re
-import subprocess
 import sys
 from dataclasses import dataclass
 
@@ -14,6 +13,7 @@ from status_state_machine import (
     remove_ready_to_mail_suffix,
     transition_changespec_status,
 )
+from vcs_provider import get_vcs_provider
 
 from .changespec import ChangeSpec, find_all_changespecs
 
@@ -81,27 +81,12 @@ def _get_cl_description(
     Returns:
         Tuple of (success, description or None)
     """
-    try:
-        result = subprocess.run(
-            ["cl_desc", "-r", revision],
-            cwd=target_dir,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        return True, result.stdout
-    except subprocess.CalledProcessError as e:
-        error_msg = f"cl_desc failed (exit code {e.returncode})"
-        if e.stderr:
-            error_msg += f": {e.stderr.strip()}"
-        console.print(f"[red]{error_msg}[/red]")
+    provider = get_vcs_provider(target_dir)
+    success, result = provider.get_description(revision, target_dir)
+    if not success:
+        console.print(f"[red]{result}[/red]")
         return False, None
-    except FileNotFoundError:
-        console.print("[red]cl_desc command not found[/red]")
-        return False, None
-    except Exception as e:
-        console.print(f"[red]Unexpected error running cl_desc: {str(e)}[/red]")
-        return False, None
+    return True, result
 
 
 def _get_branch_number(target_dir: str, console: Console) -> tuple[bool, str | None]:
@@ -114,33 +99,17 @@ def _get_branch_number(target_dir: str, console: Console) -> tuple[bool, str | N
     Returns:
         Tuple of (success, branch_number or None)
     """
-    try:
-        result = subprocess.run(
-            ["branch_number"],
-            cwd=target_dir,
-            capture_output=True,
-            text=True,
-            check=True,
+    provider = get_vcs_provider(target_dir)
+    success, branch_number = provider.get_cl_number(target_dir)
+    if not success:
+        console.print(f"[red]{branch_number}[/red]")
+        return False, None
+    if not branch_number or not branch_number.isdigit():
+        console.print(
+            f"[red]Error: branch_number returned invalid value: {branch_number}[/red]"
         )
-        branch_number = result.stdout.strip()
-        if not branch_number or not branch_number.isdigit():
-            console.print(
-                f"[red]Error: branch_number returned invalid value: {branch_number}[/red]"
-            )
-            return False, None
-        return True, branch_number
-    except subprocess.CalledProcessError as e:
-        error_msg = f"branch_number failed (exit code {e.returncode})"
-        if e.stderr:
-            error_msg += f": {e.stderr.strip()}"
-        console.print(f"[red]{error_msg}[/red]")
         return False, None
-    except FileNotFoundError:
-        console.print("[red]branch_number command not found[/red]")
-        return False, None
-    except Exception as e:
-        console.print(f"[red]Unexpected error running branch_number: {str(e)}[/red]")
-        return False, None
+    return True, branch_number
 
 
 def _run_findreviewers(target_dir: str, console: Console) -> bool:
@@ -160,40 +129,22 @@ def _run_findreviewers(target_dir: str, console: Console) -> bool:
 
     # Run p4 findreviewers command
     console.print("[cyan]Running p4 findreviewers...[/cyan]\n")
-    try:
-        result = subprocess.run(
-            ["p4", "findreviewers", "-c", cl_number],
-            cwd=target_dir,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-
-        # Display the output
-        if result.stdout:
-            console.print(result.stdout)
-        else:
-            console.print("[yellow]No output from p4 findreviewers[/yellow]")
-
-        # Wait for user to press enter before returning
-        console.print("\n[dim]Press enter to continue...[/dim]", end="")
-        input()
-        return True
-
-    except subprocess.CalledProcessError as e:
-        error_msg = f"p4 findreviewers failed (exit code {e.returncode})"
-        if e.stderr:
-            error_msg += f": {e.stderr.strip()}"
-        elif e.stdout:
-            error_msg += f": {e.stdout.strip()}"
-        console.print(f"[red]{error_msg}[/red]")
+    provider = get_vcs_provider(target_dir)
+    success, output = provider.find_reviewers(cl_number, target_dir)
+    if not success:
+        console.print(f"[red]{output}[/red]")
         return False
-    except FileNotFoundError:
-        console.print("[red]p4 command not found[/red]")
-        return False
-    except Exception as e:
-        console.print(f"[red]Unexpected error running findreviewers: {str(e)}[/red]")
-        return False
+
+    # Display the output
+    if output:
+        console.print(output)
+    else:
+        console.print("[yellow]No output from p4 findreviewers[/yellow]")
+
+    # Wait for user to press enter before returning
+    console.print("\n[dim]Press enter to continue...[/dim]", end="")
+    input()
+    return True
 
 
 def _modify_description_for_mailing(
@@ -385,6 +336,8 @@ def prepare_mail(
         has_valid_parent_flag, parent_cs = _has_valid_parent(changespec)
         parent_branch_number = None
 
+        provider = get_vcs_provider(target_dir)
+
         if has_valid_parent_flag and parent_cs:
             # Get parent's branch number
             console.print(
@@ -395,16 +348,15 @@ def prepare_mail(
             # Save current branch name
             current_branch = changespec.name
 
-            try:
-                # Update to parent branch
-                subprocess.run(
-                    ["bb_hg_update", parent_cs.name],
-                    cwd=target_dir,
-                    capture_output=True,
-                    text=True,
-                    check=True,
+            # Update to parent branch
+            checkout_ok, checkout_err = provider.checkout(parent_cs.name, target_dir)
+            if not checkout_ok:
+                console.print(
+                    f"[red]Error updating to parent branch: {checkout_err}[/red]"
                 )
+                return None
 
+            try:
                 # Get parent's branch number
                 success, parent_branch_number = _get_branch_number(target_dir, console)
                 if not success:
@@ -412,31 +364,13 @@ def prepare_mail(
                         "[red]Error: Could not get parent branch number[/red]"
                     )
                     # Try to restore current branch
-                    subprocess.run(
-                        ["bb_hg_update", current_branch],
-                        cwd=target_dir,
-                        capture_output=True,
-                        text=True,
-                    )
+                    provider.checkout(current_branch, target_dir)
                     return None
 
-            except subprocess.CalledProcessError as e:
-                console.print(
-                    f"[red]Error updating to parent branch "
-                    f"(exit code {e.returncode}, cwd: {target_dir})[/red]"
-                )
-                return None
             finally:
                 # Always try to restore current branch
-                try:
-                    subprocess.run(
-                        ["bb_hg_update", current_branch],
-                        cwd=target_dir,
-                        capture_output=True,
-                        text=True,
-                        check=True,
-                    )
-                except subprocess.CalledProcessError:
+                restore_ok, restore_err = provider.checkout(current_branch, target_dir)
+                if not restore_ok:
                     console.print(
                         f"[yellow]Warning: Could not restore to branch "
                         f"{current_branch} (cwd: {target_dir})[/yellow]"
@@ -450,40 +384,20 @@ def prepare_mail(
 
         # Ensure we're on the correct branch before rewording
         console.print(f"[cyan]Checking out {changespec.name}...[/cyan]")
-        try:
-            subprocess.run(
-                ["bb_hg_update", changespec.name],
-                cwd=target_dir,
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-        except subprocess.CalledProcessError as e:
-            error_msg = e.stderr.strip() if e.stderr else str(e)
+        checkout_ok, checkout_err = provider.checkout(changespec.name, target_dir)
+        if not checkout_ok:
             console.print(
-                f"[red]Error checking out {changespec.name}: {error_msg}[/red]"
+                f"[red]Error checking out {changespec.name}: {checkout_err}[/red]"
             )
-            return None
-        except FileNotFoundError:
-            console.print("[red]bb_hg_update command not found[/red]")
             return None
 
         # Update CL description using bb_hg_reword
         console.print("[cyan]Updating CL description with bb_hg_reword...[/cyan]")
-        try:
-            subprocess.run(
-                ["bb_hg_reword", escape_for_hg_reword(modified_description)],
-                cwd=target_dir,
-                check=True,
-            )
-        except subprocess.CalledProcessError as e:
-            console.print(
-                f"[red]FATAL: bb_hg_reword failed (exit code {e.returncode})[/red]"
-            )
-            console.print("[red]Aborting gai work...[/red]")
-            sys.exit(1)
-        except FileNotFoundError:
-            console.print("[red]FATAL: bb_hg_reword command not found[/red]")
+        reword_ok, reword_err = provider.reword(
+            escape_for_hg_reword(modified_description), target_dir
+        )
+        if not reword_ok:
+            console.print(f"[red]FATAL: bb_hg_reword failed: {reword_err}[/red]")
             console.print("[red]Aborting gai work...[/red]")
             sys.exit(1)
     else:
@@ -534,18 +448,10 @@ def execute_mail(changespec: ChangeSpec, target_dir: str, console: Console) -> b
         True if mailing succeeded, False otherwise
     """
     console.print(f"[cyan]Mailing CL with: hg mail -r {changespec.name}[/cyan]")
-    try:
-        subprocess.run(
-            ["hg", "mail", "-r", changespec.name],
-            cwd=target_dir,
-            check=True,
-        )
-    except subprocess.CalledProcessError as e:
-        error_msg = f"hg mail failed (exit code {e.returncode})"
-        console.print(f"[red]{error_msg}[/red]")
-        return False
-    except FileNotFoundError:
-        console.print("[red]hg command not found[/red]")
+    provider = get_vcs_provider(target_dir)
+    success, error = provider.mail(changespec.name, target_dir)
+    if not success:
+        console.print(f"[red]{error}[/red]")
         return False
 
     console.print("[green]CL mailed successfully![/green]")

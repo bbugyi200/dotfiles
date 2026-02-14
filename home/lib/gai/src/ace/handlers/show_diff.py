@@ -1,7 +1,10 @@
 """Handler for the show-diff tool action."""
 
 import subprocess
+import tempfile
 from typing import TYPE_CHECKING
+
+from vcs_provider import get_vcs_provider
 
 from ..changespec import ChangeSpec
 
@@ -12,8 +15,9 @@ if TYPE_CHECKING:
 def handle_show_diff(self: "WorkflowContext", changespec: ChangeSpec) -> None:
     """Handle 'd' (show diff) action.
 
-    Runs 'hg diff <name>' in the primary workspace, piped through bat (if
-    available) for syntax highlighting, with fallback to less.
+    Gets the diff via the VCS provider, writes it to a temp file, then
+    displays through bat (if available) for syntax highlighting, with
+    fallback to less.
 
     Args:
         self: The WorkflowContext instance
@@ -31,15 +35,36 @@ def handle_show_diff(self: "WorkflowContext", changespec: ChangeSpec) -> None:
         return
 
     try:
-        # Build command: hg diff piped through bat (if available) or less
-        if shutil.which("bat"):
-            cmd = (
-                f"hg diff -c {changespec.name} "
-                "| bat --color=always --style=numbers --language=diff | less -R"
-            )
-        else:
-            cmd = f"hg diff -c {changespec.name} | less -R"
+        provider = get_vcs_provider(target_dir)
+        success, diff_text = provider.diff_revision(changespec.name, target_dir)
+        if not success:
+            self.console.print(f"[red]Error showing diff: {diff_text}[/red]")
+            return
 
-        subprocess.run(cmd, shell=True, cwd=target_dir, check=False)
+        if not diff_text:
+            self.console.print("[yellow]No diff output.[/yellow]")
+            return
+
+        # Write diff to a temp file and display with bat/less
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".diff", delete=False, encoding="utf-8"
+        ) as tmp:
+            tmp.write(diff_text)
+            tmp_path = tmp.name
+
+        try:
+            if shutil.which("bat"):
+                cmd = (
+                    f"bat --color=always --style=numbers --language=diff"
+                    f" {tmp_path} | less -R"
+                )
+            else:
+                cmd = f"less -R {tmp_path}"
+
+            subprocess.run(cmd, shell=True, check=False)
+        finally:
+            import os
+
+            os.unlink(tmp_path)
     except Exception as e:
         self.console.print(f"[red]Error showing diff: {str(e)}[/red]")

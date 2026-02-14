@@ -11,6 +11,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from commit_utils import run_bb_hg_clean
 from commit_workflow.editor_utils import get_editor
+from vcs_provider import get_vcs_provider
 
 from ..changespec import ChangeSpec
 from ..mail_ops import escape_for_hg_reword
@@ -37,21 +38,15 @@ def _sync_description_after_reword(
     """
     from status_state_machine import update_changespec_description_atomic
 
-    try:
-        desc_result = subprocess.run(
-            ["cl_desc", "-s"],
-            cwd=workspace_dir,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+    provider = get_vcs_provider(workspace_dir)
+    success, desc_output = provider.get_description("", workspace_dir, short=True)
+    if not success:
         console.print(
-            f"[yellow]Warning: could not read updated description: {e}[/yellow]"
+            f"[yellow]Warning: could not read updated description: {desc_output}[/yellow]"
         )
         return
 
-    new_description = desc_result.stdout.strip()
+    new_description = desc_output.strip() if desc_output else ""
     if not new_description:
         console.print(
             "[yellow]Warning: cl_desc -s returned empty output, "
@@ -94,24 +89,12 @@ def _fetch_cl_description(
         console.print(f"[red]Error getting workspace: {e}[/red]")
         return None
 
-    try:
-        result = subprocess.run(
-            ["cl_desc", "-r", changespec_name],
-            cwd=target_dir,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        return result.stdout
-    except subprocess.CalledProcessError as e:
-        error_msg = f"cl_desc failed (exit code {e.returncode})"
-        if e.stderr:
-            error_msg += f": {e.stderr.strip()}"
-        console.print(f"[red]{error_msg}[/red]")
+    provider = get_vcs_provider(target_dir)
+    success, description = provider.get_description(changespec_name, target_dir)
+    if not success:
+        console.print(f"[red]{description}[/red]")
         return None
-    except FileNotFoundError:
-        console.print("[red]cl_desc command not found[/red]")
-        return None
+    return description
 
 
 def _add_prettier_ignore_before_tags(description: str) -> str:
@@ -241,51 +224,32 @@ def handle_add_tag(
             )
 
         # Update to the changespec (checkout the CL)
+        provider = get_vcs_provider(workspace_dir)
         self.console.print(f"[cyan]Checking out {changespec.name}...[/cyan]")
-        try:
-            subprocess.run(
-                ["bb_hg_update", changespec.name],
-                cwd=workspace_dir,
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-        except subprocess.CalledProcessError as e:
-            error_msg = e.stderr.strip() if e.stderr else e.stdout.strip()
-            self.console.print(f"[red]Error checking out CL: {error_msg}[/red]")
-            return
-        except FileNotFoundError:
-            self.console.print("[red]bb_hg_update command not found[/red]")
+        checkout_ok, checkout_err = provider.checkout(changespec.name, workspace_dir)
+        if not checkout_ok:
+            self.console.print(f"[red]Error checking out CL: {checkout_err}[/red]")
             return
 
         # Run bb_hg_reword --add-tag
         self.console.print(f"[cyan]Adding tag {tag_name}={tag_value}...[/cyan]")
-        try:
-            result = subprocess.run(
-                ["bb_hg_reword", "--add-tag", tag_name, tag_value],
-                cwd=workspace_dir,
-                check=False,
+        tag_ok, tag_err = provider.reword_add_tag(tag_name, tag_value, workspace_dir)
+        if tag_ok:
+            self.console.print(
+                f"[green]Tag {tag_name}={tag_value} added successfully[/green]"
             )
-            if result.returncode == 0:
-                self.console.print(
-                    f"[green]Tag {tag_name}={tag_value} added successfully[/green]"
-                )
-                _sync_description_after_reword(workspace_dir, changespec, self.console)
-                from ..hooks import reset_dollar_hooks
+            _sync_description_after_reword(workspace_dir, changespec, self.console)
+            from ..hooks import reset_dollar_hooks
 
-                reset_dollar_hooks(
-                    changespec.file_path,
-                    changespec.name,
-                    log_fn=lambda msg: self.console.print(f"[cyan]{msg}[/cyan]"),
-                )
-            else:
-                self.console.print(
-                    f"[yellow]bb_hg_reword exited with code {result.returncode}[/yellow]"
-                )
-        except FileNotFoundError:
-            self.console.print("[red]bb_hg_reword command not found[/red]")
-        except Exception as e:
-            self.console.print(f"[red]Error running bb_hg_reword: {str(e)}[/red]")
+            reset_dollar_hooks(
+                changespec.file_path,
+                changespec.name,
+                log_fn=lambda msg: self.console.print(f"[cyan]{msg}[/cyan]"),
+            )
+        else:
+            self.console.print(
+                f"[yellow]bb_hg_reword --add-tag failed: {tag_err}[/yellow]"
+            )
 
     finally:
         release_workspace(
@@ -374,49 +338,30 @@ def handle_reword(self: "WorkflowContext", changespec: ChangeSpec) -> None:
             )
 
         # Update to the changespec (checkout the CL)
+        provider = get_vcs_provider(workspace_dir)
         self.console.print(f"[cyan]Checking out {changespec.name}...[/cyan]")
-        try:
-            subprocess.run(
-                ["bb_hg_update", changespec.name],
-                cwd=workspace_dir,
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-        except subprocess.CalledProcessError as e:
-            error_msg = e.stderr.strip() if e.stderr else e.stdout.strip()
-            self.console.print(f"[red]Error checking out CL: {error_msg}[/red]")
-            return
-        except FileNotFoundError:
-            self.console.print("[red]bb_hg_update command not found[/red]")
+        checkout_ok, checkout_err = provider.checkout(changespec.name, workspace_dir)
+        if not checkout_ok:
+            self.console.print(f"[red]Error checking out CL: {checkout_err}[/red]")
             return
 
         # Run bb_hg_reword with the edited description (non-interactive)
         self.console.print("[cyan]Running bb_hg_reword...[/cyan]")
-        try:
-            reword_result = subprocess.run(
-                ["bb_hg_reword", escape_for_hg_reword(edited)],
-                cwd=workspace_dir,
-                check=False,
-            )
-            if reword_result.returncode == 0:
-                self.console.print("[green]CL description updated successfully[/green]")
-                _sync_description_after_reword(workspace_dir, changespec, self.console)
-                from ..hooks import reset_dollar_hooks
+        reword_ok, reword_err = provider.reword(
+            escape_for_hg_reword(edited), workspace_dir
+        )
+        if reword_ok:
+            self.console.print("[green]CL description updated successfully[/green]")
+            _sync_description_after_reword(workspace_dir, changespec, self.console)
+            from ..hooks import reset_dollar_hooks
 
-                reset_dollar_hooks(
-                    changespec.file_path,
-                    changespec.name,
-                    log_fn=lambda msg: self.console.print(f"[cyan]{msg}[/cyan]"),
-                )
-            else:
-                self.console.print(
-                    f"[yellow]bb_hg_reword exited with code {reword_result.returncode}[/yellow]"
-                )
-        except FileNotFoundError:
-            self.console.print("[red]bb_hg_reword command not found[/red]")
-        except Exception as e:
-            self.console.print(f"[red]Error running bb_hg_reword: {str(e)}[/red]")
+            reset_dollar_hooks(
+                changespec.file_path,
+                changespec.name,
+                log_fn=lambda msg: self.console.print(f"[cyan]{msg}[/cyan]"),
+            )
+        else:
+            self.console.print(f"[yellow]bb_hg_reword failed: {reword_err}[/yellow]")
 
     finally:
         # Always release the workspace

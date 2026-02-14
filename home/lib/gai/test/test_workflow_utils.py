@@ -285,39 +285,36 @@ def test_get_project_file_path_special_chars() -> None:
 
 
 # Tests for get_cl_name_from_branch
-@patch("workflow_utils.run_shell_command")
-def test_get_cl_name_from_branch_success(mock_run_shell: MagicMock) -> None:
+@patch("workflow_utils.get_vcs_provider")
+def test_get_cl_name_from_branch_success(mock_get_provider: MagicMock) -> None:
     """Test get_cl_name_from_branch returns branch name."""
-    mock_result = MagicMock()
-    mock_result.returncode = 0
-    mock_result.stdout = "my_feature\n"
-    mock_run_shell.return_value = mock_result
+    mock_provider = MagicMock()
+    mock_provider.get_branch_name.return_value = (True, "my_feature")
+    mock_get_provider.return_value = mock_provider
 
     result = get_cl_name_from_branch()
 
     assert result == "my_feature"
-    mock_run_shell.assert_called_once_with("branch_name", capture_output=True)
 
 
-@patch("workflow_utils.run_shell_command")
-def test_get_cl_name_from_branch_failure(mock_run_shell: MagicMock) -> None:
+@patch("workflow_utils.get_vcs_provider")
+def test_get_cl_name_from_branch_failure(mock_get_provider: MagicMock) -> None:
     """Test get_cl_name_from_branch returns None on failure."""
-    mock_result = MagicMock()
-    mock_result.returncode = 1
-    mock_run_shell.return_value = mock_result
+    mock_provider = MagicMock()
+    mock_provider.get_branch_name.return_value = (False, None)
+    mock_get_provider.return_value = mock_provider
 
     result = get_cl_name_from_branch()
 
     assert result is None
 
 
-@patch("workflow_utils.run_shell_command")
-def test_get_cl_name_from_branch_empty(mock_run_shell: MagicMock) -> None:
+@patch("workflow_utils.get_vcs_provider")
+def test_get_cl_name_from_branch_empty(mock_get_provider: MagicMock) -> None:
     """Test get_cl_name_from_branch returns None for empty output."""
-    mock_result = MagicMock()
-    mock_result.returncode = 0
-    mock_result.stdout = "\n"
-    mock_run_shell.return_value = mock_result
+    mock_provider = MagicMock()
+    mock_provider.get_branch_name.return_value = (True, None)
+    mock_get_provider.return_value = mock_provider
 
     result = get_cl_name_from_branch()
 
@@ -325,39 +322,36 @@ def test_get_cl_name_from_branch_empty(mock_run_shell: MagicMock) -> None:
 
 
 # Tests for get_project_from_workspace
-@patch("workflow_utils.run_shell_command")
-def test_get_project_from_workspace_success(mock_run_shell: MagicMock) -> None:
+@patch("workflow_utils.get_vcs_provider")
+def test_get_project_from_workspace_success(mock_get_provider: MagicMock) -> None:
     """Test get_project_from_workspace returns project name."""
-    mock_result = MagicMock()
-    mock_result.returncode = 0
-    mock_result.stdout = "myproject\n"
-    mock_run_shell.return_value = mock_result
+    mock_provider = MagicMock()
+    mock_provider.get_workspace_name.return_value = (True, "myproject")
+    mock_get_provider.return_value = mock_provider
 
     result = get_project_from_workspace()
 
     assert result == "myproject"
-    mock_run_shell.assert_called_once_with("workspace_name", capture_output=True)
 
 
-@patch("workflow_utils.run_shell_command")
-def test_get_project_from_workspace_failure(mock_run_shell: MagicMock) -> None:
+@patch("workflow_utils.get_vcs_provider")
+def test_get_project_from_workspace_failure(mock_get_provider: MagicMock) -> None:
     """Test get_project_from_workspace returns None on failure."""
-    mock_result = MagicMock()
-    mock_result.returncode = 1
-    mock_run_shell.return_value = mock_result
+    mock_provider = MagicMock()
+    mock_provider.get_workspace_name.return_value = (False, None)
+    mock_get_provider.return_value = mock_provider
 
     result = get_project_from_workspace()
 
     assert result is None
 
 
-@patch("workflow_utils.run_shell_command")
-def test_get_project_from_workspace_empty(mock_run_shell: MagicMock) -> None:
+@patch("workflow_utils.get_vcs_provider")
+def test_get_project_from_workspace_empty(mock_get_provider: MagicMock) -> None:
     """Test get_project_from_workspace returns None for empty output."""
-    mock_result = MagicMock()
-    mock_result.returncode = 0
-    mock_result.stdout = ""
-    mock_run_shell.return_value = mock_result
+    mock_provider = MagicMock()
+    mock_provider.get_workspace_name.return_value = (True, "")
+    mock_get_provider.return_value = mock_provider
 
     result = get_project_from_workspace()
 

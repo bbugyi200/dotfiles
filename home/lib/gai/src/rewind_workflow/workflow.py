@@ -1,7 +1,6 @@
 """RewindWorkflow class for rewinding to a previous COMMITS entry."""
 
 import os
-import subprocess
 
 from ace.changespec import ChangeSpec
 from ace.hooks.processes import kill_and_persist_all_running_processes
@@ -14,6 +13,7 @@ from running_field import (
     get_workspace_directory_for_num,
     release_workspace,
 )
+from vcs_provider import get_vcs_provider
 from workflow_utils import get_changespec_from_file
 
 from .renumber import rewind_commit_entries
@@ -139,42 +139,23 @@ class RewindWorkflow:
             diff_files_reversed = list(reversed(diff_files))
             print_status(f"Rewinding {len(diff_files_reversed)} diff(s)...", "progress")
 
-            try:
-                result = subprocess.run(
-                    ["gai_rewind"] + diff_files_reversed,
-                    cwd=workspace_dir,
-                    capture_output=True,
-                    text=True,
-                    timeout=600,
-                )
-                if result.returncode != 0:
-                    error_output = (result.stderr or result.stdout).strip()
-                    return (False, f"gai_rewind failed: {error_output}")
-            except (subprocess.TimeoutExpired, FileNotFoundError) as e:
-                return (False, f"gai_rewind error: {e}")
+            provider = get_vcs_provider(workspace_dir)
+            rewind_ok, rewind_err = provider.rewind(diff_files_reversed, workspace_dir)
+            if not rewind_ok:
+                return (False, f"gai_rewind failed: {rewind_err}")
 
             print_status("Diffs rewound successfully", "success")
 
             # CRITICAL: Run bb_hg_amend
             print_status("Amending commit...", "progress")
             amend_msg = f"[rewind] ({selected_entry_num})"
-            try:
-                result = subprocess.run(
-                    ["bb_hg_amend", amend_msg],
-                    cwd=workspace_dir,
-                    capture_output=True,
-                    text=True,
-                    timeout=600,
+            amend_ok, amend_err = provider.amend(amend_msg, workspace_dir)
+            if not amend_ok:
+                # CRITICAL FAILURE - halt and alert user
+                return (
+                    False,
+                    f"bb_hg_amend failed - requires manual intervention: {amend_err}",
                 )
-                if result.returncode != 0:
-                    error_output = (result.stderr or result.stdout).strip()
-                    # CRITICAL FAILURE - halt and alert user
-                    return (
-                        False,
-                        f"bb_hg_amend failed - requires manual intervention: {error_output}",
-                    )
-            except (subprocess.TimeoutExpired, FileNotFoundError) as e:
-                return (False, f"bb_hg_amend error: {e}")
 
             print_status("Commit amended", "success")
 

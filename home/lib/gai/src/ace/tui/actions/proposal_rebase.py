@@ -353,7 +353,6 @@ class ProposalRebaseMixin:
             new_parent_name: Name of the new parent ChangeSpec
         """
         import os
-        import subprocess
 
         from commit_utils import run_bb_hg_clean
         from running_field import (
@@ -402,40 +401,27 @@ class ProposalRebaseMixin:
                     print(f"Warning: bb_hg_clean failed: {clean_error}")
 
                 # Checkout the CL being rebased
-                try:
-                    result = subprocess.run(
-                        ["bb_hg_update", changespec.name],
-                        cwd=workspace_dir,
-                        capture_output=True,
-                        text=True,
-                        timeout=300,
+                from vcs_provider import get_vcs_provider
+
+                provider = get_vcs_provider(workspace_dir)
+                checkout_ok, checkout_err = provider.checkout(
+                    changespec.name, workspace_dir
+                )
+                if not checkout_ok:
+                    return (
+                        False,
+                        f"bb_hg_update failed: {checkout_err}",
                     )
-                    if result.returncode != 0:
-                        error_output = (result.stderr or result.stdout).strip()
-                        return (
-                            False,
-                            f"bb_hg_update failed: {error_output}",
-                        )
-                except (subprocess.TimeoutExpired, FileNotFoundError) as e:
-                    return (False, f"bb_hg_update error: {e}")
 
                 # Run bb_hg_rebase
-                try:
-                    result = subprocess.run(
-                        ["bb_hg_rebase", changespec.name, new_parent_name],
-                        cwd=workspace_dir,
-                        capture_output=True,
-                        text=True,
-                        timeout=600,  # 10 minutes for rebase
+                rebase_ok, rebase_err = provider.rebase(
+                    changespec.name, new_parent_name, workspace_dir
+                )
+                if not rebase_ok:
+                    return (
+                        False,
+                        f"bb_hg_rebase failed: {rebase_err}",
                     )
-                    if result.returncode != 0:
-                        error_output = (result.stderr or result.stdout).strip()
-                        return (
-                            False,
-                            f"bb_hg_rebase failed: {error_output}",
-                        )
-                except (subprocess.TimeoutExpired, FileNotFoundError) as e:
-                    return (False, f"bb_hg_rebase error: {e}")
 
                 # Update PARENT field on success
                 # If p4head was selected, delete the PARENT field (pass None)

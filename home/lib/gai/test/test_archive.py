@@ -124,6 +124,10 @@ def test_archive_changespec_fails_with_non_terminal_children(make_changespec) ->
         name="child_feature", parent="parent_feature", status="WIP"
     )
 
+    mock_provider = MagicMock()
+    mock_provider.checkout.return_value = (True, None)
+    mock_provider.archive.return_value = (True, None)
+
     with patch("ace.archive.find_all_changespecs", return_value=[parent, child]):
         with patch("ace.archive.get_first_available_axe_workspace", return_value=100):
             with patch(
@@ -132,7 +136,7 @@ def test_archive_changespec_fails_with_non_terminal_children(make_changespec) ->
             ):
                 with patch("ace.archive.claim_workspace", return_value=True):
                     with patch(
-                        "ace.archive.run_workspace_command", return_value=(True, None)
+                        "ace.archive.get_vcs_provider", return_value=mock_provider
                     ):
                         with patch("ace.archive.release_workspace"):
                             success, error = archive_changespec(parent)
@@ -154,6 +158,10 @@ def test_archive_changespec_succeeds_with_terminal_children(make_changespec) -> 
     )
     console = MagicMock()
 
+    mock_provider = MagicMock()
+    mock_provider.checkout.return_value = (True, None)
+    mock_provider.archive.return_value = (True, None)
+
     with patch(
         "ace.archive.find_all_changespecs", return_value=[parent, archived_child]
     ):
@@ -164,7 +172,7 @@ def test_archive_changespec_succeeds_with_terminal_children(make_changespec) -> 
             ):
                 with patch("ace.archive.claim_workspace", return_value=True):
                     with patch(
-                        "ace.archive.run_workspace_command", return_value=(True, None)
+                        "ace.archive.get_vcs_provider", return_value=mock_provider
                     ):
                         with patch(
                             "ace.archive.save_diff_to_file", return_value=(True, None)
@@ -191,6 +199,10 @@ def test_archive_changespec_claims_workspace_100_plus(make_changespec) -> None: 
     changespec = make_changespec.create_with_file()
     console = MagicMock()
 
+    mock_provider = MagicMock()
+    mock_provider.checkout.return_value = (True, None)
+    mock_provider.archive.return_value = (True, None)
+
     with patch("ace.archive.find_all_changespecs", return_value=[changespec]):
         with patch(
             "ace.archive.get_first_available_axe_workspace", return_value=100
@@ -203,7 +215,7 @@ def test_archive_changespec_claims_workspace_100_plus(make_changespec) -> None: 
                     "ace.archive.claim_workspace", return_value=True
                 ) as mock_claim:
                     with patch(
-                        "ace.archive.run_workspace_command", return_value=(True, None)
+                        "ace.archive.get_vcs_provider", return_value=mock_provider
                     ):
                         with patch(
                             "ace.archive.save_diff_to_file", return_value=(True, None)
@@ -232,6 +244,10 @@ def test_archive_changespec_fails_on_archive_error(make_changespec) -> None:  # 
     """Test archive_changespec fails when bb_hg_archive fails."""
     changespec = make_changespec.create_with_file()
 
+    mock_provider = MagicMock()
+    mock_provider.checkout.return_value = (True, None)
+    mock_provider.archive.return_value = (False, "archive failed")
+
     with patch("ace.archive.find_all_changespecs", return_value=[changespec]):
         with patch("ace.archive.get_first_available_axe_workspace", return_value=100):
             with patch(
@@ -240,8 +256,7 @@ def test_archive_changespec_fails_on_archive_error(make_changespec) -> None:  # 
             ):
                 with patch("ace.archive.claim_workspace", return_value=True):
                     with patch(
-                        "ace.archive.run_workspace_command",
-                        side_effect=[(True, None), (False, "archive failed")],
+                        "ace.archive.get_vcs_provider", return_value=mock_provider
                     ):
                         with patch(
                             "ace.archive.save_diff_to_file", return_value=(True, None)
@@ -260,6 +275,9 @@ def test_archive_changespec_releases_workspace_on_failure(make_changespec) -> No
     """Test archive_changespec releases workspace even on failure."""
     changespec = make_changespec.create_with_file()
 
+    mock_provider = MagicMock()
+    mock_provider.checkout.return_value = (False, "update failed")
+
     with patch("ace.archive.find_all_changespecs", return_value=[changespec]):
         with patch("ace.archive.get_first_available_axe_workspace", return_value=100):
             with patch(
@@ -268,8 +286,7 @@ def test_archive_changespec_releases_workspace_on_failure(make_changespec) -> No
             ):
                 with patch("ace.archive.claim_workspace", return_value=True):
                     with patch(
-                        "ace.archive.run_workspace_command",
-                        return_value=(False, "update failed"),
+                        "ace.archive.get_vcs_provider", return_value=mock_provider
                     ):
                         with patch("ace.archive.release_workspace") as mock_release:
                             success, error = archive_changespec(changespec)

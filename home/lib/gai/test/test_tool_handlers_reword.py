@@ -1,7 +1,6 @@
 """Tests for handle_reword and its helpers in the reword module."""
 
 import os
-import subprocess
 from unittest.mock import MagicMock, patch
 
 from ace.handlers.reword import (
@@ -58,32 +57,27 @@ def test_strip_prettier_ignore_no_comment_unchanged() -> None:
 # === Tests for _fetch_cl_description ===
 
 
-@patch("ace.handlers.reword.subprocess.run")
+@patch("ace.handlers.reword.get_vcs_provider")
 @patch("running_field.get_workspace_directory")
 def test_fetch_cl_description_success(
-    mock_get_ws: MagicMock, mock_run: MagicMock
+    mock_get_ws: MagicMock, mock_get_provider: MagicMock
 ) -> None:
     """Test successful description fetch."""
     mock_get_ws.return_value = "/workspace"
-    mock_run.return_value = MagicMock(stdout="My CL description\n")
+    mock_provider = MagicMock()
+    mock_provider.get_description.return_value = (True, "My CL description\n")
+    mock_get_provider.return_value = mock_provider
     console = MagicMock()
 
     result = _fetch_cl_description("project", "cl/123", console)
 
     assert result == "My CL description\n"
-    mock_run.assert_called_once_with(
-        ["cl_desc", "-r", "cl/123"],
-        cwd="/workspace",
-        capture_output=True,
-        text=True,
-        check=True,
-    )
+    mock_provider.get_description.assert_called_once_with("cl/123", "/workspace")
 
 
-@patch("ace.handlers.reword.subprocess.run")
 @patch("running_field.get_workspace_directory")
 def test_fetch_cl_description_workspace_error(
-    mock_get_ws: MagicMock, mock_run: MagicMock
+    mock_get_ws: MagicMock,
 ) -> None:
     """Test returns None when workspace lookup fails."""
     mock_get_ws.side_effect = RuntimeError("no workspace")
@@ -92,17 +86,18 @@ def test_fetch_cl_description_workspace_error(
     result = _fetch_cl_description("project", "cl/123", console)
 
     assert result is None
-    mock_run.assert_not_called()
 
 
-@patch("ace.handlers.reword.subprocess.run")
+@patch("ace.handlers.reword.get_vcs_provider")
 @patch("running_field.get_workspace_directory")
 def test_fetch_cl_description_cl_desc_fails(
-    mock_get_ws: MagicMock, mock_run: MagicMock
+    mock_get_ws: MagicMock, mock_get_provider: MagicMock
 ) -> None:
     """Test returns None when cl_desc command fails."""
     mock_get_ws.return_value = "/workspace"
-    mock_run.side_effect = subprocess.CalledProcessError(1, "cl_desc", stderr="error")
+    mock_provider = MagicMock()
+    mock_provider.get_description.return_value = (False, "cl_desc failed")
+    mock_get_provider.return_value = mock_provider
     console = MagicMock()
 
     result = _fetch_cl_description("project", "cl/123", console)
@@ -110,14 +105,16 @@ def test_fetch_cl_description_cl_desc_fails(
     assert result is None
 
 
-@patch("ace.handlers.reword.subprocess.run")
+@patch("ace.handlers.reword.get_vcs_provider")
 @patch("running_field.get_workspace_directory")
 def test_fetch_cl_description_command_not_found(
-    mock_get_ws: MagicMock, mock_run: MagicMock
+    mock_get_ws: MagicMock, mock_get_provider: MagicMock
 ) -> None:
     """Test returns None when cl_desc is not found."""
     mock_get_ws.return_value = "/workspace"
-    mock_run.side_effect = FileNotFoundError()
+    mock_provider = MagicMock()
+    mock_provider.get_description.return_value = (False, "cl_desc command not found")
+    mock_get_provider.return_value = mock_provider
     console = MagicMock()
 
     result = _fetch_cl_description("project", "cl/123", console)
@@ -273,7 +270,7 @@ def test_handle_reword_trailing_newline_no_false_diff(
 
 
 @patch("ace.handlers.reword._sync_description_after_reword")
-@patch("ace.handlers.reword.subprocess.run")
+@patch("ace.handlers.reword.get_vcs_provider")
 @patch("ace.handlers.reword.run_bb_hg_clean", return_value=(True, None))
 @patch(
     "running_field.get_workspace_directory_for_num",
@@ -300,23 +297,21 @@ def test_handle_reword_changed_runs_full_flow(
     mock_claim: MagicMock,
     _mock_get_ws_dir: MagicMock,
     _mock_clean: MagicMock,
-    mock_run: MagicMock,
+    mock_get_provider: MagicMock,
     mock_sync: MagicMock,
 ) -> None:
     """Test full reword flow when description is changed."""
-    # bb_hg_update succeeds, bb_hg_reword succeeds
-    mock_run.side_effect = [
-        MagicMock(returncode=0),  # bb_hg_update
-        MagicMock(returncode=0),  # bb_hg_reword
-    ]
+    mock_provider = MagicMock()
+    mock_provider.checkout.return_value = (True, None)
+    mock_provider.reword.return_value = (True, None)
+    mock_get_provider.return_value = mock_provider
     ctx, cs = _make_context_and_changespec()
 
     handle_reword(ctx, cs)
 
     mock_claim.assert_called_once()
-    # Verify bb_hg_reword was called with the escaped description
-    reword_call = mock_run.call_args_list[1]
-    assert reword_call[0][0] == ["bb_hg_reword", "New description\\n"]
+    # Verify provider.reword was called with the escaped description
+    mock_provider.reword.assert_called_once_with("New description\\n", "/ws")
     mock_sync.assert_called_once()
     mock_release.assert_called_once()
 
