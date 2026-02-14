@@ -1,0 +1,130 @@
+#!/bin/bash
+
+source ~/lib/bugyi.sh
+
+LOCK_FILE="/tmp/chez.lock"
+
+export USAGE_GRAMMAR=(
+  "[-n N] [-v] {claim|release}"
+  "-h"
+)
+
+read -r -d '' DOC <<EOM
+$(usage)
+
+Manage a file-based lock for chezmoi operations. Provides mutual exclusion so
+concurrent chezmoi operations (e.g., multiple tmux panes) don't conflict.
+
+Positional Arguments
+--------------------
+ACTION
+    The action to perform: 'claim' to acquire the lock, 'release' to free it.
+
+Optional Arguments
+------------------
+-h | --help
+    View this help message.
+
+-n N | --max-attempts N
+    Maximum number of retry attempts when claiming the lock. Defaults to 120.
+
+-v | --verbose
+    Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
+EOM
+
+function run() {
+  parse_cli_args "$@"
+
+  case "${ACTION}" in
+  claim)
+    claim_lock
+    ;;
+  release)
+    release_lock
+    ;;
+  esac
+}
+
+function claim_lock() {
+  local attempt=0
+
+  while [[ ${attempt} -lt ${MAX_ATTEMPTS} ]]; do
+    if [[ ! -f "${LOCK_FILE}" ]]; then
+      echo $$ >"${LOCK_FILE}"
+      log::info "Lock claimed: %s (PID=%d)" "${LOCK_FILE}" "$$"
+      return 0
+    fi
+
+    local lock_pid
+    lock_pid="$(cat "${LOCK_FILE}" 2>/dev/null || echo "unknown")"
+    attempt=$((attempt + 1))
+    log::warn "Lock file exists (held by PID %s). Attempt %d/%d, retrying in 60s..." \
+      "${lock_pid}" "${attempt}" "${MAX_ATTEMPTS}"
+    sleep 60
+  done
+
+  die "Failed to claim lock after %d attempts." "${MAX_ATTEMPTS}"
+}
+
+function release_lock() {
+  if [[ -f "${LOCK_FILE}" ]]; then
+    rm -f "${LOCK_FILE}"
+    log::info "Lock released: %s" "${LOCK_FILE}"
+  else
+    log::info "No lock to release: %s" "${LOCK_FILE}"
+  fi
+}
+
+function parse_cli_args() {
+  log::debug "Command-Line Arguments: ($*)"
+
+  eval set -- "$(getopt -o "h,n:,v" -l "help,max-attempts:,verbose" -- "$@")"
+
+  VERBOSE=0
+  MAX_ATTEMPTS=120
+  while [[ -n "$1" ]]; do
+    case $1 in
+    -h | --help)
+      echo "${DOC}"
+      exit 0
+      ;;
+    -n | --max-attempts)
+      shift
+      MAX_ATTEMPTS="$1"
+      ;;
+    -v | --verbose)
+      VERBOSE=$((VERBOSE + 1))
+      ;;
+    --)
+      shift
+      break
+      ;;
+    esac
+    shift
+  done
+
+  if [[ "${VERBOSE}" -gt 1 ]]; then
+    PS4='$LINENO: '
+    set -x
+  fi
+
+  if [[ $# -ne 1 ]]; then
+    die "$(usage)" 2
+  fi
+
+  ACTION="$1"
+  shift
+
+  if [[ "${ACTION}" != "claim" && "${ACTION}" != "release" ]]; then
+    die "Invalid action '%s'. Must be 'claim' or 'release'." "${ACTION}"
+  fi
+
+  readonly ACTION
+  readonly DOC
+  readonly MAX_ATTEMPTS
+  readonly VERBOSE
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+  run "$@"
+fi
