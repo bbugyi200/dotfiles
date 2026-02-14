@@ -39,6 +39,8 @@
         "summarize_complete",
         "timeout",
         "cancelled",
+        "rejected_proposal",
+        "metahook_complete",
         null
       ]
     },
