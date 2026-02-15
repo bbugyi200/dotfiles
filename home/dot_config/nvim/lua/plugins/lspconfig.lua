@@ -12,7 +12,7 @@ return {
 		config = function()
 			local bb = require("bb_utils")
 
-			local servers = { "bashls", "lua_ls", "vimls", "yamlls" }
+			local servers = { "bashls", "just", "lua_ls", "vimls", "yamlls" }
 
 			if bb.is_goog_machine() then
 				-- CiderLSP
