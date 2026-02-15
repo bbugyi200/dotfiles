@@ -158,7 +158,7 @@ function do_beads_sync() {
 function send_notification() {
   local message="${TAG}: ${MESSAGE}"
   local project_name
-  project_name=$(basename "${CLAUDE_PROJECT_DIR:-.}")
+  project_name=$(basename "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}")
   local prefix="\[${project_name}]"
   if [[ -n "$TMUX_PANE" ]]; then
     local window
