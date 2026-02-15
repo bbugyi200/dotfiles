@@ -1,27 +1,91 @@
 #!/bin/bash
 
-# Get all window names in the current session
-existing_windows=$(tmux list-windows -F '#W')
+source ~/lib/bugyi.sh
 
-# Check if any window is an ai variant (ai, ai2, ai3, etc.)
-if ! echo "$existing_windows" | grep -qE "^ai[0-9]*$"; then
+export USAGE_GRAMMAR=(
+  "[-v]"
+  "-h"
+)
+
+read -r -d '' DOC <<EOM
+$(usage)
+
+Open a new tmux window running claude in the current pane's directory.
+
+Optional Arguments
+------------------
+-h | --help
+    View this help message.
+
+-v | --verbose
+    Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
+EOM
+
+function run() {
+  parse_cli_args "$@"
+
+  # Capture current pane's working directory before creating a new window
+  pane_dir="$(tmux display-message -p '#{pane_current_path}')"
+
+  # Get all window names in the current session
+  existing_windows=$(tmux list-windows -F '#W')
+
+  # Check if any window is an ai variant (ai, ai2, ai3, etc.)
+  if ! echo "$existing_windows" | grep -qE "^ai[0-9]*$"; then
     # No ai windows exist, create 'ai'
     window_name="ai"
-else
+  else
     # At least one ai window exists, find next available number
     n=2
     while echo "$existing_windows" | grep -q "^ai${n}$"; do
-        ((n++))
+      ((n++))
     done
     window_name="ai${n}"
+  fi
+
+  # Create a unique channel for this window's cleanup signal
+  channel="ai-cleanup-$$"
+
+  # Run waiter in tmux's background (-b flag)
+  # This keeps the process alive as a tmux-managed job, avoiding orphaning issues
+  tmux run-shell -b "tmux wait-for '$channel' && sleep 0.1 && tm-fix-layout && tm-renumber-ai-windows"
+
+  # Create window - when claude exits, signal the channel before window closes
+  tmux new-window -n "$window_name" "cd '$pane_dir' && claude --dangerously-skip-permissions; tmux wait-for -S '$channel'"
+}
+
+function parse_cli_args() {
+  log::debug "Command-Line Arguments: ($*)"
+
+  eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
+
+  VERBOSE=0
+  while [[ -n "$1" ]]; do
+    case $1 in
+    -h | --help)
+      echo "${DOC}"
+      exit 0
+      ;;
+    -v | --verbose)
+      VERBOSE=$((VERBOSE + 1))
+      ;;
+    --)
+      shift
+      break
+      ;;
+    esac
+    shift
+  done
+
+  if [[ "${VERBOSE}" -gt 1 ]]; then
+    PS4='$LINENO: '
+    set -x
+  fi
+
+  readonly DOC
+  readonly VERBOSE
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+  run "$@"
 fi
-
-# Create a unique channel for this window's cleanup signal
-channel="ai-cleanup-$$"
-
-# Run waiter in tmux's background (-b flag)
-# This keeps the process alive as a tmux-managed job, avoiding orphaning issues
-tmux run-shell -b "tmux wait-for '$channel' && sleep 0.1 && tm-fix-layout && tm-renumber-ai-windows"
-
-# Create window - when claude exits, signal the channel before window closes
-tmux new-window -n "$window_name" "cd ~/.local/share/chezmoi && claude --dangerously-skip-permissions; tmux wait-for -S '$channel'"
