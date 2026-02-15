@@ -1,14 +1,14 @@
 ---
 name: commit
-description: Create a conventional commit using chez_commit. Use when the user asks to commit changes. Do not EVER use
+description: Create a conventional commit using ccommit. Use when the user asks to commit changes. Do not EVER use
 without user request.
 ---
 
-Create a commit using chez_commit, which stages the specified files and commits them.
+Create a commit using ccommit, which stages the specified files and commits them.
 
 ## Usage
 
-chez_commit <tag> <message> <file>...
+ccommit <tag> <message> <file>...
 
 ## Valid Tags (in order of preference)
 
@@ -21,13 +21,15 @@ chez_commit <tag> <message> <file>...
 
 ## Instructions
 
-1. Run `chez_commit <tag> "<message>" <file>...`
+1. Run `cd <git_root> && ccommit <tag> "<message>" <file>...`, where `<git_root>` is the root directory of the git
+   repository, `<tag>` is one of the valid tags listed above, `<message>` is a descriptive commit message, and
+   `<file>...` is a space-separated list of files to stage and commit.
 2. The specified files will be staged automatically
 3. The message can contain newlines for multi-line commits
 4. **NEVER mention "Claude" or "Claude Code" in commit messages** - write as if a human authored the commit
 
 ## Example
 
-chez_commit feat "Add user authentication
+ccommit feat "Add user authentication
 
 This adds login and logout functionality." src/auth.py src/login.py
