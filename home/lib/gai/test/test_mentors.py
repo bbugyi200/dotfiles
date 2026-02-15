@@ -4,7 +4,6 @@ import tempfile
 from pathlib import Path
 
 from ace.changespec import MentorEntry, MentorStatusLine
-from ace.changespec.section_parsers import parse_mentors_line
 from ace.mentors import (
     _apply_mentors_update,
     _format_mentors_field,
@@ -643,46 +642,3 @@ STATUS: Drafted
     assert result is True
 
     Path(file_path).unlink()
-
-
-def test_parse_running_mentor_old_format_without_at_prefix() -> None:
-    """Test parsing old-format RUNNING mentor status line without @: prefix.
-
-    Old .gp files may have running agent suffixes like
-    'mentor_complete-2259192-260208_170441' without the '@:' prefix. The parser
-    should recognize these as running_agent suffixes and extract the embedded
-    timestamp.
-    """
-    # Set up a mentor entry header first
-    header_line = "  (1) feature"
-    header_stripped = "(1) feature"
-    current_entry: MentorEntry | None = None
-    entries: list[MentorEntry] = []
-    current_entry, entries = parse_mentors_line(
-        header_line, header_stripped, current_entry, entries
-    )
-    assert current_entry is not None
-
-    # Now parse a RUNNING status line with old-format suffix (no @: prefix)
-    status_line = (
-        "      | feature:complete - RUNNING - (mentor_complete-2259192-260208_170441)"
-    )
-    status_stripped = (
-        "| feature:complete - RUNNING - (mentor_complete-2259192-260208_170441)"
-    )
-    current_entry, entries = parse_mentors_line(
-        status_line, status_stripped, current_entry, entries
-    )
-
-    assert current_entry is not None
-    assert current_entry.status_lines is not None
-    assert len(current_entry.status_lines) == 1
-
-    sl = current_entry.status_lines[0]
-    assert sl.status == "RUNNING"
-    assert sl.suffix_type == "running_agent"
-    assert sl.suffix == "mentor_complete-2259192-260208_170441"
-    # Timestamp should be extracted from the running agent suffix
-    assert sl.timestamp == "260208_170441"
-    # Duration should be None (not misclassified as plain/duration)
-    assert sl.duration is None

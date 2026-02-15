@@ -141,10 +141,7 @@ def write_changespec_atomic(
         commit_message: Git commit message describing the change.
     """
     project_dir = os.path.dirname(project_file)
-    _, ext = os.path.splitext(project_file)
-    fd, temp_path = tempfile.mkstemp(
-        dir=project_dir, prefix=".tmp_", suffix=ext or ".gp"
-    )
+    fd, temp_path = tempfile.mkstemp(dir=project_dir, prefix=".tmp_", suffix=".gp")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             f.write(content)

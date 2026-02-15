@@ -12,7 +12,6 @@ from .models import (
     HookStatusLine,
     MentorEntry,
     MentorStatusLine,
-    is_running_agent_suffix,
 )
 from .suffix_utils import parse_suffix_prefix
 
@@ -259,27 +258,11 @@ def parse_mentors_line(
                     # Entry reference suffix (e.g., "2a") - proposal created
                     mentor_suffix_type = "entry_ref"
                     # Keep suffix_val as-is, don't treat as duration
-                elif is_running_agent_suffix(suffix_val):
-                    # Old-format running agent without @: prefix
-                    mentor_suffix_type = "running_agent"
-                    # suffix_val stays as-is (the running agent identifier)
                 else:
                     # Plain suffix - likely a duration
                     mentor_duration_val = suffix_val
                     suffix_val = None
                     mentor_suffix_type = "plain"
-
-            # Extract timestamp from running agent suffix when missing
-            if (
-                timestamp_val is None
-                and mentor_suffix_type == "running_agent"
-                and suffix_val
-            ):
-                parts = suffix_val.split("-")
-                if len(parts) >= 3:
-                    ts_candidate = parts[-1]
-                    if len(ts_candidate) == 13 and ts_candidate[6] == "_":
-                        timestamp_val = ts_candidate
 
             mentor_status_line = MentorStatusLine(
                 profile_name=profile_name,

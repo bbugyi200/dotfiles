@@ -28,30 +28,7 @@ from .models import (
     parse_commit_entry_id,
 )
 from .parser import parse_project_file
-from .project_spec import (
-    ProjectSpec,
-    WorkspaceClaim,
-    convert_gp_to_project_spec,
-    parse_project_spec,
-    read_and_update_project_spec,
-    serialize_project_spec,
-    write_project_spec_atomic,
-)
 from .raw_text import get_raw_changespec_text
-from .structured_updates import (
-    add_changespec_commit_entry,
-    add_running_claim,
-    remove_running_claim,
-    update_changespec_cl,
-    update_changespec_comments,
-    update_changespec_description,
-    update_changespec_hooks,
-    update_changespec_mentors,
-    update_changespec_parent,
-    update_changespec_status,
-    update_commit_entry_suffix,
-    update_parent_references,
-)
 from .validation import (
     all_hooks_passed_for_entries,
     count_all_runners_global,
@@ -74,13 +51,6 @@ __all__ = [
     "CommentEntry",
     "MentorEntry",
     "MentorStatusLine",
-    "ProjectSpec",
-    "WorkspaceClaim",
-    "parse_project_spec",
-    "read_and_update_project_spec",
-    "serialize_project_spec",
-    "convert_gp_to_project_spec",
-    "write_project_spec_atomic",
     # Constants
     "ERROR_SUFFIX_MESSAGES",
     "READY_TO_MAIL_SUFFIX",
@@ -112,19 +82,6 @@ __all__ = [
     "find_all_changespecs",
     "get_eligible_parents_in_project",
     "get_entry_id",
-    # Structured update functions
-    "add_changespec_commit_entry",
-    "add_running_claim",
-    "remove_running_claim",
-    "update_changespec_cl",
-    "update_changespec_comments",
-    "update_changespec_description",
-    "update_changespec_hooks",
-    "update_changespec_mentors",
-    "update_changespec_parent",
-    "update_changespec_status",
-    "update_commit_entry_suffix",
-    "update_parent_references",
 ]
 
 
@@ -132,8 +89,7 @@ def find_all_changespecs() -> list[ChangeSpec]:
     """Find all ChangeSpecs in all project files.
 
     Returns:
-        List of all ChangeSpec objects from ~/.gai/projects/<project>/ files
-        (.yaml preferred over .gp when both exist)
+        List of all ChangeSpec objects from ~/.gai/projects/<project>/<project>.gp files
     """
     projects_dir = Path.home() / ".gai" / "projects"
 
@@ -147,15 +103,11 @@ def find_all_changespecs() -> list[ChangeSpec]:
         if not project_dir.is_dir():
             continue
 
-        # Look for project file: prefer .yaml over .gp
+        # Look for <project>.gp file inside the project directory
         project_name = project_dir.name
-        yaml_file = project_dir / f"{project_name}.yaml"
         gp_file = project_dir / f"{project_name}.gp"
 
-        if yaml_file.exists():
-            changespecs = parse_project_file(str(yaml_file))
-            all_changespecs.extend(changespecs)
-        elif gp_file.exists():
+        if gp_file.exists():
             changespecs = parse_project_file(str(gp_file))
             all_changespecs.extend(changespecs)
 

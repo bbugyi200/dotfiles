@@ -305,18 +305,12 @@ def _parse_changespec_from_lines(
 def parse_project_file(file_path: str) -> list[ChangeSpec]:
     """Parse all ChangeSpecs from a project file.
 
-    Dispatches by extension: .yaml/.yml → YAML parser, .gp → markdown parser.
+    Args:
+        file_path: Path to the project markdown file
+
+    Returns:
+        List of ChangeSpec objects
     """
-    if file_path.endswith((".yaml", ".yml")):
-        from .project_spec import parse_project_spec
-
-        spec = parse_project_spec(file_path)
-        return spec.changespecs or []
-    return parse_gp_project_file(file_path)
-
-
-def parse_gp_project_file(file_path: str) -> list[ChangeSpec]:
-    """Parse all ChangeSpecs from a .gp (markdown) project file."""
     changespecs: list[ChangeSpec] = []
 
     try:
