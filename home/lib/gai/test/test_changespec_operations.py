@@ -25,7 +25,7 @@ def test_add_changespec_with_initial_hooks() -> None:
                 description="Test description",
                 parent=None,
                 cl_url="http://cl/12345",
-                initial_hooks=["!$bb_hg_presubmit", "bb_hg_lint"],
+                initial_hooks=["!$gai_presubmit", "gai_lint"],
             )
 
         assert result is not None
@@ -35,8 +35,8 @@ def test_add_changespec_with_initial_hooks() -> None:
 
         # Verify hooks are present
         assert "HOOKS:" in content
-        assert "  !$bb_hg_presubmit" in content
-        assert "  bb_hg_lint" in content
+        assert "  !$gai_presubmit" in content
+        assert "  gai_lint" in content
     finally:
         os.unlink(project_file)
 
@@ -90,8 +90,8 @@ def test_add_changespec_hooks_in_correct_order() -> None:
                 parent=None,
                 cl_url="http://cl/12345",
                 initial_hooks=[
-                    "!$bb_hg_presubmit",
-                    "bb_hg_lint",
+                    "!$gai_presubmit",
+                    "gai_lint",
                     "bb_rabbit_test //foo:test1",
                 ],
             )
@@ -102,8 +102,8 @@ def test_add_changespec_hooks_in_correct_order() -> None:
             content = f.read()
 
         # Verify order (presubmit before lint before test target)
-        presubmit_idx = content.index("!$bb_hg_presubmit")
-        lint_idx = content.index("bb_hg_lint")
+        presubmit_idx = content.index("!$gai_presubmit")
+        lint_idx = content.index("gai_lint")
         test_idx = content.index("bb_rabbit_test")
         assert presubmit_idx < lint_idx < test_idx
     finally:
@@ -257,8 +257,8 @@ DESCRIPTION:
 CL: http://cl/11111
 STATUS: WIP
 HOOKS:
-  !$bb_hg_presubmit
-  bb_hg_lint
+  !$gai_presubmit
+  gai_lint
   bb_rabbit_test //foo:parent_test
 """
     with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
@@ -276,8 +276,8 @@ HOOKS:
                 description="Child description",
                 parent="parent_feature",
                 cl_url="http://cl/22222",
-                # initial_hooks contains !$bb_hg_presubmit (should NOT be duplicated)
-                initial_hooks=["!$bb_hg_presubmit"],
+                # initial_hooks contains !$gai_presubmit (should NOT be duplicated)
+                initial_hooks=["!$gai_presubmit"],
             )
 
         assert result is not None
@@ -297,12 +297,12 @@ HOOKS:
         child_hooks = [h.command for h in child_cs.hooks]
 
         # Should have: initial hook + inherited parent hooks (minus duplicate)
-        assert "!$bb_hg_presubmit" in child_hooks  # From initial_hooks
-        assert "bb_hg_lint" in child_hooks  # Inherited from parent
+        assert "!$gai_presubmit" in child_hooks  # From initial_hooks
+        assert "gai_lint" in child_hooks  # Inherited from parent
         assert "bb_rabbit_test //foo:parent_test" in child_hooks  # Inherited
 
-        # !$bb_hg_presubmit should NOT be duplicated
-        assert child_hooks.count("!$bb_hg_presubmit") == 1
+        # !$gai_presubmit should NOT be duplicated
+        assert child_hooks.count("!$gai_presubmit") == 1
     finally:
         os.unlink(project_file)
 
@@ -315,7 +315,7 @@ DESCRIPTION:
 CL: http://cl/11111
 STATUS: WIP
 HOOKS:
-  bb_hg_lint
+  gai_lint
   bb_rabbit_test //foo:parent_test
 """
     with tempfile.NamedTemporaryFile(mode="w", suffix=".gp", delete=False) as f:
@@ -333,7 +333,7 @@ HOOKS:
                 description="Child description",
                 parent="parent_feature",
                 cl_url="http://cl/22222",
-                initial_hooks=["!$bb_hg_presubmit", "bb_rabbit_test //foo:child_test"],
+                initial_hooks=["!$gai_presubmit", "bb_rabbit_test //foo:child_test"],
             )
 
         assert result is not None
@@ -346,9 +346,9 @@ HOOKS:
 
         # Order should be: initial hooks first, then inherited parent hooks
         assert child_hooks == [
-            "!$bb_hg_presubmit",  # From initial_hooks
+            "!$gai_presubmit",  # From initial_hooks
             "bb_rabbit_test //foo:child_test",  # From initial_hooks
-            "bb_hg_lint",  # Inherited from parent
+            "gai_lint",  # Inherited from parent
             "bb_rabbit_test //foo:parent_test",  # Inherited from parent
         ]
     finally:
@@ -372,7 +372,7 @@ def test_add_changespec_no_parent_hooks_inherited_when_no_parent() -> None:
                 description="Orphan description",
                 parent=None,  # No parent
                 cl_url="http://cl/33333",
-                initial_hooks=["!$bb_hg_presubmit"],
+                initial_hooks=["!$gai_presubmit"],
             )
 
         assert result is not None
@@ -383,7 +383,7 @@ def test_add_changespec_no_parent_hooks_inherited_when_no_parent() -> None:
         child_hooks = [h.command for h in cs.hooks]
 
         # Should only have initial hooks
-        assert child_hooks == ["!$bb_hg_presubmit"]
+        assert child_hooks == ["!$gai_presubmit"]
     finally:
         os.unlink(project_file)
 

@@ -95,7 +95,7 @@ def get_initial_hooks_for_changespec(verbose: bool = True) -> list[str]:
     """Get all hooks to include in a new ChangeSpec.
 
     Returns required hooks (configurable via gai.yml, defaults to
-    bb_hg_presubmit, bb_hg_lint) plus any test target hooks from
+    gai_presubmit, gai_lint) plus any test target hooks from
     changed_test_targets.
 
     Args:

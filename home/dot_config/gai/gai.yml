@@ -10,7 +10,7 @@ axe:
 metahooks:
   # keep-sorted start
   - name: hg_presubmit_tap
-    hook_command: bb_hg_presubmit
+    hook_command: gai_presubmit
     output_regex: "[1-9]\\d* failed,"
   - name: scuba
     hook_command: bb_rabbit_test

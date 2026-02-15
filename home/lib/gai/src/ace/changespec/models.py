@@ -267,7 +267,7 @@ class HookEntry:
     - "$" prefix: Hook is NOT run for proposed COMMITS entries (e.g., "1a").
       Also marks hook as "unlimited" (not subject to --max-runners limit).
 
-    Prefixes can be combined as "!$" (e.g., "!$bb_hg_presubmit").
+    Prefixes can be combined as "!$" (e.g., "!$gai_presubmit").
     All prefixes are stripped when displaying or running the command.
     """
 

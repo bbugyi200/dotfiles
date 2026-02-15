@@ -10,7 +10,7 @@ def test_get_required_changespec_hooks_returns_defaults_when_no_config() -> None
     with patch("ace.hooks.defaults.get_vcs_provider_config", return_value={}):
         result = get_required_changespec_hooks()
 
-    assert result == ("!$bb_hg_presubmit", "$bb_hg_lint")
+    assert result == ("!$gai_presubmit", "$gai_lint")
 
 
 def test_get_required_changespec_hooks_returns_defaults_when_no_key() -> None:
@@ -21,7 +21,7 @@ def test_get_required_changespec_hooks_returns_defaults_when_no_key() -> None:
     ):
         result = get_required_changespec_hooks()
 
-    assert result == ("!$bb_hg_presubmit", "$bb_hg_lint")
+    assert result == ("!$gai_presubmit", "$gai_lint")
 
 
 def test_get_required_changespec_hooks_uses_config_override() -> None:
@@ -43,7 +43,7 @@ def test_get_required_changespec_hooks_ignores_empty_list() -> None:
     ):
         result = get_required_changespec_hooks()
 
-    assert result == ("!$bb_hg_presubmit", "$bb_hg_lint")
+    assert result == ("!$gai_presubmit", "$gai_lint")
 
 
 def test_get_required_changespec_hooks_ignores_none() -> None:
@@ -54,4 +54,4 @@ def test_get_required_changespec_hooks_ignores_none() -> None:
     ):
         result = get_required_changespec_hooks()
 
-    assert result == ("!$bb_hg_presubmit", "$bb_hg_lint")
+    assert result == ("!$gai_presubmit", "$gai_lint")
