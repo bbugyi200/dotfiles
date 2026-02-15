@@ -57,7 +57,7 @@ def add_changespec_to_project_file(
     cl_name: str,
     description: str,
     parent: str | None,
-    cl_url: str,
+    cl_url: str | None = None,
     initial_hooks: list[str] | None = None,
     initial_commits: list[tuple[int, str, str | None, str | None]] | None = None,
     bug: str | None = None,
@@ -75,7 +75,8 @@ def add_changespec_to_project_file(
         cl_name: NAME field value (will be suffixed with __<N> for uniqueness).
         description: DESCRIPTION field value (raw, will be indented).
         parent: PARENT field value (or None for "None").
-        cl_url: CL field value (e.g., "http://cl/12345").
+        cl_url: CL/PR URL (e.g., ``"http://cl/12345"`` or a GitHub PR URL).
+            If None, the CL line is omitted from the ChangeSpec.
         initial_hooks: List of hook commands to include in the HOOKS field.
             If None or empty, no HOOKS field is added.
         initial_commits: List of (number, note, chat_path, diff_path) tuples
@@ -189,13 +190,13 @@ def add_changespec_to_project_file(
                 hooks_block = "".join(hooks_lines)
 
             # Build the ChangeSpec block with the suffixed name
+            cl_line = f"CL: {cl_url}\n" if cl_url else ""
             changespec_block = f"""
 
 NAME: {cl_name}
 DESCRIPTION:
 {formatted_description}
-{parent_line}{bug_line}CL: {cl_url}
-STATUS: WIP
+{parent_line}{bug_line}{cl_line}STATUS: WIP
 {commits_block}{hooks_block}"""
 
             # Insert the new ChangeSpec

@@ -167,6 +167,31 @@ class _HgProvider(VCSProvider):
             return (False, error_msg)
         return (True, None)
 
+    # --- VCS-agnostic method overrides ---
+
+    def prepare_description_for_reword(self, description: str) -> str:
+        """Escape a description for bb_hg_reword's ``$'...'`` quoting.
+
+        bb_hg_reword uses ``bash -c "hg reword -m $'$1'"`` which interprets
+        ANSI-C escape sequences. Python passes actual newline chars, but the
+        script needs literal ``\\n`` sequences that ``$'...'`` converts back.
+        """
+        return (
+            description.replace("\\", "\\\\")  # backslashes first
+            .replace("'", "\\'")
+            .replace("\n", "\\n")
+            .replace("\t", "\\t")
+            .replace("\r", "\\r")
+        )
+
+    def get_change_url(self, cwd: str) -> tuple[bool, str | None]:
+        success, number = self.get_cl_number(cwd)
+        if not success:
+            return (False, None)
+        if number:
+            return (True, f"http://cl/{number}")
+        return (True, None)
+
     # --- Google-internal methods ---
 
     def reword(self, description: str, cwd: str) -> tuple[bool, str | None]:

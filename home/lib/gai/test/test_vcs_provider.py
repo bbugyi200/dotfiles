@@ -285,59 +285,6 @@ def test_hg_command_not_found(mock_run: MagicMock) -> None:
 
 def test_vcs_provider_google_methods_raise() -> None:
     """Test that Google-internal methods raise NotImplementedError by default."""
-
-    # Create a minimal concrete provider for testing defaults
-    class _MinimalProvider(VCSProvider):
-        def checkout(self, revision: str, cwd: str) -> tuple[bool, str | None]:
-            return (True, None)
-
-        def diff(self, cwd: str) -> tuple[bool, str | None]:
-            return (True, None)
-
-        def diff_revision(self, revision: str, cwd: str) -> tuple[bool, str | None]:
-            return (True, None)
-
-        def apply_patch(self, patch_path: str, cwd: str) -> tuple[bool, str | None]:
-            return (True, None)
-
-        def apply_patches(
-            self, patch_paths: list[str], cwd: str
-        ) -> tuple[bool, str | None]:
-            return (True, None)
-
-        def add_remove(self, cwd: str) -> tuple[bool, str | None]:
-            return (True, None)
-
-        def clean_workspace(self, cwd: str) -> tuple[bool, str | None]:
-            return (True, None)
-
-        def commit(self, name: str, logfile: str, cwd: str) -> tuple[bool, str | None]:
-            return (True, None)
-
-        def amend(
-            self, note: str, cwd: str, *, no_upload: bool = False
-        ) -> tuple[bool, str | None]:
-            return (True, None)
-
-        def rename_branch(self, new_name: str, cwd: str) -> tuple[bool, str | None]:
-            return (True, None)
-
-        def rebase(
-            self, branch_name: str, new_parent: str, cwd: str
-        ) -> tuple[bool, str | None]:
-            return (True, None)
-
-        def archive(self, revision: str, cwd: str) -> tuple[bool, str | None]:
-            return (True, None)
-
-        def prune(self, revision: str, cwd: str) -> tuple[bool, str | None]:
-            return (True, None)
-
-        def stash_and_clean(
-            self, diff_name: str, cwd: str, *, timeout: int = 300
-        ) -> tuple[bool, str | None]:
-            return (True, None)
-
     provider = _MinimalProvider()
 
     methods_to_test = [
@@ -354,8 +301,86 @@ def test_vcs_provider_google_methods_raise() -> None:
         lambda: provider.upload("/cwd"),
         lambda: provider.find_reviewers("123", "/cwd"),
         lambda: provider.rewind(["/path"], "/cwd"),
+        lambda: provider.get_change_url("/cwd"),
     ]
 
     for method in methods_to_test:
         with pytest.raises(NotImplementedError):
             method()
+
+
+# === Tests for prepare_description_for_reword ===
+
+
+def test_hg_prepare_description_for_reword_escapes_newlines() -> None:
+    """Test that _HgProvider escapes newlines for bb_hg_reword."""
+    provider = _HgProvider()
+    assert provider.prepare_description_for_reword("hello\nworld") == "hello\\nworld"
+
+
+def test_git_prepare_description_for_reword_passthrough() -> None:
+    """Test that _GitProvider returns description unchanged."""
+    from vcs_provider._git import _GitProvider
+
+    provider = _GitProvider()
+    assert provider.prepare_description_for_reword("hello\nworld") == "hello\nworld"
+
+
+def test_default_prepare_description_for_reword_passthrough() -> None:
+    """Test that the base default returns description unchanged."""
+    provider = _MinimalProvider()
+    assert provider.prepare_description_for_reword("hello\nworld") == "hello\nworld"
+
+
+class _MinimalProvider(VCSProvider):
+    """Minimal concrete provider for testing defaults."""
+
+    def checkout(self, revision: str, cwd: str) -> tuple[bool, str | None]:
+        return (True, None)
+
+    def diff(self, cwd: str) -> tuple[bool, str | None]:
+        return (True, None)
+
+    def diff_revision(self, revision: str, cwd: str) -> tuple[bool, str | None]:
+        return (True, None)
+
+    def apply_patch(self, patch_path: str, cwd: str) -> tuple[bool, str | None]:
+        return (True, None)
+
+    def apply_patches(
+        self, patch_paths: list[str], cwd: str
+    ) -> tuple[bool, str | None]:
+        return (True, None)
+
+    def add_remove(self, cwd: str) -> tuple[bool, str | None]:
+        return (True, None)
+
+    def clean_workspace(self, cwd: str) -> tuple[bool, str | None]:
+        return (True, None)
+
+    def commit(self, name: str, logfile: str, cwd: str) -> tuple[bool, str | None]:
+        return (True, None)
+
+    def amend(
+        self, note: str, cwd: str, *, no_upload: bool = False
+    ) -> tuple[bool, str | None]:
+        return (True, None)
+
+    def rename_branch(self, new_name: str, cwd: str) -> tuple[bool, str | None]:
+        return (True, None)
+
+    def rebase(
+        self, branch_name: str, new_parent: str, cwd: str
+    ) -> tuple[bool, str | None]:
+        return (True, None)
+
+    def archive(self, revision: str, cwd: str) -> tuple[bool, str | None]:
+        return (True, None)
+
+    def prune(self, revision: str, cwd: str) -> tuple[bool, str | None]:
+        return (True, None)
+
+    def stash_and_clean(
+        self, diff_name: str, cwd: str, *, timeout: int = 300
+    ) -> tuple[bool, str | None]:
+        return (True, None)

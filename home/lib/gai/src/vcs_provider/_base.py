@@ -159,3 +159,24 @@ class VCSProvider(ABC):
     def rewind(self, diff_paths: list[str], cwd: str) -> tuple[bool, str | None]:
         """Rewind changes by importing diffs in reverse."""
         raise NotImplementedError("rewind is not supported by this VCS provider")
+
+    # --- VCS-agnostic methods (default implementations) ---
+
+    def prepare_description_for_reword(self, description: str) -> str:
+        """Prepare a description string for the provider's reword command.
+
+        The default implementation returns the description unchanged.
+        Providers that need escaping (e.g. hg's ``$'...'`` quoting) should
+        override this method.
+        """
+        return description
+
+    def get_change_url(self, cwd: str) -> tuple[bool, str | None]:
+        """Get the URL for the current change (CL URL or PR URL).
+
+        Returns ``(True, url)`` on success, ``(True, None)`` if no change
+        exists yet (e.g. git branch with no PR).
+        """
+        raise NotImplementedError(
+            "get_change_url is not supported by this VCS provider"
+        )

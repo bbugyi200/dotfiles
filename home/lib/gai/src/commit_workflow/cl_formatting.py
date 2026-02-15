@@ -6,6 +6,7 @@ def format_cl_description(
     project: str,
     bug: str | None = None,
     fixed_bug: str | None = None,
+    vcs_type: str = "hg",
 ) -> None:
     """Format the CL description file with project tag and metadata.
 
@@ -14,6 +15,8 @@ def format_cl_description(
         project: Project name to prepend to the description.
         bug: Bug number for BUG= tag. Mutually exclusive with fixed_bug.
         fixed_bug: Bug number for FIXED= tag. Mutually exclusive with bug.
+        vcs_type: VCS type (``"hg"`` or ``"git"``). Git mode writes only
+            the project-prefixed description without metadata tags.
     """
     # Read the original content
     with open(file_path, encoding="utf-8") as f:
@@ -22,6 +25,9 @@ def format_cl_description(
     # Write the formatted content
     with open(file_path, "w", encoding="utf-8") as f:
         f.write(f"[{project}] {content}\n")
+        if vcs_type == "git":
+            # Git: clean commit message, no metadata tags
+            return
         f.write("\n")
         f.write("AUTOSUBMIT_BEHAVIOR=SYNC_SUBMIT\n")
         # Write FIXED= or BUG= tag (mutually exclusive)

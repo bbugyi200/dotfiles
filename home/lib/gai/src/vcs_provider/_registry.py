@@ -14,7 +14,7 @@ def register_provider(name: str, cls: type[VCSProvider]) -> None:
     _PROVIDERS[name] = cls
 
 
-def _detect_vcs(cwd: str) -> str | None:
+def detect_vcs(cwd: str) -> str | None:
     """Walk up from *cwd* looking for ``.hg/`` or ``.git/``.
 
     Returns the provider name (``"hg"`` or ``"git"``) or ``None``.
@@ -45,7 +45,7 @@ def get_vcs_provider(cwd: str) -> VCSProvider:
     # Ensure providers are loaded
     _ensure_providers_loaded()
 
-    vcs_name = _detect_vcs(cwd)
+    vcs_name = detect_vcs(cwd)
     if vcs_name is None:
         raise VCSProviderNotFoundError(cwd)
     cls = _PROVIDERS.get(vcs_name)

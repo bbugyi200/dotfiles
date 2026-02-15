@@ -6,12 +6,11 @@ import tempfile
 
 from commit_utils import add_commit_entry, get_next_commit_number, save_diff
 from rich_utils import print_status
-from vcs_provider import get_vcs_provider
+from vcs_provider import detect_vcs, get_vcs_provider
 from workflow_base import BaseWorkflow
 from workflow_utils import get_initial_hooks_for_changespec, get_project_file_path
 
 from .branch_info import (
-    get_cl_number,
     get_parent_branch_name,
 )
 from .changespec_operations import (
@@ -72,7 +71,7 @@ class CommitWorkflow(BaseWorkflow):
 
     @property
     def description(self) -> str:
-        return "Create a Mercurial commit with formatted CL description and metadata"
+        return "Create a commit with formatted CL description and metadata"
 
     def _get_bug(self) -> str:
         """Get the bug number, either from init or from branch_bug command."""
@@ -83,8 +82,7 @@ class CommitWorkflow(BaseWorkflow):
         success, result = provider.get_bug_number(os.getcwd())
         if not success:
             print_status(
-                "Failed to get bug number from 'branch_bug' command. "
-                "Use -b to specify manually.",
+                "Failed to get bug number. Use -b to specify manually.",
                 "error",
             )
             sys.exit(1)
@@ -170,16 +168,19 @@ class CommitWorkflow(BaseWorkflow):
         diff_path = save_diff(full_name, timestamp=self._timestamp)
 
         # Format CL description
+        cwd = os.getcwd()
+        vcs_type = detect_vcs(cwd) or "hg"
         print_status(
             "Formatting CL description with project tag and metadata.", "progress"
         )
-        format_cl_description(file_path, project, bug=bug, fixed_bug=fixed_bug)
+        format_cl_description(
+            file_path, project, bug=bug, fixed_bug=fixed_bug, vcs_type=vcs_type
+        )
 
-        # Note: hg addremove is now handled by save_diff() above
+        # Note: addremove is now handled by save_diff() above
 
         # Create the commit
-        print_status(f"Creating Mercurial commit with name: {full_name}", "progress")
-        cwd = os.getcwd()
+        print_status(f"Creating commit with name: {full_name}", "progress")
         provider = get_vcs_provider(cwd)
         # Checkout parent to handle case where another agent amended parent CL
         if parent_branch:
@@ -194,22 +195,22 @@ class CommitWorkflow(BaseWorkflow):
         commit_ok, commit_err = provider.commit(full_name, file_path, cwd)
 
         if not commit_ok:
-            print_status(f"Failed to create Mercurial commit: {commit_err}", "error")
+            print_status(f"Failed to create commit: {commit_err}", "error")
             self._cleanup_temp_file(file_path)
             return False
 
-        # Run hg fix
-        print_status("Running hg fix...", "progress")
+        # Run code fix
+        print_status("Running code fix...", "progress")
         fix_ok, fix_err = provider.fix(cwd)
         if not fix_ok:
-            print_status(f"hg fix failed: {fix_err}", "warning")
+            print_status(f"Code fix failed: {fix_err}", "warning")
             # Continue anyway
 
-        # Run hg upload tree
-        print_status("Running hg upload tree...", "progress")
+        # Upload change
+        print_status("Uploading change...", "progress")
         upload_ok, upload_err = provider.upload(cwd)
         if not upload_ok:
-            print_status(f"hg upload tree failed: {upload_err}", "warning")
+            print_status(f"Upload failed: {upload_err}", "warning")
             # Continue anyway
 
         # Remove bb/branch_name.txt if it exists
@@ -218,63 +219,55 @@ class CommitWorkflow(BaseWorkflow):
             os.remove(branch_name_file)
             print_status(f"Removed {branch_name_file}", "info")
 
-        # Retrieve CL number (display to user)
-        print_status("Retrieving CL number...", "progress")
-        cl_num_ok, cl_num_result = provider.get_cl_number(cwd)
-        if not cl_num_ok or not cl_num_result:
-            print_status("Failed to retrieve CL number.", "error")
+        # Retrieve change URL (CL URL or PR URL)
+        print_status("Retrieving change URL...", "progress")
+        url_ok, cl_url = provider.get_change_url(cwd)
+        if not url_ok:
+            print_status("Failed to retrieve change URL.", "error")
             self._cleanup_temp_file(file_path)
             return False
 
         # Handle ChangeSpec creation (always create new)
-        cl_number = get_cl_number()
-        if cl_number:
-            cl_url = f"http://cl/{cl_number}"
+        # Create project file if it doesn't exist
+        if not project_file_exists(project):
+            create_project_file(project)
 
-            # Create project file if it doesn't exist
-            if not project_file_exists(project):
-                create_project_file(project)
+        # Get all initial hooks (required + test targets) in a single call
+        print_status("Gathering hooks for new ChangeSpec...", "progress")
+        initial_hooks = get_initial_hooks_for_changespec()
 
-            # Get all initial hooks (required + test targets) in a single call
-            print_status("Gathering hooks for new ChangeSpec...", "progress")
-            initial_hooks = get_initial_hooks_for_changespec()
+        # Add new ChangeSpec to project file (with all hooks atomically)
+        print_status(f"Adding ChangeSpec to project file for {project}...", "progress")
+        # Format bug as URL for ChangeSpec (use bug or fixed_bug, whichever is set)
+        bug_url = f"http://b/{bug}" if bug else None
+        fixed_bug_url = f"http://b/{fixed_bug}" if fixed_bug else None
+        suffixed_name = add_changespec_to_project_file(
+            project=project,
+            cl_name=full_name,
+            description=original_description,
+            parent=parent_branch,
+            cl_url=cl_url,
+            initial_hooks=initial_hooks,
+            bug=bug_url or fixed_bug_url,
+        )
+        if suffixed_name:
+            # Rename the CL to match the suffixed ChangeSpec name
+            if suffixed_name != full_name:
+                rename_ok, rename_err = provider.rename_branch(suffixed_name, cwd)
+                if not rename_ok:
+                    print_status(
+                        f"Warning: Failed to rename CL: {rename_err}",
+                        "warning",
+                    )
 
-            # Add new ChangeSpec to project file (with all hooks atomically)
             print_status(
-                f"Adding ChangeSpec to project file for {project}...", "progress"
+                f"ChangeSpec '{suffixed_name}' added to project file.",
+                "success",
             )
-            # Format bug as URL for ChangeSpec (use bug or fixed_bug, whichever is set)
-            bug_url = f"http://b/{bug}" if bug else None
-            fixed_bug_url = f"http://b/{fixed_bug}" if fixed_bug else None
-            suffixed_name = add_changespec_to_project_file(
-                project=project,
-                cl_name=full_name,
-                description=original_description,
-                parent=parent_branch,
-                cl_url=cl_url,
-                initial_hooks=initial_hooks,
-                bug=bug_url or fixed_bug_url,
-            )
-            if suffixed_name:
-                # Rename the CL to match the suffixed ChangeSpec name
-                if suffixed_name != full_name:
-                    rename_ok, rename_err = provider.rename_branch(suffixed_name, cwd)
-                    if not rename_ok:
-                        print_status(
-                            f"Warning: Failed to rename CL: {rename_err}",
-                            "warning",
-                        )
-
-                print_status(
-                    f"ChangeSpec '{suffixed_name}' added to project file.",
-                    "success",
-                )
-                # Update full_name to use suffixed version for subsequent operations
-                full_name = suffixed_name
-            else:
-                print_status("Failed to add ChangeSpec to project file.", "warning")
+            # Update full_name to use suffixed version for subsequent operations
+            full_name = suffixed_name
         else:
-            print_status("Could not get CL number for ChangeSpec creation.", "warning")
+            print_status("Failed to add ChangeSpec to project file.", "warning")
 
         # Add initial COMMITS entry (only if no existing history entries)
         project_file = get_project_file_path(project)

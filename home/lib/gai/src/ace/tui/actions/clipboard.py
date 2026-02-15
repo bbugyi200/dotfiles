@@ -368,24 +368,29 @@ class ClipboardMixin:
             return None
 
     def _get_cl_number(self, changespec: ChangeSpec) -> str | None:
-        """Extract the CL number from a ChangeSpec's CL URL.
+        """Extract the CL/PR number from a ChangeSpec's CL URL.
 
         Args:
             changespec: The ChangeSpec.
 
         Returns:
-            The CL number string, or None if unavailable.
+            The CL/PR number string, or None if unavailable.
         """
         if not changespec.cl:
             self.notify("No CL URL available", severity="warning")  # type: ignore[attr-defined]
             return None
 
-        # Match http://cl/<number> or https://cl/<number>
+        # Match http://cl/<number> or https://cl/<number> (hg)
         match = re.match(r"https?://cl/(\d+)", changespec.cl)
         if match:
             return match.group(1)
 
-        self.notify("Could not extract CL number from URL", severity="warning")  # type: ignore[attr-defined]
+        # Match GitHub PR URL
+        match = re.match(r"https?://github\.com/.+/pull/(\d+)", changespec.cl)
+        if match:
+            return match.group(1)
+
+        self.notify("Could not extract CL/PR number from URL", severity="warning")  # type: ignore[attr-defined]
         return None
 
 

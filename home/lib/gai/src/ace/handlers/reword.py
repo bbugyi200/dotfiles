@@ -14,7 +14,6 @@ from commit_workflow.editor_utils import get_editor
 from vcs_provider import get_vcs_provider
 
 from ..changespec import ChangeSpec
-from ..mail_ops import escape_for_hg_reword
 
 if TYPE_CHECKING:
     from rich.console import Console
@@ -345,11 +344,10 @@ def handle_reword(self: "WorkflowContext", changespec: ChangeSpec) -> None:
             self.console.print(f"[red]Error checking out CL: {checkout_err}[/red]")
             return
 
-        # Run bb_hg_reword with the edited description (non-interactive)
-        self.console.print("[cyan]Running bb_hg_reword...[/cyan]")
-        reword_ok, reword_err = provider.reword(
-            escape_for_hg_reword(edited), workspace_dir
-        )
+        # Run reword with the edited description (non-interactive)
+        self.console.print("[cyan]Rewording CL description...[/cyan]")
+        escaped_desc = provider.prepare_description_for_reword(edited)
+        reword_ok, reword_err = provider.reword(escaped_desc, workspace_dir)
         if reword_ok:
             self.console.print("[green]CL description updated successfully[/green]")
             _sync_description_after_reword(workspace_dir, changespec, self.console)

@@ -13,7 +13,7 @@ from status_state_machine import (
     remove_ready_to_mail_suffix,
     transition_changespec_status,
 )
-from vcs_provider import get_vcs_provider
+from vcs_provider import detect_vcs, get_vcs_provider
 
 from .changespec import ChangeSpec, find_all_changespecs
 
@@ -27,22 +27,6 @@ class MailPrepResult:
     """
 
     should_mail: bool
-
-
-def escape_for_hg_reword(description: str) -> str:
-    """Escape a description string for bb_hg_reword's $'...' quoting.
-
-    bb_hg_reword uses bash -c "hg reword -m $'$1'" which interprets
-    ANSI-C escape sequences. Python passes actual newline chars, but the
-    script needs literal \\n sequences that $'...' converts back.
-    """
-    return (
-        description.replace("\\", "\\\\")  # backslashes first
-        .replace("'", "\\'")
-        .replace("\n", "\\n")
-        .replace("\t", "\\t")
-        .replace("\r", "\\r")
-    )
 
 
 def _has_valid_parent(changespec: ChangeSpec) -> tuple[bool, ChangeSpec | None]:
@@ -283,10 +267,11 @@ Startblock:
 def prepare_mail(
     changespec: ChangeSpec, target_dir: str, console: Console
 ) -> MailPrepResult | None:
-    """Prepare for mailing a CL with startblock configuration.
+    """Prepare for mailing a CL / pushing a PR.
 
-    This performs all the prep work (reviewer prompts, description modification,
-    clipboard copy, nvim editing) but does NOT run hg mail or update the project file.
+    For hg: performs reviewer prompts, description modification, startblock
+    configuration, and reword. For git: simplified flow — displays branch
+    info, shows description, and confirms push + PR creation.
 
     Args:
         changespec: The ChangeSpec to prepare for mailing
@@ -297,6 +282,62 @@ def prepare_mail(
         MailPrepResult if successful (with should_mail indicating user's choice),
         None if the operation was aborted or failed.
     """
+    vcs_type = detect_vcs(target_dir) or "hg"
+
+    if vcs_type == "git":
+        return _prepare_mail_git(changespec, target_dir, console)
+
+    return _prepare_mail_hg(changespec, target_dir, console)
+
+
+def _prepare_mail_git(
+    changespec: ChangeSpec, target_dir: str, console: Console
+) -> MailPrepResult | None:
+    """Git-specific mail preparation: display branch info and confirm push."""
+    provider = get_vcs_provider(target_dir)
+
+    # Display current branch name
+    branch_ok, branch_name = provider.get_branch_name(target_dir)
+    if branch_ok and branch_name:
+        console.print(f"\n[cyan]Branch: {branch_name}[/cyan]")
+
+    # Display current description
+    success, current_desc = _get_cl_description(changespec.name, target_dir, console)
+    if success and current_desc:
+        from rich.markup import escape as escape_markup
+        from rich.panel import Panel
+
+        console.print(
+            Panel(
+                escape_markup(current_desc.rstrip()),
+                title="Commit Description",
+                border_style="cyan",
+                padding=(1, 2),
+            )
+        )
+
+    # Prompt user before pushing
+    console.print(
+        "\n[cyan]Do you want to push and create/update the PR now? (y/n):[/cyan] ",
+        end="",
+    )
+    try:
+        mail_response = input().strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        console.print("\n[yellow]Aborted[/yellow]")
+        return None
+
+    should_mail = mail_response in ["y", "yes"]
+    if not should_mail:
+        console.print("[yellow]User declined to push[/yellow]")
+
+    return MailPrepResult(should_mail=should_mail)
+
+
+def _prepare_mail_hg(
+    changespec: ChangeSpec, target_dir: str, console: Console
+) -> MailPrepResult | None:
+    """Hg-specific mail preparation: reviewer prompts, startblock, reword."""
     # Prompt for reviewers (optional) - loop to handle @ input for findreviewers
     while True:
         console.print(
@@ -369,7 +410,7 @@ def prepare_mail(
 
             finally:
                 # Always try to restore current branch
-                restore_ok, restore_err = provider.checkout(current_branch, target_dir)
+                restore_ok, _ = provider.checkout(current_branch, target_dir)
                 if not restore_ok:
                     console.print(
                         f"[yellow]Warning: Could not restore to branch "
@@ -391,13 +432,12 @@ def prepare_mail(
             )
             return None
 
-        # Update CL description using bb_hg_reword
-        console.print("[cyan]Updating CL description with bb_hg_reword...[/cyan]")
-        reword_ok, reword_err = provider.reword(
-            escape_for_hg_reword(modified_description), target_dir
-        )
+        # Update CL description using provider reword
+        console.print("[cyan]Updating CL description...[/cyan]")
+        escaped_desc = provider.prepare_description_for_reword(modified_description)
+        reword_ok, reword_err = provider.reword(escaped_desc, target_dir)
         if not reword_ok:
-            console.print(f"[red]FATAL: bb_hg_reword failed: {reword_err}[/red]")
+            console.print(f"[red]FATAL: reword failed: {reword_err}[/red]")
             console.print("[red]Aborting gai work...[/red]")
             sys.exit(1)
     else:
@@ -434,7 +474,7 @@ def prepare_mail(
 
 
 def execute_mail(changespec: ChangeSpec, target_dir: str, console: Console) -> bool:
-    """Execute the hg mail command to mail the CL.
+    """Execute the mail / push+PR command.
 
     This does NOT update the project file - the caller is responsible for
     updating the status appropriately.
@@ -447,14 +487,25 @@ def execute_mail(changespec: ChangeSpec, target_dir: str, console: Console) -> b
     Returns:
         True if mailing succeeded, False otherwise
     """
-    console.print(f"[cyan]Mailing CL with: hg mail -r {changespec.name}[/cyan]")
+    console.print(f"[cyan]Sending change for review: {changespec.name}[/cyan]")
     provider = get_vcs_provider(target_dir)
     success, error = provider.mail(changespec.name, target_dir)
     if not success:
         console.print(f"[red]{error}[/red]")
         return False
 
-    console.print("[green]CL mailed successfully![/green]")
+    # If ChangeSpec has no CL URL yet (git, PR just created), update it
+    if changespec.cl is None:
+        url_ok, change_url = provider.get_change_url(target_dir)
+        if url_ok and change_url:
+            from status_state_machine import update_changespec_cl_atomic
+
+            update_changespec_cl_atomic(
+                changespec.file_path, changespec.name, change_url
+            )
+            console.print(f"[green]PR created: {change_url}[/green]")
+
+    console.print("[green]Change sent for review successfully![/green]")
     return True
 
 

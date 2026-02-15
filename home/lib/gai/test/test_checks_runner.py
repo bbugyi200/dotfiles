@@ -9,7 +9,7 @@ from ace.scheduler.checks_runner import (
     CHECK_COMPLETE_MARKER,
     CHECK_TYPE_CL_SUBMITTED,
     CHECK_TYPE_REVIEWER_COMMENTS,
-    _extract_cl_number,
+    _extract_change_identifier,
     _get_check_output_path,
     _get_checks_directory,
     _get_pending_checks,
@@ -50,28 +50,40 @@ def test_get_check_output_path_sanitizes_name() -> None:
     assert "feature_with_special_chars" in result
 
 
-def test_extract_cl_number_valid_http() -> None:
+def test_extract_change_identifier_valid_http() -> None:
     """Test extracting CL number from http URL."""
-    result = _extract_cl_number("http://cl/123456789")
-    assert result == "123456789"
+    result = _extract_change_identifier("http://cl/123456789")
+    assert result == ("123456789", "hg")
 
 
-def test_extract_cl_number_valid_https() -> None:
+def test_extract_change_identifier_valid_https() -> None:
     """Test extracting CL number from https URL."""
-    result = _extract_cl_number("https://cl/987654321")
-    assert result == "987654321"
+    result = _extract_change_identifier("https://cl/987654321")
+    assert result == ("987654321", "hg")
 
 
-def test_extract_cl_number_invalid_url() -> None:
+def test_extract_change_identifier_github_pr() -> None:
+    """Test extracting PR number from GitHub PR URL."""
+    result = _extract_change_identifier("https://github.com/user/repo/pull/42")
+    assert result == ("42", "git")
+
+
+def test_extract_change_identifier_github_pr_http() -> None:
+    """Test extracting PR number from http GitHub PR URL."""
+    result = _extract_change_identifier("http://github.com/org/project/pull/123")
+    assert result == ("123", "git")
+
+
+def test_extract_change_identifier_invalid_url() -> None:
     """Test that invalid URLs return None."""
-    assert _extract_cl_number("not-a-url") is None
-    assert _extract_cl_number("http://example.com/123") is None
-    assert _extract_cl_number("") is None
+    assert _extract_change_identifier("not-a-url") is None
+    assert _extract_change_identifier("http://example.com/123") is None
+    assert _extract_change_identifier("") is None
 
 
-def test_extract_cl_number_none() -> None:
+def test_extract_change_identifier_none() -> None:
     """Test that None input returns None."""
-    assert _extract_cl_number(None) is None
+    assert _extract_change_identifier(None) is None
 
 
 def test_parse_check_completion_not_complete() -> None:

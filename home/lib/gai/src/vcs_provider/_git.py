@@ -198,6 +198,61 @@ class _GitProvider(VCSProvider):
             return (False, f"git clean -fd failed: {clean_out.stderr.strip()}")
         return (True, None)
 
+    # --- VCS-agnostic method overrides ---
+
+    def get_change_url(self, cwd: str) -> tuple[bool, str | None]:
+        out = self._run(["gh", "pr", "view", "--json", "url", "-q", ".url"], cwd)
+        if out.success:
+            url = out.stdout.strip()
+            return (True, url) if url else (True, None)
+        # No PR exists yet (gh exits non-zero)
+        return (True, None)
+
+    def get_cl_number(self, cwd: str) -> tuple[bool, str | None]:
+        out = self._run(["gh", "pr", "view", "--json", "number", "-q", ".number"], cwd)
+        if out.success:
+            number = out.stdout.strip()
+            return (True, number) if number else (True, None)
+        # No PR exists yet
+        return (True, None)
+
+    def get_bug_number(self, cwd: str) -> tuple[bool, str | None]:
+        return (True, "")
+
+    def fix(self, cwd: str) -> tuple[bool, str | None]:
+        return (True, None)
+
+    def upload(self, cwd: str) -> tuple[bool, str | None]:
+        return (True, None)
+
+    def mail(self, revision: str, cwd: str) -> tuple[bool, str | None]:
+        # Push to remote
+        out = self._run(["git", "push", "-u", "origin", revision], cwd)
+        if not out.success:
+            return self._to_result(out, "git push")
+        # Check if PR already exists
+        pr_check = self._run(
+            ["gh", "pr", "view", "--json", "number", "-q", ".number"], cwd
+        )
+        if not pr_check.success:
+            # No PR yet — create one
+            pr_create = self._run(["gh", "pr", "create", "--fill"], cwd)
+            if not pr_create.success:
+                return self._to_result(pr_create, "gh pr create")
+        return (True, None)
+
+    def reword_add_tag(
+        self, tag_name: str, tag_value: str, cwd: str
+    ) -> tuple[bool, str | None]:
+        # Read current commit message
+        out = self._run(["git", "log", "--format=%B", "-n1", "HEAD"], cwd)
+        if not out.success:
+            return (False, out.stderr.strip() or "git log failed")
+        current_msg = out.stdout.rstrip("\n")
+        new_msg = f"{current_msg}\n{tag_name}={tag_value}"
+        amend_out = self._run(["git", "commit", "--amend", "-m", new_msg], cwd)
+        return self._to_result(amend_out, "git commit --amend")
+
     # --- Optional methods with git equivalents ---
 
     def get_branch_name(self, cwd: str) -> tuple[bool, str | None]:

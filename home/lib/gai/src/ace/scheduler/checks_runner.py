@@ -88,22 +88,28 @@ def _get_check_output_path(name: str, check_type: CheckType, timestamp: str) -> 
     return os.path.join(checks_dir, filename)
 
 
-def _extract_cl_number(cl_url: str | None) -> str | None:
-    """Extract the CL number from a CL URL.
+def _extract_change_identifier(cl_url: str | None) -> tuple[str, str] | None:
+    """Extract the change identifier and VCS type from a CL/PR URL.
 
     Args:
-        cl_url: The CL URL in the format http://cl/123456789
+        cl_url: The CL URL (``http://cl/123456789``) or GitHub PR URL
+            (``https://github.com/user/repo/pull/42``).
 
     Returns:
-        The CL number as a string, or None if the URL is invalid or None.
+        ``(identifier, vcs_type)`` tuple, or None if the URL is invalid or None.
     """
     if not cl_url:
         return None
 
-    # Match http://cl/<number> or https://cl/<number>
+    # Match http://cl/<number> or https://cl/<number> (hg)
     match = re.match(r"https?://cl/(\d+)", cl_url)
     if match:
-        return match.group(1)
+        return (match.group(1), "hg")
+
+    # Match GitHub PR URL
+    match = re.match(r"https?://github\.com/.+/pull/(\d+)", cl_url)
+    if match:
+        return (match.group(1), "git")
 
     return None
 
@@ -123,18 +129,33 @@ def start_cl_submitted_check(
     Returns:
         Update message if check was started, None if failed.
     """
-    cl_number = _extract_cl_number(changespec.cl)
-    if not cl_number:
+    result = _extract_change_identifier(changespec.cl)
+    if not result:
         return None
+
+    identifier, vcs_type = result
 
     timestamp = generate_timestamp()
     output_path = _get_check_output_path(
         changespec.name, CHECK_TYPE_CL_SUBMITTED, timestamp
     )
 
-    # Create wrapper script
-    wrapper_script = f"""#!/bin/bash
-is_cl_submitted {cl_number}
+    # Create wrapper script based on VCS type
+    if vcs_type == "git":
+        wrapper_script = f"""#!/bin/bash
+state=$(gh pr view {identifier} --json state -q '.state' 2>/dev/null)
+if [ "$state" = "MERGED" ]; then
+    exit_code=0
+else
+    exit_code=1
+fi
+echo ""
+echo "{CHECK_COMPLETE_MARKER}EXIT_CODE: $exit_code"
+exit $exit_code
+"""
+    else:
+        wrapper_script = f"""#!/bin/bash
+is_cl_submitted {identifier}
 exit_code=$?
 echo ""
 echo "{CHECK_COMPLETE_MARKER}EXIT_CODE: $exit_code"

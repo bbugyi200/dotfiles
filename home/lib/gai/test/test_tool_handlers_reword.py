@@ -304,14 +304,20 @@ def test_handle_reword_changed_runs_full_flow(
     mock_provider = MagicMock()
     mock_provider.checkout.return_value = (True, None)
     mock_provider.reword.return_value = (True, None)
+    # prepare_description_for_reword passes description through (mock returns input)
+    mock_provider.prepare_description_for_reword.side_effect = lambda d: d
     mock_get_provider.return_value = mock_provider
     ctx, cs = _make_context_and_changespec()
 
     handle_reword(ctx, cs)
 
     mock_claim.assert_called_once()
-    # Verify provider.reword was called with the escaped description
-    mock_provider.reword.assert_called_once_with("New description\\n", "/ws")
+    # Verify prepare_description_for_reword was called with the edited description
+    mock_provider.prepare_description_for_reword.assert_called_once_with(
+        "New description\n"
+    )
+    # Verify provider.reword was called with the prepared description
+    mock_provider.reword.assert_called_once_with("New description\n", "/ws")
     mock_sync.assert_called_once()
     mock_release.assert_called_once()
 

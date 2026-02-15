@@ -10,12 +10,13 @@ Usage::
 
 from ._base import VCSProvider
 from ._errors import VCSOperationError, VCSProviderNotFoundError
-from ._registry import get_vcs_provider, register_provider
+from ._registry import detect_vcs, get_vcs_provider, register_provider
 
 __all__ = [
     "VCSOperationError",
     "VCSProvider",
     "VCSProviderNotFoundError",
+    "detect_vcs",
     "get_vcs_provider",
     "register_provider",
 ]

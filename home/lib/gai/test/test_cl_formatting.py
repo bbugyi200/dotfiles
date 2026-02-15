@@ -158,3 +158,26 @@ def test_format_cl_description_no_bug_or_fixed() -> None:
         assert "MARKDOWN=true" in content
     finally:
         Path(temp_path).unlink()
+
+
+def test_format_cl_description_git() -> None:
+    """Test format_cl_description in git mode only writes project-prefixed description."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        f.write("Add new feature")
+        temp_path = f.name
+
+    try:
+        format_cl_description(temp_path, "myproject", bug="b/12345", vcs_type="git")
+
+        content = Path(temp_path).read_text()
+        # Should have project-prefixed description
+        assert content == "[myproject] Add new feature\n"
+        # Should NOT have any metadata tags
+        assert "AUTOSUBMIT_BEHAVIOR" not in content
+        assert "BUG=" not in content
+        assert "MARKDOWN" not in content
+        assert "R=startblock" not in content
+        assert "STARTBLOCK_AUTOSUBMIT" not in content
+        assert "WANT_LGTM" not in content
+    finally:
+        Path(temp_path).unlink()
