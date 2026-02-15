@@ -37,6 +37,7 @@ return {
 					"html",
 					"java",
 					"javascript",
+					"just",
 					"jinja",
 					"jinja_inline",
 					"latex",
