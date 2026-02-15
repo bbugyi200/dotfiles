@@ -157,12 +157,14 @@ function do_beads_sync() {
 # Send Mac notification with commit details.
 function send_notification() {
   local message="${TAG}: ${MESSAGE}"
-  local prefix="\[chez]"
+  local project_name
+  project_name=$(basename "${CLAUDE_PROJECT_DIR:-.}")
+  local prefix="\[${project_name}]"
   if [[ -n "$TMUX_PANE" ]]; then
     local window
     window=$(tmux display-message -t "$TMUX_PANE" -p '#W' 2>/dev/null)
     if [[ -n "$window" ]]; then
-      prefix="\[chez#${window}]"
+      prefix="\[${project_name}#${window}]"
     fi
   fi
   terminal-notifier -title "${prefix} New Commit Created" -message "${message}"
