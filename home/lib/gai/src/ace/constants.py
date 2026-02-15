@@ -3,10 +3,11 @@
 # Default time in seconds after which a hook or workflow is considered a zombie (2 hours)
 DEFAULT_ZOMBIE_TIMEOUT_SECONDS = 2 * 60 * 60
 
-# Required hooks that are always added to new ChangeSpecs (order matters)
+# Default required hooks that are always added to new ChangeSpecs (order matters)
 # - "!" prefix: skip fix-hook hints on failure
 # - "$" prefix: skip running for proposal entries (e.g., "1a")
-REQUIRED_CHANGESPEC_HOOKS = (
+# Can be overridden via vcs_provider.default_hooks in gai.yml.
+_DEFAULT_REQUIRED_HOOKS = (
     "!$bb_hg_presubmit",
     "$bb_hg_lint",
 )

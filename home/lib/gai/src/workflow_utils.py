@@ -94,8 +94,9 @@ def _get_changed_test_targets(verbose: bool = False) -> str | None:
 def get_initial_hooks_for_changespec(verbose: bool = True) -> list[str]:
     """Get all hooks to include in a new ChangeSpec.
 
-    Returns required hooks (bb_hg_presubmit, bb_hg_lint) plus any
-    test target hooks from changed_test_targets.
+    Returns required hooks (configurable via gai.yml, defaults to
+    bb_hg_presubmit, bb_hg_lint) plus any test target hooks from
+    changed_test_targets.
 
     Args:
         verbose: If True, print diagnostic messages for test target detection.
@@ -103,10 +104,10 @@ def get_initial_hooks_for_changespec(verbose: bool = True) -> list[str]:
     Returns:
         List of hook command strings in order (required hooks first, then test targets).
     """
-    from ace.constants import REQUIRED_CHANGESPEC_HOOKS
+    from ace.hooks.defaults import get_required_changespec_hooks
     from ace.hooks.test_targets import TEST_TARGET_HOOK_PREFIX
 
-    hooks: list[str] = list(REQUIRED_CHANGESPEC_HOOKS)
+    hooks: list[str] = list(get_required_changespec_hooks())
 
     test_targets = _get_changed_test_targets(verbose=verbose)
     if test_targets:

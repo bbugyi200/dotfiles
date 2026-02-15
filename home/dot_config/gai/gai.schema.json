@@ -168,6 +168,13 @@
           "description": "Name of the VCS provider ('git', 'hg', or 'auto' for auto-detection)",
           "enum": ["git", "hg", "auto"],
           "default": "auto"
+        },
+        "default_hooks": {
+          "type": "array",
+          "description": "Override the default required hooks added to new ChangeSpecs. Each entry is a hook command string (supports '!' and '$' prefixes).",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },

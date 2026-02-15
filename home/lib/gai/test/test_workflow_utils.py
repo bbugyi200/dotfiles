@@ -221,7 +221,10 @@ def test_add_test_hooks_if_available_returns_false_on_failure() -> None:
 
 def test_get_initial_hooks_for_changespec_returns_required_hooks() -> None:
     """Test that required hooks are always returned."""
-    with patch("workflow_utils._get_changed_test_targets", return_value=None):
+    with (
+        patch("workflow_utils._get_changed_test_targets", return_value=None),
+        patch("ace.hooks.defaults.get_vcs_provider_config", return_value={}),
+    ):
         result = get_initial_hooks_for_changespec()
 
     assert "!$bb_hg_presubmit" in result
@@ -231,9 +234,12 @@ def test_get_initial_hooks_for_changespec_returns_required_hooks() -> None:
 
 def test_get_initial_hooks_for_changespec_includes_test_targets() -> None:
     """Test that test target hooks are appended after required hooks."""
-    with patch(
-        "workflow_utils._get_changed_test_targets",
-        return_value="//foo:test1 //bar:test2",
+    with (
+        patch(
+            "workflow_utils._get_changed_test_targets",
+            return_value="//foo:test1 //bar:test2",
+        ),
+        patch("ace.hooks.defaults.get_vcs_provider_config", return_value={}),
     ):
         result = get_initial_hooks_for_changespec()
 
@@ -247,7 +253,10 @@ def test_get_initial_hooks_for_changespec_includes_test_targets() -> None:
 
 def test_get_initial_hooks_for_changespec_preserves_order() -> None:
     """Test that hooks are in correct order: required first, then test targets."""
-    with patch("workflow_utils._get_changed_test_targets", return_value="//foo:test1"):
+    with (
+        patch("workflow_utils._get_changed_test_targets", return_value="//foo:test1"),
+        patch("ace.hooks.defaults.get_vcs_provider_config", return_value={}),
+    ):
         result = get_initial_hooks_for_changespec()
 
     # Required hooks should be first
@@ -259,7 +268,10 @@ def test_get_initial_hooks_for_changespec_preserves_order() -> None:
 
 def test_get_initial_hooks_for_changespec_handles_empty_test_targets() -> None:
     """Test that empty test target string is handled correctly."""
-    with patch("workflow_utils._get_changed_test_targets", return_value=""):
+    with (
+        patch("workflow_utils._get_changed_test_targets", return_value=""),
+        patch("ace.hooks.defaults.get_vcs_provider_config", return_value={}),
+    ):
         result = get_initial_hooks_for_changespec()
 
     # Should only have required hooks when test targets is empty string
