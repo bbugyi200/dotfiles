@@ -387,3 +387,98 @@ def test_git_clean_workspace_clean_fails(mock_run: MagicMock) -> None:
     assert success is False
     assert error is not None
     assert "git clean -fd failed" in error
+
+
+# === Tests for sync_workspace ===
+
+
+@patch("vcs_provider._git.subprocess.run")
+def test_git_sync_workspace_success(mock_run: MagicMock) -> None:
+    """Test _GitProvider.sync_workspace on success."""
+    mock_run.side_effect = [
+        MagicMock(returncode=0, stdout="", stderr=""),  # git fetch origin
+        MagicMock(
+            returncode=0, stdout="refs/remotes/origin/main\n", stderr=""
+        ),  # symbolic-ref
+        MagicMock(returncode=0, stdout="", stderr=""),  # git rebase
+    ]
+
+    provider = _GitProvider()
+    success, error = provider.sync_workspace("/workspace")
+
+    assert success is True
+    assert error is None
+    assert mock_run.call_count == 3
+    assert mock_run.call_args_list[0][0][0] == ["git", "fetch", "origin"]
+    assert mock_run.call_args_list[2][0][0] == ["git", "rebase", "origin/main"]
+
+
+@patch("vcs_provider._git.subprocess.run")
+def test_git_sync_workspace_fetch_fails(mock_run: MagicMock) -> None:
+    """Test _GitProvider.sync_workspace when fetch fails."""
+    mock_run.return_value = MagicMock(
+        returncode=1, stdout="", stderr="fatal: unable to access remote"
+    )
+
+    provider = _GitProvider()
+    success, error = provider.sync_workspace("/workspace")
+
+    assert success is False
+    assert error is not None
+    assert "git fetch origin failed" in error
+
+
+@patch("vcs_provider._git.subprocess.run")
+def test_git_sync_workspace_rebase_fails(mock_run: MagicMock) -> None:
+    """Test _GitProvider.sync_workspace when rebase fails."""
+    mock_run.side_effect = [
+        MagicMock(returncode=0, stdout="", stderr=""),  # fetch succeeds
+        MagicMock(
+            returncode=0, stdout="refs/remotes/origin/main\n", stderr=""
+        ),  # symbolic-ref
+        MagicMock(returncode=1, stdout="", stderr="CONFLICT"),  # rebase fails
+    ]
+
+    provider = _GitProvider()
+    success, error = provider.sync_workspace("/workspace")
+
+    assert success is False
+    assert error is not None
+    assert "git rebase failed" in error
+
+
+@patch("vcs_provider._git.subprocess.run")
+def test_git_sync_workspace_default_branch_fallback(mock_run: MagicMock) -> None:
+    """Test _GitProvider.sync_workspace falls back to 'main' when symbolic-ref fails."""
+    mock_run.side_effect = [
+        MagicMock(returncode=0, stdout="", stderr=""),  # fetch succeeds
+        MagicMock(returncode=1, stdout="", stderr=""),  # symbolic-ref fails
+        MagicMock(returncode=0, stdout="", stderr=""),  # rebase succeeds
+    ]
+
+    provider = _GitProvider()
+    success, error = provider.sync_workspace("/workspace")
+
+    assert success is True
+    assert error is None
+    # Should default to "main"
+    assert mock_run.call_args_list[2][0][0] == ["git", "rebase", "origin/main"]
+
+
+@patch("vcs_provider._git.subprocess.run")
+def test_git_sync_workspace_detects_master_branch(mock_run: MagicMock) -> None:
+    """Test _GitProvider.sync_workspace detects 'master' as default branch."""
+    mock_run.side_effect = [
+        MagicMock(returncode=0, stdout="", stderr=""),  # fetch succeeds
+        MagicMock(
+            returncode=0, stdout="refs/remotes/origin/master\n", stderr=""
+        ),  # symbolic-ref returns master
+        MagicMock(returncode=0, stdout="", stderr=""),  # rebase succeeds
+    ]
+
+    provider = _GitProvider()
+    success, error = provider.sync_workspace("/workspace")
+
+    assert success is True
+    assert error is None
+    assert mock_run.call_args_list[2][0][0] == ["git", "rebase", "origin/master"]

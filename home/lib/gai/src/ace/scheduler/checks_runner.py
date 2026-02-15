@@ -194,14 +194,24 @@ def start_reviewer_comments_check(
 ) -> str | None:
     """Start critique_comments check for reviewer comments as a background process.
 
+    For git repos, reviewer comments are not yet supported (critique_comments
+    is hg/Google-internal only), so this returns None early.
+
     Args:
         changespec: The ChangeSpec to check.
         workspace_dir: The workspace directory to run the command in.
         log: Logging callback.
 
     Returns:
-        Update message if check was started, None if failed.
+        Update message if check was started, None if failed or skipped.
     """
+    # Skip reviewer comments for git repos (critique_comments is hg-only)
+    result = _extract_change_identifier(changespec.cl)
+    if result is not None:
+        _, vcs_type = result
+        if vcs_type == "git":
+            return None
+
     timestamp = generate_timestamp()
     output_path = _get_check_output_path(
         changespec.name, CHECK_TYPE_REVIEWER_COMMENTS, timestamp

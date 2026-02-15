@@ -19,6 +19,7 @@ from running_field import (
     get_workspace_directory_for_num,
 )
 from status_state_machine import remove_workspace_suffix
+from vcs_provider import get_vcs_provider
 
 from ..changespec import ChangeSpec
 from ..hooks import generate_timestamp
@@ -158,37 +159,10 @@ def _start_single_mentor(
             "yellow",
         )
 
-    # Run bb_hg_update to switch to the ChangeSpec's branch
-    try:
-        result = subprocess.run(
-            ["bb_hg_update", changespec.name],
-            cwd=workspace_dir,
-            capture_output=True,
-            text=True,
-            timeout=300,
-        )
-        if result.returncode != 0:
-            error_output = (
-                result.stderr.strip() or result.stdout.strip() or "no error output"
-            )
-            set_mentor_status(
-                changespec.file_path,
-                changespec.name,
-                entry_id,
-                profile.profile_name,
-                mentor_name,
-                status="FAILED",
-                timestamp=timestamp,
-                suffix="bb_hg_update_failed",
-                suffix_type="error",
-            )
-            log(
-                f"[WS#{workspace_num}] Warning: bb_hg_update failed for "
-                f"{changespec.name}: {error_output}",
-                "yellow",
-            )
-            return None
-    except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+    # Checkout the ChangeSpec's branch via VCS provider
+    provider = get_vcs_provider(workspace_dir)
+    checkout_ok, checkout_err = provider.checkout(changespec.name, workspace_dir)
+    if not checkout_ok:
         set_mentor_status(
             changespec.file_path,
             changespec.name,
@@ -197,12 +171,12 @@ def _start_single_mentor(
             mentor_name,
             status="FAILED",
             timestamp=timestamp,
-            suffix="bb_hg_update_error",
+            suffix="checkout_failed",
             suffix_type="error",
         )
         log(
-            f"[WS#{workspace_num}] Warning: bb_hg_update error for "
-            f"{changespec.name}: {e}",
+            f"[WS#{workspace_num}] Warning: checkout failed for "
+            f"{changespec.name}: {checkout_err}",
             "yellow",
         )
         return None

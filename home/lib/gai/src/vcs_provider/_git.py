@@ -198,6 +198,27 @@ class _GitProvider(VCSProvider):
             return (False, f"git clean -fd failed: {clean_out.stderr.strip()}")
         return (True, None)
 
+    # --- Optional core methods ---
+
+    def sync_workspace(self, cwd: str) -> tuple[bool, str | None]:
+        # Fetch latest from origin
+        fetch_out = self._run(["git", "fetch", "origin"], cwd, timeout=600)
+        if not fetch_out.success:
+            return self._to_result(fetch_out, "git fetch origin")
+        # Determine default branch (main or master)
+        branch_out = self._run(["git", "symbolic-ref", "refs/remotes/origin/HEAD"], cwd)
+        default_branch = "main"
+        if branch_out.success:
+            # Output like "refs/remotes/origin/main"
+            ref = branch_out.stdout.strip()
+            if ref:
+                default_branch = ref.rsplit("/", 1)[-1]
+        # Rebase onto the default branch
+        rebase_out = self._run(
+            ["git", "rebase", f"origin/{default_branch}"], cwd, timeout=600
+        )
+        return self._to_result(rebase_out, "git rebase")
+
     # --- VCS-agnostic method overrides ---
 
     def get_change_url(self, cwd: str) -> tuple[bool, str | None]:

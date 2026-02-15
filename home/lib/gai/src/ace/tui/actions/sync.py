@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import os
-import subprocess
 from typing import TYPE_CHECKING
 
 from commit_utils import run_bb_hg_clean
+from vcs_provider import get_vcs_provider
 
 if TYPE_CHECKING:
     from ...changespec import ChangeSpec
@@ -26,8 +26,8 @@ class SyncMixin:
         1. Validates STATUS is not "Submitted" or "Reverted"
         2. Gets first available axe workspace (100-199 range)
         3. Claims workspace
-        4. Runs `bb_hg_update {cl_name}` to checkout the CL
-        5. Runs `bb_hg_sync` to sync the workspace
+        4. Checks out the CL via VCS provider
+        5. Syncs the workspace via VCS provider
         6. Releases workspace in finally block
         7. Shows output via self.suspend() context manager
         8. Reports success/failure via self.notify()
@@ -94,41 +94,18 @@ class SyncMixin:
 
                 # Checkout the CL
                 print(f"Checking out {changespec.name}...")
-                try:
-                    result = subprocess.run(
-                        ["bb_hg_update", changespec.name],
-                        cwd=workspace_dir,
-                        capture_output=False,
-                        timeout=300,
-                    )
-                    if result.returncode != 0:
-                        return (
-                            False,
-                            f"bb_hg_update failed with return code {result.returncode}",
-                        )
-                except subprocess.TimeoutExpired:
-                    return (False, "bb_hg_update timed out")
-                except FileNotFoundError:
-                    return (False, "bb_hg_update command not found")
+                provider = get_vcs_provider(workspace_dir)
+                checkout_ok, checkout_err = provider.checkout(
+                    changespec.name, workspace_dir
+                )
+                if not checkout_ok:
+                    return (False, f"checkout failed: {checkout_err}")
 
-                # Run bb_hg_sync
+                # Sync workspace
                 print("Syncing workspace...")
-                try:
-                    result = subprocess.run(
-                        ["bb_hg_sync"],
-                        cwd=workspace_dir,
-                        capture_output=False,
-                        timeout=600,  # 10 minutes for sync
-                    )
-                    if result.returncode != 0:
-                        return (
-                            False,
-                            f"bb_hg_sync failed with return code {result.returncode}",
-                        )
-                except subprocess.TimeoutExpired:
-                    return (False, "bb_hg_sync timed out")
-                except FileNotFoundError:
-                    return (False, "bb_hg_sync command not found")
+                sync_ok, sync_err = provider.sync_workspace(workspace_dir)
+                if not sync_ok:
+                    return (False, f"sync failed: {sync_err}")
 
                 return (True, f"Synced {changespec.name}")
 

@@ -1,0 +1,14 @@
+#!/bin/bash
+# VCS-agnostic wrapper that outputs locally changed file names.
+#
+# For git: uses `git diff --name-only HEAD`
+# For hg:  uses `hg status --no-status --change .` (modified files in working dir)
+
+if [ -d .hg ] || hg root &>/dev/null; then
+    hg status --no-status
+elif [ -d .git ] || git rev-parse --git-dir &>/dev/null; then
+    git diff --name-only HEAD 2>/dev/null || git diff --name-only
+else
+    echo "Error: not in a git or hg repository" >&2
+    exit 1
+fi

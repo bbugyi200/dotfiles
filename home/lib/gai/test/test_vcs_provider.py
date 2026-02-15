@@ -280,6 +280,36 @@ def test_hg_command_not_found(mock_run: MagicMock) -> None:
     assert "not found" in _error
 
 
+# === Tests for _HgProvider.sync_workspace ===
+
+
+@patch("vcs_provider._hg.subprocess.run")
+def test_hg_sync_workspace_success(mock_run: MagicMock) -> None:
+    """Test _HgProvider.sync_workspace on success."""
+    mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+
+    provider = _HgProvider()
+    success, error = provider.sync_workspace("/workspace")
+
+    assert success is True
+    assert error is None
+    mock_run.assert_called_once()
+    assert mock_run.call_args[0][0] == ["bb_hg_sync"]
+
+
+@patch("vcs_provider._hg.subprocess.run")
+def test_hg_sync_workspace_failure(mock_run: MagicMock) -> None:
+    """Test _HgProvider.sync_workspace on failure."""
+    mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="sync error")
+
+    provider = _HgProvider()
+    success, error = provider.sync_workspace("/workspace")
+
+    assert success is False
+    assert error is not None
+    assert "bb_hg_sync failed" in error
+
+
 # === Tests for Google-internal method defaults ===
 
 
@@ -288,6 +318,7 @@ def test_vcs_provider_google_methods_raise() -> None:
     provider = _MinimalProvider()
 
     methods_to_test = [
+        lambda: provider.sync_workspace("/cwd"),
         lambda: provider.reword("desc", "/cwd"),
         lambda: provider.reword_add_tag("tag", "val", "/cwd"),
         lambda: provider.get_description("rev", "/cwd"),

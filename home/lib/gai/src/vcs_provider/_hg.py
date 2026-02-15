@@ -167,6 +167,12 @@ class _HgProvider(VCSProvider):
             return (False, error_msg)
         return (True, None)
 
+    # --- Optional core methods ---
+
+    def sync_workspace(self, cwd: str) -> tuple[bool, str | None]:
+        out = self._run(["bb_hg_sync"], cwd, timeout=600)
+        return self._to_result(out, "bb_hg_sync")
+
     # --- VCS-agnostic method overrides ---
 
     def prepare_description_for_reword(self, description: str) -> str:

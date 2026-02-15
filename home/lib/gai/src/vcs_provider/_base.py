@@ -85,6 +85,14 @@ class VCSProvider(ABC):
     ) -> tuple[bool, str | None]:
         """Save uncommitted changes to a diff file and clean the workspace."""
 
+    # --- Optional core methods (default raises NotImplementedError) ---
+
+    def sync_workspace(self, cwd: str) -> tuple[bool, str | None]:
+        """Sync the workspace with the remote (fetch + rebase / hg sync)."""
+        raise NotImplementedError(
+            "sync_workspace is not supported by this VCS provider"
+        )
+
     # --- Google-internal methods (default raises NotImplementedError) ---
 
     def reword(self, description: str, cwd: str) -> tuple[bool, str | None]:
