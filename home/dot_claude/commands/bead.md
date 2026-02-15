@@ -2,5 +2,5 @@
 description: Claim an available bead and start working on it
 ---
 
-Can you run the `chez_bd_ready` command, claim an available bead to work on, and get started on it? Once you finish the
+Can you run the `next_bead` command to claim an available bead and then get started working on it? Once you finish the
 associated work, close the bead using the `bd close` command.

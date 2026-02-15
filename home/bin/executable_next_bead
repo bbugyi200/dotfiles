@@ -10,9 +10,9 @@ export USAGE_GRAMMAR=(
 read -r -d '' DOC <<EOM
 $(usage)
 
-Poll 'bd ready' until beads are available or a max iteration count is reached.
-Useful for waiting on blocked work to become unblocked (e.g., waiting for
-dependencies to be closed by other agents/sessions).
+Poll 'bd ready' until a non-epic bead is available, claim it atomically, and
+display its details. Useful for waiting on blocked work to become unblocked
+(e.g., waiting for dependencies to be closed by other agents/sessions).
 
 Optional Arguments
 ------------------
@@ -34,15 +34,20 @@ function run() {
 
   local iter=0
   while [[ ${iter} -lt ${MAX_ITERS} ]]; do
-    local output
-    output="$(bd ready 2>/dev/null)"
-    if [[ $? -eq 0 ]] && ! echo "${output}" | grep -q "No ready work"; then
-      echo "${output}"
-      return 0
+    local bead_id
+    bead_id="$(bd ready --json 2>/dev/null | jq -r '[.[] | select(.issue_type != "epic")] | .[0].id // empty')"
+
+    if [[ -n "${bead_id}" ]]; then
+      if bd update "${bead_id}" --claim 2>/dev/null; then
+        bd show "${bead_id}"
+        return 0
+      else
+        log::warning "Failed to claim %s (race condition?), retrying..." "${bead_id}"
+      fi
     fi
 
     iter=$((iter + 1))
-    log::info "No beads ready. Attempt %d/%d, retrying in %ds..." \
+    log::info "No claimable beads ready. Attempt %d/%d, retrying in %ds..." \
       "${iter}" "${MAX_ITERS}" "${SLEEP_SECS}"
     sleep "${SLEEP_SECS}"
   done
