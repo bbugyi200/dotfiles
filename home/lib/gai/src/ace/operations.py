@@ -99,7 +99,7 @@ def update_to_changespec(
     """Update working directory to the specified ChangeSpec.
 
     This function:
-    1. Changes to workspace directory (uses bb_get_workspace to determine path)
+    1. Changes to workspace directory (uses gai_get_workspace to determine path)
     2. Runs bb_hg_update <revision>
 
     Args:

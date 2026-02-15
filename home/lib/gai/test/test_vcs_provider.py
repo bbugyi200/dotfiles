@@ -14,7 +14,7 @@ from vcs_provider import (
 from vcs_provider._hg import _HgProvider
 from vcs_provider._registry import _resolve_vcs_name
 from vcs_provider._types import CommandOutput
-from vcs_provider.config import get_vcs_provider_config
+from vcs_provider.config import get_vcs_provider_config, get_workspace_root
 
 # === Tests for CommandOutput ===
 
@@ -530,3 +530,38 @@ def test_get_vcs_provider_config_with_section() -> None:
             ):
                 result = get_vcs_provider_config()
                 assert result == {"provider": "hg"}
+
+
+# === Tests for get_workspace_root ===
+
+
+def test_get_workspace_root_env_var() -> None:
+    """Env var GAI_WORKSPACE_ROOT takes priority over config."""
+    with patch.dict(os.environ, {"GAI_WORKSPACE_ROOT": "/tmp/ws"}):
+        with patch(
+            "vcs_provider.config.get_vcs_provider_config",
+            return_value={"workspace_root": "/other/path"},
+        ):
+            assert get_workspace_root() == "/tmp/ws"
+
+
+def test_get_workspace_root_config() -> None:
+    """Falls back to workspace_root from gai.yml config."""
+    with patch.dict(os.environ, {}, clear=False):
+        os.environ.pop("GAI_WORKSPACE_ROOT", None)
+        with patch(
+            "vcs_provider.config.get_vcs_provider_config",
+            return_value={"workspace_root": "/config/ws"},
+        ):
+            assert get_workspace_root() == "/config/ws"
+
+
+def test_get_workspace_root_none() -> None:
+    """Returns None when neither env var nor config is set."""
+    with patch.dict(os.environ, {}, clear=False):
+        os.environ.pop("GAI_WORKSPACE_ROOT", None)
+        with patch(
+            "vcs_provider.config.get_vcs_provider_config",
+            return_value={},
+        ):
+            assert get_workspace_root() is None

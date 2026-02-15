@@ -304,7 +304,7 @@ def test_running_field_get_workspace_directory_basic() -> None:
         assert result == "/cloud/myproject/google3"
         mock_run.assert_called_once()
         args = mock_run.call_args[0][0]
-        assert args == ["bb_get_workspace", "myproject", "1"]
+        assert args == ["gai_get_workspace", "myproject", "1"]
 
 
 def test_running_field_get_workspace_directory_with_workspace_num() -> None:
@@ -317,7 +317,7 @@ def test_running_field_get_workspace_directory_with_workspace_num() -> None:
         assert result == "/cloud/myproject_3/google3"
         mock_run.assert_called_once()
         args = mock_run.call_args[0][0]
-        assert args == ["bb_get_workspace", "myproject", "3"]
+        assert args == ["gai_get_workspace", "myproject", "3"]
 
 
 def test_running_field_get_workspace_directory_command_failure() -> None:
@@ -328,9 +328,9 @@ def test_running_field_get_workspace_directory_command_failure() -> None:
 
     with patch("running_field.subprocess.run") as mock_run:
         mock_run.side_effect = subprocess.CalledProcessError(
-            returncode=1, cmd=["bb_get_workspace", "myproject", "1"], stderr="Error"
+            returncode=1, cmd=["gai_get_workspace", "myproject", "1"], stderr="Error"
         )
-        with pytest.raises(RuntimeError, match="bb_get_workspace failed"):
+        with pytest.raises(RuntimeError, match="gai_get_workspace failed"):
             get_workspace_dir("myproject")
 
 
@@ -353,10 +353,10 @@ def test_get_workspace_directory_for_num_main() -> None:
         workspace_dir, suffix = get_workspace_directory_for_num(1, "myproject")
         assert workspace_dir == "/cloud/myproject/google3"
         assert suffix is None
-        # Verify bb_get_workspace was called correctly
+        # Verify gai_get_workspace was called correctly
         mock_run.assert_called_once()
         args = mock_run.call_args[0][0]
-        assert args == ["bb_get_workspace", "myproject", "1"]
+        assert args == ["gai_get_workspace", "myproject", "1"]
 
 
 def test_get_workspace_directory_for_num_share() -> None:
@@ -368,10 +368,10 @@ def test_get_workspace_directory_for_num_share() -> None:
         workspace_dir, suffix = get_workspace_directory_for_num(3, "myproject")
         assert workspace_dir == "/cloud/myproject_3/google3"
         assert suffix == "myproject_3"
-        # Verify bb_get_workspace was called correctly
+        # Verify gai_get_workspace was called correctly
         mock_run.assert_called_once()
         args = mock_run.call_args[0][0]
-        assert args == ["bb_get_workspace", "myproject", "3"]
+        assert args == ["gai_get_workspace", "myproject", "3"]
 
 
 def test_get_workspace_directory_uses_running_field() -> None:
@@ -403,10 +403,10 @@ def test_get_workspace_directory_uses_running_field() -> None:
             # Project file is temp file, basename is random
             assert workspace_suffix is not None
             assert "_2" in workspace_suffix
-            # Verify bb_get_workspace was called with workspace 2
+            # Verify gai_get_workspace was called with workspace 2
             mock_run.assert_called_once()
             args = mock_run.call_args[0][0]
-            assert args[0] == "bb_get_workspace"
+            assert args[0] == "gai_get_workspace"
             assert args[2] == "2"  # workspace number
     finally:
         Path(project_file).unlink()

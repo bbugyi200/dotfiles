@@ -371,7 +371,7 @@ class AgentFilePanel(Static):
         except subprocess.CalledProcessError:
             return None
         except RuntimeError:
-            # bb_get_workspace command failed
+            # gai_get_workspace command failed
             return None
         except Exception:
             return None

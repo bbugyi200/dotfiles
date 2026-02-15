@@ -11,6 +11,7 @@ Usage::
 from ._base import VCSProvider
 from ._errors import VCSOperationError, VCSProviderNotFoundError
 from ._registry import detect_vcs, get_vcs_provider, register_provider
+from .config import get_workspace_root
 
 VCS_DEFAULT_REVISION = "__vcs_default__"
 
@@ -21,5 +22,6 @@ __all__ = [
     "VCSProviderNotFoundError",
     "detect_vcs",
     "get_vcs_provider",
+    "get_workspace_root",
     "register_provider",
 ]

@@ -175,6 +175,10 @@
           "items": {
             "type": "string"
           }
+        },
+        "workspace_root": {
+          "type": "string",
+          "description": "Root directory for workspaces. Overridden by GAI_WORKSPACE_ROOT env var. Defaults to $HOME/workspace for git."
         }
       }
     },

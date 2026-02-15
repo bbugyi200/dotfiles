@@ -29,3 +29,20 @@ def get_vcs_provider_config() -> dict[str, Any]:
         return data.get("vcs_provider", {}) or {}
     except Exception:
         return {}
+
+
+def get_workspace_root() -> str | None:
+    """Get the workspace root directory.
+
+    Checks ``GAI_WORKSPACE_ROOT`` env var first, then falls back to
+    ``vcs_provider.workspace_root`` in ``gai.yml``.
+
+    Returns:
+        The workspace root path, or None if neither is set.
+    """
+    env_root = os.environ.get("GAI_WORKSPACE_ROOT")
+    if env_root:
+        return env_root
+
+    config = get_vcs_provider_config()
+    return config.get("workspace_root") or None
