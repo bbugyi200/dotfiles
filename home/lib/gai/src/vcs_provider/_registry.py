@@ -4,6 +4,7 @@ import os
 
 from ._base import VCSProvider
 from ._errors import VCSProviderNotFoundError
+from .config import get_vcs_provider_config
 
 # provider-name → provider-class
 _PROVIDERS: dict[str, type[VCSProvider]] = {}
@@ -32,11 +33,35 @@ def detect_vcs(cwd: str) -> str | None:
     return None
 
 
+def _resolve_vcs_name(cwd: str) -> str | None:
+    """Determine the VCS provider name to use.
+
+    Resolution order:
+    1. Env var ``GAI_VCS_PROVIDER`` (if set and not ``"auto"``)
+    2. Config ``vcs_provider.provider`` from gai.yml (if set and not ``"auto"``)
+    3. ``detect_vcs(cwd)`` (auto-detection)
+    """
+    # 1. Environment variable override
+    env_val = os.environ.get("GAI_VCS_PROVIDER")
+    if env_val and env_val != "auto":
+        return env_val
+
+    # 2. Config file override (only if env var didn't short-circuit)
+    if not env_val:
+        config = get_vcs_provider_config()
+        config_provider = config.get("provider")
+        if config_provider and config_provider != "auto":
+            return config_provider
+
+    # 3. Auto-detection
+    return detect_vcs(cwd)
+
+
 def get_vcs_provider(cwd: str) -> VCSProvider:
     """Return a :class:`VCSProvider` instance for *cwd*.
 
-    Walks up the directory tree to detect ``.hg/`` or ``.git/`` and
-    returns the matching registered provider.
+    Uses :func:`_resolve_vcs_name` to determine the provider, which
+    checks env var, config, and auto-detection in that order.
 
     Raises:
         VCSProviderNotFoundError: If no VCS directory is found or no
@@ -45,7 +70,7 @@ def get_vcs_provider(cwd: str) -> VCSProvider:
     # Ensure providers are loaded
     _ensure_providers_loaded()
 
-    vcs_name = detect_vcs(cwd)
+    vcs_name = _resolve_vcs_name(cwd)
     if vcs_name is None:
         raise VCSProviderNotFoundError(cwd)
     cls = _PROVIDERS.get(vcs_name)

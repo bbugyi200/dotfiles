@@ -158,6 +158,19 @@
         }
       }
     },
+    "vcs_provider": {
+      "type": "object",
+      "description": "Configuration for the VCS provider abstraction layer",
+      "additionalProperties": false,
+      "properties": {
+        "provider": {
+          "type": "string",
+          "description": "Name of the VCS provider ('git', 'hg', or 'auto' for auto-detection)",
+          "enum": ["git", "hg", "auto"],
+          "default": "auto"
+        }
+      }
+    },
     "xprompts": {
       "type": "object",
       "description": "Reusable text templates that can be referenced in prompts",

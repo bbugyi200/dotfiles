@@ -44,10 +44,15 @@ class GeminiProvider(LLMProvider):
         ]
 
         # Parse additional args from environment variable based on tier
+        # Check generic GAI_LLM_*_ARGS first, fall back to Gemini-specific
         if model_tier == "large":
-            extra_args_env = os.environ.get("GAI_BIG_GEMINI_ARGS")
+            extra_args_env = os.environ.get(
+                "GAI_LLM_LARGE_ARGS", os.environ.get("GAI_BIG_GEMINI_ARGS")
+            )
         else:
-            extra_args_env = os.environ.get("GAI_LITTLE_GEMINI_ARGS")
+            extra_args_env = os.environ.get(
+                "GAI_LLM_SMALL_ARGS", os.environ.get("GAI_LITTLE_GEMINI_ARGS")
+            )
 
         if extra_args_env:
             for arg in extra_args_env.split():

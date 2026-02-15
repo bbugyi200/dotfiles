@@ -12,7 +12,9 @@ from vcs_provider import (
     get_vcs_provider,
 )
 from vcs_provider._hg import _HgProvider
+from vcs_provider._registry import _resolve_vcs_name
 from vcs_provider._types import CommandOutput
+from vcs_provider.config import get_vcs_provider_config
 
 # === Tests for CommandOutput ===
 
@@ -415,3 +417,116 @@ class _MinimalProvider(VCSProvider):
         self, diff_name: str, cwd: str, *, timeout: int = 300
     ) -> tuple[bool, str | None]:
         return (True, None)
+
+
+# === Tests for _resolve_vcs_name ===
+
+
+def test_resolve_vcs_name_env_var_override() -> None:
+    """Env var GAI_VCS_PROVIDER=hg overrides auto-detection."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        os.makedirs(os.path.join(tmpdir, ".git"))
+        with patch.dict(os.environ, {"GAI_VCS_PROVIDER": "hg"}):
+            assert _resolve_vcs_name(tmpdir) == "hg"
+
+
+def test_resolve_vcs_name_env_var_auto() -> None:
+    """GAI_VCS_PROVIDER=auto bypasses config and auto-detects."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        os.makedirs(os.path.join(tmpdir, ".git"))
+        with patch.dict(os.environ, {"GAI_VCS_PROVIDER": "auto"}):
+            with patch(
+                "vcs_provider._registry.get_vcs_provider_config",
+                return_value={"provider": "hg"},
+            ):
+                assert _resolve_vcs_name(tmpdir) == "git"
+
+
+def test_resolve_vcs_name_config_override() -> None:
+    """Config provider: hg overrides auto-detection."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        os.makedirs(os.path.join(tmpdir, ".git"))
+        with patch.dict(os.environ, {}, clear=False):
+            # Ensure env var is not set
+            os.environ.pop("GAI_VCS_PROVIDER", None)
+            with patch(
+                "vcs_provider._registry.get_vcs_provider_config",
+                return_value={"provider": "hg"},
+            ):
+                assert _resolve_vcs_name(tmpdir) == "hg"
+
+
+def test_resolve_vcs_name_config_auto() -> None:
+    """Config provider: auto falls through to detect_vcs."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        os.makedirs(os.path.join(tmpdir, ".git"))
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("GAI_VCS_PROVIDER", None)
+            with patch(
+                "vcs_provider._registry.get_vcs_provider_config",
+                return_value={"provider": "auto"},
+            ):
+                assert _resolve_vcs_name(tmpdir) == "git"
+
+
+def test_resolve_vcs_name_default_auto_detects() -> None:
+    """No env/config falls through to detect_vcs."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        os.makedirs(os.path.join(tmpdir, ".hg"))
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("GAI_VCS_PROVIDER", None)
+            with patch(
+                "vcs_provider._registry.get_vcs_provider_config",
+                return_value={},
+            ):
+                assert _resolve_vcs_name(tmpdir) == "hg"
+
+
+# === Tests for get_vcs_provider_config ===
+
+
+def test_get_vcs_provider_config_missing_file() -> None:
+    """Returns empty dict when config file doesn't exist."""
+    with patch("vcs_provider.config.os.path.exists", return_value=False):
+        assert get_vcs_provider_config() == {}
+
+
+def test_get_vcs_provider_config_no_section() -> None:
+    """Returns empty dict when vcs_provider section is absent."""
+    with patch("vcs_provider.config.os.path.exists", return_value=True):
+        with patch(
+            "builtins.open",
+            MagicMock(
+                return_value=MagicMock(
+                    __enter__=lambda s: s,
+                    __exit__=MagicMock(return_value=False),
+                    read=MagicMock(return_value="llm_provider:\n  provider: gemini\n"),
+                )
+            ),
+        ):
+            with patch(
+                "vcs_provider.config.yaml.safe_load",
+                return_value={"llm_provider": {"provider": "gemini"}},
+            ):
+                assert get_vcs_provider_config() == {}
+
+
+def test_get_vcs_provider_config_with_section() -> None:
+    """Returns vcs_provider dict when section is present."""
+    with patch("vcs_provider.config.os.path.exists", return_value=True):
+        with patch(
+            "builtins.open",
+            MagicMock(
+                return_value=MagicMock(
+                    __enter__=lambda s: s,
+                    __exit__=MagicMock(return_value=False),
+                    read=MagicMock(return_value=""),
+                )
+            ),
+        ):
+            with patch(
+                "vcs_provider.config.yaml.safe_load",
+                return_value={"vcs_provider": {"provider": "hg"}},
+            ):
+                result = get_vcs_provider_config()
+                assert result == {"provider": "hg"}

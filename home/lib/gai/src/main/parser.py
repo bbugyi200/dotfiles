@@ -55,6 +55,12 @@ def create_parser() -> argparse.ArgumentParser:
         default=10,
         help="Auto-refresh interval in seconds (default: 10, 0 to disable)",
     )
+    ace_parser.add_argument(
+        "--vcs-provider",
+        choices=["git", "hg", "auto"],
+        default=None,
+        help="Override VCS provider ('git', 'hg', or 'auto' for auto-detection)",
+    )
 
     # --- axe ---
     axe_parser = top_level_subparsers.add_parser(
@@ -93,6 +99,12 @@ def create_parser() -> argparse.ArgumentParser:
         default="",
         help="Query string for filtering ChangeSpecs (empty = all ChangeSpecs). "
         "Examples: '\"feature\" AND %%d', '+myproject', '!!! OR @@@'",
+    )
+    axe_parser.add_argument(
+        "--vcs-provider",
+        choices=["git", "hg", "auto"],
+        default=None,
+        help="Override VCS provider ('git', 'hg', or 'auto' for auto-detection)",
     )
     axe_parser.add_argument(
         "--zombie-timeout",

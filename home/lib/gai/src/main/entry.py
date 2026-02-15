@@ -1,5 +1,6 @@
 """Main entry point for the GAI CLI tool."""
 
+import os
 import sys
 from typing import Literal, NoReturn, cast
 
@@ -204,6 +205,11 @@ def main() -> NoReturn:
     if args.command == "ace":
         from ace.tui import AceApp
 
+        # Wire --vcs-provider to env var for downstream resolution
+        vcs_provider = getattr(args, "vcs_provider", None)
+        if vcs_provider is not None:
+            os.environ["GAI_VCS_PROVIDER"] = vcs_provider
+
         try:
             # Resolve model tier: prefer --model-tier, fall back to --model-size
             model_tier_override = getattr(args, "model_tier", None)
@@ -229,6 +235,11 @@ def main() -> NoReturn:
     if args.command == "axe":
         from axe import AxeScheduler
         from axe_config import load_axe_config
+
+        # Wire --vcs-provider to env var for downstream resolution
+        vcs_provider = getattr(args, "vcs_provider", None)
+        if vcs_provider is not None:
+            os.environ["GAI_VCS_PROVIDER"] = vcs_provider
 
         config = load_axe_config()
         try:

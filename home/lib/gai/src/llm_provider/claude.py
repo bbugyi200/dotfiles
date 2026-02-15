@@ -53,10 +53,15 @@ class ClaudeCodeProvider(LLMProvider):
         ]
 
         # Parse additional args from environment variable based on tier
+        # Check generic GAI_LLM_*_ARGS first, fall back to Claude-specific
         if model_tier == "large":
-            extra_args_env = os.environ.get("GAI_CLAUDE_LARGE_ARGS")
+            extra_args_env = os.environ.get(
+                "GAI_LLM_LARGE_ARGS", os.environ.get("GAI_CLAUDE_LARGE_ARGS")
+            )
         else:
-            extra_args_env = os.environ.get("GAI_CLAUDE_SMALL_ARGS")
+            extra_args_env = os.environ.get(
+                "GAI_LLM_SMALL_ARGS", os.environ.get("GAI_CLAUDE_SMALL_ARGS")
+            )
 
         if extra_args_env:
             for arg in extra_args_env.split():
