@@ -63,8 +63,12 @@ def prepare_workspace(
         return False
 
     # Update workspace to target
-    print(f"Updating workspace to {update_target}...")
+    from vcs_provider import VCS_DEFAULT_REVISION
+
     provider = get_vcs_provider(workspace_dir)
+    if update_target == VCS_DEFAULT_REVISION:
+        update_target = provider.get_default_parent_revision(workspace_dir)
+    print(f"Updating workspace to {update_target}...")
     checkout_ok, checkout_err = provider.checkout(update_target, workspace_dir)
     if not checkout_ok:
         print(f"bb_hg_update failed: {checkout_err}", file=sys.stderr)

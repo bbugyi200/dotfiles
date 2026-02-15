@@ -169,6 +169,9 @@ class _HgProvider(VCSProvider):
 
     # --- Optional core methods ---
 
+    def get_default_parent_revision(self, cwd: str) -> str:
+        return "p4head"
+
     def sync_workspace(self, cwd: str) -> tuple[bool, str | None]:
         out = self._run(["bb_hg_sync"], cwd, timeout=600)
         return self._to_result(out, "bb_hg_sync")

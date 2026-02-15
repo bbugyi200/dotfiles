@@ -11,6 +11,9 @@ if TYPE_CHECKING:
     from ...changespec import ChangeSpec
 
 
+_ROOT_PARENT_SENTINEL = "__root__"
+
+
 class ProposalRebaseMixin:
     """Mixin providing proposal acceptance and rebase actions."""
 
@@ -327,8 +330,8 @@ class ProposalRebaseMixin:
             changespec.file_path, changespec.name
         )
 
-        # Always include p4head as the first option (rebasing to root)
-        eligible_parents.insert(0, ("p4head", "root"))
+        # Always include root as the first option (rebasing to VCS default)
+        eligible_parents.insert(0, (_ROOT_PARENT_SENTINEL, "root"))
 
         if len(eligible_parents) == 1:  # Only p4head, no other parents
             self.notify(  # type: ignore[attr-defined]
@@ -413,9 +416,14 @@ class ProposalRebaseMixin:
                         f"bb_hg_update failed: {checkout_err}",
                     )
 
+                # Resolve sentinel to real VCS default for the rebase call
+                rebase_parent = new_parent_name
+                if new_parent_name == _ROOT_PARENT_SENTINEL:
+                    rebase_parent = provider.get_default_parent_revision(workspace_dir)
+
                 # Run bb_hg_rebase
                 rebase_ok, rebase_err = provider.rebase(
-                    changespec.name, new_parent_name, workspace_dir
+                    changespec.name, rebase_parent, workspace_dir
                 )
                 if not rebase_ok:
                     return (
@@ -424,10 +432,12 @@ class ProposalRebaseMixin:
                     )
 
                 # Update PARENT field on success
-                # If p4head was selected, delete the PARENT field (pass None)
+                # If root sentinel was selected, delete the PARENT field (pass None)
                 try:
                     parent_value = (
-                        None if new_parent_name == "p4head" else new_parent_name
+                        None
+                        if new_parent_name == _ROOT_PARENT_SENTINEL
+                        else new_parent_name
                     )
                     update_changespec_parent_atomic(
                         changespec.file_path, changespec.name, parent_value

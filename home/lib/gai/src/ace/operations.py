@@ -127,17 +127,22 @@ def update_to_changespec(
     if not os.path.isdir(target_dir):
         return (False, f"Target path is not a directory: {target_dir}")
 
-    # Determine which revision to update to
-    if revision is not None:
-        update_target = revision
-    else:
-        # Default: Use PARENT field if set, otherwise use p4head
-        update_target = changespec.parent if changespec.parent else "p4head"
-
     # Run checkout via VCS provider
     from vcs_provider import get_vcs_provider
 
     provider = get_vcs_provider(target_dir)
+
+    # Determine which revision to update to
+    if revision is not None:
+        update_target = revision
+    else:
+        # Default: Use PARENT field if set, otherwise use VCS default
+        update_target = (
+            changespec.parent
+            if changespec.parent
+            else provider.get_default_parent_revision(target_dir)
+        )
+
     return provider.checkout(update_target, target_dir)
 
 

@@ -283,12 +283,13 @@ def test_update_to_changespec_uses_parent_revision(
 
 
 @patch("vcs_provider.get_vcs_provider")
-def test_update_to_changespec_uses_p4head_default(
+def test_update_to_changespec_uses_provider_default(
     mock_get_provider: MagicMock,
 ) -> None:
-    """Test update_to_changespec uses p4head when no parent or revision."""
+    """Test update_to_changespec uses provider default when no parent or revision."""
     mock_provider = MagicMock()
     mock_provider.checkout.return_value = (True, None)
+    mock_provider.get_default_parent_revision.return_value = "p4head"
     mock_get_provider.return_value = mock_provider
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -298,6 +299,7 @@ def test_update_to_changespec_uses_p4head_default(
         success, error = update_to_changespec(mock_changespec, workspace_dir=tmpdir)
 
         assert success is True
+        mock_provider.get_default_parent_revision.assert_called_once_with(tmpdir)
         mock_provider.checkout.assert_called_once_with("p4head", tmpdir)
 
 

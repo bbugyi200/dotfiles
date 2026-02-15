@@ -132,8 +132,10 @@ def test_restore_changespec_with_parent(make_changespec) -> None:  # type: ignor
     mock_provider.checkout.assert_called_once_with("parent_branch", "/tmp")
 
 
-def test_restore_changespec_without_parent_uses_p4head(make_changespec) -> None:  # type: ignore[no-untyped-def]
-    """Test restore_changespec uses p4head when no parent."""
+def test_restore_changespec_without_parent_uses_provider_default(  # type: ignore[no-untyped-def]
+    make_changespec,
+) -> None:
+    """Test restore_changespec uses provider default when no parent."""
     changespec = make_changespec.create(
         name="test_project_feature__1", status="Reverted", parent=None
     )
@@ -141,6 +143,7 @@ def test_restore_changespec_without_parent_uses_p4head(make_changespec) -> None:
     mock_provider = MagicMock()
     mock_provider.checkout.return_value = (True, None)
     mock_provider.apply_patch.return_value = (True, None)
+    mock_provider.get_default_parent_revision.return_value = "p4head"
 
     with patch(
         "ace.restore.get_workspace_directory_for_changespec", return_value="/tmp"
@@ -154,7 +157,9 @@ def test_restore_changespec_without_parent_uses_p4head(make_changespec) -> None:
                         with patch("pathlib.Path.exists", return_value=True):
                             restore_changespec(changespec)
 
-    # Provider checkout should be called with p4head
+    # Provider get_default_parent_revision should be called
+    mock_provider.get_default_parent_revision.assert_called_once_with("/tmp")
+    # Provider checkout should be called with the resolved default
     mock_provider.checkout.assert_called_once_with("p4head", "/tmp")
 
 

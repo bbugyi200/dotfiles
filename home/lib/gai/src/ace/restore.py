@@ -171,12 +171,14 @@ def restore_changespec(
         return (False, error)
 
     # Determine update target
-    update_target = changespec.parent if changespec.parent else "p4head"
+    provider = get_vcs_provider(workspace_dir)
+    update_target = (
+        changespec.parent
+        if changespec.parent
+        else provider.get_default_parent_revision(workspace_dir)
+    )
     if console:
         console.print(f"[cyan]Updating to: {update_target}[/cyan]")
-
-    # Run bb_hg_update
-    provider = get_vcs_provider(workspace_dir)
     success, error = provider.checkout(update_target, workspace_dir)
     if not success:
         return (False, error)

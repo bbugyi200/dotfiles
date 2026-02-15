@@ -143,11 +143,13 @@ class EntryPointsMixin:
                     history_sort_key=history_sort_key,
                 )
             else:
-                # Project selection: target p4head
+                # Project selection: target VCS default revision
+                from vcs_provider import VCS_DEFAULT_REVISION
+
                 self._show_prompt_input_bar(  # type: ignore[attr-defined]
                     project_name,
                     cl_name=None,
-                    update_target="p4head",
+                    update_target=VCS_DEFAULT_REVISION,
                     history_sort_key=history_sort_key,
                 )
 

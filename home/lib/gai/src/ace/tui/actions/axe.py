@@ -245,8 +245,6 @@ class AxeMixin:
             workspace_num: Workspace number.
             cl_name: Optional CL name to checkout before running command.
         """
-        import subprocess
-
         try:
             workspace_dir = get_workspace_directory(project, workspace_num)
         except RuntimeError as e:
@@ -264,25 +262,13 @@ class AxeMixin:
                     f"Warning: bb_hg_clean failed: {clean_error}", severity="warning"
                 )
 
-            # Checkout the CL
-            try:
-                result = subprocess.run(
-                    ["bb_hg_update", cl_name],
-                    cwd=workspace_dir,
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                    timeout=300,
-                )
-                if result.returncode != 0:
-                    error = (result.stderr or result.stdout).strip()
-                    self.notify(f"bb_hg_update failed: {error}", severity="error")  # type: ignore[attr-defined]
-                    return
-            except subprocess.TimeoutExpired:
-                self.notify("bb_hg_update timed out", severity="error")  # type: ignore[attr-defined]
-                return
-            except FileNotFoundError:
-                self.notify("bb_hg_update command not found", severity="error")  # type: ignore[attr-defined]
+            # Checkout the CL via VCS provider
+            from vcs_provider import get_vcs_provider
+
+            provider = get_vcs_provider(workspace_dir)
+            checkout_ok, checkout_err = provider.checkout(cl_name, workspace_dir)
+            if not checkout_ok:
+                self.notify(f"checkout failed: {checkout_err}", severity="error")  # type: ignore[attr-defined]
                 return
 
         pid = start_background_command(

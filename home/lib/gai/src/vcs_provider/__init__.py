@@ -12,7 +12,10 @@ from ._base import VCSProvider
 from ._errors import VCSOperationError, VCSProviderNotFoundError
 from ._registry import detect_vcs, get_vcs_provider, register_provider
 
+VCS_DEFAULT_REVISION = "__vcs_default__"
+
 __all__ = [
+    "VCS_DEFAULT_REVISION",
     "VCSOperationError",
     "VCSProvider",
     "VCSProviderNotFoundError",

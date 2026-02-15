@@ -87,6 +87,12 @@ class VCSProvider(ABC):
 
     # --- Optional core methods (default raises NotImplementedError) ---
 
+    def get_default_parent_revision(self, cwd: str) -> str:
+        """Return the default parent revision for this VCS (e.g. p4head, origin/main)."""
+        raise NotImplementedError(
+            "get_default_parent_revision is not supported by this VCS provider"
+        )
+
     def sync_workspace(self, cwd: str) -> tuple[bool, str | None]:
         """Sync the workspace with the remote (fetch + rebase / hg sync)."""
         raise NotImplementedError(

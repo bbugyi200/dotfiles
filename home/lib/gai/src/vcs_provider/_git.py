@@ -200,6 +200,16 @@ class _GitProvider(VCSProvider):
 
     # --- Optional core methods ---
 
+    def get_default_parent_revision(self, cwd: str) -> str:
+        # Reuse logic from sync_workspace for detecting default branch
+        branch_out = self._run(["git", "symbolic-ref", "refs/remotes/origin/HEAD"], cwd)
+        default_branch = "main"
+        if branch_out.success:
+            ref = branch_out.stdout.strip()
+            if ref:
+                default_branch = ref.rsplit("/", 1)[-1]
+        return f"origin/{default_branch}"
+
     def sync_workspace(self, cwd: str) -> tuple[bool, str | None]:
         # Fetch latest from origin
         fetch_out = self._run(["git", "fetch", "origin"], cwd, timeout=600)

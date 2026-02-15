@@ -450,23 +450,13 @@ class BaseActionsMixin:
             tmux_session = f"{project_basename}_{workspace_num}"
 
         def run_commands() -> tuple[bool, str]:
-            # Run bb_hg_update
-            try:
-                result = subprocess.run(
-                    ["bb_hg_update", changespec.name],
-                    cwd=workspace_dir,
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                    timeout=300,
-                )
-                if result.returncode != 0:
-                    error = (result.stderr or result.stdout).strip()
-                    return (False, f"bb_hg_update failed: {error}")
-            except subprocess.TimeoutExpired:
-                return (False, "bb_hg_update timed out")
-            except FileNotFoundError:
-                return (False, "bb_hg_update command not found")
+            # Checkout via VCS provider
+            from vcs_provider import get_vcs_provider
+
+            provider = get_vcs_provider(workspace_dir)
+            success, error = provider.checkout(changespec.name, workspace_dir)
+            if not success:
+                return (False, f"checkout failed: {error}")
 
             # Run tm <session>
             try:
@@ -493,8 +483,6 @@ class BaseActionsMixin:
         Args:
             workspace_num: The workspace number to checkout to (1-9).
         """
-        import subprocess
-
         from running_field import get_workspace_directory
 
         from ...changespec import get_base_status
@@ -525,23 +513,13 @@ class BaseActionsMixin:
             return
 
         def run_checkout() -> tuple[bool, str]:
-            # Run bb_hg_update
-            try:
-                result = subprocess.run(
-                    ["bb_hg_update", changespec.name],
-                    cwd=workspace_dir,
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                    timeout=300,
-                )
-                if result.returncode != 0:
-                    error = (result.stderr or result.stdout).strip()
-                    return (False, f"bb_hg_update failed: {error}")
-            except subprocess.TimeoutExpired:
-                return (False, "bb_hg_update timed out")
-            except FileNotFoundError:
-                return (False, "bb_hg_update command not found")
+            # Checkout via VCS provider
+            from vcs_provider import get_vcs_provider
+
+            provider = get_vcs_provider(workspace_dir)
+            success, error = provider.checkout(changespec.name, workspace_dir)
+            if not success:
+                return (False, f"checkout failed: {error}")
 
             return (True, f"Checked out {changespec.name} in {workspace_dir}")
 

@@ -10,6 +10,7 @@ from axe_runner_utils import (
     prepare_workspace,
     was_killed,
 )
+from vcs_provider import VCS_DEFAULT_REVISION
 
 
 def test_finalize_axe_runner_success() -> None:
@@ -146,7 +147,9 @@ def test_sigterm_handler_sets_killed() -> None:
 def test_prepare_workspace_clean_fails() -> None:
     """Test prepare_workspace returns False when clean fails."""
     with patch("commit_utils.run_bb_hg_clean", return_value=(False, "clean error")):
-        result = prepare_workspace("/workspace", "my_cl", "p4head", backup_suffix="ace")
+        result = prepare_workspace(
+            "/workspace", "my_cl", VCS_DEFAULT_REVISION, backup_suffix="ace"
+        )
         assert result is False
 
 
@@ -154,12 +157,15 @@ def test_prepare_workspace_update_timeout() -> None:
     """Test prepare_workspace returns False on bb_hg_update timeout."""
     mock_provider = MagicMock()
     mock_provider.checkout.return_value = (False, "bb_hg_update timed out")
+    mock_provider.get_default_parent_revision.return_value = "p4head"
 
     with (
         patch("commit_utils.run_bb_hg_clean", return_value=(True, None)),
         patch("axe_runner_utils.get_vcs_provider", return_value=mock_provider),
     ):
-        result = prepare_workspace("/workspace", "my_cl", "p4head", backup_suffix="ace")
+        result = prepare_workspace(
+            "/workspace", "my_cl", VCS_DEFAULT_REVISION, backup_suffix="ace"
+        )
         assert result is False
 
 
@@ -167,12 +173,15 @@ def test_prepare_workspace_update_fails() -> None:
     """Test prepare_workspace returns False when bb_hg_update returns non-zero."""
     mock_provider = MagicMock()
     mock_provider.checkout.return_value = (False, "bb_hg_update failed: update error")
+    mock_provider.get_default_parent_revision.return_value = "p4head"
 
     with (
         patch("commit_utils.run_bb_hg_clean", return_value=(True, None)),
         patch("axe_runner_utils.get_vcs_provider", return_value=mock_provider),
     ):
-        result = prepare_workspace("/workspace", "my_cl", "p4head", backup_suffix="ace")
+        result = prepare_workspace(
+            "/workspace", "my_cl", VCS_DEFAULT_REVISION, backup_suffix="ace"
+        )
         assert result is False
 
 
@@ -183,12 +192,15 @@ def test_prepare_workspace_update_exception() -> None:
         False,
         "bb_hg_update command not found",
     )
+    mock_provider.get_default_parent_revision.return_value = "p4head"
 
     with (
         patch("commit_utils.run_bb_hg_clean", return_value=(True, None)),
         patch("axe_runner_utils.get_vcs_provider", return_value=mock_provider),
     ):
-        result = prepare_workspace("/workspace", "my_cl", "p4head", backup_suffix="ace")
+        result = prepare_workspace(
+            "/workspace", "my_cl", VCS_DEFAULT_REVISION, backup_suffix="ace"
+        )
         assert result is False
 
 
@@ -196,14 +208,51 @@ def test_prepare_workspace_success() -> None:
     """Test prepare_workspace returns True on success with correct backup suffix."""
     mock_provider = MagicMock()
     mock_provider.checkout.return_value = (True, None)
+    mock_provider.get_default_parent_revision.return_value = "p4head"
 
     with (
         patch("commit_utils.run_bb_hg_clean", return_value=(True, None)) as mock_clean,
         patch("axe_runner_utils.get_vcs_provider", return_value=mock_provider),
     ):
         result = prepare_workspace(
-            "/workspace", "my_cl", "p4head", backup_suffix="workflow"
+            "/workspace", "my_cl", VCS_DEFAULT_REVISION, backup_suffix="workflow"
         )
         assert result is True
         # Verify the backup suffix was used correctly
         mock_clean.assert_called_once_with("/workspace", "my_cl-workflow")
+
+
+def test_prepare_workspace_resolves_vcs_default_sentinel() -> None:
+    """Test prepare_workspace resolves VCS_DEFAULT_REVISION sentinel."""
+    mock_provider = MagicMock()
+    mock_provider.checkout.return_value = (True, None)
+    mock_provider.get_default_parent_revision.return_value = "origin/main"
+
+    with (
+        patch("commit_utils.run_bb_hg_clean", return_value=(True, None)),
+        patch("axe_runner_utils.get_vcs_provider", return_value=mock_provider),
+    ):
+        result = prepare_workspace(
+            "/workspace", "my_cl", VCS_DEFAULT_REVISION, backup_suffix="ace"
+        )
+        assert result is True
+        mock_provider.get_default_parent_revision.assert_called_once_with("/workspace")
+        mock_provider.checkout.assert_called_once_with("origin/main", "/workspace")
+
+
+def test_prepare_workspace_non_sentinel_passes_through() -> None:
+    """Test prepare_workspace passes non-sentinel update_target directly."""
+    mock_provider = MagicMock()
+    mock_provider.checkout.return_value = (True, None)
+
+    with (
+        patch("commit_utils.run_bb_hg_clean", return_value=(True, None)),
+        patch("axe_runner_utils.get_vcs_provider", return_value=mock_provider),
+    ):
+        result = prepare_workspace(
+            "/workspace", "my_cl", "my_branch", backup_suffix="ace"
+        )
+        assert result is True
+        # get_default_parent_revision should NOT be called
+        mock_provider.get_default_parent_revision.assert_not_called()
+        mock_provider.checkout.assert_called_once_with("my_branch", "/workspace")
