@@ -11,7 +11,7 @@ LOG_FILE="$SCRIPT_DIR/../hooks.log"
 # Log a timestamped message to hooks.log
 function log_message() {
     local message="$1"
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] chez_plan_hook: $message" >> "$LOG_FILE"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] plan_hook: $message" >> "$LOG_FILE"
 }
 
 # Extract tool_name from JSON input using jq or grep fallback
@@ -27,12 +27,14 @@ function extract_tool_name() {
 
 # Get the tmux window prefix for notifications
 function get_tmux_prefix() {
-    local prefix="\[chez]"
+    local project_name
+    project_name=$(basename "${CLAUDE_PROJECT_DIR:-.}")
+    local prefix="\[${project_name}]"
     if [[ -n "$TMUX_PANE" ]]; then
         local window
         window=$(tmux display-message -t "$TMUX_PANE" -p '#W' 2>/dev/null)
         if [[ -n "$window" ]]; then
-            prefix="\[chez#${window}]"
+            prefix="\[${project_name}#${window}]"
         fi
     fi
     echo "$prefix"
