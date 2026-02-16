@@ -1,0 +1,184 @@
+#!/bin/bash
+
+source ~/lib/bugyi.sh
+
+TOOLS_DIR="tools"
+LIB_DIR="lib"
+USAGE_GRAMMAR=(
+  "[-d DIR] [-l DIR] [-v] SCRIPT_PATH PROJECT_PATH"
+  "-h"
+)
+
+read -r -d '' DOC <<EOM
+$(usage)
+
+Vendor scripts from the dotfiles repo into other project repos. Copies the
+script with a date-stamped filename and optionally bundles the bugyi.sh library.
+
+Positional Arguments
+--------------------
+SCRIPT_PATH
+    Path to the script to vendor.
+
+PROJECT_PATH
+    Path to the target project directory.
+
+Optional Arguments
+------------------
+-d DIR | --tools-dir DIR
+    Destination directory within the project for the vendored script (relative
+    to project root). Defaults to ${TOOLS_DIR}.
+
+-h | --help
+    View this help message.
+
+-l DIR | --lib-dir DIR
+    Library directory within the project for bugyi.sh (relative to project
+    root). Defaults to ${LIB_DIR}.
+
+-v | --verbose
+    Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
+
+Examples
+--------
+dot_vendor ~/bin/some_script /path/to/project
+dot_vendor -d scripts -l vendor/lib ~/bin/bam /path/to/project
+EOM
+
+# Insert a line of text after line N in a file.
+function _insert_after_line() {
+  local line_num="$1" text="$2" file="$3"
+  local tmp="${file}.tmp.$$"
+  { head -n "${line_num}" "${file}"; echo "${text}"; tail -n +"$((line_num + 1))" "${file}"; } > "${tmp}"
+  mv "${tmp}" "${file}"
+}
+
+# Insert a line of text before line N in a file.
+function _insert_before_line() {
+  local line_num="$1" text="$2" file="$3"
+  local tmp="${file}.tmp.$$"
+  { head -n "$((line_num - 1))" "${file}"; echo "${text}"; tail -n +"${line_num}" "${file}"; } > "${tmp}"
+  mv "${tmp}" "${file}"
+}
+
+function run() {
+  parse_cli_args "$@"
+
+  local date_suffix
+  date_suffix="$(date +%y%m%d)"
+
+  local script_basename
+  script_basename="$(basename "${SCRIPT_PATH}")"
+
+  local dest_dir="${PROJECT_PATH}/${TOOLS_DIR}"
+  mkdir -p "${dest_dir}"
+
+  local vendored_script="${dest_dir}/${script_basename}-${date_suffix}"
+  cp "${SCRIPT_PATH}" "${vendored_script}"
+  log::info "Copied %s → %s" "${SCRIPT_PATH}" "${vendored_script}"
+
+  # Insert provenance comment on line 2 (after the shebang).
+  local provenance="# Vendored from my.files via dot_vendor on $(date +%Y-%m-%d)"
+  _insert_after_line 1 "${provenance}" "${vendored_script}"
+
+  if grep -q 'source ~/lib/bugyi.sh' "${SCRIPT_PATH}"; then
+    log::info "Detected bugyi.sh usage, vendoring library too."
+
+    local lib_dest="${PROJECT_PATH}/${LIB_DIR}"
+    mkdir -p "${lib_dest}"
+
+    # Remove any existing bugyi_*.sh files in the lib dir.
+    local old_bugyi
+    for old_bugyi in "${lib_dest}"/bugyi_*.sh; do
+      if [[ -f "${old_bugyi}" ]]; then
+        log::info "Removing old %s" "${old_bugyi}"
+        rm "${old_bugyi}"
+      fi
+    done
+
+    local vendored_bugyi="${lib_dest}/bugyi_${date_suffix}.sh"
+    cp ~/lib/bugyi.sh "${vendored_bugyi}"
+    log::info "Copied ~/lib/bugyi.sh → %s" "${vendored_bugyi}"
+
+    # Add provenance comment to vendored bugyi.sh.
+    if head -1 "${vendored_bugyi}" | grep -q '^#!'; then
+      _insert_after_line 1 "${provenance}" "${vendored_bugyi}"
+    else
+      _insert_before_line 1 "${provenance}" "${vendored_bugyi}"
+    fi
+
+    # Rewrite the source line in the vendored script to use a relative path.
+    local rel_path
+    rel_path="$(python3 -c "import os.path; print(os.path.relpath('${PROJECT_PATH}/${LIB_DIR}', '${dest_dir}'))")"
+    local new_source="source \"\$(dirname \"\${BASH_SOURCE[0]}\")/${rel_path}/bugyi_${date_suffix}.sh\""
+    sed -i '' "s|source ~/lib/bugyi.sh|${new_source}|" "${vendored_script}"
+    log::info "Rewrote source line → %s" "${new_source}"
+  fi
+
+  log::info "Done."
+}
+
+function parse_cli_args() {
+  log::debug "Command-Line Arguments: ($*)"
+
+  eval set -- "$(getopt -o "d:,h,l:,v" -l "tools-dir:,help,lib-dir:,verbose" -- "$@")"
+
+  VERBOSE=0
+  while [[ -n "$1" ]]; do
+    case $1 in
+    -d | --tools-dir)
+      TOOLS_DIR="$2"
+      shift
+      ;;
+    -h | --help)
+      echo "${DOC}"
+      exit 0
+      ;;
+    -l | --lib-dir)
+      LIB_DIR="$2"
+      shift
+      ;;
+    -v | --verbose)
+      VERBOSE=$((VERBOSE + 1))
+      ;;
+    --)
+      shift
+      break
+      ;;
+    esac
+    shift
+  done
+
+  if [[ "${VERBOSE}" -gt 1 ]]; then
+    PS4='$LINENO: '
+    set -x
+  fi
+
+  if [[ $# -ne 2 ]]; then
+    die "$(usage)" 2
+  fi
+
+  SCRIPT_PATH="$1"
+  shift
+  PROJECT_PATH="$1"
+  shift
+
+  if ! [[ -f "${SCRIPT_PATH}" ]]; then
+    die "SCRIPT_PATH does not exist or is not a file: %s" "${SCRIPT_PATH}"
+  fi
+
+  if ! [[ -d "${PROJECT_PATH}" ]]; then
+    die "PROJECT_PATH does not exist or is not a directory: %s" "${PROJECT_PATH}"
+  fi
+
+  readonly DOC
+  readonly LIB_DIR
+  readonly PROJECT_PATH
+  readonly SCRIPT_PATH
+  readonly TOOLS_DIR
+  readonly VERBOSE
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+  run "$@"
+fi
