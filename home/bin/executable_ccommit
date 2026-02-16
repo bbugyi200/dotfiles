@@ -3,7 +3,7 @@
 source ~/lib/bugyi.sh
 
 export USAGE_GRAMMAR=(
-  "[-v] <tag> <message> <file>..."
+  "[-v] [--bead <id>] <tag> <message> <file>..."
   "-h"
 )
 
@@ -37,6 +37,10 @@ Optional Arguments
 -v | --verbose
     Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
 
+--bead <id>
+    A bead issue ID to associate with this commit. When provided, the bead ID
+    is appended to the commit headline in parentheses, e.g. "feat: Message (beads-xxx)".
+
 Examples
 --------
 ccommit feat "Add user authentication" src/auth.py src/login.py
@@ -63,11 +67,16 @@ function run() {
 function parse_cli_args() {
   log::debug "Command-Line Arguments: ($*)"
 
-  eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
+  eval set -- "$(getopt -o "b:,h,v" -l "bead:,help,verbose" -- "$@")"
 
+  BEAD_ID=""
   VERBOSE=0
   while [[ -n "$1" ]]; do
     case $1 in
+    -b | --bead)
+      shift
+      BEAD_ID="$1"
+      ;;
     -h | --help)
       echo "${DOC}"
       exit 0
@@ -112,6 +121,7 @@ function parse_cli_args() {
     die -x2 "Invalid tag '${TAG}'. Must be one of: ${VALID_TAGS[*]}"
   fi
 
+  readonly BEAD_ID
   readonly DOC
   readonly VERBOSE
   readonly TAG
@@ -136,6 +146,12 @@ function validate_staged_changes() {
 # Build the commit message and execute 'git commit'.
 function do_commit() {
   local message="${TAG}: ${MESSAGE}"
+  if [[ -n "${BEAD_ID}" ]]; then
+    # Inject bead reference into the first line of the commit message
+    local first_line="${message%%$'\n'*}"
+    local rest="${message#"$first_line"}"
+    message="${first_line} (${BEAD_ID})${rest}"
+  fi
   log::debug "Commit message:\n%s" "${message}"
   git commit -F - <<<"${message}"
 }
@@ -157,6 +173,11 @@ function do_beads_sync() {
 # Send Mac notification with commit details.
 function send_notification() {
   local message="${TAG}: ${MESSAGE}"
+  if [[ -n "${BEAD_ID}" ]]; then
+    local first_line="${message%%$'\n'*}"
+    local rest="${message#"$first_line"}"
+    message="${first_line} (${BEAD_ID})${rest}"
+  fi
   local project_name
   project_name=$(basename "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}")
   local prefix="\[${project_name}]"

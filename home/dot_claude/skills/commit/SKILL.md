@@ -28,6 +28,17 @@ ccommit <tag> <message> <file>...
 3. The message can contain newlines for multi-line commits
 4. **NEVER mention "Claude" or "Claude Code" in commit messages** - write as if a human authored the commit
 
+## Bead Association
+
+Before committing, check if your work is associated with a bead issue:
+
+1. Run `bd list --status=in_progress` to see beads currently in progress
+2. If the changes you're committing relate to an in-progress bead, include the `--bead` option:
+   ```
+   ccommit --bead <bead-id> <tag> "<message>" <file>...
+   ```
+3. The bead ID will be appended to the commit headline in parentheses, e.g. `feat: Add feature (beads-abc1234)`
+
 ## Example
 
 ccommit feat "Add user authentication
