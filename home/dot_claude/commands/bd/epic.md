@@ -4,4 +4,5 @@ argument-hint: <plan_file_path>
 ---
 
 Can you help me create one bead for every phase in the @$1 plan file? These beads should all be children of a new epic
-bead that you should also create. Make sure that each phase bead has the appropriate dependencies set up.
+bead that you should also create. The epic bead should be linked to the plan file using the `bd create` command's
+`--design` option. Make sure that each phase bead has the appropriate dependencies set up.
