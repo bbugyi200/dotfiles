@@ -1,0 +1,66 @@
+input:
+  - name: cl_name
+    type: word
+
+steps:
+  - name: setup
+    python: |
+      from sase.ace.changespec import find_all_changespecs
+      from sase.running_field import (
+          get_first_available_axe_workspace,
+          get_workspace_directory_for_num,
+          claim_workspace,
+      )
+      import os
+
+      cl_name = {{ cl_name | tojson }}
+      cs_match = None
+      for cs in find_all_changespecs():
+          if cs.name == cl_name:
+              cs_match = cs
+              break
+      if not cs_match:
+          raise RuntimeError(f"ChangeSpec '{cl_name}' not found")
+
+      project_name = cs_match.project_basename
+      project_file = cs_match.file_path
+
+      workspace_num = get_first_available_axe_workspace(project_file)
+      workspace_dir, _ = get_workspace_directory_for_num(workspace_num, project_name)
+
+      pid = os.getppid()
+      workflow_name = f"hg-{cl_name}"
+      claim_workspace(project_file, workspace_num, workflow_name, pid, cl_name)
+
+      print(f"project_name={project_name}")
+      print(f"project_file={project_file}")
+      print(f"workspace_dir={workspace_dir}")
+      print(f"workspace_num={workspace_num}")
+      print(f"_chdir={workspace_dir}")
+    output:
+      project_name: word
+      project_file: path
+      workspace_dir: path
+      workspace_num: int
+
+  - name: prepare
+    bash: |
+      sase_hg_clean "{{ cl_name }}-hg"
+      sase_hg_update "{{ cl_name }}"
+      echo "success=true"
+    output: { success: bool }
+
+  - name: inject
+    prompt_part: ""
+
+  - name: release
+    python: |
+      from sase.running_field import release_workspace
+      release_workspace(
+          {{ setup.project_file | tojson }},
+          {{ setup.workspace_num }},
+          f"hg-{{ cl_name }}",
+          {{ cl_name | tojson }},
+      )
+      print("released=true")
+    output: { released: bool }
