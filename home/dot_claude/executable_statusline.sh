@@ -101,7 +101,6 @@ if [[ -n "$git_info" ]]; then
   git_section="${sep}${git_info}"
 fi
 
-echo  # blank line separator before permission mode line
 if [[ -n "$session_name" ]]; then
   echo -e "${DIM}${session_name}${RESET}${sep}${colored_model}${colored_cwd}${git_section}${sep}${colored_duration}"
 else
