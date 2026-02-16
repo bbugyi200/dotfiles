@@ -38,15 +38,26 @@ mins=$(( total_secs / 60 ))
 secs=$(( total_secs % 60 ))
 duration_str="⏱️ ${mins}m ${secs}s"
 
-# --- Model: format as [Name] ---
-model_prefix=""
-if [[ -n "$model_name" ]]; then
-  model_prefix="[${model_name}] "
-fi
+# --- Model: used in build output below ---
+
+# --- ANSI color codes ---
+DIM='\033[2m'
+BOLD='\033[1m'
+BOLD_CYAN='\033[1;36m'
+GREEN='\033[32m'
+RESET='\033[0m'
 
 # --- Build output ---
+sep="${DIM}  |  ${RESET}"
+colored_model=""
+if [[ -n "$model_name" ]]; then
+  colored_model="${BOLD_CYAN}[${model_name}]${RESET}  "
+fi
+colored_cwd="${BOLD}${short_cwd}${RESET}"
+colored_duration="${GREEN}${duration_str}${RESET}"
+
 if [[ -n "$session_name" ]]; then
-  echo -e "\033[2m${session_name}\033[0m | ${model_prefix}${short_cwd} | ${duration_str}"
+  echo -e "${DIM}${session_name}${RESET}${sep}${colored_model}${colored_cwd}${sep}${colored_duration}"
 else
-  echo "${model_prefix}${short_cwd} | ${duration_str}"
+  echo -e "${colored_model}${colored_cwd}${sep}${colored_duration}"
 fi
