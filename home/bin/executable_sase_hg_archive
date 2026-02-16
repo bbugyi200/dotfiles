@@ -1,0 +1,8 @@
+#!/bin/bash
+
+cl_name="$1"
+shift
+
+set -x
+hg cls-setnumber -c "$cl_name" --remove
+set +x

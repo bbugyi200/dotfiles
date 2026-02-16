@@ -1,0 +1,41 @@
+#!/bin/bash
+
+source ~/lib/bugyi.sh
+
+function run() {
+  local cl_name="$1"
+  shift
+
+  local resolved_name="$cl_name"
+
+  # Only perform CL name resolution if the name contains underscores
+  if [[ "$cl_name" == *_* ]]; then
+    # Get all available CL names
+    local all_cl_names
+    all_cl_names=$(get_all_cl_names)
+
+    # Check if exact CL name exists
+    if echo "$all_cl_names" | grep -qx "$cl_name"; then
+      resolved_name="$cl_name"
+    else
+      # Look for <name>__<N> variants and pick highest N
+      resolved_name=$(echo "$all_cl_names" \
+        | grep -E "^${cl_name}__[0-9]+$" \
+        | sort -t'_' -k3 -n \
+        | tail -1)
+
+      if [[ -z "$resolved_name" ]]; then
+        die "CL name '$cl_name' not found"
+      fi
+
+      log::info "Resolved '%s' -> '%s'" "$cl_name" "$resolved_name"
+    fi
+  fi
+
+  hg update "$resolved_name" "$@"
+  clear_branch_name
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+  run "$@"
+fi

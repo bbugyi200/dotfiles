@@ -1,0 +1,107 @@
+#!/bin/bash
+
+source ~/lib/bugyi.sh
+
+export USAGE_GRAMMAR=(
+  "[-v] [-U] NOTE"
+  "-h"
+)
+
+read -r -d '' DOC <<EOM
+$(usage)
+
+Amend the current hg commit with all pending changes and upload.
+
+Positional Arguments
+--------------------
+NOTE
+    An amend note describing the changes (similar to a commit message).
+
+Optional Arguments
+------------------
+-h | --help
+    View this help message.
+
+-U | --no-upload
+    Skip uploading after amending.
+
+-v | --verbose
+    Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
+
+Examples
+--------
+sase_hg_amend "Fix typo"           # Amend and upload
+sase_hg_amend -U "Fix typo"       # Amend without uploading
+sase_hg_amend -vv "Fix typo"      # Amend and upload with verbose tracing
+
+EOM
+
+function run() {
+  parse_cli_args "$@"
+
+  # Prevents content divergence errors (ex: if another agent amended this CL in another workspace).
+  hg update $(branch_name)
+  # Add new/removed files to the commit.
+  hg addremove
+  # Amend the last commit with the staged changes.
+  hg amend -n "${NOTE}"
+
+  if ${SHOULD_UPLOAD}; then
+    sase_hg_upload
+  fi
+}
+
+function parse_cli_args() {
+  log::debug "Command-Line Arguments: ($*)"
+
+  eval set -- "$(getopt -o "h,U,v" -l "help,no-upload,verbose" -- "$@")"
+
+  VERBOSE=0
+  SHOULD_UPLOAD=true
+  while [[ -n "$1" ]]; do
+    case $1 in
+    -h | --help)
+      echo "${DOC}"
+      exit 0
+      ;;
+    -U | --no-upload)
+      SHOULD_UPLOAD=false
+      ;;
+    -v | --verbose)
+      VERBOSE=$((VERBOSE + 1))
+      ;;
+    --)
+      shift
+      break
+      ;;
+    esac
+    shift
+  done
+
+  if [[ "${VERBOSE}" -gt 1 ]]; then
+    PS4='$LINENO: '
+    set -x
+  fi
+
+  if [[ $# -ne 1 ]]; then
+    die "$(usage)" 2
+  fi
+
+  NOTE="$1"
+  local byte_len
+  byte_len=$(printf '%s' "${NOTE}" | wc -c)
+  if [[ ${byte_len} -gt 255 ]]; then
+    log::warn "Note exceeds 255 bytes (${byte_len}). Trimming to fit hg amend limit."
+    NOTE="$(printf '%s' "${NOTE}" | head -c 252)..."
+  fi
+  readonly NOTE
+  shift
+
+  readonly DOC
+  readonly VERBOSE
+  readonly SHOULD_UPLOAD
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+  run "$@"
+fi

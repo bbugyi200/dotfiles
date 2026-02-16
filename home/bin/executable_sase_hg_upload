@@ -1,0 +1,14 @@
+#!/bin/bash
+
+branch_name="$(branch_name)"
+if [[ -n "${branch_name}" ]]; then
+  hg update "${branch_name}"
+fi
+
+# The `hg evolve` command may fail if there are no changes to evolve.
+hg evolve --any
+
+# But the following commands MUST always succeed.
+set -e
+hg fix
+hg upload tree

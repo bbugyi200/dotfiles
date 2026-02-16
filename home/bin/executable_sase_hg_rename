@@ -1,0 +1,3 @@
+#!/bin/bash
+
+hg cls-name "$@" && clear_branch_name
