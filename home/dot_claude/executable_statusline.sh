@@ -7,7 +7,6 @@ input=$(cat)
 # --- Extract fields from JSON ---
 session_id=$(echo "$input" | jq -r '.session_id // ""')
 cwd=$(echo "$input" | jq -r '.cwd // ""')
-transcript=$(echo "$input" | jq -r '.transcript_path // ""')
 
 # --- CWD: shorten to ~/relative ---
 home="${HOME:-$(eval echo ~)}"
@@ -17,8 +16,7 @@ short_cwd="${cwd/#$home/\~}"
 cache="/tmp/claude-statusline-cache-${session_id}"
 
 if [[ -f "$cache" ]]; then
-  session_name=$(sed -n '1p' "$cache")
-  first_prompt=$(sed -n '2p' "$cache")
+  session_name=$(< "$cache")
 else
   # Session name: look up via `claude conversation list`
   session_name=""
@@ -28,27 +26,8 @@ else
         '.[] | select(.session_id == $sid) | .name // ""' 2>/dev/null || echo "")
   fi
 
-  # Initial prompt: parse transcript JSONL for first real user message
-  first_prompt=""
-  if [[ -n "$transcript" && -f "$transcript" ]]; then
-    first_prompt=$(jq -r '
-      select(.type == "user" and .userType == "external")
-      | .message.content
-      | if type == "string" then . else empty end
-    ' "$transcript" 2>/dev/null \
-      | grep -v '^$' \
-      | grep -v '^[[:space:]]*$' \
-      | grep -v '^[[:space:]]*<' \
-      | grep -v '^Caveat:' \
-      | head -1 \
-      | sed 's/^[[:space:]]*//' \
-      | sed 's/^ultrathink: *//' \
-      | cut -c1-60)
-    [[ ${#first_prompt} -ge 60 ]] && first_prompt="${first_prompt}..."
-  fi
-
   # Write cache
-  printf '%s\n%s\n' "$session_name" "$first_prompt" > "$cache"
+  printf '%s' "$session_name" > "$cache"
 fi
 
 # --- Build output ---
@@ -59,10 +38,6 @@ if [[ -n "$session_name" ]]; then
 fi
 
 parts+=("$short_cwd")
-
-if [[ -n "$first_prompt" ]]; then
-  parts+=("\"${first_prompt}\"")
-fi
 
 # Join with " | "
 IFS=' | '
