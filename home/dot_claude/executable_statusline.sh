@@ -7,6 +7,8 @@ input=$(cat)
 # --- Extract fields from JSON ---
 session_id=$(echo "$input" | jq -r '.session_id // ""')
 cwd=$(echo "$input" | jq -r '.cwd // ""')
+model_name=$(echo "$input" | jq -r '.model.display_name // ""')
+duration_ms=$(echo "$input" | jq -r '.cost.total_duration_ms // 0')
 
 # --- CWD: shorten to ~/relative ---
 home="${HOME:-$(eval echo ~)}"
@@ -30,9 +32,21 @@ else
   printf '%s' "$session_name" > "$cache"
 fi
 
+# --- Duration: convert ms to Xm Ys ---
+total_secs=$(( ${duration_ms%.*} / 1000 ))
+mins=$(( total_secs / 60 ))
+secs=$(( total_secs % 60 ))
+duration_str="⏱️ ${mins}m ${secs}s"
+
+# --- Model: format as [Name] ---
+model_prefix=""
+if [[ -n "$model_name" ]]; then
+  model_prefix="[${model_name}] "
+fi
+
 # --- Build output ---
 if [[ -n "$session_name" ]]; then
-  echo -e "\033[2m${session_name}\033[0m | ${short_cwd}"
+  echo -e "\033[2m${session_name}\033[0m | ${model_prefix}${short_cwd} | ${duration_str}"
 else
-  echo "$short_cwd"
+  echo "${model_prefix}${short_cwd} | ${duration_str}"
 fi
