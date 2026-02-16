@@ -202,16 +202,16 @@ function M.get_markdown_snippets()
 			{ t("Can you help me diagnose the root cause of this issue and fix it?") }
 		),
 		-- SNIPPET: gsn
-		s({ trig = "gsn", desc = "`gai ace` snapshot" }, { t("`gai ace` snapshot") }),
+		s({ trig = "gsn", desc = "`sase ace` snapshot" }, { t("`sase ace` snapshot") }),
 		-- SNIPPET: gsna
-		s({ trig = "gsna", desc = "`gai ace` snapshot (in parens)" }, { t("(see the `gai ace` snapshot below)") }),
+		s({ trig = "gsna", desc = "`sase ace` snapshot (in parens)" }, { t("(see the `sase ace` snapshot below)") }),
 		-- SNIPPET: gta
 		s(
-			{ trig = "gta", desc = "the <tab> tab of the `gai ace` TUI" },
-			{ t('the "'), i(1, "CLs"), t('" tab of the `gai ace` TUI') }
+			{ trig = "gta", desc = "the <tab> tab of the `sase ace` TUI" },
+			{ t('the "'), i(1, "CLs"), t('" tab of the `sase ace` TUI') }
 		),
 		-- SNIPPET: gtu
-		s({ trig = "gtu", desc = "the `gai ace` TUI" }, { t("the `gai ace` TUI") }),
+		s({ trig = "gtu", desc = "the `sase ace` TUI" }, { t("the `sase ace` TUI") }),
 		-- SNIPPET: help
 		s({ trig = "help", desc = "Can you help me...?" }, { t("Can you help me "), i(1), t("?") }),
 		-- SNIPPET: helpp
