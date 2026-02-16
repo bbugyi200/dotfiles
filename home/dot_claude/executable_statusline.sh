@@ -31,14 +31,8 @@ else
 fi
 
 # --- Build output ---
-parts=()
-
 if [[ -n "$session_name" ]]; then
-  parts+=("$session_name")
+  echo -e "\033[2m${session_name}\033[0m | ${short_cwd}"
+else
+  echo "$short_cwd"
 fi
-
-parts+=("$short_cwd")
-
-# Join with " | "
-IFS=' | '
-echo "${parts[*]}"
