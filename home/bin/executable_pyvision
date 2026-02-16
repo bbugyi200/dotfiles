@@ -132,6 +132,12 @@ def main():
     parser.add_argument(
         "directory", type=Path, help="Directory to search for Python files"
     )
+    parser.add_argument(
+        "--exclude-file",
+        action="append",
+        default=[],
+        help="Exclude a file from analysis (can be repeated)",
+    )
     args = parser.parse_args()
 
     if not args.directory.is_dir():
@@ -140,6 +146,11 @@ def main():
 
     # Find all Python files excluding test directories
     python_files = _find_python_files(args.directory)
+
+    # Apply --exclude-file filters
+    if args.exclude_file:
+        excluded = {Path(p).resolve() for p in args.exclude_file}
+        python_files = [f for f in python_files if f.resolve() not in excluded]
 
     if not python_files:
         print("No Python files found", file=sys.stderr)
