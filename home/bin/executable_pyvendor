@@ -41,8 +41,8 @@ Optional Arguments
 
 Examples
 --------
-bugyi_vendor ~/bin/some_script /path/to/project
-bugyi_vendor -d scripts -l vendor/lib ~/bin/bam /path/to/project
+pyvendor ~/bin/some_script /path/to/project
+pyvendor -d scripts -l vendor/lib ~/bin/bam /path/to/project
 EOM
 
 # Insert a line of text after line N in a file.
@@ -78,7 +78,7 @@ function run() {
   log::info "Copied %s → %s" "${SCRIPT_PATH}" "${vendored_script}"
 
   # Insert provenance comment on line 2 (after the shebang).
-  local provenance="# Vendored from my.files via bugyi_vendor on $(date +%Y-%m-%d)"
+  local provenance="# Vendored from my.files via pyvendor on $(date +%Y-%m-%d)"
   _insert_after_line 1 "${provenance}" "${vendored_script}"
 
   if grep -q 'source ~/lib/bugyi.sh' "${SCRIPT_PATH}"; then
