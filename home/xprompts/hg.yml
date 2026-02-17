@@ -19,11 +19,20 @@ steps:
           if cs.name == cl_name:
               cs_match = cs
               break
-      if not cs_match:
-          raise RuntimeError(f"ChangeSpec '{cl_name}' not found")
 
-      project_name = cs_match.project_basename
-      project_file = cs_match.file_path
+      if cs_match:
+          project_name = cs_match.project_basename
+          project_file = cs_match.file_path
+      else:
+          # Fallback: project shorthand
+          candidate = os.path.expanduser(f"~/.sase/projects/{cl_name}/{cl_name}.gp")
+          if os.path.isfile(candidate):
+              project_name = cl_name
+              project_file = candidate
+          else:
+              raise RuntimeError(
+                  f"'{cl_name}' not found as a ChangeSpec name or project"
+              )
 
       workspace_num = get_first_available_axe_workspace(project_file)
       workspace_dir, _ = get_workspace_directory_for_num(workspace_num, project_name)
