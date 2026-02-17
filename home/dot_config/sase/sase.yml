@@ -10,7 +10,7 @@ axe:
 metahooks:
   # keep-sorted start
   - name: hg_presubmit_tap
-    hook_command: gai_presubmit
+    hook_command: sase_presubmit
     output_regex: "[1-9]\\d* failed,"
   - name: scuba
     hook_command: bb_rabbit_test
@@ -102,7 +102,7 @@ xprompts:
   c:
     input: { name: word, bug_id: { type: int, default: 0 } }
     content: "#commit(name={{ name }}, bug_id={{ bug_id }})"
-  chat: "@$(gai_first_commit_chat)"
+  chat: "@$(sase_first_commit_chat)"
   cl:
     input: { include_chat: { type: bool, default: false } }
     content: |
@@ -128,7 +128,7 @@ xprompts:
   feat: >-
     publisher feature (see contentads/drx/fe/g3doc/admin/publisher_features.md for more information on publisher
     features)
-  gai_new_cl_desc: |
+  sase_new_cl_desc: |
     Can you review the changes made by this CL (see the #cl_local_diff file) and suggest a new CL description that
     conforms with the advice given in the @~/bb/docs/cl_descriptions.md document? #my_cl_desc_advice
   launch/beta:
