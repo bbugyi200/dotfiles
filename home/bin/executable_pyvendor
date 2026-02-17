@@ -118,20 +118,20 @@ function run() {
     local lib_dest="${PROJECT_PATH}/${LIB_DIR}"
     mkdir -p "${lib_dest}"
 
-    # Remove any existing bugyi_*.sh files in the lib dir.
+    # Remove any existing bugyi[_-]*.sh files in the lib dir.
     local old_bugyi
-    for old_bugyi in "${lib_dest}"/bugyi_*.sh; do
+    for old_bugyi in "${lib_dest}"/bugyi[_-]*.sh; do
       if [[ -f "${old_bugyi}" ]]; then
         local old_bugyi_base
         old_bugyi_base="$(basename "${old_bugyi}")"
         old_names+=("${old_bugyi_base}")
-        new_names+=("bugyi_${date_suffix}.sh")
+        new_names+=("bugyi-${date_suffix}.sh")
         log::info "Removing old %s" "${old_bugyi}"
         rm "${old_bugyi}"
       fi
     done
 
-    local vendored_bugyi="${lib_dest}/bugyi_${date_suffix}.sh"
+    local vendored_bugyi="${lib_dest}/bugyi-${date_suffix}.sh"
     cp ~/lib/bugyi.sh "${vendored_bugyi}"
     log::info "Copied ~/lib/bugyi.sh → %s" "${vendored_bugyi}"
 
@@ -145,7 +145,7 @@ function run() {
     # Rewrite the source line in the vendored script to use a relative path.
     local rel_path
     rel_path="$(python3 -c "import os.path; print(os.path.relpath('${PROJECT_PATH}/${LIB_DIR}', '${dest_dir}'))")"
-    local new_source="source \"\$(dirname \"\${BASH_SOURCE[0]}\")/${rel_path}/bugyi_${date_suffix}.sh\""
+    local new_source="source \"\$(dirname \"\${BASH_SOURCE[0]}\")/${rel_path}/bugyi-${date_suffix}.sh\""
     sed -i '' "s|source ~/lib/bugyi.sh|${new_source}|" "${vendored_script}"
     log::info "Rewrote source line → %s" "${new_source}"
   fi
