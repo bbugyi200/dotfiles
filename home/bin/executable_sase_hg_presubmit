@@ -1,3 +1,0 @@
-#!/bin/bash
-
-hg presubmit -y -r .
