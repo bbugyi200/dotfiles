@@ -4,6 +4,7 @@
 import argparse
 import ast
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -139,10 +140,13 @@ def main():
         help="Exclude a file from analysis (can be repeated)",
     )
     parser.add_argument(
-        "--exclude-symbol",
+        "--epic-symbol",
         action="append",
         default=[],
-        help="Exclude a symbol name from analysis (can be repeated)",
+        help=(
+            "Exclude a symbol tied to an open epic bead from unused-symbol analysis."
+            " Format: <bead_id>(<symbol_name>). Can be repeated."
+        ),
     )
     args = parser.parse_args()
 
@@ -171,17 +175,71 @@ def main():
                 all_symbols[symbol] = []
             all_symbols[symbol].append(py_file)
 
-    # Apply --exclude-symbol filters
-    missing_excludes = [s for s in args.exclude_symbol if s not in all_symbols]
-    if missing_excludes:
-        print(
-            "Error: --exclude-symbol names not found as public definitions:",
-            file=sys.stderr,
+    # Apply --epic-symbol filters
+    epic_errors = []
+    validated_epic_symbols = []
+    for entry in args.epic_symbol:
+        # 1. Parse format: <bead_id>(<symbol_name>)
+        m = re.match(r"^(.+)\(([^)]+)\)$", entry)
+        if not m:
+            epic_errors.append(
+                f"Error: Invalid --epic-symbol format '{entry}'."
+                " Expected format: <bead_id>(<symbol_name>)"
+            )
+            continue
+        bead_id, symbol_name = m.group(1), m.group(2)
+
+        # 2. Reject private symbols
+        if symbol_name.startswith("_"):
+            epic_errors.append(
+                f"Error: --epic-symbol '{entry}': symbol '{symbol_name}' is private."
+                " Only public symbols can be excluded."
+            )
+            continue
+
+        # 3. Check bead is open
+        result = subprocess.run(
+            ["bd", "show", bead_id],
+            capture_output=True,
+            text=True,
         )
-        for name in missing_excludes:
-            print(f"  {name}", file=sys.stderr)
+        if result.returncode != 0:
+            epic_errors.append(
+                f"Error: --epic-symbol '{entry}': bead '{bead_id}' not found."
+                " Remove this --epic-symbol entry."
+            )
+            continue
+        if "CLOSED" in result.stdout:
+            epic_errors.append(
+                f"Error: --epic-symbol '{entry}': bead '{bead_id}' is closed."
+                " Remove this stale --epic-symbol entry and clean up the symbol."
+            )
+            continue
+
+        # 4. Check symbol exists
+        if symbol_name not in all_symbols:
+            epic_errors.append(
+                f"Error: --epic-symbol '{entry}': symbol '{symbol_name}' not found"
+                " as a public definition. Remove this --epic-symbol entry."
+            )
+            continue
+
+        # 5. Check symbol actually needs ignoring (not already used)
+        if _search_function_usage(symbol_name, python_files):
+            epic_errors.append(
+                f"Error: --epic-symbol '{entry}': symbol '{symbol_name}' is already"
+                " properly used. Remove this unnecessary --epic-symbol entry."
+            )
+            continue
+
+        validated_epic_symbols.append(symbol_name)
+
+    if epic_errors:
+        for err in epic_errors:
+            print(err, file=sys.stderr)
         return 1
-    for symbol in args.exclude_symbol:
+
+    for symbol in validated_epic_symbols:
         all_symbols.pop(symbol, None)
 
     if not all_symbols:
