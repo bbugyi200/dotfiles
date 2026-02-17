@@ -61,17 +61,48 @@ function _insert_before_line() {
   mv "${tmp}" "${file}"
 }
 
+# Scan a directory for files referencing old_name and replace with new_name.
+function _update_references() {
+  local old_name="$1" new_name="$2" search_dir="$3"
+
+  if [[ "${old_name}" == "${new_name}" ]]; then
+    return
+  fi
+
+  local file
+  while IFS= read -r file; do
+    sed -i '' "s|${old_name}|${new_name}|g" "${file}"
+    log::info "Updated reference %s → %s in %s" "${old_name}" "${new_name}" "${file}"
+  done < <(grep -rlI --exclude-dir=.git "${old_name}" "${search_dir}")
+}
+
 function run() {
   parse_cli_args "$@"
 
   local date_suffix
   date_suffix="$(date +%y%m%d)"
 
+  local -a old_names=()
+  local -a new_names=()
+
   local script_basename
   script_basename="$(basename "${SCRIPT_PATH}")"
 
   local dest_dir="${PROJECT_PATH}/${TOOLS_DIR}"
   mkdir -p "${dest_dir}"
+
+  # Remove old date-stamped copies of this script in the tools dir.
+  local old_script
+  for old_script in "${dest_dir}/${script_basename}"-[0-9][0-9][0-9][0-9][0-9][0-9]; do
+    if [[ -f "${old_script}" ]]; then
+      local old_script_base
+      old_script_base="$(basename "${old_script}")"
+      old_names+=("${old_script_base}")
+      new_names+=("${script_basename}-${date_suffix}")
+      log::info "Removing old %s" "${old_script}"
+      rm "${old_script}"
+    fi
+  done
 
   local vendored_script="${dest_dir}/${script_basename}-${date_suffix}"
   cp "${SCRIPT_PATH}" "${vendored_script}"
@@ -91,6 +122,10 @@ function run() {
     local old_bugyi
     for old_bugyi in "${lib_dest}"/bugyi_*.sh; do
       if [[ -f "${old_bugyi}" ]]; then
+        local old_bugyi_base
+        old_bugyi_base="$(basename "${old_bugyi}")"
+        old_names+=("${old_bugyi_base}")
+        new_names+=("bugyi_${date_suffix}.sh")
         log::info "Removing old %s" "${old_bugyi}"
         rm "${old_bugyi}"
       fi
@@ -114,6 +149,12 @@ function run() {
     sed -i '' "s|source ~/lib/bugyi.sh|${new_source}|" "${vendored_script}"
     log::info "Rewrote source line → %s" "${new_source}"
   fi
+
+  # Update references to old filenames throughout the project.
+  local i
+  for ((i = 0; i < ${#old_names[@]}; i++)); do
+    _update_references "${old_names[$i]}" "${new_names[$i]}" "${PROJECT_PATH}"
+  done
 
   log::info "Done."
 }
