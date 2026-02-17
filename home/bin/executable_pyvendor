@@ -150,6 +150,9 @@ function run() {
     log::info "Rewrote source line → %s" "${new_source}"
   fi
 
+  # Restore executable permission lost during file rewriting (head/tail/mv).
+  chmod +x "${vendored_script}"
+
   # Update references to old filenames throughout the project.
   local i
   for ((i = 0; i < ${#old_names[@]}; i++)); do
