@@ -109,7 +109,7 @@ function run() {
   log::info "Copied %s → %s" "${SCRIPT_PATH}" "${vendored_script}"
 
   # Insert provenance comment on line 2 (after the shebang).
-  local provenance="# Vendored from my.files via pyvendor on $(date +%Y-%m-%d)"
+  local provenance="# Vendored from https://github.com/bbugyi200/dotfiles via pyvendor on $(date +%Y-%m-%d)"
   _insert_after_line 1 "${provenance}" "${vendored_script}"
 
   if grep -q 'source ~/lib/bugyi.sh' "${SCRIPT_PATH}"; then
