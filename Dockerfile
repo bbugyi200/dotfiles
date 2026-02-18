@@ -34,6 +34,12 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*;
 
+### Install stylua (Lua formatter)
+RUN curl -fsSL https://github.com/JohnnyMorganz/StyLua/releases/download/v2.0.2/stylua-linux-x86_64.zip -o /tmp/stylua.zip && \
+    unzip /tmp/stylua.zip -d /usr/local/bin/ && \
+    chmod +x /usr/local/bin/stylua && \
+    rm /tmp/stylua.zip
+
 ### Install keep-sorted (build from source to avoid GLIBC issues)
 RUN curl -fsSL https://go.dev/dl/go1.22.5.linux-amd64.tar.gz | tar -C /usr/local -xzf - && \
     /usr/local/go/bin/go install github.com/google/keep-sorted@v0.7.1 && \

@@ -103,6 +103,10 @@ xprompts:
     input: { name: word, bug_id: { type: int, default: 0 } }
     content: "#cl(name={{ name }}, bug_id={{ bug_id }})"
   chat: "@$(sase_first_commit_chat)"
+  cl_diff: |
+    #x(cl_changes.diff, hg pdiff $(branch_changes | grep -v -E 'png$|fingerprint$') | perl -nE 'print s{google3/}{}gr')
+  cl_local_diff: |
+    #x(cl_changes.diff, hg diff $(branch_local_changes | grep -v -E 'png$|fingerprint$') | perl -nE 'print s{google3/}{}gr')
   cldd:
     input: { include_chat: { type: bool, default: false } }
     content: |
@@ -112,10 +116,6 @@ xprompts:
       {%- if include_chat %}
       + #chat: Contains the initial conversation with Gemini that resulted in the creation of this CL.
       {%- endif %}
-  cl_diff: |
-    #x(cl_changes.diff, hg pdiff $(branch_changes | grep -v -E 'png$|fingerprint$') | perl -nE 'print s{google3/}{}gr')
-  cl_local_diff: |
-    #x(cl_changes.diff, hg diff $(branch_local_changes | grep -v -E 'png$|fingerprint$') | perl -nE 'print s{google3/}{}gr')
   clr:
     input: { cl_id: int }
     content: "cl/{{ cl_id }} (see the #x(cl_desc_and_diff.diff, p4 diff -c '{{ cl_id }}') file)"

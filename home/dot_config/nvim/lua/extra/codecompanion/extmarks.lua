@@ -74,21 +74,20 @@ end
 local function create_autocmds(opts)
 	vim.api.nvim_create_autocmd({ "User" }, {
 		pattern = { "CodeCompanionRequest*" },
-		callback =
-			--- @param args {buf: number, data : table, match: string}
-			function(args)
-				local data = args.data or {}
-				local context = data and data.context or {}
-				if data and data.context then
-					---@diagnostic disable-next-line: undefined-field
-					local ns_id = vim.api.nvim_create_namespace("CodeCompanionInline_" .. data.id)
-					if args.match:find("StartedInline") then
-						create_extmarks(opts, data, ns_id)
-					elseif args.match:find("FinishedInline") then
-						vim.api.nvim_buf_clear_namespace(context.bufnr, ns_id, 0, -1)
-					end
+		--- @param args {buf: number, data : table, match: string}
+		callback = function(args)
+			local data = args.data or {}
+			local context = data and data.context or {}
+			if data and data.context then
+				---@diagnostic disable-next-line: undefined-field
+				local ns_id = vim.api.nvim_create_namespace("CodeCompanionInline_" .. data.id)
+				if args.match:find("StartedInline") then
+					create_extmarks(opts, data, ns_id)
+				elseif args.match:find("FinishedInline") then
+					vim.api.nvim_buf_clear_namespace(context.bufnr, ns_id, 0, -1)
 				end
-			end,
+			end
+		end,
 	})
 end
 
