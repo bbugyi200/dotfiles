@@ -7,7 +7,135 @@ import re
 import subprocess
 import sys
 import tomllib
+from dataclasses import dataclass
 from pathlib import Path
+
+
+@dataclass
+class _PragmaInfo:
+    symbol_name: str
+    ref_path: str  # relative to git root
+    source_file: Path  # .py file containing the pragma
+    pragma_line: int  # 1-based line number
+
+
+def _get_git_root() -> Path | None:
+    """Get the git repository root directory."""
+    result = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return None
+    return Path(result.stdout.strip())
+
+
+def _extract_pragmas(file_path: Path) -> dict[str, _PragmaInfo]:
+    """Extract pyvision pragmas from a Python file.
+
+    Looks for ``# pyvision: <path>`` comments on the line directly above
+    a top-level def/async def/class (or above its first decorator).
+    """
+    try:
+        with open(file_path, encoding="utf-8") as f:
+            source = f.read()
+        lines = source.splitlines()
+        tree = ast.parse(source, filename=str(file_path))
+    except (SyntaxError, UnicodeDecodeError, OSError):
+        return {}
+
+    pragma_re = re.compile(r"^#\s*pyvision:\s*(.+)$")
+    pragmas: dict[str, _PragmaInfo] = {}
+
+    for node in tree.body:
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            continue
+
+        # The effective start line is the first decorator (if any), else the def/class line
+        if node.decorator_list:
+            start_line = node.decorator_list[0].lineno
+        else:
+            start_line = node.lineno
+
+        # Check the line directly above (1-based, so index is start_line - 2)
+        comment_idx = start_line - 2
+        if comment_idx < 0:
+            continue
+
+        m = pragma_re.match(lines[comment_idx].strip())
+        if m:
+            pragmas[node.name] = _PragmaInfo(
+                symbol_name=node.name,
+                ref_path=m.group(1).strip(),
+                source_file=file_path,
+                pragma_line=start_line - 1,  # 1-based line number of the pragma
+            )
+
+    return pragmas
+
+
+def _validate_pragmas(
+    all_pragmas: dict[str, _PragmaInfo],
+    git_root: Path,
+    python_files: list[Path],
+) -> list[str]:
+    """Validate all collected pragmas and return a list of error strings."""
+    errors: list[str] = []
+
+    for name, pragma in all_pragmas.items():
+        prefix = f"Error: pyvision pragma in {pragma.source_file}:{pragma.pragma_line}:"
+
+        # Pragma on private symbol
+        if name.startswith("_"):
+            errors.append(
+                f"{prefix} pragma cannot be applied to private symbol '{name}'"
+            )
+            continue
+
+        ref_file = git_root / pragma.ref_path
+
+        # Referenced file doesn't exist
+        if not ref_file.is_file():
+            errors.append(
+                f"{prefix} referenced file '{pragma.ref_path}' does not exist"
+            )
+            continue
+
+        # Referenced file inside src/
+        try:
+            ref_file.resolve().relative_to((git_root / "src").resolve())
+            errors.append(
+                f"{prefix} referenced file '{pragma.ref_path}' is inside src/"
+            )
+            continue
+        except ValueError:
+            pass  # Not inside src/ — good
+
+        # Check that referenced file actually contains the symbol name
+        try:
+            ref_content = ref_file.read_text(encoding="utf-8")
+            if not re.search(rf"\b{re.escape(name)}\b", ref_content):
+                errors.append(
+                    f"{prefix} referenced file '{pragma.ref_path}'"
+                    f" does not contain a reference to symbol '{name}'"
+                )
+                continue
+        except OSError as e:
+            errors.append(
+                f"{prefix} could not read referenced file '{pragma.ref_path}': {e}"
+            )
+            continue
+
+        # Stale pragma: symbol is already imported by other Python files
+        if _search_function_usage(name, python_files):
+            errors.append(
+                f"{prefix} symbol '{name}' is already imported by other Python files."
+                " Remove this unnecessary pragma"
+            )
+            continue
+
+    return errors
 
 
 def _find_python_files(directory: Path, exclude_test_dirs: bool = True) -> list[Path]:
@@ -290,6 +418,30 @@ def main():
 
     for symbol in validated_epic_symbols:
         all_symbols.pop(symbol, None)
+
+    # Collect and validate pyvision pragmas from all Python files
+    all_pragmas: dict[str, _PragmaInfo] = {}
+    for py_file in python_files:
+        all_pragmas.update(_extract_pragmas(py_file))
+
+    if all_pragmas:
+        git_root = _get_git_root()
+        if git_root is None:
+            print(
+                "Error: pyvision pragmas found but not inside a git repository",
+                file=sys.stderr,
+            )
+            return 1
+
+        pragma_errors = _validate_pragmas(all_pragmas, git_root, python_files)
+        if pragma_errors:
+            for err in pragma_errors:
+                print(err, file=sys.stderr)
+            return 1
+
+        # Remove pragma-covered symbols from the unused check
+        for symbol_name in all_pragmas:
+            all_symbols.pop(symbol_name, None)
 
     if not all_symbols:
         print("No public functions or classes found!", file=sys.stderr)
