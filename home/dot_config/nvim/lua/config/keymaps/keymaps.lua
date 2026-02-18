@@ -161,3 +161,6 @@ vim.keymap.set("n", "<leader>qo", function()
 		vim.cmd("copen")
 	end
 end, { desc = "Toggle visibility of the quickfix window." })
+
+-- KEYMAP: <leader>mdc
+vim.keymap.set("n", "<leader>mdc", "<cmd>edit CLAUDE.md<cr>", { desc = "Open CLAUDE.md" })
