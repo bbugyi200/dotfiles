@@ -57,6 +57,7 @@ function run() {
   parse_cli_args "$@"
   stage_files
   validate_staged_changes
+  merge_with_master
   do_commit
   do_push
   do_beads_sync
@@ -141,6 +142,53 @@ function validate_staged_changes() {
     die "No staged changes to commit"
   fi
   log::debug "Validated: staged changes exist"
+}
+
+# Merge the current branch with master/main to keep it up-to-date.
+# Skips if already on master/main. Fails with actionable message on conflict.
+function merge_with_master() {
+  local current_branch
+  current_branch=$(git symbolic-ref --short HEAD 2>/dev/null || return 0)
+
+  # Determine default branch name
+  local default_branch=""
+  for candidate in master main; do
+    if git show-ref --verify --quiet "refs/remotes/origin/${candidate}" 2>/dev/null; then
+      default_branch="${candidate}"
+      break
+    fi
+  done
+
+  if [[ -z "${default_branch}" ]]; then
+    log::debug "No master/main branch found on origin, skipping merge"
+    return 0
+  fi
+
+  if [[ "${current_branch}" == "${default_branch}" ]]; then
+    log::debug "Already on ${default_branch}, skipping merge"
+    return 0
+  fi
+
+  log::debug "Merging origin/${default_branch} into ${current_branch}"
+  git fetch origin "${default_branch}" --quiet
+
+  # Stash staged changes before merge
+  git stash --quiet --keep-index
+  local stashed=$?
+
+  if ! git merge "origin/${default_branch}" --no-edit --quiet 2>&1; then
+    git merge --abort
+    # Restore stashed changes
+    if [[ ${stashed} -eq 0 ]]; then
+      git stash pop --quiet 2>/dev/null || true
+    fi
+    die "Merge conflict when syncing ${current_branch} with origin/${default_branch}. Please resolve the conflict manually (git merge origin/${default_branch}), then re-run ccommit."
+  fi
+
+  # Restore stashed changes
+  if [[ ${stashed} -eq 0 ]]; then
+    git stash pop --quiet || die "Failed to restore staged changes after merge. Your changes are in git stash. Run 'git stash pop' to recover them, resolve any conflicts, then re-run ccommit."
+  fi
 }
 
 # Build the commit message and execute 'git commit'.
