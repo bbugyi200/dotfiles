@@ -31,11 +31,12 @@ def _get_git_root() -> Path | None:
     return Path(result.stdout.strip())
 
 
-def _extract_pragmas(file_path: Path) -> dict[str, _PragmaInfo]:
+def _extract_pragmas(file_path: Path) -> dict[str, list[_PragmaInfo]]:
     """Extract pyvision pragmas from a Python file.
 
-    Looks for ``# pyvision: <path>`` comments on the line directly above
-    a top-level def/async def/class (or above its first decorator).
+    Looks for ``# pyvision: <path>`` comments on consecutive lines directly
+    above a top-level def/async def/class (or above its first decorator).
+    Multiple pragma lines per symbol are supported.
     """
     try:
         with open(file_path, encoding="utf-8") as f:
@@ -46,7 +47,7 @@ def _extract_pragmas(file_path: Path) -> dict[str, _PragmaInfo]:
         return {}
 
     pragma_re = re.compile(r"^#\s*pyvision:\s*(.+)$")
-    pragmas: dict[str, _PragmaInfo] = {}
+    pragmas: dict[str, list[_PragmaInfo]] = {}
 
     for node in tree.body:
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
@@ -58,82 +59,95 @@ def _extract_pragmas(file_path: Path) -> dict[str, _PragmaInfo]:
         else:
             start_line = node.lineno
 
-        # Check the line directly above (1-based, so index is start_line - 2)
+        # Walk upward from the line above, collecting all consecutive pragma lines
         comment_idx = start_line - 2
         if comment_idx < 0:
             continue
 
-        m = pragma_re.match(lines[comment_idx].strip())
-        if m:
-            pragmas[node.name] = _PragmaInfo(
-                symbol_name=node.name,
-                ref_path=m.group(1).strip(),
-                source_file=file_path,
-                pragma_line=start_line - 1,  # 1-based line number of the pragma
+        symbol_pragmas: list[_PragmaInfo] = []
+        while comment_idx >= 0:
+            m = pragma_re.match(lines[comment_idx].strip())
+            if not m:
+                break
+            symbol_pragmas.append(
+                _PragmaInfo(
+                    symbol_name=node.name,
+                    ref_path=m.group(1).strip(),
+                    source_file=file_path,
+                    pragma_line=comment_idx + 1,  # 1-based line number
+                )
             )
+            comment_idx -= 1
+
+        if symbol_pragmas:
+            pragmas[node.name] = symbol_pragmas
 
     return pragmas
 
 
 def _validate_pragmas(
-    all_pragmas: dict[str, _PragmaInfo],
+    all_pragmas: dict[str, list[_PragmaInfo]],
     git_root: Path,
     python_files: list[Path],
 ) -> list[str]:
     """Validate all collected pragmas and return a list of error strings."""
     errors: list[str] = []
 
-    for name, pragma in all_pragmas.items():
-        prefix = f"Error: pyvision pragma in {pragma.source_file}:{pragma.pragma_line}:"
+    for name, pragma_list in all_pragmas.items():
+        # Use first pragma for symbol-level error prefix
+        first = pragma_list[0]
 
-        # Pragma on private symbol
+        # Symbol-level check: pragma on private symbol
         if name.startswith("_"):
+            prefix = f"Error: pyvision pragma in {first.source_file}:{first.pragma_line}:"
             errors.append(
                 f"{prefix} pragma cannot be applied to private symbol '{name}'"
             )
             continue
 
-        ref_file = git_root / pragma.ref_path
-
-        # Referenced file doesn't exist
-        if not ref_file.is_file():
-            errors.append(
-                f"{prefix} referenced file '{pragma.ref_path}' does not exist"
-            )
-            continue
-
-        # Referenced file inside src/
-        try:
-            ref_file.resolve().relative_to((git_root / "src").resolve())
-            errors.append(
-                f"{prefix} referenced file '{pragma.ref_path}' is inside src/"
-            )
-            continue
-        except ValueError:
-            pass  # Not inside src/ — good
-
-        # Check that referenced file actually contains the symbol name
-        try:
-            ref_content = ref_file.read_text(encoding="utf-8")
-            if not re.search(rf"\b{re.escape(name)}\b", ref_content):
-                errors.append(
-                    f"{prefix} referenced file '{pragma.ref_path}'"
-                    f" does not contain a reference to symbol '{name}'"
-                )
-                continue
-        except OSError as e:
-            errors.append(
-                f"{prefix} could not read referenced file '{pragma.ref_path}': {e}"
-            )
-            continue
-
-        # Stale pragma: symbol is already imported by other Python files
+        # Symbol-level check: stale pragma (symbol already imported by Python files)
         if _search_function_usage(name, python_files):
+            prefix = f"Error: pyvision pragma in {first.source_file}:{first.pragma_line}:"
             errors.append(
                 f"{prefix} symbol '{name}' is already imported by other Python files."
                 " Remove this unnecessary pragma"
             )
             continue
+
+        # Per-pragma checks
+        for pragma in pragma_list:
+            prefix = f"Error: pyvision pragma in {pragma.source_file}:{pragma.pragma_line}:"
+            ref_file = git_root / pragma.ref_path
+
+            # Referenced file doesn't exist
+            if not ref_file.is_file():
+                errors.append(
+                    f"{prefix} referenced file '{pragma.ref_path}' does not exist"
+                )
+                continue
+
+            # Referenced file inside src/
+            try:
+                ref_file.resolve().relative_to((git_root / "src").resolve())
+                errors.append(
+                    f"{prefix} referenced file '{pragma.ref_path}' is inside src/"
+                )
+                continue
+            except ValueError:
+                pass  # Not inside src/ — good
+
+            # Check that referenced file actually contains the symbol name
+            try:
+                ref_content = ref_file.read_text(encoding="utf-8")
+                if not re.search(rf"\b{re.escape(name)}\b", ref_content):
+                    errors.append(
+                        f"{prefix} referenced file '{pragma.ref_path}'"
+                        f" does not contain a reference to symbol '{name}'"
+                    )
+            except OSError as e:
+                errors.append(
+                    f"{prefix} could not read referenced file '{pragma.ref_path}': {e}"
+                )
 
     return errors
 
@@ -420,7 +434,7 @@ def main():
         all_symbols.pop(symbol, None)
 
     # Collect and validate pyvision pragmas from all Python files
-    all_pragmas: dict[str, _PragmaInfo] = {}
+    all_pragmas: dict[str, list[_PragmaInfo]] = {}
     for py_file in python_files:
         all_pragmas.update(_extract_pragmas(py_file))
 
