@@ -106,10 +106,11 @@ highlight GaiProjectRunningPipe guifg=#808080
 " NOTE: Keep in sync with VALID_STATUSES in home/lib/gai/status_state_machine.py
 " NOTE: "Changes Requested" has been replaced by the COMMENTS field
 " Match READY TO MAIL suffix first (more specific pattern)
-syn match GaiProjectStatusReadyToMail "^STATUS:\s*Drafted\s*-\s*(!:\s*READY TO MAIL)" contains=GaiProjectStatusKey,GaiProjectReadyToMailSuffix
+syn match GaiProjectStatusReadyToMail "^STATUS:\s*Ready\s*-\s*(!:\s*READY TO MAIL)" contains=GaiProjectStatusKey,GaiProjectReadyToMailSuffix
 syn match GaiProjectReadyToMailSuffix "(!:\s*READY TO MAIL)" contained
 syn match GaiProjectStatusWIP "^STATUS:\s*WIP\%(\s*([^)]*)\)\?$" contains=GaiProjectStatusKey
-syn match GaiProjectStatusDrafted "^STATUS:\s*Drafted$" contains=GaiProjectStatusKey
+syn match GaiProjectStatusDraft "^STATUS:\s*Draft\%(\s*([^)]*)\)\?$" contains=GaiProjectStatusKey
+syn match GaiProjectStatusReady "^STATUS:\s*Ready$" contains=GaiProjectStatusKey
 syn match GaiProjectStatusMailed "^STATUS:\s*Mailed" contains=GaiProjectStatusKey
 syn match GaiProjectStatusSubmitted "^STATUS:\s*Submitted" contains=GaiProjectStatusKey
 syn match GaiProjectStatusReverted "^STATUS:\s*Reverted" contains=GaiProjectStatusKey
@@ -119,8 +120,9 @@ syn match GaiProjectStatusArchived "^STATUS:\s*Archived" contains=GaiProjectStat
 syn match GaiProjectStatusKey "^STATUS:" contained
 
 highlight GaiProjectStatusKey gui=bold guifg=#87D7FF
-highlight GaiProjectStatusWIP gui=bold guifg=#FFD700
-highlight GaiProjectStatusDrafted gui=bold guifg=#87D700
+highlight GaiProjectStatusWIP gui=bold guifg=#87CEEB
+highlight GaiProjectStatusDraft gui=bold guifg=#FFD700
+highlight GaiProjectStatusReady gui=bold guifg=#87D700
 highlight GaiProjectStatusMailed gui=bold guifg=#00D787
 highlight GaiProjectStatusSubmitted gui=bold guifg=#00AF00
 highlight GaiProjectStatusReverted gui=bold guifg=#808080
@@ -306,10 +308,10 @@ highlight GaiProjectCommentsSuffixTimestamp gui=bold guifg=#D75F87
 " MENTORS field - tracks mentor workflow runs tied to commit entries
 " Key line
 syn match GaiProjectMentorsKey "^MENTORS:"
-" Entry lines: (N) profile1 [profile2 ...] [#WIP] (2-space indented)
-syn match GaiProjectMentorsEntry "^\s\s(\d\+)\s.\+$" contains=GaiProjectMentorsEntryNum,GaiProjectMentorsWipMarker
+" Entry lines: (N) profile1 [profile2 ...] [#Draft] (2-space indented)
+syn match GaiProjectMentorsEntry "^\s\s(\d\+)\s.\+$" contains=GaiProjectMentorsEntryNum,GaiProjectMentorsDraftMarker
 syn match GaiProjectMentorsEntryNum "(\d\+)" contained
-syn match GaiProjectMentorsWipMarker "#WIP" contained
+syn match GaiProjectMentorsDraftMarker "#Draft" contained
 " Status lines (6-space + "| " prefixed)
 " Format: | [YYmmdd_HHMMSS] profile:mentor - STATUS - (suffix) or | profile:mentor - STATUS - (duration)
 " Timestamp prefix is optional for backward compatibility
@@ -333,7 +335,7 @@ syn match GaiProjectMentorsSuffixProposalRef " - \zs(\d\+[a-z])$" contained
 highlight GaiProjectMentorsKey gui=bold guifg=#87D7FF
 highlight GaiProjectMentorsEntry guifg=#D7D7AF
 highlight GaiProjectMentorsEntryNum gui=bold guifg=#D7AF5F
-highlight GaiProjectMentorsWipMarker gui=bold guifg=#FFD700
+highlight GaiProjectMentorsDraftMarker gui=bold guifg=#FFD700
 highlight GaiProjectMentorsStatusLine guifg=#6C7086
 highlight GaiProjectMentorsStatusPipe guifg=#808080
 highlight GaiProjectMentorsTimestamp guifg=#AF87D7

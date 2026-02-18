@@ -31,7 +31,7 @@ mentor_profiles:
       - prompt: "#mentor/comments"
       - prompt: "#mentor/shared_code"
       - prompt: "#mentor/sound_tests"
-        run_on_wip: true
+        run_on_draft: true
       - prompt: "#mentor/symbol_names"
       - prompt: "#mentor/vision"
     file_globs:
@@ -41,14 +41,14 @@ mentor_profiles:
   - profile_name: complete
     mentors:
       - prompt: "#mentor/complete"
-        run_on_wip: true
+        run_on_draft: true
     amend_note_regexes:
       - "Initial Commit"
       - "\\[mentor:complete\\]"
   - profile_name: g3doc
     mentors:
       - prompt: "#mentor/g3doc"
-        run_on_wip: true
+        run_on_draft: true
     file_globs:
       - "**/*.md"
   - profile_name: i18n
@@ -60,13 +60,13 @@ mentor_profiles:
   - profile_name: pubfeat
     mentors:
       - prompt: "#mentor/pubfeat"
-        run_on_wip: true
+        run_on_draft: true
     file_globs:
       - "**/publisher_features.textproto"
   - profile_name: sql
     mentors:
       - prompt: "#mentor/sql"
-        run_on_wip: true
+        run_on_draft: true
     file_globs:
       - "**/*.sql"
   - profile_name: ui
