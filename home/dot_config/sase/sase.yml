@@ -85,7 +85,7 @@ xprompts:
   # keep-sorted start
   a:
     input: { note: { type: line, default: "" } }
-    content: "#amend(note='{{ note }}')"
+    content: "#commit(note='{{ note }}')"
   b/ab:
     input: { bug_id: int, cl_name: word }
     content: |
@@ -93,7 +93,7 @@ xprompts:
       file to help you with this. #clref:852317975
   b:
     input: { bug_id: int, cl_name: word }
-    content: "Can you help me fix the bug described by the #bug:{{ bug_id }} file? #commit({{ cl_name }}, {{ bug_id }})"
+    content: "Can you help me fix the bug described by the #bug:{{ bug_id }} file? #cl({{ cl_name }}, {{ bug_id }})"
   bug:
     input: { bug_id: int }
     content: "#x(bug_desc, bugged show '{{ bug_id }}')"
@@ -101,9 +101,9 @@ xprompts:
     Can you help me fix the build errors shown below, which were introduced by the current CL? #propose
   c:
     input: { name: word, bug_id: { type: int, default: 0 } }
-    content: "#commit(name={{ name }}, bug_id={{ bug_id }})"
+    content: "#cl(name={{ name }}, bug_id={{ bug_id }})"
   chat: "@$(sase_first_commit_chat)"
-  cl:
+  cldd:
     input: { include_chat: { type: bool, default: false } }
     content: |
       ### Context Files Related to this CL
@@ -132,11 +132,11 @@ xprompts:
     input: { bug_id: int, feature: word }
     content: |
       Can you help me enable the {{ feature }} #feat for the SMALL_BUSINESS_BETA (ID: 20) feature group?
-      #clref:868137057 #commit(launch_beta, {{ bug_id }})
+      #clref:868137057 #cl(launch_beta, {{ bug_id }})
   launch/tests:
     input: { bug_id: int, feature: word }
     content: |
-      Can you help me add the {{ feature }} #feat to FEATURE_GROUP_ALL in the TestPublisherFeatureGroups.java file? #commit(launch_tests, {{ bug_id }})
+      Can you help me add the {{ feature }} #feat to FEATURE_GROUP_ALL in the TestPublisherFeatureGroups.java file? #cl(launch_tests, {{ bug_id }})
   mentor/aaa: |
     #mentor: Can you help me enforce the AAA (arrange, act, assert) test method structure? In particular, find and fix Any test
     method modified by this CL that does NOT structure its statements using the Arrange, Act, Assert pattern. There
