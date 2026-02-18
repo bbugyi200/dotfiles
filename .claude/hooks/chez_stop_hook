@@ -51,7 +51,11 @@ function send_failure_notification() {
         fi
     fi
 
-    terminal-notifier -title "${prefix} Stop Hook - FAILED" -message "$errors"
+    if [[ "$(uname)" == "Darwin" ]]; then
+        terminal-notifier -title "${prefix} Stop Hook - FAILED" -message "$errors"
+    elif command -v notify-send &>/dev/null; then
+        notify-send "${prefix} Stop Hook - FAILED" "$errors"
+    fi
 }
 
 # Run quality checks conditionally based on changed files

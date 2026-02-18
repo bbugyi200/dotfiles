@@ -236,7 +236,11 @@ function send_notification() {
       prefix="\[${project_name}#${window}]"
     fi
   fi
-  terminal-notifier -title "${prefix} New Commit Created" -message "${message}"
+  if [[ "$(uname)" == "Darwin" ]]; then
+    terminal-notifier -title "${prefix} New Commit Created" -message "${message}"
+  elif command -v notify-send &>/dev/null; then
+    notify-send "${prefix} New Commit Created" "${message}"
+  fi
 }
 
 if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then

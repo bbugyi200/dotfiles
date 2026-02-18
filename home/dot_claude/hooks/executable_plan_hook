@@ -64,11 +64,15 @@ function get_notification_content() {
     return 0
 }
 
-# Send notification via terminal-notifier
+# Send notification (cross-platform)
 function send_notification() {
     local title="$1"
     local message="$2"
-    terminal-notifier -title "$title" -message "$message"
+    if [[ "$(uname)" == "Darwin" ]]; then
+        terminal-notifier -title "$title" -message "$message"
+    elif command -v notify-send &>/dev/null; then
+        notify-send "$title" "$message"
+    fi
 }
 
 # Ring the tmux bell for the window running claude
