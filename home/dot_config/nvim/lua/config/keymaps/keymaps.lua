@@ -164,12 +164,11 @@ end, { desc = "Toggle visibility of the quickfix window." })
 
 -- KEYMAP: <leader>mdc
 vim.keymap.set("n", "<leader>mdc", function()
-	local dir = vim.fn.expand("%:p:h")
-	vim.cmd("edit " .. vim.fn.fnameescape(dir .. "/CLAUDE.md"))
-end, { desc = "Open CLAUDE.md relative to current file's directory" })
+	vim.cmd("edit CLAUDE.md")
+end, { desc = "Open CLAUDE.md relative to cwd" })
 
 -- KEYMAP: <leader>mdC
 vim.keymap.set("n", "<leader>mdC", function()
 	local dir = vim.fn.expand("%:p:h")
-	vim.cmd("edit " .. vim.fn.fnameescape(dir .. "/CLAUDE.local.md"))
-end, { desc = "Open CLAUDE.local.md relative to current file's directory" })
+	vim.cmd("edit " .. vim.fn.fnameescape(dir .. "/CLAUDE.md"))
+end, { desc = "Open CLAUDE.md relative to current file's directory" })
