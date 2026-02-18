@@ -128,9 +128,6 @@ xprompts:
   feat: >-
     publisher feature (see contentads/drx/fe/g3doc/admin/publisher_features.md for more information on publisher
     features)
-  sase_new_cl_desc: |
-    Can you review the changes made by this CL (see the #cl_local_diff file) and suggest a new CL description that
-    conforms with the advice given in the @~/bb/docs/cl_descriptions.md document? #my_cl_desc_advice
   launch/beta:
     input: { bug_id: int, feature: word }
     content: |
@@ -275,6 +272,9 @@ xprompts:
       current CL? #propose
   reporting: |
     Refer to the `contentads/drx/reporting/g3doc/**/*.md` files for documentation on how the reporting stack works.
+  sase_new_cl_desc: |
+    Can you review the changes made by this CL (see the #cl_local_diff file) and suggest a new CL description that
+    conforms with the advice given in the @~/bb/docs/cl_descriptions.md document? #my_cl_desc_advice
   scuba: "Make sure all related tests pass, except for some scuba diff tests, which are expected to fail."
   x:
     input: { name: word, cmd: line }
