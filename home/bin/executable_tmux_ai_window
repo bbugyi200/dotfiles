@@ -51,7 +51,7 @@ function run() {
   tmux run-shell -b "tmux wait-for '$channel' && sleep 0.1 && tm-fix-layout && tm-renumber-ai-windows"
 
   # Create window - when claude exits, signal the channel before window closes
-  EDITOR=nvim tmux new-window -n "$window_name" "cd '$pane_dir' && claude --dangerously-skip-permissions; tmux wait-for -S '$channel'"
+  tmux new-window -n "$window_name" "cd '$pane_dir' && EDITOR=nvim claude --dangerously-skip-permissions; tmux wait-for -S '$channel'"
 }
 
 function parse_cli_args() {
