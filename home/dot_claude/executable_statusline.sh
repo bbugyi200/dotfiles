@@ -8,7 +8,6 @@ input=$(cat)
 session_id=$(echo "$input" | jq -r '.session_id // ""')
 cwd=$(echo "$input" | jq -r '.cwd // ""')
 model_name=$(echo "$input" | jq -r '.model.display_name // ""')
-duration_ms=$(echo "$input" | jq -r '.cost.total_duration_ms // 0')
 
 # --- CWD: shorten to ~/relative ---
 home="${HOME:-$(eval echo ~)}"
@@ -32,13 +31,6 @@ else
   printf '%s' "$session_name" > "$cache"
 fi
 
-# --- Duration: convert ms to Xm Ys ---
-total_secs=$(( ${duration_ms%.*} / 1000 ))
-mins=$(( total_secs / 60 ))
-secs=$(( total_secs % 60 ))
-duration_str="⏱️ ${mins}m ${secs}s"
-
-# --- Model: used in build output below ---
 
 # --- ANSI color codes ---
 DIM='\033[2m'
@@ -93,8 +85,6 @@ if git -C "$cwd" rev-parse --is-inside-work-tree &>/dev/null; then
   fi
 fi
 
-colored_duration="${GREEN}${duration_str}${RESET}"
-
 # Build git section with surrounding separators
 git_section=""
 if [[ -n "$git_info" ]]; then
@@ -102,7 +92,7 @@ if [[ -n "$git_info" ]]; then
 fi
 
 if [[ -n "$session_name" ]]; then
-  echo -e "${DIM}${session_name}${RESET}${sep}${colored_model}${colored_cwd}${git_section}${sep}${colored_duration}"
+  echo -e "${DIM}${session_name}${RESET}${sep}${colored_model}${colored_cwd}${git_section}"
 else
-  echo -e "${colored_model}${colored_cwd}${git_section}${sep}${colored_duration}"
+  echo -e "${colored_model}${colored_cwd}${git_section}"
 fi
