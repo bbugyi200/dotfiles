@@ -13,7 +13,7 @@
       {
         "hooks": [
           {
-            "command": "bd prime",
+            "command": "if [ -x \"$CLAUDE_PROJECT_DIR/tools/sase_bd\" ]; then \"$CLAUDE_PROJECT_DIR/tools/sase_bd\" prime; else bd prime; fi",
             "type": "command"
           }
         ],
@@ -46,7 +46,7 @@
       {
         "hooks": [
           {
-            "command": "bd prime",
+            "command": "if [ -x \"$CLAUDE_PROJECT_DIR/tools/sase_bd\" ]; then \"$CLAUDE_PROJECT_DIR/tools/sase_bd\" prime; else bd prime; fi",
             "type": "command"
           }
         ],
