@@ -165,7 +165,21 @@ function merge_with_master() {
   fi
 
   if [[ "${current_branch}" == "${default_branch}" ]]; then
-    log::debug "Already on ${default_branch}, skipping merge"
+    log::debug "Pulling latest origin/${default_branch}"
+    git fetch origin "${default_branch}" --quiet
+    # Stash staged changes, pull, then restore
+    git stash --quiet --keep-index
+    local stashed_default=$?
+    if ! git merge "origin/${default_branch}" --no-edit --quiet 2>&1; then
+      git merge --abort
+      if [[ ${stashed_default} -eq 0 ]]; then
+        git stash pop --quiet 2>/dev/null || true
+      fi
+      die "Merge conflict when syncing ${default_branch} with origin/${default_branch}. Please resolve the conflict manually, then re-run ccommit."
+    fi
+    if [[ ${stashed_default} -eq 0 ]]; then
+      git stash pop --quiet || die "Failed to restore staged changes after merge. Your changes are in git stash. Run 'git stash pop' to recover them, resolve any conflicts, then re-run ccommit."
+    fi
     return 0
   fi
 
