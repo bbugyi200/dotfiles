@@ -26,8 +26,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$HOME/.claude/hooks/plan_hook\"",
-            "timeout": 10
+            "command": "uv run sase plan-approve",
+            "timeout": 600
           }
         ]
       },
@@ -36,8 +36,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$HOME/.claude/hooks/plan_hook\"",
-            "timeout": 10
+            "command": "uv run sase user-question",
+            "timeout": 600
           }
         ]
       }
