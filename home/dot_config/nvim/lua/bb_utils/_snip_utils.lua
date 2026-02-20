@@ -226,6 +226,13 @@ function M.get_markdown_snippets()
 			i(1),
 			t("` command, then fix the new failures (if any), and repeat until the command is successful."),
 		}),
+		-- SNIPPET: phase
+		s({ trig = "phase", desc = "Split into phases" }, {
+			t(
+				"This is a large piece of work that should be split into phases. I'll let you decide how many "
+					.. "phases to create, but keep in mind that each phase will be completed by a distinct `claude` instance."
+			),
+		}),
 		-- SNIPPET: pin
 		s(
 			{ trig = "pin", desc = "Describe pinned files." },
