@@ -12,6 +12,10 @@
 # shellcheck disable=SC2154
 # shellcheck disable=SC2230
 
+# ---------- sase ----------
+alias ace='sase ace'
+alias axe='sase axe'
+
 # ---------- cookie Aliases / Functions ----------
 # def marker: COOKIE
 alias ainit='cookie template.awk -D awk -x'
