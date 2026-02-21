@@ -3,6 +3,7 @@
 
 import argparse
 import ast
+import os
 import re
 import subprocess
 import sys
@@ -389,8 +390,9 @@ def main():
             continue
 
         # 3. Check bead is open
+        bd_cmd = os.environ.get("BD_COMMAND", "bd")
         result = subprocess.run(
-            ["bd", "show", bead_id],
+            [bd_cmd, "show", bead_id],
             capture_output=True,
             text=True,
         )
