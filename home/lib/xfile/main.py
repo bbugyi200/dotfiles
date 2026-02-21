@@ -58,7 +58,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "-o",
         "--output",
-        help="Output file for rendered summary (default: auto-generated in xcmds/)",
+        help="Output file for rendered summary (default: auto-generated in .sase/xcmds/)",
     )
     parser.add_argument(
         "-a",

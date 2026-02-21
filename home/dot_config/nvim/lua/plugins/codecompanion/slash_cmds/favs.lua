@@ -6,7 +6,7 @@
 local shared = require("plugins.codecompanion.slash_cmds.shared")
 
 local cwd = vim.fn.getcwd()
-local fav_dirs = { vim.fn.expand("~/bb"), cwd .. "/bb", cwd .. "/xcmds", cwd .. "/xclips" }
+local fav_dirs = { vim.fn.expand("~/bb"), cwd .. "/bb", cwd .. "/.sase/xcmds", cwd .. "/xclips" }
 local allowed_exts = { "json", "md", "sql", "txt", "xml" }
 local excluded_dirs = {}
 

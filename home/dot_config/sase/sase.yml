@@ -271,5 +271,5 @@ xprompts:
   scuba: "Make sure all related tests pass, except for some scuba diff tests, which are expected to fail."
   x:
     input: { name: word, cmd: line }
-    content: "@$(xcmd {{ name }} {{ cmd }})"
+    content: "@$(sase_xcmd {{ name }} {{ cmd }})"
   # keep-sorted end

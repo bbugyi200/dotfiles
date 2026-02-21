@@ -120,8 +120,8 @@ def resolve_target(
             if not re.search(r"\.\w+$", processed_filename):
                 processed_filename = f"{processed_filename}.txt"
 
-            xcmds_dir = Path.cwd() / "xcmds"
-            xcmds_dir.mkdir(exist_ok=True)
+            xcmds_dir = Path.cwd() / ".sase" / "xcmds"
+            xcmds_dir.mkdir(parents=True, exist_ok=True)
             output_file = xcmds_dir / processed_filename
 
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

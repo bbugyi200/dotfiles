@@ -3,7 +3,7 @@
 set -e
 
 if [[ $# -lt 2 ]]; then
-  echo "Usage: xcmd <name> <command...>" >&2
+  echo "Usage: sase_xcmd <name> <command...>" >&2
   exit 1
 fi
 
@@ -26,14 +26,14 @@ fi
 filename="${base}-${timestamp}.${ext}"
 
 # Create output directory
-mkdir -p bb/gai/xcmds
+mkdir -p .sase/xcmds
 
 # Execute command and capture output
 output=$(eval "$cmd" 2>&1) || exit 0
 [[ -z "${output// /}" ]] && exit 0
 
 # Write output file with metadata header
-output_file="bb/gai/xcmds/${filename}"
+output_file=".sase/xcmds/${filename}"
 {
   echo "# Generated from command: $cmd"
   echo "# Timestamp: $(date '+%Y-%m-%d %H:%M:%S')"

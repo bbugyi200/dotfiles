@@ -25,8 +25,8 @@ def generate_rendered_filepath(xfile_names: list[str]) -> Path:
     xfile_part = re.sub(r"[^\w_-]", "_", xfile_part)
     filename = f"xfile_rendered_{xfile_part}_{timestamp}.txt"
 
-    xcmds_dir = Path.cwd() / "xcmds"
-    xcmds_dir.mkdir(exist_ok=True)
+    xcmds_dir = Path.cwd() / ".sase" / "xcmds"
+    xcmds_dir.mkdir(parents=True, exist_ok=True)
     return xcmds_dir / filename
 
 
@@ -201,7 +201,7 @@ def _render_target_line(
         if not re.search(r"\.\w+$", processed_filename):
             processed_filename = f"{processed_filename}.txt"
 
-        xcmds_dir = Path.cwd() / "xcmds"
+        xcmds_dir = Path.cwd() / ".sase" / "xcmds"
         output_file = xcmds_dir / processed_filename
         relative_path = make_relative_to_home(output_file)
 
