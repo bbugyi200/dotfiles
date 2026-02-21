@@ -7,7 +7,6 @@ axe:
   hook_interval: 1
   zombie_timeout_seconds: 7200
   max_runners: 5
-  use_legacy_axe: true
 
 # Metahooks intercept failing hooks before the summarize agent runs.
 metahooks:
