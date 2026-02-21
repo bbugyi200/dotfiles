@@ -71,7 +71,7 @@ function _update_references() {
 
   local file
   while IFS= read -r file; do
-    sed -i '' "s|${old_name}|${new_name}|g" "${file}"
+    sed -i "s|${old_name}|${new_name}|g" "${file}"
     log::info "Updated reference %s → %s in %s" "${old_name}" "${new_name}" "${file}"
   done < <(grep -rlI --exclude-dir=.git "${old_name}" "${search_dir}")
 }
@@ -146,7 +146,7 @@ function run() {
     local rel_path
     rel_path="$(python3 -c "import os.path; print(os.path.relpath('${PROJECT_PATH}/${LIB_DIR}', '${dest_dir}'))")"
     local new_source="source \"\$(dirname \"\${BASH_SOURCE[0]}\")/${rel_path}/bugyi-${date_suffix}.sh\""
-    sed -i '' "s|source ~/lib/bugyi.sh|${new_source}|" "${vendored_script}"
+    sed -i "s|source ~/lib/bugyi.sh|${new_source}|" "${vendored_script}"
     log::info "Rewrote source line → %s" "${new_source}"
   fi
 
