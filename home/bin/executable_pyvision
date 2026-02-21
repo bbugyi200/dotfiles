@@ -210,7 +210,39 @@ def _extract_entrypoint_symbols(pyproject_path: Path) -> set[str]:
     return symbols
 
 
-def _extract_public_functions(file_path: Path) -> list[str]:
+def _get_decorator_names(node: ast.AST) -> set[str]:
+    """Extract the simple names of all decorators on a function/class node.
+
+    For a plain ``@foo`` decorator the name is ``"foo"``.
+    For a dotted ``@foo.bar`` or call ``@foo(...)`` the outermost name is used.
+    """
+    names: set[str] = set()
+    for dec in getattr(node, "decorator_list", []):
+        if isinstance(dec, ast.Name):
+            names.add(dec.id)
+        elif isinstance(dec, ast.Attribute):
+            # Walk to the root Name of a dotted expression like foo.bar.baz
+            inner = dec
+            while isinstance(inner, ast.Attribute):
+                inner = inner.value
+            if isinstance(inner, ast.Name):
+                names.add(inner.id)
+        elif isinstance(dec, ast.Call):
+            func = dec.func
+            if isinstance(func, ast.Name):
+                names.add(func.id)
+            elif isinstance(func, ast.Attribute):
+                inner = func
+                while isinstance(inner, ast.Attribute):
+                    inner = inner.value
+                if isinstance(inner, ast.Name):
+                    names.add(inner.id)
+    return names
+
+
+def _extract_public_functions(
+    file_path: Path, exclude_decorators: set[str] | None = None
+) -> list[str]:
     """Extract all public top-level function and class names from a Python file."""
     try:
         with open(file_path, encoding="utf-8") as f:
@@ -222,6 +254,8 @@ def _extract_public_functions(file_path: Path) -> list[str]:
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                 # Only public symbols (not prefixed with _) and not named "main"
                 if not node.name.startswith("_") and node.name != "main":
+                    if exclude_decorators and _get_decorator_names(node) & exclude_decorators:
+                        continue
                     symbols.append(node.name)
 
         return symbols
@@ -230,7 +264,9 @@ def _extract_public_functions(file_path: Path) -> list[str]:
         return []
 
 
-def _extract_private_functions(file_path: Path) -> list[str]:
+def _extract_private_functions(
+    file_path: Path, exclude_decorators: set[str] | None = None
+) -> list[str]:
     """Extract all private top-level function and class names from a Python file."""
     try:
         with open(file_path, encoding="utf-8") as f:
@@ -242,6 +278,8 @@ def _extract_private_functions(file_path: Path) -> list[str]:
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                 # Only private symbols (prefixed with _)
                 if node.name.startswith("_"):
+                    if exclude_decorators and _get_decorator_names(node) & exclude_decorators:
+                        continue
                     symbols.append(node.name)
 
         return symbols
@@ -333,6 +371,15 @@ def main():
             " Format: <bead_id>(<symbol_name>). Can be repeated."
         ),
     )
+    parser.add_argument(
+        "--exclude-decorator",
+        action="append",
+        default=[],
+        help=(
+            "Exclude any function/class decorated with this decorator name"
+            " from unused-symbol analysis. Can be repeated."
+        ),
+    )
     args = parser.parse_args()
 
     if not args.directory.is_dir():
@@ -351,10 +398,13 @@ def main():
         print("No Python files found", file=sys.stderr)
         return 0
 
+    # Build the set of excluded decorator names
+    exclude_decorators = set(args.exclude_decorator) if args.exclude_decorator else None
+
     # Collect all public functions and classes from all files
     all_symbols = {}  # {symbol_name: [file_path, ...]}
     for py_file in python_files:
-        symbols = _extract_public_functions(py_file)
+        symbols = _extract_public_functions(py_file, exclude_decorators)
         for symbol in symbols:
             if symbol not in all_symbols:
                 all_symbols[symbol] = []
@@ -466,7 +516,7 @@ def main():
     # Collect all private functions and classes from all files
     all_private_symbols = {}  # {symbol_name: [file_path, ...]}
     for py_file in python_files:
-        private_symbols = _extract_private_functions(py_file)
+        private_symbols = _extract_private_functions(py_file, exclude_decorators)
         for symbol in private_symbols:
             if symbol not in all_private_symbols:
                 all_private_symbols[symbol] = []
