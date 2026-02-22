@@ -2,6 +2,42 @@
 
 source ~/lib/bugyi.sh
 
+CCOMMIT_LOG="${HOME}/.ccommit.jsonl"
+CCOMMIT_START_EPOCH=$(date +%s)
+
+# Write a structured JSON log line to ~/.ccommit.jsonl.
+# Usage: jlog <event> [key=value ...]
+# Silently no-ops if jq is not installed.
+function jlog() {
+  command -v jq &>/dev/null || return 0
+  local event="$1"
+  shift
+
+  local jq_args=()
+  local jq_pairs=""
+  local i=0
+
+  while [[ $# -gt 0 ]]; do
+    local key="${1%%=*}"
+    local val="${1#*=}"
+    jq_args+=("--arg" "k${i}" "$key" "--arg" "v${i}" "$val")
+    jq_pairs+=", (\$k${i}): \$v${i}"
+    i=$((i + 1))
+    shift
+  done
+
+  jq -c -n --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg event "$event" \
+    "${jq_args[@]}" \
+    "{timestamp: \$ts, event: \$event${jq_pairs}}" >> "${CCOMMIT_LOG}" 2>/dev/null
+}
+
+function on_exit() {
+  local exit_code=$?
+  local elapsed=$(( $(date +%s) - CCOMMIT_START_EPOCH ))
+  jlog "script_exit" "exit_code=${exit_code}" "duration_s=${elapsed}"
+}
+trap on_exit EXIT
+
 export USAGE_GRAMMAR=(
   "[-v] [--bead <id>] <tag> <message> <file>..."
   "-h"
@@ -54,6 +90,13 @@ VALID_TAGS=("feat" "fix" "ref" "chore")
 
 # Main entry point. Parses arguments, validates environment, and creates the commit.
 function run() {
+  local branch
+  branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "detached")
+  jlog "script_start" \
+    "args=$*" \
+    "working_dir=$(pwd)" \
+    "branch=${branch}" \
+    "pid=$$"
   parse_cli_args "$@"
   stage_files
   validate_staged_changes
@@ -128,19 +171,33 @@ function parse_cli_args() {
   readonly TAG
   readonly MESSAGE
   readonly FILES
+
+  jlog "cli_parsed" \
+    "tag=${TAG}" \
+    "message=${MESSAGE}" \
+    "files=${FILES[*]}" \
+    "bead_id=${BEAD_ID}" \
+    "verbose=${VERBOSE}"
 }
 
 # Stage the specified files using git add.
 function stage_files() {
   log::debug "Staging files: ${FILES[*]}"
-  git add -- "${FILES[@]}"
+  local rc=0
+  git add -- "${FILES[@]}" || rc=$?
+  jlog "stage_files" "files=${FILES[*]}" "exit_code=${rc}"
+  if [[ ${rc} -ne 0 ]]; then
+    die "git add failed (exit code ${rc})"
+  fi
 }
 
 # Verify there are staged changes to commit. Dies with an error if nothing is staged.
 function validate_staged_changes() {
   if git diff --cached --quiet; then
+    jlog "validate_staged" "result=no_changes"
     die "No staged changes to commit"
   fi
+  jlog "validate_staged" "result=ok"
   log::debug "Validated: staged changes exist"
 }
 
@@ -148,7 +205,10 @@ function validate_staged_changes() {
 # Skips if already on master/main. Fails with actionable message on conflict.
 function merge_with_master() {
   local current_branch
-  current_branch=$(git symbolic-ref --short HEAD 2>/dev/null || return 0)
+  current_branch=$(git symbolic-ref --short HEAD 2>/dev/null || {
+    jlog "merge" "result=skipped" "reason=detached_head"
+    return 0
+  })
 
   # Determine default branch name
   local default_branch=""
@@ -160,9 +220,12 @@ function merge_with_master() {
   done
 
   if [[ -z "${default_branch}" ]]; then
+    jlog "merge" "result=skipped" "reason=no_default_branch" "current_branch=${current_branch}"
     log::debug "No master/main branch found on origin, skipping merge"
     return 0
   fi
+
+  jlog "merge_start" "current_branch=${current_branch}" "default_branch=${default_branch}"
 
   if [[ "${current_branch}" == "${default_branch}" ]]; then
     log::debug "Pulling latest origin/${default_branch}"
@@ -175,11 +238,16 @@ function merge_with_master() {
       if [[ ${stashed_default} -eq 0 ]]; then
         git stash pop --quiet 2>/dev/null || true
       fi
+      jlog "merge" "result=conflict" "detail=sync_${default_branch}_with_origin"
       die "Merge conflict when syncing ${default_branch} with origin/${default_branch}. Please resolve the conflict manually, then re-run ccommit."
     fi
     if [[ ${stashed_default} -eq 0 ]]; then
-      git stash pop --quiet || die "Failed to restore staged changes after merge. Your changes are in git stash. Run 'git stash pop' to recover them, resolve any conflicts, then re-run ccommit."
+      git stash pop --quiet || {
+        jlog "merge" "result=stash_pop_failed" "detail=on_default_branch"
+        die "Failed to restore staged changes after merge. Your changes are in git stash. Run 'git stash pop' to recover them, resolve any conflicts, then re-run ccommit."
+      }
     fi
+    jlog "merge" "result=ok" "detail=pulled_origin_${default_branch}"
     return 0
   fi
 
@@ -196,13 +264,18 @@ function merge_with_master() {
     if [[ ${stashed} -eq 0 ]]; then
       git stash pop --quiet 2>/dev/null || true
     fi
+    jlog "merge" "result=conflict" "detail=merge_${default_branch}_into_${current_branch}"
     die "Merge conflict when syncing ${current_branch} with origin/${default_branch}. Please resolve the conflict manually (git merge origin/${default_branch}), then re-run ccommit."
   fi
 
   # Restore stashed changes
   if [[ ${stashed} -eq 0 ]]; then
-    git stash pop --quiet || die "Failed to restore staged changes after merge. Your changes are in git stash. Run 'git stash pop' to recover them, resolve any conflicts, then re-run ccommit."
+    git stash pop --quiet || {
+      jlog "merge" "result=stash_pop_failed" "detail=on_feature_branch"
+      die "Failed to restore staged changes after merge. Your changes are in git stash. Run 'git stash pop' to recover them, resolve any conflicts, then re-run ccommit."
+    }
   fi
+  jlog "merge" "result=ok" "detail=merged_origin_${default_branch}_into_${current_branch}"
 }
 
 # Build the commit message and execute 'git commit'.
@@ -215,20 +288,38 @@ function do_commit() {
     message="${first_line} (${BEAD_ID})${rest}"
   fi
   log::debug "Commit message:\n%s" "${message}"
-  git commit -F - <<<"${message}"
+  local rc=0
+  git commit -F - <<<"${message}" || rc=$?
+  if [[ ${rc} -ne 0 ]]; then
+    jlog "commit" "result=failed" "exit_code=${rc}" "message=${message}"
+    die "git commit failed (exit code ${rc})"
+  fi
+  local commit_hash
+  commit_hash=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+  jlog "commit" "result=ok" "commit_hash=${commit_hash}" "message=${message}"
 }
 
 # Push commits to remote.
 function do_push() {
   log::debug "Pushing to remote"
-  git push
+  local rc=0
+  git push || rc=$?
+  if [[ ${rc} -ne 0 ]]; then
+    jlog "push" "result=failed" "exit_code=${rc}"
+    die "git push failed (exit code ${rc})"
+  fi
+  jlog "push" "result=ok"
 }
 
 # Sync beads issue tracker state after push.
 function do_beads_sync() {
   if command -v bd >/dev/null 2>&1 && [ -d .beads ]; then
     log::debug "Syncing beads"
-    bd sync 2>/dev/null || true
+    local rc=0
+    bd sync 2>/dev/null || rc=$?
+    jlog "beads_sync" "result=$([ ${rc} -eq 0 ] && echo ok || echo failed)" "exit_code=${rc}"
+  else
+    jlog "beads_sync" "result=skipped"
   fi
 }
 
