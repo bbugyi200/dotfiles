@@ -14,7 +14,10 @@
 
 # ---------- sase ----------
 alias ace='sase ace'
+alias amend='sase amend'
 alias axe='sase axe'
+alias commit='sase commit'
+alias run='sase run'
 
 # ---------- cookie Aliases / Functions ----------
 # def marker: COOKIE
