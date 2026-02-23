@@ -270,6 +270,6 @@ xprompts:
     conforms with the advice given in the @~/bb/docs/cl_descriptions.md document? #my_cl_desc_advice
   scuba: "Make sure all related tests pass, except for some scuba diff tests, which are expected to fail."
   x:
-    input: { name: word, cmd: line }
+    input: { name: word, cmd: text }
     content: "@$(sase_xcmd {{ name }} {{ cmd }})"
   # keep-sorted end
