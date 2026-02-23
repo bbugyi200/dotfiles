@@ -12,9 +12,9 @@ for repo in "$SASE_DIR" "$SASE_GITHUB_DIR" "$SASE_HG_DIR"; do
 done
 
 echo ">>> Installing sase via uv tool..."
-uv tool install --force \
+uv tool install --force --editable \
     "sase @ $SASE_DIR" \
-    --with "sase-github @ $SASE_GITHUB_DIR" \
+    --with-editable "sase-github @ $SASE_GITHUB_DIR" \
     --with-executables-from sase-github \
-    --with "sase-hg @ $SASE_HG_DIR" \
+    --with-editable "sase-hg @ $SASE_HG_DIR" \
     --with-executables-from sase-hg
