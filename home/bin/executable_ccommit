@@ -299,14 +299,23 @@ function do_commit() {
   jlog "commit" "result=ok" "commit_hash=${commit_hash}" "message=${message}"
 }
 
-# Push commits to remote.
+# Push commits to remote. Non-fatal: warns instead of dying since the commit
+# already succeeded at this point.
 function do_push() {
+  # Check if a pushable remote exists
+  if ! git remote get-url origin &>/dev/null; then
+    jlog "push" "result=skipped" "reason=no_remote"
+    log::warn "No 'origin' remote configured — skipping push. Commit is saved locally."
+    return 0
+  fi
+
   log::debug "Pushing to remote"
-  local rc=0
-  git push || rc=$?
+  local push_output rc=0
+  push_output=$(git push 2>&1) || rc=$?
   if [[ ${rc} -ne 0 ]]; then
-    jlog "push" "result=failed" "exit_code=${rc}"
-    die "git push failed (exit code ${rc})"
+    jlog "push" "result=failed" "exit_code=${rc}" "output=${push_output}"
+    log::warn "git push failed (exit code %d). Commit is saved locally — run 'git push' to retry.\n%s" "${rc}" "${push_output}"
+    return 0
   fi
   jlog "push" "result=ok"
 }
@@ -315,9 +324,14 @@ function do_push() {
 function do_beads_sync() {
   if command -v bd >/dev/null 2>&1 && [ -d .beads ]; then
     log::debug "Syncing beads"
-    local rc=0
-    bd sync 2>/dev/null || rc=$?
-    jlog "beads_sync" "result=$([ ${rc} -eq 0 ] && echo ok || echo failed)" "exit_code=${rc}"
+    local sync_output rc=0
+    sync_output=$(bd sync 2>&1) || rc=$?
+    if [[ ${rc} -eq 0 ]]; then
+      jlog "beads_sync" "result=ok" "exit_code=0"
+    else
+      jlog "beads_sync" "result=failed" "exit_code=${rc}" "output=${sync_output}"
+      log::warn "bd sync failed (exit code %d): %s" "${rc}" "${sync_output}"
+    fi
   else
     jlog "beads_sync" "result=skipped"
   fi
