@@ -1,0 +1,17 @@
+#!/bin/bash
+
+set -e
+
+SASE_DIR="$HOME/projects/github/bbugyi200/sase"
+SASE_GITHUB_DIR="$HOME/projects/github/bbugyi200/sase-github"
+
+for repo in "$SASE_DIR" "$SASE_GITHUB_DIR"; do
+    echo ">>> Syncing $repo..."
+    git -C "$repo" pull
+done
+
+echo ">>> Installing sase via uv tool..."
+uv tool install --force \
+    "sase @ $SASE_DIR" \
+    --with "sase-github @ $SASE_GITHUB_DIR" \
+    --with-executables-from sase-github
