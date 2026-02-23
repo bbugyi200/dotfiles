@@ -299,8 +299,9 @@ function do_commit() {
   jlog "commit" "result=ok" "commit_hash=${commit_hash}" "message=${message}"
 }
 
-# Push commits to remote. Non-fatal: warns instead of dying since the commit
-# already succeeded at this point.
+# Push commits to remote. If push fails (e.g. remote has diverged), tries to
+# pull and merge before retrying. Dies with an actionable error if the merge
+# cannot be resolved automatically.
 function do_push() {
   # Check if a pushable remote exists
   if ! git remote get-url origin &>/dev/null; then
@@ -312,12 +313,33 @@ function do_push() {
   log::debug "Pushing to remote"
   local push_output rc=0
   push_output=$(git push 2>&1) || rc=$?
-  if [[ ${rc} -ne 0 ]]; then
-    jlog "push" "result=failed" "exit_code=${rc}" "output=${push_output}"
-    log::warn "git push failed (exit code %d). Commit is saved locally — run 'git push' to retry.\n%s" "${rc}" "${push_output}"
+  if [[ ${rc} -eq 0 ]]; then
+    jlog "push" "result=ok"
     return 0
   fi
-  jlog "push" "result=ok"
+
+  # Push failed — try to pull and merge, then push again
+  jlog "push" "result=failed_initial" "exit_code=${rc}" "output=${push_output}"
+  log::debug "Push failed — attempting git pull to merge remote changes"
+
+  local pull_output pull_rc=0
+  pull_output=$(git pull --no-edit 2>&1) || pull_rc=$?
+  if [[ ${pull_rc} -ne 0 ]]; then
+    # Pull/merge failed — abort any in-progress merge and die
+    git merge --abort 2>/dev/null || true
+    jlog "push" "result=pull_failed" "exit_code=${pull_rc}" "output=${pull_output}"
+    die "Push failed and automatic merge could not resolve it.\n\n%s\n\nPlease resolve the merge conflict (run 'git pull'), fix the conflicts, and commit manually." "${pull_output}"
+  fi
+
+  # Pull succeeded — retry push
+  local push2_output push2_rc=0
+  push2_output=$(git push 2>&1) || push2_rc=$?
+  if [[ ${push2_rc} -ne 0 ]]; then
+    jlog "push" "result=failed_after_pull" "exit_code=${push2_rc}" "output=${push2_output}"
+    die "Push failed after successful pull. Please investigate and push manually.\n%s" "${push2_output}"
+  fi
+
+  jlog "push" "result=ok_after_pull"
 }
 
 # Sync beads issue tracker state after push.
