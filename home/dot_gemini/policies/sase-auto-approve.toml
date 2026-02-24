@@ -1,0 +1,11 @@
+[[rule]]
+# Allow all tools to run headlessly without prompting, like YOLO
+toolName = "*"
+decision = "allow"
+priority = 100
+
+[[rule]]
+# Require explicit interaction or hooks for these
+toolName = ["exit_plan_mode", "ask_user"]
+decision = "ask_user"
+priority = 200

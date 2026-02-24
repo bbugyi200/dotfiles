@@ -1,0 +1,52 @@
+{
+  "extensions": {
+    "workspacesWithMigrationNudge": [
+      "/usr/local/google/home/bbugyi"
+    ]
+  },
+  "context": {
+    "fileFiltering": {
+      "enableRecursiveFileSearch": false
+    }
+  },
+  "security": {
+    "auth": {
+      "selectedType": "gemini-api-key"
+    }
+  },
+  "ui": {
+    "theme": "Dracula"
+  },
+  "general": {
+    "vimMode": true
+  },
+  "hooks": {
+    "BeforeTool": [
+      {
+        "matcher": "exit_plan_mode",
+        "hooks": [
+          {
+            "name": "sase-plan-approve",
+            "type": "command",
+            "command": "uv run sase plan-approve",
+            "timeout": 600000
+          }
+        ]
+      },
+      {
+        "matcher": "ask_user",
+        "hooks": [
+          {
+            "name": "sase-user-question",
+            "type": "command",
+            "command": "uv run sase user-question",
+            "timeout": 600000
+          }
+        ]
+      }
+    ]
+  },
+  "policyPaths": [
+    "/usr/local/google/home/bbugyi/.gemini/policies"
+  ]
+}
