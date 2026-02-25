@@ -91,7 +91,7 @@ xprompts:
       #b({{ bug_id }}, {{ cl_name }}) Refer to the 'How to add a Authorized Buyers' section of the @contentads/drx/fe/g3doc/indirect/bidders.md
       file to help you with this. #clref:852317975
   b:
-    input: { bug_id: int, cl_name: word, prompt: { type: line, default: "" } }
+    input: { bug_id: int, cl_name: word, prompt: { type: text, default: "" } }
     content: |
       Can you help me fix the bug described by the #bug:{{ bug_id }} file? {{ prompt }} #cl({{ cl_name }}, {{ bug_id }})
   bug:
