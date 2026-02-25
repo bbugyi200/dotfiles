@@ -141,6 +141,11 @@ function M.get_markdown_snippets()
 				{ i(1), d(2, M.get_visual()) }
 			)
 		),
+		-- SNIPPET: commit
+		s(
+			{ trig = "commit", desc = "commit skill" },
+			{ t("Make sure to use your commit skill to commit any file changes you make to external repos.") }
+		),
 		-- SNIPPET: cout
 		s(
 			{ trig = "cout", desc = "See the command output below for reference." },
