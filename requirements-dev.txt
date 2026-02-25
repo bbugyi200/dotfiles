@@ -8,5 +8,4 @@ pytest-asyncio
 pytest-cov
 
 # Include all module dependencies
--r home/lib/gai/requirements.txt
 -r home/lib/xfile/requirements.txt

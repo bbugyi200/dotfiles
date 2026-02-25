@@ -4,9 +4,9 @@
 
 - To run linters for Python code, use the `make lint-python-lite` command.
 - To run tests for Python code, use the `make test-python-<prj>` command, where `<prj>` is the name of the project
-  (e.g., `gai`).
-- The home/lib/gai/.venv directory contains the virtual environment used for linting/testing Python code. Any ad-hoc
-  linting/testing commands you run should be run using the executables in the .venv/bin/ directory.
+  (e.g., `xfile`).
+- The .venv directory contains the virtual environment used for linting/testing Python code. Any ad-hoc linting/testing
+  commands you run should be run using the executables in the .venv/bin/ directory.
 - These make commands must be run from (and that .venv directory is relative to) the ~/.local/share/chezmoi/ directory.
 
 ## Core Rules
@@ -38,13 +38,13 @@
 
 ### When Tests Are Required
 
-1. **Project Size Threshold**: Any Python project (e.g., `home/lib/gai`) that exceeds **1000 lines of code** MUST have
+1. **Project Size Threshold**: Any Python project (e.g., `home/lib/xfile`) that exceeds **1000 lines of code** MUST have
    dedicated tests
    - Count includes all `.py` files in the project directory
    - Use `find home/lib/PROJECT -name "*.py" -exec wc -l {} + | tail -1` to check total lines
 
 2. **New Features in Large Projects**: When adding new features to projects that already have tests (e.g.,
-   `home/lib/gai`), you MUST:
+   `home/lib/xfile`), you MUST:
    - Add corresponding test coverage for the new feature
    - Update existing tests if the feature modifies existing behavior
    - Ensure `make test` passes before completing the task
@@ -83,9 +83,9 @@ lowering the bar.
 ### Example
 
 ```python
-# home/lib/gai/test/test_main.py
+# home/lib/xfile/test/test_main.py
 import pytest
-from gai.main import normalize_spec
+from xfile.main import normalize_spec
 
 
 def test_normalize_spec_plus_format_unchanged() -> None:

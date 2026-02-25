@@ -35,7 +35,6 @@ ignore = [
 [tool.mypy]
 python_version = "3.12"
 files = ["home/lib"]
-mypy_path = "home/lib/gai"
 # Start with basic checks - can increase strictness over time
 check_untyped_defs = true
 disallow_any_generics = false
@@ -50,16 +49,6 @@ warn_unused_ignores = false
 [[tool.mypy.overrides]]
 module = [
     "rapidfuzz.*",
-    "langchain_core.*",
-    "langgraph.*",
-    "textual",
-    "textual.*",
-]
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = [
-    "ace.tui.*",
 ]
 ignore_missing_imports = true
 

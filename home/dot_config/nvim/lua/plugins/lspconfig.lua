@@ -156,9 +156,7 @@ return {
 
 			-- yaml-language-server
 			local sase_schema = vim.fn.trim(vim.fn.system("sase path xprompts-schema"))
-			local yaml_schemas = {
-				[vim.fn.expand("~/.config/gai/gai.schema.json")] = "gai.yml",
-			}
+			local yaml_schemas = {}
 			if vim.v.shell_error == 0 and sase_schema ~= "" then
 				yaml_schemas[sase_schema] = {
 					"*/xprompts/**/*.yml",

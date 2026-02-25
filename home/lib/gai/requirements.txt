@@ -1,8 +1,0 @@
-jinja2
-jsonschema
-langgraph
-langchain-core
-rich
-schedule
-textual>=0.45.0
-

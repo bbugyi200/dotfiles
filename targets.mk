@@ -58,7 +58,7 @@ lint-python-lite: $(VENV_DIR) ## Run core Python linters (fast).
 	@printf "\n---------- Running ruff format check on Python files... ----------\n"
 	$(VENV_DIR)/bin/ruff format --check home/lib
 	@printf "\n---------- Running mypy on Python files... ----------\n"
-	MYPYPATH=home/lib/gai/src:home/lib/gai/test $(VENV_DIR)/bin/mypy --explicit-package-bases --exclude 'home/lib/gai/src/__main__.py' home/lib/gai/src home/lib/gai/test home/lib/xfile
+	$(VENV_DIR)/bin/mypy home/lib/xfile
 	@printf "\n---------- Running flake8 on Python files... ----------\n"
 	$(VENV_DIR)/bin/flake8 home/lib
 	@printf "\n---------- Running black check on Python files... ----------\n"
@@ -130,13 +130,9 @@ test-bash: ## Run bash tests using bashunit.
 test-python-header:
 	@printf "\n---------- Running Python tests using pytest... ----------\n"
 
-.PHONY: test-python-gai
-test-python-gai: $(VENV_DIR)
-	cd home/lib/gai && ../../../$(VENV_DIR)/bin/pytest test
-
 .PHONY: test-python-xfile
 test-python-xfile: $(VENV_DIR)
 	cd home/lib/xfile && ../../../$(VENV_DIR)/bin/pytest test
 
 .PHONY: test-python
-test-python: test-python-header test-python-gai test-python-xfile ## Run Python tests using pytest.
+test-python: test-python-header test-python-xfile ## Run Python tests using pytest.
