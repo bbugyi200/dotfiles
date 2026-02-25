@@ -14,6 +14,72 @@ return {
 			"nvim-neotest/neotest-python", -- Python
 			"mrcjkb/rustaceanvim", -- Rust
 		},
+		cmd = "Neotest",
+		keys = {
+			-- KEYMAP: <leader>nta
+			{
+				"<leader>nta",
+				function()
+					require("neotest").run.run({ suite = true })
+				end,
+				desc = "Run all tests using Neotest.",
+			},
+			-- KEYMAP: <leader>ntd
+			{
+				"<leader>ntd",
+				function()
+					---@diagnostic disable-next-line: missing-fields
+					require("neotest").run.run({ strategy = "dap" })
+				end,
+				desc = "Debug nearest test using DAP.",
+			},
+			-- KEYMAP: <leader>ntf
+			{
+				"<leader>ntf",
+				function()
+					require("neotest").run.run(vim.fn.expand("%"))
+				end,
+				desc = "Run all tests in current file.",
+			},
+			-- KEYMAP: <leader>ntl
+			{
+				"<leader>ntl",
+				function()
+					require("neotest").run.run_last()
+				end,
+				desc = "Run last set of tests that were run.",
+			},
+			-- KEYMAP: <leader>nto
+			{
+				"<leader>nto",
+				function()
+					vim.cmd([[
+            Neotest summary close
+            Neotest output-panel
+            wincmd j
+            wincmd H
+          ]])
+				end,
+				desc = "Run ':Neotest output-panel' command.",
+			},
+			-- KEYMAP: <leader>ntr
+			{
+				"<leader>ntr",
+				"<cmd>Neotest run<cr>",
+				desc = "Run specific test / all tests in file using ':Neotest run'.",
+			},
+			-- KEYMAP: <leader>nts
+			{
+				"<leader>nts",
+				function()
+					vim.cmd([[
+          Neotest output-panel close
+          Neotest summary toggle
+        ]])
+				end,
+				desc = "Run ':Neotest summary' command.",
+			},
+		},
 		config = function()
 			---@diagnostic disable-next-line: missing-fields
 			require("neotest").setup({
@@ -26,61 +92,6 @@ return {
 				consumers = {
 					overseer = require("neotest.consumers.overseer"),
 				},
-			})
-		end,
-		init = function()
-			local neotest = require("neotest")
-
-			-- KEYMAP GROUP: <leader>nt
-			vim.keymap.set("n", "<leader>nt", "<nop>", { desc = "Neotest" })
-
-			-- KEYMAP: <leader>nta
-			vim.keymap.set(
-				"n",
-				"<leader>nta",
-				"<cmd>lua require('neotest').run.run({ suite = true })<cr>",
-				{ desc = "Run all tests using Neotest." }
-			)
-
-			-- KEYMAP: <leader>ntd
-			vim.keymap.set("n", "<leader>ntd", function()
-				---@diagnostic disable-next-line: missing-fields
-				neotest.run.run({ strategy = "dap" })
-			end, { desc = "Debug nearest test using DAP." })
-
-			-- KEYMAP: <leader>ntf
-			vim.keymap.set("n", "<leader>ntf", function()
-				neotest.run.run(vim.fn.expand("%"))
-			end, { desc = "Run all tests in current file." })
-
-			-- KEYMAP: <leader>ntl
-			vim.keymap.set("n", "<leader>ntl", function()
-				neotest.run.run_last()
-			end, { desc = "Run last set of tests that were run." })
-
-			-- KEYMAP: <leader>nto
-			vim.keymap.set("n", "<leader>nto", function()
-				vim.cmd([[
-            Neotest summary close
-            Neotest output-panel
-            wincmd j
-            wincmd H
-          ]])
-			end, { desc = "Run ':Neotest output-panel' command." })
-
-			-- KEYMAP: <leader>ntr
-			vim.keymap.set("n", "<leader>ntr", "<cmd>Neotest run<cr>", {
-				desc = "Run specific test / all tests in file using the ':Neotest run' command.",
-			})
-
-			-- KEYMAP: <leader>nts
-			vim.keymap.set("n", "<leader>nts", function()
-				vim.cmd([[
-          Neotest output-panel close
-          Neotest summary toggle
-        ]])
-			end, {
-				desc = "Run ':Neotest summary' command.",
 			})
 
 			-- AUTOCMD: Configuration that is specific to ':Neotest summary' buffers.
@@ -97,6 +108,10 @@ return {
 					})
 				end,
 			})
+		end,
+		init = function()
+			-- KEYMAP GROUP: <leader>nt
+			vim.keymap.set("n", "<leader>nt", "<nop>", { desc = "Neotest" })
 		end,
 	},
 }

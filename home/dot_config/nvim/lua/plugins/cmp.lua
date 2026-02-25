@@ -8,6 +8,7 @@ return {
 	-- PLUGIN: http://github.com/hrsh7th/nvim-cmp
 	{
 		"hrsh7th/nvim-cmp",
+		event = { "InsertEnter", "CmdlineEnter" },
 		dependencies = {
 			-- PLUGIN: http://github.com/hrsh7th/cmp-buffer
 			"hrsh7th/cmp-buffer",
@@ -30,7 +31,7 @@ return {
 			-- PLUGIN: http://github.com/petertriho/cmp-git
 			{
 				"petertriho/cmp-git",
-				init = function()
+				config = function()
 					local format = require("cmp_git.format")
 					local sort = require("cmp_git.sort")
 
@@ -126,7 +127,8 @@ return {
 		init = function()
 			-- Don't show matching
 			vim.opt.shortmess:append("c")
-
+		end,
+		config = function()
 			local lspkind = require("lspkind")
 			lspkind.init()
 

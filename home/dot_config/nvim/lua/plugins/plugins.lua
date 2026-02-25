@@ -13,15 +13,15 @@
 
 return {
 	-- PLUGIN: http://github.com/dylon/vim-antlr (for syntax highlighting of *.g4 files)
-	"dylon/vim-antlr",
+	{ "dylon/vim-antlr", ft = "antlr4" },
 	-- PLUGIN: http://github.com/godlygeek/tabular
-	"godlygeek/tabular",
+	{ "godlygeek/tabular", cmd = "Tabularize" },
 	-- PLUGIN: http://github.com/google/vim-searchindex
-	"google/vim-searchindex",
+	{ "google/vim-searchindex", event = "VeryLazy" },
 	-- PLUGIN: http://github.com/jamessan/vim-gnupg
-	"jamessan/vim-gnupg",
+	{ "jamessan/vim-gnupg", event = "VeryLazy" },
 	-- PLUGIN: http://github.com/mityu/vim-applescript
-	"mityu/vim-applescript",
+	{ "mityu/vim-applescript", ft = "applescript" },
 	-- PLUGIN: http://github.com/wellle/targets.vim
-	"wellle/targets.vim",
+	{ "wellle/targets.vim", event = "VeryLazy" },
 }

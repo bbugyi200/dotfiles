@@ -155,18 +155,10 @@ return {
 			})
 
 			-- yaml-language-server
-			local sase_schema = vim.fn.trim(vim.fn.system("sase path xprompts-schema"))
-			local yaml_schemas = {}
-			if vim.v.shell_error == 0 and sase_schema ~= "" then
-				yaml_schemas[sase_schema] = {
-					"*/xprompts/**/*.yml",
-					"*/.xprompts/**/*.yml",
-				}
-			end
 			vim.lsp.config("yamlls", {
 				settings = {
 					yaml = {
-						schemas = yaml_schemas,
+						schemas = {},
 						validate = true,
 						schemaStore = {
 							enable = true,
@@ -174,6 +166,31 @@ return {
 						},
 					},
 				},
+			})
+			-- Asynchronously load sase schema to avoid blocking startup
+			vim.fn.jobstart({ "sase", "path", "xprompts-schema" }, {
+				stdout_buffered = true,
+				on_stdout = function(_, data)
+					if data then
+						local schema = vim.fn.trim(table.concat(data, "\n"))
+						if schema ~= "" then
+							vim.schedule(function()
+								vim.lsp.config("yamlls", {
+									settings = {
+										yaml = {
+											schemas = {
+												[schema] = {
+													"*/xprompts/**/*.yml",
+													"*/.xprompts/**/*.yml",
+												},
+											},
+										},
+									},
+								})
+							end)
+						end
+					end
+				end,
 			})
 
 			vim.lsp.enable(servers)

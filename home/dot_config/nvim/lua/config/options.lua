@@ -26,14 +26,18 @@ vo.tagfunc = "v:lua.vim.lsp.tagfunc"
 vo.ignorecase = true
 vo.smartcase = true
 
--- Configure system clipboard
-if vim.fn.has("clipboard") == 1 then
-	if vim.fn.has("unnamedplus") == 1 then
-		vo.clipboard = "unnamed,unnamedplus"
-	else
-		vo.clipboard = "unnamed"
-	end
-end
+-- Configure system clipboard (deferred to avoid blocking startup with clipboard provider check)
+vim.api.nvim_create_autocmd("UIEnter", {
+	callback = function()
+		if vim.fn.has("clipboard") == 1 then
+			if vim.fn.has("unnamedplus") == 1 then
+				vo.clipboard = "unnamed,unnamedplus"
+			else
+				vo.clipboard = "unnamed"
+			end
+		end
+	end,
+})
 
 -- Enables 24-bit RGB color in the TUI.
 vo.termguicolors = true

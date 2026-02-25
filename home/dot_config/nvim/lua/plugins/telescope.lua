@@ -128,8 +128,6 @@ return {
 			})
 		end,
 		init = function()
-			local builtin = require("telescope.builtin")
-
 			-- ╭─────────────────────────────────────────────────────────╮
 			-- │                    HELPER FUNCTIONS                     │
 			-- ╰─────────────────────────────────────────────────────────╯
@@ -529,13 +527,13 @@ return {
 			-- KEYMAP GROUP: <leader>t
 			vim.keymap.set("n", "<leader>t", "<nop>", { desc = "telescope.nvim" })
 			-- KEYMAP: <c-space>
-			vim.keymap.set("n", "<c-space>", builtin.resume, { desc = "Telescope resume" })
+			vim.keymap.set("n", "<c-space>", "<cmd>Telescope resume<cr>", { desc = "Telescope resume" })
 			-- KEYMAP: <leader>tau
 			vim.keymap.set("n", "<leader>tau", "<cmd>Telescope autocommands<cr>", {
 				desc = "Telescope autocommands",
 			})
 			-- KEYMAP: <leader>tbu
-			vim.keymap.set("n", "<leader>tbu", builtin.buffers, { desc = "Telescope buffers" })
+			vim.keymap.set("n", "<leader>tbu", "<cmd>Telescope buffers<cr>", { desc = "Telescope buffers" })
 			-- KEYMAP: <leader>tch
 			vim.keymap.set(
 				"n",
@@ -546,9 +544,9 @@ return {
 			-- KEYMAP: <leader>tcm
 			vim.keymap.set("n", "<leader>tcm", "<cmd>Telescope commands<cr>", { desc = "Telescope commands" })
 			-- KEYMAP: <leader>tF
-			vim.keymap.set("n", "<leader>tF", builtin.find_files, { desc = "Telescope find files" })
+			vim.keymap.set("n", "<leader>tF", "<cmd>Telescope find_files<cr>", { desc = "Telescope find files" })
 			-- KEYMAP: <leader>tH
-			vim.keymap.set("n", "<leader>tH", builtin.help_tags, { desc = "Telescope help tags" })
+			vim.keymap.set("n", "<leader>tH", "<cmd>Telescope help_tags<cr>", { desc = "Telescope help tags" })
 			-- KEYMAP: <leader>tj
 			vim.keymap.set("n", "<leader>tj", "<cmd>Telescope jumplist<cr>", { desc = "Telescope jumplist" })
 			-- KEYMAP: <leader>tk
@@ -599,9 +597,10 @@ return {
 			telescope_plugin_name,
 			"kkharji/sqlite.lua",
 		},
-		init = function()
+		config = function()
 			require("telescope").load_extension("smart_open")
-
+		end,
+		init = function()
 			if bb.is_goog_machine() then
 				-- KEYMAP: <space>
 				vim.keymap.set("n", "<space>", "<cmd>Telescope buffers<cr>", { desc = "Telescope buffers" })
@@ -625,7 +624,7 @@ return {
 		dependencies = {
 			{ telescope_plugin_name },
 		},
-		init = function()
+		config = function()
 			require("telescope").load_extension("fzf")
 		end,
 	},
@@ -635,8 +634,10 @@ return {
 		dependencies = {
 			{ telescope_plugin_name },
 		},
-		init = function()
+		config = function()
 			require("telescope").load_extension("heading")
+		end,
+		init = function()
 			-- AUTOCMD: Add 'H' keymap to run ':Telescope heading' for vimdoc / markdown / rst files.
 			vim.api.nvim_create_autocmd("FileType", {
 				pattern = { "markdown", "help", "rst" },
@@ -653,6 +654,9 @@ return {
 		dependencies = {
 			{ telescope_plugin_name },
 		},
+		config = function()
+			require("telescope").load_extension("live_grep_args")
+		end,
 		init = function()
 			-- KEYMAP: <leader>tg
 			vim.keymap.set(
@@ -661,7 +665,6 @@ return {
 				":lua require('telescope').extensions.live_grep_args.live_grep_args()<CR>",
 				{ desc = "Telescope live_grep_args" }
 			)
-			require("telescope").load_extension("live_grep_args")
 		end,
 	},
 	-- PLUGIN: http://github.com/benfowler/telescope-luasnip.nvim
@@ -671,10 +674,12 @@ return {
 			telescope_plugin_name,
 			"L3MON4D3/LuaSnip",
 		},
+		config = function()
+			require("telescope").load_extension("luasnip")
+		end,
 		init = function()
 			-- KEYMAP: <leader>tsn
 			vim.keymap.set("n", "<leader>tsn", "<cmd>Telescope luasnip<cr>", { desc = "Telescope luasnip" })
-			require("telescope").load_extension("luasnip")
 		end,
 	},
 	-- PLUGIN: http://github.com/nvim-telescope/telescope-ui-select.nvim
@@ -683,7 +688,7 @@ return {
 		dependencies = {
 			{ telescope_plugin_name },
 		},
-		init = function()
+		config = function()
 			require("telescope").load_extension("ui-select")
 		end,
 	},

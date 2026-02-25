@@ -8,18 +8,20 @@ return {
 	-- PLUGIN: http://github.com/williamboman/mason.nvim
 	{
 		mason_plugin_name,
-		lazy = false,
+		cmd = "Mason",
+		event = "VeryLazy",
 		opts = {
 			pip = { upgrade_pip = true, install_args = { "--index-url", "https://pypi.org/simple/" } },
 		},
-		init = function()
+		keys = {
 			-- KEYMAP: <leader>ma
-			vim.keymap.set("n", "<leader>ma", "<cmd>Mason<cr>", { desc = "Run :Mason command." })
-		end,
+			{ "<leader>ma", "<cmd>Mason<cr>", desc = "Run :Mason command." },
+		},
 	},
 	-- PLUGIN: http://github.com/williamboman/mason-lspconfig.nvim
 	{
 		"williamboman/mason-lspconfig.nvim",
+		event = "VeryLazy",
 		dependencies = { mason_plugin_name, "neovim/nvim-lspconfig" },
 		opts = {
 			ensure_installed = {
@@ -35,6 +37,7 @@ return {
 	-- PLUGIN: http://github.com/WhoIsSethDaniel/mason-tool-installer.nvim
 	{
 		"WhoIsSethDaniel/mason-tool-installer.nvim",
+		event = "VeryLazy",
 		dependencies = mason_plugin_name,
 		opts = {
 			ensure_installed = {
@@ -50,6 +53,7 @@ return {
 	-- PLUGIN: http://github.com/jay-babu/mason-nvim-dap.nvim
 	{
 		"jay-babu/mason-nvim-dap.nvim",
+		event = "VeryLazy",
 		dependencies = { mason_plugin_name, "mfussenegger/nvim-dap" },
 		opts = {
 			ensure_installed = { "bash", "codelldb", "python" },
