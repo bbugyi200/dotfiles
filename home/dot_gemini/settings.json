@@ -17,6 +17,9 @@
   "ui": {
     "theme": "Dracula"
   },
+  "experimental": {
+    "plan": true
+  },
   "general": {
     "vimMode": true
   },
