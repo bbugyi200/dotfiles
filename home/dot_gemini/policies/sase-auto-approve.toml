@@ -1,11 +1,9 @@
 [[rule]]
-# Allow all tools to run headlessly without prompting, like YOLO
+# Allow all tools to run headlessly without prompting.
+# BeforeTool hooks in settings.json gate exit_plan_mode and ask_user;
+# the policy must NOT use "ask_user" because in non-interactive /
+# headless mode Gemini CLI treats ask_user as "deny", which blocks
+# exit_plan_mode indefinitely.
 toolName = "*"
 decision = "allow"
 priority = 100
-
-[[rule]]
-# Require explicit interaction or hooks for these
-toolName = ["exit_plan_mode", "ask_user"]
-decision = "ask_user"
-priority = 200
