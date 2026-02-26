@@ -8,7 +8,7 @@ import re
 import subprocess
 import sys
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 
@@ -18,6 +18,21 @@ class _PragmaInfo:
     ref_path: str  # relative to git root
     source_file: Path  # .py file containing the pragma
     pragma_line: int  # 1-based line number
+
+
+@dataclass
+class _FileInfo:
+    """All extracted information from a single Python file, computed in one pass."""
+
+    path: Path
+    content: str
+    public_symbols: list[str] = field(default_factory=list)
+    private_symbols: list[str] = field(default_factory=list)
+    pragmas: dict[str, list[_PragmaInfo]] = field(default_factory=dict)
+    # {symbol_name: def_lineno} for private symbols (used for in-file usage check)
+    private_def_lines: dict[str, int] = field(default_factory=dict)
+    # Names that appear in import-like contexts (extracted via line scanning)
+    import_candidates: set[str] = field(default_factory=set)
 
 
 def _get_git_root() -> Path | None:
@@ -32,35 +47,95 @@ def _get_git_root() -> Path | None:
     return Path(result.stdout.strip())
 
 
-def _extract_pragmas(file_path: Path) -> dict[str, list[_PragmaInfo]]:
-    """Extract pyvision pragmas from a Python file.
+def _get_decorator_names(node: ast.AST) -> set[str]:
+    """Extract the simple names of all decorators on a function/class node.
 
-    Looks for ``# pyvision: <path>`` comments on consecutive lines directly
-    above a top-level def/async def/class (or above its first decorator).
-    Multiple pragma lines per symbol are supported.
+    For a plain ``@foo`` decorator the name is ``"foo"``.
+    For a dotted ``@foo.bar`` or call ``@foo(...)`` the outermost name is used.
     """
+    names: set[str] = set()
+    for dec in getattr(node, "decorator_list", []):
+        if isinstance(dec, ast.Name):
+            names.add(dec.id)
+        elif isinstance(dec, ast.Attribute):
+            # Walk to the root Name of a dotted expression like foo.bar.baz
+            inner = dec
+            while isinstance(inner, ast.Attribute):
+                inner = inner.value
+            if isinstance(inner, ast.Name):
+                names.add(inner.id)
+        elif isinstance(dec, ast.Call):
+            func = dec.func
+            if isinstance(func, ast.Name):
+                names.add(func.id)
+            elif isinstance(func, ast.Attribute):
+                inner = func
+                while isinstance(inner, ast.Attribute):
+                    inner = inner.value
+                if isinstance(inner, ast.Name):
+                    names.add(inner.id)
+    return names
+
+
+def _extract_file_info(
+    file_path: Path, exclude_decorators: set[str] | None = None
+) -> _FileInfo | None:
+    """Read a file once and extract all symbols and pragmas in a single pass."""
     try:
         with open(file_path, encoding="utf-8") as f:
-            source = f.read()
-        lines = source.splitlines()
-        tree = ast.parse(source, filename=str(file_path))
-    except (SyntaxError, UnicodeDecodeError, OSError):
-        return {}
+            content = f.read()
+        tree = ast.parse(content, filename=str(file_path))
+    except (SyntaxError, UnicodeDecodeError, OSError) as e:
+        if isinstance(e, (SyntaxError, UnicodeDecodeError)):
+            print(f"Warning: Could not parse {file_path}: {e}", file=sys.stderr)
+        return None
 
+    info = _FileInfo(path=file_path, content=content)
+    lines = content.splitlines()
     pragma_re = re.compile(r"^#\s*pyvision:\s*(.+)$")
-    pragmas: dict[str, list[_PragmaInfo]] = {}
+
+    # Extract import candidates by scanning lines once (matches original regex semantics)
+    # Original patterns checked per-symbol:
+    #   1. ^\s+<symbol>,\s*(#.*)?$    — symbol alone on line in multi-line import
+    #   2. ^\s*from\s.*\simport.*\s<symbol>\b — symbol on a from...import line
+    # We extract all candidate names in one pass instead.
+    _p1 = re.compile(r"^\s+(\w+),\s*(?:#.*)?$")
+    _p2_prefix = re.compile(r"^\s*from\s.*\simport\s")
+    _p2_names = re.compile(r"(?<=\s)(\w+)")
+    for line in lines:
+        m = _p1.match(line)
+        if m:
+            info.import_candidates.add(m.group(1))
+            continue
+        m = _p2_prefix.match(line)
+        if m:
+            # Extract all whitespace-preceded identifiers after "import"
+            after_import = line[m.end() - 1:]  # keep the leading space
+            for wm in _p2_names.finditer(after_import):
+                info.import_candidates.add(wm.group(1))
 
     for node in tree.body:
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             continue
 
-        # The effective start line is the first decorator (if any), else the def/class line
+        # Check decorator exclusion once
+        if exclude_decorators and _get_decorator_names(node) & exclude_decorators:
+            continue
+
+        name = node.name
+
+        if name.startswith("_"):
+            info.private_symbols.append(name)
+            info.private_def_lines[name] = node.lineno
+        elif name != "main":
+            info.public_symbols.append(name)
+
+        # Extract pragmas for this symbol
         if node.decorator_list:
             start_line = node.decorator_list[0].lineno
         else:
             start_line = node.lineno
 
-        # Walk upward from the line above, collecting all consecutive pragma lines
         comment_idx = start_line - 2
         if comment_idx < 0:
             continue
@@ -72,24 +147,71 @@ def _extract_pragmas(file_path: Path) -> dict[str, list[_PragmaInfo]]:
                 break
             symbol_pragmas.append(
                 _PragmaInfo(
-                    symbol_name=node.name,
+                    symbol_name=name,
                     ref_path=m.group(1).strip(),
                     source_file=file_path,
-                    pragma_line=comment_idx + 1,  # 1-based line number
+                    pragma_line=comment_idx + 1,
                 )
             )
             comment_idx -= 1
 
         if symbol_pragmas:
-            pragmas[node.name] = symbol_pragmas
+            info.pragmas[name] = symbol_pragmas
 
-    return pragmas
+    return info
+
+
+def _batch_search_usage(
+    symbols: set[str], file_infos: list[_FileInfo]
+) -> set[str]:
+    """Find which symbols are imported by any file using pre-extracted import candidates.
+
+    Returns the set of symbols that are imported by at least one file.
+    """
+    if not symbols:
+        return set()
+
+    found: set[str] = set()
+    for info in file_infos:
+        matches = symbols & info.import_candidates
+        if matches:
+            found |= matches
+            if found == symbols:
+                break  # All symbols found
+    return found
+
+
+def _batch_check_private_in_file(
+    file_info: _FileInfo,
+) -> tuple[list[str], list[str]]:
+    """Check all private symbols in a file for in-file usage.
+
+    Returns (used_symbols, unused_symbols).
+    """
+    used = []
+    unused = []
+    lines = file_info.content.split("\n")
+    for name in file_info.private_symbols:
+        def_line = file_info.private_def_lines.get(name)
+        pattern = re.compile(rf"\b{re.escape(name)}\b")
+        found = False
+        for i, line in enumerate(lines, start=1):
+            if i == def_line:
+                continue
+            if pattern.search(line):
+                found = True
+                break
+        if found:
+            used.append(name)
+        else:
+            unused.append(name)
+    return used, unused
 
 
 def _validate_pragmas(
     all_pragmas: dict[str, list[_PragmaInfo]],
     git_root: Path,
-    python_files: list[Path],
+    imported_symbols: set[str],
 ) -> list[str]:
     """Validate all collected pragmas and return a list of error strings."""
     errors: list[str] = []
@@ -107,7 +229,7 @@ def _validate_pragmas(
             continue
 
         # Symbol-level check: stale pragma (symbol already imported by Python files)
-        if _search_function_usage(name, python_files):
+        if name in imported_symbols:
             prefix = f"Error: pyvision pragma in {first.source_file}:{first.pragma_line}:"
             errors.append(
                 f"{prefix} symbol '{name}' is already imported by other Python files."
@@ -210,145 +332,6 @@ def _extract_entrypoint_symbols(pyproject_path: Path) -> set[str]:
     return symbols
 
 
-def _get_decorator_names(node: ast.AST) -> set[str]:
-    """Extract the simple names of all decorators on a function/class node.
-
-    For a plain ``@foo`` decorator the name is ``"foo"``.
-    For a dotted ``@foo.bar`` or call ``@foo(...)`` the outermost name is used.
-    """
-    names: set[str] = set()
-    for dec in getattr(node, "decorator_list", []):
-        if isinstance(dec, ast.Name):
-            names.add(dec.id)
-        elif isinstance(dec, ast.Attribute):
-            # Walk to the root Name of a dotted expression like foo.bar.baz
-            inner = dec
-            while isinstance(inner, ast.Attribute):
-                inner = inner.value
-            if isinstance(inner, ast.Name):
-                names.add(inner.id)
-        elif isinstance(dec, ast.Call):
-            func = dec.func
-            if isinstance(func, ast.Name):
-                names.add(func.id)
-            elif isinstance(func, ast.Attribute):
-                inner = func
-                while isinstance(inner, ast.Attribute):
-                    inner = inner.value
-                if isinstance(inner, ast.Name):
-                    names.add(inner.id)
-    return names
-
-
-def _extract_public_functions(
-    file_path: Path, exclude_decorators: set[str] | None = None
-) -> list[str]:
-    """Extract all public top-level function and class names from a Python file."""
-    try:
-        with open(file_path, encoding="utf-8") as f:
-            tree = ast.parse(f.read(), filename=str(file_path))
-
-        symbols = []
-        # Only iterate over module-level nodes, not nested functions/methods
-        for node in tree.body:
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                # Only public symbols (not prefixed with _) and not named "main"
-                if not node.name.startswith("_") and node.name != "main":
-                    if exclude_decorators and _get_decorator_names(node) & exclude_decorators:
-                        continue
-                    symbols.append(node.name)
-
-        return symbols
-    except (SyntaxError, UnicodeDecodeError) as e:
-        print(f"Warning: Could not parse {file_path}: {e}", file=sys.stderr)
-        return []
-
-
-def _extract_private_functions(
-    file_path: Path, exclude_decorators: set[str] | None = None
-) -> list[str]:
-    """Extract all private top-level function and class names from a Python file."""
-    try:
-        with open(file_path, encoding="utf-8") as f:
-            tree = ast.parse(f.read(), filename=str(file_path))
-
-        symbols = []
-        # Only iterate over module-level nodes, not nested functions/methods
-        for node in tree.body:
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                # Only private symbols (prefixed with _)
-                if node.name.startswith("_"):
-                    if exclude_decorators and _get_decorator_names(node) & exclude_decorators:
-                        continue
-                    symbols.append(node.name)
-
-        return symbols
-    except (SyntaxError, UnicodeDecodeError) as e:
-        print(f"Warning: Could not parse {file_path}: {e}", file=sys.stderr)
-        return []
-
-
-def _search_function_usage(function_name: str, search_files: list[Path]) -> bool:
-    r"""Search for usage of a function or class in the given files.
-
-    Uses two patterns:
-    1. ^\s+<symbol>,\s*(#.*)?$ - Symbol alone on line in multi-line import
-    2. ^\s*from\s.*\simport.*\s<symbol> - Import statement
-    """
-    # Using word boundaries to ensure we match the exact symbol name
-    patterns = [
-        rf"^\s+{re.escape(function_name)},\s*(#.*)?$",
-        rf"^\s*from\s.*\simport.*\s{re.escape(function_name)}\b",
-    ]
-
-    for pattern in patterns:
-        for file_path in search_files:
-            try:
-                with open(file_path, encoding="utf-8") as f:
-                    content = f.read()
-                    if re.search(pattern, content, re.MULTILINE):
-                        return True
-            except (UnicodeDecodeError, OSError):
-                continue
-
-    return False
-
-
-def _is_private_function_used_in_file(function_name: str, file_path: Path) -> bool:
-    """Check if a private function is used within its own file.
-
-    Looks for the function being called or referenced, excluding the definition line.
-    """
-    try:
-        with open(file_path, encoding="utf-8") as f:
-            content = f.read()
-
-        # Parse the file to get the definition line number
-        tree = ast.parse(content, filename=str(file_path))
-        def_line = None
-        for node in tree.body:
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                if node.name == function_name:
-                    def_line = node.lineno
-                    break
-
-        # Search for usage of the function (not in the definition line)
-        lines = content.split("\n")
-        for i, line in enumerate(lines, start=1):
-            # Skip the definition line
-            if i == def_line:
-                continue
-
-            # Look for function name being used (called, passed, etc.)
-            # Use word boundary to avoid matching substrings
-            if re.search(rf"\b{re.escape(function_name)}\b", line):
-                return True
-
-        return False
-    except (UnicodeDecodeError, OSError, SyntaxError):
-        return True  # Assume used if we can't parse
-
-
 def main():
     parser = argparse.ArgumentParser(
         description="Find unused public Python function and class definitions"
@@ -401,14 +384,20 @@ def main():
     # Build the set of excluded decorator names
     exclude_decorators = set(args.exclude_decorator) if args.exclude_decorator else None
 
-    # Collect all public functions and classes from all files
-    all_symbols = {}  # {symbol_name: [file_path, ...]}
+    # === SINGLE PASS: Read each file once and extract everything ===
+    file_infos: list[_FileInfo] = []
     for py_file in python_files:
-        symbols = _extract_public_functions(py_file, exclude_decorators)
-        for symbol in symbols:
+        info = _extract_file_info(py_file, exclude_decorators)
+        if info is not None:
+            file_infos.append(info)
+
+    # Collect all public symbols: {symbol_name: [file_path, ...]}
+    all_symbols: dict[str, list[Path]] = {}
+    for info in file_infos:
+        for symbol in info.public_symbols:
             if symbol not in all_symbols:
                 all_symbols[symbol] = []
-            all_symbols[symbol].append(py_file)
+            all_symbols[symbol].append(info.path)
 
     # Exclude symbols referenced as entry points in pyproject.toml
     pyproject_path = _find_pyproject_toml(args.directory)
@@ -416,6 +405,24 @@ def main():
         entrypoint_symbols = _extract_entrypoint_symbols(pyproject_path)
         for sym in entrypoint_symbols:
             all_symbols.pop(sym, None)
+
+    # Collect all private symbols: {symbol_name: [file_path, ...]}
+    all_private_symbols: dict[str, list[Path]] = {}
+    for info in file_infos:
+        for symbol in info.private_symbols:
+            if symbol not in all_private_symbols:
+                all_private_symbols[symbol] = []
+            all_private_symbols[symbol].append(info.path)
+
+    # Collect all pragmas
+    all_pragmas: dict[str, list[_PragmaInfo]] = {}
+    for info in file_infos:
+        all_pragmas.update(info.pragmas)
+
+    # === SINGLE BATCH: Find all imported symbols at once ===
+    # We need to check usage for: all public symbols + all private symbols + pragma symbols
+    all_symbols_to_check = set(all_symbols.keys()) | set(all_private_symbols.keys()) | set(all_pragmas.keys())
+    imported_symbols = _batch_search_usage(all_symbols_to_check, file_infos)
 
     # Apply --epic-symbol filters
     epic_errors = []
@@ -468,7 +475,7 @@ def main():
             continue
 
         # 5. Check symbol actually needs ignoring (not already used)
-        if _search_function_usage(symbol_name, python_files):
+        if symbol_name in imported_symbols:
             epic_errors.append(
                 f"Error: --epic-symbol '{entry}': symbol '{symbol_name}' is already"
                 " properly used. Remove this unnecessary --epic-symbol entry."
@@ -485,11 +492,7 @@ def main():
     for symbol in validated_epic_symbols:
         all_symbols.pop(symbol, None)
 
-    # Collect and validate pyvision pragmas from all Python files
-    all_pragmas: dict[str, list[_PragmaInfo]] = {}
-    for py_file in python_files:
-        all_pragmas.update(_extract_pragmas(py_file))
-
+    # Validate pragmas (uses pre-computed imported_symbols instead of re-scanning)
     if all_pragmas:
         git_root = _get_git_root()
         if git_root is None:
@@ -499,7 +502,7 @@ def main():
             )
             return 1
 
-        pragma_errors = _validate_pragmas(all_pragmas, git_root, python_files)
+        pragma_errors = _validate_pragmas(all_pragmas, git_root, imported_symbols)
         if pragma_errors:
             for err in pragma_errors:
                 print(err, file=sys.stderr)
@@ -513,19 +516,10 @@ def main():
         print("No public functions or classes found!", file=sys.stderr)
         return 0
 
-    # Collect all private functions and classes from all files
-    all_private_symbols = {}  # {symbol_name: [file_path, ...]}
-    for py_file in python_files:
-        private_symbols = _extract_private_functions(py_file, exclude_decorators)
-        for symbol in private_symbols:
-            if symbol not in all_private_symbols:
-                all_private_symbols[symbol] = []
-            all_private_symbols[symbol].append(py_file)
-
     # Check that private symbols do NOT match import patterns
     imported_private_symbols = []
     for symbol_name, def_files in all_private_symbols.items():
-        if _search_function_usage(symbol_name, python_files):
+        if symbol_name in imported_symbols:
             imported_private_symbols.append((symbol_name, def_files))
 
     if imported_private_symbols:
@@ -539,12 +533,13 @@ def main():
                 print(f"  {symbol_name} in {file_path}", file=sys.stderr)
         return 1
 
-    # Check that private symbols ARE used in their own file
+    # Check that private symbols ARE used in their own file (using cached content)
     unused_private_symbols = []
-    for symbol_name, def_files in all_private_symbols.items():
-        for file_path in def_files:
-            if not _is_private_function_used_in_file(symbol_name, file_path):
-                unused_private_symbols.append((symbol_name, file_path))
+    for info in file_infos:
+        if info.private_symbols:
+            _, unused = _batch_check_private_in_file(info)
+            for name in unused:
+                unused_private_symbols.append((name, info.path))
 
     if unused_private_symbols:
         print(
@@ -555,10 +550,10 @@ def main():
             print(f"  {symbol_name} in {file_path}", file=sys.stderr)
         return 1
 
-    # Search for usage of each symbol
+    # Determine unused public symbols (using pre-computed imported_symbols)
     unused_symbols = []
     for symbol_name, def_files in all_symbols.items():
-        if not _search_function_usage(symbol_name, python_files):
+        if symbol_name not in imported_symbols:
             unused_symbols.append((symbol_name, def_files))
 
     # Report results
