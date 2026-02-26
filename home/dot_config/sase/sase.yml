@@ -101,7 +101,7 @@ xprompts:
     Can you help me fix the build errors shown below, which were introduced by the current CL? #propose
   chat: "@$(sase_first_commit_chat)"
   cl_diff: |
-    #x(cl_changes.diff, hg pdiff $(branch_changes | grep -v -E 'png$|fingerprint$') | perl -nE 'print s{google3/}{}gr')
+    #x(cl_changes.diff, hg pdiff $(branch_changes | grep -v -E 'png$|fingerprint$' | tr '\n' ' ') | perl -nE 'print s{google3/}{}gr')
   cl_local_diff: |
     #x(cl_changes.diff, hg diff $(branch_local_changes | grep -v -E 'png$|fingerprint$') | perl -nE 'print s{google3/}{}gr')
   cldd:
