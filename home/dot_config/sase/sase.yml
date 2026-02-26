@@ -142,14 +142,17 @@ xprompts:
     than 1 top-level (ex: not nested in a lambda expression block) statement, no blank lines are necessary. Otherwise,
     the sections should ALWAYS be separated by a blank line.
   mentor/comments: |
-    #mentor: Can you help me ensure that all code changes in this CL follow best practices for code comments? Specifically,
+    #mentor:: Can you help me ensure that all code changes in this CL follow best practices for code comments? Specifically,
     ensure that:
-      + All public fields, functions, classes, and methods have clear and concise doc comments that follow best
+
+      - All public fields, functions, classes, and methods have clear and concise doc comments that follow best
         practices for the language they are written in. EXCEPTIONS:
           - Getters and setters do not need doc comments unless they have non-trivial logic.
           - If the best you can do is restate the name of the field, function, class, or method in the comment, then
             no comment is necessary.
-      + We are critical about the comments we add — avoid redundant comments that simply restate what the code does.
+
+    IMPORTANT: You MUST be extra critical about the comments you add — avoid redundant comments that simply restate
+    what the code does. You should be more lenient when reviewing (and deciding whether to delete) existing comments.
   mentor/complete: |
     {% set chat_val = "#chat" -%}
     {%- set chat_clause = ", the initial conversation with Gemini that resulted in the creation of this CL (shown in the " ~ chat_val ~ " file)," if chat_val != "@" else "" -%}
