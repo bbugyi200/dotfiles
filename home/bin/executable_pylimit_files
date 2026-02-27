@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Wrapper around pylimit that only outputs the filenames with violations,
-# warnings, or info notices, separated by spaces.
+# warnings, or info notices, one per line.
 
 output=$(pylimit "$@" 2>&1)
 ec=$?
 
-files=$(echo "${output}" | grep -E '(VIOLATION|WARNING|FYI):' | sed 's/.*\(VIOLATION\|WARNING\|FYI\): \(.*\) has .*/\2/' | tr '\n' ' ' | sed 's/ $//')
+files=$(echo "${output}" | grep -E '(VIOLATION|WARNING|FYI):' | sed 's/.*\(VIOLATION\|WARNING\|FYI\): \(.*\) has .*/\2/' | sort -u)
 
 if [[ -n "${files}" ]]; then
   echo "${files}"
