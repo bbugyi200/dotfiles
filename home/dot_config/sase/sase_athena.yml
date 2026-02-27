@@ -5,5 +5,5 @@ axe:
       chops:
         - name: pylimit_split
           description: "Run the pylimit_split xprompt workflow"
-          xprompt: "#gh:sase #pylimit_split"
+          xprompt: "#gh:sase #pylimit_split %approve"
           run_every: 60
