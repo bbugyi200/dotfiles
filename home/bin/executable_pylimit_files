@@ -6,7 +6,7 @@
 output=$(pylimit "$@" 2>&1)
 ec=$?
 
-files=$(echo "${output}" | grep 'VIOLATION:' | sed 's/VIOLATION: \(.*\) has .*/\1/' | tr '\n' ' ' | sed 's/ $//')
+files=$(echo "${output}" | grep 'VIOLATION:' | sed 's/.*VIOLATION: \(.*\) has .*/\1/' | tr '\n' ' ' | sed 's/ $//')
 
 if [[ -n "${files}" ]]; then
   echo "${files}"
