@@ -103,6 +103,7 @@ function run() {
   merge_with_master
   do_commit
   do_push
+  do_beads_close
   do_beads_sync
   send_notification
 }
@@ -340,6 +341,47 @@ function do_push() {
   fi
 
   jlog "push" "result=ok_after_pull"
+}
+
+# Resolve the bd command to use for bead operations.
+# Checks .env file in cwd first, then BD_COMMAND env var, then defaults to "bd".
+function resolve_bd_command() {
+  if [[ -f .env ]]; then
+    local env_val
+    env_val=$(grep -m1 '^BD_COMMAND=' .env 2>/dev/null | cut -d= -f2-)
+    # Strip surrounding quotes
+    env_val="${env_val%\"}"
+    env_val="${env_val#\"}"
+    env_val="${env_val%\'}"
+    env_val="${env_val#\'}"
+    if [[ -n "${env_val}" ]]; then
+      echo "${env_val}"
+      return
+    fi
+  fi
+  if [[ -n "${BD_COMMAND:-}" ]]; then
+    echo "${BD_COMMAND}"
+    return
+  fi
+  echo "bd"
+}
+
+# Close the bead issue after a successful commit, if --bead was provided.
+function do_beads_close() {
+  if [[ -z "${BEAD_ID}" ]]; then
+    return 0
+  fi
+  local bd_cmd
+  bd_cmd=$(resolve_bd_command)
+  log::debug "Closing bead %s with command: %s" "${BEAD_ID}" "${bd_cmd}"
+  local close_output rc=0
+  close_output=$(${bd_cmd} close "${BEAD_ID}" 2>&1) || rc=$?
+  if [[ ${rc} -eq 0 ]]; then
+    jlog "beads_close" "result=ok" "bead_id=${BEAD_ID}" "bd_cmd=${bd_cmd}"
+  else
+    jlog "beads_close" "result=failed" "bead_id=${BEAD_ID}" "exit_code=${rc}" "output=${close_output}"
+    log::warn "Failed to close bead %s (exit code %d): %s" "${BEAD_ID}" "${rc}" "${close_output}"
+  fi
 }
 
 # Sync beads issue tracker state after push.
