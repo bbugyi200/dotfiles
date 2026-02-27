@@ -2,3 +2,6 @@ tags
 {{ if ne .chezmoi.hostname "bbugyi.c.googlers.com" }}
 .config/sase/sase_work.yml
 {{ end }}
+{{ if ne .chezmoi.osRelease.id "debian" }}
+.config/sase/sase_debian.yml
+{{ end }}
