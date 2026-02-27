@@ -144,7 +144,7 @@ function M.get_markdown_snippets()
 		-- SNIPPET: commit
 		s(
 			{ trig = "commit", desc = "commit skill" },
-			{ t("Make sure to use your commit skill to commit any file changes you make to external repos.") }
+			{ t("Make sure to use your commit skill to commit any file changes you make to that repo.") }
 		),
 		-- SNIPPET: cout
 		s(
