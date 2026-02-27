@@ -7,14 +7,3 @@ axe:
   hook_interval: 1
   zombie_timeout_seconds: 7200
   max_runners: 5
-
-# Metahooks intercept failing hooks before the summarize agent runs.
-metahooks:
-  # keep-sorted start
-  - name: hg_presubmit_tap
-    hook_command: sase_presubmit
-    output_regex: "[1-9]\\d* failed,"
-  - name: scuba
-    hook_command: bb_rabbit_test
-    output_regex: "Expected: Scuba Result PASSED"
-  # keep-sorted end
