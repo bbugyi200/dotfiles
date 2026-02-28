@@ -4,6 +4,7 @@ set -e
 
 SASE_DIR="$HOME/projects/github/bbugyi200/sase"
 SASE_GITHUB_DIR="$HOME/projects/github/bbugyi200/sase-github"
+SASE_TELEGRAM_DIR="$HOME/projects/github/bbugyi200/sase-chop-telegram"
 
 for repo in "$SASE_DIR" "$SASE_GITHUB_DIR"; do
     echo ">>> Syncing $repo..."
@@ -14,4 +15,6 @@ echo ">>> Installing sase via uv tool..."
 uv tool install --force --editable \
     "sase @ $SASE_DIR" \
     --with-editable "sase-github @ $SASE_GITHUB_DIR" \
-    --with-executables-from sase-github
+    --with-executables-from sase-github \
+    --with-editable "sase-chop-telegram @ $SASE_TELEGRAM_DIR" \
+    --with-executables-from sase-chop-telegram
