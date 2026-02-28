@@ -12,7 +12,7 @@ fix-header:
 	@printf "└───────────────────────────────────────────────────────┘\n"
 
 .PHONY: fix
-fix: fix-header fix-python fix-lua fix-md fix-keepsorted ## Fix and format Python, Lua, and Markdown files.
+fix: fix-header fix-python fix-lua fix-md ## Fix and format Python, Lua, and Markdown files.
 
 .PHONY: lint-header
 lint-header:
@@ -22,7 +22,7 @@ lint-header:
 	@printf "└───────────────────────────────────────────────────────┘\n"
 
 .PHONY: lint
-lint: lint-header lint-llscheck lint-luacheck lint-python lint-md lint-keepsorted ## Run linters on dotfiles.
+lint: lint-header lint-llscheck lint-luacheck lint-python lint-md ## Run linters on dotfiles.
 
 .PHONY: lint-llscheck
 lint-llscheck: ## Run llscheck linter on dotfiles.
@@ -40,11 +40,6 @@ lint-luacheck: ## Run luacheck linter on dotfiles.
 lint-md: ## Check Markdown formatting with prettier.
 	@printf "\n---------- Checking Markdown formatting with prettier... ----------\n"
 	prettier --check --prose-wrap=always --print-width=120 "**/*.md"
-
-.PHONY: lint-keepsorted
-lint-keepsorted: ## Check that keep-sorted blocks are sorted.
-	@printf "\n---------- Checking keep-sorted blocks... ----------\n"
-	rg -l '# keep-sorted' home/ | xargs keep-sorted --mode=lint
 
 VENV_DIR := .venv
 PYTHON := python3.12
@@ -100,11 +95,6 @@ fix-lua: ## Format Lua files with stylua.
 fix-md: ## Format Markdown files with prettier.
 	@printf "\n---------- Formatting Markdown files with prettier... ----------\n"
 	prettier --write --prose-wrap=always --print-width=120 "**/*.md"
-
-.PHONY: fix-keepsorted
-fix-keepsorted: ## Fix keep-sorted blocks.
-	@printf "\n---------- Fixing keep-sorted blocks... ----------\n"
-	rg -l '# keep-sorted' home/ | xargs keep-sorted --mode=fix
 
 .PHONY: test-header
 test-header:
