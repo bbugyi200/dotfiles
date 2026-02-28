@@ -7,3 +7,7 @@ axe:
           description: "Run the pylimit_split xprompt workflow"
           agent: "#gh:sase #pylimit_split %approve"
           run_every: 60
+        - name: tg_outbound
+          description: "Send unread notifications to Telegram when user is inactive"
+        - name: tg_inbound
+          description: "Process Telegram inline keyboard responses and text messages"
