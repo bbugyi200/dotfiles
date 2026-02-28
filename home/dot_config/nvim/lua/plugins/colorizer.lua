@@ -6,7 +6,11 @@ return {
 		"catgoose/nvim-colorizer.lua",
 		opts = {
 			filetypes = { "*" },
-			user_default_options = { mode = "virtualtext" },
+			options = {
+				display = {
+					mode = "virtualtext",
+				},
+			},
 		},
 	},
 }
