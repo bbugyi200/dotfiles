@@ -1,9 +1,0 @@
-axe:
-  lumberjacks:
-    heartbeats:
-      interval: 60
-      chops:
-        - name: pylimit_split
-          description: "Run the pylimit_split xprompt workflow"
-          xprompt: "#gh:sase #pylimit_split"
-          run_every: 60
