@@ -4,6 +4,7 @@ return {
 	-- PLUGIN: http://github.com/meznaric/key-analyzer.nvim
 	{
 		"meznaric/key-analyzer.nvim",
+		cmd = "KeyAnalyzer",
 		opts = {},
 		init = function()
 			-- KEYMAP: <leader>k

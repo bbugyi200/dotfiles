@@ -11,7 +11,8 @@ return {
 			local bb = require("bb_utils")
 
 			vim.opt.signcolumn = "yes"
-			vim.g.signify_skip_filename_pattern = { "\\.pipertmp.*" }
+			vim.g.signify_vcs_list = { "git" }
+			vim.g.signify_skip_filename_pattern = { "\\.pipertmp.*", "/tmp/.*" }
 
 			-- Customize Sign Colors
 			vim.cmd([[

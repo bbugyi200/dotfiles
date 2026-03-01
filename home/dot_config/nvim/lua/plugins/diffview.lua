@@ -4,6 +4,7 @@ return {
 	-- PLUGIN: http://github.com/sindrets/diffview.nvim
 	{
 		"sindrets/diffview.nvim",
+		cmd = { "DiffviewOpen", "DiffviewClose", "DiffviewFileHistory" },
 		opts = {
 			hooks = {
 				view_opened = function(_)

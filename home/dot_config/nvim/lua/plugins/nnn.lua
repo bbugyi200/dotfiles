@@ -4,7 +4,14 @@ return {
 	-- PLUGIN: http://github.com/luukvbaal/nnn.nvim
 	{
 		"luukvbaal/nnn.nvim",
-		init = function()
+		cmd = { "NnnPicker", "NnnExplorer" },
+		keys = {
+			-- KEYMAP: <leader>-
+			{ "<leader>-", "<cmd>NnnPicker %p:h<cr>", desc = "Pick a local file with `nnn`." },
+			-- KEYMAP: <leader>nn
+			{ "<leader>nn", "<cmd>NnnPicker<cr>", desc = "Pick a CWD file with `nnn`." },
+		},
+		config = function()
 			local builtin = require("nnn").builtin
 			require("nnn").setup({
 				mappings = {
@@ -17,14 +24,6 @@ return {
 					{ "<C-e>", builtin.populate_cmdline }, -- populate cmdline (:) with file(s)
 				},
 			})
-
-			-- ╭─────────────────────────────────────────────────────────╮
-			-- │                         KEYMAPS                         │
-			-- ╰─────────────────────────────────────────────────────────╯
-			-- KEYMAP: <leader>-
-			vim.keymap.set("n", "<leader>-", "<cmd>NnnPicker %p:h<cr>", { desc = "Pick a local file with `nnn`." })
-			-- KEYMAP: <leader>nn
-			vim.keymap.set("n", "<leader>nn", "<cmd>NnnPicker<cr>", { desc = "Pick a CWD file with `nnn`." })
 		end,
 	},
 }

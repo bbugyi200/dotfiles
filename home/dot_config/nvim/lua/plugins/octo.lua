@@ -4,6 +4,7 @@ return {
 	-- PLUGIN: http://github.com/pwntester/octo.nvim
 	{
 		"pwntester/octo.nvim",
+		cmd = "Octo",
 		dependencies = {
 			"nvim-lua/plenary.nvim",
 			"nvim-telescope/telescope.nvim",

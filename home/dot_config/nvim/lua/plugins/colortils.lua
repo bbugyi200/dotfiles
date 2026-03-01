@@ -4,6 +4,7 @@ return {
 	-- PLUGIN: http://github.com/max397574/colortils.nvim
 	{
 		"max397574/colortils.nvim",
+		cmd = "Colortils",
 		opts = {},
 		init = function()
 			-- KEYMAP: <leader>ct

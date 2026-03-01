@@ -4,6 +4,7 @@ return {
 	-- PLUGIN: http://github.com/rhysd/git-messenger.vim
 	{
 		"rhysd/git-messenger.vim",
+		cmd = "GitMessenger",
 		init = function()
 			vim.g.git_messenger_no_default_mappings = 1
 			-- KEYMAP: <leader>gm

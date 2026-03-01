@@ -4,6 +4,7 @@ return {
 	-- PLUGIN: http://github.com/dhruvasagar/vim-table-mode
 	{
 		"dhruvasagar/vim-table-mode",
+		cmd = "TableModeToggle",
 		init = function()
 			vim.g.table_mode_disable_mappings = 1
 			vim.g.table_mode_disable_tableize_mappings = 1

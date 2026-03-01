@@ -10,6 +10,7 @@ else
 		-- PLUGIN: http://github.com/andythigpen/nvim-coverage
 		{
 			"andythigpen/nvim-coverage",
+			cmd = { "Coverage", "CoverageSummary" },
 			opts = { auto_reload = true },
 			dependencies = "nvim-lua/plenary.nvim",
 			init = function()
