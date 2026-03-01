@@ -20,7 +20,3 @@ axe:
           env:
             SASE_TELEGRAM_BOT_USERNAME: sase_athena_bot
             SASE_TELEGRAM_BOT_CHAT_ID: "8764730819"
-
-xprompts:
-  - gh/dot: "#gh:dotfiles"
-  - gh/sase: "#gh:sase"
