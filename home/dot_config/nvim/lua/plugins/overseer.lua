@@ -25,7 +25,6 @@ return {
 	{
 		"stevearc/overseer.nvim",
 		version = "1.6.0",
-		cmd = { "OverseerRun", "OverseerRunCmd", "OverseerToggle" },
 		opts = {
 			strategy = { "toggleterm", direction = "float" },
 			templates = { "builtin", "make_targets" },

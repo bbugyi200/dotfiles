@@ -4,7 +4,6 @@ return {
 	-- PLUGIN: http://github.com/LudoPinelli/comment-box.nvim
 	{
 		"LudoPinelli/comment-box.nvim",
-		cmd = { "CBlcbox", "CBd", "CBlcline", "CBy" },
 		init = function()
 			-- KEYMAP GROUP: <leader>cb
 			vim.keymap.set({ "n", "v" }, "<leader>cb", "<nop>", { desc = "comment-box.nvim" })

@@ -6,7 +6,6 @@ return {
 	-- PLUGIN: http://github.com/LintaoAmons/scratch.nvim
 	{
 		"LintaoAmons/scratch.nvim",
-		cmd = { "Scratch", "ScratchOpen", "ScratchWithName", "ScratchOpenFzf" },
 		dependencies = {
 			{
 				"ibhagwan/fzf-lua",

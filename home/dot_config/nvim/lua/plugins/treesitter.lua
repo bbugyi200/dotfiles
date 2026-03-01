@@ -144,17 +144,7 @@ return {
 						},
 					},
 				},
-				highlight = {
-				enable = true,
-				additional_vim_regex_highlighting = false,
-				disable = function(lang, buf)
-					if lang ~= "markdown" then
-						return false
-					end
-					local name = vim.api.nvim_buf_get_name(buf)
-					return name:match("^/tmp/") ~= nil
-				end,
-			},
+				highlight = { enable = true, additional_vim_regex_highlighting = false },
 				indent = { enable = true },
 				matchup = { enable = true },
 				modules = {},
