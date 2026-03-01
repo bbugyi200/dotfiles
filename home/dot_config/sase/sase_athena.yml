@@ -22,5 +22,5 @@ axe:
             SASE_TELEGRAM_BOT_CHAT_ID: "8764730819"
 
 xprompts:
-  - gh_dot: "#gh:dotfiles"
-  - gh_sase: "#gh:sase"
+  - gh/dot: "#gh:dotfiles"
+  - gh/sase: "#gh:sase"
