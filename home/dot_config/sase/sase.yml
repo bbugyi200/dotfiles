@@ -7,7 +7,3 @@ axe:
   hook_interval: 1
   zombie_timeout_seconds: 7200
   max_runners: 5
-
-xprompt_aliases:
-  gh_sase: "gh:sase"
-  gh_dot: "gh:dotfiles"
