@@ -206,10 +206,10 @@ function validate_staged_changes() {
 # Skips if already on master/main. Fails with actionable message on conflict.
 function merge_with_master() {
   local current_branch
-  current_branch=$(git symbolic-ref --short HEAD 2>/dev/null || {
+  current_branch=$(git symbolic-ref --short HEAD 2>/dev/null) || {
     jlog "merge" "result=skipped" "reason=detached_head"
     return 0
-  })
+  }
 
   # Determine default branch name
   local default_branch=""
@@ -311,9 +311,19 @@ function do_push() {
     return 0
   fi
 
-  log::debug "Pushing to remote"
+  # Determine current branch for explicit push target
+  local current_branch
+  current_branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
+
+  if [[ -z "${current_branch}" ]]; then
+    jlog "push" "result=skipped" "reason=detached_head"
+    log::warn "HEAD is detached — skipping push. Commit is saved locally."
+    return 0
+  fi
+
+  log::debug "Pushing to remote (branch: ${current_branch})"
   local push_output rc=0
-  push_output=$(git push 2>&1) || rc=$?
+  push_output=$(git push origin "${current_branch}" 2>&1) || rc=$?
   if [[ ${rc} -eq 0 ]]; then
     jlog "push" "result=ok"
     return 0
@@ -334,7 +344,7 @@ function do_push() {
 
   # Pull succeeded — retry push
   local push2_output push2_rc=0
-  push2_output=$(git push 2>&1) || push2_rc=$?
+  push2_output=$(git push origin "${current_branch}" 2>&1) || push2_rc=$?
   if [[ ${push2_rc} -ne 0 ]]; then
     jlog "push" "result=failed_after_pull" "exit_code=${push2_rc}" "output=${push2_output}"
     die "Push failed after successful pull. Please investigate and push manually.\n%s" "${push2_output}"
