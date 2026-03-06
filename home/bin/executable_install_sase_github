@@ -11,6 +11,8 @@ for repo in "$SASE_DIR" "$SASE_GITHUB_DIR" "$SASE_TELEGRAM_DIR"; do
     git -C "$repo" pull
 done
 
+echo ">>> Stopping \`sase axe\`..."
+sase axe stop || true
 echo ">>> Installing sase via uv tool..."
 uv tool install --force --editable \
     "sase @ $SASE_DIR" \
