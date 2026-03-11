@@ -5,6 +5,7 @@
     "pyright-lsp@claude-plugins-official": true
   },
   "env": {
+    "CLAUDE_CODE_EFFORT_LEVEL": "max",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "DISABLE_INSTALLATION_CHECKS": "1"
   },
@@ -59,6 +60,5 @@
     "type": "command",
     "command": "~/.claude/statusline.sh"
   },
-  "skipDangerousModePermissionPrompt": true,
-  "effortLevel": "max"
+  "skipDangerousModePermissionPrompt": true
 }
