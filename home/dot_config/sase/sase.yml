@@ -1,9 +1,1 @@
 github_username: bbugyi200
-
-# Axe scheduler configuration.
-axe:
-  full_check_interval: 300
-  comment_check_interval: 60
-  hook_interval: 1
-  zombie_timeout_seconds: 7200
-  max_runners: 5
