@@ -28,12 +28,12 @@ function jlog() {
 
   jq -c -n --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg event "$event" \
     "${jq_args[@]}" \
-    "{timestamp: \$ts, event: \$event${jq_pairs}}" >> "${CCOMMIT_LOG}" 2>/dev/null
+    "{timestamp: \$ts, event: \$event${jq_pairs}}" >>"${CCOMMIT_LOG}" 2>/dev/null
 }
 
 function on_exit() {
   local exit_code=$?
-  local elapsed=$(( $(date +%s) - CCOMMIT_START_EPOCH ))
+  local elapsed=$(($(date +%s) - CCOMMIT_START_EPOCH))
   jlog "script_exit" "exit_code=${exit_code}" "duration_s=${elapsed}"
 }
 trap on_exit EXIT
@@ -358,7 +358,7 @@ function do_push() {
 function resolve_bd_command() {
   if [[ -f .env ]]; then
     local env_val
-    env_val=$(grep -m1 '^BD_COMMAND=' .env 2>/dev/null | cut -d= -f2-)
+    env_val=$(grep -m1 '^export BD_COMMAND=' .env 2>/dev/null | cut -d= -f2-)
     # Strip surrounding quotes
     env_val="${env_val%\"}"
     env_val="${env_val#\"}"
