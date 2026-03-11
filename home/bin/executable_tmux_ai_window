@@ -54,7 +54,7 @@ function run() {
   if command -v claude &>/dev/null; then
     ai_cmd="EDITOR=nvim claude --dangerously-skip-permissions"
   else
-    ai_cmd="gemini --yolo -m gemini-3.1-pro-preview"
+    ai_cmd="bb_gemini --yolo -m gemini-3.1-pro-preview"
   fi
 
   # Create window - when AI CLI exits, signal the channel before window closes
