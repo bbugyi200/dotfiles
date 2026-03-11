@@ -60,5 +60,5 @@
     "command": "~/.claude/statusline.sh"
   },
   "skipDangerousModePermissionPrompt": true,
-  "effortLevel": "high"
+  "effortLevel": "max"
 }
