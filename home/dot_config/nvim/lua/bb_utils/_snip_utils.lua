@@ -120,6 +120,8 @@ function M.get_markdown_snippets()
 			snippetType = "autosnippet",
 			hidden = true,
 		}, { t("Use @" .. editor_tool_name .. " on #{buffer}{watch} to ") }),
+		-- SNIPPET: bea
+		s({ trig = "bea", desc = "beautiful" }, { t("Just make sure it looks beautiful!") }),
 		-- SNIPPET: bld
 		s({ trig = "bld", desc = "Build failure" }, {
 			t("Can you help me fix this build (see the build"),
