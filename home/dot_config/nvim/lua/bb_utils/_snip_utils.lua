@@ -208,6 +208,8 @@ function M.get_markdown_snippets()
 			{ trig = "fixx", desc = "Can you help me fix these?" },
 			{ t("Can you help me diagnose the root cause of this issue and fix it?") }
 		),
+		-- SNIPPET: git
+		s({ trig = "git", desc = "git commits" }, { t("(see recent git commits)") }),
 		-- SNIPPET: gsn
 		s({ trig = "gsn", desc = "`sase ace` snapshot" }, { t("`sase ace` snapshot") }),
 		-- SNIPPET: gsna
