@@ -20,19 +20,6 @@
   "general": {
     "vimMode": true
   },
-  "hooks": {
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "test -x \"$GEMINI_PROJECT_DIR/tools/sase_stop_hook\" && \"$GEMINI_PROJECT_DIR/tools/sase_stop_hook\"",
-            "timeout": 300000
-          }
-        ]
-      }
-    ]
-  },
   "policyPaths": [
     "/usr/local/google/home/bbugyi/.gemini/policies"
   ]
