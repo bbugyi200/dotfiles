@@ -154,7 +154,7 @@ return {
 				root_markers = { "vimrc", ".vimrc", "package.json", ".git" },
 			})
 
-			-- yaml-language-server
+			-- yaml-language-server (sase schema associations live in sase-nvim plugin)
 			vim.lsp.config("yamlls", {
 				settings = {
 					yaml = {
@@ -166,62 +166,6 @@ return {
 						},
 					},
 				},
-			})
-			-- Asynchronously load sase schemas to avoid blocking startup.
-			-- We resolve both the workflow schema (for individual .yml workflows)
-			-- and the collection schema (for xprompts.yml definition files).
-			-- Files named xprompts.yml should use a modeline to select the
-			-- collection schema, which overrides the settings-based mapping.
-			local sase_schemas = {}
-			local function apply_sase_schemas()
-				if not sase_schemas.workflow then
-					return
-				end
-				local schemas = {
-					[sase_schemas.workflow] = {
-						"*/xprompts/**/*.yml",
-						"*/.xprompts/**/*.yml",
-					},
-				}
-				if sase_schemas.collection then
-					schemas[sase_schemas.collection] = {
-						"**/xprompts.yml",
-						"**/xprompts.yaml",
-					}
-				end
-				vim.schedule(function()
-					vim.lsp.config("yamlls", {
-						settings = {
-							yaml = {
-								schemas = schemas,
-							},
-						},
-					})
-				end)
-			end
-			vim.fn.jobstart({ "sase", "path", "xprompts-schema" }, {
-				stdout_buffered = true,
-				on_stdout = function(_, data)
-					if data then
-						local schema = vim.fn.trim(table.concat(data, "\n"))
-						if schema ~= "" then
-							sase_schemas.workflow = schema
-							apply_sase_schemas()
-						end
-					end
-				end,
-			})
-			vim.fn.jobstart({ "sase", "path", "xprompts-collection-schema" }, {
-				stdout_buffered = true,
-				on_stdout = function(_, data)
-					if data then
-						local schema = vim.fn.trim(table.concat(data, "\n"))
-						if schema ~= "" then
-							sase_schemas.collection = schema
-							apply_sase_schemas()
-						end
-					end
-				end,
 			})
 
 			vim.lsp.enable(servers)
