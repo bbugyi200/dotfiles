@@ -3,3 +3,5 @@ github_orgs:
   - sase-org
 xprompts:
   - gh_sase: "#gh:sase"
+  - m: "%m:opus"
+  - swarm: "%m(opus,sonnet)"
