@@ -4,8 +4,13 @@ github_orgs:
 xprompts:
   gh_dotfiles: "#gh:dotfiles"
   gh_sase: "#gh:sase"
+  # models
   flash: "gemini-3-flash-preview"
   gpt: "gpt-5.3-codex"
+  pro: "gemini-3.1-pro-preview"
+  # %model aliases
   m_flash: "%model:#flash"
   m_gpt: "%model:#gpt"
-  m_sonnet: "%model:claude/sonnet"
+  m_pro: "%model:#pro"
+  m_sonnet: "%model:sonnet"
+  m_swarm: "%model(opus, #gpt, #pro)"
