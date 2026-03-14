@@ -5,7 +5,7 @@ xprompts:
   gh_dotfiles: "#gh:dotfiles"
   gh_sase: "#gh:sase"
   flash: "gemini-3-flash-preview"
-  gpt: "gpt-5.4"
+  gpt: "gpt-5.3-codex"
   m_flash: "%model:#flash"
   m_gpt: "%model:#gpt"
   m_sonnet: "%model:claude/sonnet"
