@@ -1,4 +1,9 @@
 {
+  "alwaysThinkingEnabled": true,
+  "enabledPlugins": {
+    "lua-lsp@claude-plugins-official": true,
+    "pyright-lsp@claude-plugins-official": true
+  },
   "env": {
     "CLAUDE_CODE_EFFORT_LEVEL": "max",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
@@ -7,13 +12,13 @@
   "hooks": {
     "PreCompact": [
       {
-        "matcher": "",
         "hooks": [
           {
-            "type": "command",
-            "command": "if [ -x \"$CLAUDE_PROJECT_DIR/tools/sase_bd\" ]; then \"$CLAUDE_PROJECT_DIR/tools/sase_bd\" prime; else bd prime; fi"
+            "command": "if [ -x \"$CLAUDE_PROJECT_DIR/tools/sase_bd\" ]; then \"$CLAUDE_PROJECT_DIR/tools/sase_bd\" prime; else bd prime; fi",
+            "type": "command"
           }
-        ]
+        ],
+        "matcher": ""
       }
     ],
     "PreToolUse": [
@@ -40,24 +45,20 @@
     ],
     "SessionStart": [
       {
-        "matcher": "",
         "hooks": [
           {
-            "type": "command",
-            "command": "if [ -x \"$CLAUDE_PROJECT_DIR/tools/sase_bd\" ]; then \"$CLAUDE_PROJECT_DIR/tools/sase_bd\" prime; else bd prime; fi"
+            "command": "if [ -x \"$CLAUDE_PROJECT_DIR/tools/sase_bd\" ]; then \"$CLAUDE_PROJECT_DIR/tools/sase_bd\" prime; else bd prime; fi",
+            "type": "command"
           }
-        ]
+        ],
+        "matcher": ""
       }
     ]
   },
+  "model": "opus",
   "statusLine": {
     "type": "command",
     "command": "~/.claude/statusline.sh"
   },
-  "enabledPlugins": {
-    "lua-lsp@claude-plugins-official": true,
-    "pyright-lsp@claude-plugins-official": true
-  },
-  "alwaysThinkingEnabled": true,
   "skipDangerousModePermissionPrompt": true
 }
