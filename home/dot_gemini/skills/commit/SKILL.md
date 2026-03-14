@@ -1,6 +1,8 @@
 ---
 name: commit
-description: Create a conventional commit using ccommit. Use when the user asks to commit changes. Do not EVER use without user request.
+description:
+  Create a conventional commit using ccommit. Use when the user asks to commit changes. Do not EVER use without user
+  request.
 ---
 
 Create a commit using ccommit, which stages the specified files and commits them.
