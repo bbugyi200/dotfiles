@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=~/projects/github/sase-org/sase/config/sase.schema.json
 axe:
   lumberjacks:
     heartbeats:
