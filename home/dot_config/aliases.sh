@@ -20,6 +20,7 @@ alias amend='sase amend'
 alias axe='sase axe'
 alias commit='sase commit'
 alias run='sase run'
+alias xp='sase xprompt'
 
 # ---------- cookie Aliases / Functions ----------
 # def marker: COOKIE
