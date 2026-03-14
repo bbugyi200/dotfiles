@@ -10,6 +10,7 @@ Enforces three rules:
 
 Directories that contain an __init__.py file are treated as Python packages
 and are skipped entirely — their files are modules, not standalone scripts.
+Markdown files (.md) are skipped — they are documentation, not scripts.
 """
 
 import argparse
@@ -71,12 +72,20 @@ def _is_python_package(directory: Path) -> bool:
     return (directory / "__init__.py").exists()
 
 
+_SKIP_EXTENSIONS = frozenset({".md"})
+
+
 def _collect_scripts(script_dir: Path) -> list[Path]:
-    """Collect all files in a scripts/ or tools/ directory (recursively)."""
+    """Collect all files in a scripts/ or tools/ directory (recursively).
+
+    Skips files whose extension is in _SKIP_EXTENSIONS (e.g. .md documentation).
+    """
     scripts: list[Path] = []
     for dirpath, dirnames, filenames in os.walk(script_dir):
         dirnames[:] = [d for d in dirnames if d not in _EXCLUDE_DIRS]
         for f in filenames:
+            if Path(f).suffix in _SKIP_EXTENSIONS:
+                continue
             scripts.append(Path(dirpath) / f)
     return scripts
 
