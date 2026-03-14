@@ -6,7 +6,7 @@ axe:
         - name: pylimit_split
           description: "Run the pylimit_split xprompt workflow"
           agent: "#gh:sase #pylimit_split %approve"
-          run_every: 60
+          run_every: 60m
     telegram:
       interval: 5
       chops:
