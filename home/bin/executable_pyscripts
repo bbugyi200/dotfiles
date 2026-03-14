@@ -1,0 +1,304 @@
+#!/usr/bin/env python3
+"""Validate structure of scripts/ and tools/ directories in a repository.
+
+Enforces three rules:
+1. Every file in <dir>/scripts/ (or tools/) must be referenced somewhere
+   within <dir>/.
+2. If a closer scripts/ (or tools/) directory exists nearer to the
+   referencing files, the script should live there instead.
+3. Scripts must not be referenced from outside <dir>/.
+"""
+
+import argparse
+import os
+import subprocess
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+
+
+_DIR_NAMES = ("scripts", "tools")
+_EXCLUDE_DIRS = frozenset(
+    {
+        ".git",
+        "node_modules",
+        ".venv",
+        "venv",
+        "__pycache__",
+        ".mypy_cache",
+        ".tox",
+        ".eggs",
+    }
+)
+
+
+@dataclass
+class _Violation:
+    rule: int
+    script_path: Path
+    message: str
+
+
+def _get_git_root(directory: Path) -> Path | None:
+    """Get the git repository root directory."""
+    result = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        capture_output=True,
+        text=True,
+        cwd=directory,
+    )
+    if result.returncode != 0:
+        return None
+    return Path(result.stdout.strip())
+
+
+def _find_target_dirs(root: Path) -> list[Path]:
+    """Find all scripts/ and tools/ directories under root."""
+    result: list[Path] = []
+    for dirpath, dirnames, _ in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in _EXCLUDE_DIRS]
+        for d in list(dirnames):
+            if d in _DIR_NAMES:
+                result.append(Path(dirpath) / d)
+    return result
+
+
+def _collect_scripts(script_dir: Path) -> list[Path]:
+    """Collect all files in a scripts/ or tools/ directory (recursively)."""
+    scripts: list[Path] = []
+    for dirpath, dirnames, filenames in os.walk(script_dir):
+        dirnames[:] = [d for d in dirnames if d not in _EXCLUDE_DIRS]
+        for f in filenames:
+            scripts.append(Path(dirpath) / f)
+    return scripts
+
+
+def _git_grep(
+    pattern: str,
+    search_path: str,
+    git_root: Path,
+) -> list[Path]:
+    """Run git grep and return matching file paths."""
+    result = subprocess.run(
+        ["git", "grep", "-l", "--fixed-strings", pattern, "--", search_path],
+        capture_output=True,
+        text=True,
+        cwd=git_root,
+    )
+    if result.returncode != 0:
+        return []
+    return [
+        git_root / line for line in result.stdout.strip().split("\n") if line
+    ]
+
+
+def _manual_grep(
+    pattern: str,
+    search_dir: Path,
+    exclude_subtree: Path | None = None,
+) -> list[Path]:
+    """Manually search for pattern in files under search_dir."""
+    refs: list[Path] = []
+    for dirpath, dirnames, filenames in os.walk(search_dir):
+        dp = Path(dirpath)
+        dirnames[:] = [d for d in dirnames if d not in _EXCLUDE_DIRS]
+        if exclude_subtree and dp.is_relative_to(exclude_subtree):
+            dirnames.clear()
+            continue
+        for f in filenames:
+            fpath = dp / f
+            try:
+                content = fpath.read_text(encoding="utf-8", errors="ignore")
+                if pattern in content:
+                    refs.append(fpath)
+            except OSError:
+                pass
+    return refs
+
+
+def _find_refs_within(
+    basename: str,
+    parent_dir: Path,
+    script_dir: Path,
+    git_root: Path | None,
+) -> list[Path]:
+    """Find references to basename within parent_dir, excluding script_dir."""
+    if git_root and parent_dir.is_relative_to(git_root):
+        rel = str(parent_dir.relative_to(git_root))
+        all_refs = _git_grep(basename, rel, git_root)
+        return [r for r in all_refs if not r.is_relative_to(script_dir)]
+    return _manual_grep(basename, parent_dir, exclude_subtree=script_dir)
+
+
+def _find_refs_outside(
+    basename: str,
+    parent_dir: Path,
+    repo_root: Path,
+    git_root: Path | None,
+) -> list[Path]:
+    """Find references to basename outside parent_dir but within repo_root."""
+    if git_root and repo_root.is_relative_to(git_root):
+        rel = str(repo_root.relative_to(git_root))
+        if rel == ".":
+            rel = ""
+        all_refs = _git_grep(basename, rel or ".", git_root)
+        return [r for r in all_refs if not r.is_relative_to(parent_dir)]
+    return _manual_grep(basename, repo_root, exclude_subtree=parent_dir)
+
+
+def _has_closer_target_dir(
+    ref_file: Path,
+    script_dir: Path,
+    parent_dir: Path,
+    dir_name: str,
+    all_target_dirs: set[Path],
+) -> Path | None:
+    """Check if a closer scripts/tools dir exists between ref_file and parent_dir.
+
+    Returns the closer directory if found, None otherwise.
+    """
+    current = ref_file.parent
+    while current != parent_dir and current.is_relative_to(parent_dir):
+        candidate = current / dir_name
+        if candidate in all_target_dirs and candidate != script_dir:
+            return candidate
+        current = current.parent
+    return None
+
+
+def _validate(repo_root: Path, *, verbose: bool = False) -> list[_Violation]:
+    """Run all validation checks and return violations."""
+    git_root = _get_git_root(repo_root)
+    target_dirs = _find_target_dirs(repo_root)
+    all_target_dirs = set(target_dirs)
+    violations: list[_Violation] = []
+
+    if verbose:
+        print(
+            f"Found {len(target_dirs)} target director(ies):", file=sys.stderr
+        )
+        for d in target_dirs:
+            print(f"  {d.relative_to(repo_root)}", file=sys.stderr)
+
+    for script_dir in target_dirs:
+        parent_dir = script_dir.parent
+        dir_name = script_dir.name
+        scripts = _collect_scripts(script_dir)
+
+        if verbose and scripts:
+            print(
+                f"\nChecking {script_dir.relative_to(repo_root)}/:",
+                file=sys.stderr,
+            )
+
+        for script_path in scripts:
+            basename = script_path.name
+
+            if verbose:
+                print(f"  {basename}...", file=sys.stderr)
+
+            # Rule 1: Must be referenced somewhere in <dir>/
+            refs_within = _find_refs_within(
+                basename, parent_dir, script_dir, git_root
+            )
+
+            if not refs_within:
+                violations.append(
+                    _Violation(
+                        rule=1,
+                        script_path=script_path,
+                        message=(
+                            f"Unused: {script_path.relative_to(repo_root)}"
+                            f" is not referenced in"
+                            f" {parent_dir.relative_to(repo_root)}/"
+                        ),
+                    )
+                )
+                continue  # No point checking rules 2/3 if unused
+
+            # Rule 2: No closer scripts/tools dir should exist
+            for ref_file in refs_within:
+                closer = _has_closer_target_dir(
+                    ref_file,
+                    script_dir,
+                    parent_dir,
+                    dir_name,
+                    all_target_dirs,
+                )
+                if closer is not None:
+                    violations.append(
+                        _Violation(
+                            rule=2,
+                            script_path=script_path,
+                            message=(
+                                f"Closer dir:"
+                                f" {script_path.relative_to(repo_root)}"
+                                f" is referenced by"
+                                f" {ref_file.relative_to(repo_root)},"
+                                f" but {closer.relative_to(repo_root)}/"
+                                f" exists"
+                            ),
+                        )
+                    )
+
+            # Rule 3: Must not be referenced from outside <dir>/
+            refs_outside = _find_refs_outside(
+                basename, parent_dir, repo_root, git_root
+            )
+            for ref_file in refs_outside:
+                violations.append(
+                    _Violation(
+                        rule=3,
+                        script_path=script_path,
+                        message=(
+                            f"External ref:"
+                            f" {script_path.relative_to(repo_root)}"
+                            f" is referenced from"
+                            f" {ref_file.relative_to(repo_root)},"
+                            f" which is outside"
+                            f" {parent_dir.relative_to(repo_root)}/"
+                        ),
+                    )
+                )
+
+    return violations
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Entry point for pyscripts validation."""
+    parser = argparse.ArgumentParser(
+        description="Validate structure of scripts/ and tools/ directories"
+    )
+    parser.add_argument(
+        "directory",
+        nargs="?",
+        type=Path,
+        default=Path("."),
+        help="Repository root directory (default: current directory)",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Show verbose output",
+    )
+    args = parser.parse_args(argv)
+
+    repo_root = args.directory.resolve()
+    if not repo_root.is_dir():
+        print(f"Error: {repo_root} is not a directory", file=sys.stderr)
+        return 1
+
+    violations = _validate(repo_root, verbose=args.verbose)
+
+    if violations:
+        for v in violations:
+            print(f"[Rule {v.rule}] {v.message}")
+        return 1
+
+    print("All scripts/ and tools/ directories are valid!")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
