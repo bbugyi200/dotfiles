@@ -7,6 +7,9 @@ Enforces three rules:
 2. If a closer scripts/ (or tools/) directory exists nearer to the
    referencing files, the script should live there instead.
 3. Scripts must not be referenced from outside <dir>/.
+
+Directories that contain an __init__.py file are treated as Python packages
+and are skipped entirely — their files are modules, not standalone scripts.
 """
 
 import argparse
@@ -61,6 +64,11 @@ def _find_target_dirs(root: Path) -> list[Path]:
             if d in _DIR_NAMES:
                 result.append(Path(dirpath) / d)
     return result
+
+
+def _is_python_package(directory: Path) -> bool:
+    """Check if a directory is a Python package (contains __init__.py)."""
+    return (directory / "__init__.py").exists()
 
 
 def _collect_scripts(script_dir: Path) -> list[Path]:
@@ -181,6 +189,16 @@ def _validate(repo_root: Path, *, verbose: bool = False) -> list[_Violation]:
             print(f"  {d.relative_to(repo_root)}", file=sys.stderr)
 
     for script_dir in target_dirs:
+        # Skip Python packages — their files are modules, not scripts.
+        if _is_python_package(script_dir):
+            if verbose:
+                print(
+                    f"\nSkipping {script_dir.relative_to(repo_root)}/"
+                    f" (Python package)",
+                    file=sys.stderr,
+                )
+            continue
+
         parent_dir = script_dir.parent
         dir_name = script_dir.name
         scripts = _collect_scripts(script_dir)
