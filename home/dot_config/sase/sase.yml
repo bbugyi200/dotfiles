@@ -1,3 +1,5 @@
 github_orgs:
   - bbugyi200
   - sase-org
+xprompts:
+  - gh_sase: "#gh:sase"
