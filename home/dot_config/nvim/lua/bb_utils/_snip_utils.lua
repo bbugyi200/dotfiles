@@ -148,6 +148,8 @@ function M.get_markdown_snippets()
 				{ i(1), d(2, M.get_visual()) }
 			)
 		),
+		-- SNIPPET: cbb
+		s({ trig = "cbb", desc = "A <tag> inline code snippet" }, { t("`<"), i(1), t(">`") }),
 		-- SNIPPET: commit
 		s(
 			{ trig = "commit", desc = "commit skill" },
