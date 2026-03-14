@@ -11,7 +11,7 @@
   },
   "security": {
     "auth": {
-      "selectedType": "oauth-personal"
+      "selectedType": "{{ if eq .chezmoi.hostname "athena" }}oauth-personal{{ else }}gemini-api-key{{ end }}"
     }
   },
   "ui": {
