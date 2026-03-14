@@ -2,10 +2,10 @@ github_orgs:
   - bbugyi200
   - sase-org
 xprompts:
-  - gh_dotfiles: "#gh:dotfiles"
-  - gh_sase: "#gh:sase"
-  - flash: "gemini-3-flash-preview"
-  - gpt: "gpt-5.4"
-  - m_flash: "%model:#flash"
-  - m_gpt: "%model:#gpt"
-  - m_sonnet: "%model:claude/sonnet"
+  gh_dotfiles: "#gh:dotfiles"
+  gh_sase: "#gh:sase"
+  flash: "gemini-3-flash-preview"
+  gpt: "gpt-5.4"
+  m_flash: "%model:#flash"
+  m_gpt: "%model:#gpt"
+  m_sonnet: "%model:claude/sonnet"
