@@ -2,6 +2,7 @@ github_orgs:
   - bbugyi200
   - sase-org
 xprompts:
+  - gh_dot: "#gh:dotfiles"
   - gh_sase: "#gh:sase"
   - m: "%m:opus"
   - swarm: "%m(opus,sonnet)"
