@@ -18,12 +18,22 @@
     ],
     "PreToolUse": [
       {
+        "matcher": "EnterPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Plan mode is disabled. Use the /sase_plan skill instead.\"}}'",
+            "timeout": 5
+          }
+        ]
+      },
+      {
         "matcher": "ExitPlanMode",
         "hooks": [
           {
             "type": "command",
-            "command": "uv run sase plan-approve",
-            "timeout": 600
+            "command": "printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Plan mode is disabled. Use the /sase_plan skill instead.\"}}'",
+            "timeout": 5
           }
         ]
       },
@@ -32,8 +42,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run sase user-question",
-            "timeout": 600
+            "command": "printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"AskUserQuestion is disabled. Use the /sase_questions skill instead.\"}}'",
+            "timeout": 5
           }
         ]
       }
