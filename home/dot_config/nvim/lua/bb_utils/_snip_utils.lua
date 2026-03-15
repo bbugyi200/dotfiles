@@ -126,7 +126,12 @@ function M.get_markdown_snippets()
 			{ t('the agent metadata panel on the "Agents" tab of the `sase ace` TUI') }
 		),
 		-- SNIPPET: bea
-		s({ trig = "bea", desc = "beautiful" }, { t("Just make sure it looks beautiful!") }),
+		s({ trig = "bea", desc = "beautiful" }, {
+			t(
+				"I want you to lead the design on this one. Make sure you design this feature so it is"
+					.. " intuitive, reliable, and (last but not least) beautiful!"
+			),
+		}),
 		-- SNIPPET: bld
 		s({ trig = "bld", desc = "Build failure" }, {
 			t("Can you help me fix this build (see the build"),
