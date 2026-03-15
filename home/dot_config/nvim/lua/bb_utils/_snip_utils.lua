@@ -127,6 +127,10 @@ function M.get_markdown_snippets()
 		),
 		-- SNIPPET: bea
 		s({ trig = "bea", desc = "beautiful" }, {
+			t("I want you to lead the design on this one. Just make sure it looks beautiful!"),
+		}),
+		-- SNIPPET: beau
+		s({ trig = "beau", desc = "beautiful" }, {
 			t(
 				"I want you to lead the design on this one. Make sure you design this feature so it is"
 					.. " intuitive, reliable, and (last but not least) beautiful!"
