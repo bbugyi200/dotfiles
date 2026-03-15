@@ -4,7 +4,7 @@ diff_name="$1"
 shift
 
 if [[ -z "$diff_name" ]]; then
-  diff_name="$(sase_workspace_name)-$(date +%Y%m%d_%H%M%S)"
+  diff_name="$(workspace_name)-$(date +%Y%m%d_%H%M%S)"
 fi
 
 diff_file=$HOME/tmp/bb_hg_clean/"$diff_name".diff

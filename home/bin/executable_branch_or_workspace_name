@@ -4,5 +4,5 @@ branch=$(branch_name)
 if [[ -n "$branch" ]]; then
     echo "$branch"
 else
-    sase_workspace_name
+    workspace_name
 fi
