@@ -42,7 +42,7 @@ epatch.info
 htmlcov
 passwd
 pip.conf
-sase_plan_*.md
+sase_plan_*
 tags
 tags.lock
 tags.temp
