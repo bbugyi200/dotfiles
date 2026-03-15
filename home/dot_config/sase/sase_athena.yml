@@ -7,6 +7,7 @@ axe:
           description: "Run the pylimit_split xprompt workflow"
           agent: "#gh:sase #pylimit_split %approve"
           run_every: 60m
+          guard: 'test -n "$(tools/pylimit_files-260227 src 1000 850 700 2>/dev/null)$(tools/pylimit_files-260227 tests 1000 850 700 2>/dev/null)"'
     telegram:
       interval: 5
       chops:
