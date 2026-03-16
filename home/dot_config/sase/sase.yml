@@ -2,6 +2,7 @@ github_orgs:
   - bbugyi200
   - sase-org
 xprompts:
+  # VCS project aliases
   gh_dotfiles: "#gh:dotfiles"
   gh_sase: "#gh:sase"
   # models
