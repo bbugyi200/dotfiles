@@ -11,6 +11,9 @@ xprompts:
   # %model aliases
   m_flash: "%model:#flash"
   m_gpt: "%model:#gpt"
+  m_opus_gpt: "%model(opus, #gpt)"
+  m_opus_sonnet: "%model(opus, sonnet)"
   m_pro: "%model:#pro"
+  m_pro_flash: "%model(#pro, #flash)"
   m_sonnet: "%model:sonnet"
   m_swarm: "%model(opus, #gpt, #pro)"
