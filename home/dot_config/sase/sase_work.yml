@@ -1,5 +1,2 @@
 # Work-specific sase config overlay (bbugyi.c.googlers.com)
 # This file is merged on top of sase.yml by the config loader.
-
-llm_provider:
-  provider: gemini
