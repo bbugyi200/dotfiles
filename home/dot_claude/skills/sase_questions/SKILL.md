@@ -8,7 +8,7 @@ Use this skill when you need user input. This replaces Claude's native AskUserQu
 ## Usage
 
 ```bash
-.venv/bin/sase questions '<json>'
+sase questions '<json>'
 ```
 
 ### JSON Schema
@@ -29,11 +29,11 @@ Use this skill when you need user input. This replaces Claude's native AskUserQu
 Single question with options:
 
 ```bash
-.venv/bin/sase questions '[{"question": "Which database should we use?", "options": [{"label": "PostgreSQL", "description": "Relational, mature"}, {"label": "SQLite", "description": "Embedded, simple"}]}]'
+sase questions '[{"question": "Which database should we use?", "options": [{"label": "PostgreSQL", "description": "Relational, mature"}, {"label": "SQLite", "description": "Embedded, simple"}]}]'
 ```
 
 Multiple questions:
 
 ```bash
-.venv/bin/sase questions '[{"question": "Approach?", "header": "Approach", "options": [{"label": "A"}, {"label": "B"}]}, {"question": "Include tests?", "options": [{"label": "Yes"}, {"label": "No"}]}]'
+sase questions '[{"question": "Approach?", "header": "Approach", "options": [{"label": "A"}, {"label": "B"}]}, {"question": "Include tests?", "options": [{"label": "Yes"}, {"label": "No"}]}]'
 ```

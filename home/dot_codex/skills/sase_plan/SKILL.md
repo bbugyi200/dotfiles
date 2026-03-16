@@ -14,5 +14,5 @@ Use this skill when you need to plan before implementing. This replaces Codex's 
 
 3. **Submit the plan**:
    ```bash
-   .venv/bin/sase plan sase_plan_<name>.md
+   sase plan sase_plan_<name>.md
    ```
