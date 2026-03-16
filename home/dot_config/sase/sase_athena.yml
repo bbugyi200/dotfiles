@@ -1,6 +1,6 @@
 axe:
   lumberjacks:
-    heartbeats:
+    run_every:
       interval: 60
       chops:
         - name: sase_pylimit_split
