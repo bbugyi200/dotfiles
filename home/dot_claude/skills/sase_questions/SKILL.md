@@ -11,9 +11,9 @@ Use this skill when you need user input. This replaces Claude's native AskUserQu
 
 ## How It Works
 
-When you use this skill, the current claude instance will be **terminated**. The questions
-are presented to the user in the sase TUI. After answering, a NEW agent is spawned with the
-original prompt plus a "Questions and Answers" section appended.
+When you use this skill, the current claude instance will be **terminated**. The questions are presented to the user in
+the sase TUI. After answering, a NEW agent is spawned with the original prompt plus a "Questions and Answers" section
+appended.
 
 ## Usage
 
