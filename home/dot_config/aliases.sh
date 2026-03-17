@@ -20,6 +20,7 @@ alias amend='sase amend'
 alias axe='sase axe'
 alias commit='sase commit'
 alias run='sase run'
+alias sbd='sase bead'
 alias xp='sase xprompt'
 
 # ---------- cookie Aliases / Functions ----------
