@@ -10,6 +10,7 @@ xprompts:
   gpt: "gpt-5.3-codex"
   pro: "gemini-3.1-pro-preview"
   # %model aliases
+  m_codex: "%model:codex"
   m_flash: "%model:#flash"
   m_gpt: "%model:#gpt"
   m_opus_gpt: "%model(opus, #gpt)"
