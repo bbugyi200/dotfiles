@@ -1,15 +1,15 @@
-# SBD (Sase-Beads) Configuration File
-# This file configures default behavior for all sbd commands in this repository
-# All settings can also be set via environment variables (SBD_* prefix)
+# Beads Configuration File
+# This file configures default behavior for all bd commands in this repository
+# All settings can also be set via environment variables (BD_* prefix)
 # or overridden with command-line flags
 
-# Issue prefix for this repository (used by sbd init)
-# If not set, sbd init will auto-detect from directory name
+# Issue prefix for this repository (used by bd init)
+# If not set, bd init will auto-detect from directory name
 # Example: issue-prefix: "myproject" creates issues like "myproject-1", "myproject-2", etc.
 # issue-prefix: ""
 
 # Use no-db mode: load from JSONL, no SQLite, write back after each command
-# When true, sbd will use .sbd/issues.jsonl as the source of truth
+# When true, bd will use .beads/issues.jsonl as the source of truth
 # instead of SQLite database
 # no-db: false
 
@@ -25,31 +25,31 @@
 # Enable JSON output by default
 # json: false
 
-# Default actor for audit trails (overridden by SBD_ACTOR or --actor)
+# Default actor for audit trails (overridden by BD_ACTOR or --actor)
 # actor: ""
 
-# Path to database (overridden by SBD_DB or --db)
+# Path to database (overridden by BEADS_DB or --db)
 # db: ""
 
-# Auto-start daemon if not running (can also use SBD_AUTO_START_DAEMON)
+# Auto-start daemon if not running (can also use BEADS_AUTO_START_DAEMON)
 # auto-start-daemon: true
 
-# Debounce interval for auto-flush (can also use SBD_FLUSH_DEBOUNCE)
+# Debounce interval for auto-flush (can also use BEADS_FLUSH_DEBOUNCE)
 # flush-debounce: "5s"
 
-# Export events (audit trail) to .sbd/events.jsonl on each flush/sync
+# Export events (audit trail) to .beads/events.jsonl on each flush/sync
 # When enabled, new events are appended incrementally using a high-water mark.
-# Use 'sbd export --events' to trigger manually regardless of this setting.
+# Use 'bd export --events' to trigger manually regardless of this setting.
 # events-export: false
 
-# Git branch for sbd commits (sbd sync will commit to this branch)
+# Git branch for beads commits (bd sync will commit to this branch)
 # IMPORTANT: Set this for team projects so all clones use the same sync branch.
 # This setting persists across clones (unlike database config which is gitignored).
-# Can also use SBD_SYNC_BRANCH env var for local override.
-# If not set, sbd sync will require you to run 'sbd config set sync.branch <branch>'.
+# Can also use BEADS_SYNC_BRANCH env var for local override.
+# If not set, bd sync will require you to run 'bd config set sync.branch <branch>'.
 # sync-branch: "beads-sync"
 
-# Multi-repo configuration
+# Multi-repo configuration (experimental - bd-307)
 # Allows hydrating from multiple repositories and routing writes to the correct JSONL
 # repos:
 #   primary: "."  # Primary repo (where this database lives)
@@ -57,7 +57,7 @@
 #     - ~/beads-planning  # Personal planning repo
 #     - ~/work-planning   # Work planning repo
 
-# Integration settings (access with 'sbd config get/set')
+# Integration settings (access with 'bd config get/set')
 # These are stored in the database, not in this file:
 # - jira.url
 # - jira.project

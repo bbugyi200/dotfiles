@@ -1,3 +1,3 @@
 
-# Use sbd merge for sbd JSONL files
-.sbd/issues.jsonl merge=sbd
+# Use bd merge for beads JSONL files
+.beads/issues.jsonl merge=beads

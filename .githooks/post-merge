@@ -1,56 +1,56 @@
 #!/bin/sh
 #
-# sbd (sase-beads) post-merge hook
+# bd (beads) post-merge hook
 #
-# This hook imports updated issues from .sbd/issues.jsonl after a
+# This hook imports updated issues from .beads/issues.jsonl after a
 # git pull or merge, ensuring the database stays in sync with git.
 
-# Check if sbd is available
-if ! command -v sbd >/dev/null 2>&1; then
-    echo "Warning: sbd command not found, skipping post-merge import" >&2
+# Check if bd is available
+if ! command -v bd >/dev/null 2>&1; then
+    echo "Warning: bd command not found, skipping post-merge import" >&2
     exit 0
 fi
 
-# Check if we're in an sbd workspace
-# For worktrees, .sbd is in the main repository root, not the worktree
-SBD_DIR=""
+# Check if we're in a bd workspace
+# For worktrees, .beads is in the main repository root, not the worktree
+BEADS_DIR=""
 if git rev-parse --git-dir >/dev/null 2>&1; then
     # Check if we're in a worktree
     if [ "$(git rev-parse --git-dir)" != "$(git rev-parse --git-common-dir)" ]; then
-        # Worktree: .sbd is in main repo root
+        # Worktree: .beads is in main repo root
         MAIN_REPO_ROOT="$(git rev-parse --git-common-dir)"
         MAIN_REPO_ROOT="$(dirname "$MAIN_REPO_ROOT")"
-        if [ -d "$MAIN_REPO_ROOT/.sbd" ]; then
-            SBD_DIR="$MAIN_REPO_ROOT/.sbd"
+        if [ -d "$MAIN_REPO_ROOT/.beads" ]; then
+            BEADS_DIR="$MAIN_REPO_ROOT/.beads"
         fi
     else
         # Regular repo: check current directory
-        if [ -d .sbd ]; then
-            SBD_DIR=".sbd"
+        if [ -d .beads ]; then
+            BEADS_DIR=".beads"
         fi
     fi
 fi
 
-if [ -z "$SBD_DIR" ]; then
+if [ -z "$BEADS_DIR" ]; then
     exit 0
 fi
 
 # Skip for Dolt backend (uses its own sync mechanism, not JSONL import)
-if [ -f "$SBD_DIR/metadata.json" ]; then
-    if grep -q '"backend"[[:space:]]*:[[:space:]]*"dolt"' "$SBD_DIR/metadata.json" 2>/dev/null; then
+if [ -f "$BEADS_DIR/metadata.json" ]; then
+    if grep -q '"backend"[[:space:]]*:[[:space:]]*"dolt"' "$BEADS_DIR/metadata.json" 2>/dev/null; then
         exit 0
     fi
 fi
 
 # Check if issues.jsonl exists and was updated
-if [ ! -f "$SBD_DIR/issues.jsonl" ]; then
+if [ ! -f "$BEADS_DIR/issues.jsonl" ]; then
     exit 0
 fi
 
 # Import the updated JSONL
-if ! sbd import -i "$SBD_DIR/issues.jsonl" >/dev/null 2>&1; then
-    echo "Warning: Failed to import sbd changes after merge" >&2
-    echo "Run 'sbd import -i $SBD_DIR/issues.jsonl' manually to see the error" >&2
+if ! bd import -i "$BEADS_DIR/issues.jsonl" >/dev/null 2>&1; then
+    echo "Warning: Failed to import bd changes after merge" >&2
+    echo "Run 'bd import -i $BEADS_DIR/issues.jsonl' manually to see the error" >&2
 fi
 
 exit 0
