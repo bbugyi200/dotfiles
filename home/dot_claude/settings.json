@@ -11,7 +11,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -x \"$CLAUDE_PROJECT_DIR/tools/sase_bd\" ]; then \"$CLAUDE_PROJECT_DIR/tools/sase_bd\" prime; else bd prime; fi"
+            "command": "if [ -x \"$CLAUDE_PROJECT_DIR/.venv/bin/sase\" ]; then \"$CLAUDE_PROJECT_DIR/.venv/bin/sase\" bead prime; elif command -v bd >/dev/null 2>&1; then bd prime; fi"
           }
         ]
       }
@@ -54,7 +54,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -x \"$CLAUDE_PROJECT_DIR/tools/sase_bd\" ]; then \"$CLAUDE_PROJECT_DIR/tools/sase_bd\" prime; else bd prime; fi"
+            "command": "if [ -x \"$CLAUDE_PROJECT_DIR/.venv/bin/sase\" ]; then \"$CLAUDE_PROJECT_DIR/.venv/bin/sase\" bead prime; elif command -v bd >/dev/null 2>&1; then bd prime; fi"
           }
         ]
       }

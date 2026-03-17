@@ -32,7 +32,7 @@ ccommit <tag> <message> <file>...
 
 Before committing, check if your work is associated with a bead issue:
 
-1. Run `bd list --status=in_progress` to see beads currently in progress
+1. Run `.venv/bin/sase bead list --status=in_progress` to see beads currently in progress
 2. If the changes you're committing relate to an in-progress bead, include the `--bead` option:
    ```
    ccommit --bead <bead-id> <tag> "<message>" <file>...
