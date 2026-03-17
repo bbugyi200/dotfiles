@@ -12,7 +12,7 @@ xprompts:
   # %model aliases
   m_codex: "%model:#codex"
   m_flash: "%model:#flash"
-  m_opus_gpt: "%model(opus, #codex)"
+  m_opus_codex: "%model(opus, #codex)"
   m_opus_sonnet: "%model(opus, sonnet)"
   m_pro: "%model:#pro"
   m_pro_flash: "%model(#pro, #flash)"
