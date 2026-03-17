@@ -12,3 +12,6 @@ repomix[-_]*.xml
 
 # Python virtual environment
 .venv
+
+# Local SASE beads database
+.beads/
