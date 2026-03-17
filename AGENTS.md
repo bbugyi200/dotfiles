@@ -1,15 +1,15 @@
 # Agent Instructions
 
-This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get started.
+This project uses **sbd** (sase-beads) for issue tracking. Run `sbd onboard` to get started.
 
 ## Quick Reference
 
 ```bash
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --status in_progress  # Claim work
-bd close <id>         # Complete work
-bd sync               # Sync with git
+sbd ready              # Find available work
+sbd show <id>          # View issue details
+sbd update <id> --status in_progress  # Claim work
+sbd close <id>         # Complete work
+sbd sync               # Sync with git
 ```
 
 ## Landing the Plane (Session Completion)
@@ -24,7 +24,7 @@ bd sync               # Sync with git
 4. **PUSH TO REMOTE** - This is MANDATORY:
    ```bash
    git pull --rebase
-   bd sync
+   sbd sync
    git push
    git status  # MUST show "up to date with origin"
    ```

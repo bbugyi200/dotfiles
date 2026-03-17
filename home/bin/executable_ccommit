@@ -103,8 +103,8 @@ function run() {
   merge_with_master
   do_commit
   do_push
-  do_beads_close
-  do_beads_sync
+  do_sbd_close
+  do_sbd_sync
   send_notification
 }
 
@@ -353,12 +353,12 @@ function do_push() {
   jlog "push" "result=ok_after_pull"
 }
 
-# Resolve the bd command to use for bead operations.
-# Checks .env file in cwd first, then BD_COMMAND env var, then defaults to "bd".
-function resolve_bd_command() {
+# Resolve the sbd command to use for bead operations.
+# Checks .env file in cwd first, then SBD_COMMAND env var, then defaults to "sbd".
+function resolve_sbd_command() {
   if [[ -f .env ]]; then
     local env_val
-    env_val=$(grep -m1 '^export BD_COMMAND=' .env 2>/dev/null | cut -d= -f2-)
+    env_val=$(grep -m1 '^export SBD_COMMAND=' .env 2>/dev/null | cut -d= -f2-)
     # Strip surrounding quotes
     env_val="${env_val%\"}"
     env_val="${env_val#\"}"
@@ -369,45 +369,45 @@ function resolve_bd_command() {
       return
     fi
   fi
-  if [[ -n "${BD_COMMAND:-}" ]]; then
-    echo "${BD_COMMAND}"
+  if [[ -n "${SBD_COMMAND:-}" ]]; then
+    echo "${SBD_COMMAND}"
     return
   fi
-  echo "bd"
+  echo "sbd"
 }
 
 # Close the bead issue after a successful commit, if --bead was provided.
-function do_beads_close() {
+function do_sbd_close() {
   if [[ -z "${BEAD_ID}" ]]; then
     return 0
   fi
-  local bd_cmd
-  bd_cmd=$(resolve_bd_command)
-  log::debug "Closing bead %s with command: %s" "${BEAD_ID}" "${bd_cmd}"
+  local sbd_cmd
+  sbd_cmd=$(resolve_sbd_command)
+  log::debug "Closing bead %s with command: %s" "${BEAD_ID}" "${sbd_cmd}"
   local close_output rc=0
-  close_output=$(${bd_cmd} close "${BEAD_ID}" 2>&1) || rc=$?
+  close_output=$(${sbd_cmd} close "${BEAD_ID}" 2>&1) || rc=$?
   if [[ ${rc} -eq 0 ]]; then
-    jlog "beads_close" "result=ok" "bead_id=${BEAD_ID}" "bd_cmd=${bd_cmd}"
+    jlog "sbd_close" "result=ok" "bead_id=${BEAD_ID}" "sbd_cmd=${sbd_cmd}"
   else
-    jlog "beads_close" "result=failed" "bead_id=${BEAD_ID}" "exit_code=${rc}" "output=${close_output}"
+    jlog "sbd_close" "result=failed" "bead_id=${BEAD_ID}" "exit_code=${rc}" "output=${close_output}"
     log::warn "Failed to close bead %s (exit code %d): %s" "${BEAD_ID}" "${rc}" "${close_output}"
   fi
 }
 
-# Sync beads issue tracker state after push.
-function do_beads_sync() {
-  if command -v bd >/dev/null 2>&1 && [ -d .beads ]; then
-    log::debug "Syncing beads"
+# Sync sbd issue tracker state after push.
+function do_sbd_sync() {
+  if command -v sbd >/dev/null 2>&1 && [ -d .sbd ]; then
+    log::debug "Syncing sbd"
     local sync_output rc=0
-    sync_output=$(bd sync 2>&1) || rc=$?
+    sync_output=$(sbd sync 2>&1) || rc=$?
     if [[ ${rc} -eq 0 ]]; then
-      jlog "beads_sync" "result=ok" "exit_code=0"
+      jlog "sbd_sync" "result=ok" "exit_code=0"
     else
-      jlog "beads_sync" "result=failed" "exit_code=${rc}" "output=${sync_output}"
-      log::warn "bd sync failed (exit code %d): %s" "${rc}" "${sync_output}"
+      jlog "sbd_sync" "result=failed" "exit_code=${rc}" "output=${sync_output}"
+      log::warn "sbd sync failed (exit code %d): %s" "${rc}" "${sync_output}"
     fi
   else
-    jlog "beads_sync" "result=skipped"
+    jlog "sbd_sync" "result=skipped"
   fi
 }
 
