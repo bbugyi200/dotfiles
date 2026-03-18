@@ -41,6 +41,13 @@ return {
 
 			-- KEYMAP: <leader>G
 			vim.keymap.set("n", "<leader>G", function()
+				local buf_dir = vim.fn.expand("%:p:h")
+				local git_root =
+					vim.fn.systemlist("git -C " .. vim.fn.shellescape(buf_dir) .. " rev-parse --show-toplevel")[1]
+				if vim.v.shell_error == 0 and git_root and lazygit.dir ~= git_root then
+					lazygit:shutdown()
+					lazygit.dir = git_root
+				end
 				lazygit:toggle()
 			end, {
 				desc = "Run `lazygit` in a floating window.",
