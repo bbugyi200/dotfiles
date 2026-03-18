@@ -101,7 +101,6 @@ function run() {
   stage_files
   validate_staged_changes
   merge_with_master
-  do_pre_commit_beads_sync
   do_commit
   do_push
   do_beads_close
@@ -278,26 +277,6 @@ function merge_with_master() {
     }
   fi
   jlog "merge" "result=ok" "detail=merged_origin_${default_branch}_into_${current_branch}"
-}
-
-# Run bead sync before committing, if the bead command is available.
-function do_pre_commit_beads_sync() {
-  local bd_cmd
-  bd_cmd=$(resolve_bd_command)
-  local bd_bin="${bd_cmd%% *}"
-  if ! command -v "${bd_bin}" &>/dev/null && [[ ! -x "${bd_bin}" ]]; then
-    jlog "pre_commit_beads_sync" "result=skipped" "reason=command_not_found"
-    return 0
-  fi
-  log::debug "Running pre-commit bead sync"
-  local sync_output rc=0
-  sync_output=$(${bd_cmd} sync 2>&1) || rc=$?
-  if [[ ${rc} -eq 0 ]]; then
-    jlog "pre_commit_beads_sync" "result=ok"
-  else
-    jlog "pre_commit_beads_sync" "result=failed" "exit_code=${rc}" "output=${sync_output}"
-    log::warn "Pre-commit bead sync failed (exit code %d): %s" "${rc}" "${sync_output}"
-  fi
 }
 
 # Build the commit message and execute 'git commit'.
