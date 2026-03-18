@@ -102,5 +102,5 @@ sase bead dep add <issue> <depends_on>
 3. `sase bead dep add <phase-2-id> <phase-1-id>` — set ordering
 4. `sase bead ready` — find unblocked work
 5. `sase bead update <id> --status in_progress` — claim work
-6. *(do the work)*
+6. _(do the work)_
 7. `sase bead update <id> --status closed` — mark done
