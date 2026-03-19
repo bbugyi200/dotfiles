@@ -104,6 +104,7 @@ function run() {
   validate_staged_changes
   merge_with_master
   do_commit
+  do_plan_link
   do_push
   send_notification
 }
@@ -288,6 +289,9 @@ function do_commit() {
     local rest="${message#"$first_line"}"
     message="${first_line} (${BEAD_ID})${rest}"
   fi
+  if [[ -n "${SASE_PLAN:-}" ]]; then
+    message="${message}"$'\n\n'"PLAN=${SASE_PLAN}"
+  fi
   log::debug "Commit message:\n%s" "${message}"
   local rc=0
   git commit -F - <<<"${message}" || rc=$?
@@ -416,6 +420,51 @@ function do_beads_sync() {
   else
     jlog "beads_sync" "result=skipped"
   fi
+}
+
+# Link commit to plan file by updating plan frontmatter with commit hash.
+# Stages the modified plan file and amends the commit to include it.
+function do_plan_link() {
+  if [[ -z "${SASE_PLAN:-}" || ! -f "${SASE_PLAN}" ]]; then
+    return 0
+  fi
+
+  local commit_hash
+  commit_hash=$(git rev-parse --short HEAD 2>/dev/null) || return 0
+
+  local repo_root
+  repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || return 0
+
+  # Add commit: <hash> to plan file frontmatter
+  local plan_content
+  plan_content=$(<"${SASE_PLAN}")
+
+  if [[ "${plan_content}" == ---* ]]; then
+    # Has frontmatter — insert/replace commit field before closing ---
+    awk -v hash="${commit_hash}" '
+      BEGIN { in_fm=0; has_commit=0 }
+      NR==1 && /^---$/ { in_fm=1; print; next }
+      in_fm && /^commit:/ { printf "commit: %s\n", hash; has_commit=1; next }
+      in_fm && /^---$/ { if (!has_commit) printf "commit: %s\n", hash; in_fm=0; print; next }
+      { print }
+    ' "${SASE_PLAN}" > "${SASE_PLAN}.tmp" && mv "${SASE_PLAN}.tmp" "${SASE_PLAN}"
+  else
+    # No frontmatter — create it
+    printf '---\ncommit: %s\n---\n\n%s\n' "${commit_hash}" "${plan_content}" > "${SASE_PLAN}"
+  fi
+
+  # If plan file is outside the repo, copy it into plans/ directory
+  local plan_to_stage="${SASE_PLAN}"
+  if [[ "${SASE_PLAN}" != "${repo_root}"/* ]]; then
+    mkdir -p "${repo_root}/plans"
+    plan_to_stage="${repo_root}/plans/$(basename "${SASE_PLAN}")"
+    cp "${SASE_PLAN}" "${plan_to_stage}"
+  fi
+
+  git add -- "${plan_to_stage}"
+  git commit --amend --no-edit
+
+  jlog "plan_link" "result=ok" "commit_hash=${commit_hash}" "plan=${SASE_PLAN}"
 }
 
 # Send Mac notification with commit details.
