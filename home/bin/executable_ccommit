@@ -99,12 +99,12 @@ function run() {
     "pid=$$"
   parse_cli_args "$@"
   stage_files
+  do_beads_close
+  do_beads_sync
   validate_staged_changes
   merge_with_master
   do_commit
   do_push
-  do_beads_close
-  do_beads_sync
   send_notification
 }
 
@@ -394,7 +394,7 @@ function do_beads_close() {
   fi
 }
 
-# Sync beads issue tracker state after push.
+# Sync beads issue tracker and stage .sase_beads/ changes for the main commit.
 function do_beads_sync() {
   if [ -d .sase_beads ] || [ -d .beads ]; then
     local bd_cmd
@@ -408,18 +408,10 @@ function do_beads_sync() {
       jlog "beads_sync" "result=failed" "exit_code=${rc}" "output=${sync_output}"
       log::warn "bead sync failed (exit code %d): %s" "${rc}" "${sync_output}"
     fi
-    # Auto-commit .sase_beads/ changes (e.g. from bead close/sync)
+    # Stage .sase_beads/ changes so they're included in the main commit
     if [ -d .sase_beads ] && [ -n "$(git status --porcelain .sase_beads/ 2>/dev/null)" ]; then
       git add .sase_beads/
-      git commit -m "chore: Update beads tracking data"
-      local push_output push_rc=0
-      push_output=$(git push 2>&1) || push_rc=$?
-      if [[ ${push_rc} -eq 0 ]]; then
-        jlog "beads_autocommit" "result=ok"
-      else
-        jlog "beads_autocommit" "result=push_failed" "exit_code=${push_rc}"
-        log::warn "Failed to push beads autocommit: %s" "${push_output}"
-      fi
+      jlog "beads_staged" "result=ok"
     fi
   else
     jlog "beads_sync" "result=skipped"
