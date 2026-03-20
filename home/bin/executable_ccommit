@@ -445,9 +445,17 @@ function do_plan_link() {
   local repo_root
   repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || return 0
 
-  # Add commit: <hash> to plan file frontmatter
+  # If plan file is outside the repo, copy it into plans/ directory first
+  local plan_to_stage="${SASE_PLAN}"
+  if [[ "${SASE_PLAN}" != "${repo_root}"/* ]]; then
+    mkdir -p "${repo_root}/plans"
+    plan_to_stage="${repo_root}/plans/$(basename "${SASE_PLAN}")"
+    cp "${SASE_PLAN}" "${plan_to_stage}"
+  fi
+
+  # Add commit: <hash> to the repo-local plan file frontmatter
   local plan_content
-  plan_content=$(<"${SASE_PLAN}")
+  plan_content=$(<"${plan_to_stage}")
 
   if [[ "${plan_content}" == ---* ]]; then
     # Has frontmatter — insert/replace commit field before closing ---
@@ -457,18 +465,10 @@ function do_plan_link() {
       in_fm && /^commit:/ { printf "commit: %s\n", hash; has_commit=1; next }
       in_fm && /^---$/ { if (!has_commit) printf "commit: %s\n", hash; in_fm=0; print; next }
       { print }
-    ' "${SASE_PLAN}" > "${SASE_PLAN}.tmp" && mv "${SASE_PLAN}.tmp" "${SASE_PLAN}"
+    ' "${plan_to_stage}" > "${plan_to_stage}.tmp" && mv "${plan_to_stage}.tmp" "${plan_to_stage}"
   else
     # No frontmatter — create it
-    printf '---\ncommit: %s\n---\n\n%s\n' "${commit_hash}" "${plan_content}" > "${SASE_PLAN}"
-  fi
-
-  # If plan file is outside the repo, copy it into plans/ directory
-  local plan_to_stage="${SASE_PLAN}"
-  if [[ "${SASE_PLAN}" != "${repo_root}"/* ]]; then
-    mkdir -p "${repo_root}/plans"
-    plan_to_stage="${repo_root}/plans/$(basename "${SASE_PLAN}")"
-    cp "${SASE_PLAN}" "${plan_to_stage}"
+    printf '---\ncommit: %s\n---\n\n%s\n' "${commit_hash}" "${plan_content}" > "${plan_to_stage}"
   fi
 
   git add -- "${plan_to_stage}"
