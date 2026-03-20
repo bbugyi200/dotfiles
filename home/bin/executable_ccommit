@@ -99,6 +99,7 @@ function run() {
     "pid=$$"
   parse_cli_args "$@"
   stage_files
+  do_fmt
   do_beads_close
   do_beads_sync
   validate_staged_changes
@@ -191,6 +192,23 @@ function stage_files() {
   if [[ ${rc} -ne 0 ]]; then
     die "git add failed (exit code ${rc})"
   fi
+}
+
+# Run 'just fmt' if a Justfile with a fmt target exists, then re-stage files.
+function do_fmt() {
+  command -v just &>/dev/null || return 0
+  just --summary 2>/dev/null | grep -qw 'fmt' || return 0
+
+  log::debug "Running 'just fmt'"
+  local fmt_output rc=0
+  fmt_output=$(just fmt 2>&1) || rc=$?
+  if [[ ${rc} -ne 0 ]]; then
+    jlog "fmt" "result=failed" "exit_code=${rc}" "output=${fmt_output}"
+    die "just fmt failed (exit code ${rc}):\n${fmt_output}"
+  fi
+  jlog "fmt" "result=ok"
+  # Re-stage files in case fmt modified them
+  git add -- "${FILES[@]}" 2>/dev/null || true
 }
 
 # Verify there are staged changes to commit. Dies with an error if nothing is staged.
