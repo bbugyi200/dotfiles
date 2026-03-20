@@ -321,6 +321,11 @@ function do_commit() {
       fi
     fi
     message="${message}"$'\n\n'"PLAN=${plan_rel}"
+    # Mark the plan as done
+    if [[ -f "${SASE_PLAN}" ]]; then
+      sed -i 's/^status: wip$/status: done/' "${SASE_PLAN}"
+      jlog "plan_status" "result=marked_done" "plan=${SASE_PLAN}"
+    fi
   fi
   log::debug "Commit message:\n%s" "${message}"
   local rc=0
