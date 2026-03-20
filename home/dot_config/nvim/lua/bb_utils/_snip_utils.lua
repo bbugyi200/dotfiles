@@ -64,7 +64,7 @@ function M.get_markdown_snippets()
 
 	return {
 		-- SNIPPET: -
-		s({ trig = "-", desc = "Horizontal rule (---)" }, { t("---") }),
+		s({ trig = "-", desc = "Horizontal rule (---)" }, { t({ "---", "", "" }) }),
 		-- SNIPPET: --
 		s(
 			{ trig = "--", priority = 1001, desc = "Fenced section (---/---)" },
