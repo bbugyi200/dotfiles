@@ -314,6 +314,9 @@ function do_commit() {
     if [[ -n "${repo_root}" ]]; then
       if [[ "${SASE_PLAN}" == "${repo_root}"/* ]]; then
         plan_rel="${SASE_PLAN#"${repo_root}"/}"
+      elif [[ -f "${SASE_PLAN}" ]]; then
+        # Non-VC mode: plan is outside repo (e.g. .sase/sdd/plans/<name>.md)
+        plan_rel=".sase/sdd/plans/$(basename "${SASE_PLAN}")"
       else
         plan_rel="plans/$(basename "${SASE_PLAN}")"
       fi
@@ -451,7 +454,9 @@ function do_beads_sync() {
 }
 
 # Link commit to plan file by updating plan frontmatter with commit hash.
-# Stages the modified plan file and amends the commit to include it.
+# Uses a separate commit (not amend) so the recorded hash accurately points
+# to the code change. For non-VC plans (outside the repo), commits to the
+# plan file's own git repo (.sase/sdd/).
 # NOTE: sase is responsible for creating the plan file (via write_sdd_files);
 # this function only adds the commit: frontmatter field.
 function do_plan_link() {
@@ -459,28 +464,35 @@ function do_plan_link() {
     return 0
   fi
 
+  # Capture the code commit hash — this is the hash we want to record.
   local commit_hash
   commit_hash=$(git rev-parse --short HEAD 2>/dev/null) || return 0
 
   local repo_root
   repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || return 0
 
-  # Resolve the plan file inside the repo (sase should have already created it)
-  local plan_to_stage
+  # Resolve the plan file: either in-repo (VC mode) or external (non-VC mode)
+  local plan_file
+  local in_repo=true
   if [[ "${SASE_PLAN}" == "${repo_root}"/* ]]; then
-    plan_to_stage="${SASE_PLAN}"
+    plan_file="${SASE_PLAN}"
+  elif [[ -f "${SASE_PLAN}" ]]; then
+    # Non-VC mode: plan file lives outside this repo (e.g. in .sase/sdd/)
+    plan_file="${SASE_PLAN}"
+    in_repo=false
   else
-    plan_to_stage="${repo_root}/plans/$(basename "${SASE_PLAN}")"
-  fi
-
-  if [[ ! -f "${plan_to_stage}" ]]; then
-    jlog "plan_link" "result=skipped" "reason=plan_file_not_found" "plan=${plan_to_stage}"
+    jlog "plan_link" "result=skipped" "reason=plan_file_not_found" "plan=${SASE_PLAN}"
     return 0
   fi
 
-  # Add commit: <hash> to the repo-local plan file frontmatter
+  if [[ ! -f "${plan_file}" ]]; then
+    jlog "plan_link" "result=skipped" "reason=plan_file_not_found" "plan=${plan_file}"
+    return 0
+  fi
+
+  # Add commit: <hash> to the plan file frontmatter
   local plan_content
-  plan_content=$(<"${plan_to_stage}")
+  plan_content=$(<"${plan_file}")
 
   if [[ "${plan_content}" == ---* ]]; then
     # Has frontmatter — insert/replace commit field before closing ---
@@ -490,16 +502,29 @@ function do_plan_link() {
       in_fm && /^commit:/ { printf "commit: %s\n", hash; has_commit=1; next }
       in_fm && /^---$/ { if (!has_commit) printf "commit: %s\n", hash; in_fm=0; print; next }
       { print }
-    ' "${plan_to_stage}" > "${plan_to_stage}.tmp" && mv "${plan_to_stage}.tmp" "${plan_to_stage}"
+    ' "${plan_file}" > "${plan_file}.tmp" && mv "${plan_file}.tmp" "${plan_file}"
   else
     # No frontmatter — create it
-    printf '---\ncommit: %s\n---\n\n%s\n' "${commit_hash}" "${plan_content}" > "${plan_to_stage}"
+    printf '---\ncommit: %s\n---\n\n%s\n' "${commit_hash}" "${plan_content}" > "${plan_file}"
   fi
 
-  git add -- "${plan_to_stage}"
-  git commit --amend --no-edit
+  if [[ "${in_repo}" == "true" ]]; then
+    # VC mode: create a separate commit (not amend) so commit_hash stays accurate
+    git add -- "${plan_file}"
+    git commit -m "chore(sdd): link plan to ${commit_hash}"
+  else
+    # Non-VC mode: commit to the plan file's own git repo (.sase/sdd/)
+    local plan_dir
+    plan_dir=$(dirname "${plan_file}")
+    local plan_repo_root
+    plan_repo_root=$(git -C "${plan_dir}" rev-parse --show-toplevel 2>/dev/null) || true
+    if [[ -n "${plan_repo_root}" ]]; then
+      git -C "${plan_repo_root}" add -- "${plan_file}"
+      git -C "${plan_repo_root}" commit -m "link plan $(basename "${plan_file}") to ${commit_hash}"
+    fi
+  fi
 
-  jlog "plan_link" "result=ok" "commit_hash=${commit_hash}" "plan=${plan_to_stage}"
+  jlog "plan_link" "result=ok" "commit_hash=${commit_hash}" "plan=${plan_file}" "in_repo=${in_repo}"
 }
 
 # Send Mac notification with commit details.
