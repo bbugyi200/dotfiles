@@ -105,7 +105,6 @@ function run() {
   validate_staged_changes
   merge_with_master
   do_commit
-  do_plan_link
   do_push
   send_notification
 }
@@ -451,83 +450,6 @@ function do_beads_sync() {
   else
     jlog "beads_sync" "result=skipped"
   fi
-}
-
-# Link commit to plan file by updating plan frontmatter with commit hash.
-# Amends the primary commit to include the plan link (no separate commit).
-# For non-VC plans (outside the repo), commits to the plan file's own git
-# repo (.sase/sdd/).
-# NOTE: sase is responsible for creating the plan file (via write_sdd_files);
-# this function only adds the commit: frontmatter field.
-function do_plan_link() {
-  if [[ -z "${SASE_PLAN:-}" ]]; then
-    return 0
-  fi
-
-  # Capture the code commit hash — this is the hash we want to record.
-  local commit_hash
-  commit_hash=$(git rev-parse --short HEAD 2>/dev/null) || return 0
-
-  local repo_root
-  repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || return 0
-
-  # Resolve the plan file: either in-repo (VC mode) or external (non-VC mode).
-  # Resolve to absolute path first so relative paths compare correctly against repo_root.
-  local plan_file
-  local in_repo=true
-  if [[ -f "${SASE_PLAN}" ]]; then
-    plan_file=$(realpath "${SASE_PLAN}")
-  else
-    jlog "plan_link" "result=skipped" "reason=plan_file_not_found" "plan=${SASE_PLAN}"
-    return 0
-  fi
-  if [[ "${plan_file}" != "${repo_root}"/* ]]; then
-    in_repo=false
-  fi
-
-  if [[ ! -f "${plan_file}" ]]; then
-    jlog "plan_link" "result=skipped" "reason=plan_file_not_found" "plan=${plan_file}"
-    return 0
-  fi
-
-  # Add commit: <hash> to the plan file frontmatter.
-  # Always write to a temp file first to avoid truncating the original on failure.
-  local first_line
-  first_line=$(head -1 "${plan_file}")
-
-  if [[ "${first_line}" == "---" ]]; then
-    # Has frontmatter — insert/replace commit field before closing ---
-    awk -v hash="${commit_hash}" '
-      BEGIN { in_fm=0; has_commit=0 }
-      NR==1 && /^---$/ { in_fm=1; print; next }
-      in_fm && /^commit:/ { printf "commit: %s\n", hash; has_commit=1; next }
-      in_fm && /^---$/ { if (!has_commit) printf "commit: %s\n", hash; in_fm=0; print; next }
-      { print }
-    ' "${plan_file}" > "${plan_file}.tmp" && mv "${plan_file}.tmp" "${plan_file}"
-  else
-    # No frontmatter — prepend it. Use cat to stream the file instead of
-    # passing content through a shell variable (avoids truncation issues).
-    { printf '---\ncommit: %s\n---\n\n' "${commit_hash}"; cat "${plan_file}"; } > "${plan_file}.tmp" \
-      && mv "${plan_file}.tmp" "${plan_file}"
-  fi
-
-  if [[ "${in_repo}" == "true" ]]; then
-    # VC mode: amend the primary commit to include the plan link
-    git add -- "${plan_file}"
-    git commit --amend --no-edit
-  else
-    # Non-VC mode: commit to the plan file's own git repo (.sase/sdd/)
-    local plan_dir
-    plan_dir=$(dirname "${plan_file}")
-    local plan_repo_root
-    plan_repo_root=$(git -C "${plan_dir}" rev-parse --show-toplevel 2>/dev/null) || true
-    if [[ -n "${plan_repo_root}" ]]; then
-      git -C "${plan_repo_root}" add -- "${plan_file}"
-      git -C "${plan_repo_root}" commit -m "link plan $(basename "${plan_file}") to ${commit_hash}"
-    fi
-  fi
-
-  jlog "plan_link" "result=ok" "commit_hash=${commit_hash}" "plan=${plan_file}" "in_repo=${in_repo}"
 }
 
 # Send Mac notification with commit details.
