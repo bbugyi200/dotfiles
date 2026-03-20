@@ -452,8 +452,10 @@ function do_beads_sync() {
 
 # Link commit to plan file by updating plan frontmatter with commit hash.
 # Stages the modified plan file and amends the commit to include it.
+# NOTE: sase is responsible for creating the plan file (via write_sdd_files);
+# this function only adds the commit: frontmatter field.
 function do_plan_link() {
-  if [[ -z "${SASE_PLAN:-}" || ! -f "${SASE_PLAN}" ]]; then
+  if [[ -z "${SASE_PLAN:-}" ]]; then
     return 0
   fi
 
@@ -463,12 +465,17 @@ function do_plan_link() {
   local repo_root
   repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || return 0
 
-  # If plan file is outside the repo, copy it into plans/ directory first
-  local plan_to_stage="${SASE_PLAN}"
-  if [[ "${SASE_PLAN}" != "${repo_root}"/* ]]; then
-    mkdir -p "${repo_root}/plans"
+  # Resolve the plan file inside the repo (sase should have already created it)
+  local plan_to_stage
+  if [[ "${SASE_PLAN}" == "${repo_root}"/* ]]; then
+    plan_to_stage="${SASE_PLAN}"
+  else
     plan_to_stage="${repo_root}/plans/$(basename "${SASE_PLAN}")"
-    cp "${SASE_PLAN}" "${plan_to_stage}"
+  fi
+
+  if [[ ! -f "${plan_to_stage}" ]]; then
+    jlog "plan_link" "result=skipped" "reason=plan_file_not_found" "plan=${plan_to_stage}"
+    return 0
   fi
 
   # Add commit: <hash> to the repo-local plan file frontmatter
@@ -492,7 +499,7 @@ function do_plan_link() {
   git add -- "${plan_to_stage}"
   git commit --amend --no-edit
 
-  jlog "plan_link" "result=ok" "commit_hash=${commit_hash}" "plan=${SASE_PLAN}"
+  jlog "plan_link" "result=ok" "commit_hash=${commit_hash}" "plan=${plan_to_stage}"
 }
 
 # Send Mac notification with commit details.
