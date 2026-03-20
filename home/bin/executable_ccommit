@@ -290,7 +290,17 @@ function do_commit() {
     message="${first_line} (${BEAD_ID})${rest}"
   fi
   if [[ -n "${SASE_PLAN:-}" ]]; then
-    message="${message}"$'\n\n'"PLAN=${SASE_PLAN}"
+    local plan_rel="${SASE_PLAN}"
+    local repo_root
+    repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || true
+    if [[ -n "${repo_root}" ]]; then
+      if [[ "${SASE_PLAN}" == "${repo_root}"/* ]]; then
+        plan_rel="${SASE_PLAN#"${repo_root}"/}"
+      else
+        plan_rel="plans/$(basename "${SASE_PLAN}")"
+      fi
+    fi
+    message="${message}"$'\n\n'"PLAN=${plan_rel}"
   fi
   log::debug "Commit message:\n%s" "${message}"
   local rc=0
