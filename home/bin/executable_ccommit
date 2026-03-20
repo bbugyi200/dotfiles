@@ -471,18 +471,18 @@ function do_plan_link() {
   local repo_root
   repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || return 0
 
-  # Resolve the plan file: either in-repo (VC mode) or external (non-VC mode)
+  # Resolve the plan file: either in-repo (VC mode) or external (non-VC mode).
+  # Resolve to absolute path first so relative paths compare correctly against repo_root.
   local plan_file
   local in_repo=true
-  if [[ "${SASE_PLAN}" == "${repo_root}"/* ]]; then
-    plan_file="${SASE_PLAN}"
-  elif [[ -f "${SASE_PLAN}" ]]; then
-    # Non-VC mode: plan file lives outside this repo (e.g. in .sase/sdd/)
-    plan_file="${SASE_PLAN}"
-    in_repo=false
+  if [[ -f "${SASE_PLAN}" ]]; then
+    plan_file=$(realpath "${SASE_PLAN}")
   else
     jlog "plan_link" "result=skipped" "reason=plan_file_not_found" "plan=${SASE_PLAN}"
     return 0
+  fi
+  if [[ "${plan_file}" != "${repo_root}"/* ]]; then
+    in_repo=false
   fi
 
   if [[ ! -f "${plan_file}" ]]; then
@@ -492,10 +492,10 @@ function do_plan_link() {
 
   # Add commit: <hash> to the plan file frontmatter.
   # Always write to a temp file first to avoid truncating the original on failure.
-  local plan_content
-  plan_content=$(<"${plan_file}")
+  local first_line
+  first_line=$(head -1 "${plan_file}")
 
-  if [[ "${plan_content}" == ---* ]]; then
+  if [[ "${first_line}" == "---" ]]; then
     # Has frontmatter — insert/replace commit field before closing ---
     awk -v hash="${commit_hash}" '
       BEGIN { in_fm=0; has_commit=0 }
@@ -505,8 +505,9 @@ function do_plan_link() {
       { print }
     ' "${plan_file}" > "${plan_file}.tmp" && mv "${plan_file}.tmp" "${plan_file}"
   else
-    # No frontmatter — create it (write to temp file to avoid truncating original)
-    printf '---\ncommit: %s\n---\n\n%s\n' "${commit_hash}" "${plan_content}" > "${plan_file}.tmp" \
+    # No frontmatter — prepend it. Use cat to stream the file instead of
+    # passing content through a shell variable (avoids truncation issues).
+    { printf '---\ncommit: %s\n---\n\n' "${commit_hash}"; cat "${plan_file}"; } > "${plan_file}.tmp" \
       && mv "${plan_file}.tmp" "${plan_file}"
   fi
 
