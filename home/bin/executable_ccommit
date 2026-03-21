@@ -106,6 +106,7 @@ function run() {
   merge_with_master
   restage_beads
   do_commit
+  do_beads_note_commit
   do_push
   send_notification
 }
@@ -345,9 +346,8 @@ function do_commit() {
     jlog "commit" "result=failed" "exit_code=${rc}" "message=${message}"
     die "git commit failed (exit code ${rc})"
   fi
-  local commit_hash
-  commit_hash=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-  jlog "commit" "result=ok" "commit_hash=${commit_hash}" "message=${message}"
+  COMMIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+  jlog "commit" "result=ok" "commit_hash=${COMMIT_HASH}" "message=${message}"
 }
 
 # Push commits to remote. If push fails (e.g. remote has diverged), tries to
@@ -465,6 +465,25 @@ function do_beads_sync() {
     fi
   else
     jlog "beads_sync" "result=skipped"
+  fi
+}
+
+# Add a COMMIT note to the bead after a successful commit, if --bead was provided.
+function do_beads_note_commit() {
+  if [[ -z "${BEAD_ID}" ]]; then
+    return 0
+  fi
+  local bd_cmd
+  bd_cmd=$(resolve_bd_command)
+  local note="COMMIT: ${COMMIT_HASH}"
+  log::debug "Adding commit note to bead %s: %s" "${BEAD_ID}" "${note}"
+  local update_output rc=0
+  update_output=$(${bd_cmd} update "${BEAD_ID}" --notes "${note}" 2>&1) || rc=$?
+  if [[ ${rc} -eq 0 ]]; then
+    jlog "beads_note_commit" "result=ok" "bead_id=${BEAD_ID}" "commit_hash=${COMMIT_HASH}"
+  else
+    jlog "beads_note_commit" "result=failed" "bead_id=${BEAD_ID}" "exit_code=${rc}" "output=${update_output}"
+    log::warn "Failed to add commit note to bead %s (exit code %d): %s" "${BEAD_ID}" "${rc}" "${update_output}"
   fi
 }
 
