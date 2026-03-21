@@ -1,3 +1,4 @@
+timezone: "America/New_York"
 use_chezmoi: true
 github_orgs:
   - bbugyi200
