@@ -104,6 +104,7 @@ function run() {
   do_beads_sync
   validate_staged_changes
   merge_with_master
+  restage_beads
   do_commit
   do_push
   send_notification
@@ -295,6 +296,16 @@ function merge_with_master() {
     }
   fi
   jlog "merge" "result=ok" "detail=merged_origin_${default_branch}_into_${current_branch}"
+}
+
+# Re-stage .sase_beads/ right before commit to capture any changes from
+# merge_with_master or other intermediate steps. This ensures bead updates
+# are always included in the main commit rather than left as uncommitted changes.
+function restage_beads() {
+  if [ -d .sase_beads ] && [ -n "$(git status --porcelain .sase_beads/ 2>/dev/null)" ]; then
+    git add .sase_beads/
+    jlog "beads_restaged" "result=ok"
+  fi
 }
 
 # Build the commit message and execute 'git commit'.
