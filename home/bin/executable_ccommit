@@ -311,7 +311,7 @@ function restage_beads() {
 # Build the commit message and execute 'git commit'.
 function do_commit() {
   local message="${TAG}: ${MESSAGE}"
-  if [[ -n "${BEAD_ID}" ]]; then
+  if [[ -n "${BEAD_ID}" ]] && [[ "${message}" != *"(${BEAD_ID})"* ]]; then
     # Inject bead reference into the first line of the commit message
     local first_line="${message%%$'\n'*}"
     local rest="${message#"$first_line"}"
@@ -471,7 +471,7 @@ function do_beads_sync() {
 # Send Mac notification with commit details.
 function send_notification() {
   local message="${TAG}: ${MESSAGE}"
-  if [[ -n "${BEAD_ID}" ]]; then
+  if [[ -n "${BEAD_ID}" ]] && [[ "${message}" != *"(${BEAD_ID})"* ]]; then
     local first_line="${message%%$'\n'*}"
     local rest="${message#"$first_line"}"
     message="${first_line} (${BEAD_ID})${rest}"
