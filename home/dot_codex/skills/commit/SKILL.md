@@ -39,9 +39,9 @@ Before committing, check if your work is associated with a bead issue:
    ccommit --bead <bead-id> <tag> "<message>" <file>...
    ```
 3. The bead ID will be appended to the commit headline in parentheses, e.g. `feat: Add feature (beads-abc1234)`
-4. The `--bead` flag automatically closes the bead and includes `.sase_beads/` changes in the commit.
-   **Do NOT** run separate `sase bead update` commands or create separate commits for `.sase_beads/` changes —
-   ccommit handles this for you.
+4. The `--bead` flag automatically closes the bead and includes `.sase_beads/` changes in the commit. **Do NOT** run
+   separate `sase bead update` commands or create separate commits for `.sase_beads/` changes — ccommit handles this for
+   you.
 
 ## Example
 
