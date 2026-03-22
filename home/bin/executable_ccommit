@@ -336,6 +336,7 @@ function do_commit() {
     # Mark the plan as done
     if [[ -f "${SASE_PLAN}" ]]; then
       sed -i 's/^status: wip$/status: done/' "${SASE_PLAN}"
+      git add "${SASE_PLAN}" 2>/dev/null || true
       jlog "plan_status" "result=marked_done" "plan=${SASE_PLAN}"
     fi
   fi
