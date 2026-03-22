@@ -1,9 +1,12 @@
 #!/bin/bash
 
 if [[ $# -ne 1 ]]; then
-  echo 1>&2 "usage: $(basename "$0") <LOG_BASEDIR>"
+  echo 1>&2 "usage: $(basename "$0") <LOG_PACK_BASE_DIR>"
   exit 2
 fi
 
-LOG_BASEDIR="$1"
+LOG_PACK_BASE_DIR="$1"
 shift
+
+scp -r bbc:~/.sase/logs/pack/"${LOG_PACK_BASE_DIR}" ~/tmp/
+scp ~/tmp/"${LOG_PACK_BASE_DIR}"/ home:~/tmp/
