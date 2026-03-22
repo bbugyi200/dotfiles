@@ -260,16 +260,13 @@ function M.get_markdown_snippets()
 		-- SNIPPET: iow
 		s({ trig = "iow", desc = "In other words, _____ ..." }, { t("In other words, "), i(1) }),
 		-- SNIPPET: logp
-		s(
-			{ trig = "logp", desc = "sase logs logpack" },
-			{
-				t(
-					"This issue is occurring on another machine that uses the ../sase-google plugin. I've saved a `sase logs` logpack to the ~/tmp/"
-				),
-				i(1),
-				t("/ directory to help you figure this out."),
-			}
-		),
+		s({ trig = "logp", desc = "sase logs logpack" }, {
+			t(
+				"This issue is occurring on another machine that uses the ../sase-google plugin. I've saved a `sase logs` logpack to the ~/tmp/"
+			),
+			i(1),
+			t("/ directory to help you figure this out."),
+		}),
 		-- SNIPPET: loop
 		s({ trig = "loop", desc = "Repeatedly run a command until it passed." }, {
 			t("When you're done, run the `"),
