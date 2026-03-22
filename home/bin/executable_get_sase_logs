@@ -9,4 +9,4 @@ LOG_PACK_BASE_DIR="$1"
 shift
 
 scp -r bbc:~/.sase/logs/pack/"${LOG_PACK_BASE_DIR}" ~/tmp/
-scp ~/tmp/"${LOG_PACK_BASE_DIR}"/ home:~/tmp/
+scp -r ~/tmp/"${LOG_PACK_BASE_DIR}"/ home:~/tmp/
