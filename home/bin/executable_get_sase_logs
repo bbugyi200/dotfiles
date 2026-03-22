@@ -8,5 +8,8 @@ fi
 LOG_PACK_BASE_DIR="$1"
 shift
 
+printf ">>> Copying from bbc to this machine...\n"
 scp -r bbc:~/.sase/logs/pack/"${LOG_PACK_BASE_DIR}" ~/tmp/
+
+printf "\n>>> Copying from this machine to home...\n"
 scp -r ~/tmp/"${LOG_PACK_BASE_DIR}"/ home:~/tmp/
