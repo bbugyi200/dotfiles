@@ -1,0 +1,9 @@
+#!/bin/bash
+
+if [[ $# -ne 1 ]]; then
+  echo 1>&2 "usage: $(basename "$0") <LOG_BASEDIR>"
+  exit 2
+fi
+
+LOG_BASEDIR="$1"
+shift
