@@ -20,6 +20,7 @@ ace:
     git: "(see recent, related git commits)"
     help: "Can you help me $1?"
     mrp: "Mentor Review panel"
+    piw: "prompt input widget"
 
 xprompts:
   # VCS project aliases
