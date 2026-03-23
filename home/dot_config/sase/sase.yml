@@ -6,6 +6,10 @@ github_orgs:
 ace:
   snippets:
     agentm: 'the agent metadata panel on the "Agents" tab of the `sase ace` TUI'
+    bea: "I want you to lead the design on this one. Just make sure it looks beautiful!"
+    beau:
+      "I want you to lead the design on this one. Make sure you design this feature so it is intuitive, reliable, and
+      (last but not least) beautiful!"
     cb: |-
       ```$1
       $2
