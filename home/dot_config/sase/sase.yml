@@ -19,6 +19,7 @@ ace:
     fixx: "Can you help me diagnose the root cause of this issue and fix it?"
     git: "(see recent, related git commits)"
     help: "Can you help me $1?"
+    mrp: "Mentor Review panel"
 
 xprompts:
   # VCS project aliases
