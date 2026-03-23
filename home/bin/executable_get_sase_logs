@@ -21,6 +21,6 @@ if [[ $IS_REMOTE = true ]]; then
   printf "\n>>> Copying from this machine to xhome...\n"
   scp -r ~/tmp/"${LOG_PACK_BASE_DIR}"/ xhome:~/tmp/
 else
-  printf "\n>>> Copying from this machine to xhome...\n"
+  printf "\n>>> Copying from this machine to home...\n"
   scp -r ~/tmp/"${LOG_PACK_BASE_DIR}"/ home:~/tmp/
 fi
