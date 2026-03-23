@@ -38,7 +38,7 @@ function run() {
   mkdir -p ${tmp_dir}
   local tmp_file=${tmp_dir}/${COMMAND}.txt
 
-  ${COMMAND} --help >"${tmp_file}"
+  ${COMMAND} --help >"${tmp_file}" 2>&1
   nvim -c "set ft=man" "${tmp_file}"
 }
 
