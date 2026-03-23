@@ -1,15 +1,26 @@
 #!/bin/bash
 
-if [[ $# -ne 1 ]]; then
-  echo 1>&2 "usage: $(basename "$0") <LOG_PACK_BASE_DIR>"
+if [[ $# -lt 1 ]]; then
+  echo 1>&2 "usage: $(basename "$0") <LOG_PACK_BASE_DIR> [-x|--remote]"
   exit 2
 fi
 
 LOG_PACK_BASE_DIR="$1"
 shift
 
+IS_REMOTE=false
+if [[ "$1" == "-x" || "$1" == "--remote" ]]; then
+  shift
+  IS_REMOTE=true
+fi
+
 printf ">>> Copying from bbc to this machine...\n"
 scp -r bbc:~/.sase/logs/pack/"${LOG_PACK_BASE_DIR}" ~/tmp/
 
-printf "\n>>> Copying from this machine to home...\n"
-scp -r ~/tmp/"${LOG_PACK_BASE_DIR}"/ home:~/tmp/
+if [[ $IS_REMOTE = true ]]; then
+  printf "\n>>> Copying from this machine to xhome...\n"
+  scp -r ~/tmp/"${LOG_PACK_BASE_DIR}"/ home:~/tmp/
+else
+  printf "\n>>> Copying from this machine to xhome...\n"
+  scp -r ~/tmp/"${LOG_PACK_BASE_DIR}"/ xhome:~/tmp/
+fi
