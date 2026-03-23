@@ -5,6 +5,7 @@ github_orgs:
   - sase-org
 ace:
   snippets:
+    agentm: 'the agent metadata panel on the "Agents" tab of the `sase ace` TUI'
     cb: |-
       ```$1
       $2
