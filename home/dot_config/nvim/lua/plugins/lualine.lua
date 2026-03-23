@@ -24,7 +24,7 @@ return {
 				local cwd = vim.fn.getcwd()
 				local home = vim.fn.expand("$HOME")
 				cwd = cwd:gsub("^" .. vim.pesc(home), "~")
-				return " " .. cwd
+				return "CWD:  " .. cwd
 			end
 
 			local function fig_commit_name()
