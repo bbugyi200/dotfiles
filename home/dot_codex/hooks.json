@@ -10,7 +10,7 @@
           },
           {
             "type": "command",
-            "command": "test -x tools/sase_old_stop_hook && tools/sase_old_stop_hook",
+            "command": "test -x tools/sase_commit_stop_hook && tools/sase_commit_stop_hook",
             "timeout": 300
           }
         ]
