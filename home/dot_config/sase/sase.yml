@@ -5,6 +5,15 @@ github_orgs:
   - sase-org
 ace:
   snippets:
+    cb: |-
+      ```$1
+      $2
+      ```
+    cbb: |-
+      ````$1
+      $2
+      ````
+    cbi: "`<$1>`"
     fi: "the $1 file"
     fix: "Can you help me fix this?"
     fixx: "Can you help me diagnose the root cause of this issue and fix it?"
