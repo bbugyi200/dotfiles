@@ -19,8 +19,8 @@ scp -r bbc:~/.sase/logs/pack/"${LOG_PACK_BASE_DIR}" ~/tmp/
 
 if [[ $IS_REMOTE = true ]]; then
   printf "\n>>> Copying from this machine to xhome...\n"
-  scp -r ~/tmp/"${LOG_PACK_BASE_DIR}"/ home:~/tmp/
+  scp -r ~/tmp/"${LOG_PACK_BASE_DIR}"/ xhome:~/tmp/
 else
   printf "\n>>> Copying from this machine to xhome...\n"
-  scp -r ~/tmp/"${LOG_PACK_BASE_DIR}"/ xhome:~/tmp/
+  scp -r ~/tmp/"${LOG_PACK_BASE_DIR}"/ home:~/tmp/
 fi
