@@ -18,6 +18,10 @@ ace:
     fix: "Can you help me fix this?"
     fixx: "Can you help me diagnose the root cause of this issue and fix it?"
     git: "(see recent, related git commits)"
+    gsn: "`sase ace` snapshot"
+    gsna: "(see the `sase ace` snapshot below)"
+    gta: 'the "$1" tab of the `sase ace` TUI'
+    gtu: "the `sase ace` TUI"
     help: "Can you help me $1?"
     mrp: "Mentor Review panel"
     piw: "prompt input widget"
