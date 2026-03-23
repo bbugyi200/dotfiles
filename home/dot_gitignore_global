@@ -50,3 +50,4 @@ tmp/*
 xclips/*
 .sase/*
 var/*
+.xprompts/*
