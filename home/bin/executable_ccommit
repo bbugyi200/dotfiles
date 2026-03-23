@@ -470,6 +470,7 @@ function do_beads_sync() {
 }
 
 # Add a COMMIT note to the bead after a successful commit, if --bead was provided.
+# Amends the main commit to include the bead note update so no dirty state is left behind.
 function do_beads_note_commit() {
   if [[ -z "${BEAD_ID}" ]]; then
     return 0
@@ -482,6 +483,15 @@ function do_beads_note_commit() {
   update_output=$(${bd_cmd} update "${BEAD_ID}" --notes "${note}" 2>&1) || rc=$?
   if [[ ${rc} -eq 0 ]]; then
     jlog "beads_note_commit" "result=ok" "bead_id=${BEAD_ID}" "commit_hash=${COMMIT_HASH}"
+    # Fold the bead note JSONL changes into the main commit via amend.
+    # The COMMIT note will reference the pre-amend hash, which is acceptable
+    # since the amend only adds the bead tracking change.
+    if [ -d .sase_beads ] && [ -n "$(git status --porcelain .sase_beads/ 2>/dev/null)" ]; then
+      git add .sase_beads/
+      git commit --amend --no-edit --quiet
+      COMMIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+      jlog "beads_note_amend" "result=ok" "amended_commit_hash=${COMMIT_HASH}"
+    fi
   else
     jlog "beads_note_commit" "result=failed" "bead_id=${BEAD_ID}" "exit_code=${rc}" "output=${update_output}"
     log::warn "Failed to add commit note to bead %s (exit code %d): %s" "${BEAD_ID}" "${rc}" "${update_output}"
