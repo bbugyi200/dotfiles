@@ -26,6 +26,7 @@
 .gdbinit
 .local_gitignore
 .lvimrc
+.nvim.lua
 .mypy_cache/
 .pytest_cache/
 .stow-local-ignore
