@@ -20,6 +20,13 @@ return {
 				update_interval = 2, -- Update every N seconds
 			}
 
+			local function cwd_display()
+				local cwd = vim.fn.getcwd()
+				local home = vim.fn.expand("$HOME")
+				cwd = cwd:gsub("^" .. vim.pesc(home), "~")
+				return " " .. cwd
+			end
+
 			local function fig_commit_name()
 				local current_time = os.time()
 
@@ -98,8 +105,28 @@ return {
 					lualine_z = {},
 				},
 				tabline = {},
-				winbar = {},
-				inactive_winbar = {},
+				winbar = {
+					lualine_c = {
+						{
+							cwd_display,
+							cond = function()
+								return vim.bo.buftype == ""
+							end,
+							color = { fg = "#7aa2f7", gui = "bold" },
+						},
+					},
+				},
+				inactive_winbar = {
+					lualine_c = {
+						{
+							cwd_display,
+							cond = function()
+								return vim.bo.buftype == ""
+							end,
+							color = { fg = "#545c7e" },
+						},
+					},
+				},
 				extensions = { "aerial", "fugitive", "lazy", "man", "quickfix", "toggleterm" },
 			})
 		end,
