@@ -3,6 +3,10 @@ use_chezmoi: true
 github_orgs:
   - bbugyi200
   - sase-org
+ace:
+  snippets:
+    help: "Can you help me $0?"
+
 xprompts:
   # VCS project aliases
   gh_dotfiles: "#gh:dotfiles"
