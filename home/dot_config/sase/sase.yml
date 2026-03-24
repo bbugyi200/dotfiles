@@ -1,5 +1,6 @@
 timezone: "America/New_York"
 use_chezmoi: true
+precommit_command: "just fix"
 github_orgs:
   - bbugyi200
   - sase-org
