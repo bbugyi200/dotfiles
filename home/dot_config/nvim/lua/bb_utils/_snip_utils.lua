@@ -344,6 +344,80 @@ function M.get_markdown_snippets()
 				}
 			)
 		),
+		-- SNIPPET: sb
+		s(
+			{ trig = "sb", desc = "Startblock section." },
+			fmt(
+				[===[
+        ### Startblock Conditions
+
+        ```
+        Startblock:
+            # STAGE 1: wait for LGTM on parent CL
+            {cl} has LGTM
+            all comments on {cl} are resolved
+            # STAGE 2: add reviewer
+            and then
+            remember
+            add reviewer {reviewer}
+        ```
+    ]===],
+				{ cl = i(1), reviewer = i(2) },
+				{ repeat_duplicates = true }
+			)
+		),
+		-- SNIPPET: sbe
+		s(
+			{ trig = "sbe", desc = "Empty Startblock section." },
+			fmt(
+				[===[
+        ### Startblock Conditions
+
+        ```
+        Startblock:
+            # STAGE 1: {s1}
+        ```
+    ]===],
+				{ s1 = i(1) }
+			)
+		),
+		-- SNIPPET: sN
+		s(
+			{
+				trig = "s([0-9]+)",
+				regTrig = true,
+				desc = "Startblock STAGE with number.",
+			},
+			fmt(
+				[===[
+        # STAGE {num}: {desc}
+        and then
+        {cond}
+    ]===],
+				{
+					num = f(function(_, snip)
+						return snip.captures[1]
+					end),
+					desc = i(1),
+					cond = i(2),
+				}
+			)
+		),
+		-- SNIPPET: tags
+		s(
+			{ trig = "tags", desc = "CL message template tags." },
+			fmt(
+				[===[
+        AUTOSUBMIT_BEHAVIOR=SYNC_SUBMIT
+        BUG={bug}
+        MARKDOWN=true
+        R={reviewer}
+        STARTBLOCK_AUTOSUBMIT=yes
+        WANT_LGTM=all
+    ]===],
+				{ bug = i(1), reviewer = i(2, "startblock") }
+			)
+		),
 		-- SNIPPET: tst
 		s({ trig = "tst", desc = "Test failure" }, {
 			t("Can you help me fix this test (see the test"),
