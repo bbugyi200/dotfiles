@@ -16,7 +16,6 @@
 alias ace='sase ace'
 alias acei='install_sase_github && sase ace'
 alias aceii='install_sase_google && sase ace'
-alias amend='sase amend'
 alias axe='sase axe'
 alias commit='sase commit'
 alias gsl='get_sase_logs'
