@@ -381,28 +381,6 @@ function M.get_markdown_snippets()
 				{ s1 = i(1) }
 			)
 		),
-		-- SNIPPET: sN
-		s(
-			{
-				trig = "s([0-9]+)",
-				regTrig = true,
-				desc = "Startblock STAGE with number.",
-			},
-			fmt(
-				[===[
-        # STAGE {num}: {desc}
-        and then
-        {cond}
-    ]===],
-				{
-					num = f(function(_, snip)
-						return snip.captures[1]
-					end),
-					desc = i(1),
-					cond = i(2),
-				}
-			)
-		),
 		-- SNIPPET: tags
 		s(
 			{ trig = "tags", desc = "CL message template tags." },
