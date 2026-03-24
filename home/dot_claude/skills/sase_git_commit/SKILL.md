@@ -25,23 +25,22 @@ This skill is used for both bare-git and GitHub VCS workflows. It is typically i
    ```json
    {
      "message": "<tag>: <description>",
-     "files": ["file1.py", "file2.py"]
+     "files": ["file1.py", "file2.py"],
+     "bead_id": "sase-42"
    }
    ```
    - `message`: The full commit message (tag prefix + description). Can contain newlines for multi-line messages.
    - `files`: List of files to stage. If empty, all changes are staged (`git add -A`).
+   - `bead_id`: (optional) If there's an in-progress bead related to your changes, include its ID here. The workflow
+     will automatically close the bead, stage `.sase_beads/`, and append the bead ID to the commit message.
 
 5. **Check for bead association** — Run `sase bead list --status=in_progress` to see if there's an in-progress bead
-   related to your changes. If so, include the bead ID in the commit message headline in parentheses, e.g.
-   `feat: Add feature (sase-42)`. Also close the bead and stage `.sase_beads/`:
-   ```bash
-   sase bead close <bead-id>
-   git add .sase_beads/
-   ```
+   related to your changes. If so, include `"bead_id": "<id>"` in the JSON payload (step 4). You do NOT need to
+   manually close the bead or stage `.sase_beads/` — the commit workflow handles this automatically.
 
 6. **Run the commit** — Execute:
    ```bash
-   .venv/bin/sase commit '<json_payload>'
+   sase commit '<json_payload>'
    ```
    The `$SASE_COMMIT_METHOD` environment variable is read automatically to determine the dispatch method
    (`create_commit`, `create_proposal`, or `create_pull_request`). Do NOT pass `--method` unless you need to override.
@@ -49,11 +48,12 @@ This skill is used for both bare-git and GitHub VCS workflows. It is typically i
 ## Example
 
 ```bash
-.venv/bin/sase commit '{"message": "feat: Add user authentication (sase-42)", "files": ["src/auth.py", "src/login.py"]}'
+sase commit '{"message": "feat: Add user authentication", "files": ["src/auth.py", "src/login.py"], "bead_id": "sase-42"}'
 ```
 
 ## Notes
 
 - The VCS provider plugin handles the actual git operations (add, commit, push).
 - For `create_pull_request`, the payload should also include a `name` field for the branch name.
-- If `.venv/bin/sase` is not available, try `sase commit` directly.
+- The `precommit_command` (configured in `sase.yml`) runs automatically before commit — no manual formatting step needed.
+- If `SASE_PLAN` is set, the plan path is appended to the commit message and the plan is marked as done automatically.
