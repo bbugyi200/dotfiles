@@ -299,8 +299,8 @@ function M.get_markdown_snippets()
 			{ trig = "pin", desc = "Describe pinned files." },
 			{ t("I've pinned some other "), i(1), t(" files to help you figure this out.") }
 		),
-		-- SNIPPET: repo
-		s({ trig = "repo", desc = "sase repo" }, { t("(see the ../sase-"), i(1), t(")") }),
+		-- SNIPPET: rep
+		s({ trig = "rep", desc = "sase repo" }, { t("in the ../sase-"), i(1), t(" repo") }),
 		-- SNIPPET: try
 		s(
 			{ trig = "try", desc = "Try again now that you have access to the ______ file." },
