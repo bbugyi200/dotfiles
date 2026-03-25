@@ -6,6 +6,7 @@ github_orgs:
   - sase-org
 ace:
   snippets:
+    ace: "`sase ace`"
     agentm: 'the agent metadata panel on the "Agents" tab of the `sase ace` TUI'
     bea: "I want you to lead the design on this one. Just make sure it looks beautiful!"
     beau:
