@@ -58,6 +58,18 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sase_commit_stop_hook",
+            "timeout": 60
+          }
+        ]
+      }
     ]
   },
   "statusLine": {

@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "test -x tools/sase_commit_stop_hook && tools/sase_commit_stop_hook",
+            "command": "sase_commit_stop_hook",
             "timeout": 300
           }
         ]

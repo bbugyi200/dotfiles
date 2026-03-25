@@ -20,6 +20,19 @@
   "general": {
     "vimMode": true
   },
+  "hooks": {
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sase_commit_stop_hook",
+            "timeout": 300000
+          }
+        ]
+      }
+    ]
+  },
   "policyPaths": [
     "/usr/local/google/home/bbugyi/.gemini/policies"
   ]
