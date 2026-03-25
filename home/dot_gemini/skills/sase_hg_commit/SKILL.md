@@ -1,14 +1,11 @@
 ---
 name: sase_hg_commit
-description:
-  Commit changes using sase commit for Mercurial/Google VCS. Invoked by the sase_commit_stop_hook when uncommitted
-  changes are detected during a commit workflow.
+description: |
+  Commit changes using sase commit for Google's fig VCS. This skill is the ONLY way that you should EVER commit to fig
+  repos.
 ---
 
-Commit changes via `sase commit`, which dispatches to the active VCS provider's commit hook.
-
-This skill is used for Mercurial (hg) / Google-internal VCS workflows. It is typically invoked by the stop hook when
-`$SASE_COMMIT_METHOD` is set and uncommitted changes are detected.
+Commit changes via the `sase commit` command.
 
 ## Instructions
 
@@ -53,10 +50,6 @@ This skill is used for Mercurial (hg) / Google-internal VCS workflows. It is typ
 sase commit '{"message": "Add user authentication", "files": ["auth.py", "login.py"], "note": "Added login/logout flow", "bead_id": "sase-42"}'
 ```
 
-## Notes
+## Extra Requirements
 
-- The VCS provider plugin handles the actual hg operations (amend, upload, mail, etc.).
 - For `create_pull_request`, the payload should also include a `name` field for the CL name.
-- The `precommit_command` (configured in `sase.yml`) runs automatically before commit — no manual formatting step
-  needed.
-- If `SASE_PLAN` is set, the plan path is appended to the commit message and the plan is marked as done automatically.

@@ -1,14 +1,11 @@
 ---
 name: sase_git_commit
 description:
-  Commit changes using sase commit for git-based VCS (bare git and GitHub). Invoked by the sase_commit_stop_hook when
-  uncommitted changes are detected during a commit workflow.
+  Commit changes using sase commit for git-based VCS (bare git and GitHub). This is the ONLY way you should EVER commit
+  to git repos.
 ---
 
-Commit changes via `sase commit`, which dispatches to the active VCS provider's commit hook.
-
-This skill is used for both bare-git and GitHub VCS workflows. It is typically invoked by the stop hook when
-`$SASE_COMMIT_METHOD` is set and uncommitted changes are detected.
+Commit changes via the `sase commit` command.
 
 ## Instructions
 
@@ -55,10 +52,6 @@ This skill is used for both bare-git and GitHub VCS workflows. It is typically i
 sase commit '{"message": "feat: Add user authentication", "files": ["src/auth.py", "src/login.py"], "bead_id": "sase-42"}'
 ```
 
-## Notes
+## Extra Requirements
 
-- The VCS provider plugin handles the actual git operations (add, commit, push).
 - For `create_pull_request`, the payload should also include a `name` field for the branch name.
-- The `precommit_command` (configured in `sase.yml`) runs automatically before commit — no manual formatting step
-  needed.
-- If `SASE_PLAN` is set, the plan path is appended to the commit message and the plan is marked as done automatically.
