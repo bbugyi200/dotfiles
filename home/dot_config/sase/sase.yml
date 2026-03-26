@@ -37,7 +37,7 @@ ace:
     help: "Can you help me $1?"
     mrp: "Mentor Review panel"
     piw: "prompt input widget"
-    rep: "in the ../sase-$1 repo"
+    rep: "the ../sase-$1 repo"
 
 xprompts:
   # VCS project aliases
