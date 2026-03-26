@@ -40,6 +40,7 @@ ace:
     piw: "prompt input widget"
     rep: "the ../sase-$1 repo"
     x: xprompt
+    xw: xprompt workflow
 
 xprompts:
   # VCS project aliases
