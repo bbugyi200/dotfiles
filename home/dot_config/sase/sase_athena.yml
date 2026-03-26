@@ -7,9 +7,9 @@ axe:
           description: "Run the #sase/pylimit_split xprompt workflow"
           agent: "#gh:sase #sase/pylimit_split %approve"
           run_every: 60m
-        - name: sase_fix_just_all
-          description: "Run the #sase/fix_just_all xprompt workflow"
-          agent: "#gh:sase #sase/fix_just_all"
+        - name: sase_fix_just
+          description: "Run the #sase/fix_just xprompt workflow"
+          agent: "#gh:sase #sase/fix_just"
           run_every: 60m
     telegram:
       interval: 5
