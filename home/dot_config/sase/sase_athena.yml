@@ -4,8 +4,12 @@ axe:
       interval: 60
       chops:
         - name: sase_pylimit_split
-          description: "Run the pylimit_split xprompt workflow"
+          description: "Run the #sase/pylimit_split xprompt workflow"
           agent: "#gh:sase #sase/pylimit_split %approve"
+          run_every: 60m
+        - name: sase_fix_just_all
+          description: "Run the #sase/fix_just_all xprompt workflow"
+          agent: "#gh:sase #sase/fix_just_all"
           run_every: 60m
     telegram:
       interval: 5
