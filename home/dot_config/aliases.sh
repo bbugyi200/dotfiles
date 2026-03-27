@@ -14,8 +14,8 @@
 
 # ---------- sase ----------
 alias ace='sase ace'
-alias acei='install_sase_github && sase ace --restart-axe'
-alias aceii='install_sase_google && sase ace --restart-axe'
+acei() { install_sase_github "$@" && sase ace --restart-axe; }
+aceii() { install_sase_google "$@" && sase ace --restart-axe; }
 alias axe='sase axe'
 alias commit='sase commit'
 alias gsl='get_sase_logs'
