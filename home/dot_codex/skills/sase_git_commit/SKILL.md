@@ -28,6 +28,7 @@ Commit changes via the `sase commit` command.
    close the bead or stage `.sase_beads/` — the commit workflow handles this automatically.
 
 5. **Run the commit** — Execute:
+
    ```bash
    sase commit -m commit_message.md -f file1.py -f file2.py --bead-id <bead-id>
    ```

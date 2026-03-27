@@ -2,8 +2,8 @@
 name: sase_hg_commit
 description:
   Commit changes using sase commit for Mercurial/Google VCS. Invoked by the sase_commit_stop_hook when uncommitted
-  changes are detected during a commit workflow. NEVER invoke this skill unless the user explicitly asks you to commit or
-  a post-completion hook triggers it.
+  changes are detected during a commit workflow. NEVER invoke this skill unless the user explicitly asks you to commit
+  or a post-completion hook triggers it.
 ---
 
 Commit changes via `sase commit`, which dispatches to the active VCS provider's commit hook.
@@ -29,6 +29,7 @@ This skill is used for Mercurial (hg) / Google-internal VCS workflows. It is typ
    close the bead — the commit workflow handles this automatically.
 
 5. **Run the commit** — Execute:
+
    ```bash
    sase commit -m commit_message.md -f file1.py -f file2.py --bead-id <bead-id>
    ```
