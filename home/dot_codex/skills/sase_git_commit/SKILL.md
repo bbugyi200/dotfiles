@@ -19,7 +19,7 @@ Commit changes via the `sase commit` command.
    - `chore` — Build scripts, CI/CD, deps, docs, or other non-production changes
 
 3. **Write a commit message file** — Create a file (e.g., `commit_message.md`) containing the commit message. **NEVER
-   mention "Claude" or "Claude Code"** — write as if a human authored the commit.
+   mention "Codex"** — write as if a human authored the commit.
    - For `create_pull_request`: Write a detailed PR description with a summary, test plan, etc.
    - For `create_commit` / `create_proposal`: Write a single-line `<tag>: <description>` that describes **only the
      changes you made in this commit** — not the overall PR or prior commits. The first line becomes the COMMITS entry
