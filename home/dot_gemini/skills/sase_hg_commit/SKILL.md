@@ -2,7 +2,7 @@
 name: sase_hg_commit
 description: |
   Commit changes using sase commit for Google's fig VCS. This skill is the ONLY way that you should EVER commit to fig
-  repos.
+  repos. NEVER invoke this skill unless the user explicitly asks you to commit or a post-completion hook triggers it.
 ---
 
 Commit changes via the `sase commit` command.

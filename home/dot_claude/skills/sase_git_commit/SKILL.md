@@ -2,7 +2,8 @@
 name: sase_git_commit
 description:
   Commit changes using sase commit for git-based VCS (bare git and GitHub). This is the ONLY way you should EVER commit
-  to git repos.
+  to git repos. NEVER invoke this skill unless the user explicitly asks you to commit or a post-completion hook triggers
+  it.
 ---
 
 Commit changes via the `sase commit` command.
