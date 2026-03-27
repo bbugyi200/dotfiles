@@ -18,8 +18,10 @@ Commit changes via the `sase commit` command.
    - `ref` — Refactor/restructure without changing external behavior
    - `chore` — Build scripts, CI/CD, deps, docs, or other non-production changes
 
-3. **Compose the commit message** — Write a concise, descriptive message. **NEVER mention "Claude" or "Claude Code"** —
-   write as if a human authored the commit.
+3. **Write a commit message file** — Create a file (e.g., `commit_message.md`) containing the commit message. **NEVER
+   mention "Claude" or "Claude Code"** — write as if a human authored the commit. For `create_pull_request`, write a
+   detailed PR description with a summary, test plan, etc. For `create_commit`/`create_proposal`, a single-line
+   `<tag>: <description>` is sufficient.
 
 4. **Check for bead association** — Run `sase bead list --status=in_progress` to see if there's an in-progress bead
    related to your changes. If so, include `--bead-id <id>` in the commit command (step 5). You do NOT need to manually
@@ -27,11 +29,11 @@ Commit changes via the `sase commit` command.
 
 5. **Run the commit** — Execute:
    ```bash
-   sase commit -m "<tag>: <description>" -f file1.py -f file2.py --bead-id <bead-id>
+   sase commit -m commit_message.md -f file1.py -f file2.py --bead-id <bead-id>
    ```
 
    Flags:
-   - `-m`: Commit message (required). Use quotes for messages with spaces.
+   - `-m`: Path to file containing the commit message (required). The file is deleted after reading.
    - `-f`: File to stage (repeat for multiple files). Omit to stage all changes.
    - `--bead-id`: Include if there's an in-progress bead for your changes.
    - `--name`: Branch name (only needed for `create_pull_request` method).
@@ -42,5 +44,5 @@ Commit changes via the `sase commit` command.
 ## Example
 
 ```bash
-sase commit -m "feat: Add user authentication" -f src/auth.py -f src/login.py --bead-id sase-42
+sase commit -m commit_message.md -f src/auth.py -f src/login.py --bead-id sase-42
 ```
