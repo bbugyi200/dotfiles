@@ -16,40 +16,27 @@ Commit changes via the `sase commit` command.
    - For `create_proposal`: Describes the proposal being created on the CL.
    - For `create_pull_request`: Describes the new CL being created.
 
-3. **Construct the JSON payload** — Build a JSON object with these fields:
-
-   ```json
-   {
-     "message": "<description>",
-     "files": ["file1.py", "file2.py"],
-     "note": "optional COMMITS note",
-     "bead_id": "sase-42"
-   }
-   ```
-
-   - `message`: The commit/CL description.
-   - `files`: List of files to include. If empty, all changes are included.
-   - `note`: Optional note for COMMITS entry (used by `create_commit`).
-   - `bead_id`: (optional) If there's an in-progress bead related to your changes, include its ID here. The workflow
-     will automatically close the bead and append the bead ID to the commit message.
-
-4. **Check for bead association** — Run `sase bead list --status=in_progress` to see if there's an in-progress bead
-   related to your changes. If so, include `"bead_id": "<id>"` in the JSON payload (step 3). You do NOT need to manually
+3. **Check for bead association** — Run `sase bead list --status=in_progress` to see if there's an in-progress bead
+   related to your changes. If so, include `--bead-id <id>` in the commit command (step 4). You do NOT need to manually
    close the bead — the commit workflow handles this automatically.
 
-5. **Run the commit** — Execute:
+4. **Run the commit** — Execute:
    ```bash
-   sase commit '<json_payload>'
+   sase commit -m "<description>" -f file1.py -f file2.py --bead-id <bead-id>
    ```
+
+   Flags:
+   - `-m`: Commit/CL description (required). Use quotes for messages with spaces.
+   - `-f`: File to include (repeat for multiple files). Omit to include all changes.
+   - `--bead-id`: Include if there's an in-progress bead for your changes.
+   - `--name`: CL name (only needed for `create_pull_request` method).
+   - `--note`: Optional note for COMMITS entry (used by `create_commit`).
+
    The `$SASE_COMMIT_METHOD` environment variable is read automatically to determine the dispatch method
    (`create_commit`, `create_proposal`, or `create_pull_request`). Do NOT pass `--method` unless you need to override.
 
 ## Example
 
 ```bash
-sase commit '{"message": "Add user authentication", "files": ["auth.py", "login.py"], "note": "Added login/logout flow", "bead_id": "sase-42"}'
+sase commit -m "Add user authentication" -f auth.py -f login.py --note "Added login/logout flow" --bead-id sase-42
 ```
-
-## Extra Requirements
-
-- For `create_pull_request`, the payload should also include a `name` field for the CL name.

@@ -20,38 +20,26 @@ Commit changes via the `sase commit` command.
 3. **Compose the commit message** — Write a concise, descriptive message. **NEVER mention "Claude" or "Claude Code"** —
    write as if a human authored the commit.
 
-4. **Construct the JSON payload** — Build a JSON object with these fields:
-
-   ```json
-   {
-     "message": "<tag>: <description>",
-     "files": ["file1.py", "file2.py"],
-     "bead_id": "sase-42"
-   }
-   ```
-
-   - `message`: The full commit message (tag prefix + description). Can contain newlines for multi-line messages.
-   - `files`: List of files to stage. If empty, all changes are staged (`git add -A`).
-   - `bead_id`: (optional) If there's an in-progress bead related to your changes, include its ID here. The workflow
-     will automatically close the bead, stage `.sase_beads/`, and append the bead ID to the commit message.
-
-5. **Check for bead association** — Run `sase bead list --status=in_progress` to see if there's an in-progress bead
-   related to your changes. If so, include `"bead_id": "<id>"` in the JSON payload (step 4). You do NOT need to manually
+4. **Check for bead association** — Run `sase bead list --status=in_progress` to see if there's an in-progress bead
+   related to your changes. If so, include `--bead-id <id>` in the commit command (step 5). You do NOT need to manually
    close the bead or stage `.sase_beads/` — the commit workflow handles this automatically.
 
-6. **Run the commit** — Execute:
+5. **Run the commit** — Execute:
    ```bash
-   sase commit '<json_payload>'
+   sase commit -m "<tag>: <description>" -f file1.py -f file2.py --bead-id <bead-id>
    ```
+
+   Flags:
+   - `-m`: Commit message (required). Use quotes for messages with spaces.
+   - `-f`: File to stage (repeat for multiple files). Omit to stage all changes.
+   - `--bead-id`: Include if there's an in-progress bead for your changes.
+   - `--name`: Branch name (only needed for `create_pull_request` method).
+
    The `$SASE_COMMIT_METHOD` environment variable is read automatically to determine the dispatch method
    (`create_commit`, `create_proposal`, or `create_pull_request`). Do NOT pass `--method` unless you need to override.
 
 ## Example
 
 ```bash
-sase commit '{"message": "feat: Add user authentication", "files": ["src/auth.py", "src/login.py"], "bead_id": "sase-42"}'
+sase commit -m "feat: Add user authentication" -f src/auth.py -f src/login.py --bead-id sase-42
 ```
-
-## Extra Requirements
-
-- For `create_pull_request`, the payload should also include a `name` field for the branch name.
