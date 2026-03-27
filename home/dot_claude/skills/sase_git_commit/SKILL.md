@@ -20,10 +20,6 @@ Commit changes via the `sase commit` command.
 
 3. **Write a commit message file** — Create a file (e.g., `commit_message.md`) containing the commit message. **NEVER
    mention "Claude" or "Claude Code"** — write as if a human authored the commit.
-   - For `create_pull_request`: Write a detailed PR description with a summary, test plan, etc.
-   - For `create_commit` / `create_proposal`: Write a single-line `<tag>: <description>` that describes **only the
-     changes you made in this commit** — not the overall PR or prior commits. The first line becomes the COMMITS entry
-     note.
 
 4. **Check for bead association** — Run `sase bead list --status=in_progress` to see if there's an in-progress bead
    related to your changes. If so, include `--bead-id <id>` in the commit command (step 5). You do NOT need to manually

@@ -11,20 +11,13 @@ Commit changes via the `sase commit` command.
 
 1. **Examine uncommitted changes** — Run `hg status` or `hg diff` to understand what files have changed and why.
 
-2. **Determine the commit message** — Compose a descriptive message appropriate for the VCS operation:
-   - For `create_commit`: Describe **only the changes you made in this commit** — not the overall CL or prior commits.
-   - For `create_proposal`: Describes the proposal being created on the CL.
-   - For `create_pull_request`: Describes the new CL being created.
+2. **Write a commit message file** — Create a file (e.g., `commit_message.md`) containing a good commit message.
 
-3. **Write a commit message file** — Create a file (e.g., `commit_message.md`) containing the message composed in
-   step 2. For `create_pull_request`, write a detailed description. For `create_commit`/`create_proposal`, a concise
-   summary of **this commit's changes only** is sufficient. The first line becomes the COMMITS entry note.
-
-4. **Check for bead association** — Run `sase bead list --status=in_progress` to see if there's an in-progress bead
+3. **Check for bead association** — Run `sase bead list --status=in_progress` to see if there's an in-progress bead
    related to your changes. If so, include `--bead-id <id>` in the commit command (step 5). You do NOT need to manually
    close the bead — the commit workflow handles this automatically.
 
-5. **Run the commit** — Execute:
+4. **Run the commit** — Execute:
 
    ```bash
    sase commit -m commit_message.md -f file1.py -f file2.py --bead-id <bead-id>
