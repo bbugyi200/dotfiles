@@ -2,6 +2,12 @@
 
 set -e
 
+install=false
+if [[ "$1" == "-i" || "$1" == "--install" ]]; then
+    install=true
+    shift
+fi
+
 SASE_ORG_DIR="$HOME"/projects/github/sase-org
 SASE_DIR="$SASE_ORG_DIR/sase"
 SASE_GITHUB_DIR="$SASE_ORG_DIR/sase-github"
@@ -14,9 +20,11 @@ done
 
 echo ">>> Stopping \`sase axe\`..."
 echo ">>> Installing sase via uv tool..."
-uv tool install --force --editable \
-    "sase @ $SASE_DIR" \
-    --with-editable "sase-github @ $SASE_GITHUB_DIR" \
-    --with-executables-from sase-github \
-    --with-editable "sase-google @ $SASE_GOOGLE_DIR" \
-    --with-executables-from sase-google
+if $install; then
+    uv tool install --force --editable \
+        "sase @ $SASE_DIR" \
+        --with-editable "sase-github @ $SASE_GITHUB_DIR" \
+        --with-executables-from sase-github \
+        --with-editable "sase-google @ $SASE_GOOGLE_DIR" \
+        --with-executables-from sase-google
+fi

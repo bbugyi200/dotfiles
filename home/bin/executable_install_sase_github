@@ -2,6 +2,12 @@
 
 set -e
 
+install=false
+if [[ "$1" == "-i" || "$1" == "--install" ]]; then
+    install=true
+    shift
+fi
+
 SASE_ORG_DIR="$HOME"/projects/github/sase-org
 SASE_DIR="$SASE_ORG_DIR/sase"
 SASE_GITHUB_DIR="$SASE_ORG_DIR/sase-github"
@@ -12,11 +18,12 @@ for repo in "$SASE_DIR" "$SASE_GITHUB_DIR" "$SASE_TELEGRAM_DIR"; do
     git -C "$repo" pull
 done
 
-echo ">>> Stopping \`sase axe\`..."
 echo ">>> Installing sase via uv tool..."
-uv tool install --force --editable \
-    "sase @ $SASE_DIR" \
-    --with-editable "sase-github @ $SASE_GITHUB_DIR" \
-    --with-executables-from sase-github \
-    --with-editable "sase-telegram @ $SASE_TELEGRAM_DIR" \
-    --with-executables-from sase-telegram
+if $install; then
+    uv tool install --force --editable \
+        "sase @ $SASE_DIR" \
+        --with-editable "sase-github @ $SASE_GITHUB_DIR" \
+        --with-executables-from sase-github \
+        --with-editable "sase-telegram @ $SASE_TELEGRAM_DIR" \
+        --with-executables-from sase-telegram
+fi
