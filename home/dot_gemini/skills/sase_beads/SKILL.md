@@ -13,8 +13,8 @@ Quick reference for the `sase bead` CLI. Use `sase bead` (not `.venv/bin/sase be
 
 ## Types
 
-- `plan` — top-level work item (created with `--plan`)
-- `phase` — child of a plan (created with `--parent`)
+- `plan` — top-level work item (created with `--type plan(...)`)
+- `phase` — child of a plan (created with `--type phase(...)`)
 
 ## Commands
 
@@ -22,16 +22,19 @@ Quick reference for the `sase bead` CLI. Use `sase bead` (not `.venv/bin/sase be
 
 ```bash
 # Create a plan bead (top-level, linked to a plan file)
-sase bead create --title "Add auth system" --plan plans/auth.md
+sase bead create --title "Add auth system" --type plan(plans/auth.md)
 
 # Create a phase bead (child of a plan)
-sase bead create --title "Implement login endpoint" --parent <plan-bead-id>
+sase bead create --title "Implement login endpoint" --type phase(<plan-bead-id>)
+
+# Create a nested plan (plan with parent)
+sase bead create --title "Sub-plan" --type plan(plans/sub.md,<parent-bead-id>)
 
 # With optional fields
-sase bead create --title "..." --parent <id> --description "Details here" --assignee alice
+sase bead create --title "..." --type phase(<id>) --description "Details here" --assignee alice
 ```
 
-At least one of `--plan` or `--parent` is required.
+`--type` / `-T` is required. Syntax: `plan(<plan_file>)`, `plan(<plan_file>,<parent_id>)`, or `phase(<parent_id>)`.
 
 ### update
 
@@ -97,8 +100,8 @@ sase bead dep add <issue> <depends_on>
 
 ## Typical Workflow
 
-1. `sase bead create --title "..." --plan plan.md` — create a plan bead
-2. `sase bead create --title "Phase 1" --parent <plan-id>` — add phases
+1. `sase bead create --title "..." --type plan(plan.md)` — create a plan bead
+2. `sase bead create --title "Phase 1" --type phase(<plan-id>)` — add phases
 3. `sase bead dep add <phase-2-id> <phase-1-id>` — set ordering
 4. `sase bead ready` — find unblocked work
 5. `sase bead update <id> --status in_progress` — claim work
