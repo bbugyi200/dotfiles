@@ -60,4 +60,4 @@ xprompts:
   m_pro: "%model:#pro"
   m_pro_flash: "%model(#pro, #flash)"
   m_sonnet: "%model:sonnet"
-  m_swarm: "%model(opus, #codex, #flash)"
+  m_swarm: "%model(opus, #codex, #pro)"
