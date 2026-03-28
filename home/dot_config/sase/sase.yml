@@ -23,6 +23,7 @@ ace:
       ````
     cbi: "`<$1>`"
     chez: "my chezmoi repo"
+    cmt: "`sase commit`"
     cs: "ChangeSpec"
     fi: "the $1 file"
     fix: "Can you help me fix this?"
