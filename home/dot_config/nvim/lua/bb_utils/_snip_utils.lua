@@ -134,11 +134,15 @@ function M.get_markdown_snippets()
 			snippetType = "autosnippet",
 			hidden = true,
 		}, { t("Use @" .. editor_tool_name .. " on #{buffer}{watch} to ") }),
+		-- SNIPPET: ace
+		s({ trig = "ace", desc = "`sase ace`" }, { t("`sase ace`") }),
 		-- SNIPPET: agentm
 		s(
 			{ trig = "agentm", desc = "agent metadata panel" },
 			{ t('the agent metadata panel on the "Agents" tab of the `sase ace` TUI') }
 		),
+		-- SNIPPET: axe
+		s({ trig = "axe", desc = "`sase axe`" }, { t("`sase axe`") }),
 		-- SNIPPET: bea
 		s({ trig = "bea", desc = "beautiful" }, {
 			t("I want you to lead the design on this one. Just make sure it looks beautiful!"),
@@ -185,6 +189,10 @@ function M.get_markdown_snippets()
 		),
 		-- SNIPPET: cbi
 		s({ trig = "cbi", desc = "A <tag> inline code snippet" }, { t("`<"), i(1), t(">`") }),
+		-- SNIPPET: chez
+		s({ trig = "chez", desc = "my chezmoi repo" }, { t("my chezmoi repo") }),
+		-- SNIPPET: cmt
+		s({ trig = "cmt", desc = "`sase commit`" }, { t("`sase commit`") }),
 		-- SNIPPET: commit
 		s(
 			{ trig = "commit", desc = "commit skill" },
@@ -221,6 +229,8 @@ function M.get_markdown_snippets()
 			{ trig = "cr", desc = "Critique change request help." },
 			{ t("Can you help me address the Critique comments?") }
 		),
+		-- SNIPPET: cs
+		s({ trig = "cs", desc = "ChangeSpec" }, { t("ChangeSpec") }),
 		-- SNIPPET: di
 		s({ trig = "di", desc = "diff_*.txt file explanation" }, {
 			t("The diff"),
@@ -267,10 +277,14 @@ function M.get_markdown_snippets()
 		s({ trig = "help", desc = "Can you help me...?" }, { t("Can you help me "), i(1), t("?") }),
 		-- SNIPPET: helpp
 		s({ trig = "helpp", desc = "Can you now help me...?" }, { t("Great! Can you now help me "), i(1), t("?") }),
+		-- SNIPPET: im
+		s({ trig = "im", desc = "IMPORTANT: " }, { t("IMPORTANT: ") }),
 		-- SNIPPET: impl
 		s({ trig = "impl", desc = "Can you help me implement...?" }, { t("Can you help me implement "), i(1), t("?") }),
 		-- SNIPPET: iow
 		s({ trig = "iow", desc = "In other words, _____ ..." }, { t("In other words, "), i(1) }),
+		-- SNIPPET: key
+		s({ trig = "key", desc = "the `___` keymap" }, { t("the `"), i(1), t("` keymap") }),
 		-- SNIPPET: logp
 		s({ trig = "logp", desc = "sase logs logpack" }, {
 			t(
@@ -286,6 +300,8 @@ function M.get_markdown_snippets()
 			i(1),
 			t("` command, then fix the new failures (if any), and repeat until the command is successful."),
 		}),
+		-- SNIPPET: mrp
+		s({ trig = "mrp", desc = "Mentor Review panel" }, { t("Mentor Review panel") }),
 		-- SNIPPET: phase
 		s({ trig = "phase", desc = "Split into phases" }, {
 			t(
@@ -299,6 +315,8 @@ function M.get_markdown_snippets()
 			{ trig = "pin", desc = "Describe pinned files." },
 			{ t("I've pinned some other "), i(1), t(" files to help you figure this out.") }
 		),
+		-- SNIPPET: piw
+		s({ trig = "piw", desc = "prompt input widget" }, { t("prompt input widget") }),
 		-- SNIPPET: rep
 		s({ trig = "rep", desc = "sase repo" }, { t("in the ../sase-"), i(1), t(" repo") }),
 		-- SNIPPET: try
@@ -405,6 +423,10 @@ function M.get_markdown_snippets()
 					.. " failures (if any), and repeat until the command is successful."
 			),
 		}),
+		-- SNIPPET: x
+		s({ trig = "x", desc = "xprompt" }, { t("xprompt") }),
+		-- SNIPPET: xw
+		s({ trig = "xw", desc = "xprompt workflow" }, { t("xprompt workflow") }),
 		-- SNIPPET: yolo
 		s(
 			{ trig = "yolo", desc = "I'll let you figure out how to make this work reliablely." },
