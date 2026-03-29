@@ -9,10 +9,6 @@ ace:
     ace: "`sase ace`"
     axe: "`sase axe`"
     amp: 'the agent metadata panel on the "Agents" tab of the `sase ace` TUI'
-    bea: "I want you to lead the design on this one. Just make sure it looks beautiful!"
-    beau:
-      "I want you to lead the design on this one. Make sure you design this feature so it is intuitive, reliable, and
-      (last but not least) beautiful!"
     cb: |-
       ```$1
       $2
@@ -46,6 +42,15 @@ ace:
     xw: xprompt workflow
 
 xprompts:
+  # snippets
+  bea:
+    snippet: true
+    content: "I want you to lead the design on this one. Just make sure it looks beautiful!"
+  beau:
+    snippet: true
+    content:
+      "I want you to lead the design on this one. Make sure you design this feature so it is intuitive, reliable, and
+      (last but not least) beautiful!"
   # VCS project aliases
   gh_dotfiles: "#gh:dotfiles"
   gh_sase: "#gh:sase"
