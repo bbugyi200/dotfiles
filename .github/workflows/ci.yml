@@ -2,8 +2,6 @@ name: CI
 on:
   push:
   pull_request:
-env:
-  USE_DOCKER: true
 jobs:
   lint:
     runs-on: ["${{ matrix.os }}"]
@@ -12,7 +10,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -29,9 +27,12 @@ jobs:
       - name: Install prettier
         run: npm install -g prettier
 
+      - uses: extractions/setup-just@v2
+
+      - uses: astral-sh/setup-uv@v4
+
       - name: Run linters
-        run: |
-          make lint
+        run: just lint
   test:
     runs-on: ["${{ matrix.os }}"]
     strategy:
@@ -39,7 +40,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -48,6 +49,9 @@ jobs:
         with:
           python-version: '3.12'
 
+      - uses: extractions/setup-just@v2
+
+      - uses: astral-sh/setup-uv@v4
+
       - name: Run tests
-        run: |
-          make test
+        run: just test

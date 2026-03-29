@@ -1,7 +1,3 @@
-[tool.black]
-line-length = 88
-target-version = ['py312']
-
 [tool.ruff]
 line-length = 88
 target-version = "py312"
@@ -25,7 +21,7 @@ select = [
     "UP", # pyupgrade
 ]
 ignore = [
-    "E501",  # line too long (let black handle this)
+    "E501",  # line too long (let ruff handle this)
     "W291",  # trailing whitespace
     "F401",  # imported but unused (common for __init__.py re-exports)
     "F821",  # undefined name (common with dynamic imports)

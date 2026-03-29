@@ -1,8 +1,6 @@
 # Development tools
 ruff
 mypy
-flake8
-black
 pytest
 pytest-asyncio
 pytest-cov
