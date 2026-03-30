@@ -13,5 +13,8 @@
         "rep",
         "fmt",
         "m"
+    ],
+    "workspace.library": [
+        "~/.local/share/nvim/lazy/overseer.nvim/lua"
     ]
 }
