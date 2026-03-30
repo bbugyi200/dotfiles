@@ -85,10 +85,14 @@ return {
 				})
 			end
 
-			local ts_select = require("nvim-treesitter-textobjects.select")
-			local ts_move = require("nvim-treesitter-textobjects.move")
-			local ts_swap = require("nvim-treesitter-textobjects.swap")
-			local ts_repeat_move = require("bb_utils").require_repeatable_move()
+			local bb_utils = require("bb_utils")
+			local ts_select = bb_utils.require_textobjects("select")
+			local ts_move = bb_utils.require_textobjects("move")
+			local ts_swap = bb_utils.require_textobjects("swap")
+			if not ts_select or not ts_move or not ts_swap then
+				return
+			end
+			local ts_repeat_move = bb_utils.require_repeatable_move()
 
 			-- ╭─────────────────────────────────────────────────────────╮
 			-- │                     Select keymaps                      │

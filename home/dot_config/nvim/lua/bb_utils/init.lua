@@ -290,16 +290,35 @@ function M.telescope_command_files(command_name, opts)
 	return selected_files
 end
 
+--- Require an nvim-treesitter-textobjects submodule with fallback for old/new paths.
+---
+--- Tries the new path (`nvim-treesitter-textobjects.<name>`) first, then falls back
+--- to the old path (`nvim-treesitter.textobjects.<name>`). Returns nil if neither exists.
+---
+---@param name string The submodule name (e.g. "select", "move", "swap", "repeatable_move").
+---@return table|nil # The loaded module, or nil if not found.
+function M.require_textobjects(name)
+	local ok, mod = pcall(require, "nvim-treesitter-textobjects." .. name)
+	if ok and mod then
+		return mod
+	end
+	ok, mod = pcall(require, "nvim-treesitter.textobjects." .. name)
+	if ok and mod then
+		return mod
+	end
+	vim.notify("[bb_utils] nvim-treesitter-textobjects." .. name .. " not found", vim.log.levels.WARN, { once = true })
+	return nil
+end
+
 --- Cached repeatable_move module (loaded on first call).
 M._repeatable_move_module = nil
 
 --- Require the repeatable_move module with fallback for old/new API.
 ---
---- Tries the new module path first (`nvim-treesitter-textobjects.repeatable_move`),
---- then falls back to the old path (`nvim-treesitter.textobjects.repeatable_move`).
---- If the old path is found, wraps `make_repeatable_move_pair` to match the new
---- `make_repeatable_move` signature. If neither path works, returns a stub module
---- that calls the function directly (no repeat support) and logs a one-time warning.
+--- Uses `require_textobjects("repeatable_move")` for module resolution, then
+--- wraps the old API (`make_repeatable_move_pair`) to match the new
+--- `make_repeatable_move` signature if needed. If the module is not found,
+--- returns a stub that calls the function directly (no repeat support).
 ---
 ---@return table # A module table with `make_repeatable_move` and repeat helpers.
 function M.require_repeatable_move()
@@ -307,16 +326,15 @@ function M.require_repeatable_move()
 		return M._repeatable_move_module
 	end
 
-	-- Try new path first.
-	local ok, mod = pcall(require, "nvim-treesitter-textobjects.repeatable_move")
-	if ok and mod then
-		M._repeatable_move_module = mod
-		return mod
-	end
+	local mod = M.require_textobjects("repeatable_move")
 
-	-- Try old path.
-	ok, mod = pcall(require, "nvim-treesitter.textobjects.repeatable_move")
-	if ok and mod then
+	if mod then
+		-- Old API has `make_repeatable_move_pair`; new API has `make_repeatable_move`.
+		if mod.make_repeatable_move then
+			M._repeatable_move_module = mod
+			return mod
+		end
+
 		-- Wrap old API to match new API shape.
 		local wrapped = {}
 		for k, v in pairs(mod) do
@@ -340,12 +358,7 @@ function M.require_repeatable_move()
 		return wrapped
 	end
 
-	-- Neither path found — return stub.
-	vim.notify(
-		"[bb_utils] nvim-treesitter-textobjects repeatable_move not found; repeat support disabled",
-		vim.log.levels.WARN,
-		{ once = true }
-	)
+	-- Module not found — return stub.
 	local stub = {
 		make_repeatable_move = function(fn)
 			return fn
