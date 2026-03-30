@@ -7,7 +7,7 @@ return {
 			"nvim-treesitter/nvim-treesitter-textobjects",
 		},
 		init = function()
-			local repeat_move = require("nvim-treesitter-textobjects.repeatable_move")
+			local repeat_move = require("bb_utils").require_repeatable_move()
 			local bb = require("bb_utils")
 
 			vim.opt.signcolumn = "yes"

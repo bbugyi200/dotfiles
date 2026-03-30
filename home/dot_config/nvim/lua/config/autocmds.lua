@@ -132,7 +132,7 @@ vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "codecompanion", "markdown" },
 	callback = function()
-		local repeat_move = require("nvim-treesitter-textobjects.repeatable_move")
+		local repeat_move = require("bb_utils").require_repeatable_move()
 
 		local code_block_pttrn = [[\(\n\n```.*\|^```[a-z]\+\)\n\zs.]]
 		local move_code_block = repeat_move.make_repeatable_move(function(opts)

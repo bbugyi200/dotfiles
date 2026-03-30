@@ -72,20 +72,23 @@ return {
 		"nvim-treesitter/nvim-treesitter-textobjects",
 		dependencies = treesitter_plugin_name,
 		config = function()
-			require("nvim-treesitter-textobjects").setup({
-				select = {
-					lookahead = true,
-					include_surrounding_whitespace = false,
-				},
-				move = {
-					set_jumps = true,
-				},
-			})
+			local textobjects_ok, textobjects = pcall(require, "nvim-treesitter-textobjects")
+			if textobjects_ok and textobjects.setup then
+				textobjects.setup({
+					select = {
+						lookahead = true,
+						include_surrounding_whitespace = false,
+					},
+					move = {
+						set_jumps = true,
+					},
+				})
+			end
 
 			local ts_select = require("nvim-treesitter-textobjects.select")
 			local ts_move = require("nvim-treesitter-textobjects.move")
 			local ts_swap = require("nvim-treesitter-textobjects.swap")
-			local ts_repeat_move = require("nvim-treesitter-textobjects.repeatable_move")
+			local ts_repeat_move = require("bb_utils").require_repeatable_move()
 
 			-- ╭─────────────────────────────────────────────────────────╮
 			-- │                     Select keymaps                      │

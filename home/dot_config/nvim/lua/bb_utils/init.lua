@@ -290,6 +290,77 @@ function M.telescope_command_files(command_name, opts)
 	return selected_files
 end
 
+--- Cached repeatable_move module (loaded on first call).
+M._repeatable_move_module = nil
+
+--- Require the repeatable_move module with fallback for old/new API.
+---
+--- Tries the new module path first (`nvim-treesitter-textobjects.repeatable_move`),
+--- then falls back to the old path (`nvim-treesitter.textobjects.repeatable_move`).
+--- If the old path is found, wraps `make_repeatable_move_pair` to match the new
+--- `make_repeatable_move` signature. If neither path works, returns a stub module
+--- that calls the function directly (no repeat support) and logs a one-time warning.
+---
+---@return table # A module table with `make_repeatable_move` and repeat helpers.
+function M.require_repeatable_move()
+	if M._repeatable_move_module then
+		return M._repeatable_move_module
+	end
+
+	-- Try new path first.
+	local ok, mod = pcall(require, "nvim-treesitter-textobjects.repeatable_move")
+	if ok and mod then
+		M._repeatable_move_module = mod
+		return mod
+	end
+
+	-- Try old path.
+	ok, mod = pcall(require, "nvim-treesitter.textobjects.repeatable_move")
+	if ok and mod then
+		-- Wrap old API to match new API shape.
+		local wrapped = {}
+		for k, v in pairs(mod) do
+			wrapped[k] = v
+		end
+		wrapped.make_repeatable_move = function(fn)
+			local fwd, bwd = mod.make_repeatable_move_pair(function()
+				fn({ forward = true })
+			end, function()
+				fn({ forward = false })
+			end)
+			return function(opts)
+				if opts.forward then
+					fwd()
+				else
+					bwd()
+				end
+			end
+		end
+		M._repeatable_move_module = wrapped
+		return wrapped
+	end
+
+	-- Neither path found — return stub.
+	vim.notify(
+		"[bb_utils] nvim-treesitter-textobjects repeatable_move not found; repeat support disabled",
+		vim.log.levels.WARN,
+		{ once = true }
+	)
+	local stub = {
+		make_repeatable_move = function(fn)
+			return fn
+		end,
+		repeat_last_move_next = function() end,
+		repeat_last_move_previous = function() end,
+		builtin_f_expr = "f",
+		builtin_F_expr = "F",
+		builtin_t_expr = "t",
+		builtin_T_expr = "T",
+	}
+	M._repeatable_move_module = stub
+	return stub
+end
+
 -- Export functions / modules from private bb_utils._*.lua modules.
 M.snip = require("bb_utils._snip_utils")
 M.superlazy = require("bb_utils._superlazy").superlazy

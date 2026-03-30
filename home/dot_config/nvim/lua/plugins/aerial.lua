@@ -13,7 +13,7 @@ return {
 		},
 		init = function()
 			local aerial = require("aerial")
-			local repeat_move = require("nvim-treesitter-textobjects.repeatable_move")
+			local repeat_move = require("bb_utils").require_repeatable_move()
 
 			local move_symbol = repeat_move.make_repeatable_move(function(opts)
 				if opts.forward then

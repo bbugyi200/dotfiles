@@ -55,7 +55,7 @@ return {
 		},
 		init = function()
 			local ufo = require("ufo")
-			local repeat_move = require("nvim-treesitter-textobjects.repeatable_move")
+			local repeat_move = require("bb_utils").require_repeatable_move()
 
 			vim.o.foldcolumn = "0"
 			vim.o.foldlevel = 99 -- Using ufo provider need a large value, feel free to decrease the value

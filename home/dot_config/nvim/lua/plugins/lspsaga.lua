@@ -51,7 +51,7 @@ return {
 			vim.keymap.set("n", "gr", "<cmd>Lspsaga finder<cr>", { desc = "Lspsaga finder" })
 
 			-- ────────────────────────── [d AND ]d KEYMAPS ──────────────────────────
-			local repeat_move = require("nvim-treesitter-textobjects.repeatable_move")
+			local repeat_move = require("bb_utils").require_repeatable_move()
 			local move_diagnostic = repeat_move.make_repeatable_move(function(opts)
 				if opts.forward then
 					require("lspsaga.diagnostic"):goto_next()
