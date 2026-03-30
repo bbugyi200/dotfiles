@@ -51,6 +51,9 @@ xprompts:
     content:
       "I want you to lead the design on this one. Make sure you design this feature so it is intuitive, reliable, and
       (last but not least) beautiful!"
+  nvim:
+    snippet: true
+    content: "Neovim (my neovim config lives in my chezmoi repo)"
   # VCS project aliases
   gh_dotfiles: "#gh:dotfiles"
   gh_sase: "#gh:sase"
