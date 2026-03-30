@@ -49,17 +49,23 @@ return {
 			)
 
 			-- ─────── KEYMAPS TO NAVIGATE TO NEXT/PREVIOUS CRITIQUE COMMENTS ────
-			local repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
-			local goto_next, goto_prev = repeat_move.make_repeatable_move_pair(function()
-				vim.cmd("CritiqueNextComment")
-			end, function()
-				vim.cmd("CritiquePreviousComment")
+			local repeat_move = require("nvim-treesitter-textobjects.repeatable_move")
+			local move_critique = repeat_move.make_repeatable_move(function(opts)
+				if opts.forward then
+					vim.cmd("CritiqueNextComment")
+				else
+					vim.cmd("CritiquePreviousComment")
+				end
 			end)
 
 			-- KEYMAP: <leader>crn
-			vim.keymap.set("n", "<leader>crn", goto_next, { desc = "Goto next Critique comment." })
+			vim.keymap.set("n", "<leader>crn", function()
+				move_critique({ forward = true })
+			end, { desc = "Goto next Critique comment." })
 			-- KEYMAP: <leader>crp
-			vim.keymap.set("n", "<leader>crp", goto_prev, { desc = "Goto previous Critique comment." })
+			vim.keymap.set("n", "<leader>crp", function()
+				move_critique({ forward = false })
+			end, { desc = "Goto previous Critique comment." })
 		end,
 	},
 }

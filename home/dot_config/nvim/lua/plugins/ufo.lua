@@ -55,7 +55,7 @@ return {
 		},
 		init = function()
 			local ufo = require("ufo")
-			local repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
+			local repeat_move = require("nvim-treesitter-textobjects.repeatable_move")
 
 			vim.o.foldcolumn = "0"
 			vim.o.foldlevel = 99 -- Using ufo provider need a large value, feel free to decrease the value
@@ -70,13 +70,22 @@ return {
 			vim.keymap.set("n", "zm", ufo.closeFoldsWith) -- closeAllFolds == closeFoldsWith(0)
 			vim.keymap.set("n", "zk", ufo.peekFoldedLinesUnderCursor)
 
-			local next_fold, prev_fold =
-				repeat_move.make_repeatable_move_pair(ufo.goNextClosedFold, ufo.goPreviousClosedFold)
+			local move_fold = repeat_move.make_repeatable_move(function(opts)
+				if opts.forward then
+					ufo.goNextClosedFold()
+				else
+					ufo.goPreviousClosedFold()
+				end
+			end)
 
 			-- KEYMAP: [z
-			vim.keymap.set("n", "[z", prev_fold, { desc = "Jump to the previous closed fold." })
+			vim.keymap.set("n", "[z", function()
+				move_fold({ forward = false })
+			end, { desc = "Jump to the previous closed fold." })
 			-- KEYMAP: ]z
-			vim.keymap.set("n", "]z", next_fold, { desc = "Jump to the next closed fold." })
+			vim.keymap.set("n", "]z", function()
+				move_fold({ forward = true })
+			end, { desc = "Jump to the next closed fold." })
 		end,
 	},
 }

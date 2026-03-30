@@ -132,24 +132,30 @@ vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "codecompanion", "markdown" },
 	callback = function()
-		local repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
+		local repeat_move = require("nvim-treesitter-textobjects.repeatable_move")
 
 		local code_block_pttrn = [[\(\n\n```.*\|^```[a-z]\+\)\n\zs.]]
-		local next_code_block, prev_code_block = repeat_move.make_repeatable_move_pair(function()
-			vim.fn.search(code_block_pttrn)
-			vim.cmd("normal! zz")
-		end, function()
-			vim.fn.search(code_block_pttrn, "bw")
-			vim.cmd("normal! zz")
+		local move_code_block = repeat_move.make_repeatable_move(function(opts)
+			if opts.forward then
+				vim.fn.search(code_block_pttrn)
+				vim.cmd("normal! zz")
+			else
+				vim.fn.search(code_block_pttrn, "bw")
+				vim.cmd("normal! zz")
+			end
 		end)
 
 		-- KEYMAP: [c
-		vim.keymap.set("n", "[c", prev_code_block, {
+		vim.keymap.set("n", "[c", function()
+			move_code_block({ forward = false })
+		end, {
 			desc = "Jump to previous code block.",
 			buffer = 0,
 		})
 		-- KEYMAP: ]c
-		vim.keymap.set("n", "]c", next_code_block, {
+		vim.keymap.set("n", "]c", function()
+			move_code_block({ forward = true })
+		end, {
 			desc = "Jump to next code block.",
 			buffer = 0,
 		})

@@ -51,16 +51,22 @@ return {
 			vim.keymap.set("n", "gr", "<cmd>Lspsaga finder<cr>", { desc = "Lspsaga finder" })
 
 			-- ────────────────────────── [d AND ]d KEYMAPS ──────────────────────────
-			local repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
-			local goto_next, goto_prev = repeat_move.make_repeatable_move_pair(function()
-				require("lspsaga.diagnostic"):goto_next()
-			end, function()
-				require("lspsaga.diagnostic"):goto_prev()
+			local repeat_move = require("nvim-treesitter-textobjects.repeatable_move")
+			local move_diagnostic = repeat_move.make_repeatable_move(function(opts)
+				if opts.forward then
+					require("lspsaga.diagnostic"):goto_next()
+				else
+					require("lspsaga.diagnostic"):goto_prev()
+				end
 			end)
 			-- KEYMAP: [d
-			vim.keymap.set("n", "[d", goto_prev, { desc = "Goto previous diagnostic" })
+			vim.keymap.set("n", "[d", function()
+				move_diagnostic({ forward = false })
+			end, { desc = "Goto previous diagnostic" })
 			-- KEYMAP: ]d
-			vim.keymap.set("n", "]d", goto_next, { desc = "Goto next diagnostic" })
+			vim.keymap.set("n", "]d", function()
+				move_diagnostic({ forward = true })
+			end, { desc = "Goto next diagnostic" })
 
 			-- ─────────────────────── <leader>ls KEYMAP GROUP ───────────────────────
 			-- KEYMAP GROUP: <leader>lsc

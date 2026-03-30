@@ -13,13 +13,23 @@ return {
 		},
 		init = function()
 			local aerial = require("aerial")
-			local repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
+			local repeat_move = require("nvim-treesitter-textobjects.repeatable_move")
 
-			local next_symbol, prev_symbol = repeat_move.make_repeatable_move_pair(aerial.next, aerial.prev)
+			local move_symbol = repeat_move.make_repeatable_move(function(opts)
+				if opts.forward then
+					aerial.next()
+				else
+					aerial.prev()
+				end
+			end)
 			-- KEYMAP: {
-			vim.keymap.set("n", "[{", prev_symbol, { desc = "Jump to previous Aerial symbol." })
+			vim.keymap.set("n", "[{", function()
+				move_symbol({ forward = false })
+			end, { desc = "Jump to previous Aerial symbol." })
 			-- KEYMAP: }
-			vim.keymap.set("n", "]}", next_symbol, { desc = "Jump to next Aerial symbol." })
+			vim.keymap.set("n", "]}", function()
+				move_symbol({ forward = true })
+			end, { desc = "Jump to next Aerial symbol." })
 			-- KEYMAP: <leader>ae
 			vim.keymap.set("n", "<leader>ae", "<cmd>AerialToggle<cr>", {
 				desc = "Toggle aerial.nvim outline window.",

@@ -7,7 +7,7 @@ return {
 			"nvim-treesitter/nvim-treesitter-textobjects",
 		},
 		init = function()
-			local repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
+			local repeat_move = require("nvim-treesitter-textobjects.repeatable_move")
 			local bb = require("bb_utils")
 
 			vim.opt.signcolumn = "yes"
@@ -23,17 +23,23 @@ return {
 			-- ╭─────────────────────────────────────────────────────────╮
 			-- │                         KEYMAPS                         │
 			-- ╰─────────────────────────────────────────────────────────╯
-			local next_hunk, prev_hunk = repeat_move.make_repeatable_move_pair(function()
-				bb.feedkeys("<Plug>(signify-next-hunk)")
-			end, function()
-				bb.feedkeys("<Plug>(signify-prev-hunk)")
+			local move_hunk = repeat_move.make_repeatable_move(function(opts)
+				if opts.forward then
+					bb.feedkeys("<Plug>(signify-next-hunk)")
+				else
+					bb.feedkeys("<Plug>(signify-prev-hunk)")
+				end
 			end)
 
 			-- KEYMAP: [h
-			vim.keymap.set("n", "[h", prev_hunk, { desc = "Jump to previous hunk." })
+			vim.keymap.set("n", "[h", function()
+				move_hunk({ forward = false })
+			end, { desc = "Jump to previous hunk." })
 
 			-- KEYMAP: ]h
-			vim.keymap.set("n", "]h", next_hunk, { desc = "Jump to next hunk." })
+			vim.keymap.set("n", "]h", function()
+				move_hunk({ forward = true })
+			end, { desc = "Jump to next hunk." })
 		end,
 	},
 }
