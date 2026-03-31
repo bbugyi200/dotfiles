@@ -29,13 +29,11 @@ Commit changes via the `sase commit` command.
 5. **Run the commit** — Execute:
 
    ```bash
-   sase commit create -F commit_message.md -f file1.py -f file2.py --bead-id <bead-id>
+   sase commit -m commit_message.md -f file1.py -f file2.py --bead-id <bead-id>
    ```
 
    Flags:
-   - `-m`: Commit message string.
-   - `-F`: Path to file containing the commit message. The file is deleted after reading.
-   - `-p`: Project name (e.g., sase-google) to commit to.
+   - `-m`: Path to file containing the commit message (required). The file is deleted after reading.
    - `-f`: File to stage (repeat for multiple files). **Include both modified AND newly created (untracked) files.**
      Omit to stage all changes (including untracked files).
    - `--bead-id`: Include if there's an in-progress bead for your changes.
@@ -47,5 +45,5 @@ Commit changes via the `sase commit` command.
 ## Example
 
 ```bash
-sase commit create -F commit_message.md -f src/auth.py -f src/login.py --bead-id sase-42
+sase commit -m commit_message.md -f src/auth.py -f src/login.py --bead-id sase-42
 ```
