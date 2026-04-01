@@ -70,3 +70,14 @@ xprompts:
   m_pro_flash: "%model(#pro, #flash)"
   m_sonnet: "%model:sonnet"
   m_swarm: "%model(opus, #codex, #pro)"
+  prs/compare:
+    input:
+      pr_a: int
+      pr_b: int
+      task_type: { type: line, default: "feature" }
+    content: |
+      Can you help me compare PR #{{ pr_a }} with PR #{{ pr_b }}? Both of these PRs implement the same {{ task_type }}.
+      End your analysis with a recommendation on which PR you would recommend merging and why. Also, look for ways that
+      that we could improve the accepted PR by integrating parts of the rejected PRs changes (if the PR has a better
+      interface or better tests, for example). Do NOT attempt to merge the accepted PR or make any file changes. You job
+      is analysis ONLY!
