@@ -75,6 +75,7 @@ xprompts:
       pr_a: int
       pr_b: int
       task_type: { type: line, default: "feature" }
+    snippet: prs
     content: |
       Can you help me compare PR #{{ pr_a }} with PR #{{ pr_b }}? Both of these PRs implement the same {{ task_type }}.
       End your analysis with a recommendation on which PR you would recommend merging and why. Also, look for ways that
