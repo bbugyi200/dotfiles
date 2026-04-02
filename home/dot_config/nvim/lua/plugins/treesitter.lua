@@ -5,6 +5,7 @@ return {
 	-- PLUGIN: http://github.com/nvim-treesitter/nvim-treesitter
 	{
 		treesitter_plugin_name,
+		branch = "main",
 		build = ":TSUpdate",
 		dependencies = {
 			-- Since require('nvim-dap-repl-highlights').setup() needs to be called
@@ -59,6 +60,28 @@ return {
 			},
 		},
 		init = function()
+			-- Warn once if Neovim 0.12+ is paired with legacy nvim-treesitter internals.
+			if vim.fn.has("nvim-0.12") == 1 then
+				local predicate_paths = vim.api.nvim_get_runtime_file("lua/nvim-treesitter/query_predicates.lua", false)
+				if predicate_paths[1] then
+					local ok, lines = pcall(vim.fn.readfile, predicate_paths[1])
+					if ok then
+						for _, line in ipairs(lines) do
+							if line:find("set%-lang%-from%-info%-string!") then
+								vim.schedule(function()
+									vim.notify(
+										"[treesitter] Detected legacy nvim-treesitter query_predicates.lua on Neovim 0.12+."
+											.. " Pin plugin to branch=main and run :Lazy sync + :TSUpdate.",
+										vim.log.levels.WARN
+									)
+								end)
+								break
+							end
+						end
+					end
+				end
+			end
+
 			-- KEYMAP: <leader>iii
 			vim.keymap.set("n", "<leader>iii", "<cmd>Inspect<cr>", { desc = "Run :Inspect command." })
 
