@@ -12,6 +12,9 @@ return {
 			"LiadOz/nvim-dap-repl-highlights",
 		},
 		opts = {
+			-- Disable matchup's treesitter module — it crashes on
+			-- injection-heavy files (nil node in _get_injections).
+			matchup = { enable = false },
 			auto_install = true,
 			ensure_installed = {
 				"angular",
