@@ -8,6 +8,7 @@ ace:
   snippets:
     ace: "`sase ace`"
     amac: "on another machine"
+    awe: "agent/workflow entry"
     axe: "`sase axe`"
     amp: 'the agent metadata panel on the "Agents" tab of the `sase ace` TUI'
     cb: |-
