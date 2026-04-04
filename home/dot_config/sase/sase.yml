@@ -28,6 +28,7 @@ ace:
     fixx: "Can you help me diagnose the root cause of this issue and fix it?"
     git: "(see recent, related git commits)"
     gsn: "`sase ace` snapshot"
+    gsnn: "in the below `sase ace` snapshot"
     gsna: "(see the `sase ace` snapshot below)"
     gta: 'the "$1" tab of the `sase ace` TUI'
     im: "IMPORTANT: "
