@@ -79,6 +79,7 @@ jobs:
         run: |
           luarocks install --local nlua
           luarocks install --local busted
+          luarocks install --local luacov
           echo "$HOME/.luarocks/bin" >> $GITHUB_PATH
           echo "LUA_PATH=$(luarocks path --local --lr-path);;" >> $GITHUB_ENV
           echo "LUA_CPATH=$(luarocks path --local --lr-cpath);;" >> $GITHUB_ENV
