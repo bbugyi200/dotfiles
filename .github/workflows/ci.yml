@@ -27,6 +27,15 @@ jobs:
       - name: Install prettier
         run: npm install -g prettier
 
+      - name: Install luarocks
+        run: sudo apt-get update && sudo apt-get install -y luarocks
+
+      - name: Install Lua linters
+        run: |
+          luarocks install --local llscheck
+          luarocks install --local luacheck
+          echo "$HOME/.luarocks/bin" >> $GITHUB_PATH
+
       - uses: extractions/setup-just@v2
 
       - uses: astral-sh/setup-uv@v4
@@ -48,6 +57,26 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
+
+      - name: Install luarocks
+        run: sudo apt-get update && sudo apt-get install -y luarocks
+
+      - name: Set up Neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: stable
+
+      - name: Install Lua test tools
+        run: |
+          luarocks install --local nlua
+          luarocks install --local busted
+          echo "$HOME/.luarocks/bin" >> $GITHUB_PATH
+
+      - name: Install bashunit
+        run: |
+          curl -s https://bashunit.typeddevs.com/install.sh | bash -s bin
+          echo "$HOME/bin" >> $GITHUB_PATH
 
       - uses: extractions/setup-just@v2
 
