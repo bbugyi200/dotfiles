@@ -1,11 +1,14 @@
 local overseer = require("overseer")
 
+---@diagnostic disable-next-line: undefined-doc-name
 ---@param opts overseer.SearchParams
 ---@return nil|string
 local function get_makefile(opts)
+	---@diagnostic disable-next-line: undefined-field
 	return vim.fs.find("targets.mk", { upward = true, type = "file", path = opts.dir })[1]
 end
 
+---@diagnostic disable-next-line: undefined-doc-name
 ---@type overseer.TemplateFileProvider
 return {
 	cache_key = function(opts)
