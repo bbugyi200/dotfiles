@@ -30,6 +30,14 @@ jobs:
       - name: Install luarocks
         run: sudo apt-get update && sudo apt-get install -y luarocks
 
+      - name: Install lua-language-server
+        run: |
+          LLS_VERSION=3.13.5
+          mkdir -p "$HOME/lua-language-server"
+          curl -sL "https://github.com/LuaLS/lua-language-server/releases/download/$LLS_VERSION/lua-language-server-$LLS_VERSION-linux-x64.tar.gz" \
+            | tar xz -C "$HOME/lua-language-server"
+          echo "$HOME/lua-language-server/bin" >> $GITHUB_PATH
+
       - name: Install Lua linters
         run: |
           luarocks install --local llscheck
