@@ -32,6 +32,7 @@ ace:
     gsnn: "in the below `sase ace` snapshot"
     gsna: "(see the `sase ace` snapshot below)"
     gta: 'the "$1" tab of the `sase ace` TUI'
+    h: "http://"
     im: "IMPORTANT: "
     key: "the `$1` keymap"
     logp:
