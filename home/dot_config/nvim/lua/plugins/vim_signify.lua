@@ -1,5 +1,9 @@
 return {
 	-- PLUGIN: http://github.com/mhinz/vim-signify
+	-- TROUBLESHOOTING:
+	-- If signs look stale in a clean repo, run :SignifyDebug first. A common root cause is VCS
+	-- command failure (e.g., "fatal: multi-pack-index version 2 not recognized" from git diff/status).
+	-- Fix by backing up/removing .git/objects/pack/multi-pack-index, then refresh signs.
 	{
 		"mhinz/vim-signify",
 		dependencies = {
