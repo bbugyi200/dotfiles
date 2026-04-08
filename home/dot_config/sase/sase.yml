@@ -32,19 +32,21 @@ ace:
     gsnn: "in the below `sase ace` snapshot"
     gsna: "(see the `sase ace` snapshot below)"
     gta: 'the "$1" tab of the `sase ace` TUI'
+    gtu: "the `sase ace` TUI"
     h: "http://"
+    help: "Can you help me $1?"
     im: "IMPORTANT: "
     key: "the `$1` keymap"
     logp:
       "This issue is occurring on another machine that uses the ../sase-google plugin. I've saved a `sase logs` logpack
       to the ~/tmp/$1/ directory to help you figure this out."
-    gtu: "the `sase ace` TUI"
-    help: "Can you help me $1?"
     mrp: "Mentor Review panel"
+    n: "%n:"
     piw: "prompt input widget"
     rep: "the ../sase-$1 repo"
-    x: xprompt
-    xw: xprompt workflow
+    w: "%w:"
+    x: "xprompt"
+    xw: "xprompt workflow"
 
 xprompts:
   # snippets
