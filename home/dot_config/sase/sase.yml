@@ -48,6 +48,9 @@ ace:
     x: "xprompt"
     xw: "xprompt workflow"
 
+telemetry:
+  enabled: true
+
 xprompts:
   # snippets
   bea:
