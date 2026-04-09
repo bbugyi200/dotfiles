@@ -40,6 +40,7 @@ Commit changes via the `sase commit` command.
 
    The `$SASE_COMMIT_METHOD` environment variable is read automatically to determine the dispatch method
    (`create_commit`, `create_proposal`, or `create_pull_request`). Do NOT pass `--type` unless you need to override.
+   Short aliases are also accepted: `commit`, `propose`, `pr`.
 
 ## Example
 
