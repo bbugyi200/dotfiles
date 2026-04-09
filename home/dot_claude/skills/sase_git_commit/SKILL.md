@@ -40,7 +40,7 @@ Commit changes via the `sase commit` command.
    - `--name`: Branch name (only needed for `create_pull_request` method).
 
    The `$SASE_COMMIT_METHOD` environment variable is read automatically to determine the dispatch method
-   (`create_commit`, `create_proposal`, or `create_pull_request`). Do NOT pass `--method` unless you need to override.
+   (`create_commit`, `create_proposal`, or `create_pull_request`). Do NOT pass `--type` unless you need to override.
 
 ## Example
 
