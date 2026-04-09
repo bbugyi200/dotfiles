@@ -6,6 +6,7 @@ axe:
         - name: sase_pylimit_split
           description: "Run the #sase/pylimit_split xprompt workflow"
           agent: "#gh:sase #sase/pylimit_split %approve"
+          gate: "{ tools/pylimit_files-260227 src 1000 850 700; tools/pylimit_files-260227 tests 1000 850 700; } | grep -q ."
           run_every: 60m
         - name: sase_fix_just
           description: "Run the #sase/fix_just xprompt workflow"
