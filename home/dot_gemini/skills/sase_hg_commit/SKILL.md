@@ -29,7 +29,6 @@ Commit changes via the `sase commit` command.
    - `-f`: File to include (repeat for multiple files). Omit to include all changes.
    - `--bead-id`: Include if there's an in-progress bead for your changes.
    - `--name`: CL name (only needed for `create_pull_request` method).
-   - `-p`/`--parent`: Parent ChangeSpec name (overrides auto-detection from current branch).
 
    The `$SASE_COMMIT_METHOD` environment variable is read automatically to determine the dispatch method
    (`create_commit`, `create_proposal`, or `create_pull_request`). Do NOT pass `--type` unless you need to override.
