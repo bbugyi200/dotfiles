@@ -21,6 +21,7 @@ ace:
       ````
     cbi: "`<$1>`"
     chez: "my chezmoi repo"
+    cmd: "the `$1` command"
     cmt: "`sase commit`"
     cs: "ChangeSpec"
     fi: "the $1 file"
