@@ -3,8 +3,7 @@ name: sase_plan
 description: Create an implementation plan. Use instead of plan mode (which is disabled).
 ---
 
-Use this skill when you need to plan before implementing. This replaces Claude's native plan mode, which is
-disabled.
+Use this skill when you need to plan before implementing. This replaces Claude's native plan mode, which is disabled.
 
 ## Instructions
 
