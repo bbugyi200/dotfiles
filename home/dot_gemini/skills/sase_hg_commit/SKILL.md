@@ -38,3 +38,16 @@ Commit changes via the `sase commit` command.
 ```bash
 sase commit -M commit_message.md -f auth.py -f login.py --bead-id sase-42
 ```
+
+## On Merge Conflict
+
+If `sase commit` exits with code **2** and prints a "merge conflict" message, the local repository is in a paused
+evolve/rebase state and the post-commit bookkeeping has been deferred. Do NOT re-run the original `sase commit` command.
+Instead, resolve the conflict and finalize:
+
+1. **Find conflicted files**: Run `hg resolve --list` (lines starting with `U` are unresolved).
+2. **Read each file** and resolve conflict markers. Prefer the INCOMING version when uncertain.
+3. **Mark resolved**: Run `hg resolve --mark <file>` for each.
+4. **Continue the rebase/evolve**: Run `hg rebase --continue` (or `hg evolve --continue`). Repeat steps 1–4 until clean.
+5. **Verify the working tree is clean**: `hg status` should be empty.
+6. **Finalize the sase commit**: Run `sase commit --resume`.
