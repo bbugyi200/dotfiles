@@ -64,13 +64,18 @@ if ! [[ "$cl_number" =~ ^[0-9]+$ ]]; then
   exit $EXIT_INVALID_CL
 fi
 
-# Make the RPC call and capture output
+# Make the RPC call.  Stderr is kept separate from stdout so glog-style warnings
+# from stubby (e.g. "W0420 10:30:45...") do not pollute the JSON that gets piped
+# to jq below.
+rpc_stderr=$(mktemp)
+trap 'rm -f "$rpc_stderr"' EXIT
 rpc_output=$(stubby call blade:codereview-rpc CodereviewRpcService.GetComments \
-  --proto2 "changelist_number: ${cl_number}" --output_json 2>&1)
+  --proto2 "changelist_number: ${cl_number}" --output_json 2>"$rpc_stderr")
 rpc_exit=$?
 
 if [[ $rpc_exit -ne 0 ]]; then
-  _error "RPC call failed (exit $rpc_exit): ${rpc_output:0:200}"
+  rpc_err_content=$(cat "$rpc_stderr")
+  _error "RPC call failed (exit $rpc_exit): ${rpc_err_content:0:200}"
   exit $EXIT_RPC_FAILURE
 fi
 
