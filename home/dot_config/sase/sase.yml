@@ -45,6 +45,7 @@ ace:
     mrp: "Mentor Review panel"
     n: "%n:"
     piw: "prompt input widget"
+    prp: "plan review panel"
     rep: "the ../sase-$1 repo"
     w: "%w:"
     x: "xprompt"
