@@ -11,6 +11,7 @@ ace:
     amp: 'the agent metadata panel on the "Agents" tab of the `sase ace` TUI'
     awe: "agent/workflow entry"
     axe: "`sase axe`"
+    can: "Can you $1?"
     cb: |-
       ```$1
       $2
