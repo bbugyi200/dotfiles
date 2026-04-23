@@ -1,0 +1,48 @@
+#!/bin/bash
+
+set -euo pipefail
+
+IS_REMOTE=false
+case "${1:-}" in
+  "") ;;
+  -x|--remote)
+    IS_REMOTE=true
+    shift
+    ;;
+  *)
+    echo 1>&2 "usage: $(basename "$0") [-x|--remote]"
+    exit 2
+    ;;
+esac
+
+if [[ $# -gt 0 ]]; then
+  echo 1>&2 "usage: $(basename "$0") [-x|--remote]"
+  exit 2
+fi
+
+printf '>>> Resolving latest ace_profile file on bbc...\n'
+LATEST=$(ssh bbc 'ls -1t ~/tmp/sase/ace_profile_*.txt 2>/dev/null | head -n1 || true')
+if [[ -z "$LATEST" ]]; then
+  echo 1>&2 "error: no ace_profile_*.txt files found in bbc:~/tmp/sase/"
+  exit 1
+fi
+BASENAME=$(basename "$LATEST")
+printf '    %s\n' "$LATEST"
+
+mkdir -p ~/tmp/sase/
+printf '\n>>> Copying from bbc to this machine...\n'
+scp "bbc:${LATEST}" ~/tmp/sase/
+
+if [[ $IS_REMOTE = true ]]; then
+  DEST_HOST=xhome
+else
+  DEST_HOST=home
+fi
+
+printf '\n>>> Copying from this machine to %s...\n' "$DEST_HOST"
+ssh "$DEST_HOST" 'mkdir -p ~/tmp/sase/'
+scp ~/tmp/sase/"$BASENAME" "${DEST_HOST}:~/tmp/sase/"
+
+printf '\n>>> Final path (copied to clipboard):\n'
+printf '%s' "~/tmp/sase/${BASENAME}" | xc
+printf '\n'
