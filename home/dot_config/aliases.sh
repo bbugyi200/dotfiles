@@ -19,6 +19,7 @@ aceii() { install_sase_google "$@" && sase ace --restart-axe; }
 alias axe='sase axe'
 alias commit='sase commit'
 alias gsl='get_sase_logs'
+alias gsp='get_sase_profile'
 alias run='sase run'
 alias sam='sase memory'
 alias sat='sase telemetry'
