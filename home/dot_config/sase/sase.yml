@@ -64,6 +64,7 @@ xprompts:
     content:
       "I want you to lead the design on this one. Make sure you design this feature so it is intuitive, reliable, and
       (last but not least) beautiful!"
+  jet: "jetski/jetski-default"
   nvim:
     snippet: true
     content: "Neovim (my neovim config lives in my chezmoi repo)"
@@ -77,6 +78,8 @@ xprompts:
   # %model aliases
   m_codex: "%model:#codex"
   m_flash: "%model:#flash"
+  m_jet: "%model:#jet"
+  m_jet_pro_flash: "#m_jet #m_pro_flash"
   m_opus_codex: "%model(opus, #codex)"
   m_opus_sonnet: "%model(opus, sonnet)"
   m_pro: "%model:#pro"
