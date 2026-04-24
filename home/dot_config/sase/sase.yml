@@ -75,7 +75,8 @@ xprompts:
   gh_sase: "#gh:sase"
   # models
   flash: "gemini-3-flash-preview"
-  codex: "gpt-5.3-codex"
+  codex: "gpt-5.5"
+  codex3: "gpt-5.3-codex"
   pro: "gemini-3.1-pro-preview"
   # %model aliases
   m_codex: "%model:#codex"
