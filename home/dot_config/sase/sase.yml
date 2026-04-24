@@ -29,6 +29,7 @@ ace:
     fix: "Can you help me fix this?"
     fixx: "Can you help me diagnose the root cause of this issue and fix it?"
     gact: "GitHub Actions"
+    gactt: "GitHub Actions is failing with the below error."
     git: "(see recent, related git commits)"
     gsn: "`sase ace` snapshot"
     gsnn: "in the below `sase ace` snapshot"
