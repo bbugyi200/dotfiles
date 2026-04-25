@@ -10,7 +10,8 @@ Commit changes via the `sase commit` command.
 
 ## Instructions
 
-1. **Examine uncommitted changes** — Run `git status` and `git diff` to understand what files have changed and why.
+1. **Examine uncommitted changes** — Run `git status` and `git diff` to understand what files have changed and why. Pay
+   attention to **untracked files** (newly created files) shown in `git status` — these must also be staged.
 
 2. **Determine the commit tag** — Pick the correct conventional commit tag:
    - `feat` — New feature, feature improvement, or feature removal
@@ -34,7 +35,8 @@ Commit changes via the `sase commit` command.
    Flags:
    - `-M`: Path to file containing the commit message. The file is deleted after reading.
    - `-m`: Inline commit message string (alternative to `-M`). `-m` and `-M` are mutually exclusive.
-   - `-f`: File to stage (repeat for multiple files). Omit to stage all changes.
+   - `-f`: File to stage (repeat for multiple files). **Include both modified AND newly created (untracked) files.**
+     Omit to stage all changes (including untracked files).
    - `--bead-id`: Include if there's an in-progress bead for your changes.
    - `--name`: Branch name (only needed for `create_pull_request` method).
 
