@@ -8,8 +8,8 @@ axe:
         - name: gc_inbound
           description: "Process Google Chat replies, dot-commands, and free-form prompts"
           env:
-            SASE_GCHAT_SPACE_ID: "AAQAy6adusI"
+            SASE_GCHAT_SPACE_ID: "AAQAa65pJUk"
         - name: gc_outbound
           description: "Send sase notifications to Google Chat"
           env:
-            SASE_GCHAT_SPACE_ID: "AAQAy6adusI"
+            SASE_GCHAT_SPACE_ID: "AAQAa65pJUk"
