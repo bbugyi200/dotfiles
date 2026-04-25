@@ -12,8 +12,9 @@ SASE_ORG_DIR="$HOME"/projects/github/sase-org
 SASE_DIR="$SASE_ORG_DIR/sase"
 SASE_GITHUB_DIR="$SASE_ORG_DIR/sase-github"
 SASE_GOOGLE_DIR="$SASE_ORG_DIR/sase-google"
+SASE_GCHAT_DIR="$SASE_ORG_DIR/sase-gchat"
 
-for repo in "$SASE_DIR" "$SASE_GITHUB_DIR" "$SASE_GOOGLE_DIR"; do
+for repo in "$SASE_DIR" "$SASE_GITHUB_DIR" "$SASE_GOOGLE_DIR" "$SASE_GCHAT_DIR"; do
     echo ">>> Syncing $repo..."
     git -C "$repo" pull
 done
@@ -26,5 +27,7 @@ if $install; then
         --with-editable "sase-github @ $SASE_GITHUB_DIR" \
         --with-executables-from sase-github \
         --with-editable "sase-google @ $SASE_GOOGLE_DIR" \
-        --with-executables-from sase-google
+        --with-executables-from sase-google \
+        --with-editable "sase-gchat @ $SASE_GCHAT_DIR" \
+        --with-executables-from sase-gchat
 fi

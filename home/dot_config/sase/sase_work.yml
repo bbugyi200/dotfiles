@@ -1,2 +1,15 @@
 # Work-specific sase config overlay (bbugyi.c.googlers.com)
 # This file is merged on top of sase.yml by the config loader.
+axe:
+  lumberjacks:
+    gchat:
+      interval: 5
+      chops:
+        - name: gc_inbound
+          description: "Process Google Chat replies, dot-commands, and free-form prompts"
+          env:
+            SASE_GCHAT_SPACE_ID: "spaces/AAQAfakefake"
+        - name: gc_outbound
+          description: "Send sase notifications to Google Chat"
+          env:
+            SASE_GCHAT_SPACE_ID: "spaces/AAQAfakefake"
