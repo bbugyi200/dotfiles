@@ -28,6 +28,12 @@ ace:
     fi: "the $1 file"
     fix: "Can you help me fix this?"
     fixx: "Can you help me diagnose the root cause of this issue and fix it?"
+    forw: |
+      {% for chat in wait_chats -%}
+
+      - @{{ chat }}
+
+      {% endif %}
     gact: "GitHub Actions"
     gactt: "GitHub Actions is failing with the below error."
     git: "(see recent, related git commits)"
