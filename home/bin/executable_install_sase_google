@@ -11,6 +11,7 @@ fi
 SASE_ORG_DIR="$HOME"/projects/github/sase-org
 SASE_DIR="$SASE_ORG_DIR/sase"
 SASE_CORE_DIR="$SASE_ORG_DIR/sase-core"
+SASE_CORE_RS_DIR="$SASE_CORE_DIR/crates/sase_core_py"
 SASE_GITHUB_DIR="$SASE_ORG_DIR/sase-github"
 SASE_GOOGLE_DIR="$SASE_ORG_DIR/sase-google"
 SASE_GCHAT_DIR="$SASE_ORG_DIR/sase-gchat"
@@ -20,10 +21,16 @@ for repo in "$SASE_DIR" "$SASE_CORE_DIR" "$SASE_GITHUB_DIR" "$SASE_GOOGLE_DIR" "
     git -C "$repo" pull
 done
 
+if [[ ! -f "$SASE_CORE_RS_DIR/pyproject.toml" ]]; then
+    echo "ERROR: Missing local sase-core-rs project: $SASE_CORE_RS_DIR/pyproject.toml" >&2
+    exit 1
+fi
+
 if $install; then
     echo ">>> Installing sase via uv tool..."
     uv tool install --force --editable \
         "sase @ $SASE_DIR" \
+        --with-editable "sase-core-rs @ $SASE_CORE_RS_DIR" \
         --with-editable "sase-github @ $SASE_GITHUB_DIR" \
         --with-executables-from sase-github \
         --with-editable "sase-google @ $SASE_GOOGLE_DIR" \
