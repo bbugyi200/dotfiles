@@ -44,6 +44,16 @@ Commit changes via the `sase commit` command.
    (`create_commit`, `create_proposal`, or `create_pull_request`). Do NOT pass `--type` unless you need to override.
    Short aliases are also accepted: `commit`, `propose`, `pr`.
 
+6. **Verify clean and pushed** — For git repos, `sase commit` normally pushes commits as part of the `create_commit`
+   workflow. After it exits successfully, run:
+
+   ```bash
+   git status --short --branch
+   ```
+
+   Do not declare the commit finished while the repo is dirty or ahead of its upstream. If the branch is still ahead of
+   upstream, run `git push`. If pushing fails, fix the issue or report the push failure clearly.
+
 ## Example
 
 ```bash
