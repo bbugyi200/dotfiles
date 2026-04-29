@@ -22,7 +22,7 @@ fields.
 ## Primary command
 
 ```bash
-sase search '<query>' -f markdown
+sase changespec search '<query>' -f markdown
 ```
 
 This prints agent-friendly markdown with each ChangeSpec's name, project, status, parent, PR/CL, and the file/line where
@@ -31,7 +31,7 @@ it lives.
 ## Exact lookup
 
 ```bash
-sase search '&<changespec_name>' -f markdown
+sase changespec search '&<changespec_name>' -f markdown
 ```
 
 `&name` (alias `name:name`) is an exact-name match — prefer it over substring search when you know the name.
@@ -39,7 +39,7 @@ sase search '&<changespec_name>' -f markdown
 ## When you need raw detail
 
 ```bash
-sase search '&<changespec_name>' -f plain
+sase changespec search '&<changespec_name>' -f plain
 ```
 
 `-f plain` exposes file paths, line numbers, drawer entries (`COMMITS`, `HOOKS`, `COMMENTS`, `MENTORS`), and full
@@ -70,20 +70,20 @@ Boolean queries work too: `'"feature" AND %r'`, `'+myproject AND (!!! OR @@@)'`.
 ### What is blocking this ChangeSpec?
 
 ```bash
-sase search '&<name>' -f plain
+sase changespec search '&<name>' -f plain
 ```
 
 Inspect for: a non-terminal `PARENT`, error suffixes (`- (!: ...)`) under `HOOKS` / `COMMENTS` / `MENTORS`, running
 agents (`@@@`), or running processes (`$$$`). To scan the whole subtree for any blocking state:
 
 ```bash
-sase search '^<name> AND *' -f markdown
+sase changespec search '^<name> AND *' -f markdown
 ```
 
 ### What changed in the latest commit/proposal?
 
 ```bash
-sase search '&<name>' -f plain
+sase changespec search '&<name>' -f plain
 ```
 
 The `COMMITS` drawer lists every commit/proposal with its `CHAT` and `DIFF` paths; the highest-numbered entry is the
@@ -92,7 +92,7 @@ most recent.
 ### Find children/descendants of a ChangeSpec
 
 ```bash
-sase search '^<name>' -f markdown
+sase changespec search '^<name>' -f markdown
 ```
 
 `^name` returns every ChangeSpec whose parent chain contains `<name>`. There is no inverse `children:` operator —
@@ -104,14 +104,14 @@ A spec is ready when `STATUS` is `Ready` (or `Mailed` for submit) with no errors
 Confirm against one spec, or scan a subtree:
 
 ```bash
-sase search '&<name>' -f markdown
-sase search '^<name> AND %y AND !! AND !@ AND !$' -f markdown
+sase changespec search '&<name>' -f markdown
+sase changespec search '^<name> AND %y AND !! AND !@ AND !$' -f markdown
 ```
 
 ### Inspect failed hooks, review comments, and mentor state
 
 ```bash
-sase search '&<name>' -f plain
+sase changespec search '&<name>' -f plain
 ```
 
 - `HOOKS` lines ending in `- (!: ...)` are failed hook attempts.
