@@ -37,10 +37,11 @@ descriptions. Use it when markdown is too summarized.
 
 - `&name` / `name:name` — exact ChangeSpec lookup.
 - `+project` / `project:project` — filter by project.
-- `^parent` / `ancestor:parent` — filter by parent chain.
+- `^parent` / `ancestor:parent` — filter by parent chain (returns descendants of `parent`).
 - `~name` / `sibling:name` — sibling / reverted-family filtering.
 - `%w`, `%d`, `%y`, `%m`, `%s`, `%r` — status filters (WIP, Draft, Ready, Mailed, Submitted, Reverted).
-- `!!!`, `@@@`, `$$$`, `*` — errors, running agents, running processes, any special state.
+- `!!!`, `@@@`, `$$$`, `*` — error suffixes, running agents, running processes, any of those.
+- `!!`, `!@`, `!$` — negations of `!!!`, `@@@`, `$$$` (no errors / no running agents / no running processes).
 
 Boolean queries work too: `'"feature" AND %r'`, `'+myproject AND (!!! OR @@@)'`.
 
@@ -51,6 +52,65 @@ Boolean queries work too: `'"feature" AND %r'`, `'+myproject AND (!!! OR @@@)'`.
   rejected or new proposals.
 - For multi-result queries, group by project and status, and surface the most relevant ChangeSpecs first.
 - If the result set is empty, say so plainly — do not fabricate ChangeSpecs.
+
+## Common workflows
+
+### What is blocking this ChangeSpec?
+
+```bash
+sase search '&<name>' -f plain
+```
+
+Inspect for: a non-terminal `PARENT`, error suffixes (`- (!: ...)`) under `HOOKS` / `COMMENTS` / `MENTORS`, running
+agents (`@@@`), or running processes (`$$$`). To scan the whole subtree for any blocking state:
+
+```bash
+sase search '^<name> AND *' -f markdown
+```
+
+### What changed in the latest commit/proposal?
+
+```bash
+sase search '&<name>' -f plain
+```
+
+The `COMMITS` drawer lists every commit/proposal with its `CHAT` and `DIFF` paths; the highest-numbered entry is the
+most recent.
+
+### Find children/descendants of a ChangeSpec
+
+```bash
+sase search '^<name>' -f markdown
+```
+
+`^name` returns every ChangeSpec whose parent chain contains `<name>`. There is no inverse `children:` operator —
+descendants are reached via this ancestor query.
+
+### Is it ready to mail / submit?
+
+A spec is ready when `STATUS` is `Ready` (or `Mailed` for submit) with no errors and no running agents/processes.
+Confirm against one spec, or scan a subtree:
+
+```bash
+sase search '&<name>' -f markdown
+sase search '^<name> AND %y AND !! AND !@ AND !$' -f markdown
+```
+
+### Inspect failed hooks, review comments, and mentor state
+
+```bash
+sase search '&<name>' -f plain
+```
+
+- `HOOKS` lines ending in `- (!: ...)` are failed hook attempts.
+- `COMMENTS` lines ending in `- (!: ...)` are unresolved review comments.
+- `MENTORS` lines ending in `- (!: ...)` flag mentor errors.
+
+For mentor-profile diagnostics (which profile matched, why, and any errors):
+
+```bash
+sase config mentor-match <name>
+```
 
 ## Lifecycle
 
