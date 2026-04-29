@@ -20,7 +20,6 @@ for repo in "$SASE_DIR" "$SASE_CORE_DIR" "$SASE_GITHUB_DIR" "$SASE_GOOGLE_DIR" "
     git -C "$repo" pull
 done
 
-echo ">>> Stopping \`sase axe\`..."
 if $install; then
     echo ">>> Installing sase via uv tool..."
     uv tool install --force --editable \
@@ -31,7 +30,6 @@ if $install; then
         --with-executables-from sase-google \
         --with-editable "sase-gchat @ $SASE_GCHAT_DIR" \
         --with-executables-from sase-gchat
-
-    echo ">>> Installing sase-core Rust backend into uv-tool venv..."
-    just -f "$SASE_DIR/Justfile" rust-install-uv-tool
 fi
+echo ">>> Installing sase-core Rust backend into uv-tool venv..."
+just -f "$SASE_DIR/Justfile" rust-install-uv-tool

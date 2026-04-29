@@ -27,7 +27,6 @@ if $install; then
         --with-executables-from sase-github \
         --with-editable "sase-telegram @ $SASE_TELEGRAM_DIR" \
         --with-executables-from sase-telegram
-
-    echo ">>> Installing sase-core Rust backend into uv-tool venv..."
-    just -f "$SASE_DIR/Justfile" rust-install-uv-tool
 fi
+echo ">>> Installing sase-core Rust backend into uv-tool venv..."
+just -f "$SASE_DIR/Justfile" rust-install-uv-tool
