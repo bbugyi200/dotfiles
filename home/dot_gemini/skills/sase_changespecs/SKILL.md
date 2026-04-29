@@ -7,6 +7,18 @@ description:
 
 Quick reference for inspecting and reasoning about SASE ChangeSpecs.
 
+## Current ChangeSpec
+
+When the task concerns the current CL/PR or checkout, start with:
+
+```bash
+sase changespec current -f markdown
+```
+
+This resolves by current PR/CL URL first, then by branch/bookmark name, and prints the matching ChangeSpec with its
+project, status, parent, PR/CL, and file location. Use `-f json` when a script or automation step needs structured
+fields.
+
 ## Primary command
 
 ```bash
