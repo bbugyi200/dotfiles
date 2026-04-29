@@ -10,11 +10,12 @@ fi
 
 SASE_ORG_DIR="$HOME"/projects/github/sase-org
 SASE_DIR="$SASE_ORG_DIR/sase"
+SASE_CORE_DIR="$SASE_ORG_DIR/sase-core"
 SASE_GITHUB_DIR="$SASE_ORG_DIR/sase-github"
 SASE_GOOGLE_DIR="$SASE_ORG_DIR/sase-google"
 SASE_GCHAT_DIR="$SASE_ORG_DIR/sase-gchat"
 
-for repo in "$SASE_DIR" "$SASE_GITHUB_DIR" "$SASE_GOOGLE_DIR" "$SASE_GCHAT_DIR"; do
+for repo in "$SASE_DIR" "$SASE_CORE_DIR" "$SASE_GITHUB_DIR" "$SASE_GOOGLE_DIR" "$SASE_GCHAT_DIR"; do
     echo ">>> Syncing $repo..."
     git -C "$repo" pull
 done
@@ -30,4 +31,7 @@ if $install; then
         --with-executables-from sase-google \
         --with-editable "sase-gchat @ $SASE_GCHAT_DIR" \
         --with-executables-from sase-gchat
+
+    echo ">>> Installing sase-core Rust backend into uv-tool venv..."
+    just -f "$SASE_DIR/Justfile" rust-install-uv-tool
 fi

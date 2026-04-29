@@ -10,10 +10,11 @@ fi
 
 SASE_ORG_DIR="$HOME"/projects/github/sase-org
 SASE_DIR="$SASE_ORG_DIR/sase"
+SASE_CORE_DIR="$SASE_ORG_DIR/sase-core"
 SASE_GITHUB_DIR="$SASE_ORG_DIR/sase-github"
 SASE_TELEGRAM_DIR="$SASE_ORG_DIR/sase-telegram"
 
-for repo in "$SASE_DIR" "$SASE_GITHUB_DIR" "$SASE_TELEGRAM_DIR"; do
+for repo in "$SASE_DIR" "$SASE_CORE_DIR" "$SASE_GITHUB_DIR" "$SASE_TELEGRAM_DIR"; do
     echo ">>> Syncing $repo..."
     git -C "$repo" pull
 done
@@ -26,4 +27,7 @@ if $install; then
         --with-executables-from sase-github \
         --with-editable "sase-telegram @ $SASE_TELEGRAM_DIR" \
         --with-executables-from sase-telegram
+
+    echo ">>> Installing sase-core Rust backend into uv-tool venv..."
+    just -f "$SASE_DIR/Justfile" rust-install-uv-tool
 fi
