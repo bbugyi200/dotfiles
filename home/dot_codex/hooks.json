@@ -10,7 +10,7 @@
           },
           {
             "type": "command",
-            "command": "\"$CODEX_PROJECT_DIR\"/tools/sase_sibling_commit_stop_hook",
+            "command": "\"${CODEX_PROJECT_DIR:-$PWD}\"/tools/sase_sibling_commit_stop_hook",
             "timeout": 300
           }
         ]
