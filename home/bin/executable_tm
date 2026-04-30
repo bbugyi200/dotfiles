@@ -42,15 +42,13 @@ EOM
 warn_nested_terminal() {
     local term="${TERM:-}"
     local term_program="${TERM_PROGRAM:-}"
+    local term_lower="${term,,}"
+    local extra_message=""
 
-    case "${term,,}:${term_program,,}" in
-        tmux*:*)
+    case "${term_lower}" in
+        tmux*)
             ;;
-        screen*:*)
-            ;;
-        *:*tmux*)
-            ;;
-        *:*screen*)
+        screen*)
             ;;
         *)
             return 0
@@ -61,12 +59,21 @@ warn_nested_terminal() {
         return 0
     fi
 
+    if [[ -z "${TMUX:-}" && ( "${term_lower}" == tmux* || "${term_lower}" == screen* ) ]]; then
+        extra_message="TMUX is unset, so this shell is probably not actually inside tmux. Check for a
+global TERM override in shell startup files; Kitty shells should usually report
+TERM=xterm-kitty before tmux attaches."
+    fi
+
     cat >&2 << EOM
 tm: refusing to attach from a nested terminal (TERM=${term:-unset}, TERM_PROGRAM=${term_program:-unset}).
 Kitty graphics passthrough needs tmux attached directly from a Kitty-capable shell.
 Open a fresh Kitty shell outside tmux and rerun: tm ${SESSION_NAME}
 Set TM_ALLOW_NESTED=1 to bypass this guard.
 EOM
+    if [[ -n "${extra_message}" ]]; then
+        printf '\n%s\n' "${extra_message}" >&2
+    fi
     exit 1
 }
 

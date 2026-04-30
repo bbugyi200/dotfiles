@@ -1,0 +1,58 @@
+#!/bin/bash
+
+warn() {
+  printf 'chezmoi: warning: %s\n' "$*" >&2
+}
+
+has_xterm_kitty() {
+  infocmp xterm-kitty >/dev/null 2>&1
+}
+
+install_with_tic() {
+  local terminfo_src="$1"
+
+  command -v tic >/dev/null 2>&1 || return 1
+  [[ -r "$terminfo_src" ]] || return 1
+
+  mkdir -p "$HOME/.terminfo"
+  tic -x -o "$HOME/.terminfo" "$terminfo_src"
+}
+
+install_compiled_entry() {
+  local terminfo_dir="$1"
+  local compiled_entry="$terminfo_dir/x/xterm-kitty"
+  local target_dir="$HOME/.terminfo/x"
+
+  [[ -r "$compiled_entry" ]] || return 1
+
+  mkdir -p "$target_dir"
+  cp "$compiled_entry" "$target_dir/xterm-kitty"
+}
+
+print_fix_warning() {
+  warn "xterm-kitty terminfo is not available."
+  warn "Install your distribution's Kitty/kitty-terminfo package, use 'kitty +kitten ssh' for remote shells, or otherwise install the xterm-kitty terminfo entry."
+}
+
+if has_xterm_kitty; then
+  exit 0
+fi
+
+if ! command -v kitty >/dev/null 2>&1; then
+  case "${TERM:-}:${TERM_PROGRAM:-}" in
+    xterm-kitty:*|*:kitty)
+      print_fix_warning
+      ;;
+  esac
+  exit 0
+fi
+
+terminfo_dir="$(kitty +runpy 'from kitty.constants import terminfo_dir; print(terminfo_dir)' 2>/dev/null || true)"
+
+if [[ -n "$terminfo_dir" ]]; then
+  install_with_tic "$terminfo_dir/kitty.terminfo" || install_compiled_entry "$terminfo_dir" || true
+fi
+
+if ! has_xterm_kitty; then
+  print_fix_warning
+fi
