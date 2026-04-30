@@ -1,0 +1,145 @@
+#!/bin/bash
+
+read -r -d '' doc << EOM
+Wrapper for Tmuxinator
+EOM
+
+eval "$(shlib)"
+
+# ---------- Command-line Arguments ----------
+export USAGE_GRAMMAR=(
+    "[-d] [-v] [-MUX_CMD [ARGS]]"
+    "[-d] [-v] MUX_SESSION [SOCKET_NAME]"
+    "-h"
+)
+
+# shellcheck disable=SC2154
+read -r -d '' help << EOM
+$(usage)
+
+${doc}
+
+Positional Arguments:
+    MUX_SESSION     The tmuxinator session to start.
+    SOCKET_NAME     Optional tmux socket name to use.
+
+Optional Arguments:
+    -d | --debug
+        Enable debug mode.
+
+    -MUX_CMD [ARGS]
+        A valid tmuxinator command prefixed with a single dash. This option
+        has the same syntax as specified by tmuxinator and thus MAY have
+        arguments.
+
+    -h | --help
+        View this help message.
+
+    -v | --verbose
+        Enable verbose output.
+EOM
+
+warn_nested_terminal() {
+    local term="${TERM:-}"
+    local term_program="${TERM_PROGRAM:-}"
+
+    case "${term,,}:${term_program,,}" in
+        tmux*:*)
+            ;;
+        screen*:*)
+            ;;
+        *:*tmux*)
+            ;;
+        *:*screen*)
+            ;;
+        *)
+            return 0
+            ;;
+    esac
+
+    if [[ "${TM_ALLOW_NESTED:-}" == 1 || "${TM_ALLOW_NESTED:-}" == true ]]; then
+        return 0
+    fi
+
+    cat >&2 << EOM
+tm: refusing to attach from a nested terminal (TERM=${term:-unset}, TERM_PROGRAM=${term_program:-unset}).
+Kitty graphics passthrough needs tmux attached directly from a Kitty-capable shell.
+Open a fresh Kitty shell outside tmux and rerun: tm ${SESSION_NAME}
+Set TM_ALLOW_NESTED=1 to bypass this guard.
+EOM
+    exit 1
+}
+
+debug=false
+verbose=false
+
+while [[ -n "$1" ]]; do
+    case $1 in
+       -d|--debug )
+           debug=true
+           ;;
+       -h|--help )
+           echo "${help}"
+           exit 0
+           ;;
+       -v|--verbose )
+           verbose=true
+           ;;
+       -- )
+           shift
+           break
+           ;;
+       * )
+           break
+           ;;
+    esac
+    shift
+done
+
+if [[ "${debug}" = true && "${verbose}" = true ]]; then
+    PS4='$LINENO: '
+    set -x
+fi
+
+if [[ $# -lt 1 ]]; then
+    die "$(usage)" 2
+fi
+
+# ---------- Main ----------
+MUX_CONFIG_DIR=~/.config/tmuxinator
+
+case $1 in
+    '-'* )
+        CMD=${1#-}; shift
+        if [[ 'edit' == "$CMD"* ]]; then
+            if [[ -n "$1" ]]; then
+                tmuxinator edit "$1"
+            else
+                tmuxinator edit "$(tm-session-name)"
+            fi
+        else
+            tmuxinator "$CMD" "$@"
+        fi;;
+    * )
+        SESSION_NAME=$1; shift
+        if [[ ! -f "$MUX_CONFIG_DIR/$SESSION_NAME.yml" ]]; then
+            erb name="$SESSION_NAME" "$MUX_CONFIG_DIR"/default.yml > "$MUX_CONFIG_DIR"/"$SESSION_NAME".yml
+        fi
+
+        root="$(tm-session-root --get "$SESSION_NAME")"
+        tmuxinator start --no-attach "$SESSION_NAME" root="${root}" || exit $?
+
+        tmux_args=()
+        if [[ -n "$1" ]]; then
+            SOCKET_NAME="$1"; shift
+            tmux_args=(-L "$SOCKET_NAME")
+        fi
+
+        if [[ -n "${TMUX:-}" ]]; then
+            tmux "${tmux_args[@]}" switch-client -t "$SESSION_NAME"
+        else
+            warn_nested_terminal
+            exec tmux "${tmux_args[@]}" -u attach-session -d -t "$SESSION_NAME"
+        fi
+        ;;
+esac
