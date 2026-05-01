@@ -31,14 +31,22 @@ class _FileInfo:
     pragmas: dict[str, list[_PragmaInfo]] = field(default_factory=dict)
     # {symbol_name: def_lineno} for private symbols (used for in-file usage check)
     private_def_lines: dict[str, int] = field(default_factory=dict)
-    # Names that appear in import-like contexts (extracted via line scanning)
+    # Names imported directly from another module.
     import_candidates: set[str] = field(default_factory=set)
+    # Import aliases that bind to modules, for detecting alias.Symbol usage.
+    module_aliases: dict[str, set[str]] = field(default_factory=dict)
+    # Dotted attribute chains found in the file, split into name components.
+    attribute_chains: list[tuple[str, ...]] = field(default_factory=list)
 
 
-def _get_git_root() -> Path | None:
+def _get_git_root(directory: Path | None = None) -> Path | None:
     """Get the git repository root directory."""
+    cmd = ["git"]
+    if directory is not None:
+        cmd.extend(["-C", str(directory)])
+    cmd.extend(["rev-parse", "--show-toplevel"])
     result = subprocess.run(
-        ["git", "rev-parse", "--show-toplevel"],
+        cmd,
         capture_output=True,
         text=True,
     )
@@ -77,6 +85,65 @@ def _get_decorator_names(node: ast.AST) -> set[str]:
     return names
 
 
+def _add_module_alias(info: _FileInfo, alias_name: str, module_name: str) -> None:
+    """Record an alias that may later qualify attribute usage."""
+    if not alias_name or not module_name:
+        return
+    info.module_aliases.setdefault(alias_name, set()).add(module_name)
+
+
+def _attribute_chain(node: ast.AST) -> tuple[str, ...] | None:
+    """Return dotted attribute components for an expression, if simple enough."""
+    parts: list[str] = []
+    current = node
+    while isinstance(current, ast.Attribute):
+        parts.append(current.attr)
+        current = current.value
+
+    if not isinstance(current, ast.Name):
+        return None
+
+    parts.append(current.id)
+    parts.reverse()
+    return tuple(parts)
+
+
+def _collect_usage_info(tree: ast.AST, info: _FileInfo) -> None:
+    """Collect import and alias-qualified attribute usage using the AST."""
+
+    class Visitor(ast.NodeVisitor):
+        def visit_Import(self, node: ast.Import) -> None:  # noqa: N802
+            for alias in node.names:
+                if alias.asname:
+                    _add_module_alias(info, alias.asname, alias.name)
+                else:
+                    root_name = alias.name.split(".", 1)[0]
+                    _add_module_alias(info, root_name, root_name)
+            self.generic_visit(node)
+
+        def visit_ImportFrom(self, node: ast.ImportFrom) -> None:  # noqa: N802
+            if node.module is None:
+                self.generic_visit(node)
+                return
+
+            for alias in node.names:
+                if alias.name == "*":
+                    continue
+                info.import_candidates.add(alias.name)
+                bound_name = alias.asname or alias.name
+                _add_module_alias(info, bound_name, f"{node.module}.{alias.name}")
+
+            self.generic_visit(node)
+
+        def visit_Attribute(self, node: ast.Attribute) -> None:  # noqa: N802
+            chain = _attribute_chain(node)
+            if chain and len(chain) >= 2:
+                info.attribute_chains.append(chain)
+            self.generic_visit(node)
+
+    Visitor().visit(tree)
+
+
 def _extract_file_info(
     file_path: Path, exclude_decorators: set[str] | None = None
 ) -> _FileInfo | None:
@@ -93,26 +160,7 @@ def _extract_file_info(
     info = _FileInfo(path=file_path, content=content)
     lines = content.splitlines()
     pragma_re = re.compile(r"^#\s*pyvision:\s*(.+)$")
-
-    # Extract import candidates by scanning lines once (matches original regex semantics)
-    # Original patterns checked per-symbol:
-    #   1. ^\s+<symbol>,\s*(#.*)?$    — symbol alone on line in multi-line import
-    #   2. ^\s*from\s.*\simport.*\s<symbol>\b — symbol on a from...import line
-    # We extract all candidate names in one pass instead.
-    _p1 = re.compile(r"^\s+(\w+),\s*(?:#.*)?$")
-    _p2_prefix = re.compile(r"^\s*from\s.*\simport\s")
-    _p2_names = re.compile(r"(?<=\s)(\w+)")
-    for line in lines:
-        m = _p1.match(line)
-        if m:
-            info.import_candidates.add(m.group(1))
-            continue
-        m = _p2_prefix.match(line)
-        if m:
-            # Extract all whitespace-preceded identifiers after "import"
-            after_import = line[m.end() - 1:]  # keep the leading space
-            for wm in _p2_names.finditer(after_import):
-                info.import_candidates.add(wm.group(1))
+    _collect_usage_info(tree, info)
 
     for node in tree.body:
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
@@ -162,11 +210,14 @@ def _extract_file_info(
 
 
 def _batch_search_usage(
-    symbols: set[str], file_infos: list[_FileInfo]
+    symbols: set[str],
+    file_infos: list[_FileInfo],
+    tracked_modules: set[str] | None = None,
 ) -> set[str]:
-    """Find which symbols are imported by any file using pre-extracted import candidates.
+    """Find which symbols are used by any file using pre-extracted AST info.
 
-    Returns the set of symbols that are imported by at least one file.
+    Returns the set of symbols that are imported or referenced through a module
+    alias by at least one file.
     """
     if not symbols:
         return set()
@@ -178,6 +229,26 @@ def _batch_search_usage(
             found |= matches
             if found == symbols:
                 break  # All symbols found
+
+        if tracked_modules:
+            for chain in info.attribute_chains:
+                symbol_name = chain[-1]
+                if symbol_name not in symbols:
+                    continue
+
+                alias_modules = info.module_aliases.get(chain[0], set())
+                for alias_module in alias_modules:
+                    suffix = ".".join(chain[1:-1])
+                    module_name = f"{alias_module}.{suffix}" if suffix else alias_module
+                    if module_name in tracked_modules:
+                        found.add(symbol_name)
+                        break
+
+                if found == symbols:
+                    break
+
+        if found == symbols:
+            break
     return found
 
 
@@ -222,15 +293,31 @@ def _validate_pragmas(
 
         # Symbol-level check: pragma on private symbol
         if name.startswith("_"):
-            prefix = f"Error: pyvision pragma in {first.source_file}:{first.pragma_line}:"
+            prefix = (
+                f"Error: pyvision pragma in {first.source_file}:{first.pragma_line}:"
+            )
             errors.append(
                 f"{prefix} pragma cannot be applied to private symbol '{name}'"
             )
             continue
 
+        test_pragma_errors = []
+        for pragma in pragma_list:
+            if _is_test_reference_path(pragma.ref_path):
+                prefix = f"Error: pyvision pragma in {pragma.source_file}:{pragma.pragma_line}:"
+                test_pragma_errors.append(
+                    f"{prefix} referenced test file '{pragma.ref_path}' is forbidden"
+                    " because Python test references are detected automatically"
+                )
+        if test_pragma_errors:
+            errors.extend(test_pragma_errors)
+            continue
+
         # Symbol-level check: stale pragma (symbol already imported by Python files)
         if name in imported_symbols:
-            prefix = f"Error: pyvision pragma in {first.source_file}:{first.pragma_line}:"
+            prefix = (
+                f"Error: pyvision pragma in {first.source_file}:{first.pragma_line}:"
+            )
             errors.append(
                 f"{prefix} symbol '{name}' is already imported by other Python files."
                 " Remove this unnecessary pragma"
@@ -239,7 +326,9 @@ def _validate_pragmas(
 
         # Per-pragma checks
         for pragma in pragma_list:
-            prefix = f"Error: pyvision pragma in {pragma.source_file}:{pragma.pragma_line}:"
+            prefix = (
+                f"Error: pyvision pragma in {pragma.source_file}:{pragma.pragma_line}:"
+            )
             ref_file = git_root / pragma.ref_path
 
             # Referenced file doesn't exist
@@ -275,6 +364,14 @@ def _validate_pragmas(
     return errors
 
 
+def _is_test_reference_path(ref_path: str) -> bool:
+    """Return whether a pyvision pragma points at a Python test reference."""
+    path = Path(ref_path)
+    if any(part in {"test", "tests"} for part in path.parts):
+        return True
+    return path.suffix == ".py" and path.name.startswith("test_")
+
+
 def _find_python_files(directory: Path, exclude_test_dirs: bool = True) -> list[Path]:
     """Find all .py files in directory, optionally excluding test directories."""
     exclude_patterns = (
@@ -289,6 +386,84 @@ def _find_python_files(directory: Path, exclude_test_dirs: bool = True) -> list[
         python_files.append(py_file)
 
     return python_files
+
+
+def _find_git_tracked_python_files(git_root: Path) -> list[Path]:
+    """Return tracked Python files from a git repo."""
+    result = subprocess.run(
+        ["git", "-C", str(git_root), "ls-files", "-z", "--", "*.py"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return []
+
+    return [git_root / rel_path for rel_path in result.stdout.split("\0") if rel_path]
+
+
+def _is_relative_to(path: Path, parent: Path) -> bool:
+    """Return whether path is under parent, resolving both first."""
+    try:
+        path.resolve().relative_to(parent.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def _find_usage_only_python_files(
+    target_directory: Path, git_root: Path | None, excluded: set[Path]
+) -> list[Path]:
+    """Find tracked Python files outside the analyzed definition tree."""
+    if git_root is None:
+        return []
+
+    usage_files = []
+    for py_file in _find_git_tracked_python_files(git_root):
+        resolved = py_file.resolve()
+        if resolved in excluded:
+            continue
+        if _is_relative_to(resolved, target_directory):
+            continue
+        usage_files.append(py_file)
+    return usage_files
+
+
+def _module_name_from_parts(parts: tuple[str, ...]) -> str | None:
+    if not parts:
+        return None
+    if parts[-1] == "__init__":
+        parts = parts[:-1]
+    if not parts:
+        return None
+    return ".".join(parts)
+
+
+def _python_module_names(py_file: Path, git_root: Path) -> set[str]:
+    """Return plausible import module names for a tracked Python file."""
+    try:
+        rel_parts = (
+            py_file.resolve().relative_to(git_root.resolve()).with_suffix("").parts
+        )
+    except ValueError:
+        return set()
+
+    module_names: set[str] = set()
+    for index in range(len(rel_parts)):
+        module_name = _module_name_from_parts(tuple(rel_parts[index:]))
+        if module_name:
+            module_names.add(module_name)
+    return module_names
+
+
+def _build_tracked_module_names(git_root: Path | None) -> set[str]:
+    """Build a broad set of module names resolvable from tracked Python files."""
+    if git_root is None:
+        return set()
+
+    module_names: set[str] = set()
+    for py_file in _find_git_tracked_python_files(git_root):
+        module_names.update(_python_module_names(py_file, git_root))
+    return module_names
 
 
 def _find_pyproject_toml(directory: Path) -> Path | None:
@@ -369,10 +544,13 @@ def main():
         print(f"Error: {args.directory} is not a directory", file=sys.stderr)
         return 1
 
-    # Find all Python files excluding test directories
+    git_root = _get_git_root(args.directory)
+
+    # Find all definition Python files excluding test directories
     python_files = _find_python_files(args.directory)
 
     # Apply --exclude-file filters
+    excluded: set[Path] = set()
     if args.exclude_file:
         excluded = {Path(p).resolve() for p in args.exclude_file}
         python_files = [f for f in python_files if f.resolve() not in excluded]
@@ -380,6 +558,10 @@ def main():
     if not python_files:
         print("No Python files found", file=sys.stderr)
         return 0
+
+    usage_only_python_files = _find_usage_only_python_files(
+        args.directory, git_root, excluded
+    )
 
     # Build the set of excluded decorator names
     exclude_decorators = set(args.exclude_decorator) if args.exclude_decorator else None
@@ -390,6 +572,14 @@ def main():
         info = _extract_file_info(py_file, exclude_decorators)
         if info is not None:
             file_infos.append(info)
+
+    usage_only_file_infos: list[_FileInfo] = []
+    for py_file in usage_only_python_files:
+        info = _extract_file_info(py_file, exclude_decorators)
+        if info is not None:
+            usage_only_file_infos.append(info)
+
+    usage_file_infos = file_infos + usage_only_file_infos
 
     # Collect all public symbols: {symbol_name: [file_path, ...]}
     all_symbols: dict[str, list[Path]] = {}
@@ -421,8 +611,15 @@ def main():
 
     # === SINGLE BATCH: Find all imported symbols at once ===
     # We need to check usage for: all public symbols + all private symbols + pragma symbols
-    all_symbols_to_check = set(all_symbols.keys()) | set(all_private_symbols.keys()) | set(all_pragmas.keys())
-    imported_symbols = _batch_search_usage(all_symbols_to_check, file_infos)
+    all_symbols_to_check = (
+        set(all_symbols.keys())
+        | set(all_private_symbols.keys())
+        | set(all_pragmas.keys())
+    )
+    tracked_modules = _build_tracked_module_names(git_root)
+    imported_symbols = _batch_search_usage(
+        all_symbols_to_check, usage_file_infos, tracked_modules
+    )
 
     # Apply --epic-symbol filters
     epic_errors = []
@@ -494,7 +691,6 @@ def main():
 
     # Validate pragmas (uses pre-computed imported_symbols instead of re-scanning)
     if all_pragmas:
-        git_root = _get_git_root()
         if git_root is None:
             print(
                 "Error: pyvision pragmas found but not inside a git repository",
