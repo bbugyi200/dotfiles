@@ -367,6 +367,11 @@ def _validate_pragmas(
 def _is_test_reference_path(ref_path: str) -> bool:
     """Return whether a pyvision pragma points at a Python test reference."""
     path = Path(ref_path)
+    return _is_test_file_path(path)
+
+
+def _is_test_file_path(path: Path) -> bool:
+    """Return whether a Python file path is a test file reference."""
     if any(part in {"test", "tests"} for part in path.parts):
         return True
     return path.suffix == ".py" and path.name.startswith("test_")
@@ -580,6 +585,9 @@ def main():
             usage_only_file_infos.append(info)
 
     usage_file_infos = file_infos + usage_only_file_infos
+    non_test_usage_file_infos = file_infos + [
+        info for info in usage_only_file_infos if not _is_test_file_path(info.path)
+    ]
 
     # Collect all public symbols: {symbol_name: [file_path, ...]}
     all_symbols: dict[str, list[Path]] = {}
@@ -714,8 +722,11 @@ def main():
 
     # Check that private symbols do NOT match import patterns
     imported_private_symbols = []
+    imported_private_symbol_names = _batch_search_usage(
+        set(all_private_symbols.keys()), non_test_usage_file_infos, tracked_modules
+    )
     for symbol_name, def_files in all_private_symbols.items():
-        if symbol_name in imported_symbols:
+        if symbol_name in imported_private_symbol_names:
             imported_private_symbols.append((symbol_name, def_files))
 
     if imported_private_symbols:

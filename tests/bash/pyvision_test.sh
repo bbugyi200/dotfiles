@@ -105,6 +105,35 @@ EOF
   assert_contains "Python test references are detected automatically" "${output}"
 }
 
+function test_pyvision_allows_private_imports_from_tracked_tests() {
+  local repo_dir
+  repo_dir="$(make_pyvision_repo)"
+  cat >"${repo_dir}/src/pkg/widgets.py" <<'EOF'
+def build_widget():
+    return _helper()
+
+
+def _helper():
+    return "widget"
+EOF
+  cat >"${repo_dir}/tests/test_widgets.py" <<'EOF'
+from pkg.widgets import _helper, build_widget
+
+
+def test_private_helper_usage():
+    assert _helper() == build_widget()
+EOF
+  track_repo_files "${repo_dir}"
+
+  local output
+  output="$(run_pyvision "${repo_dir}" 2>&1)"
+  local status=$?
+
+  rm -rf "${repo_dir}"
+  assert_same 0 "${status}"
+  assert_contains "All public/private classes/functions are used properly!" "${output}"
+}
+
 function test_pyvision_keeps_non_test_pragmas() {
   local repo_dir
   repo_dir="$(make_pyvision_repo)"
