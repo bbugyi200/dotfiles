@@ -67,7 +67,7 @@ axe:
       chops:
         - name: sase_pylimit_split
           description: "Run the #!sase/pylimit_split xprompt workflow"
-          agent: "#cd:/home/bryan/projects/github/sase-org/sase #!sase/pylimit_split %approve"
+          agent: "#gh:sase #!sase/pylimit_split %approve"
           run_every: 60m
         - name: sase_fix_just
           description: "Run the #!sase/fix_just xprompt workflow"
