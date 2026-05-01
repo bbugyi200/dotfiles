@@ -1,3 +1,65 @@
+workflows:
+  refresh_docs:
+    input:
+      project: { type: line, default: "sase" }
+      gh_ref: { type: line, default: "sase" }
+      threshold: { type: int, default: 50 }
+
+    steps:
+      - name: count_commits
+        hidden: true
+        python: |
+          import subprocess
+          from pathlib import Path
+
+          marker = Path.home() / ".sase" / "projects" / "{{ project }}" / "refresh_docs_marker"
+          head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+
+          if marker.exists():
+              parts = marker.read_text().strip().split()
+              last_sha = parts[0]
+              last_ts = parts[1] if len(parts) > 1 else None
+              check = subprocess.run(["git", "cat-file", "-t", last_sha], capture_output=True)
+              if check.returncode == 0:
+                  result = subprocess.check_output(
+                      ["git", "rev-list", "--count", f"{last_sha}..HEAD"], text=True
+                  )
+                  count = int(result.strip())
+              elif last_ts:
+                  result = subprocess.check_output(
+                      ["git", "rev-list", "--count", f"--after={last_ts}", "HEAD"], text=True
+                  )
+                  count = int(result.strip())
+              else:
+                  count = 999  # Old-format marker with no timestamp, force a refresh
+          else:
+              count = 999  # First run, force a refresh
+
+          print(f"count={count}")
+          print(f"head={head}")
+        output:
+          count: int
+          head: line
+
+      - name: run_docs
+        if: "{{ count_commits.count >= threshold }}"
+        agent: |
+          #gh:{{ gh_ref }} #sase/docs
+
+      - name: update_marker
+        if: "{{ count_commits.count >= threshold }}"
+        python: |
+          import subprocess
+          from pathlib import Path
+
+          head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+          ts = subprocess.check_output(["git", "log", "-1", "--format=%ct", "HEAD"], text=True).strip()
+          marker = Path.home() / ".sase" / "projects" / "{{ project }}" / "refresh_docs_marker"
+          marker.parent.mkdir(parents=True, exist_ok=True)
+          marker.write_text(f"{head} {ts}")
+          print("updated=true")
+        output: { updated: bool }
+
 axe:
   lumberjacks:
     run_every:
@@ -15,32 +77,32 @@ axe:
       interval: 60
       chops:
         - name: sase_refresh_docs
-          description: "Run the #!sase/refresh_docs xprompt workflow"
-          agent: "#gh:sase #!sase/refresh_docs"
+          description: "Run the #!refresh_docs xprompt workflow"
+          agent: "#gh:sase #!refresh_docs"
           run_every: 60m
         - name: sase_core_refresh_docs
-          description: "Run the #!sase/refresh_docs xprompt workflow for sase-core"
-          agent: "#gh:sase-org/sase-core #!sase/refresh_docs(project=sase-core, gh_ref=sase-org/sase-core, threshold=25)"
+          description: "Run the #!refresh_docs xprompt workflow for sase-core"
+          agent: "#gh:sase-org/sase-core #!refresh_docs(project=sase-core, gh_ref=sase-org/sase-core, threshold=25)"
           run_every: 60m
         - name: sase_gchat_refresh_docs
-          description: "Run the #!sase/refresh_docs xprompt workflow for sase-gchat"
-          agent: "#gh:sase-org/sase-gchat #!sase/refresh_docs(project=sase-gchat, gh_ref=sase-org/sase-gchat, threshold=25)"
+          description: "Run the #!refresh_docs xprompt workflow for sase-gchat"
+          agent: "#gh:sase-org/sase-gchat #!refresh_docs(project=sase-gchat, gh_ref=sase-org/sase-gchat, threshold=25)"
           run_every: 60m
         - name: sase_github_refresh_docs
-          description: "Run the #!sase/refresh_docs xprompt workflow for sase-github"
-          agent: "#gh:sase-org/sase-github #!sase/refresh_docs(project=sase-github, gh_ref=sase-org/sase-github, threshold=25)"
+          description: "Run the #!refresh_docs xprompt workflow for sase-github"
+          agent: "#gh:sase-org/sase-github #!refresh_docs(project=sase-github, gh_ref=sase-org/sase-github, threshold=25)"
           run_every: 60m
         - name: sase_google_refresh_docs
-          description: "Run the #!sase/refresh_docs xprompt workflow for sase-google"
-          agent: "#gh:sase-org/sase-google #!sase/refresh_docs(project=sase-google, gh_ref=sase-org/sase-google, threshold=25)"
+          description: "Run the #!refresh_docs xprompt workflow for sase-google"
+          agent: "#gh:sase-org/sase-google #!refresh_docs(project=sase-google, gh_ref=sase-org/sase-google, threshold=25)"
           run_every: 60m
         - name: sase_nvim_refresh_docs
-          description: "Run the #!sase/refresh_docs xprompt workflow for sase-nvim"
-          agent: "#gh:sase-org/sase-nvim #!sase/refresh_docs(project=sase-nvim, gh_ref=sase-org/sase-nvim, threshold=25)"
+          description: "Run the #!refresh_docs xprompt workflow for sase-nvim"
+          agent: "#gh:sase-org/sase-nvim #!refresh_docs(project=sase-nvim, gh_ref=sase-org/sase-nvim, threshold=25)"
           run_every: 60m
         - name: sase_telegram_refresh_docs
-          description: "Run the #!sase/refresh_docs xprompt workflow for sase-telegram"
-          agent: "#gh:sase-org/sase-telegram #!sase/refresh_docs(project=sase-telegram, gh_ref=sase-org/sase-telegram, threshold=25)"
+          description: "Run the #!refresh_docs xprompt workflow for sase-telegram"
+          agent: "#gh:sase-org/sase-telegram #!refresh_docs(project=sase-telegram, gh_ref=sase-org/sase-telegram, threshold=25)"
           run_every: 60m
     telegram:
       interval: 5
