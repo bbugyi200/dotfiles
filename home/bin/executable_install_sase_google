@@ -1,13 +1,14 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
 
 install=false
-if [[ "$1" == "-i" || "$1" == "--install" ]]; then
+if [[ "${1:-}" == "-i" || "${1:-}" == "--install" ]]; then
     install=true
     shift
 fi
 
+INSTALL_NAME="install_sase_google"
 SASE_ORG_DIR="$HOME"/projects/github/sase-org
 SASE_DIR="$SASE_ORG_DIR/sase"
 SASE_CORE_DIR="$SASE_ORG_DIR/sase-core"
@@ -15,6 +16,78 @@ SASE_CORE_RS_DIR="$SASE_CORE_DIR/crates/sase_core_py"
 SASE_GITHUB_DIR="$SASE_ORG_DIR/sase-github"
 SASE_GOOGLE_DIR="$SASE_ORG_DIR/sase-google"
 SASE_GCHAT_DIR="$SASE_ORG_DIR/sase-gchat"
+AXE_STATE_DIR="$HOME/.sase/axe"
+AXE_MAINTENANCE_FILE="$AXE_STATE_DIR/maintenance.json"
+AXE_PID_FILE="$AXE_STATE_DIR/pid"
+
+axe_was_running=false
+maintenance_active=false
+
+axe_pid() {
+    if [[ ! -s "$AXE_PID_FILE" ]]; then
+        return 1
+    fi
+    local pid
+    pid="$(<"$AXE_PID_FILE")"
+    if [[ "$pid" =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null; then
+        printf "%s\n" "$pid"
+        return 0
+    fi
+    return 1
+}
+
+enter_axe_maintenance() {
+    mkdir -p "$AXE_STATE_DIR"
+    cat > "$AXE_MAINTENANCE_FILE" <<EOF
+{
+  "reason": "$INSTALL_NAME",
+  "pid": $$,
+  "started_at": "$(date -Iseconds)"
+}
+EOF
+    maintenance_active=true
+}
+
+exit_axe_maintenance() {
+    rm -f "$AXE_MAINTENANCE_FILE"
+    maintenance_active=false
+}
+
+stop_axe_if_running() {
+    if axe_pid >/dev/null; then
+        axe_was_running=true
+        echo ">>> Axe is running; stopping it before modifying the uv-tool venv..."
+        if ! command -v sase >/dev/null 2>&1; then
+            echo "ERROR: axe is running, but 'sase' is not on PATH; cannot stop axe safely." >&2
+            return 1
+        fi
+        sase axe stop
+    fi
+}
+
+probe_uv_tool_health() {
+    local tool_venv
+    tool_venv="$(uv tool dir)/sase"
+    if [[ ! -x "$tool_venv/bin/python" ]]; then
+        echo "ERROR: missing uv-tool Python at $tool_venv/bin/python" >&2
+        return 1
+    fi
+    "$tool_venv/bin/python" -c 'import sase_core_rs; print("sase_core_rs import ok")'
+    sase core health --json
+}
+
+finish() {
+    local status=$?
+    if [[ "$status" -ne 0 && "$maintenance_active" == true ]]; then
+        echo "ERROR: $INSTALL_NAME failed; axe maintenance remains active at $AXE_MAINTENANCE_FILE." >&2
+        echo "ERROR: Axe was left stopped because the uv-tool sase environment may be incomplete." >&2
+    fi
+    exit "$status"
+}
+trap finish EXIT
+
+enter_axe_maintenance
+stop_axe_if_running
 
 for repo in "$SASE_DIR" "$SASE_CORE_DIR" "$SASE_GITHUB_DIR" "$SASE_GOOGLE_DIR" "$SASE_GCHAT_DIR"; do
     echo ">>> Syncing $repo..."
@@ -40,3 +113,18 @@ if $install; then
 fi
 echo ">>> Installing sase-core Rust backend into uv-tool venv..."
 just -f "$SASE_DIR/Justfile" rust-install-uv-tool
+
+echo ">>> Probing uv-tool sase health..."
+probe_uv_tool_health
+
+exit_axe_maintenance
+
+if [[ "$axe_was_running" == true ]]; then
+    echo ">>> Restarting axe..."
+    if ! sase axe start; then
+        echo "ERROR: $INSTALL_NAME succeeded, but axe restart failed." >&2
+        exit 1
+    fi
+fi
+
+echo ">>> $INSTALL_NAME complete."
