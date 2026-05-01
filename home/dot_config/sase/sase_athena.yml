@@ -11,9 +11,36 @@ axe:
           description: "Run the #!sase/fix_just xprompt workflow"
           agent: "#gh:sase #!sase/fix_just"
           run_every: 60m
+    refresh_docs:
+      interval: 60
+      chops:
         - name: sase_refresh_docs
           description: "Run the #!sase/refresh_docs xprompt workflow"
           agent: "#gh:sase #!sase/refresh_docs"
+          run_every: 60m
+        - name: sase_core_refresh_docs
+          description: "Run the #!sase/refresh_docs xprompt workflow for sase-core"
+          agent: "#gh:sase-org/sase-core #!sase/refresh_docs(project=sase-core, gh_ref=sase-org/sase-core, threshold=25)"
+          run_every: 60m
+        - name: sase_gchat_refresh_docs
+          description: "Run the #!sase/refresh_docs xprompt workflow for sase-gchat"
+          agent: "#gh:sase-org/sase-gchat #!sase/refresh_docs(project=sase-gchat, gh_ref=sase-org/sase-gchat, threshold=25)"
+          run_every: 60m
+        - name: sase_github_refresh_docs
+          description: "Run the #!sase/refresh_docs xprompt workflow for sase-github"
+          agent: "#gh:sase-org/sase-github #!sase/refresh_docs(project=sase-github, gh_ref=sase-org/sase-github, threshold=25)"
+          run_every: 60m
+        - name: sase_google_refresh_docs
+          description: "Run the #!sase/refresh_docs xprompt workflow for sase-google"
+          agent: "#gh:sase-org/sase-google #!sase/refresh_docs(project=sase-google, gh_ref=sase-org/sase-google, threshold=25)"
+          run_every: 60m
+        - name: sase_nvim_refresh_docs
+          description: "Run the #!sase/refresh_docs xprompt workflow for sase-nvim"
+          agent: "#gh:sase-org/sase-nvim #!sase/refresh_docs(project=sase-nvim, gh_ref=sase-org/sase-nvim, threshold=25)"
+          run_every: 60m
+        - name: sase_telegram_refresh_docs
+          description: "Run the #!sase/refresh_docs xprompt workflow for sase-telegram"
+          agent: "#gh:sase-org/sase-telegram #!sase/refresh_docs(project=sase-telegram, gh_ref=sase-org/sase-telegram, threshold=25)"
           run_every: 60m
     telegram:
       interval: 5
