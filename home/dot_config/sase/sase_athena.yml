@@ -86,27 +86,31 @@ axe:
         - name: sase_core_refresh_docs
           description: "Run the #!refresh_docs xprompt workflow for sase-core"
           agent: "#gh:sase-org/sase-core #!refresh_docs(project=sase-core, gh_ref=sase-org/sase-core, threshold=25)"
-          run_every: 60m
+          run_every: 24h
         - name: sase_gchat_refresh_docs
           description: "Run the #!refresh_docs xprompt workflow for sase-gchat"
           agent: "#gh:sase-org/sase-gchat #!refresh_docs(project=sase-gchat, gh_ref=sase-org/sase-gchat, threshold=25)"
-          run_every: 60m
+          run_every: 24h
         - name: sase_github_refresh_docs
           description: "Run the #!refresh_docs xprompt workflow for sase-github"
-          agent: "#gh:sase-org/sase-github #!refresh_docs(project=sase-github, gh_ref=sase-org/sase-github, threshold=25)"
-          run_every: 60m
+          agent:
+            "#gh:sase-org/sase-github #!refresh_docs(project=sase-github, gh_ref=sase-org/sase-github, threshold=25)"
+          run_every: 24h
         - name: sase_google_refresh_docs
           description: "Run the #!refresh_docs xprompt workflow for sase-google"
-          agent: "#gh:sase-org/sase-google #!refresh_docs(project=sase-google, gh_ref=sase-org/sase-google, threshold=25)"
-          run_every: 60m
+          agent:
+            "#gh:sase-org/sase-google #!refresh_docs(project=sase-google, gh_ref=sase-org/sase-google, threshold=25)"
+          run_every: 24h
         - name: sase_nvim_refresh_docs
           description: "Run the #!refresh_docs xprompt workflow for sase-nvim"
           agent: "#gh:sase-org/sase-nvim #!refresh_docs(project=sase-nvim, gh_ref=sase-org/sase-nvim, threshold=25)"
-          run_every: 60m
+          run_every: 24h
         - name: sase_telegram_refresh_docs
           description: "Run the #!refresh_docs xprompt workflow for sase-telegram"
-          agent: "#gh:sase-org/sase-telegram #!refresh_docs(project=sase-telegram, gh_ref=sase-org/sase-telegram, threshold=25)"
-          run_every: 60m
+          agent:
+            "#gh:sase-org/sase-telegram #!refresh_docs(project=sase-telegram, gh_ref=sase-org/sase-telegram,
+            threshold=25)"
+          run_every: 24h
     telegram:
       interval: 5
       chops:
