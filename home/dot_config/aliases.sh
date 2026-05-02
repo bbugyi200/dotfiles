@@ -24,6 +24,7 @@ alias run='sase run'
 alias sam='sase memory'
 alias sat='sase telemetry'
 alias sbd='sase bead'
+alias sdd='sase sdd'
 alias xp='sase xprompt'
 
 # ---------- cookie Aliases / Functions ----------
