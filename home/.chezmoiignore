@@ -2,6 +2,6 @@ tags
 {{ if ne .chezmoi.fqdnHostname "bbugyi.c.googlers.com" }}
 .config/sase/sase_work.yml
 {{ end }}
-{{ if ne .chezmoi.hostname "athena" }}
+{{ if and (ne .chezmoi.hostname "athena") (ne .chezmoi.hostname "apollo") }}
 .config/sase/sase_athena.yml
 {{ end }}
