@@ -6,8 +6,8 @@
 --- - Replacing buffers with related files
 --- - Splitting (horizontally OR vertically) windows to open related files
 
-local search = require("zorg.util.search")
-local run_open_zorg_action = require("zorg.util.run_open_zorg_action")
+local search = require("legacy_zorg.util.search")
+local run_open_zorg_action = require("legacy_zorg.util.run_open_zorg_action")
 
 --- Navigates to a related file based on a specified key.
 ---

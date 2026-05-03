@@ -1,6 +1,6 @@
 require("luasnip.loaders.from_lua").load({ paths = { "~/org/cfg/luasnippets" } })
 
-local run_open_zorg_action = require("zorg.util.run_open_zorg_action")
+local run_open_zorg_action = require("legacy_zorg.util.run_open_zorg_action")
 local bb = require("bb_utils")
 
 --- Deletes the extension ".zo" if it is positioned directly before the cursor.

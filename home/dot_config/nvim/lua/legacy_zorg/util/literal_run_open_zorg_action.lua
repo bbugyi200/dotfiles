@@ -1,4 +1,4 @@
-local search = require("zorg.util.search")
+local search = require("legacy_zorg.util.search")
 
 --- Numbers and formats a list of options for a prompt.
 ---
