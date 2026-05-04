@@ -16,7 +16,20 @@ return {
 					command = executable_or_fallback("~/projects/github/zettel-org/zorg/target/debug/zorg", "zorg"),
 				},
 				mappings = {
-					enabled = false,
+					enabled = true,
+					prefix = "<leader>z",
+					keys = {
+						capture = "c",
+						export_current = "e",
+						fix = "f",
+						index = "r",
+						open = "o",
+						query = "q",
+						status = "s",
+						watch_start = "w",
+						watch_status = "S",
+						watch_stop = "W",
+					},
 				},
 				lsp = {
 					command = {
