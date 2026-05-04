@@ -24,7 +24,7 @@ Commit changes via the `sase commit` command.
 
 4. **Check for bead association** — Run `sase bead list --status=in_progress` to see if there's an in-progress bead
    related to your changes. If so, include `--bead-id <id>` in the commit command (step 5). You do NOT need to manually
-   close the bead or stage `.sase_beads/` — the commit workflow handles this automatically.
+   close the bead or stage `sdd/beads/` — the commit workflow handles this automatically.
 
 5. **Run the commit** — Execute:
 
