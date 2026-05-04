@@ -10,6 +10,9 @@ end
 return {
 	{
 		"zettel-org/zorg-nvim",
+		init = function()
+			vim.g.loaded_zorg_nvim = 1
+		end,
 		config = function()
 			require("zorg").setup({
 				cli = {
