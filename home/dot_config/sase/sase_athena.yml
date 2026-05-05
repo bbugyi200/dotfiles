@@ -8,7 +8,6 @@ workflows:
   refresh_docs:
     input:
       project: { type: line, default: "sase" }
-      gh_ref: { type: line, default: "sase" }
       threshold: { type: int, default: 50 }
 
     steps:
