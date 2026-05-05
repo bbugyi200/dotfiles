@@ -1,6 +1,9 @@
 chat_install:
   command: "install_sase_github"
 
+llm_provider:
+  provider: codex
+
 workflows:
   refresh_docs:
     input:
