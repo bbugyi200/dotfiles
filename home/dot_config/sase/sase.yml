@@ -1,6 +1,8 @@
 timezone: "America/New_York"
 use_chezmoi: true
 precommit_command: "sase_git_fix"
+llm_provider:
+  provider: codex
 github_orgs:
   - bbugyi200
   - sase-org
