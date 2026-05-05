@@ -43,7 +43,7 @@ require("config.commands")
 -- Configure autocmds that are NOT specific to a plugin.
 require("config.autocmds")
 -- Configuration for *.zo (zorg) files.
-require("config.zorg")
+require("config.pyzorg")
 -- Configuration for the built-in LSP client.
 require("config.lsp")
 -- Configure lazy.nvim and ALL plugins specified via plugins/*.lua files!
