@@ -63,6 +63,9 @@ ace:
 
 telemetry:
   enabled: true
+  prometheus:
+    exposition_port: 9464
+    pushgateway_url: "localhost:9091"
 
 xprompts:
   # snippets
