@@ -7,6 +7,22 @@ description:
 Quick reference for inspecting SASE unified artifacts. Prefer JSON for discovery and summaries. Do not add, remove, or
 rebuild artifacts unless the user explicitly asks for a mutating operation.
 
+## Mental Model
+
+The artifact graph is an index over existing SASE state. It does not own or delete source files. Rebuilds refresh
+derived rows from project files, bead stores, workspace paths, and agent artifact directories.
+
+Important IDs and link directions:
+
+- `/` is the root artifact.
+- Files and directories use absolute normalized paths.
+- ChangeSpecs use the ChangeSpec `NAME`; commits use `<changespec_name>:<commit_number>`.
+- Beads use bead IDs such as `sase-23.5.6`.
+- Agents use stable agent names when present. Legacy unnamed agents use `agent:<project>:<workflow>:<timestamp>`.
+- Thoughts use `thought:<sha256-prefix>`.
+- `parent` points child -> parent, `created` points agent -> created artifact, `worker` points bead -> agent, and
+  `related` connects non-owning relationships.
+
 ## Primary Discovery
 
 ```bash
@@ -81,6 +97,22 @@ sase artifact doctor -j
 `rebuild` mutates derived graph rows in the artifact index. Use it for stale-index troubleshooting, not for routine
 read-only discovery.
 
+Common doctor issues:
+
+- `fallback_agent_id` - a legacy unnamed agent was indexed with a deterministic fallback ID.
+- `unresolved_timestamp_link` - retry, question, or follow-up metadata references an agent timestamp that was not
+  indexed.
+- `unresolved_changespec_reference` - metadata or a bead references a missing ChangeSpec.
+- `unresolved_bead_reference` - metadata references a missing bead.
+- `stale_derived` - stale cleanup marked a derived row whose source disappeared.
+
+For missing current context, prefer targeted rebuilds over full rebuilds:
+
+- `sase artifact rebuild -j -t <project_or_file_path>` - refresh one project or file path.
+- `sase artifact rebuild -j -b <workspace>/sdd/beads -S bead_store` - refresh a bead store.
+- `sase artifact rebuild -j -a <artifact_dir> -S agent_artifact -S agent_created_file` - refresh one agent directory.
+- `sase artifact rebuild -j -c mark` - mark stale derived rows after intentional source removal.
+
 ## Mutating Commands
 
 These commands change the artifact index and require explicit user intent:
@@ -92,3 +124,5 @@ These commands change the artifact index and require explicit user intent:
 - `sase artifact rebuild -j` - rebuild derived graph rows.
 
 When mutating, prefer `-j`, report affected node/link IDs and tombstone IDs, and stop if the command reports errors.
+Tombstones suppress graph rows or links; they do not delete the source project file, bead record, marker file, response,
+diff, or transcript.
