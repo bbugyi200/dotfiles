@@ -21,6 +21,7 @@ AXE_PID_FILE="$AXE_STATE_DIR/pid"
 
 axe_was_running=false
 maintenance_active=false
+sync_warnings=()
 
 axe_pid() {
     if [[ ! -s "$AXE_PID_FILE" ]]; then
@@ -64,6 +65,62 @@ stop_axe_if_running() {
     fi
 }
 
+record_sync_warning() {
+    local repo="$1"
+    local reason="$2"
+    sync_warnings+=("$repo: $reason")
+}
+
+repo_is_dirty() {
+    local repo="$1"
+    local status_output
+    if ! status_output="$(git -C "$repo" status --porcelain)"; then
+        return 2
+    fi
+    [[ -n "$status_output" ]]
+}
+
+sync_repo_best_effort() {
+    local repo="$1"
+    local dirty_status
+
+    echo ">>> Syncing $repo..."
+
+    if ! git -C "$repo" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        record_sync_warning "$repo" "not a git repository or path is missing"
+        return 0
+    fi
+
+    if repo_is_dirty "$repo"; then
+        record_sync_warning "$repo" "dirty worktree; skipped pull"
+        return 0
+    else
+        dirty_status=$?
+        if ((dirty_status != 1)); then
+            record_sync_warning "$repo" "git status failed; using local checkout"
+            return 0
+        fi
+    fi
+
+    if ! git -C "$repo" pull --ff-only; then
+        record_sync_warning "$repo" "git pull --ff-only failed; using local checkout"
+        return 0
+    fi
+}
+
+print_sync_summary() {
+    if ((${#sync_warnings[@]} == 0)); then
+        echo ">>> Repo sync complete."
+        return
+    fi
+
+    echo "WARNING: Some repos were not synced; continuing with local checkouts." >&2
+    local warning
+    for warning in "${sync_warnings[@]}"; do
+        echo "WARNING: $warning" >&2
+    done
+}
+
 probe_uv_tool_health() {
     local tool_venv
     tool_venv="$(uv tool dir)/sase"
@@ -89,9 +146,9 @@ enter_axe_maintenance
 stop_axe_if_running
 
 for repo in "$SASE_DIR" "$SASE_CORE_DIR" "$SASE_GITHUB_DIR" "$SASE_TELEGRAM_DIR"; do
-    echo ">>> Syncing $repo..."
-    git -C "$repo" pull
+    sync_repo_best_effort "$repo"
 done
+print_sync_summary
 
 if [[ ! -f "$SASE_CORE_RS_DIR/pyproject.toml" ]]; then
     echo "ERROR: Missing local sase-core-rs project: $SASE_CORE_RS_DIR/pyproject.toml" >&2
