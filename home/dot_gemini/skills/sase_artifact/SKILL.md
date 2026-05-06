@@ -12,6 +12,9 @@ rebuild artifacts unless the user explicitly asks for a mutating operation.
 The artifact graph is an index over existing SASE state. It does not own or delete source files. Rebuilds refresh
 derived rows from project files, bead stores, workspace paths, and agent artifact directories.
 
+`sase ace` startup must not run broad unified artifact sync, rebuild, list, show, search, or summary operations before
+first paint. Treat historical index repair as an explicit user-requested operation.
+
 Important IDs and link directions:
 
 - `/` is the root artifact.
@@ -48,6 +51,24 @@ Directory artifacts are sparse: `/` is always present, and non-root directories 
 non-directory artifacts.
 
 If the list is empty, say "no matching artifacts found" plainly. Do not infer artifact details from names alone.
+
+## TUI Panel Contract
+
+In `sase ace`, `A` opens the artifact panel for the current row. Panel behavior to preserve when advising users or
+debugging regressions:
+
+- `j`/`k` move rows; `enter` opens an artifact row or loads a `show more` page.
+- `/` is a local filter over loaded rows and should not call `artifact_search`.
+- `S` is bounded global search through `sase artifact search`.
+- Apostrophe starts row-jump mode for relationship rows, search rows, and `show more` rows.
+- `b`/`f` navigate panel history, `p` opens the parent, `r` opens `/`, and `g`/`G` preview or export a bounded graph.
+
+Missing artifacts may trigger one targeted refresh for the current context. Do not imply that opening the panel runs a
+broad historical `sync` or `rebuild`; advise manual repair commands when the targeted refresh still misses.
+
+CL and Agent rows use compact artifact indicators from one batched summary query per visible-list refresh. The counts
+summarize linked artifacts by semantic file type and non-file kind, and hot `j`/`k` navigation should use cached rows
+without issuing artifact summary queries.
 
 ## Exact Inspection
 
@@ -103,7 +124,7 @@ sase artifact doctor -j
 ```
 
 `sync` is an explicit historical sync/backfill alias for `rebuild`; it mutates derived graph rows in the artifact index
-and is not run on startup. Use it for stale-index troubleshooting, not for routine read-only discovery.
+and is not run on `sase ace` startup. Use it for stale-index troubleshooting, not for routine read-only discovery.
 
 New artifact writes are indexed by existing targeted refresh paths where SASE knows the changed source. Historical
 backfill still requires explicit `sync` or `rebuild`.
