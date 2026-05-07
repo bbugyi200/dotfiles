@@ -16,6 +16,25 @@ local function create_dir(file, buf)
 	end
 end
 
+-- AUTOCMD: Show a toast and continue editing when Neovim finds a swap file.
+pcall(vim.api.nvim_clear_autocmds, { group = "nvim.swapfile", event = "SwapExists" })
+vim.api.nvim_create_autocmd("SwapExists", {
+	group = vim.api.nvim_create_augroup("BBSwapExists", { clear = true }),
+	callback = function()
+		local file = vim.fn.expand("<afile>")
+		local swapname = vim.v.swapname
+		local swapcommand = vim.v.swapcommand
+		local message = string.format("Opening %s despite existing swap file:\n%s", file, swapname)
+
+		if swapcommand ~= "" then
+			message = message .. "\nCommand: " .. swapcommand
+		end
+
+		vim.v.swapchoice = "e"
+		vim.notify(message, vim.log.levels.WARN, { title = "Swap file exists" })
+	end,
+})
+
 -- AUTOCMD: Configure LSP document highlight (only if server supports it)
 local function lsp_document_highlight()
 	for _, client in ipairs(vim.lsp.get_clients({ bufnr = 0 })) do
