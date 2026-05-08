@@ -22,14 +22,10 @@ Commit changes via the `sase commit` command.
 3. **Write a commit message file** — Create a file (e.g., `commit_message.md`) containing the commit message. **NEVER
    mention "OpenCode"** — write as if a human authored the commit.
 
-4. **Check for bead association** — Run `sase bead list --status=in_progress` to see if there's an in-progress bead
-   related to your changes. If so, include `--bead-id <id>` in the commit command (step 5). You do NOT need to manually
-   close the bead or stage `sdd/beads/` — the commit workflow handles this automatically.
-
-5. **Run the commit** — Execute:
+4. **Run the commit** — Execute:
 
    ```bash
-   sase commit -M commit_message.md -f file1.py -f file2.py --bead-id <bead-id>
+   sase commit -M commit_message.md -f file1.py -f file2.py
    ```
 
    Flags:
@@ -37,14 +33,13 @@ Commit changes via the `sase commit` command.
    - `-m`: Inline commit message string (alternative to `-M`). `-m` and `-M` are mutually exclusive.
    - `-f`: File to stage (repeat for multiple files). **Include both modified AND newly created (untracked) files.**
      Omit to stage all changes (including untracked files).
-   - `--bead-id`: Include if there's an in-progress bead for your changes.
    - `--name`: Branch name (only needed for `create_pull_request` method).
 
    The `$SASE_COMMIT_METHOD` environment variable is read automatically to determine the dispatch method
    (`create_commit`, `create_proposal`, or `create_pull_request`). Do NOT pass `--type` unless you need to override.
    Short aliases are also accepted: `commit`, `propose`, `pr`.
 
-6. **Verify clean and pushed** — For git repos, `sase commit` normally pushes commits as part of the `create_commit`
+5. **Verify clean and pushed** — For git repos, `sase commit` normally pushes commits as part of the `create_commit`
    workflow. After it exits successfully, run:
 
    ```bash
@@ -57,7 +52,7 @@ Commit changes via the `sase commit` command.
 ## Example
 
 ```bash
-sase commit -M commit_message.md -f src/auth.py -f src/login.py --bead-id sase-42
+sase commit -M commit_message.md -f src/auth.py -f src/login.py
 ```
 
 ## On Merge Conflict
