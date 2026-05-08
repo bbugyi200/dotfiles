@@ -20,7 +20,7 @@ Commit changes via the `sase commit` command.
    - `chore` — Build scripts, CI/CD, deps, docs, or other non-production changes
 
 3. **Write a commit message file** — Create a file (e.g., `commit_message.md`) containing the commit message. **NEVER
-   mention "Gemini" or "Gemini CLI"** — write as if a human authored the commit.
+   mention "Qwen" or "Qwen Code"** — write as if a human authored the commit.
 
 4. **Check for bead association** — Run `sase bead list --status=in_progress` to see if there's an in-progress bead
    related to your changes. If so, include `--bead-id <id>` in the commit command (step 5). You do NOT need to manually
