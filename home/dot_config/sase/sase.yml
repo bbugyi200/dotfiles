@@ -49,6 +49,7 @@ ace:
     im: "IMPORTANT: "
     jya: "Justify your answer."
     key: "the `$1` keymap"
+    keyy: "a new `$1` keymap"
     logp:
       "This issue is occurring on another machine that uses the ../sase-google plugin. I've saved a `sase logs` logpack
       to the ~/tmp/$1/ directory to help you figure this out."
