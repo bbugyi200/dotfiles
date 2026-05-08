@@ -81,7 +81,7 @@ xprompts:
   nvim:
     snippet: true
     content: "Neovim (my neovim config lives in my chezmoi repo)"
-  revchat:
+  rchat:
     snippet: true
     content: "Review recent, related sase agent chats for context."
   # VCS project aliases
