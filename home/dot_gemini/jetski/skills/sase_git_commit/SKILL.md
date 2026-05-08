@@ -10,7 +10,8 @@ Commit changes via the `sase commit` command.
 
 ## Instructions
 
-1. **Examine uncommitted changes** — Run `git status` and `git diff` to understand what files have changed and why.
+1. **Examine uncommitted changes** — Run `git status` and `git diff` to understand what files have changed and why. Pay
+   attention to **untracked files** (newly created files) shown in `git status` — these must also be staged.
 
 2. **Determine the commit tag** — Pick the correct conventional commit tag:
    - `feat` — New feature, feature improvement, or feature removal
@@ -19,33 +20,39 @@ Commit changes via the `sase commit` command.
    - `chore` — Build scripts, CI/CD, deps, docs, or other non-production changes
 
 3. **Write a commit message file** — Create a file (e.g., `commit_message.md`) containing the commit message. **NEVER
-   mention "Jetski" or "Jetski CLI"** — write as if a human authored the commit.
+   mention "Gemini" or "Gemini CLI"** — write as if a human authored the commit.
 
-4. **Check for bead association** — Run `sase bead list --status=in_progress` to see if there's an in-progress bead
-   related to your changes. If so, include `--bead-id <id>` in the commit command (step 5). You do NOT need to manually
-   close the bead or stage `.sase_beads/` — the commit workflow handles this automatically.
-
-5. **Run the commit** — Execute:
+4. **Run the commit** — Execute:
 
    ```bash
-   sase commit -M commit_message.md -f file1.py -f file2.py --bead-id <bead-id>
+   sase commit -M commit_message.md -f file1.py -f file2.py
    ```
 
    Flags:
    - `-M`: Path to file containing the commit message. The file is deleted after reading.
    - `-m`: Inline commit message string (alternative to `-M`). `-m` and `-M` are mutually exclusive.
-   - `-f`: File to stage (repeat for multiple files). Omit to stage all changes.
-   - `--bead-id`: Include if there's an in-progress bead for your changes.
+   - `-f`: File to stage (repeat for multiple files). **Include both modified AND newly created (untracked) files.**
+     Omit to stage all changes (including untracked files).
    - `--name`: Branch name (only needed for `create_pull_request` method).
 
    The `$SASE_COMMIT_METHOD` environment variable is read automatically to determine the dispatch method
    (`create_commit`, `create_proposal`, or `create_pull_request`). Do NOT pass `--type` unless you need to override.
    Short aliases are also accepted: `commit`, `propose`, `pr`.
 
+5. **Verify clean and pushed** — For git repos, `sase commit` normally pushes commits as part of the `create_commit`
+   workflow. After it exits successfully, run:
+
+   ```bash
+   git status --short --branch
+   ```
+
+   Do not declare the commit finished while the repo is dirty or ahead of its upstream. If the branch is still ahead of
+   upstream, run `git push`. If pushing fails, fix the issue or report the push failure clearly.
+
 ## Example
 
 ```bash
-sase commit -M commit_message.md -f src/auth.py -f src/login.py --bead-id sase-42
+sase commit -M commit_message.md -f src/auth.py -f src/login.py
 ```
 
 ## On Merge Conflict
