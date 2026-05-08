@@ -376,6 +376,7 @@ info() {
     apropos "$@"
   }
 }
+alias icat='kitten icat'
 alias iotop='sudo iotop'
 alias ipdb='ipdb3'
 alias iplug='vim +PlugInstall +qall'
