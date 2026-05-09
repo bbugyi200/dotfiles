@@ -276,3 +276,75 @@ EOF
   assert_same 1 "${status}"
   assert_contains "external repository '${remote_url}' does not reference symbol 'WidgetFactory'" "${output}"
 }
+
+function test_pyvision_external_api_root_proves_return_record_surface() {
+  local repo_dir external_repo remote_url
+  repo_dir="$(make_pyvision_repo)"
+  remote_url="https://github.com/example/pyvision-api-surface-consumer.git"
+  external_repo="$(make_external_pyvision_repo "${remote_url}")"
+  cat >"${repo_dir}/src/pkg/items.py" <<EOF
+from dataclasses import dataclass
+
+
+@dataclass
+class ItemEntry:
+    name: str
+
+
+@dataclass
+class ItemListing:
+    entries: list[ItemEntry]
+
+
+# pyvision: ${remote_url}
+def list_items() -> ItemListing:
+    return ItemListing([ItemEntry("one")])
+EOF
+  cat >"${external_repo}/consumer/items.py" <<'EOF'
+from pkg.items import list_items
+
+
+def render_items():
+    return [entry.name for entry in list_items().entries]
+EOF
+  track_repo_files "${repo_dir}"
+  track_repo_files "${external_repo}"
+
+  local output
+  output="$(
+    PYVISION_EXTERNAL_REPO_PATHS="${external_repo}" run_pyvision "${repo_dir}" 2>&1
+  )"
+  local status=$?
+
+  rm -rf "${repo_dir}" "${external_repo}"
+  assert_same 0 "${status}"
+  assert_contains "All public/private classes/functions are used properly!" "${output}"
+}
+
+function test_pyvision_unused_public_class_dependency_still_fails() {
+  local repo_dir
+  repo_dir="$(make_pyvision_repo)"
+  cat >"${repo_dir}/src/pkg/items.py" <<'EOF'
+from dataclasses import dataclass
+
+
+@dataclass
+class StaleRecord:
+    name: str
+
+
+@dataclass
+class UnusedWrapper:
+    record: StaleRecord
+EOF
+  track_repo_files "${repo_dir}"
+
+  local output
+  output="$(run_pyvision "${repo_dir}" 2>&1)"
+  local status=$?
+
+  rm -rf "${repo_dir}"
+  assert_same 1 "${status}"
+  assert_contains "StaleRecord" "${output}"
+  assert_contains "UnusedWrapper" "${output}"
+}

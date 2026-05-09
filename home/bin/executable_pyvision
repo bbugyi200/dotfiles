@@ -40,6 +40,8 @@ class _FileInfo:
     module_aliases: dict[str, set[str]] = field(default_factory=dict)
     # Dotted attribute chains found in the file, split into name components.
     attribute_chains: list[tuple[str, ...]] = field(default_factory=list)
+    # Public symbols referenced from each public symbol's explicit API surface.
+    api_dependency_candidates: dict[str, set[str]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -132,6 +134,81 @@ def _attribute_chain(node: ast.AST) -> tuple[str, ...] | None:
     return tuple(parts)
 
 
+def _referenced_names(node: ast.AST | None) -> set[str]:
+    """Collect simple public-looking names referenced by an expression."""
+    if node is None:
+        return set()
+
+    names: set[str] = set()
+    for child in ast.walk(node):
+        if isinstance(child, ast.Name):
+            names.add(child.id)
+        elif isinstance(child, ast.Attribute):
+            names.add(child.attr)
+    return {name for name in names if not name.startswith("_")}
+
+
+def _call_name(node: ast.AST) -> str | None:
+    """Return the simple function/class name for a call expression."""
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        return node.attr
+    return None
+
+
+def _is_dataclass_definition(node: ast.ClassDef) -> bool:
+    """Return whether a class definition is decorated as a dataclass."""
+    for dec in node.decorator_list:
+        target = dec.func if isinstance(dec, ast.Call) else dec
+        if isinstance(target, ast.Name) and target.id == "dataclass":
+            return True
+        if isinstance(target, ast.Attribute):
+            chain = _attribute_chain(target)
+            if chain and chain[-1] == "dataclass":
+                return True
+    return False
+
+
+def _function_api_dependency_candidates(
+    node: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> set[str]:
+    """Collect explicit public API dependencies from a public function."""
+    candidates = _referenced_names(node.returns)
+    args = (
+        list(node.args.posonlyargs)
+        + list(node.args.args)
+        + list(node.args.kwonlyargs)
+    )
+    if node.args.vararg is not None:
+        args.append(node.args.vararg)
+    if node.args.kwarg is not None:
+        args.append(node.args.kwarg)
+    for arg in args:
+        candidates.update(_referenced_names(arg.annotation))
+
+    for child in ast.walk(node):
+        if isinstance(child, ast.Call):
+            name = _call_name(child.func)
+            if name and not name.startswith("_"):
+                candidates.add(name)
+    return candidates
+
+
+def _class_api_dependency_candidates(node: ast.ClassDef) -> set[str]:
+    """Collect explicit public API dependencies from a public class."""
+    candidates: set[str] = set()
+    for base in node.bases:
+        candidates.update(_referenced_names(base))
+
+    if _is_dataclass_definition(node):
+        for stmt in node.body:
+            if isinstance(stmt, ast.AnnAssign):
+                candidates.update(_referenced_names(stmt.annotation))
+
+    return candidates
+
+
 def _collect_usage_info(tree: ast.AST, info: _FileInfo) -> None:
     """Collect import and alias-qualified attribute usage using the AST."""
 
@@ -201,6 +278,13 @@ def _extract_file_info(
             info.private_def_lines[name] = node.lineno
         elif name != "main":
             info.public_symbols.append(name)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                candidates = _function_api_dependency_candidates(node)
+            else:
+                candidates = _class_api_dependency_candidates(node)
+            candidates.discard(name)
+            if candidates:
+                info.api_dependency_candidates[name] = candidates
 
         # Extract pragmas for this symbol
         if node.decorator_list:
@@ -520,12 +604,43 @@ def _external_repo_references_symbol(
     return _external_text_references_symbol(symbol_name, text_files)
 
 
+def _build_public_api_dependency_graph(
+    file_infos: list[_FileInfo], public_symbols: set[str]
+) -> dict[str, set[str]]:
+    """Build a conservative graph of explicit public API dependencies."""
+    graph: dict[str, set[str]] = {}
+    for info in file_infos:
+        for symbol_name, candidates in info.api_dependency_candidates.items():
+            dependencies = candidates & public_symbols
+            dependencies.discard(symbol_name)
+            if dependencies:
+                graph.setdefault(symbol_name, set()).update(dependencies)
+    return graph
+
+
+def _reachable_api_dependencies(
+    roots: set[str], dependency_graph: dict[str, set[str]]
+) -> set[str]:
+    """Return public API symbols reachable from externally proven roots."""
+    reachable: set[str] = set()
+    stack = list(roots)
+    while stack:
+        symbol_name = stack.pop()
+        for dependency in dependency_graph.get(symbol_name, set()):
+            if dependency in reachable or dependency in roots:
+                continue
+            reachable.add(dependency)
+            stack.append(dependency)
+    return reachable
+
+
 def _validate_pragmas(
     all_pragmas: dict[str, list[_PragmaInfo]],
     git_root: Path,
     imported_symbols: set[str],
     tracked_modules: set[str],
     external_repo_paths: list[Path],
+    externally_used_symbols: set[str],
 ) -> list[str]:
     """Validate all collected pragmas and return a list of error strings."""
     errors: list[str] = []
@@ -589,6 +704,8 @@ def _validate_pragmas(
                         f"{prefix} external repository '{pragma.ref_path}'"
                         f" does not reference symbol '{name}'"
                     )
+                else:
+                    externally_used_symbols.add(name)
                 continue
 
             ref_file = git_root / pragma.ref_path
@@ -869,6 +986,9 @@ def main():
             if symbol not in all_symbols:
                 all_symbols[symbol] = []
             all_symbols[symbol].append(info.path)
+    public_api_dependency_graph = _build_public_api_dependency_graph(
+        file_infos, set(all_symbols)
+    )
 
     # Exclude symbols referenced as entry points in pyproject.toml
     pyproject_path = _find_pyproject_toml(args.directory)
@@ -977,6 +1097,7 @@ def main():
         all_symbols.pop(symbol, None)
 
     # Validate pragmas (uses pre-computed imported_symbols instead of re-scanning)
+    externally_used_symbols: set[str] = set()
     if all_pragmas:
         if git_root is None:
             print(
@@ -991,11 +1112,18 @@ def main():
             imported_symbols,
             tracked_modules,
             external_repo_paths,
+            externally_used_symbols,
         )
         if pragma_errors:
             for err in pragma_errors:
                 print(err, file=sys.stderr)
             return 1
+
+        imported_symbols.update(
+            _reachable_api_dependencies(
+                externally_used_symbols, public_api_dependency_graph
+            )
+        )
 
         # Remove pragma-covered symbols from the unused check
         for symbol_name in all_pragmas:
