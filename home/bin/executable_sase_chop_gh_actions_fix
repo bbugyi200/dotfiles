@@ -231,7 +231,7 @@ def build_prompt(repo: str, run: dict[str, Any], failure_output: str) -> str:
     url = run.get("url") or "unknown"
 
     parts = [
-        f"#gh:{repo} %t:chop %t:gact %n:{agent_name}",
+        f"#gh:{repo} %t:gact %n:{agent_name}",
         "",
         "The latest completed GitHub Actions run failed. Diagnose the root cause, fix the repository, "
         "and run the relevant checks. Do not commit unless explicitly requested.",
