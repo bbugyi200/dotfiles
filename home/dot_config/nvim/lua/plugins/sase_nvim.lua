@@ -9,6 +9,7 @@ return {
 				},
 				lsp = {
 					enabled = true,
+					native_completion = false,
 				},
 			})
 		end,
