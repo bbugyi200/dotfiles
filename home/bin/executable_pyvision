@@ -3,11 +3,14 @@
 
 import argparse
 import ast
+import hashlib
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tomllib
+import urllib.parse
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -39,6 +42,14 @@ class _FileInfo:
     attribute_chains: list[tuple[str, ...]] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class _ExternalRepoTarget:
+    raw: str
+    normalized: str
+    clone_url: str | None
+    direct_path: Path | None = None
+
+
 def _get_git_root(directory: Path | None = None) -> Path | None:
     """Get the git repository root directory."""
     cmd = ["git"]
@@ -53,6 +64,19 @@ def _get_git_root(directory: Path | None = None) -> Path | None:
     if result.returncode != 0:
         return None
     return Path(result.stdout.strip())
+
+
+def _get_git_origin(directory: Path) -> str | None:
+    """Return a git repository's origin URL, if one is configured."""
+    result = subprocess.run(
+        ["git", "-C", str(directory), "config", "--get", "remote.origin.url"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return None
+    origin = result.stdout.strip()
+    return origin or None
 
 
 def _get_decorator_names(node: ast.AST) -> set[str]:
@@ -279,10 +303,229 @@ def _batch_check_private_in_file(
     return used, unused
 
 
+def _is_external_repo_target(ref_path: str) -> bool:
+    """Return whether a pragma target is an external repository URI."""
+    if re.match(r"^[A-Za-z][A-Za-z0-9+.-]*://", ref_path):
+        return True
+    return bool(re.match(r"^[^@\s]+@[^:\s]+:.+$", ref_path))
+
+
+def _strip_git_suffix(path: str) -> str:
+    path = path.rstrip("/")
+    if path.endswith(".git"):
+        path = path[:-4]
+    return path
+
+
+def _normalize_git_remote(remote: str) -> _ExternalRepoTarget | None:
+    """Normalize equivalent git remote strings for matching local checkouts."""
+    raw = remote.strip()
+    if not raw:
+        return None
+
+    scp_match = re.match(r"^(?P<user>[^@\s]+)@(?P<host>[^:\s]+):(?P<path>.+)$", raw)
+    if scp_match:
+        host = scp_match.group("host").lower()
+        repo_path = _strip_git_suffix(scp_match.group("path")).lower()
+        return _ExternalRepoTarget(
+            raw=raw,
+            normalized=f"git:{host}/{repo_path}",
+            clone_url=raw,
+        )
+
+    parsed = urllib.parse.urlparse(raw)
+    if parsed.scheme in {"http", "https", "ssh"} and parsed.netloc:
+        host = parsed.hostname.lower() if parsed.hostname else parsed.netloc.lower()
+        repo_path = urllib.parse.unquote(parsed.path).lstrip("/")
+        repo_path = _strip_git_suffix(repo_path).lower()
+        return _ExternalRepoTarget(
+            raw=raw,
+            normalized=f"git:{host}/{repo_path}",
+            clone_url=raw,
+        )
+
+    if parsed.scheme == "file":
+        direct_path = Path(urllib.parse.unquote(parsed.path)).expanduser()
+        return _ExternalRepoTarget(
+            raw=raw,
+            normalized=f"file:{direct_path.resolve()}",
+            clone_url=raw,
+            direct_path=direct_path,
+        )
+
+    return None
+
+
+def _normalizes_to_same_remote(left: str, right: str) -> bool:
+    left_target = _normalize_git_remote(left)
+    right_target = _normalize_git_remote(right)
+    if left_target is None or right_target is None:
+        return False
+    return left_target.normalized == right_target.normalized
+
+
+def _iter_external_repo_candidates(
+    git_root: Path, external_repo_paths: list[Path]
+) -> list[Path]:
+    """Return explicit and nearby directories that may contain external repos."""
+    candidates: list[Path] = []
+    seen: set[Path] = set()
+
+    def add(candidate: Path) -> None:
+        try:
+            resolved = candidate.expanduser().resolve()
+        except OSError:
+            return
+        if resolved in seen or not resolved.is_dir():
+            return
+        seen.add(resolved)
+        candidates.append(resolved)
+
+    for candidate in external_repo_paths:
+        add(candidate)
+
+    add(git_root.parent)
+    try:
+        for sibling in git_root.parent.iterdir():
+            if sibling == git_root:
+                continue
+            if sibling.is_dir():
+                add(sibling)
+    except OSError:
+        pass
+
+    return candidates
+
+
+def _cache_dir_for_external_repo(target: _ExternalRepoTarget) -> Path:
+    cache_root = Path(
+        os.environ.get(
+            "PYVISION_EXTERNAL_REPO_CACHE",
+            str(Path.home() / ".cache" / "pyvision" / "external-repos"),
+        )
+    ).expanduser()
+    digest = hashlib.sha256(target.normalized.encode("utf-8")).hexdigest()[:16]
+    slug = re.sub(r"[^A-Za-z0-9_.-]+", "-", target.normalized).strip("-")
+    return cache_root / f"{slug[:64]}-{digest}"
+
+
+def _resolve_external_repo(
+    ref_path: str, git_root: Path, external_repo_paths: list[Path]
+) -> tuple[Path | None, str | None]:
+    """Resolve an external repository pragma to a local git checkout."""
+    target = _normalize_git_remote(ref_path)
+    if target is None:
+        return None, f"unsupported external repository URI '{ref_path}'"
+
+    if target.direct_path is not None:
+        direct_root = _get_git_root(target.direct_path)
+        if direct_root is not None:
+            return direct_root, None
+        return None, f"could not resolve external repository '{ref_path}'"
+
+    for candidate in _iter_external_repo_candidates(git_root, external_repo_paths):
+        candidate_root = _get_git_root(candidate)
+        if candidate_root is None:
+            continue
+        origin = _get_git_origin(candidate_root)
+        if origin and _normalizes_to_same_remote(origin, ref_path):
+            return candidate_root, None
+
+    if target.clone_url is None or shutil.which("git") is None:
+        return None, f"could not resolve external repository '{ref_path}'"
+
+    cache_dir = _cache_dir_for_external_repo(target)
+    if cache_dir.exists():
+        cached_root = _get_git_root(cache_dir)
+        cached_origin = _get_git_origin(cache_dir) if cached_root else None
+        if cached_root and cached_origin and _normalizes_to_same_remote(
+            cached_origin, ref_path
+        ):
+            return cached_root, None
+        return None, (
+            f"external repository cache path '{cache_dir}' exists but does not"
+            f" match '{ref_path}'"
+        )
+
+    cache_dir.parent.mkdir(parents=True, exist_ok=True)
+    result = subprocess.run(
+        ["git", "clone", "--depth", "1", target.clone_url, str(cache_dir)],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip().splitlines()
+        suffix = f": {detail[-1]}" if detail else ""
+        return None, f"could not fetch external repository '{ref_path}'{suffix}"
+
+    cloned_root = _get_git_root(cache_dir)
+    if cloned_root is None:
+        return None, f"could not resolve external repository '{ref_path}'"
+    return cloned_root, None
+
+
+def _find_git_tracked_files(git_root: Path) -> list[Path]:
+    """Return all tracked files from a git repository."""
+    result = subprocess.run(
+        ["git", "-C", str(git_root), "ls-files", "-z"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return []
+    return [git_root / rel_path for rel_path in result.stdout.split("\0") if rel_path]
+
+
+def _external_python_references_symbol(
+    symbol_name: str,
+    external_python_files: list[Path],
+    tracked_modules: set[str],
+) -> bool:
+    file_infos: list[_FileInfo] = []
+    for py_file in external_python_files:
+        info = _extract_file_info(py_file)
+        if info is not None:
+            file_infos.append(info)
+    return symbol_name in _batch_search_usage({symbol_name}, file_infos, tracked_modules)
+
+
+def _external_text_references_symbol(symbol_name: str, tracked_files: list[Path]) -> bool:
+    pattern = re.compile(rf"\b{re.escape(symbol_name)}\b")
+    for file_path in tracked_files:
+        try:
+            content = file_path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        if pattern.search(content):
+            return True
+    return False
+
+
+def _external_repo_references_symbol(
+    symbol_name: str, external_repo_root: Path, tracked_modules: set[str]
+) -> bool:
+    tracked_files = [
+        path for path in _find_git_tracked_files(external_repo_root) if path.is_file()
+    ]
+    non_test_files = [
+        path
+        for path in tracked_files
+        if not _is_test_file_path(path.relative_to(external_repo_root))
+    ]
+    python_files = [path for path in non_test_files if path.suffix == ".py"]
+    text_files = [path for path in non_test_files if path.suffix != ".py"]
+
+    if _external_python_references_symbol(symbol_name, python_files, tracked_modules):
+        return True
+    return _external_text_references_symbol(symbol_name, text_files)
+
+
 def _validate_pragmas(
     all_pragmas: dict[str, list[_PragmaInfo]],
     git_root: Path,
     imported_symbols: set[str],
+    tracked_modules: set[str],
+    external_repo_paths: list[Path],
 ) -> list[str]:
     """Validate all collected pragmas and return a list of error strings."""
     errors: list[str] = []
@@ -303,7 +546,9 @@ def _validate_pragmas(
 
         test_pragma_errors = []
         for pragma in pragma_list:
-            if _is_test_reference_path(pragma.ref_path):
+            if not _is_external_repo_target(
+                pragma.ref_path
+            ) and _is_test_reference_path(pragma.ref_path):
                 prefix = f"Error: pyvision pragma in {pragma.source_file}:{pragma.pragma_line}:"
                 test_pragma_errors.append(
                     f"{prefix} referenced test file '{pragma.ref_path}' is forbidden"
@@ -329,6 +574,23 @@ def _validate_pragmas(
             prefix = (
                 f"Error: pyvision pragma in {pragma.source_file}:{pragma.pragma_line}:"
             )
+            if _is_external_repo_target(pragma.ref_path):
+                external_repo_root, resolve_error = _resolve_external_repo(
+                    pragma.ref_path, git_root, external_repo_paths
+                )
+                if external_repo_root is None:
+                    errors.append(f"{prefix} {resolve_error}")
+                    continue
+
+                if not _external_repo_references_symbol(
+                    name, external_repo_root, tracked_modules
+                ):
+                    errors.append(
+                        f"{prefix} external repository '{pragma.ref_path}'"
+                        f" does not reference symbol '{name}'"
+                    )
+                continue
+
             ref_file = git_root / pragma.ref_path
 
             # Referenced file doesn't exist
@@ -543,6 +805,17 @@ def main():
             " from unused-symbol analysis. Can be repeated."
         ),
     )
+    parser.add_argument(
+        "-E",
+        "--external-repo-path",
+        action="append",
+        default=[],
+        type=Path,
+        help=(
+            "Local external repository checkout to use for URI pragmas. Can be repeated."
+            " PYVISION_EXTERNAL_REPO_PATHS also accepts os.pathsep-separated paths."
+        ),
+    )
     args = parser.parse_args()
 
     if not args.directory.is_dir():
@@ -628,6 +901,12 @@ def main():
     imported_symbols = _batch_search_usage(
         all_symbols_to_check, usage_file_infos, tracked_modules
     )
+    env_external_repo_paths = [
+        Path(path)
+        for path in os.environ.get("PYVISION_EXTERNAL_REPO_PATHS", "").split(os.pathsep)
+        if path
+    ]
+    external_repo_paths = list(args.external_repo_path) + env_external_repo_paths
 
     # Apply --epic-symbol filters
     epic_errors = []
@@ -706,7 +985,13 @@ def main():
             )
             return 1
 
-        pragma_errors = _validate_pragmas(all_pragmas, git_root, imported_symbols)
+        pragma_errors = _validate_pragmas(
+            all_pragmas,
+            git_root,
+            imported_symbols,
+            tracked_modules,
+            external_repo_paths,
+        )
         if pragma_errors:
             for err in pragma_errors:
                 print(err, file=sys.stderr)
