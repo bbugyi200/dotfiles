@@ -1,0 +1,351 @@
+#!/usr/bin/env python3
+"""Launch a SASE fixer agent for the latest failed GitHub Actions run."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+from typing import Any
+
+ACTIONABLE_CONCLUSIONS = {
+    "action_required",
+    "failure",
+    "startup_failure",
+    "timed_out",
+}
+IGNORED_CONCLUSIONS = {
+    "cancelled",
+    "neutral",
+    "skipped",
+    "success",
+}
+LOG_LIMIT_BYTES = 60 * 1024
+STATE_FILE_NAME = "gh_actions_fix_seen.json"
+
+
+def log(message: str) -> None:
+    print(f"[gh_actions_fix] {message}")
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Launch a SASE agent for failed GitHub Actions runs.",
+    )
+    parser.add_argument(
+        "--context",
+        required=True,
+        help="Path to the SASE chop context JSON file.",
+    )
+    return parser.parse_args()
+
+
+def split_repos(value: str) -> list[str]:
+    return [part for part in re.split(r"[\s,]+", value.strip()) if part]
+
+
+def load_context(path: Path) -> dict[str, Any]:
+    try:
+        return json.loads(path.read_text())
+    except OSError as exc:
+        raise RuntimeError(f"failed to read context file {path}: {exc}") from exc
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"failed to parse context JSON {path}: {exc}") from exc
+
+
+def load_seen(path: Path) -> dict[str, dict[str, Any]]:
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        log(f"ignoring unreadable dedupe state {path}: {exc}")
+        return {}
+    if not isinstance(data, dict):
+        log(f"ignoring malformed dedupe state {path}")
+        return {}
+    return data
+
+
+def save_seen(path: Path, seen: dict[str, dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        "w",
+        encoding="utf-8",
+        dir=path.parent,
+        delete=False,
+    ) as tmp:
+        json.dump(seen, tmp, indent=2, sort_keys=True)
+        tmp.write("\n")
+        tmp_path = Path(tmp.name)
+    tmp_path.replace(path)
+
+
+def run_command(args: list[str]) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        args,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def latest_run(repo: str) -> dict[str, Any] | None:
+    result = run_command(
+        [
+            "gh",
+            "run",
+            "list",
+            "-R",
+            repo,
+            "-L",
+            "1",
+            "--json",
+            ",".join(
+                [
+                    "attempt",
+                    "conclusion",
+                    "databaseId",
+                    "displayTitle",
+                    "event",
+                    "headBranch",
+                    "headSha",
+                    "name",
+                    "status",
+                    "url",
+                    "workflowName",
+                ]
+            ),
+        ]
+    )
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()
+        log(f"{repo}: gh run list failed: {detail}")
+        return None
+    try:
+        runs = json.loads(result.stdout or "[]")
+    except json.JSONDecodeError as exc:
+        log(f"{repo}: gh run list returned invalid JSON: {exc}")
+        return None
+    if not runs:
+        log(f"{repo}: no GitHub Actions runs found")
+        return None
+    if not isinstance(runs, list) or not isinstance(runs[0], dict):
+        log(f"{repo}: gh run list returned unexpected data")
+        return None
+    return runs[0]
+
+
+def run_identity(run: dict[str, Any]) -> tuple[str, str]:
+    run_id = str(run.get("databaseId") or "")
+    attempt = str(run.get("attempt") or "1")
+    return run_id, attempt
+
+
+def fetch_failure_output(repo: str, run_id: str, attempt: str) -> str | None:
+    failed_log_result = run_command(
+        [
+            "gh",
+            "run",
+            "view",
+            "-R",
+            repo,
+            run_id,
+            "--attempt",
+            attempt,
+            "--log-failed",
+        ]
+    )
+    if failed_log_result.returncode == 0 and failed_log_result.stdout.strip():
+        return failed_log_result.stdout
+
+    reason = (failed_log_result.stderr or failed_log_result.stdout).strip()
+    if reason:
+        log(
+            f"{repo}: failed logs unavailable, falling back to verbose run view: {reason}"
+        )
+    else:
+        log(f"{repo}: failed logs empty, falling back to verbose run view")
+
+    verbose_result = run_command(
+        [
+            "gh",
+            "run",
+            "view",
+            "-R",
+            repo,
+            run_id,
+            "--attempt",
+            attempt,
+            "--verbose",
+        ]
+    )
+    if verbose_result.returncode == 0 and verbose_result.stdout.strip():
+        return verbose_result.stdout
+
+    detail = (verbose_result.stderr or verbose_result.stdout).strip()
+    log(f"{repo}: gh run view failed: {detail}")
+    return None
+
+
+def truncate_log(log_text: str) -> tuple[str, str]:
+    encoded = log_text.encode("utf-8")
+    if len(encoded) <= LOG_LIMIT_BYTES:
+        return log_text, ""
+    tail = encoded[-LOG_LIMIT_BYTES:].decode("utf-8", errors="replace")
+    return (
+        tail,
+        f"Log output was truncated to the last {LOG_LIMIT_BYTES // 1024} KiB.",
+    )
+
+
+def repo_slug(repo: str) -> str:
+    slug = re.sub(r"[^A-Za-z0-9]+", "-", repo).strip("-").lower()
+    return slug or "repo"
+
+
+def fence_for(text: str) -> str:
+    longest = max(
+        (len(match.group(0)) for match in re.finditer(r"`+", text)), default=0
+    )
+    return "`" * max(3, longest + 1)
+
+
+def build_prompt(repo: str, run: dict[str, Any], failure_output: str) -> str:
+    run_id, attempt = run_identity(run)
+    agent_name = f"gha-fix-{repo_slug(repo)}-{run_id}-a{attempt}"
+    truncated_output, truncation_note = truncate_log(failure_output)
+    fence = fence_for(truncated_output)
+
+    workflow = run.get("workflowName") or run.get("name") or "unknown"
+    title = run.get("displayTitle") or "unknown"
+    branch = run.get("headBranch") or "unknown"
+    sha = run.get("headSha") or "unknown"
+    event = run.get("event") or "unknown"
+    conclusion = run.get("conclusion") or "unknown"
+    url = run.get("url") or "unknown"
+
+    parts = [
+        f"#gh:{repo} %t:chop %t:gact %n:{agent_name}",
+        "",
+        "The latest completed GitHub Actions run failed. Diagnose the root cause, fix the repository, "
+        "and run the relevant checks. Do not commit unless explicitly requested.",
+        "",
+        "Run metadata:",
+        f"- Repository: {repo}",
+        f"- Workflow: {workflow}",
+        f"- Title: {title}",
+        f"- Branch: {branch}",
+        f"- SHA: {sha}",
+        f"- Event: {event}",
+        f"- Conclusion: {conclusion}",
+        f"- Run URL: {url}",
+        f"- Attempt: {attempt}",
+    ]
+    if truncation_note:
+        parts.extend(["", truncation_note])
+    parts.extend(
+        [
+            "",
+            "Failed-step output:",
+            fence,
+            truncated_output.rstrip("\n"),
+            fence,
+        ]
+    )
+    return "\n".join(parts)
+
+
+def launch_agent(prompt: str) -> bool:
+    result = run_command(["sase", "run", "-d", prompt])
+    if result.returncode == 0:
+        return True
+    detail = (result.stderr or result.stdout).strip()
+    log(f"sase run failed: {detail}")
+    return False
+
+
+def handle_repo(repo: str, state_path: Path, seen: dict[str, dict[str, Any]]) -> bool:
+    run = latest_run(repo)
+    if run is None:
+        return False
+
+    status = str(run.get("status") or "")
+    conclusion = str(run.get("conclusion") or "")
+    if status != "completed":
+        log(f"{repo}: latest run status is {status or 'unknown'}, skipping")
+        return False
+    if conclusion not in ACTIONABLE_CONCLUSIONS:
+        if conclusion in IGNORED_CONCLUSIONS:
+            log(f"{repo}: latest run conclusion is {conclusion}, skipping")
+        else:
+            log(f"{repo}: latest run conclusion is {conclusion or 'unknown'}, skipping")
+        return False
+
+    run_id, attempt = run_identity(run)
+    if not run_id:
+        log(f"{repo}: latest run has no databaseId, skipping")
+        return False
+    seen_key = f"{run_id}:attempt:{attempt}"
+    repo_seen = seen.setdefault(repo, {})
+    if seen_key in repo_seen:
+        log(
+            f"{repo}: already launched agent for run {run_id} attempt {attempt}, skipping duplicate"
+        )
+        return False
+
+    failure_output = fetch_failure_output(repo, run_id, attempt)
+    if failure_output is None:
+        return False
+
+    prompt = build_prompt(repo, run, failure_output)
+    if not launch_agent(prompt):
+        return False
+
+    repo_seen[seen_key] = {
+        "attempt": attempt,
+        "conclusion": conclusion,
+        "databaseId": run_id,
+        "url": run.get("url"),
+    }
+    save_seen(state_path, seen)
+    log(f"{repo}: launched fixer agent for run {run_id} attempt {attempt}")
+    return True
+
+
+def main() -> int:
+    args = parse_args()
+    try:
+        context = load_context(Path(args.context))
+    except RuntimeError as exc:
+        log(str(exc))
+        return 2
+
+    state_dir_value = context.get("state_dir")
+    if not state_dir_value:
+        log("context is missing state_dir")
+        return 2
+
+    repo_env = os.environ.get("SASE_GHA_FIX_REPOS", "")
+    repos = split_repos(repo_env)
+    if not repos:
+        log("SASE_GHA_FIX_REPOS is empty; nothing to check")
+        return 0
+
+    state_path = Path(state_dir_value) / STATE_FILE_NAME
+    seen = load_seen(state_path)
+    launched_any = False
+    for repo in repos:
+        launched_any = handle_repo(repo, state_path, seen) or launched_any
+    if not launched_any:
+        log("no fixer agents launched")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

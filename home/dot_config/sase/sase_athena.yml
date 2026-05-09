@@ -107,6 +107,16 @@ axe:
             "#gh:sase-org/sase-telegram %t:chop #!refresh_docs(project=sase-telegram, gh_ref=sase-org/sase-telegram,
             threshold=25)"
           run_every: 24h
+    github_actions:
+      interval: 300
+      chop_timeout: "120s"
+      chops:
+        - name: gh_actions_fix
+          description: "Launch a fixer agent when the latest GitHub Actions run fails"
+          run_every: "15m"
+          timeout: "120s"
+          env:
+            SASE_GHA_FIX_REPOS: "bbugyi200/dotfiles"
     telegram:
       interval: 5
       chops:
