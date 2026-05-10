@@ -135,8 +135,7 @@ return {
 			local cmp = require("cmp")
 			local luasnip = require("luasnip")
 
-			local function selected_completion_is_snippet()
-				local entry = cmp.get_selected_entry()
+			local function completion_entry_is_snippet(entry)
 				if not entry then
 					return false
 				end
@@ -144,6 +143,23 @@ return {
 				local completion_item = entry:get_completion_item()
 				return completion_item.insertTextFormat == vim.lsp.protocol.InsertTextFormat.Snippet
 					or completion_item.kind == cmp.lsp.CompletionItemKind.Snippet
+			end
+
+			local function snippet_completion_to_confirm()
+				local entry = cmp.get_selected_entry()
+				if entry then
+					if completion_entry_is_snippet(entry) then
+						return entry, false
+					end
+					return nil, false
+				end
+
+				entry = cmp.get_entries()[1]
+				if completion_entry_is_snippet(entry) then
+					return entry, true
+				end
+
+				return nil, false
 			end
 
 			cmp.setup({
@@ -211,13 +227,16 @@ return {
 							luasnip.expand({})
 						elseif luasnip.locally_jumpable(1) then
 							luasnip.jump(1)
-						elseif cmp.visible() and selected_completion_is_snippet() then
-							cmp.confirm({
-								select = false,
-								behavior = cmp.ConfirmBehavior.Replace,
-							})
 						elseif cmp.visible() then
-							cmp.select_next_item()
+							local snippet_entry, select = snippet_completion_to_confirm()
+							if snippet_entry then
+								cmp.confirm({
+									select = select,
+									behavior = cmp.ConfirmBehavior.Replace,
+								})
+							else
+								cmp.select_next_item()
+							end
 						else
 							fallback()
 						end
