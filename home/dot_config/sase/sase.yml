@@ -46,6 +46,7 @@ ace:
     gtu: "the `sase ace` TUI"
     h: "http://"
     help: "Can you help me $1?"
+    helpp: "Can you now help me $1?"
     im: "IMPORTANT: "
     jya: "Justify your answer."
     key: "the `$1` keymap"
