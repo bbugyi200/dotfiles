@@ -32,23 +32,14 @@ sase bead create --title "Add auth system" --type plan(sdd/tales/202605/auth.md)
 # Create an executable epic bead
 sase bead create --title "Auth epic" --type plan(sdd/epics/202605/auth.md) --tier epic
 
-# Create an executable epic bead with a land-agent model
-sase bead create --title "Auth epic" --type plan(sdd/epics/202605/auth.md) --tier epic --model claude/opus
-
 # Create a legend bead that proposes 5 epics
 sase bead create --title "Auth roadmap" --type plan(sdd/legends/202605/auth.md) --tier legend --epic-count 5
-
-# Create a legend bead with a land-agent model
-sase bead create --title "Auth roadmap" --type plan(sdd/legends/202605/auth.md) --tier legend --epic-count 5 --model claude/opus
 
 # Create an epic linked under a legend
 sase bead create --title "Auth epic" --type plan(sdd/epics/202605/auth.md,<legend-bead-id>) --tier epic
 
 # Create a phase bead (child of a plan)
 sase bead create --title "Implement login endpoint" --type phase(<plan-bead-id>)
-
-# Create a phase bead with a phase-work model
-sase bead create --title "Implement login endpoint" --type phase(<plan-bead-id>) --model codex/gpt-5.5
 
 # Create a nested plan (plan with parent)
 sase bead create --title "Sub-plan" --type plan(sdd/tales/202605/sub.md,<parent-bead-id>)
@@ -73,8 +64,6 @@ sase bead update <id> --description "Updated description"
 sase bead update <id> --notes "Implementation notes"
 sase bead update <id> --assignee bob
 sase bead update <id> --design sdd/tales/202605/revised.md
-sase bead update <id> --model codex/gpt-5.5
-sase bead update <id> --model ""  # clear the stored model
 sase bead update <legend-id> --epic-count 6
 
 # Combine multiple updates
@@ -118,8 +107,8 @@ No arguments. Lists all beads that are open and have no unresolved dependencies 
 sase bead show <id>
 ```
 
-Displays full details: status, type, tier, owner, assignee, model, parent, children, dependencies, blocks, description,
-notes, and linked design file.
+Displays full details: status, type, tier, owner, assignee, parent, children, dependencies, blocks, description, notes,
+and linked design file.
 
 ### dep add
 
