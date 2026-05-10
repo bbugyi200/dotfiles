@@ -135,6 +135,17 @@ return {
 			local cmp = require("cmp")
 			local luasnip = require("luasnip")
 
+			local function selected_completion_is_snippet()
+				local entry = cmp.get_selected_entry()
+				if not entry then
+					return false
+				end
+
+				local completion_item = entry:get_completion_item()
+				return completion_item.insertTextFormat == vim.lsp.protocol.InsertTextFormat.Snippet
+					or completion_item.kind == cmp.lsp.CompletionItemKind.Snippet
+			end
+
 			cmp.setup({
 				enabled = function()
 					return vim.api.nvim_get_option_value("buftype", {}) ~= "prompt"
@@ -200,6 +211,11 @@ return {
 							luasnip.expand({})
 						elseif luasnip.locally_jumpable(1) then
 							luasnip.jump(1)
+						elseif cmp.visible() and selected_completion_is_snippet() then
+							cmp.confirm({
+								select = false,
+								behavior = cmp.ConfirmBehavior.Replace,
+							})
 						elseif cmp.visible() then
 							cmp.select_next_item()
 						else
