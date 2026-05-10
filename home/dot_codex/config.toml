@@ -4,3 +4,23 @@ personality = "pragmatic"
 
 [projects."/home/bryan"]
 trust_level = "trusted"
+
+[projects."/tmp/codex_hook_test"]
+trust_level = "trusted"
+
+[projects."/home/bryan/projects/github/sase-org/sase"]
+trust_level = "trusted"
+
+[tui.model_availability_nux]
+"gpt-5.5" = 3
+
+[hooks.state]
+
+[hooks.state."/home/bryan/.codex/hooks.json:stop:0:0"]
+trusted_hash = "sha256:1b039270d61b3b9e75b0628ecf4bedfb9d208af6c1236ee1c0d12e354fde5709"
+
+[hooks.state."/home/bryan/.codex/hooks.json:stop:0:1"]
+trusted_hash = "sha256:3efe063867f9222d1d4dfa45cf398320fc6625d85088b14aeeaf2655c7ff38e4"
+
+[hooks.state."/home/bryan/.codex/hooks.json:stop:0:2"]
+trusted_hash = "sha256:9a0ca2384a5136303109c32f079ede8e1499a63017704eee5f90061052e92148"
