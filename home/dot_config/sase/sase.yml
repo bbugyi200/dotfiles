@@ -69,6 +69,10 @@ telemetry:
     exposition_port: 9464
     pushgateway_url: "localhost:9091"
 
+llm_provider:
+  model_aliases:
+    other: claude/opus
+
 xprompts:
   # snippets
   bea:
