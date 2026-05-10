@@ -119,7 +119,7 @@ function test_failure_launches_agent_with_failed_logs() {
 
   assert_contains "launched fixer agent for run 12345 attempt 1" "${output}"
   assert_same "1" "$(prompt_count)"
-  assert_contains "#gh:owner/repo %t:gact %n:gha-fix-owner-repo-12345-a1" "$(cat "${PROMPTS_FILE}")"
+  assert_contains "#gh:owner/repo %g:gact %n:gha-fix-owner-repo-12345-a1" "$(cat "${PROMPTS_FILE}")"
   assert_contains "Workflow: Unit Tests" "$(cat "${PROMPTS_FILE}")"
   assert_contains "boom failed in pytest" "$(cat "${PROMPTS_FILE}")"
 }
