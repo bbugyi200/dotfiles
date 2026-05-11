@@ -420,7 +420,7 @@ axe:
           run_every: "15m"
           timeout: "120s"
           env:
-            SASE_GHA_FIX_REPOS: "bbugyi200/dotfiles"
+            SASE_GHA_FIX_REPOS: "bbugyi200/dotfiles sase-org/sase"
     telegram:
       interval: 5
       chops:
