@@ -22,7 +22,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Plan mode is disabled. Use the /sase_plan skill instead.\"}}'",
+            "command": "[ -n \"$SASE_AGENT\" ] && printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Plan mode is disabled. Use the /sase_plan skill instead.\"}}'; exit 0",
             "timeout": 5
           }
         ]
@@ -32,7 +32,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Plan mode is disabled. Use the /sase_plan skill instead.\"}}'",
+            "command": "[ -n \"$SASE_AGENT\" ] && printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Plan mode is disabled. Use the /sase_plan skill instead.\"}}'; exit 0",
             "timeout": 5
           }
         ]
@@ -42,7 +42,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"AskUserQuestion is disabled. Use the /sase_questions skill instead.\"}}'",
+            "command": "[ -n \"$SASE_AGENT\" ] && printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"AskUserQuestion is disabled. Use the /sase_questions skill instead.\"}}'; exit 0",
             "timeout": 5
           }
         ]
