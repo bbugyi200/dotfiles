@@ -47,6 +47,10 @@ function write_fake_gh() {
 set -euo pipefail
 
 if [[ "$1" == "run" && "$2" == "list" ]]; then
+  if [[ "${FAKE_GH_LIST_RC:-0}" != "0" ]]; then
+    printf '%s' "${FAKE_GH_LIST_OUTPUT:-gh list failed}" >&2
+    exit "${FAKE_GH_LIST_RC}"
+  fi
   printf '%s' "${FAKE_GH_LIST_JSON}"
   exit 0
 fi
@@ -85,6 +89,13 @@ function run_chop() {
     python3 "${GH_ACTIONS_FIX_SCRIPT}" --context "${CONTEXT_FILE}" 2>&1
 }
 
+function run_chop_without_repos() {
+  PATH="${FAKE_BIN}:${PATH}" \
+    FAKE_SASE_PROMPTS="${PROMPTS_FILE}" \
+    SASE_GHA_FIX_REPOS="" \
+    python3 "${GH_ACTIONS_FIX_SCRIPT}" --context "${CONTEXT_FILE}" 2>&1
+}
+
 function prompt_count() {
   if [[ ! -f "${PROMPTS_FILE}" ]]; then
     printf '0'
@@ -107,6 +118,9 @@ function test_success_conclusion_does_not_launch_agent() {
   output="$(run_chop)"
 
   assert_contains "latest run conclusion is success, skipping" "${output}"
+  assert_contains "repo=owner/repo status=completed conclusion=success run=12345 attempt=1" "${output}"
+  assert_contains "decision=conclusion_success_skip" "${output}"
+  assert_contains "summary: repos_configured=1 repos_checked=1 actionable_failures=0 dedupe_skips=0 non_action_skips=1 launch_successes=0 launch_failures=0 check_errors=0" "${output}"
   assert_same "0" "$(prompt_count)"
 }
 
@@ -118,6 +132,11 @@ function test_failure_launches_agent_with_failed_logs() {
   output="$(run_chop)"
 
   assert_contains "launched fixer agent for run 12345 attempt 1" "${output}"
+  assert_contains "repo=owner/repo status=completed conclusion=failure run=12345 attempt=1" "${output}"
+  assert_contains "workflow='Unit Tests'" "${output}"
+  assert_contains "title='Fix CI'" "${output}"
+  assert_contains "decision=launched" "${output}"
+  assert_contains "summary: repos_configured=1 repos_checked=1 actionable_failures=1 dedupe_skips=0 non_action_skips=0 launch_successes=1 launch_failures=0 check_errors=0" "${output}"
   assert_same "1" "$(prompt_count)"
   assert_contains "#gh:owner/repo %g:gact %n:gha-fix-owner-repo-12345-a1" "$(cat "${PROMPTS_FILE}")"
   assert_contains "Workflow: Unit Tests" "$(cat "${PROMPTS_FILE}")"
@@ -133,6 +152,8 @@ function test_dedupe_skips_same_run_attempt() {
   output="$(run_chop)"
 
   assert_contains "already launched agent for run 12345 attempt 1" "${output}"
+  assert_contains "decision=duplicate_skip" "${output}"
+  assert_contains "summary: repos_configured=1 repos_checked=1 actionable_failures=1 dedupe_skips=1 non_action_skips=0 launch_successes=0 launch_failures=0 check_errors=0" "${output}"
   assert_same "1" "$(prompt_count)"
 }
 
@@ -162,4 +183,28 @@ function test_log_failed_failure_falls_back_to_verbose_output() {
   assert_contains "falling back to verbose run view" "${output}"
   assert_same "1" "$(prompt_count)"
   assert_contains "verbose fallback output" "$(cat "${PROMPTS_FILE}")"
+}
+
+function test_no_repos_configured_prints_summary() {
+  local output
+  output="$(run_chop_without_repos)"
+
+  assert_contains "SASE_GHA_FIX_REPOS is empty; nothing to check" "${output}"
+  assert_contains "summary: repos_configured=0 repos_checked=0 actionable_failures=0 dedupe_skips=0 non_action_skips=0 launch_successes=0 launch_failures=0 check_errors=0" "${output}"
+  assert_contains "no fixer agents launched" "${output}"
+  assert_same "0" "$(prompt_count)"
+}
+
+function test_gh_list_failure_prints_summary() {
+  export FAKE_GH_LIST_RC="1"
+  export FAKE_GH_LIST_OUTPUT="api exploded while listing runs"
+
+  local output
+  output="$(run_chop)"
+
+  assert_contains "gh run list failed: api exploded while listing runs" "${output}"
+  assert_contains "repo=owner/repo status=unknown conclusion=unknown run=unknown attempt=unknown" "${output}"
+  assert_contains "decision=check_error" "${output}"
+  assert_contains "summary: repos_configured=1 repos_checked=1 actionable_failures=0 dedupe_skips=0 non_action_skips=0 launch_successes=0 launch_failures=0 check_errors=1" "${output}"
+  assert_same "0" "$(prompt_count)"
 }

@@ -1,0 +1,62 @@
+{
+  "env": {
+    "BAILIAN_TOKEN_PLAN_API_KEY": "sk-sp-djI.QmxUQyBtAU8pls7mQwWcOY6SX3jS0LybMAbQF8boPwCzMutAYeQ1WfdzYZp9RSru7cciWegDsbP6jaAnGtsM1C5_-qPk2efUS-vuHz9fhvY-cHgQ_YKMn1_AkaMjocEmT0JoMgJZjNb4Nkz120Y8KsFlPS-goqK96qCqTidiHVg.MEYCIQDWpoM6ICT_IN10-1fMke-KPsReXQXNke3i-qzzIopttwIhAMN-0yzK70egysFHOi48TcuYaCYpV8hXfrqgxMOKxtfy"
+  },
+  "modelProviders": {
+    "openai": [
+      {
+        "id": "qwen3.6-plus",
+        "name": "[Token Plan Team Edition] qwen3.6-plus",
+        "baseUrl": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+        "envKey": "BAILIAN_TOKEN_PLAN_API_KEY",
+        "generationConfig": {
+          "extra_body": {
+            "enable_thinking": true
+          }
+        }
+      },
+      {
+        "id": "glm-5",
+        "name": "[Token Plan Team Edition] glm-5",
+        "baseUrl": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+        "envKey": "BAILIAN_TOKEN_PLAN_API_KEY",
+        "generationConfig": {
+          "extra_body": {
+            "enable_thinking": true
+          }
+        }
+      },
+      {
+        "id": "MiniMax-M2.5",
+        "name": "[Token Plan Team Edition] MiniMax-M2.5",
+        "baseUrl": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+        "envKey": "BAILIAN_TOKEN_PLAN_API_KEY"
+      },
+      {
+        "id": "deepseek-v3.2",
+        "name": "[Token Plan Team Edition] deepseek-v3.2",
+        "baseUrl": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+        "envKey": "BAILIAN_TOKEN_PLAN_API_KEY",
+        "generationConfig": {
+          "extra_body": {
+            "enable_thinking": true
+          }
+        }
+      }
+    ]
+  },
+  "security": {
+    "auth": {
+      "selectedType": "openai"
+    }
+  },
+  "model": {
+    "name": "qwen3.6-plus"
+  },
+  "$version": 4,
+  "providerMetadata": {
+    "token-plan": {
+      "region": "global"
+    }
+  }
+}

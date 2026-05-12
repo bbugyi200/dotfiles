@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
 import json
 import os
 import re
@@ -26,11 +27,65 @@ IGNORED_CONCLUSIONS = {
     "success",
 }
 LOG_LIMIT_BYTES = 60 * 1024
+DETAIL_LIMIT_CHARS = 500
 STATE_FILE_NAME = "gh_actions_fix_seen.json"
 
 
 def log(message: str) -> None:
     print(f"[gh_actions_fix] {message}")
+
+
+@dataclass
+class RepoOutcome:
+    repo: str
+    reason: str
+    run_id: str = "unknown"
+    attempt: str = "unknown"
+    status: str = "unknown"
+    conclusion: str = "unknown"
+    workflow: str = "unknown"
+    title: str = "unknown"
+    actionable: bool = False
+    dedupe_skip: bool = False
+    non_action_skip: bool = False
+    check_error: bool = False
+    launch_success: bool = False
+    launch_failure: bool = False
+
+
+@dataclass
+class RunSummary:
+    repos_configured: int
+    repos_checked: int = 0
+    actionable_failures: int = 0
+    dedupe_skips: int = 0
+    non_action_skips: int = 0
+    check_errors: int = 0
+    launch_successes: int = 0
+    launch_failures: int = 0
+
+    def record(self, outcome: RepoOutcome) -> None:
+        self.repos_checked += 1
+        self.actionable_failures += int(outcome.actionable)
+        self.dedupe_skips += int(outcome.dedupe_skip)
+        self.non_action_skips += int(outcome.non_action_skip)
+        self.check_errors += int(outcome.check_error)
+        self.launch_successes += int(outcome.launch_success)
+        self.launch_failures += int(outcome.launch_failure)
+
+    def emit(self, state_path: Path) -> None:
+        log(
+            "summary: "
+            f"repos_configured={self.repos_configured} "
+            f"repos_checked={self.repos_checked} "
+            f"actionable_failures={self.actionable_failures} "
+            f"dedupe_skips={self.dedupe_skips} "
+            f"non_action_skips={self.non_action_skips} "
+            f"launch_successes={self.launch_successes} "
+            f"launch_failures={self.launch_failures} "
+            f"check_errors={self.check_errors} "
+            f"state={state_path}"
+        )
 
 
 def parse_args() -> argparse.Namespace:
@@ -47,6 +102,35 @@ def parse_args() -> argparse.Namespace:
 
 def split_repos(value: str) -> list[str]:
     return [part for part in re.split(r"[\s,]+", value.strip()) if part]
+
+
+def compact_detail(detail: str) -> str:
+    detail = " ".join(detail.strip().split())
+    if len(detail) <= DETAIL_LIMIT_CHARS:
+        return detail
+    return detail[: DETAIL_LIMIT_CHARS - 3].rstrip() + "..."
+
+
+def run_label(run: dict[str, Any]) -> tuple[str, str, str, str, str, str]:
+    run_id, attempt = run_identity(run)
+    status = str(run.get("status") or "unknown")
+    conclusion = str(run.get("conclusion") or "unknown")
+    workflow = str(run.get("workflowName") or run.get("name") or "unknown")
+    title = str(run.get("displayTitle") or "unknown")
+    return run_id, attempt, status, conclusion, workflow, title
+
+
+def log_repo_outcome(outcome: RepoOutcome) -> None:
+    log(
+        f"repo={outcome.repo} "
+        f"status={outcome.status} "
+        f"conclusion={outcome.conclusion} "
+        f"run={outcome.run_id or 'unknown'} "
+        f"attempt={outcome.attempt} "
+        f"workflow={outcome.workflow!r} "
+        f"title={outcome.title!r} "
+        f"decision={outcome.reason}"
+    )
 
 
 def load_context(path: Path) -> dict[str, Any]:
@@ -124,7 +208,7 @@ def latest_run(repo: str) -> dict[str, Any] | None:
         ]
     )
     if result.returncode != 0:
-        detail = (result.stderr or result.stdout).strip()
+        detail = compact_detail(result.stderr or result.stdout)
         log(f"{repo}: gh run list failed: {detail}")
         return None
     try:
@@ -164,7 +248,7 @@ def fetch_failure_output(repo: str, run_id: str, attempt: str) -> str | None:
     if failed_log_result.returncode == 0 and failed_log_result.stdout.strip():
         return failed_log_result.stdout
 
-    reason = (failed_log_result.stderr or failed_log_result.stdout).strip()
+    reason = compact_detail(failed_log_result.stderr or failed_log_result.stdout)
     if reason:
         log(
             f"{repo}: failed logs unavailable, falling back to verbose run view: {reason}"
@@ -188,7 +272,7 @@ def fetch_failure_output(repo: str, run_id: str, attempt: str) -> str | None:
     if verbose_result.returncode == 0 and verbose_result.stdout.strip():
         return verbose_result.stdout
 
-    detail = (verbose_result.stderr or verbose_result.stdout).strip()
+    detail = compact_detail(verbose_result.stderr or verbose_result.stdout)
     log(f"{repo}: gh run view failed: {detail}")
     return None
 
@@ -265,47 +349,77 @@ def launch_agent(prompt: str) -> bool:
     result = run_command(["sase", "run", "-d", prompt])
     if result.returncode == 0:
         return True
-    detail = (result.stderr or result.stdout).strip()
+    detail = compact_detail(result.stderr or result.stdout)
     log(f"sase run failed: {detail}")
     return False
 
 
-def handle_repo(repo: str, state_path: Path, seen: dict[str, dict[str, Any]]) -> bool:
+def handle_repo(
+    repo: str,
+    state_path: Path,
+    seen: dict[str, dict[str, Any]],
+) -> RepoOutcome:
     run = latest_run(repo)
     if run is None:
-        return False
+        return RepoOutcome(
+            repo=repo,
+            reason="check_error",
+            check_error=True,
+        )
 
-    status = str(run.get("status") or "")
-    conclusion = str(run.get("conclusion") or "")
+    run_id, attempt, status, conclusion, workflow, title = run_label(run)
+    outcome = RepoOutcome(
+        repo=repo,
+        reason="unknown",
+        run_id=run_id,
+        attempt=attempt,
+        status=status,
+        conclusion=conclusion,
+        workflow=workflow,
+        title=title,
+    )
+
     if status != "completed":
         log(f"{repo}: latest run status is {status or 'unknown'}, skipping")
-        return False
+        outcome.reason = f"status_{status}_skip"
+        outcome.non_action_skip = True
+        return outcome
     if conclusion not in ACTIONABLE_CONCLUSIONS:
         if conclusion in IGNORED_CONCLUSIONS:
             log(f"{repo}: latest run conclusion is {conclusion}, skipping")
         else:
             log(f"{repo}: latest run conclusion is {conclusion or 'unknown'}, skipping")
-        return False
+        outcome.reason = f"conclusion_{conclusion}_skip"
+        outcome.non_action_skip = True
+        return outcome
 
-    run_id, attempt = run_identity(run)
+    outcome.actionable = True
     if not run_id:
         log(f"{repo}: latest run has no databaseId, skipping")
-        return False
+        outcome.reason = "missing_run_id_skip"
+        outcome.non_action_skip = True
+        return outcome
     seen_key = f"{run_id}:attempt:{attempt}"
     repo_seen = seen.setdefault(repo, {})
     if seen_key in repo_seen:
         log(
             f"{repo}: already launched agent for run {run_id} attempt {attempt}, skipping duplicate"
         )
-        return False
+        outcome.reason = "duplicate_skip"
+        outcome.dedupe_skip = True
+        return outcome
 
     failure_output = fetch_failure_output(repo, run_id, attempt)
     if failure_output is None:
-        return False
+        outcome.reason = "failed_logs_unavailable_skip"
+        outcome.non_action_skip = True
+        return outcome
 
     prompt = build_prompt(repo, run, failure_output)
     if not launch_agent(prompt):
-        return False
+        outcome.reason = "launch_failed"
+        outcome.launch_failure = True
+        return outcome
 
     repo_seen[seen_key] = {
         "attempt": attempt,
@@ -315,7 +429,9 @@ def handle_repo(repo: str, state_path: Path, seen: dict[str, dict[str, Any]]) ->
     }
     save_seen(state_path, seen)
     log(f"{repo}: launched fixer agent for run {run_id} attempt {attempt}")
-    return True
+    outcome.reason = "launched"
+    outcome.launch_success = True
+    return outcome
 
 
 def main() -> int:
@@ -333,16 +449,21 @@ def main() -> int:
 
     repo_env = os.environ.get("SASE_GHA_FIX_REPOS", "")
     repos = split_repos(repo_env)
+    state_path = Path(state_dir_value) / STATE_FILE_NAME
+    summary = RunSummary(repos_configured=len(repos))
     if not repos:
         log("SASE_GHA_FIX_REPOS is empty; nothing to check")
+        summary.emit(state_path)
+        log("no fixer agents launched")
         return 0
 
-    state_path = Path(state_dir_value) / STATE_FILE_NAME
     seen = load_seen(state_path)
-    launched_any = False
     for repo in repos:
-        launched_any = handle_repo(repo, state_path, seen) or launched_any
-    if not launched_any:
+        outcome = handle_repo(repo, state_path, seen)
+        summary.record(outcome)
+        log_repo_outcome(outcome)
+    summary.emit(state_path)
+    if not summary.launch_successes:
         log("no fixer agents launched")
     return 0
 
