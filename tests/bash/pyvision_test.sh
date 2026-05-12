@@ -139,8 +139,8 @@ EOF
 
   rm -rf "${repo_dir}"
   assert_same 1 "${status}"
-  assert_contains "referenced test file 'tests/test_widgets.py' is forbidden" "${output}"
-  assert_contains "references from test files are not sufficient to keep a public symbol used" "${output}"
+  assert_contains "referenced test-support path 'tests/test_widgets.py' is forbidden" "${output}"
+  assert_contains "references from tests or testing utilities are not sufficient to keep a public symbol used" "${output}"
 }
 
 function test_pyvision_allows_private_imports_from_tracked_tests() {
@@ -203,6 +203,124 @@ EOF
   assert_same 1 "${status}"
   assert_contains "Unused public functions/classes" "${output}"
   assert_contains "build_widget" "${output}"
+}
+
+function test_pyvision_ignores_public_symbols_defined_under_testing_dir() {
+  local repo_dir
+  repo_dir="$(make_pyvision_repo)"
+  mkdir -p "${repo_dir}/src/pkg/testing"
+  cat >"${repo_dir}/src/pkg/testing/helpers.py" <<'EOF'
+class WidgetTestHelper:
+    pass
+EOF
+  cat >"${repo_dir}/tests/test_widgets.py" <<'EOF'
+from pkg.testing.helpers import WidgetTestHelper
+
+
+def test_widget_test_helper():
+    assert WidgetTestHelper()
+EOF
+  track_repo_files "${repo_dir}"
+
+  local output
+  output="$(run_pyvision "${repo_dir}" 2>&1)"
+  local status=$?
+
+  rm -rf "${repo_dir}"
+  assert_same 0 "${status}"
+  assert_contains "No public functions or classes found!" "${output}"
+}
+
+function test_pyvision_ignores_testing_dir_usage_for_public_symbols() {
+  local repo_dir
+  repo_dir="$(make_pyvision_repo)"
+  mkdir -p "${repo_dir}/src/pkg/testing"
+  cat >"${repo_dir}/src/pkg/widgets.py" <<'EOF'
+def build_widget():
+    return "widget"
+EOF
+  cat >"${repo_dir}/src/pkg/testing/helpers.py" <<'EOF'
+from pkg.widgets import build_widget
+
+
+def make_test_widget():
+    return build_widget()
+EOF
+  track_repo_files "${repo_dir}"
+
+  local output
+  output="$(run_pyvision "${repo_dir}" 2>&1)"
+  local status=$?
+
+  rm -rf "${repo_dir}"
+  assert_same 1 "${status}"
+  assert_contains "Unused public functions/classes" "${output}"
+  assert_contains "build_widget" "${output}"
+}
+
+function test_pyvision_allows_private_imports_from_testing_dir() {
+  local repo_dir
+  repo_dir="$(make_pyvision_repo)"
+  mkdir -p "${repo_dir}/src/pkg/testing"
+  cat >"${repo_dir}/src/pkg/widgets.py" <<'EOF'
+def build_widget():
+    return _helper()
+
+
+def _helper():
+    return "widget"
+EOF
+  cat >"${repo_dir}/app.py" <<'EOF'
+from pkg.widgets import build_widget
+
+
+def main():
+    return build_widget()
+EOF
+  cat >"${repo_dir}/src/pkg/testing/helpers.py" <<'EOF'
+from pkg.widgets import _helper
+
+
+def make_test_widget():
+    return _helper()
+EOF
+  track_repo_files "${repo_dir}"
+
+  local output
+  output="$(run_pyvision "${repo_dir}" 2>&1)"
+  local status=$?
+
+  rm -rf "${repo_dir}"
+  assert_same 0 "${status}"
+  assert_contains "All public/private classes/functions are used properly!" "${output}"
+}
+
+function test_pyvision_rejects_testing_dir_pragmas() {
+  local repo_dir
+  repo_dir="$(make_pyvision_repo)"
+  mkdir -p "${repo_dir}/src/pkg/testing"
+  cat >"${repo_dir}/src/pkg/widgets.py" <<'EOF'
+# pyvision: src/pkg/testing/helpers.py
+class WidgetFactory:
+    pass
+EOF
+  cat >"${repo_dir}/src/pkg/testing/helpers.py" <<'EOF'
+from pkg.widgets import WidgetFactory
+
+
+def make_test_widget():
+    return WidgetFactory()
+EOF
+  track_repo_files "${repo_dir}"
+
+  local output
+  output="$(run_pyvision "${repo_dir}" 2>&1)"
+  local status=$?
+
+  rm -rf "${repo_dir}"
+  assert_same 1 "${status}"
+  assert_contains "referenced test-support path 'src/pkg/testing/helpers.py' is forbidden" "${output}"
+  assert_contains "references from tests or testing utilities are not sufficient to keep a public symbol used" "${output}"
 }
 
 function test_pyvision_passes_when_symbol_used_in_both_tests_and_non_tests() {
@@ -383,6 +501,38 @@ from pkg.widgets import WidgetFactory
 
 def test_widget_factory():
     assert WidgetFactory()
+EOF
+  track_repo_files "${repo_dir}"
+  track_repo_files "${external_repo}"
+
+  local output
+  output="$(
+    PYVISION_EXTERNAL_REPO_PATHS="${external_repo}" run_pyvision "${repo_dir}" 2>&1
+  )"
+  local status=$?
+
+  rm -rf "${repo_dir}" "${external_repo}"
+  assert_same 1 "${status}"
+  assert_contains "external repository '${remote_url}' does not reference symbol 'WidgetFactory'" "${output}"
+}
+
+function test_pyvision_uri_pragma_ignores_external_testing_dir_usage() {
+  local repo_dir external_repo remote_url
+  repo_dir="$(make_pyvision_repo)"
+  remote_url="https://github.com/example/pyvision-testing-only-consumer.git"
+  external_repo="$(make_external_pyvision_repo "${remote_url}")"
+  mkdir -p "${external_repo}/consumer/testing"
+  cat >"${repo_dir}/src/pkg/widgets.py" <<EOF
+# pyvision: ${remote_url}
+class WidgetFactory:
+    pass
+EOF
+  cat >"${external_repo}/consumer/testing/helpers.py" <<'EOF'
+from pkg.widgets import WidgetFactory
+
+
+def make_widget():
+    return WidgetFactory()
 EOF
   track_repo_files "${repo_dir}"
   track_repo_files "${external_repo}"
