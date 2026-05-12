@@ -667,7 +667,9 @@ def _validate_pragmas(
                 prefix = f"Error: pyvision pragma in {pragma.source_file}:{pragma.pragma_line}:"
                 test_pragma_errors.append(
                     f"{prefix} referenced test file '{pragma.ref_path}' is forbidden"
-                    " because Python test references are detected automatically"
+                    " because references from test files are not sufficient to keep a public"
+                    " symbol used; delete the symbol, make it private and call it from a"
+                    " non-test path, or use a non-test pragma target"
                 )
         if test_pragma_errors:
             errors.extend(test_pragma_errors)
@@ -974,7 +976,6 @@ def main():
         if info is not None:
             usage_only_file_infos.append(info)
 
-    usage_file_infos = file_infos + usage_only_file_infos
     non_test_usage_file_infos = file_infos + [
         info for info in usage_only_file_infos if not _is_test_file_path(info.path)
     ]
@@ -1019,7 +1020,7 @@ def main():
     )
     tracked_modules = _build_tracked_module_names(git_root)
     imported_symbols = _batch_search_usage(
-        all_symbols_to_check, usage_file_infos, tracked_modules
+        all_symbols_to_check, non_test_usage_file_infos, tracked_modules
     )
     env_external_repo_paths = [
         Path(path)

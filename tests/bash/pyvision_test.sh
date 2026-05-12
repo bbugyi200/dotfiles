@@ -60,8 +60,9 @@ EOF
   local status=$?
 
   rm -rf "${repo_dir}"
-  assert_same 0 "${status}"
-  assert_contains "All public/private classes/functions are used properly!" "${output}"
+  assert_same 1 "${status}"
+  assert_contains "Unused public functions/classes" "${output}"
+  assert_contains "NotificationStoreRecord" "${output}"
 }
 
 function test_from_import_alias_usage_from_tracked_tests() {
@@ -77,6 +78,32 @@ from pkg.widgets import WidgetFactory as Factory
 
 def test_widget_factory_usage():
     Factory()
+EOF
+  track_repo_files "${repo_dir}"
+
+  local output
+  output="$(run_pyvision "${repo_dir}" 2>&1)"
+  local status=$?
+
+  rm -rf "${repo_dir}"
+  assert_same 1 "${status}"
+  assert_contains "Unused public functions/classes" "${output}"
+  assert_contains "WidgetFactory" "${output}"
+}
+
+function test_module_alias_usage_from_non_test_file() {
+  local repo_dir
+  repo_dir="$(make_pyvision_repo)"
+  cat >"${repo_dir}/src/pkg/records.py" <<'EOF'
+class NotificationStoreRecord:
+    pass
+EOF
+  cat >"${repo_dir}/app.py" <<'EOF'
+from pkg import records as facade
+
+
+def use_record():
+    return facade.NotificationStoreRecord()
 EOF
   track_repo_files "${repo_dir}"
 
@@ -113,7 +140,7 @@ EOF
   rm -rf "${repo_dir}"
   assert_same 1 "${status}"
   assert_contains "referenced test file 'tests/test_widgets.py' is forbidden" "${output}"
-  assert_contains "Python test references are detected automatically" "${output}"
+  assert_contains "references from test files are not sufficient to keep a public symbol used" "${output}"
 }
 
 function test_pyvision_allows_private_imports_from_tracked_tests() {
@@ -126,6 +153,13 @@ def build_widget():
 
 def _helper():
     return "widget"
+EOF
+  cat >"${repo_dir}/app.py" <<'EOF'
+from pkg.widgets import build_widget
+
+
+def main():
+    return build_widget()
 EOF
   cat >"${repo_dir}/tests/test_widgets.py" <<'EOF'
 from pkg.widgets import _helper, build_widget
@@ -143,6 +177,93 @@ EOF
   rm -rf "${repo_dir}"
   assert_same 0 "${status}"
   assert_contains "All public/private classes/functions are used properly!" "${output}"
+}
+
+function test_pyvision_fails_when_public_symbol_only_used_in_tests() {
+  local repo_dir
+  repo_dir="$(make_pyvision_repo)"
+  cat >"${repo_dir}/src/pkg/widgets.py" <<'EOF'
+def build_widget():
+    return "widget"
+EOF
+  cat >"${repo_dir}/tests/test_widgets.py" <<'EOF'
+from pkg.widgets import build_widget
+
+
+def test_build_widget():
+    assert build_widget() == "widget"
+EOF
+  track_repo_files "${repo_dir}"
+
+  local output
+  output="$(run_pyvision "${repo_dir}" 2>&1)"
+  local status=$?
+
+  rm -rf "${repo_dir}"
+  assert_same 1 "${status}"
+  assert_contains "Unused public functions/classes" "${output}"
+  assert_contains "build_widget" "${output}"
+}
+
+function test_pyvision_passes_when_symbol_used_in_both_tests_and_non_tests() {
+  local repo_dir
+  repo_dir="$(make_pyvision_repo)"
+  cat >"${repo_dir}/src/pkg/widgets.py" <<'EOF'
+def build_widget():
+    return "widget"
+EOF
+  cat >"${repo_dir}/app.py" <<'EOF'
+from pkg.widgets import build_widget
+
+
+def main():
+    return build_widget()
+EOF
+  cat >"${repo_dir}/tests/test_widgets.py" <<'EOF'
+from pkg.widgets import build_widget
+
+
+def test_build_widget():
+    assert build_widget() == "widget"
+EOF
+  track_repo_files "${repo_dir}"
+
+  local output
+  output="$(run_pyvision "${repo_dir}" 2>&1)"
+  local status=$?
+
+  rm -rf "${repo_dir}"
+  assert_same 0 "${status}"
+  assert_contains "All public/private classes/functions are used properly!" "${output}"
+}
+
+function test_pyvision_pragma_not_stale_when_only_test_imports_exist() {
+  local repo_dir
+  repo_dir="$(make_pyvision_repo)"
+  cat >"${repo_dir}/src/pkg/widgets.py" <<'EOF'
+# pyvision: docs/reference.md
+class WidgetFactory:
+    pass
+EOF
+  cat >"${repo_dir}/docs/reference.md" <<'EOF'
+The WidgetFactory symbol is referenced from generated documentation.
+EOF
+  cat >"${repo_dir}/tests/test_widgets.py" <<'EOF'
+from pkg.widgets import WidgetFactory
+
+
+def test_widget_factory():
+    WidgetFactory()
+EOF
+  track_repo_files "${repo_dir}"
+
+  local output
+  output="$(run_pyvision "${repo_dir}" 2>&1)"
+  local status=$?
+
+  rm -rf "${repo_dir}"
+  assert_same 0 "${status}"
+  assert_contains "No public functions or classes found!" "${output}"
 }
 
 function test_pyvision_keeps_non_test_pragmas() {
