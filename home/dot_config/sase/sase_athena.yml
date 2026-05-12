@@ -103,7 +103,7 @@ workflows:
     input:
       project: { type: line, default: "sase" }
       gh_ref: { type: line, default: "sase" }
-      threshold: { type: int, default: 50 }
+      threshold: { type: int, default: 100 }
 
     steps:
       - name: count_recent_bug_audit_commits
@@ -232,7 +232,7 @@ workflows:
     input:
       project: { type: line, default: "sase" }
       gh_ref: { type: line, default: "sase" }
-      threshold: { type: int, default: 50 }
+      threshold: { type: int, default: 100 }
 
     steps:
       - name: count_recent_improvement_audit_commits
