@@ -58,5 +58,18 @@
     "token-plan": {
       "region": "global"
     }
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sase_commit_stop_hook",
+            "timeout": 60000
+          }
+        ]
+      }
+    ]
   }
 }
