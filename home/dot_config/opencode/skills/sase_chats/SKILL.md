@@ -32,8 +32,24 @@ sase chats show --agent <name>
 ```
 
 This follows the same fallback as `#resume`: completed agent's `done.json["response_path"]` first, then
-`agent_meta.json["chat_path"]`. If the agent isn't found, the command exits non-zero — report that plainly instead of
-guessing.
+`agent_meta.json["chat_path"]`.
+
+Step-suffixed child workflows (e.g. `<name>.plan`, `<name>.commit`) are recorded as separate transcript entries —
+`--agent <name>` does NOT include them. A submitted plan in particular appears as a `<name>.plan` chat whose
+`response_snippet` begins with `Plan submitted for review.` and names the `~/.sase/plans/<YYMM>/<file>.md` path.
+
+If `--agent <name>` exits non-zero, walk this fallback chain before giving up:
+
+1. `sase chats list -j -q '<name>'` — catches step-suffixed siblings (`<name>.plan`, `<name>.commit`, ...) that the
+   named lookup missed.
+2. `sase agents status -a -j` filtered to `<name>` — includes recently DONE/FAILED agents, not just RUNNING.
+3. If the agent is still RUNNING, hand off to the `/sase_agents_status` skill for the artifacts-dir workflow (live
+   reply, workflow checkpoints, mid-run plan drafts).
+
+Only after that chain is exhausted should you tell the user the agent has no recoverable transcript or artifact. When
+that chain reaches live artifacts, name the artifact paths you read and label the evidence source as draft/live
+(`live_reply.md` from a running agent) or stable/completed (checkpoints, submitted plans, `done.json`, or saved
+transcripts).
 
 When the user gives a path or basename:
 
@@ -60,8 +76,8 @@ Exactly one selector (`--agent`, `--path`, or `--basename`) is required.
 - Distinguish prompt content from response content — they live under separate headings in the transcript.
 - Prefer short excerpts over long quotes; only include a longer quote when the exact wording matters.
 - If `sase chats list -j` returns an empty array, say "no transcripts found" plainly — do not fabricate rows.
-- If a named-agent lookup fails (artifact removed, never saved a transcript), say so plainly instead of falling back to
-  an unrelated transcript.
+- If a named-agent lookup fails AND the fallback chain above (content-filtered list, `-a` status, `/sase_agents_status`
+  artifacts) turns up nothing, say so plainly instead of falling back to an unrelated transcript.
 
 ## Not for continuing a conversation
 
