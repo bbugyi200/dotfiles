@@ -109,6 +109,7 @@ xprompts:
   m_pro: "%model:#pro"
   m_pro_flash: "%model(#pro, #flash)"
   m_sonnet: "%model:sonnet"
+  m_spark: "%model:codex/gpt-5.3-codex-spark"
   m_swarm: "%model(opus, #codex, #pro)"
   m_qwen: "%model:qwen3.6-plus"
   prs/compare:
