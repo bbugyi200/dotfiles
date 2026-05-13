@@ -34,6 +34,23 @@ This prints a stable-shape JSON array to stdout. Each row has: `name`, `project`
 - For completed agents' transcripts, use the `/sase_chats` skill — `sase chats show --agent <name>` resolves to the
   saved chat for any agent that has run.
 
+## Retrying an agent
+
+Use a fresh retry name from the same project/workspace context; do not use `%name:!<name>` from non-TUI surfaces for
+ordinary retries.
+
+1. Locate the source agent with `sase agents status -a -j` or `sase agents show -n <name>`.
+2. Prefer `<artifacts_dir>/raw_xprompt.md` as the retry prompt source when it exists.
+3. Allocate the retry name with `sase.agent.names.allocate_retry_name("<name>")`.
+4. Rewrite or prepend the top-level name directive with
+   `sase.agent.retry_prompt.rewrite_retry_prompt_name(raw_prompt, retry_name)`.
+5. Launch from the intended workspace/project context with `sase run -d "$rewritten_prompt"`.
+6. Confirm with `sase agents status -a -j` or `sase agents show -n <retry-name>`.
+
+Only use forced same-name reuse for a user-approved intentional rerun under the exact same name, and only through code
+paths that call `wipe_names_for_forced_reuse` and rewrite the directive back to `%name:<name>` before spawning. Forced
+reuse wipes the prior owner and depends on the TUI confirmation path.
+
 ## Artifacts directory
 
 Each row's `artifacts_dir` is the on-disk state for that agent. Files you may read mid-run:
