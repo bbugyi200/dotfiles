@@ -2,6 +2,10 @@ model = "gpt-5.5"
 model_reasoning_effort = "high"
 personality = "pragmatic"
 
+[features]
+hooks = true
+codex_hooks = true
+
 [projects."/home/bryan"]
 trust_level = "trusted"
 
