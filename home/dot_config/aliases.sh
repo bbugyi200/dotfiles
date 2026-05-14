@@ -18,10 +18,6 @@ acei() { install_sase_github "$@" && sase ace --restart-axe; }
 aceii() { install_sase_google "$@" && sase ace --restart-axe; }
 alias axe='sase axe'
 alias commit='sase commit'
-gog() {
-  GOG_KEYRING_PASSWORD="$(pass show gogcli/keyring-password | sed -n '1p')" \
-    /home/bryan/bin/gog "$@"
-}
 alias gsl='get_sase_logs'
 alias gsp='get_sase_profile'
 alias run='sase run'

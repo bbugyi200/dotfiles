@@ -1,0 +1,4 @@
+#!/bin/bash
+
+GOG_KEYRING_PASSWORD="$(pass show gogcli/keyring-password | sed -n '1p')" \
+  /home/bryan/bin/gog "$@"
