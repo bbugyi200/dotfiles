@@ -112,6 +112,9 @@ xprompts:
   m_spark: "%model:codex/gpt-5.3-codex-spark"
   m_swarm: "%model(opus, #codex, #pro)"
   m_qwen: "%model:qwen3.6-plus"
+  perf:
+    snippet: true
+    content: "Make sure your solution doesn't harm performance at all."
   prs/compare:
     input:
       pr_a: int
