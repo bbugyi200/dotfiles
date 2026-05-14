@@ -16,9 +16,12 @@ function features_table() {
 }
 
 function test_codex_hooks_feature_is_enabled() {
+  local features
+  features="$(features_table)"
+
   assert_contains "[features]" "$(cat "${CODEX_CONFIG}")"
-  assert_contains "hooks = true" "$(features_table)"
-  assert_contains "codex_hooks = true" "$(features_table)"
+  assert_contains "hooks = true" "${features}"
+  assert_same "" "$(printf "%s\n" "${features}" | grep -E '^codex_hooks[[:space:]]*=' || true)"
 }
 
 function test_codex_stop_hooks_include_sase_commands() {
