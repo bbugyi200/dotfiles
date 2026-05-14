@@ -293,6 +293,10 @@ def repo_slug(repo: str) -> str:
     return slug or "repo"
 
 
+def pr_name(repo: str, run_id: str, attempt: str) -> str:
+    return f"gha_fix_{repo_slug(repo).replace('-', '_')}_{run_id}_a{attempt}"
+
+
 def fence_for(text: str) -> str:
     longest = max(
         (len(match.group(0)) for match in re.finditer(r"`+", text)), default=0
@@ -303,6 +307,7 @@ def fence_for(text: str) -> str:
 def build_prompt(repo: str, run: dict[str, Any], failure_output: str) -> str:
     run_id, attempt = run_identity(run)
     agent_name = f"gha-fix-{repo_slug(repo)}-{run_id}-a{attempt}"
+    change_name = pr_name(repo, run_id, attempt)
     truncated_output, truncation_note = truncate_log(failure_output)
     fence = fence_for(truncated_output)
 
@@ -315,7 +320,7 @@ def build_prompt(repo: str, run: dict[str, Any], failure_output: str) -> str:
     url = run.get("url") or "unknown"
 
     parts = [
-        f"#gh:{repo} %g:gact %n:{agent_name}",
+        f"#gh:{repo} %g:gact #pr({change_name}) %n:{agent_name}",
         "",
         "The latest completed GitHub Actions run failed. Diagnose the root cause, fix the repository, "
         "and run the relevant checks. Do not commit unless explicitly requested.",

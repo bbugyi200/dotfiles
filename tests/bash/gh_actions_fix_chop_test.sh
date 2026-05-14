@@ -138,7 +138,7 @@ function test_failure_launches_agent_with_failed_logs() {
   assert_contains "decision=launched" "${output}"
   assert_contains "summary: repos_configured=1 repos_checked=1 actionable_failures=1 dedupe_skips=0 non_action_skips=0 launch_successes=1 launch_failures=0 check_errors=0" "${output}"
   assert_same "1" "$(prompt_count)"
-  assert_contains "#gh:owner/repo %g:gact %n:gha-fix-owner-repo-12345-a1" "$(cat "${PROMPTS_FILE}")"
+  assert_contains "#gh:owner/repo %g:gact #pr(gha_fix_owner_repo_12345_a1) %n:gha-fix-owner-repo-12345-a1" "$(cat "${PROMPTS_FILE}")"
   assert_contains "Workflow: Unit Tests" "$(cat "${PROMPTS_FILE}")"
   assert_contains "boom failed in pytest" "$(cat "${PROMPTS_FILE}")"
 }
@@ -167,6 +167,7 @@ function test_new_attempt_launches_again() {
   run_chop >/dev/null
 
   assert_same "2" "$(prompt_count)"
+  assert_contains "#pr(gha_fix_owner_repo_12345_a2)" "$(cat "${PROMPTS_FILE}")"
   assert_contains "%n:gha-fix-owner-repo-12345-a2" "$(cat "${PROMPTS_FILE}")"
   assert_contains "attempt two" "$(cat "${PROMPTS_FILE}")"
 }
