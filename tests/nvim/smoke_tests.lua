@@ -52,6 +52,7 @@ describe("SMOKE TEST:", function()
 		nvim = vim.fn.jobstart({ "nvim", "--embed", "--headless" }, { rpc = true, width = 80, height = 24 })
 		local nvim_path = get_nvim_path()
 		vim.fn.rpcrequest(nvim, "nvim_command", "set runtimepath^=" .. nvim_path)
+		vim.fn.rpcrequest(nvim, "nvim_command", "set runtimepath+=" .. nvim_path .. "/after")
 	end)
 
 	after_each(function()
@@ -127,6 +128,18 @@ describe("SMOKE TEST:", function()
 			local ok, ret = string.match(result, "(%S+)%s*(.*)")
 			assert.is_equal(ok, "true", "ERROR IN 'bb_utils." .. subpack .. "' MODULE: " .. ret)
 		end
+	end)
+
+	it("enables spell checking for markdown buffers", function()
+		vim.fn.rpcrequest(nvim, "nvim_command", "filetype plugin on")
+		vim.fn.rpcrequest(nvim, "nvim_command", "enew")
+		vim.fn.rpcrequest(nvim, "nvim_command", "set filetype=markdown")
+
+		local filetype = vim.fn.rpcrequest(nvim, "nvim_get_option_value", "filetype", { buf = 0 })
+		local spell = vim.fn.rpcrequest(nvim, "nvim_get_option_value", "spell", { win = 0 })
+
+		assert.is_equal("markdown", filetype)
+		assert.is_true(spell)
 	end)
 
 	it("toasts and edits anyway when a swap file exists", function()
