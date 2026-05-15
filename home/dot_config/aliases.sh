@@ -619,6 +619,7 @@ alias wttr='clear && curl "wttr.in/?T"'
 alias wwat='watch -n 1 "{ wpoll; echo; watson log; }"'
 xco() { xclip -o -sel clipboard; }
 alias xc_commit='git log -1 --format=%H | xc'
+alias xcpwd='pwd | perl -nE "print s{$HOME}{~}gr" | xc'
 alias xdokey='xev -event keyboard'
 alias xk='xdokey'
 alias xmonad-keycodes='vim /usr/include/X11/keysymdef.h'
