@@ -87,7 +87,6 @@ export TV=/mnt/hercules/plex/TV
 export PATH="$(insert_path "${PATH}" "/usr/sbin")"
 export PATH="$(insert_path "${PATH}" "/sbin")"
 export PATH="$(insert_path "${PATH}" "/usr/local/bin")"
-export PATH="$(insert_path "${PATH}" "/usr/local/opt/gnu-getopt/bin")"
 export PATH="$(insert_path "${PATH}" "${HOME}"/.cargo/bin)"
 export PATH="$(insert_path "${PATH}" "${HOME}"/.poetry/bin)"
 export MATLABPATH="$HOME/.matlab"
@@ -134,6 +133,9 @@ if [[ "$(uname -a)" == *"Darwin"* ]]; then
   export LS="gls"
   export PATH="$(insert_path "${PATH}" /opt/local/bin)"
   export PATH="$(insert_path "${PATH}" /opt/homebrew/bin)"
+  # GNU getopt (macOS ships BSD getopt which doesn't support -o/-l flags).
+  export PATH="$(insert_path "${PATH}" /usr/local/opt/gnu-getopt/bin)"
+  export PATH="$(insert_path "${PATH}" /opt/homebrew/opt/gnu-getopt/bin)"
   export SED="gsed"
   export SORT="gsort"
   mkdir -p /tmp/bb && export TMPDIR="/tmp/bb"
