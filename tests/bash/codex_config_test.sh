@@ -24,10 +24,9 @@ function test_codex_hooks_feature_is_enabled() {
   assert_same "" "$(printf "%s\n" "${features}" | grep -E '^codex_hooks[[:space:]]*=' || true)"
 }
 
-function test_codex_stop_hooks_include_sase_commands() {
+function test_codex_stop_hooks_do_not_include_sase_commands() {
   local hooks_json
   hooks_json="$(cat "${CODEX_HOOKS}")"
 
-  assert_contains "sase_commit_stop_hook" "${hooks_json}"
-  assert_contains "sase_sibling_commit_stop_hook" "${hooks_json}"
+  assert_same "" "$(printf "%s\n" "${hooks_json}" | grep -E 'sase_(commit|sibling_commit)_stop_hook' || true)"
 }

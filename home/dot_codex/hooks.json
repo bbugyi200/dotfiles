@@ -5,16 +5,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sase_commit_stop_hook",
-            "timeout": 300
-          },
-          {
-            "type": "command",
-            "command": "p=\"${CODEX_PROJECT_DIR:-$PWD}/tools/sase_sibling_commit_stop_hook\"; [ ! -x \"$p\" ] || \"$p\"",
-            "timeout": 300
-          },
-          {
-            "type": "command",
             "command": "p=\"${CODEX_PROJECT_DIR:-$PWD}/tools/zorg_sibling_commit_stop_hook\"; [ ! -x \"$p\" ] || \"$p\"",
             "timeout": 300
           }
