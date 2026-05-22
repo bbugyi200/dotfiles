@@ -4,6 +4,11 @@ precommit_command: "sase_git_fix"
 github_orgs:
   - bbugyi200
   - sase-org
+sibling_repos:
+  - name: chezmoi
+    path: ~/.local/share/chezmoi
+    workspace:
+      strategy: none
 ace:
   snippets:
     ace: "`sase ace`"
