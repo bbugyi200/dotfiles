@@ -6,7 +6,8 @@ description:
   it.
 ---
 
-Commit changes via the `sase commit` command.
+Commit changes via the `sase_git_commit` wrapper. The wrapper records skill invocation evidence, then delegates to
+`sase commit`.
 
 ## Instructions
 
@@ -25,7 +26,7 @@ Commit changes via the `sase commit` command.
 4. **Run the commit** — Execute:
 
    ```bash
-   sase commit -M commit_message.md -f file1.py -f file2.py
+   sase_git_commit -M commit_message.md -f file1.py -f file2.py
    ```
 
    Flags:
@@ -39,8 +40,8 @@ Commit changes via the `sase commit` command.
    (`create_commit`, `create_proposal`, or `create_pull_request`). Do NOT pass `--type` unless you need to override.
    Short aliases are also accepted: `commit`, `propose`, `pr`.
 
-5. **Verify clean and pushed** — For git repos, `sase commit` normally pushes commits as part of the `create_commit`
-   workflow. After it exits successfully, run:
+5. **Verify clean and pushed** — For git repos, `sase_git_commit` delegates to `sase commit`, which normally pushes
+   commits as part of the `create_commit` workflow. After it exits successfully, run:
 
    ```bash
    git status --short --branch
@@ -52,15 +53,15 @@ Commit changes via the `sase commit` command.
 ## Example
 
 ```bash
-sase commit -M commit_message.md -f src/auth.py -f src/login.py
+sase_git_commit -M commit_message.md -f src/auth.py -f src/login.py
 ```
 
 ## On Merge Conflict
 
-If `sase commit` exits with code **2** and prints a "merge conflict" message, the local working tree is in a paused
-rebase/merge state and the post-commit bookkeeping has been deferred. Do NOT re-run the original `sase commit` command —
-that would attempt to re-stage and re-commit on top of the already-resolved state. Instead, resolve the conflict and
-finalize:
+If `sase_git_commit` exits with code **2** and prints a "merge conflict" message, the local working tree is in a paused
+rebase/merge state and the post-commit bookkeeping has been deferred. Do NOT re-run the original `sase_git_commit`
+command — that would attempt to re-stage and re-commit on top of the already-resolved state. Instead, resolve the
+conflict and finalize:
 
 1. **Find conflicted files**: Run `git diff --name-only --diff-filter=U`.
 2. **Read each file** and resolve conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`):
@@ -72,9 +73,9 @@ finalize:
 4. **Continue the rebase/merge**: Run `git -c core.editor=true rebase --continue` (or `git merge --continue` for a
    non-rebase merge). If this produces more conflicts, repeat steps 1–4 until clean.
 5. **Verify the working tree is clean**: `git status` should show "nothing to commit, working tree clean".
-6. **Finalize the sase commit**: Run `sase commit --resume`. This replays the post-commit bookkeeping (push, ChangeSpec
-   row, COMMITS entry, result marker) and exits 0 on success.
+6. **Finalize the sase commit**: Run `sase_git_commit --resume`. This replays the post-commit bookkeeping (push,
+   ChangeSpec row, COMMITS entry, result marker) and exits 0 on success.
 
 ```bash
-sase commit --resume
+sase_git_commit --resume
 ```
