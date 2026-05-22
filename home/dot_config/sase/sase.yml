@@ -59,6 +59,7 @@ ace:
     piw: "prompt input widget"
     prp: "plan review panel"
     rep: "the ../sase-$1 repo"
+    sa: "sase agent"
     w: "%w:"
     x: "xprompt"
     xw: "xprompt workflow"
