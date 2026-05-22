@@ -73,9 +73,6 @@ llm_provider:
   model_aliases:
     other: claude/opus
 
-workspace:
-  root: xdg-state
-
 xprompts:
   # snippets
   bea:
