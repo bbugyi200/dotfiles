@@ -1,4 +1,4 @@
-# SASE Memory
+# SASE = Structured Agentic Software Engineering
 
 ## Sibling Repositories
 
