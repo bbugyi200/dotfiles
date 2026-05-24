@@ -29,11 +29,15 @@ Commit changes via the `sase_git_commit` wrapper. The wrapper records skill invo
    sase_git_commit -M commit_message.md -f file1.py -f file2.py
    ```
 
+   For post-completion finalizer-triggered commits, use one `-f` flag for each listed file you intend to commit. Omit
+   `-f` only when you intentionally want to stage every change in that repository.
+
    Flags:
    - `-M`: Path to file containing the commit message. The file is deleted after reading.
    - `-m`: Inline commit message string (alternative to `-M`). `-m` and `-M` are mutually exclusive.
    - `-f`: File to stage (repeat for multiple files). **Include both modified AND newly created (untracked) files.**
-     Omit to stage all changes (including untracked files).
+     Omitting all `-f` flags stages all changes (including untracked files); reserve that for an intentional
+     whole-repository commit.
    - `--name`: Branch name (only needed for `create_pull_request` method).
 
    The `$SASE_COMMIT_METHOD` environment variable is read automatically to determine the dispatch method
