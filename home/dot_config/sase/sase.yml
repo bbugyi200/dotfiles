@@ -104,6 +104,7 @@ xprompts:
   flash: "gemini-3-flash-preview"
   codex: "gpt-5.5"
   codex3: "gpt-5.3-codex"
+  gem: "#pro"
   pro: "gemini-3.1-pro-preview"
   # %model aliases
   m_codex: "%model:#codex"
@@ -113,11 +114,11 @@ xprompts:
   m_opus: "%model:opus"
   m_opus_codex: "%model(opus, #codex)"
   m_opus_sonnet: "%model(opus, sonnet)"
-  m_pro: "%model:#pro"
-  m_pro_flash: "%model(#pro, #flash)"
+  m_pro: "%model:#gem"
+  m_pro_flash: "%model(#gem, #flash)"
   m_sonnet: "%model:sonnet"
   m_spark: "%model:codex/gpt-5.3-codex-spark"
-  m_swarm: "%model(opus, #codex, #pro)"
+  m_swarm: "%model(opus, #codex, #gem)"
   m_qwen: "%model:qwen3.6-plus"
   perf:
     snippet: true
