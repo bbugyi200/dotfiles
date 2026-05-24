@@ -104,7 +104,7 @@ xprompts:
   flash: "gemini/gemini-3.5-flash"
   codex: "gpt-5.5"
   codex3: "gpt-5.3-codex"
-  gem: "#flash"
+  gem: "#pro"
   pro: "gemini-3.1-pro-preview"
   # %model aliases
   m_codex: "%model:#codex"
