@@ -31,7 +31,7 @@ When the user names an agent, resolve by name first:
 sase chats show --agent <name>
 ```
 
-This follows the same fallback as `#resume`: completed agent's `done.json["response_path"]` first, then
+This follows the same fallback as `#fork`: completed agent's `done.json["response_path"]` first, then
 `agent_meta.json["chat_path"]`.
 
 Step-suffixed child workflows (e.g. `<name>.plan`, `<name>.commit`) are recorded as separate transcript entries —
@@ -81,5 +81,5 @@ Exactly one selector (`--agent`, `--path`, or `--basename`) is required.
 
 ## Not for continuing a conversation
 
-This skill is read-only. To continue a prior conversation in a new agent, use `#resume:<name>` or
-`#resume_by_chat:<basename>` xprompts — they remain the right tool for that.
+This skill is read-only. To continue a prior conversation in a new agent, use `#fork:<name>` or
+`#fork_by_chat:<basename>` xprompts — they remain the right tool for that.

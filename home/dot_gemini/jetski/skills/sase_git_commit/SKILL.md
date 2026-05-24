@@ -2,11 +2,12 @@
 name: sase_git_commit
 description:
   Commit changes using sase commit for git-based VCS (bare git and GitHub). This is the ONLY way you should EVER commit
-  to git repos. NEVER invoke this skill unless the user explicitly asks you to commit or a post-completion hook triggers
-  it.
+  to git repos. NEVER invoke this skill unless the user explicitly asks you to commit or a post-completion finalizer
+  triggers it.
 ---
 
-Commit changes via the `sase commit` command.
+Commit changes via the `sase_git_commit` wrapper. The wrapper records skill invocation evidence, then delegates to
+`sase commit`.
 
 ## Instructions
 
@@ -25,22 +26,26 @@ Commit changes via the `sase commit` command.
 4. **Run the commit** — Execute:
 
    ```bash
-   sase commit -M commit_message.md -f file1.py -f file2.py
+   sase_git_commit -M commit_message.md -f file1.py -f file2.py
    ```
+
+   For post-completion finalizer-triggered commits, use one `-f` flag for each listed file you intend to commit. Omit
+   `-f` only when you intentionally want to stage every change in that repository.
 
    Flags:
    - `-M`: Path to file containing the commit message. The file is deleted after reading.
    - `-m`: Inline commit message string (alternative to `-M`). `-m` and `-M` are mutually exclusive.
    - `-f`: File to stage (repeat for multiple files). **Include both modified AND newly created (untracked) files.**
-     Omit to stage all changes (including untracked files).
+     Omitting all `-f` flags stages all changes (including untracked files); reserve that for an intentional
+     whole-repository commit.
    - `--name`: Branch name (only needed for `create_pull_request` method).
 
    The `$SASE_COMMIT_METHOD` environment variable is read automatically to determine the dispatch method
    (`create_commit`, `create_proposal`, or `create_pull_request`). Do NOT pass `--type` unless you need to override.
    Short aliases are also accepted: `commit`, `propose`, `pr`.
 
-5. **Verify clean and pushed** — For git repos, `sase commit` normally pushes commits as part of the `create_commit`
-   workflow. After it exits successfully, run:
+5. **Verify clean and pushed** — For git repos, `sase_git_commit` delegates to `sase commit`, which normally pushes
+   commits as part of the `create_commit` workflow. After it exits successfully, run:
 
    ```bash
    git status --short --branch
@@ -52,15 +57,15 @@ Commit changes via the `sase commit` command.
 ## Example
 
 ```bash
-sase commit -M commit_message.md -f src/auth.py -f src/login.py
+sase_git_commit -M commit_message.md -f src/auth.py -f src/login.py
 ```
 
 ## On Merge Conflict
 
-If `sase commit` exits with code **2** and prints a "merge conflict" message, the local working tree is in a paused
-rebase/merge state and the post-commit bookkeeping has been deferred. Do NOT re-run the original `sase commit` command —
-that would attempt to re-stage and re-commit on top of the already-resolved state. Instead, resolve the conflict and
-finalize:
+If `sase_git_commit` exits with code **2** and prints a "merge conflict" message, the local working tree is in a paused
+rebase/merge state and the post-commit bookkeeping has been deferred. Do NOT re-run the original `sase_git_commit`
+command — that would attempt to re-stage and re-commit on top of the already-resolved state. Instead, resolve the
+conflict and finalize:
 
 1. **Find conflicted files**: Run `git diff --name-only --diff-filter=U`.
 2. **Read each file** and resolve conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`):
@@ -72,9 +77,9 @@ finalize:
 4. **Continue the rebase/merge**: Run `git -c core.editor=true rebase --continue` (or `git merge --continue` for a
    non-rebase merge). If this produces more conflicts, repeat steps 1–4 until clean.
 5. **Verify the working tree is clean**: `git status` should show "nothing to commit, working tree clean".
-6. **Finalize the sase commit**: Run `sase commit --resume`. This replays the post-commit bookkeeping (push, ChangeSpec
-   row, COMMITS entry, result marker) and exits 0 on success.
+6. **Finalize the sase commit**: Run `sase_git_commit --resume`. This replays the post-commit bookkeeping (push,
+   ChangeSpec row, COMMITS entry, result marker) and exits 0 on success.
 
 ```bash
-sase commit --resume
+sase_git_commit --resume
 ```
