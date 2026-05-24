@@ -101,7 +101,7 @@ xprompts:
   gh_dotfiles: "#gh:dotfiles"
   gh_sase: "#gh:sase"
   # models
-  flash: "gemini-3.5-flash"
+  flash: "gemini/gemini-3.5-flash"
   codex: "gpt-5.5"
   codex3: "gpt-5.3-codex"
   gem: "#flash"
