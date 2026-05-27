@@ -75,7 +75,6 @@ axe:
           run_every: 60m
         - name: sase_fix_just
           description: "Run the #!sase/fix_just xprompt workflow"
-          agent: "#gh:sase %g:chop #!sase/fix_just"
           run_every: 60m
     code_quality:
       interval: 60

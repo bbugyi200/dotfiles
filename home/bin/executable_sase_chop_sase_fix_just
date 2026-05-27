@@ -1,0 +1,157 @@
+#!/usr/bin/env python3
+"""Launch the SASE fix_just workflow unless an open repair ChangeSpec exists."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any
+
+CHANGESPEC_GUARD_PREFIX = "sase_fix_just_"
+FIX_JUST_PROMPT = "#gh:sase %g:chop #!sase/fix_just"
+OPEN_CHANGESPEC_STATUSES = {"WIP", "Draft", "Ready", "Mailed"}
+DETAIL_LIMIT_CHARS = 500
+CHANGESPEC_MATCH_LOG_LIMIT = 5
+
+
+def log(message: str) -> None:
+    print(f"[sase_fix_just] {message}")
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Launch the SASE fix_just workflow chop.",
+    )
+    parser.add_argument(
+        "--context",
+        required=True,
+        help="Path to the SASE chop context JSON file.",
+    )
+    return parser.parse_args()
+
+
+def compact_detail(detail: str) -> str:
+    detail = " ".join(detail.strip().split())
+    if len(detail) <= DETAIL_LIMIT_CHARS:
+        return detail
+    return detail[: DETAIL_LIMIT_CHARS - 3].rstrip() + "..."
+
+
+def load_context(path: Path) -> dict[str, Any]:
+    try:
+        return json.loads(path.read_text())
+    except OSError as exc:
+        raise RuntimeError(f"failed to read context file {path}: {exc}") from exc
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"failed to parse context JSON {path}: {exc}") from exc
+
+
+def changespec_base_status(value: Any) -> str:
+    status = str(value or "").strip()
+    if " - " in status:
+        status = status.split(" - ", 1)[0].strip()
+    return status
+
+
+def open_changespec_names(context: dict[str, Any], prefix: str) -> list[str]:
+    snapshot_value = context.get("all_changespecs_file")
+    if not isinstance(snapshot_value, str) or not snapshot_value:
+        raise RuntimeError("context is missing all_changespecs_file")
+
+    snapshot_path = Path(snapshot_value)
+    try:
+        data = json.loads(snapshot_path.read_text())
+    except OSError as exc:
+        raise RuntimeError(
+            f"failed to read ChangeSpec snapshot {snapshot_path}: {exc}"
+        ) from exc
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(
+            f"failed to parse ChangeSpec snapshot {snapshot_path}: {exc}"
+        ) from exc
+
+    if not isinstance(data, list):
+        raise RuntimeError(f"ChangeSpec snapshot {snapshot_path} is not a JSON list")
+
+    names: list[str] = []
+    for index, item in enumerate(data):
+        if not isinstance(item, dict):
+            raise RuntimeError(
+                f"ChangeSpec snapshot {snapshot_path} entry {index} is not a JSON object"
+            )
+        name = item.get("name")
+        if not isinstance(name, str) or not name.startswith(prefix):
+            continue
+        if changespec_base_status(item.get("status")) in OPEN_CHANGESPEC_STATUSES:
+            names.append(name)
+    return sorted(names)
+
+
+def compact_names(names: list[str]) -> str:
+    shown = names[:CHANGESPEC_MATCH_LOG_LIMIT]
+    detail = ", ".join(shown)
+    remaining = len(names) - len(shown)
+    if remaining > 0:
+        detail = f"{detail}, ... (+{remaining} more)"
+    return detail
+
+
+def run_command(args: list[str]) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        args,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def launch_fix_just() -> bool:
+    log(f"launching fix_just workflow: {FIX_JUST_PROMPT!r}")
+    result = run_command(["sase", "run", "-d", FIX_JUST_PROMPT])
+    if result.returncode == 0:
+        detail = compact_detail(result.stdout or result.stderr)
+        if detail:
+            log(f"sase run output: {detail}")
+        log("launched fix_just workflow")
+        return True
+
+    detail = compact_detail(result.stderr or result.stdout)
+    log(f"sase run failed: {detail}")
+    return False
+
+
+def main() -> int:
+    args = parse_args()
+    try:
+        context = load_context(Path(args.context))
+    except RuntimeError as exc:
+        log(str(exc))
+        return 2
+
+    try:
+        blocking_changespecs = open_changespec_names(context, CHANGESPEC_GUARD_PREFIX)
+    except RuntimeError as exc:
+        log(f"changespec guard check_error: {exc}")
+        log(
+            "skipping fix_just workflow launch because ChangeSpec snapshot is unavailable"
+        )
+        return 0
+    if blocking_changespecs:
+        log(
+            "open ChangeSpecs block launch: "
+            f"prefix={CHANGESPEC_GUARD_PREFIX!r} "
+            f"matches={compact_names(blocking_changespecs)}"
+        )
+        log("no fix_just workflow launched")
+        return 0
+
+    if not launch_fix_just():
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

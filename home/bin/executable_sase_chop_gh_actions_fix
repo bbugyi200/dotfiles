@@ -29,6 +29,9 @@ IGNORED_CONCLUSIONS = {
 LOG_LIMIT_BYTES = 60 * 1024
 DETAIL_LIMIT_CHARS = 500
 STATE_FILE_NAME = "gh_actions_fix_seen.json"
+CHANGESPEC_GUARD_PREFIX = "sase_gha_fix_"
+OPEN_CHANGESPEC_STATUSES = {"WIP", "Draft", "Ready", "Mailed"}
+CHANGESPEC_MATCH_LOG_LIMIT = 5
 
 
 def log(message: str) -> None:
@@ -140,6 +143,56 @@ def load_context(path: Path) -> dict[str, Any]:
         raise RuntimeError(f"failed to read context file {path}: {exc}") from exc
     except json.JSONDecodeError as exc:
         raise RuntimeError(f"failed to parse context JSON {path}: {exc}") from exc
+
+
+def changespec_base_status(value: Any) -> str:
+    status = str(value or "").strip()
+    if " - " in status:
+        status = status.split(" - ", 1)[0].strip()
+    return status
+
+
+def open_changespec_names(context: dict[str, Any], prefix: str) -> list[str]:
+    snapshot_value = context.get("all_changespecs_file")
+    if not isinstance(snapshot_value, str) or not snapshot_value:
+        raise RuntimeError("context is missing all_changespecs_file")
+
+    snapshot_path = Path(snapshot_value)
+    try:
+        data = json.loads(snapshot_path.read_text())
+    except OSError as exc:
+        raise RuntimeError(
+            f"failed to read ChangeSpec snapshot {snapshot_path}: {exc}"
+        ) from exc
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(
+            f"failed to parse ChangeSpec snapshot {snapshot_path}: {exc}"
+        ) from exc
+
+    if not isinstance(data, list):
+        raise RuntimeError(f"ChangeSpec snapshot {snapshot_path} is not a JSON list")
+
+    names: list[str] = []
+    for index, item in enumerate(data):
+        if not isinstance(item, dict):
+            raise RuntimeError(
+                f"ChangeSpec snapshot {snapshot_path} entry {index} is not a JSON object"
+            )
+        name = item.get("name")
+        if not isinstance(name, str) or not name.startswith(prefix):
+            continue
+        if changespec_base_status(item.get("status")) in OPEN_CHANGESPEC_STATUSES:
+            names.append(name)
+    return sorted(names)
+
+
+def compact_names(names: list[str]) -> str:
+    shown = names[:CHANGESPEC_MATCH_LOG_LIMIT]
+    detail = ", ".join(shown)
+    remaining = len(names) - len(shown)
+    if remaining > 0:
+        detail = f"{detail}, ... (+{remaining} more)"
+    return detail
 
 
 def load_seen(path: Path) -> dict[str, dict[str, Any]]:
@@ -446,6 +499,22 @@ def main() -> int:
     except RuntimeError as exc:
         log(str(exc))
         return 2
+
+    try:
+        blocking_changespecs = open_changespec_names(context, CHANGESPEC_GUARD_PREFIX)
+    except RuntimeError as exc:
+        log(f"changespec guard check_error: {exc}")
+        log("skipping fixer launch because ChangeSpec snapshot is unavailable")
+        log("no fixer agents launched")
+        return 0
+    if blocking_changespecs:
+        log(
+            "open ChangeSpecs block launch: "
+            f"prefix={CHANGESPEC_GUARD_PREFIX!r} "
+            f"matches={compact_names(blocking_changespecs)}"
+        )
+        log("no fixer agents launched")
+        return 0
 
     state_dir_value = context.get("state_dir")
     if not state_dir_value:

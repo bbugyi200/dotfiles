@@ -11,9 +11,13 @@ function set_up() {
   FAKE_BIN="${TEST_TMP}/bin"
   STATE_DIR="${TEST_TMP}/state"
   CONTEXT_FILE="${TEST_TMP}/context.json"
+  CHANGESPECS_FILE="${TEST_TMP}/all_changespecs.json"
   PROMPTS_FILE="${TEST_TMP}/prompts.txt"
+  GH_CALLS_FILE="${TEST_TMP}/gh_calls.txt"
   mkdir -p "${FAKE_BIN}" "${STATE_DIR}"
-  printf '{"state_dir": "%s"}\n' "${STATE_DIR}" >"${CONTEXT_FILE}"
+  printf '[]\n' >"${CHANGESPECS_FILE}"
+  printf '{"state_dir": "%s", "all_changespecs_file": "%s"}\n' \
+    "${STATE_DIR}" "${CHANGESPECS_FILE}" >"${CONTEXT_FILE}"
   write_fake_sase
   write_fake_gh
 }
@@ -45,6 +49,8 @@ function write_fake_gh() {
   cat >"${FAKE_BIN}/gh" <<'EOF'
 #!/bin/bash
 set -euo pipefail
+
+printf '%s\n' "$*" >>"${FAKE_GH_CALLS}"
 
 if [[ "$1" == "run" && "$2" == "list" ]]; then
   if [[ "${FAKE_GH_LIST_RC:-0}" != "0" ]]; then
@@ -85,6 +91,7 @@ EOF
 function run_chop() {
   PATH="${FAKE_BIN}:${PATH}" \
     FAKE_SASE_PROMPTS="${PROMPTS_FILE}" \
+    FAKE_GH_CALLS="${GH_CALLS_FILE}" \
     SASE_GHA_FIX_REPOS="owner/repo" \
     python3 "${GH_ACTIONS_FIX_SCRIPT}" --context "${CONTEXT_FILE}" 2>&1
 }
@@ -92,6 +99,7 @@ function run_chop() {
 function run_chop_without_repos() {
   PATH="${FAKE_BIN}:${PATH}" \
     FAKE_SASE_PROMPTS="${PROMPTS_FILE}" \
+    FAKE_GH_CALLS="${GH_CALLS_FILE}" \
     SASE_GHA_FIX_REPOS="" \
     python3 "${GH_ACTIONS_FIX_SCRIPT}" --context "${CONTEXT_FILE}" 2>&1
 }
@@ -104,11 +112,61 @@ function prompt_count() {
   grep -c '^---PROMPT---$' "${PROMPTS_FILE}"
 }
 
+function gh_call_count() {
+  if [[ ! -f "${GH_CALLS_FILE}" ]]; then
+    printf '0'
+    return
+  fi
+  wc -l <"${GH_CALLS_FILE}" | tr -d ' '
+}
+
+function write_changespecs() {
+  cat >"${CHANGESPECS_FILE}"
+}
+
 function set_latest_run() {
   local conclusion="$1"
   local attempt="${2:-1}"
   export FAKE_GH_LIST_JSON
   FAKE_GH_LIST_JSON='[{"attempt": '"${attempt}"', "conclusion": "'"${conclusion}"'", "databaseId": 12345, "displayTitle": "Fix CI", "event": "push", "headBranch": "main", "headSha": "abc123", "name": "Unit Tests", "status": "completed", "url": "https://github.com/owner/repo/actions/runs/12345", "workflowName": "Unit Tests"}]'
+}
+
+function test_open_gha_changespec_blocks_before_gh_calls() {
+  write_changespecs <<'JSON'
+[
+  {"name": "sase_gha_fix_owner_repo_12345", "status": "Draft"},
+  {"name": "sase_gha_fix_terminal", "status": "Submitted"},
+  {"name": "sase_fix_just_existing", "status": "Draft"}
+]
+JSON
+
+  local output
+  output="$(run_chop)"
+
+  assert_contains "open ChangeSpecs block launch: prefix='sase_gha_fix_'" "${output}"
+  assert_contains "sase_gha_fix_owner_repo_12345" "${output}"
+  assert_contains "no fixer agents launched" "${output}"
+  assert_same "0" "$(gh_call_count)"
+  assert_same "0" "$(prompt_count)"
+}
+
+function test_terminal_gha_changespec_does_not_block() {
+  write_changespecs <<'JSON'
+[
+  {"name": "sase_gha_fix_submitted", "status": "Submitted"},
+  {"name": "sase_gha_fix_archived", "status": "Archived"},
+  {"name": "sase_gha_fix_reverted", "status": "Reverted"}
+]
+JSON
+  set_latest_run "failure"
+  export FAKE_GH_LOG_FAILED_OUTPUT="terminal specs should not block"
+
+  local output
+  output="$(run_chop)"
+
+  assert_contains "launched fixer agent for run 12345 attempt 1" "${output}"
+  assert_same "1" "$(prompt_count)"
+  assert_contains "terminal specs should not block" "$(cat "${PROMPTS_FILE}")"
 }
 
 function test_success_conclusion_does_not_launch_agent() {
