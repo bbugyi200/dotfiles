@@ -1,0 +1,129 @@
+#!/bin/bash
+
+# shellcheck source=/home/bryan/lib/bugyi.sh
+source ~/lib/bugyi.sh
+
+export USAGE_GRAMMAR=(
+  "[-v] PRE_CHECK_SLEEP POST_NOTIFY_SLEEP"
+  "-h"
+)
+
+read -r -d '' DOC <<EOM
+$(usage)
+
+Notify me when the current Bob pomodoro is complete.
+
+Positional Arguments:
+---------------------
+PRE_CHECK_SLEEP
+    the number of seconds to wait between calls to bob_pomodoro.
+
+POST_NOTIFY_SLEEP
+    the number of seconds to wait after a notification.
+
+Optional Arguments
+------------------
+-h | --help
+    View this help message.
+
+-v | --verbose
+    Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
+EOM
+
+function run() {
+  parse_cli_args "$@"
+  local loop_count=0
+  while true; do
+    loop_count=$((loop_count + 1))
+    log::info \
+      "Starting Loop: Every %d seconds, I will check if the current pomodoro is done." \
+      "${PRE_CHECK_SLEEP}"
+    while true; do
+      sleep "${PRE_CHECK_SLEEP}"
+
+      local bob_pomodoro_output
+      if ! bob_pomodoro_output="$(bob_pomodoro)"; then
+        loop_count=1
+        continue
+      fi
+
+      if [[ "${bob_pomodoro_output}" == *'OVERDUE'* ]]; then
+        break
+      else
+        loop_count=1
+      fi
+    done
+
+    log::info "Sending notifications since pomodoro is done!"
+    if [[ "${loop_count}" -eq 10 ]]; then
+      notify_me "${loop_count}" --no-timeout
+    else
+      notify_me "${loop_count}"
+    fi
+
+    log::info "Sleeping for %d seconds before restarting check loop." "${POST_NOTIFY_SLEEP}"
+    sleep "${POST_NOTIFY_SLEEP}"
+  done
+}
+
+function notify_me() {
+  local count="$1"
+  shift
+
+  if command -v notify-send &>/dev/null; then
+    local msg=" Pomodoro is done! (#${count})"
+    notify-send -u critical 'bob' "${msg}"
+  fi
+
+  for _ in 0 1 2; do
+    echo -e '\a'
+    sleep 1
+  done
+
+}
+
+function parse_cli_args() {
+  log::debug "Command-Line Arguments: ($*)"
+
+  eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
+
+  VERBOSE=0
+  while [[ -n "$1" ]]; do
+    case $1 in
+    -h | --help)
+      echo "${DOC}"
+      exit 0
+      ;;
+    -v | --verbose)
+      VERBOSE=$((VERBOSE + 1))
+      ;;
+    --)
+      shift
+      break
+      ;;
+    esac
+    shift
+  done
+
+  readonly DOC
+  readonly VERBOSE
+
+  if [[ "${VERBOSE}" -gt 1 ]]; then
+    PS4='$LINENO: '
+    set -x
+  fi
+
+  if [[ $# -ne 2 ]]; then
+    die -x 2 "$(usage)"
+  fi
+
+  PRE_CHECK_SLEEP="$1"
+  shift
+
+  POST_NOTIFY_SLEEP="$1"
+  shift
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+  run "$@"
+fi
