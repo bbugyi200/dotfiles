@@ -94,6 +94,34 @@ do
 		"",
 		"## Pomodoros",
 		"",
+		"- [x] (0800-0825) #task completed",
+		"- [-] (0830-0855) #task cancelled",
+		"- [/] (0900-0925) #task in progress",
+		"- [X] (0930-0955) #task completed upper",
+	}))
+	eq(active.lnum, 7, "in-progress Pomodoro is treated as active")
+	eq(active.entry.open, true, "in-progress Pomodoro is open")
+end
+
+do
+	local next_item = assert(bob_pomodoro.find_next_open_item({
+		"# Test",
+		"",
+		"## Pomodoros",
+		"",
+		"- [ ] (0800-0825) #task timed open",
+		"- [-] () #task cancelled placeholder",
+		"- [/] () #task open placeholder",
+	}, nil, { prefer_placeholder = true }))
+	eq(next_item.lnum, 7, "next-open search prefers open placeholders")
+end
+
+do
+	local active = assert(bob_pomodoro.find_active_item({
+		"# Test",
+		"",
+		"## Pomodoros",
+		"",
 		"- [x] (0900-0925) #task completed [[p:: 5]]",
 		"- [ ] () #task placeholder",
 	}))
@@ -142,11 +170,76 @@ do
 	eq(line_at(bufnr, 5), "- [ ] (0005-0030) #task near midnight [[p:: 1]]", "midnight arithmetic wraps")
 end
 
+local lifecycle_lines = {
+	"# Test",
+	"",
+	"## Pomodoros",
+	"",
+	"- [-] (0800-0825) #task cancelled",
+	"- [x] (0830-0855) #task completed",
+	"- [/] (0900-0925) #task wip [cancelled:: 2098-01-01]",
+	"- [ ] () #task next [completion:: 2098-01-01]",
+	"- [ ] () #task later",
+	"",
+	"## Later",
+	"",
+	"- [ ] () #task outside section",
+}
+
+do
+	local bufnr = new_buffer(lifecycle_lines)
+	vim.api.nvim_win_set_cursor(0, { 7, 0 })
+
+	eq(bob_pomodoro.complete_and_advance(bufnr, { date = "2099-01-02" }), true, "complete and advance succeeds")
+	eq(
+		line_at(bufnr, 7),
+		"- [x] (0900-0925) #task wip [completion:: 2099-01-02]",
+		"completion marks active line done and updates completion metadata"
+	)
+	eq(vim.api.nvim_win_get_cursor(0)[1], 8, "completion jumps to next open ledger line")
+end
+
+do
+	local bufnr = new_buffer(lifecycle_lines)
+	vim.api.nvim_win_set_cursor(0, { 7, 0 })
+
+	eq(
+		bob_pomodoro.complete_and_advance(bufnr, { date = "2099-01-02", next_status = "/" }),
+		true,
+		"complete and mark next in-progress succeeds"
+	)
+	eq(line_at(bufnr, 8), "- [/] () #task next", "next line is marked in progress and stale dates removed")
+end
+
+do
+	local bufnr = new_buffer(lifecycle_lines)
+	vim.api.nvim_win_set_cursor(0, { 7, 0 })
+
+	eq(
+		bob_pomodoro.complete_and_advance(bufnr, {
+			date = "2099-01-02",
+			next_status = " ",
+			edit_placeholder = true,
+			start_insert = false,
+		}),
+		true,
+		"complete and edit next placeholder succeeds"
+	)
+	eq(line_at(bufnr, 8), "- [ ] () #task next", "next line is normalized to todo")
+	eq(vim.api.nvim_win_get_cursor(0)[1], 8, "uppercase lifecycle map keeps cursor on next line")
+	eq(
+		vim.api.nvim_win_get_cursor(0)[2],
+		line_at(bufnr, 8):find("%("),
+		"uppercase lifecycle map places cursor inside placeholder"
+	)
+end
+
 do
 	local bufnr = new_buffer(sample_lines)
 	eq(bob_pomodoro.setup_buffer(0), true, "setup accepts current buffer 0")
 	eq(bob_pomodoro.setup_buffer(bufnr), true, "setup installs for Bob buffers with Pomodoros")
 	eq(has_buffer_keymap_desc(bufnr, "Add Bob Pomodoro unit"), true, "setup installs buffer-local keymaps")
+	eq(has_buffer_keymap_desc(bufnr, "Complete Bob Pomodoro and jump next"), true, "setup installs lifecycle keymaps")
 	eq(bob_pomodoro.jump_to_current(bufnr), true, "jump to active succeeds")
 	eq(vim.api.nvim_win_get_cursor(0)[1], 16, "jump moves to latest active timed line")
 end
@@ -186,6 +279,14 @@ end
 do
 	local bufnr = new_buffer({ "# No ledger" })
 	eq(bob_pomodoro.setup_buffer(bufnr), false, "setup skips Bob buffers without Pomodoros")
+end
+
+for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+	if vim.api.nvim_buf_is_loaded(bufnr) then
+		pcall(function()
+			vim.bo[bufnr].modified = false
+		end)
+	end
 end
 
 print("bob_pomodoro_keymaps_spec.lua: ok")

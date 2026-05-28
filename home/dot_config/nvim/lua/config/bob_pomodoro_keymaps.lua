@@ -1,5 +1,7 @@
 local M = {}
 
+local bob_keymaps = require("config.bob_keymaps")
+
 local pomodoros_heading_pattern = "^##%s+Pomodoros%s*$"
 local level_two_heading_pattern = "^##%s+"
 
@@ -197,6 +199,9 @@ function M.parse_ledger_line(line)
 	return {
 		checkbox = checkbox,
 		completed = checkbox == "x" or checkbox == "X",
+		cancelled = checkbox == "-",
+		open = checkbox == " " or checkbox == "/",
+		in_progress = checkbox == "/",
 		unchecked = checkbox == " ",
 		range = M.parse_time_range(line),
 		placeholder = line:find("%(%s*%)") ~= nil,
@@ -216,7 +221,7 @@ function M.find_active_item(lines)
 		local line = lines[lnum]
 		local entry = M.parse_ledger_line(line)
 
-		if entry ~= nil and entry.unchecked then
+		if entry ~= nil and entry.open then
 			local item = {
 				lnum = lnum,
 				line = line,
@@ -240,6 +245,57 @@ function M.find_active_item(lines)
 	end
 
 	return nil, "No active Pomodoro line found"
+end
+
+function M.find_next_open_item(lines, after_lnum, opts)
+	opts = opts or {}
+
+	local section = M.find_pomodoros_section(lines)
+	if section == nil then
+		return nil, "No ## Pomodoros section found"
+	end
+
+	local start_lnum = section.start_lnum
+	if after_lnum ~= nil then
+		start_lnum = math.max(start_lnum, after_lnum + 1)
+	end
+
+	local function find_matching(predicate)
+		for lnum = start_lnum, section.end_lnum do
+			local line = lines[lnum]
+			local entry = M.parse_ledger_line(line)
+
+			if entry ~= nil and entry.open and predicate(entry) then
+				return {
+					lnum = lnum,
+					line = line,
+					entry = entry,
+				}
+			end
+		end
+
+		return nil
+	end
+
+	if opts.prefer_placeholder then
+		local placeholder = find_matching(function(entry)
+			return entry.placeholder
+		end)
+
+		if placeholder ~= nil then
+			return placeholder
+		end
+	end
+
+	local next_item = find_matching(function()
+		return true
+	end)
+
+	if next_item ~= nil then
+		return next_item
+	end
+
+	return nil, "No open Pomodoro line found"
 end
 
 function M.adjust_p_metadata(line, delta)
@@ -285,6 +341,33 @@ local function current_line_target(bufnr, section, require_range)
 	}
 end
 
+local function current_open_target(bufnr, section)
+	if vim.api.nvim_get_current_buf() ~= bufnr then
+		return nil
+	end
+
+	local lnum = vim.api.nvim_win_get_cursor(0)[1]
+	if lnum < section.start_lnum or lnum > section.end_lnum then
+		return nil
+	end
+
+	local line = vim.api.nvim_buf_get_lines(bufnr, lnum - 1, lnum, false)[1]
+	if line == nil then
+		return nil
+	end
+
+	local entry = M.parse_ledger_line(line)
+	if entry == nil or not entry.open then
+		return nil
+	end
+
+	return {
+		lnum = lnum,
+		line = line,
+		entry = entry,
+	}
+end
+
 function M.resolve_edit_target(bufnr, opts)
 	bufnr = normalize_bufnr(bufnr)
 	opts = opts or {}
@@ -313,12 +396,43 @@ function M.resolve_edit_target(bufnr, opts)
 	return target
 end
 
+function M.resolve_lifecycle_target(bufnr)
+	bufnr = normalize_bufnr(bufnr)
+
+	local lines = get_lines(bufnr)
+	local section = M.find_pomodoros_section(lines)
+
+	if section == nil then
+		return nil, "No ## Pomodoros section found"
+	end
+
+	local target = current_open_target(bufnr, section)
+	if target ~= nil then
+		return target
+	end
+
+	return M.find_active_item(lines)
+end
+
 function M.jump_to_current(bufnr)
 	bufnr = normalize_bufnr(bufnr)
 
 	local target, err = M.find_active_item(get_lines(bufnr))
 	if target == nil then
 		notify(err or "No active Pomodoro line found")
+		return false
+	end
+
+	vim.api.nvim_win_set_cursor(0, { target.lnum, 0 })
+	return true
+end
+
+function M.jump_to_next_open(bufnr)
+	bufnr = normalize_bufnr(bufnr)
+
+	local target, err = M.find_next_open_item(get_lines(bufnr), nil, { prefer_placeholder = true })
+	if target == nil then
+		notify(err or "No open Pomodoro line found")
 		return false
 	end
 
@@ -375,6 +489,72 @@ function M.offset_time_range(bufnr, minutes)
 	return true
 end
 
+local function replace_checkbox(line, status)
+	return (line:gsub("^(%s*[-*+]%s+)%[[^%]]%]", "%1[" .. status .. "]", 1))
+end
+
+function M.complete_ledger_line(line, date)
+	local new_line = replace_checkbox(line, "x")
+	new_line = bob_keymaps.remove_inline_field(new_line, "cancelled")
+	return bob_keymaps.add_or_update_inline_field(new_line, "completion", date or bob_keymaps.iso_date())
+end
+
+function M.set_ledger_status(line, status)
+	local new_line = replace_checkbox(line, status)
+	new_line = bob_keymaps.remove_inline_field(new_line, "completion")
+	new_line = bob_keymaps.remove_inline_field(new_line, "cancelled")
+	return new_line
+end
+
+local function place_cursor_inside_placeholder(item, start_insert)
+	local start_pos = item.line:find("%(%s*%)")
+	if start_pos == nil then
+		return false
+	end
+
+	vim.api.nvim_win_set_cursor(0, { item.lnum, start_pos })
+
+	if start_insert ~= false then
+		vim.cmd("startinsert")
+	end
+
+	return true
+end
+
+function M.complete_and_advance(bufnr, opts)
+	bufnr = normalize_bufnr(bufnr)
+	opts = opts or {}
+
+	local target, err = M.resolve_lifecycle_target(bufnr)
+	if target == nil then
+		notify(err or "No active Pomodoro line found")
+		return false
+	end
+
+	local completed_line = M.complete_ledger_line(target.line, opts.date)
+	vim.api.nvim_buf_set_lines(bufnr, target.lnum - 1, target.lnum, false, { completed_line })
+
+	local next_item, next_err = M.find_next_open_item(get_lines(bufnr), target.lnum)
+	if next_item == nil then
+		notify(next_err or "No next open Pomodoro line found")
+		return true
+	end
+
+	if opts.next_status ~= nil then
+		local next_line = M.set_ledger_status(next_item.line, opts.next_status)
+		vim.api.nvim_buf_set_lines(bufnr, next_item.lnum - 1, next_item.lnum, false, { next_line })
+		next_item.line = next_line
+	end
+
+	vim.api.nvim_win_set_cursor(0, { next_item.lnum, 0 })
+
+	if opts.edit_placeholder then
+		place_cursor_inside_placeholder(next_item, opts.start_insert)
+	end
+
+	return true
+end
+
 local function set_keymap(bufnr, lhs, callback, desc)
 	vim.keymap.set("n", lhs, callback, {
 		buffer = bufnr,
@@ -398,6 +578,10 @@ function M.setup_buffer(bufnr)
 		M.jump_to_current(bufnr)
 	end, "Jump to active Bob Pomodoro")
 
+	set_keymap(bufnr, "<localleader>|", function()
+		M.jump_to_next_open(bufnr)
+	end, "Jump to next open Bob Pomodoro")
+
 	set_keymap(bufnr, "<localleader>p", function()
 		M.change_pomodoro_units(bufnr, vim.v.count1)
 	end, "Add Bob Pomodoro unit")
@@ -413,6 +597,30 @@ function M.setup_buffer(bufnr)
 	set_keymap(bufnr, "<localleader>O", function()
 		M.offset_time_range(bufnr, -vim.v.count1 * 5)
 	end, "Move Bob Pomodoro range earlier")
+
+	set_keymap(bufnr, "<localleader>x", function()
+		M.complete_and_advance(bufnr)
+	end, "Complete Bob Pomodoro and jump next")
+
+	set_keymap(bufnr, "<localleader>X", function()
+		M.complete_and_advance(bufnr, { edit_placeholder = true })
+	end, "Complete Bob Pomodoro and edit next")
+
+	set_keymap(bufnr, "<localleader>w", function()
+		M.complete_and_advance(bufnr, { next_status = "/" })
+	end, "Complete Bob Pomodoro and mark next in progress")
+
+	set_keymap(bufnr, "<localleader>W", function()
+		M.complete_and_advance(bufnr, { next_status = "/", edit_placeholder = true })
+	end, "Complete Bob Pomodoro and edit next in progress")
+
+	set_keymap(bufnr, "<localleader>t", function()
+		M.complete_and_advance(bufnr, { next_status = " " })
+	end, "Complete Bob Pomodoro and mark next todo")
+
+	set_keymap(bufnr, "<localleader>T", function()
+		M.complete_and_advance(bufnr, { next_status = " ", edit_placeholder = true })
+	end, "Complete Bob Pomodoro and edit next todo")
 
 	return true
 end
