@@ -1,0 +1,145 @@
+local script_path = debug.getinfo(1, "S").source:sub(2)
+local nvim_config_root = vim.fn.fnamemodify(script_path, ":p:h:h")
+vim.opt.runtimepath:prepend(nvim_config_root)
+
+local bob_pomodoro = require("config.bob_pomodoro_keymaps")
+
+local buffer_count = 0
+
+local function eq(actual, expected, label)
+	if actual ~= expected then
+		error(string.format("%s: expected %q, got %q", label, tostring(expected), tostring(actual)), 2)
+	end
+end
+
+local function new_buffer(lines, path)
+	buffer_count = buffer_count + 1
+	vim.cmd("enew!")
+
+	local bufnr = vim.api.nvim_get_current_buf()
+	vim.api.nvim_buf_set_name(bufnr, path or ("/home/bryan/bob/2026/2099010" .. buffer_count .. "_day.md"))
+	vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+	vim.bo[bufnr].filetype = "markdown"
+
+	return bufnr
+end
+
+local function line_at(bufnr, lnum)
+	return vim.api.nvim_buf_get_lines(bufnr, lnum - 1, lnum, false)[1]
+end
+
+local sample_lines = {
+	"---",
+	"type: daily",
+	"---",
+	"",
+	"# 2099-01-01 Thu",
+	"",
+	"## #gtd",
+	"",
+	"- [ ] #task outside the ledger",
+	"",
+	"## Pomodoros",
+	"",
+	"- [x] (1105-1245) #dev done [[p:: 15]]",
+	"- [X] (1345-1410) #dev also done [[p::5]]",
+	"- [ ] (1450-1515) #dev first active [[p:: 5]]",
+	"- [ ] (17:45-18:10) #task latest active [[20260528_day]]",
+	"- [ ] () #task next placeholder",
+	"",
+	"## Later",
+	"",
+	"- [ ] (1900-1925) outside section",
+}
+
+do
+	local active = bob_pomodoro.find_active_item(sample_lines)
+	eq(active.lnum, 16, "latest unchecked timed line is active")
+	eq(active.line, "- [ ] (17:45-18:10) #task latest active [[20260528_day]]", "active line text")
+end
+
+do
+	local active = bob_pomodoro.find_active_item({
+		"# Test",
+		"",
+		"## Pomodoros",
+		"",
+		"- [x] (0900-0925) #task completed [[p:: 5]]",
+		"- [ ] () #task placeholder",
+	})
+	eq(active.lnum, 6, "placeholder is active when there is no unchecked timed line")
+	eq(active.entry.placeholder, true, "placeholder entry is marked")
+end
+
+do
+	local bufnr = new_buffer(sample_lines)
+	vim.api.nvim_win_set_cursor(0, { 16, 0 })
+
+	eq(bob_pomodoro.change_pomodoro_units(bufnr, 2), true, "increment p units succeeds")
+	eq(
+		line_at(bufnr, 16),
+		"- [ ] (17:45-18:20) #task latest active [[20260528_day]] [[p:: 2]]",
+		"increment inserts p metadata and extends end time"
+	)
+
+	eq(bob_pomodoro.change_pomodoro_units(bufnr, -10), true, "decrement p units succeeds")
+	eq(
+		line_at(bufnr, 16),
+		"- [ ] (17:45-17:30) #task latest active [[20260528_day]] [[p:: 0]]",
+		"decrement clamps p metadata and moves end time back"
+	)
+end
+
+do
+	local bufnr = new_buffer(sample_lines)
+	vim.api.nvim_win_set_cursor(0, { 13, 0 })
+
+	eq(bob_pomodoro.offset_time_range(bufnr, 10), true, "offset can edit completed current ledger line")
+	eq(line_at(bufnr, 13), "- [x] (1115-1255) #dev done [[p:: 15]]", "offset preserves compact time style")
+end
+
+do
+	local bufnr = new_buffer({
+		"# Test",
+		"",
+		"## Pomodoros",
+		"",
+		"- [ ] (2345-0010) #task near midnight [[p:: 1]]",
+	})
+	vim.api.nvim_win_set_cursor(0, { 5, 0 })
+
+	eq(bob_pomodoro.offset_time_range(bufnr, 20), true, "offset wraps across midnight")
+	eq(line_at(bufnr, 5), "- [ ] (0005-0030) #task near midnight [[p:: 1]]", "midnight arithmetic wraps")
+end
+
+do
+	local bufnr = new_buffer(sample_lines)
+	eq(bob_pomodoro.setup_buffer(0), true, "setup accepts current buffer 0")
+	eq(bob_pomodoro.setup_buffer(bufnr), true, "setup installs for Bob buffers with Pomodoros")
+	eq(bob_pomodoro.jump_to_current(bufnr), true, "jump to active succeeds")
+	eq(vim.api.nvim_win_get_cursor(0)[1], 16, "jump moves to latest active timed line")
+end
+
+do
+	local bufnr = new_buffer(sample_lines)
+	vim.api.nvim_win_set_cursor(0, { 15, 0 })
+
+	eq(bob_pomodoro.change_pomodoro_units(0, 1), true, "edit accepts current buffer 0")
+	eq(
+		line_at(bufnr, 15),
+		"- [ ] (1450-1520) #dev first active [[p:: 6]]",
+		"edit with buffer 0 uses the current ledger line"
+	)
+end
+
+do
+	local bufnr = new_buffer(sample_lines, "/tmp/not-bob.md")
+	eq(bob_pomodoro.setup_buffer(bufnr), false, "setup skips non-Bob buffers")
+end
+
+do
+	local bufnr = new_buffer({ "# No ledger" })
+	eq(bob_pomodoro.setup_buffer(bufnr), false, "setup skips Bob buffers without Pomodoros")
+end
+
+print("bob_pomodoro_keymaps_spec.lua: ok")
