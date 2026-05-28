@@ -5,18 +5,35 @@ source ~/lib/bugyi.sh
 
 set -e
 
-function current_date() {
-  if [[ -n "${DATE:-}" && "${DATE}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}([T\ ][0-9]{2}:[0-9]{2}(:[0-9]{2})?)?$ ]]; then
-    date --date="${DATE}" "$@"
-    return
+function is_date_timestamp() {
+  [[ "$1" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}([T\ ][0-9]{2}:[0-9]{2}(:[0-9]{2})?)?$ ]]
+}
+
+function run_date() {
+  local date_command_string="${DATE:-date}"
+  if is_date_timestamp "${date_command_string}"; then
+    date_command_string="date"
   fi
 
-  local date_command_string="${DATE:-date}"
   # Allow the existing dotfiles DATE override pattern, e.g.
-  # DATE='date --date=2026-05-28T14:00:00'.
+  # DATE='date --utc'.
   # shellcheck disable=SC2206
   local date_command=(${date_command_string})
   "${date_command[@]}" "$@"
+}
+
+function current_date() {
+  if [[ -n "${BOB_NOW:-}" ]]; then
+    run_date --date="${BOB_NOW}" "$@"
+    return
+  fi
+
+  if [[ -n "${DATE:-}" ]] && is_date_timestamp "${DATE}"; then
+    run_date --date="${DATE}" "$@"
+    return
+  fi
+
+  run_date "$@"
 }
 
 function get_day_file() {
@@ -146,7 +163,7 @@ function run() {
 
   local day_date end_seconds now_seconds now_minus_end
   day_date="$(get_day_date "${day_file}")"
-  end_seconds="$(date --date="${day_date} $(colon_time "${end_time}")" +%s)"
+  end_seconds="$(run_date --date="${day_date} $(colon_time "${end_time}")" +%s)"
   now_seconds="$(current_date +%s)"
   now_minus_end=$((now_seconds - end_seconds))
 
