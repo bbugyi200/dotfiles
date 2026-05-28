@@ -130,6 +130,17 @@ probe_uv_tool_health() {
     fi
     "$tool_venv/bin/python" -c 'import sase_core_rs; print("sase_core_rs import ok")'
     sase core health --json
+    sase lsp --version
+    command -v sase-xprompt-lsp
+}
+
+install_xprompt_lsp() {
+    if ! command -v cargo >/dev/null 2>&1; then
+        echo "ERROR: cargo not on PATH; cannot install sase-xprompt-lsp." >&2
+        return 1
+    fi
+    echo ">>> Installing sase-xprompt-lsp into cargo bin..."
+    cargo install --path "$SASE_CORE_DIR/crates/sase_xprompt_lsp" --bin sase-xprompt-lsp --locked --force
 }
 
 finish() {
@@ -175,6 +186,8 @@ if $install; then
 fi
 echo ">>> Installing sase-core Rust backend into uv-tool venv..."
 just -f "$SASE_DIR/Justfile" rust-install-uv-tool
+
+install_xprompt_lsp
 
 echo ">>> Probing uv-tool sase health..."
 probe_uv_tool_health
