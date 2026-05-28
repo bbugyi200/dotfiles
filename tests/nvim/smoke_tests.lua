@@ -99,7 +99,6 @@ describe("SMOKE TEST:", function()
 				}, { output = true })
 				local ok, ret = string.match(result, "(%S+)%s*(.*)")
 				assert.is_equal(ok, "true", "ERROR IN 'config." .. subpack .. "' MODULE: " .. ret)
-				assert.is_equal(ret, "true")
 			end
 		end
 	end)

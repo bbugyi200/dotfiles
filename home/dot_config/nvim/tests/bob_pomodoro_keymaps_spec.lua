@@ -12,12 +12,32 @@ local function eq(actual, expected, label)
 	end
 end
 
+local function home_path()
+	return (vim.env.HOME or vim.fn.expand("~")):gsub("/+$", "")
+end
+
+local function bob_path(relative_path)
+	return home_path() .. "/bob/" .. relative_path
+end
+
+local function with_home(home, callback)
+	local previous_home = vim.env.HOME
+	vim.env.HOME = home
+
+	local ok, err = pcall(callback)
+	vim.env.HOME = previous_home
+
+	if not ok then
+		error(err, 0)
+	end
+end
+
 local function new_buffer(lines, path)
 	buffer_count = buffer_count + 1
 	vim.cmd("enew!")
 
 	local bufnr = vim.api.nvim_get_current_buf()
-	vim.api.nvim_buf_set_name(bufnr, path or ("/home/bryan/bob/2026/2099010" .. buffer_count .. "_day.md"))
+	vim.api.nvim_buf_set_name(bufnr, path or bob_path("2026/2099010" .. buffer_count .. "_day.md"))
 	vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
 	vim.bo[bufnr].filetype = "markdown"
 
@@ -26,6 +46,16 @@ end
 
 local function line_at(bufnr, lnum)
 	return vim.api.nvim_buf_get_lines(bufnr, lnum - 1, lnum, false)[1]
+end
+
+local function has_buffer_keymap_desc(bufnr, desc)
+	for _, keymap in ipairs(vim.api.nvim_buf_get_keymap(bufnr, "n")) do
+		if keymap.desc == desc then
+			return true
+		end
+	end
+
+	return false
 end
 
 local sample_lines = {
@@ -53,20 +83,20 @@ local sample_lines = {
 }
 
 do
-	local active = bob_pomodoro.find_active_item(sample_lines)
+	local active = assert(bob_pomodoro.find_active_item(sample_lines))
 	eq(active.lnum, 16, "latest unchecked timed line is active")
 	eq(active.line, "- [ ] (17:45-18:10) #task latest active [[20260528_day]]", "active line text")
 end
 
 do
-	local active = bob_pomodoro.find_active_item({
+	local active = assert(bob_pomodoro.find_active_item({
 		"# Test",
 		"",
 		"## Pomodoros",
 		"",
 		"- [x] (0900-0925) #task completed [[p:: 5]]",
 		"- [ ] () #task placeholder",
-	})
+	}))
 	eq(active.lnum, 6, "placeholder is active when there is no unchecked timed line")
 	eq(active.entry.placeholder, true, "placeholder entry is marked")
 end
@@ -116,6 +146,7 @@ do
 	local bufnr = new_buffer(sample_lines)
 	eq(bob_pomodoro.setup_buffer(0), true, "setup accepts current buffer 0")
 	eq(bob_pomodoro.setup_buffer(bufnr), true, "setup installs for Bob buffers with Pomodoros")
+	eq(has_buffer_keymap_desc(bufnr, "Add Bob Pomodoro unit"), true, "setup installs buffer-local keymaps")
 	eq(bob_pomodoro.jump_to_current(bufnr), true, "jump to active succeeds")
 	eq(vim.api.nvim_win_get_cursor(0)[1], 16, "jump moves to latest active timed line")
 end
@@ -135,6 +166,21 @@ end
 do
 	local bufnr = new_buffer(sample_lines, "/tmp/not-bob.md")
 	eq(bob_pomodoro.setup_buffer(bufnr), false, "setup skips non-Bob buffers")
+end
+
+do
+	with_home("/Users/bbugyi", function()
+		local bufnr = new_buffer(sample_lines, bob_path("2026/20260528_day.md"))
+		eq(bob_pomodoro.setup_buffer(bufnr), true, "setup installs for macOS-style Bob paths")
+		eq(has_buffer_keymap_desc(bufnr, "Add Bob Pomodoro unit"), true, "macOS-style Bob paths get keymaps")
+	end)
+end
+
+do
+	with_home("/Users/bbugyi", function()
+		local bufnr = new_buffer(sample_lines, "/Users/bbugyi/not-bob/2026/20260528_day.md")
+		eq(bob_pomodoro.setup_buffer(bufnr), false, "setup skips macOS paths outside Bob")
+	end)
 end
 
 do

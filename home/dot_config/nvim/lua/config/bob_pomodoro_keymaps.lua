@@ -1,6 +1,5 @@
 local M = {}
 
-local bob_root = "/home/bryan/bob"
 local pomodoros_heading_pattern = "^##%s+Pomodoros%s*$"
 local level_two_heading_pattern = "^##%s+"
 
@@ -23,6 +22,15 @@ local function with_trailing_slash(path)
 	end
 
 	return path .. "/"
+end
+
+local function bob_root()
+	local home = vim.env.HOME
+	if home == nil or home == "" then
+		home = vim.fn.expand("~")
+	end
+
+	return home:gsub("/+$", "") .. "/bob"
 end
 
 local function get_lines(bufnr)
@@ -68,7 +76,8 @@ function M.is_bob_buffer(bufnr)
 		return false
 	end
 
-	local root = normalize_path(bob_root) or bob_root
+	local root = bob_root()
+	root = normalize_path(root) or root
 	root = with_trailing_slash(root)
 
 	return buffer_path:sub(1, #root) == root
@@ -327,6 +336,11 @@ function M.change_pomodoro_units(bufnr, units)
 	end
 
 	local range = target.entry.range
+	if range == nil then
+		notify("No Pomodoro line with a time range found")
+		return false
+	end
+
 	local new_line =
 		M.replace_time_range(target.line, range, range.start_minutes, M.add_minutes(range.end_minutes, units * 5))
 	new_line = M.adjust_p_metadata(new_line, units)
@@ -345,6 +359,11 @@ function M.offset_time_range(bufnr, minutes)
 	end
 
 	local range = target.entry.range
+	if range == nil then
+		notify("No Pomodoro line with a time range found")
+		return false
+	end
+
 	local new_line = M.replace_time_range(
 		target.line,
 		range,
