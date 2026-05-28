@@ -14,6 +14,34 @@ return {
 			local highlighters = {
 				wilder.lua_fzy_highlighter(),
 			}
+			local devicon_expansions = {
+				buffer = true,
+				dir = true,
+				file = true,
+				file_in_path = true,
+				shellcmd = true,
+			}
+			local buffer_flag_expansions = {
+				buffer = true,
+				file = true,
+				file_in_path = true,
+			}
+			local function component_for_expansions(component, expansions)
+				return function(ctx, result)
+					local data = result and result.data
+					local expand = type(data) == "table" and data["cmdline.expand"] or nil
+					if type(expand) ~= "string" or not expansions[expand] then
+						return ""
+					end
+
+					local ok, value = pcall(component, ctx, result)
+					if not ok then
+						return ""
+					end
+
+					return value
+				end
+			end
 
 			local popupmenu_renderer = wilder.popupmenu_renderer(wilder.popupmenu_border_theme({
 				border = "rounded",
@@ -29,11 +57,14 @@ return {
 				},
 				left = {
 					" ",
-					wilder.popupmenu_devicons(),
-					wilder.popupmenu_buffer_flags({
-						flags = " a + ",
-						icons = { ["+"] = "", a = "", h = "" },
-					}),
+					component_for_expansions(wilder.popupmenu_devicons(), devicon_expansions),
+					component_for_expansions(
+						wilder.popupmenu_buffer_flags({
+							flags = " a + ",
+							icons = { ["+"] = "", a = "", h = "" },
+						}),
+						buffer_flag_expansions
+					),
 				},
 				right = {
 					" ",
