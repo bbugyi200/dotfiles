@@ -71,9 +71,9 @@ local sample_lines = {
 	"",
 	"## Pomodoros",
 	"",
-	"- [x] (1105-1245) #dev done [[p:: 15]]",
-	"- [X] (1345-1410) #dev also done [[p::5]]",
-	"- [ ] (1450-1515) #dev first active [[p:: 5]]",
+	"- [x] (1105-1245) #dev done [p:: 15]",
+	"- [X] (1345-1410) #dev also done [p:: 5]",
+	"- [ ] (1450-1515) #dev first active [p:: 5]",
 	"- [ ] (17:45-18:10) #task latest active [[20260528_day]]",
 	"- [ ] () #task next placeholder",
 	"",
@@ -122,7 +122,7 @@ do
 		"",
 		"## Pomodoros",
 		"",
-		"- [x] (0900-0925) #task completed [[p:: 5]]",
+		"- [x] (0900-0925) #task completed [p:: 5]",
 		"- [ ] () #task placeholder",
 	}))
 	eq(active.lnum, 6, "placeholder is active when there is no unchecked timed line")
@@ -136,14 +136,14 @@ do
 	eq(bob_pomodoro.change_pomodoro_units(bufnr, 2), true, "increment p units succeeds")
 	eq(
 		line_at(bufnr, 16),
-		"- [ ] (17:45-18:20) #task latest active [[20260528_day]] [[p:: 2]]",
+		"- [ ] (17:45-18:20) #task latest active [[20260528_day]] [p:: 2]",
 		"increment inserts p metadata and extends end time"
 	)
 
 	eq(bob_pomodoro.change_pomodoro_units(bufnr, -10), true, "decrement p units succeeds")
 	eq(
 		line_at(bufnr, 16),
-		"- [ ] (17:45-17:30) #task latest active [[20260528_day]] [[p:: 0]]",
+		"- [ ] (17:45-17:30) #task latest active [[20260528_day]] [p:: 0]",
 		"decrement clamps p metadata and moves end time back"
 	)
 end
@@ -153,7 +153,7 @@ do
 	vim.api.nvim_win_set_cursor(0, { 13, 0 })
 
 	eq(bob_pomodoro.offset_time_range(bufnr, 10), true, "offset can edit completed current ledger line")
-	eq(line_at(bufnr, 13), "- [x] (1115-1255) #dev done [[p:: 15]]", "offset preserves compact time style")
+	eq(line_at(bufnr, 13), "- [x] (1115-1255) #dev done [p:: 15]", "offset preserves compact time style")
 end
 
 do
@@ -162,12 +162,30 @@ do
 		"",
 		"## Pomodoros",
 		"",
-		"- [ ] (2345-0010) #task near midnight [[p:: 1]]",
+		"- [ ] (0800-0825) #task legacy [[p:: 3]]",
+	})
+	vim.api.nvim_win_set_cursor(0, { 5, 0 })
+
+	eq(bob_pomodoro.change_pomodoro_units(bufnr, 2), true, "legacy p metadata increments")
+	eq(
+		line_at(bufnr, 5),
+		"- [ ] (0800-0835) #task legacy [p:: 5]",
+		"legacy p metadata migrates to canonical single-bracket form"
+	)
+end
+
+do
+	local bufnr = new_buffer({
+		"# Test",
+		"",
+		"## Pomodoros",
+		"",
+		"- [ ] (2345-0010) #task near midnight [p:: 1]",
 	})
 	vim.api.nvim_win_set_cursor(0, { 5, 0 })
 
 	eq(bob_pomodoro.offset_time_range(bufnr, 20), true, "offset wraps across midnight")
-	eq(line_at(bufnr, 5), "- [ ] (0005-0030) #task near midnight [[p:: 1]]", "midnight arithmetic wraps")
+	eq(line_at(bufnr, 5), "- [ ] (0005-0030) #task near midnight [p:: 1]", "midnight arithmetic wraps")
 end
 
 local lifecycle_lines = {
@@ -251,7 +269,7 @@ do
 	eq(bob_pomodoro.change_pomodoro_units(0, 1), true, "edit accepts current buffer 0")
 	eq(
 		line_at(bufnr, 15),
-		"- [ ] (1450-1520) #dev first active [[p:: 6]]",
+		"- [ ] (1450-1520) #dev first active [p:: 6]",
 		"edit with buffer 0 uses the current ledger line"
 	)
 end

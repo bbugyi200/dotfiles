@@ -299,15 +299,10 @@ function M.find_next_open_item(lines, after_lnum, opts)
 end
 
 function M.adjust_p_metadata(line, delta)
-	local start_pos, end_pos, spacing, value = line:find("%[%[p::(%s*)(%d+)%]%]")
+	local value = line:match("%[%[p::%s*(%d+)%]%]") or line:match("%[p::%s*(%d+)%]")
 	local new_value = math.max(0, (tonumber(value) or 0) + delta)
 
-	if start_pos == nil then
-		return line .. " [[p:: " .. new_value .. "]]", new_value
-	end
-
-	local metadata = "[[p::" .. spacing .. new_value .. "]]"
-	return line:sub(1, start_pos - 1) .. metadata .. line:sub(end_pos + 1), new_value
+	return bob_keymaps.add_or_update_inline_field(line, "p", tostring(new_value)), new_value
 end
 
 local function current_line_target(bufnr, section, require_range)
