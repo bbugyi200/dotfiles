@@ -96,8 +96,9 @@ function get_latest_ledger_pomodoro() {
 
       next unless $in_pomodoros;
 
-      if ($line =~ /^\s*-\s+(?:\[[^\]]*\]\s+)?(.*?)\s*$/) {
-        my $task = $1;
+      if ($line =~ /^\s*-\s+(?:\[([^\]]*)\]\s+)?(.*?)\s*$/) {
+        my ($checkbox, $task) = ($1, $2);
+        next if defined $checkbox && $checkbox =~ /^\s*[xX]\s*$/;
         next unless $task =~ /\(($time_re)-($time_re)\)/;
 
         my ($raw_start, $raw_end) = ($1, $2);
