@@ -3,7 +3,7 @@ hs.hotkey.bind({ "cmd", "alt", "ctrl" }, "V", nil, function()
 	hs.task.new("/bin/bash", nil, { "-l", "-c", paste_parts }):start()
 end)
 
-hs.hotkey.bind({ "cmd", "shift" }, "i", nil, function()
+hs.hotkey.bind({ "cmd", "shift", "ctrl" }, "i", nil, function()
 	local target = os.getenv("HOME") .. "/bob/mac_inbox.md"
 	local button, text = hs.dialog.textPrompt("Capture task", "Task text:", "", "Add", "Cancel")
 	if button ~= "Add" then
