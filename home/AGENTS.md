@@ -1,3 +1,4 @@
 # Agent Instructions
 
-@memory/short/sase.md
+- @memory/short/obsidian.md
+- @memory/short/sase.md
