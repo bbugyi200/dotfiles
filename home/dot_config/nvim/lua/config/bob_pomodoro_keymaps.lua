@@ -298,13 +298,6 @@ function M.find_next_open_item(lines, after_lnum, opts)
 	return nil, "No open Pomodoro line found"
 end
 
-function M.adjust_p_metadata(line, delta)
-	local value = line:match("%[%[p::%s*(%d+)%]%]") or line:match("%[p::%s*(%d+)%]")
-	local new_value = math.max(0, (tonumber(value) or 0) + delta)
-
-	return bob_keymaps.add_or_update_inline_field(line, "p", tostring(new_value)), new_value
-end
-
 local function current_line_target(bufnr, section, require_range)
 	if vim.api.nvim_get_current_buf() ~= bufnr then
 		return nil
@@ -452,7 +445,6 @@ function M.change_pomodoro_units(bufnr, units)
 
 	local new_line =
 		M.replace_time_range(target.line, range, range.start_minutes, M.add_minutes(range.end_minutes, units * 5))
-	new_line = M.adjust_p_metadata(new_line, units)
 
 	vim.api.nvim_buf_set_lines(bufnr, target.lnum - 1, target.lnum, false, { new_line })
 	return true

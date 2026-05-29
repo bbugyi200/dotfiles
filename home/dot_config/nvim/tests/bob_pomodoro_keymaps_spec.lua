@@ -133,18 +133,18 @@ do
 	local bufnr = new_buffer(sample_lines)
 	vim.api.nvim_win_set_cursor(0, { 16, 0 })
 
-	eq(bob_pomodoro.change_pomodoro_units(bufnr, 2), true, "increment p units succeeds")
+	eq(bob_pomodoro.change_pomodoro_units(bufnr, 2), true, "increment Pomodoro units succeeds")
 	eq(
 		line_at(bufnr, 16),
-		"- [ ] (17:45-18:20) #task latest active [[20260528_day]] [p:: 2]",
-		"increment inserts p metadata and extends end time"
+		"- [ ] (17:45-18:20) #task latest active [[20260528_day]]",
+		"increment extends end time without p metadata"
 	)
 
-	eq(bob_pomodoro.change_pomodoro_units(bufnr, -10), true, "decrement p units succeeds")
+	eq(bob_pomodoro.change_pomodoro_units(bufnr, -10), true, "decrement Pomodoro units succeeds")
 	eq(
 		line_at(bufnr, 16),
-		"- [ ] (17:45-17:30) #task latest active [[20260528_day]] [p:: 0]",
-		"decrement clamps p metadata and moves end time back"
+		"- [ ] (17:45-17:30) #task latest active [[20260528_day]]",
+		"decrement moves end time back without p metadata"
 	)
 end
 
@@ -166,12 +166,8 @@ do
 	})
 	vim.api.nvim_win_set_cursor(0, { 5, 0 })
 
-	eq(bob_pomodoro.change_pomodoro_units(bufnr, 2), true, "legacy p metadata increments")
-	eq(
-		line_at(bufnr, 5),
-		"- [ ] (0800-0835) #task legacy [p:: 5]",
-		"legacy p metadata migrates to canonical single-bracket form"
-	)
+	eq(bob_pomodoro.change_pomodoro_units(bufnr, 2), true, "legacy p metadata line increments time")
+	eq(line_at(bufnr, 5), "- [ ] (0800-0835) #task legacy [[p:: 3]]", "legacy p metadata stays unchanged")
 end
 
 do
@@ -269,8 +265,8 @@ do
 	eq(bob_pomodoro.change_pomodoro_units(0, 1), true, "edit accepts current buffer 0")
 	eq(
 		line_at(bufnr, 15),
-		"- [ ] (1450-1520) #dev first active [p:: 6]",
-		"edit with buffer 0 uses the current ledger line"
+		"- [ ] (1450-1520) #dev first active [p:: 5]",
+		"edit with buffer 0 preserves existing p metadata"
 	)
 end
 
