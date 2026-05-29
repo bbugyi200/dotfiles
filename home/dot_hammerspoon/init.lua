@@ -385,17 +385,16 @@ local function showTaskCapturePanel()
 
 	taskCaptureController = hs.webview.usercontent.new("taskCapture")
 	taskCaptureController:setCallback(function(message)
-		local payload = type(message) == "table" and message.body or nil
-		if type(payload) ~= "table" then
+		if type(message) ~= "table" then
 			return
 		end
 
-		if payload.action == "cancel" then
+		if message.action == "cancel" then
 			closeTaskCapturePanel()
 			return
 		end
 
-		if payload.action == "submit" and appendCapturedTask(payload.text) then
+		if message.action == "submit" and appendCapturedTask(message.text) then
 			closeTaskCapturePanel()
 		end
 	end)
