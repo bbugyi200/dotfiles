@@ -5,6 +5,7 @@ end)
 
 local taskCapturePanel = nil
 local taskCaptureController = nil
+local taskCapturePreviousApp = nil
 
 local taskCaptureHtml = [=[
 <!doctype html>
@@ -101,21 +102,34 @@ textarea {
 	background: var(--surface);
 	color: var(--text);
 	font: inherit;
-	line-height: 1.45;
+	line-height: 1.5;
 	outline: none;
-	padding: 14px 15px;
-	box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.03);
+	padding: 16px 17px;
+	box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.02);
+	transition: border-color 0.12s ease, box-shadow 0.12s ease;
 }
 
 textarea:focus {
-	border-color: color-mix(in srgb, var(--focus) 72%, var(--border));
-	box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 18%, transparent);
+	border-color: color-mix(in srgb, var(--focus) 78%, var(--border));
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 22%, transparent);
 }
 
 footer {
 	display: flex;
 	align-items: center;
-	justify-content: flex-end;
+	justify-content: space-between;
+	gap: 16px;
+}
+
+.hint {
+	color: var(--muted);
+	font-size: 12px;
+	line-height: 1.3;
+}
+
+.actions {
+	display: flex;
+	align-items: center;
 	gap: 10px;
 }
 
@@ -130,9 +144,14 @@ button {
 	font-weight: 600;
 	line-height: 1;
 	padding: 10px 14px;
+	transition: background-color 0.12s ease, border-color 0.12s ease;
 }
 
-button:active {
+button:hover:not(:disabled) {
+	border-color: color-mix(in srgb, var(--text) 24%, var(--border));
+}
+
+button:active:not(:disabled) {
 	transform: translateY(1px);
 }
 
@@ -140,6 +159,15 @@ button.primary {
 	border-color: transparent;
 	background: var(--focus);
 	color: white;
+}
+
+button.primary:hover:not(:disabled) {
+	background: color-mix(in srgb, var(--focus) 88%, black);
+	border-color: transparent;
+}
+
+button.primary:active:not(:disabled) {
+	background: color-mix(in srgb, var(--focus) 78%, black);
 }
 
 button:disabled {
@@ -160,8 +188,11 @@ button:disabled {
 	</header>
 	<textarea id="capture" aria-label="Task text" spellcheck="true"></textarea>
 	<footer>
-		<button id="cancel" type="button">Cancel</button>
-		<button id="add" type="button" class="primary" disabled>Add</button>
+		<div class="hint">Enter to add · Shift+Enter for a new line</div>
+		<div class="actions">
+			<button id="cancel" type="button">Cancel</button>
+			<button id="add" type="button" class="primary" disabled>Add</button>
+		</div>
 	</footer>
 </main>
 <script>
@@ -183,14 +214,21 @@ button:disabled {
 	}
 
 	function submit() {
+		if (textarea.value.trim().length === 0) {
+			return;
+		}
 		post({ action: "submit", text: textarea.value });
 	}
 
 	textarea.addEventListener("input", updateAddState);
 	textarea.addEventListener("keydown", (event) => {
-		if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+		if (event.key === "Enter") {
+			if (event.shiftKey) {
+				return;
+			}
 			event.preventDefault();
 			submit();
+			return;
 		}
 		if (event.key === "Escape") {
 			event.preventDefault();
@@ -292,6 +330,11 @@ local function closeTaskCapturePanel()
 		panel:windowCallback(nil)
 		panel:delete()
 	end
+
+	if taskCapturePreviousApp then
+		taskCapturePreviousApp:activate()
+		taskCapturePreviousApp = nil
+	end
 end
 
 local function taskCaptureFrame()
@@ -338,18 +381,21 @@ local function showTaskCapturePanel()
 		return
 	end
 
+	taskCapturePreviousApp = hs.application.frontmostApplication()
+
 	taskCaptureController = hs.webview.usercontent.new("taskCapture")
 	taskCaptureController:setCallback(function(message)
-		if type(message) ~= "table" then
+		local payload = type(message) == "table" and message.body or nil
+		if type(payload) ~= "table" then
 			return
 		end
 
-		if message.action == "cancel" then
+		if payload.action == "cancel" then
 			closeTaskCapturePanel()
 			return
 		end
 
-		if message.action == "submit" and appendCapturedTask(message.text) then
+		if payload.action == "submit" and appendCapturedTask(payload.text) then
 			closeTaskCapturePanel()
 		end
 	end)
