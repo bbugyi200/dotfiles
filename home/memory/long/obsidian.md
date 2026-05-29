@@ -1,11 +1,5 @@
 ---
 description: Obsidian vault, notes workflow, and obsidian-headless/ob usage.
-keywords:
-  - Obsidian
-  - bob
-  - notes
-  - ob
-  - obsidian-headless
 ---
 
 # Obsidian
