@@ -428,3 +428,11 @@ end
 hs.hotkey.bind({ "cmd", "shift", "ctrl" }, "i", nil, function()
 	showTaskCapturePanel()
 end)
+
+-- Auto-reload the config whenever the deployed files change (e.g. after a
+-- `chezmoi apply`), so edits take effect without a manual reload. The watcher
+-- is retained in a module-level local to keep it from being garbage collected.
+local configWatcher = hs.pathwatcher.new(os.getenv("HOME") .. "/.hammerspoon/", function()
+	hs.reload()
+end)
+configWatcher:start()
