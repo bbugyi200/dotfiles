@@ -3,7 +3,7 @@ hs.hotkey.bind({ "cmd", "alt", "ctrl" }, "V", nil, function()
 	hs.task.new("/bin/bash", nil, { "-l", "-c", paste_parts }):start()
 end)
 
-local taskCapturePanel = nil
+local taskCapturePrompt = nil
 local taskCaptureController = nil
 local taskCapturePreviousApp = nil
 
@@ -16,26 +16,22 @@ local taskCaptureHtml = [=[
 <style>
 :root {
 	color-scheme: light dark;
-	--background: #f5f6f7;
-	--surface: #ffffff;
+	--background: #f7f7f8;
+	--input: #ffffff;
 	--text: #1d1d1f;
-	--muted: #6e6e73;
 	--border: rgba(0, 0, 0, 0.15);
 	--focus: #0a84ff;
-	--button: #e8eaed;
-	--buttonText: #1d1d1f;
+	--button: #e9eaec;
 }
 
 @media (prefers-color-scheme: dark) {
 	:root {
 		--background: #18191b;
-		--surface: #222326;
+		--input: #222326;
 		--text: #f5f5f7;
-		--muted: #a1a1a6;
 		--border: rgba(255, 255, 255, 0.16);
 		--focus: #64d2ff;
 		--button: #333438;
-		--buttonText: #f5f5f7;
 	}
 }
 
@@ -49,110 +45,59 @@ body {
 	background: var(--background);
 	color: var(--text);
 	font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
-	font-size: 15px;
+	font-size: 14px;
 }
 
 .shell {
 	display: flex;
 	min-height: 100vh;
 	flex-direction: column;
-	gap: 16px;
-	padding: 22px;
-}
-
-header {
-	display: flex;
-	align-items: flex-start;
-	justify-content: space-between;
-	gap: 18px;
+	gap: 8px;
+	padding: 12px 18px;
 }
 
 h1 {
 	margin: 0;
-	font-size: 18px;
+	font-size: 15px;
 	font-weight: 650;
 	line-height: 1.25;
 }
 
-.destination {
-	margin-top: 4px;
-	color: var(--muted);
-	font-size: 13px;
-	line-height: 1.35;
-}
-
-.badge {
-	flex: 0 0 auto;
-	border: 1px solid var(--border);
-	border-radius: 8px;
-	color: var(--muted);
-	font-size: 12px;
-	font-weight: 600;
-	line-height: 1;
-	padding: 7px 9px;
-}
-
-textarea {
-	flex: 1 1 auto;
+input {
 	width: 100%;
-	min-height: 0;
-	resize: none;
+	height: 30px;
 	border: 1px solid var(--border);
-	border-radius: 8px;
-	background: var(--surface);
+	border-radius: 6px;
+	background: var(--input);
 	color: var(--text);
 	font: inherit;
-	line-height: 1.5;
 	outline: none;
-	padding: 16px 17px;
+	padding: 6px 9px;
 	box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.02);
-	transition: border-color 0.12s ease, box-shadow 0.12s ease;
 }
 
-textarea:focus {
-	border-color: color-mix(in srgb, var(--focus) 78%, var(--border));
-	box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 22%, transparent);
+input:focus {
+	border-color: var(--focus);
+	box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.2);
 }
 
 footer {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	gap: 16px;
-}
-
-.hint {
-	color: var(--muted);
-	font-size: 12px;
-	line-height: 1.3;
-}
-
-.actions {
-	display: flex;
-	align-items: center;
+	justify-content: flex-end;
 	gap: 10px;
 }
 
 button {
-	min-width: 84px;
+	min-width: 74px;
 	border: 1px solid var(--border);
-	border-radius: 8px;
+	border-radius: 6px;
 	background: var(--button);
-	color: var(--buttonText);
+	color: var(--text);
 	font: inherit;
-	font-size: 14px;
 	font-weight: 600;
 	line-height: 1;
-	padding: 10px 14px;
-	transition: background-color 0.12s ease, border-color 0.12s ease;
-}
-
-button:hover:not(:disabled) {
-	border-color: color-mix(in srgb, var(--text) 24%, var(--border));
-}
-
-button:active:not(:disabled) {
-	transform: translateY(1px);
+	padding: 8px 13px;
 }
 
 button.primary {
@@ -161,43 +106,23 @@ button.primary {
 	color: white;
 }
 
-button.primary:hover:not(:disabled) {
-	background: color-mix(in srgb, var(--focus) 88%, black);
-	border-color: transparent;
-}
-
-button.primary:active:not(:disabled) {
-	background: color-mix(in srgb, var(--focus) 78%, black);
-}
-
 button:disabled {
-	cursor: default;
 	opacity: 0.45;
-	transform: none;
 }
 </style>
 </head>
 <body>
 <main class="shell">
-	<header>
-		<div>
-			<h1>Capture Task</h1>
-			<div class="destination">Bob inbox</div>
-		</div>
-		<div class="badge">mac_inbox.md</div>
-	</header>
-	<textarea id="capture" aria-label="Task text" spellcheck="true"></textarea>
+	<h1>Capture Task</h1>
+	<input id="capture" type="text" aria-label="Task text" autocomplete="off" spellcheck="true">
 	<footer>
-		<div class="hint">Enter to add · Shift+Enter for a new line</div>
-		<div class="actions">
-			<button id="cancel" type="button">Cancel</button>
-			<button id="add" type="button" class="primary" disabled>Add</button>
-		</div>
+		<button id="cancel" type="button">Cancel</button>
+		<button id="add" type="button" class="primary" disabled>Add</button>
 	</footer>
 </main>
 <script>
 (() => {
-	const textarea = document.getElementById("capture");
+	const input = document.getElementById("capture");
 	const addButton = document.getElementById("add");
 	const cancelButton = document.getElementById("cancel");
 
@@ -210,26 +135,40 @@ button:disabled {
 	}
 
 	function updateAddState() {
-		addButton.disabled = textarea.value.trim().length === 0;
+		addButton.disabled = input.value.trim().length === 0;
 	}
 
 	function submit() {
-		if (textarea.value.trim().length === 0) {
+		if (input.value.trim().length === 0) {
 			return;
 		}
-		post({ action: "submit", text: textarea.value });
+		post({ action: "submit", text: input.value });
 	}
 
-	textarea.addEventListener("input", updateAddState);
-	textarea.addEventListener("keydown", (event) => {
-		if (event.key === "Enter") {
-			if (event.shiftKey) {
-				return;
-			}
-			event.preventDefault();
-			submit();
+	input.addEventListener("input", updateAddState);
+	input.addEventListener("paste", (event) => {
+		const pastedText = event.clipboardData ? event.clipboardData.getData("text") : "";
+		if (!pastedText || !/[\r\n]/.test(pastedText)) {
 			return;
 		}
+
+		event.preventDefault();
+		const start = input.selectionStart == null ? input.value.length : input.selectionStart;
+		const end = input.selectionEnd == null ? start : input.selectionEnd;
+		input.setRangeText(pastedText.replace(/\s+/g, " "), start, end, "end");
+		updateAddState();
+	});
+	input.addEventListener("keydown", (event) => {
+		if (event.key === "Enter") {
+			event.preventDefault();
+			if (!event.shiftKey && !event.altKey && !event.ctrlKey && !event.metaKey) {
+				submit();
+			}
+			return;
+		}
+	});
+
+	document.addEventListener("keydown", (event) => {
 		if (event.key === "Escape") {
 			event.preventDefault();
 			post({ action: "cancel" });
@@ -241,67 +180,28 @@ button:disabled {
 
 	window.addEventListener("load", () => {
 		updateAddState();
-		requestAnimationFrame(() => textarea.focus());
+		requestAnimationFrame(() => input.focus());
 	});
+
+	window.focusCaptureInput = () => {
+		input.focus();
+		updateAddState();
+	};
 })();
 </script>
 </body>
 </html>
 ]=]
 
-local function trimCaptureText(rawText)
+local function normalizeTaskText(rawText)
 	local text = tostring(rawText or "")
-	text = text:gsub("\r\n", "\n"):gsub("\r", "\n")
-
-	local lines = {}
-	for line in (text .. "\n"):gmatch("(.-)\n") do
-		table.insert(lines, line:gsub("%s+$", ""))
-	end
-
-	while #lines > 0 and lines[1]:match("^%s*$") do
-		table.remove(lines, 1)
-	end
-	while #lines > 0 and lines[#lines]:match("^%s*$") do
-		table.remove(lines)
-	end
-
-	return table.concat(lines, "\n")
-end
-
-local function captureMarkdownFromText(rawText)
-	local text = trimCaptureText(rawText)
-	if text == "" then
-		return nil, nil
-	end
-
-	local title = nil
-	local notes = {}
-	for line in (text .. "\n"):gmatch("(.-)\n") do
-		if line:match("%S") then
-			if title == nil then
-				title = line:gsub("^%s+", ""):gsub("%s+$", "")
-			else
-				table.insert(notes, line:gsub("%s+$", ""))
-			end
-		end
-	end
-
-	if title == nil or title == "" then
-		return nil, nil
-	end
-
-	local markdown = "- [ ] #task " .. title .. "\n"
-	for _, note in ipairs(notes) do
-		markdown = markdown .. "  " .. note .. "\n"
-	end
-
-	return markdown, title
+	return text:gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
 end
 
 local function appendCapturedTask(rawText)
 	local target = os.getenv("HOME") .. "/bob/mac_inbox.md"
-	local markdown, summary = captureMarkdownFromText(rawText)
-	if markdown == nil then
+	local text = normalizeTaskText(rawText)
+	if text == "" then
 		return true
 	end
 
@@ -311,30 +211,36 @@ local function appendCapturedTask(rawText)
 		return false
 	end
 
-	local writeOk, writeError = f:write(markdown)
+	local writeOk, writeError = f:write("- [ ] #task " .. text .. "\n")
 	local closeOk, closeError = f:close()
 	if not writeOk or not closeOk then
 		hs.notify.show("Task capture failed", "", writeError or closeError or target)
 		return false
 	end
 
-	hs.notify.show("Captured task", "", summary)
+	hs.notify.show("Captured task", "", text)
 	return true
 end
 
-local function closeTaskCapturePanel()
-	local panel = taskCapturePanel
-	taskCapturePanel = nil
-	taskCaptureController = nil
-	if panel then
-		panel:windowCallback(nil)
-		panel:delete()
-	end
-
+local function restoreTaskCaptureApp()
 	if taskCapturePreviousApp then
-		taskCapturePreviousApp:activate()
+		pcall(function()
+			taskCapturePreviousApp:activate()
+		end)
 		taskCapturePreviousApp = nil
 	end
+end
+
+local function closeTaskCapturePrompt()
+	local prompt = taskCapturePrompt
+	taskCapturePrompt = nil
+	taskCaptureController = nil
+	if prompt then
+		prompt:windowCallback(nil)
+		prompt:delete()
+	end
+
+	restoreTaskCaptureApp()
 end
 
 local function taskCaptureFrame()
@@ -346,8 +252,14 @@ local function taskCaptureFrame()
 	screen = screen or hs.mouse.getCurrentScreen() or hs.screen.mainScreen()
 
 	local frame = screen:frame()
-	local width = math.min(680, frame.w - 80)
-	local height = math.min(430, frame.h - 80)
+	local width = math.min(560, frame.w - 80)
+	local height = math.min(150, frame.h - 80)
+	if width < 320 then
+		width = math.min(320, frame.w)
+	end
+	if height < 130 then
+		height = math.min(130, frame.h)
+	end
 
 	return {
 		x = math.floor(frame.x + (frame.w - width) / 2),
@@ -357,27 +269,27 @@ local function taskCaptureFrame()
 	}
 end
 
-local function focusTaskCapturePanel()
-	if not taskCapturePanel then
+local function focusTaskCapturePrompt()
+	if not taskCapturePrompt then
 		return
 	end
 
-	taskCapturePanel:show()
-	taskCapturePanel:bringToFront()
+	taskCapturePrompt:show()
+	taskCapturePrompt:bringToFront()
 
-	local panelWindow = taskCapturePanel:hswindow()
-	if panelWindow then
-		panelWindow:focus()
+	local promptWindow = taskCapturePrompt:hswindow()
+	if promptWindow then
+		promptWindow:focus()
 	end
 
-	taskCapturePanel:evaluateJavaScript(
-		"var capture = document.getElementById('capture'); if (capture) { capture.focus(); }"
+	taskCapturePrompt:evaluateJavaScript(
+		"if (window.focusCaptureInput) { window.focusCaptureInput(); }"
 	)
 end
 
-local function showTaskCapturePanel()
-	if taskCapturePanel then
-		focusTaskCapturePanel()
+local function showTaskCapturePrompt()
+	if taskCapturePrompt then
+		focusTaskCapturePrompt()
 		return
 	end
 
@@ -394,39 +306,40 @@ local function showTaskCapturePanel()
 		end
 
 		if payload.action == "cancel" then
-			closeTaskCapturePanel()
+			closeTaskCapturePrompt()
 			return
 		end
 
 		if payload.action == "submit" and appendCapturedTask(payload.text) then
-			closeTaskCapturePanel()
+			closeTaskCapturePrompt()
 		end
 	end)
 
-	taskCapturePanel = hs.webview.new(
+	taskCapturePrompt = hs.webview.new(
 		taskCaptureFrame(),
 		{ javaScriptCanOpenWindowsAutomatically = false },
 		taskCaptureController
 	)
-	taskCapturePanel:windowStyle({ "titled", "closable" })
-	taskCapturePanel:shadow(true)
-	taskCapturePanel:allowTextEntry(true)
-	taskCapturePanel:allowNewWindows(false)
-	taskCapturePanel:closeOnEscape(false)
-	taskCapturePanel:deleteOnClose(true)
-	taskCapturePanel:windowTitle("Capture Task")
-	taskCapturePanel:windowCallback(function(action, webview)
-		if action == "closing" and webview == taskCapturePanel then
-			taskCapturePanel = nil
+	taskCapturePrompt:windowStyle({ "titled", "closable" })
+	taskCapturePrompt:shadow(true)
+	taskCapturePrompt:allowTextEntry(true)
+	taskCapturePrompt:allowNewWindows(false)
+	taskCapturePrompt:closeOnEscape(false)
+	taskCapturePrompt:deleteOnClose(true)
+	taskCapturePrompt:windowTitle("Capture Task")
+	taskCapturePrompt:windowCallback(function(action, webview)
+		if action == "closing" and webview == taskCapturePrompt then
+			taskCapturePrompt = nil
 			taskCaptureController = nil
+			restoreTaskCaptureApp()
 		end
 	end)
-	taskCapturePanel:html(taskCaptureHtml)
-	focusTaskCapturePanel()
+	taskCapturePrompt:html(taskCaptureHtml)
+	focusTaskCapturePrompt()
 end
 
 hs.hotkey.bind({ "cmd", "shift", "ctrl" }, "i", nil, function()
-	showTaskCapturePanel()
+	showTaskCapturePrompt()
 end)
 
 -- Auto-reload the config whenever the deployed files change (e.g. after a
