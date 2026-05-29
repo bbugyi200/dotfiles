@@ -63,6 +63,7 @@ ace:
       to the ~/tmp/$1/ directory to help you figure this out."
     mrp: "Mentor Review panel"
     n: "%n:"
+    ob: "Obsidian"
     piw: "prompt input widget"
     prp: "plan review panel"
     rep: "the ../sase-$1 repo"
