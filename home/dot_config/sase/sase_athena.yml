@@ -1,6 +1,8 @@
 chat_install:
   command: "install_sase_github"
 
+amd_h1_title: "athena - Bryan Bugyi's Home Server"
+
 llm_provider:
   provider: codex
 
