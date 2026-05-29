@@ -126,6 +126,13 @@ axe:
           timeout: "120s"
           env:
             SASE_GHA_FIX_REPOS: "bbugyi200/dotfiles sase-org/sase"
+    memory:
+      interval: 300
+      chop_timeout: "10m"
+      chops:
+        - name: memory_episodes
+          description: "Build private connected memory episodes from completed agents"
+          run_every: "15m"
     telegram:
       interval: 5
       chops:
