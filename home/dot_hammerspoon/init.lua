@@ -198,17 +198,27 @@ local function normalizeTaskText(rawText)
 	return text:gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
 end
 
+local function routedCapturedTask(bobRoot, routeName, taskText)
+	local normalizedRouteName = routeName:lower()
+	return {
+		target = bobRoot .. "/" .. normalizedRouteName .. ".md",
+		text = taskText,
+		isRouted = true,
+		label = normalizedRouteName .. ".md",
+	}
+end
+
 local function parseCapturedTaskTarget(text)
 	local bobRoot = os.getenv("HOME") .. "/bob"
-	local prefix, taskText = text:match("^([A-Za-z0-9_-]+):%s+(.+)$")
-	if prefix then
-		local normalizedPrefix = prefix:lower()
-		return {
-			target = bobRoot .. "/" .. normalizedPrefix .. ".md",
-			text = taskText,
-			isRouted = true,
-			label = normalizedPrefix .. ".md",
-		}
+
+	local routeName, taskText = text:match("^@([A-Za-z0-9_-]+)%s+(.+)$")
+	if routeName then
+		return routedCapturedTask(bobRoot, routeName, taskText)
+	end
+
+	taskText, routeName = text:match("^(.+)%s+@([A-Za-z0-9_-]+)$")
+	if routeName then
+		return routedCapturedTask(bobRoot, routeName, taskText)
 	end
 
 	return {
