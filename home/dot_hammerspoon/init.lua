@@ -198,27 +198,158 @@ local function normalizeTaskText(rawText)
 	return text:gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
 end
 
+local function parseCapturedTaskTarget(text)
+	local bobRoot = os.getenv("HOME") .. "/bob"
+	local prefix, taskText = text:match("^([A-Za-z0-9_-]+):%s+(.+)$")
+	if prefix then
+		return {
+			target = bobRoot .. "/" .. prefix .. ".md",
+			text = taskText,
+			isRouted = true,
+			label = prefix .. ".md",
+		}
+	end
+
+	return {
+		target = bobRoot .. "/mac_inbox.md",
+		text = text,
+		isRouted = false,
+		label = "",
+	}
+end
+
+local function readFile(path)
+	local f, openError = io.open(path, "r")
+	if not f then
+		return nil, openError
+	end
+
+	local contents, readError = f:read("*a")
+	local closeOk, closeError = f:close()
+	if contents == nil or not closeOk then
+		return nil, readError or closeError or path
+	end
+
+	return contents
+end
+
+local function writeFile(path, contents)
+	local f, openError = io.open(path, "w")
+	if not f then
+		return false, openError
+	end
+
+	local writeOk, writeError = f:write(contents)
+	local closeOk, closeError = f:close()
+	if not writeOk or not closeOk then
+		return false, writeError or closeError or path
+	end
+
+	return true
+end
+
+local function ensureFile(path)
+	local f, openError = io.open(path, "a")
+	if not f then
+		return false, openError
+	end
+
+	local closeOk, closeError = f:close()
+	if not closeOk then
+		return false, closeError or path
+	end
+
+	return true
+end
+
+local function insertTaskAfterLastOpenTask(path, taskLine)
+	local ensureOk, ensureError = ensureFile(path)
+	if not ensureOk then
+		return false, ensureError
+	end
+
+	local contents, readError = readFile(path)
+	if contents == nil then
+		return false, readError
+	end
+
+	local taskPrefix = "- [ ] #task "
+	local insertAt = nil
+	local needsLeadingNewline = false
+	local lineStart = 1
+	while lineStart <= #contents do
+		local newlineAt = contents:find("\n", lineStart, true)
+		if contents:sub(lineStart, lineStart + #taskPrefix - 1) == taskPrefix then
+			if newlineAt then
+				insertAt = newlineAt + 1
+				needsLeadingNewline = false
+			else
+				insertAt = #contents + 1
+				needsLeadingNewline = true
+			end
+		end
+
+		if not newlineAt then
+			break
+		end
+		lineStart = newlineAt + 1
+	end
+
+	local insertion = taskLine .. "\n"
+	if needsLeadingNewline then
+		insertion = "\n" .. insertion
+	end
+
+	local updatedContents
+	if insertAt then
+		updatedContents = contents:sub(1, insertAt - 1)
+			.. insertion
+			.. contents:sub(insertAt)
+	else
+		local separator = ""
+		if contents ~= "" and contents:sub(-1) ~= "\n" then
+			separator = "\n"
+		end
+		updatedContents = contents .. separator .. insertion
+	end
+
+	return writeFile(path, updatedContents)
+end
+
 local function appendCapturedTask(rawText)
-	local target = os.getenv("HOME") .. "/bob/mac_inbox.md"
 	local text = normalizeTaskText(rawText)
 	if text == "" then
 		return true
 	end
 
+	local capturedTask = parseCapturedTaskTarget(text)
+	local taskLine = "- [ ] #task " .. capturedTask.text
+	if capturedTask.isRouted then
+		local insertOk, insertError = insertTaskAfterLastOpenTask(capturedTask.target, taskLine)
+		if not insertOk then
+			hs.notify.show("Task capture failed", "", insertError or capturedTask.target)
+			return false
+		end
+
+		hs.notify.show("Captured task", capturedTask.label, capturedTask.text)
+		return true
+	end
+
+	local target = capturedTask.target
 	local f, openError = io.open(target, "a")
 	if not f then
 		hs.notify.show("Task capture failed", "", openError or target)
 		return false
 	end
 
-	local writeOk, writeError = f:write("- [ ] #task " .. text .. "\n")
+	local writeOk, writeError = f:write(taskLine .. "\n")
 	local closeOk, closeError = f:close()
 	if not writeOk or not closeOk then
 		hs.notify.show("Task capture failed", "", writeError or closeError or target)
 		return false
 	end
 
-	hs.notify.show("Captured task", "", text)
+	hs.notify.show("Captured task", "", capturedTask.text)
 	return true
 end
 
