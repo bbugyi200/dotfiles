@@ -1,0 +1,129 @@
+#!/bin/bash
+
+set -euo pipefail
+
+function log() {
+  printf '[%s] %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$*"
+}
+
+function die() {
+  printf '[%s] ERROR: %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$*" >&2
+  exit 1
+}
+
+function acquire_lock() {
+  if ! command -v flock >/dev/null 2>&1; then
+    return 0
+  fi
+
+  local lock_dir="${XDG_RUNTIME_DIR:-/tmp}"
+  if [[ ! -d "${lock_dir}" ]]; then
+    lock_dir="/tmp"
+  fi
+
+  local lock_file="${BOB_SYNC_LOCK_FILE:-${lock_dir}/bob_sync.lock}"
+  exec 9>"${lock_file}"
+
+  if ! flock -n 9; then
+    log "Another bob_sync run is already active; exiting."
+    exit 0
+  fi
+}
+
+function source_if_readable() {
+  local source_file="$1"
+  if [[ ! -r "${source_file}" ]]; then
+    return 0
+  fi
+
+  set +u
+  # shellcheck source=/dev/null
+  source "${source_file}"
+  set -u
+}
+
+function load_ob_command() {
+  if command -v ob >/dev/null 2>&1; then
+    return 0
+  fi
+
+  export NVM_DIR="${NVM_DIR:-${HOME}/.config/nvm}"
+  source_if_readable "${NVM_DIR}/nvm.sh"
+
+  if ! command -v ob >/dev/null 2>&1 && command -v nvm >/dev/null 2>&1; then
+    nvm use --silent default >/dev/null || true
+  fi
+
+  command -v ob >/dev/null 2>&1 || die "Could not find the ob command after loading NVM."
+}
+
+function verify_bob_worktree() {
+  local bob_dir="$1"
+
+  [[ -d "${bob_dir}" ]] || die "Bob directory does not exist: ${bob_dir}"
+
+  if ! git -C "${bob_dir}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    die "Bob directory is not a Git worktree: ${bob_dir}"
+  fi
+}
+
+function run_ob_sync() {
+  local bob_dir="$1"
+  local sync_output
+  local sync_status
+
+  set +e
+  sync_output="$(ob sync --path "${bob_dir}" 2>&1)"
+  sync_status=$?
+  set -e
+
+  if [[ ${sync_status} -eq 0 ]]; then
+    if [[ -n "${sync_output}" ]]; then
+      printf '%s\n' "${sync_output}"
+    fi
+    return 0
+  fi
+
+  if [[ "${sync_output}" == *"Another sync instance is already running for this vault."* ]]; then
+    log "Obsidian sync is already running for this vault; continuing."
+    return 0
+  fi
+
+  if [[ -n "${sync_output}" ]]; then
+    printf '%s\n' "${sync_output}" >&2
+  fi
+  return "${sync_status}"
+}
+
+function run() {
+  local bob_dir="${BOB_DIR:-${HOME}/bob}"
+  local commit_message="${BOB_SYNC_COMMIT_MESSAGE:-bob sync $(date +%F)}"
+
+  acquire_lock
+  load_ob_command
+  source_if_readable "${HOME}/.ssh-agent-thing" >/dev/null
+  export GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-ssh -o BatchMode=yes}"
+
+  verify_bob_worktree "${bob_dir}"
+
+  log "Running Obsidian sync for ${bob_dir}."
+  run_ob_sync "${bob_dir}"
+
+  log "Obsidian sync status for ${bob_dir}:"
+  ob sync-status --path "${bob_dir}"
+
+  log "Staging Bob vault changes."
+  git -C "${bob_dir}" add -A .
+
+  if git -C "${bob_dir}" diff --cached --quiet --exit-code; then
+    log "No staged Bob changes to commit."
+  else
+    log "Committing Bob vault changes."
+    git -C "${bob_dir}" commit -m "${commit_message}"
+  fi
+
+  log "Pushing Bob vault commits."
+  git -C "${bob_dir}" push
+}
+
+run "$@"
