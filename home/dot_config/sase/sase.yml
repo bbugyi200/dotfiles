@@ -10,11 +10,6 @@ sibling_repos:
     description: Chezmoi-managed dotfiles and global SASE configuration source.
     workspace:
       strategy: none
-  - name: obsidian
-    path: ~/bob
-    description: Obsidian/Bob notes vault and Git-backed Markdown knowledge base.
-    workspace:
-      strategy: none
 ace:
   snippets:
     ace: "`sase ace`"
