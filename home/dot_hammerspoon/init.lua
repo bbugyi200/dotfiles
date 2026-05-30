@@ -202,11 +202,12 @@ local function parseCapturedTaskTarget(text)
 	local bobRoot = os.getenv("HOME") .. "/bob"
 	local prefix, taskText = text:match("^([A-Za-z0-9_-]+):%s+(.+)$")
 	if prefix then
+		local normalizedPrefix = prefix:lower()
 		return {
-			target = bobRoot .. "/" .. prefix .. ".md",
+			target = bobRoot .. "/" .. normalizedPrefix .. ".md",
 			text = taskText,
 			isRouted = true,
-			label = prefix .. ".md",
+			label = normalizedPrefix .. ".md",
 		}
 	end
 
