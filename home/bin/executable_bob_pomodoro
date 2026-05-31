@@ -85,7 +85,7 @@ function get_latest_ledger_pomodoro() {
     }
 
     while (my $line = <>) {
-      if ($line =~ /^##\s+Pomodoros\s*$/) {
+      if ($line =~ /^##\s+Pomodoros(?:\s+\[runtime::\s*[^\]]+\])?\s*$/) {
         $in_pomodoros = 1;
         next;
       }

@@ -69,7 +69,7 @@ local sample_lines = {
 	"",
 	"- [ ] #task outside the ledger",
 	"",
-	"## Pomodoros",
+	"## Pomodoros [runtime:: 2h5m]",
 	"",
 	"- [x] (1105-1245) #dev done [p:: 15]",
 	"- [X] (1345-1410) #dev also done [p:: 5]",

@@ -1,0 +1,222 @@
+#!/usr/bin/env python3
+
+from __future__ import annotations
+
+import argparse
+import os
+import re
+import sys
+from datetime import datetime
+from pathlib import Path
+
+POMODOROS_HEADING_RE = re.compile(
+    r"^(?P<base>##\s+Pomodoros)(?:\s+\[runtime::\s*[^\]]+\])?\s*$"
+)
+LEVEL_TWO_HEADING_RE = re.compile(r"^##\s+")
+COMPLETED_LEDGER_RE = re.compile(r"^\s*[-*+]\s+\[[xX]\]\s+")
+RUNTIME_SUFFIX_RE = re.compile(r"\s+\[runtime::\s*[^\]]+\]\s*$")
+TIME_RE = re.compile(
+    r"\((?P<start>\d{4}|\d{2}:\d{2})\s*-\s*(?P<end>\d{4}|\d{2}:\d{2})\)"
+)
+DATE_OVERRIDE_RE = re.compile(
+    r"^\d{4}-\d{2}-\d{2}(?:[T ][0-2]\d:[0-5]\d(?::[0-5]\d)?)?$"
+)
+
+
+def split_line_ending(line: str) -> tuple[str, str]:
+    if line.endswith("\r\n"):
+        return line[:-2], "\r\n"
+    if line.endswith("\n"):
+        return line[:-1], "\n"
+    return line, ""
+
+
+def current_datetime() -> datetime:
+    override = os.environ.get("BOB_NOW")
+    if override is None and DATE_OVERRIDE_RE.match(os.environ.get("DATE", "")):
+        override = os.environ["DATE"]
+
+    if override is None:
+        return datetime.now()
+
+    normalized = override.replace("T", " ")
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(normalized, fmt)
+        except ValueError:
+            pass
+
+    return datetime.now()
+
+
+def default_note_path() -> Path:
+    bob_dir = Path(os.environ.get("BOB_DIR", "~/bob")).expanduser()
+    today = current_datetime()
+    return bob_dir / today.strftime("%Y") / f"{today:%Y%m%d}_day.md"
+
+
+def parse_time(time_text: str) -> int | None:
+    normalized = time_text.replace(":", "")
+    if len(normalized) != 4 or not normalized.isdigit():
+        return None
+
+    hours = int(normalized[:2])
+    minutes = int(normalized[2:])
+    if hours > 23 or minutes > 59:
+        return None
+
+    return hours * 60 + minutes
+
+
+def runtime_minutes(line: str) -> int | None:
+    match = TIME_RE.search(line)
+    if match is None:
+        return None
+
+    start = parse_time(match.group("start"))
+    end = parse_time(match.group("end"))
+    if start is None or end is None:
+        return None
+
+    if end < start:
+        end += 24 * 60
+
+    return end - start
+
+
+def format_runtime(minutes: int) -> str:
+    hours, minutes = divmod(minutes, 60)
+    if hours == 0:
+        return f"{minutes}m"
+    if minutes == 0:
+        return f"{hours}h"
+    return f"{hours}h{minutes}m"
+
+
+def strip_runtime_suffix(line: str) -> str:
+    return RUNTIME_SUFFIX_RE.sub("", line)
+
+
+def find_pomodoros_section(lines: list[str]) -> tuple[int, int] | None:
+    heading_index = None
+
+    for index, line in enumerate(lines):
+        content, _ = split_line_ending(line)
+        if POMODOROS_HEADING_RE.match(content):
+            heading_index = index
+            break
+
+    if heading_index is None:
+        return None
+
+    end_index = len(lines)
+    for index in range(heading_index + 1, len(lines)):
+        content, _ = split_line_ending(lines[index])
+        if LEVEL_TWO_HEADING_RE.match(content):
+            end_index = index
+            break
+
+    return heading_index, end_index
+
+
+def updated_lines(lines: list[str]) -> list[str]:
+    section = find_pomodoros_section(lines)
+    if section is None:
+        return lines
+
+    heading_index, end_index = section
+    new_lines = list(lines)
+    total_minutes = 0
+
+    for index in range(heading_index + 1, end_index):
+        content, newline = split_line_ending(new_lines[index])
+        if not COMPLETED_LEDGER_RE.match(content):
+            continue
+
+        stripped = strip_runtime_suffix(content)
+        minutes = runtime_minutes(stripped)
+        if minutes is None:
+            new_lines[index] = stripped + newline
+            continue
+
+        total_minutes += minutes
+        new_lines[index] = f"{stripped} [runtime:: {format_runtime(minutes)}]{newline}"
+
+    heading, newline = split_line_ending(new_lines[heading_index])
+    heading_match = POMODOROS_HEADING_RE.match(heading)
+    if heading_match is not None:
+        base_heading = heading_match.group("base")
+        new_lines[heading_index] = (
+            f"{base_heading} [runtime:: {format_runtime(total_minutes)}]{newline}"
+        )
+
+    return new_lines
+
+
+def read_lines(path: Path) -> list[str]:
+    with path.open("r", encoding="utf-8", newline="") as note_file:
+        return note_file.readlines()
+
+
+def write_lines(path: Path, lines: list[str]) -> None:
+    with path.open("w", encoding="utf-8", newline="") as note_file:
+        note_file.write("".join(lines))
+
+
+def process_note(path: Path, check: bool) -> bool:
+    original_lines = read_lines(path)
+    new_lines = updated_lines(original_lines)
+    changed = new_lines != original_lines
+
+    if changed and not check:
+        write_lines(path, new_lines)
+
+    return changed
+
+
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Annotate completed Bob Pomodoro ledger entries with runtimes."
+    )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="report whether notes would change without writing them",
+    )
+    parser.add_argument(
+        "notes",
+        nargs="*",
+        type=Path,
+        help="note paths to update; defaults to today's Bob daily note",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str]) -> int:
+    args = parse_args(argv)
+    note_paths = args.notes or [default_note_path()]
+
+    changed_paths = []
+    for path in note_paths:
+        try:
+            changed = process_note(path.expanduser(), args.check)
+        except FileNotFoundError:
+            print(f"bob_pomodoro_runtimes: note not found: {path}", file=sys.stderr)
+            return 2
+
+        if changed:
+            changed_paths.append(path)
+
+    if args.check and changed_paths:
+        for path in changed_paths:
+            print(f"bob_pomodoro_runtimes: would update: {path}", file=sys.stderr)
+        return 1
+
+    for path in changed_paths:
+        print(f"bob_pomodoro_runtimes: updated: {path}")
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

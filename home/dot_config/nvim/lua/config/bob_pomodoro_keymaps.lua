@@ -3,6 +3,7 @@ local M = {}
 local bob_keymaps = require("config.bob_keymaps")
 
 local pomodoros_heading_pattern = "^##%s+Pomodoros%s*$"
+local pomodoros_runtime_heading_pattern = "^##%s+Pomodoros%s+%[runtime::%s*[^%]]+%]%s*$"
 local level_two_heading_pattern = "^##%s+"
 
 local function uv()
@@ -70,6 +71,10 @@ local function minutes_from_parts(hours, minutes)
 	return hours * 60 + minutes
 end
 
+local function is_pomodoros_heading(line)
+	return line:match(pomodoros_heading_pattern) ~= nil or line:match(pomodoros_runtime_heading_pattern) ~= nil
+end
+
 function M.is_bob_buffer(bufnr)
 	bufnr = normalize_bufnr(bufnr)
 
@@ -89,7 +94,7 @@ function M.find_pomodoros_section(lines)
 	local heading_lnum = nil
 
 	for lnum, line in ipairs(lines) do
-		if line:match(pomodoros_heading_pattern) then
+		if is_pomodoros_heading(line) then
 			heading_lnum = lnum
 			break
 		end
