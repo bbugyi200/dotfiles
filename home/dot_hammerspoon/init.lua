@@ -284,13 +284,13 @@ local function insertTaskAfterLastOpenTask(path, taskLine)
 		return false, readError
 	end
 
-	local taskPrefix = "- [ ] #task "
 	local insertAt = nil
 	local needsLeadingNewline = false
 	local lineStart = 1
 	while lineStart <= #contents do
 		local newlineAt = contents:find("\n", lineStart, true)
-		if contents:sub(lineStart, lineStart + #taskPrefix - 1) == taskPrefix then
+		local line = newlineAt and contents:sub(lineStart, newlineAt - 1) or contents:sub(lineStart)
+		if line:match("^%- %[.%]%s+.*#task") then
 			if newlineAt then
 				insertAt = newlineAt + 1
 				needsLeadingNewline = false
