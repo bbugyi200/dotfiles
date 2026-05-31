@@ -9,7 +9,8 @@ Use this skill when project instructions or a prompt require reading SASE long-t
 
 ## Rules
 
-- Read canonical long-term memory only through `sase memory read`.
+- Read canonical long-term memory only through `sase memory read`; it checks project `memory/long` first and then
+  `~/memory/long`.
 - Pass the long-memory path relative to `memory/`, such as `long/generated_skills.md`.
 - Include a specific, non-empty reason with `--reason` or `-r`.
 - Do not read canonical `memory/long/*.md` files directly with shell commands or file-reading tools.
