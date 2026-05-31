@@ -5,10 +5,15 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import shutil
+import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
 
+SYNC_ALREADY_RUNNING_MESSAGE = (
+    "Another sync instance is already running for this vault."
+)
 POMODOROS_HEADING_RE = re.compile(
     r"^(?P<base>##\s+Pomodoros)(?:\s+\[runtime::\s*[^\]]+\])?\s*$"
 )
@@ -49,10 +54,62 @@ def current_datetime() -> datetime:
     return datetime.now()
 
 
-def default_note_path() -> Path:
-    bob_dir = Path(os.environ.get("BOB_DIR", "~/bob")).expanduser()
+def default_bob_dir() -> Path:
+    return Path(os.environ.get("BOB_DIR") or "~/bob").expanduser()
+
+
+def default_note_path(bob_dir: Path) -> Path:
     today = current_datetime()
     return bob_dir / today.strftime("%Y") / f"{today:%Y%m%d}_day.md"
+
+
+def write_stderr_output(output: str) -> None:
+    if output == "":
+        return
+
+    sys.stderr.write(output)
+    if not output.endswith("\n"):
+        sys.stderr.write("\n")
+
+
+def run_ob_sync(bob_dir: Path) -> bool:
+    ob_command = os.environ.get("OB_COMMAND") or "ob"
+    ob_path = shutil.which(ob_command)
+    if ob_path is None:
+        print(
+            f"bob_pomodoro_runtimes: ob command not found: {ob_command}",
+            file=sys.stderr,
+        )
+        return False
+
+    try:
+        completed = subprocess.run(
+            [ob_path, "sync", "--path", str(bob_dir)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            check=False,
+        )
+    except OSError as error:
+        print(
+            f"bob_pomodoro_runtimes: failed to run ob sync: {error}",
+            file=sys.stderr,
+        )
+        return False
+
+    sync_output = completed.stdout or ""
+    if completed.returncode == 0:
+        return True
+
+    if SYNC_ALREADY_RUNNING_MESSAGE in sync_output:
+        return True
+
+    write_stderr_output(sync_output)
+    print(
+        f"bob_pomodoro_runtimes: ob sync failed with exit code {completed.returncode}",
+        file=sys.stderr,
+    )
+    return False
 
 
 def parse_time(time_text: str) -> int | None:
@@ -194,7 +251,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
 def main(argv: list[str]) -> int:
     args = parse_args(argv)
-    note_paths = args.notes or [default_note_path()]
+    bob_dir = default_bob_dir()
+    note_paths = args.notes or [default_note_path(bob_dir)]
+
+    if not run_ob_sync(bob_dir):
+        return 2
 
     changed_paths = []
     for path in note_paths:
