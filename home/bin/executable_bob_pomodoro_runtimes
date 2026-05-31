@@ -14,12 +14,16 @@ from pathlib import Path
 SYNC_ALREADY_RUNNING_MESSAGE = (
     "Another sync instance is already running for this vault."
 )
-POMODOROS_HEADING_RE = re.compile(
-    r"^(?P<base>##\s+Pomodoros)(?:\s+\[runtime::\s*[^\]]+\])?\s*$"
-)
+# Stopwatch glyph (U+23F1) plus its emoji variation selector (U+FE0F).
+STOPWATCH = "⏱️"
+# Match a `## Pomodoros` heading regardless of any trailing annotation, so the
+# tooling never breaks when the runtime-suffix format changes again.
+POMODOROS_HEADING_RE = re.compile(r"^(?P<base>##\s+Pomodoros)(?:\s.*)?$")
 LEVEL_TWO_HEADING_RE = re.compile(r"^##\s+")
 COMPLETED_LEDGER_RE = re.compile(r"^\s*[-*+]\s+\[[xX]\]\s+")
-RUNTIME_SUFFIX_RE = re.compile(r"\s+\[runtime::\s*[^\]]+\]\s*$")
+# Strip either the legacy ` [runtime:: …]` field or the new ` ⏱️ …` suffix
+# (with or without the U+FE0F variation selector) so a single run self-migrates.
+RUNTIME_SUFFIX_RE = re.compile(r"\s+(?:\[runtime::\s*[^\]]+\]|⏱️?\s*\S+)\s*$")
 TIME_RE = re.compile(
     r"\((?P<start>\d{4}|\d{2}:\d{2})\s*-\s*(?P<end>\d{4}|\d{2}:\d{2})\)"
 )
@@ -184,6 +188,7 @@ def updated_lines(lines: list[str]) -> list[str]:
     heading_index, end_index = section
     new_lines = list(lines)
     total_minutes = 0
+    annotated_tasks = 0
 
     for index in range(heading_index + 1, end_index):
         content, newline = split_line_ending(new_lines[index])
@@ -197,15 +202,19 @@ def updated_lines(lines: list[str]) -> list[str]:
             continue
 
         total_minutes += minutes
-        new_lines[index] = f"{stripped} [runtime:: {format_runtime(minutes)}]{newline}"
+        annotated_tasks += 1
+        new_lines[index] = f"{stripped} {STOPWATCH} {format_runtime(minutes)}{newline}"
 
     heading, newline = split_line_ending(new_lines[heading_index])
     heading_match = POMODOROS_HEADING_RE.match(heading)
     if heading_match is not None:
         base_heading = heading_match.group("base")
-        new_lines[heading_index] = (
-            f"{base_heading} [runtime:: {format_runtime(total_minutes)}]{newline}"
-        )
+        if annotated_tasks > 0:
+            new_lines[heading_index] = (
+                f"{base_heading} {STOPWATCH} {format_runtime(total_minutes)}{newline}"
+            )
+        else:
+            new_lines[heading_index] = f"{base_heading}{newline}"
 
     return new_lines
 

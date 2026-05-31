@@ -69,7 +69,7 @@ local sample_lines = {
 	"",
 	"- [ ] #task outside the ledger",
 	"",
-	"## Pomodoros [runtime:: 2h5m]",
+	"## Pomodoros ⏱️ 2h5m",
 	"",
 	"- [x] (1105-1245) #dev done [p:: 15]",
 	"- [X] (1345-1410) #dev also done [p:: 5]",
@@ -86,6 +86,23 @@ do
 	local active = assert(bob_pomodoro.find_active_item(sample_lines))
 	eq(active.lnum, 16, "latest unchecked timed line is active")
 	eq(active.line, "- [ ] (17:45-18:10) #task latest active [[20260528_day]]", "active line text")
+end
+
+do
+	-- Heading detection is format-agnostic: plain, legacy `[runtime:: …]`, and
+	-- the new `⏱️ …` suffix all resolve to the same Pomodoros section.
+	local function detects(heading)
+		local section = bob_pomodoro.find_pomodoros_section({
+			heading,
+			"",
+			"- [ ] () #task one",
+		})
+		return section ~= nil and section.heading_lnum == 1
+	end
+
+	eq(detects("## Pomodoros"), true, "plain Pomodoros heading is detected")
+	eq(detects("## Pomodoros [runtime:: 2h5m]"), true, "legacy runtime heading is detected")
+	eq(detects("## Pomodoros ⏱️ 2h5m"), true, "stopwatch runtime heading is detected")
 end
 
 do

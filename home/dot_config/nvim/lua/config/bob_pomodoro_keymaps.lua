@@ -2,8 +2,11 @@ local M = {}
 
 local bob_keymaps = require("config.bob_keymaps")
 
+-- Match a `## Pomodoros` heading regardless of any trailing annotation
+-- (legacy `[runtime:: …]`, the new `⏱️ …` suffix, or nothing), so heading
+-- detection never breaks when the runtime-suffix format changes again.
 local pomodoros_heading_pattern = "^##%s+Pomodoros%s*$"
-local pomodoros_runtime_heading_pattern = "^##%s+Pomodoros%s+%[runtime::%s*[^%]]+%]%s*$"
+local pomodoros_annotated_heading_pattern = "^##%s+Pomodoros%s+%S"
 local level_two_heading_pattern = "^##%s+"
 
 local function uv()
@@ -72,7 +75,7 @@ local function minutes_from_parts(hours, minutes)
 end
 
 local function is_pomodoros_heading(line)
-	return line:match(pomodoros_heading_pattern) ~= nil or line:match(pomodoros_runtime_heading_pattern) ~= nil
+	return line:match(pomodoros_heading_pattern) ~= nil or line:match(pomodoros_annotated_heading_pattern) ~= nil
 end
 
 function M.is_bob_buffer(bufnr)

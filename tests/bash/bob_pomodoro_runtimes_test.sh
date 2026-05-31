@@ -51,7 +51,7 @@ function make_note() {
   printf "%s\n" "$@" >"${path}"
 }
 
-function test_runtime_annotations_are_idempotent() {
+function test_legacy_field_migrates_to_stopwatch_in_one_run() {
   local temp_dir
   temp_dir="$(mktemp -d)"
   local fake_bin="${temp_dir}/bin"
@@ -77,12 +77,40 @@ function test_runtime_annotations_are_idempotent() {
 
   local updated
   updated="$(cat "${note}")"
-  assert_contains "## Pomodoros [runtime:: 2h10m]" "${updated}"
-  assert_contains "- [x] (0800-0825) #task first [completion:: 2026-05-31] [runtime:: 25m]" "${updated}"
-  assert_contains "- [X] (08:30-09:45) #task second [p:: 5] [runtime:: 1h15m]" "${updated}"
-  assert_contains "  - [x] (2345-0015) #task midnight [[20260531_day]] [runtime:: 30m]" "${updated}"
+  assert_contains "## Pomodoros ⏱️ 2h10m" "${updated}"
+  assert_contains "- [x] (0800-0825) #task first [completion:: 2026-05-31] ⏱️ 25m" "${updated}"
+  assert_contains "- [X] (08:30-09:45) #task second [p:: 5] ⏱️ 1h15m" "${updated}"
+  assert_contains "  - [x] (2345-0015) #task midnight [[20260531_day]] ⏱️ 30m" "${updated}"
   assert_contains "- [ ] (1000-1025) #task open" "${updated}"
   assert_contains "- [x] (1200-1300) #task outside" "${updated}"
+  # No legacy `[runtime:: …]` field survives the migration.
+  assert_same "" "$(printf "%s\n" "${updated}" | grep 'runtime::' || true)"
+
+  rm -rf "${temp_dir}"
+}
+
+function test_stopwatch_format_reruns_are_byte_identical() {
+  local temp_dir
+  temp_dir="$(mktemp -d)"
+  local fake_bin="${temp_dir}/bin"
+  local note="${temp_dir}/2026/20260531_day.md"
+  write_fake_ob "${fake_bin}"
+
+  make_note \
+    "${note}" \
+    "# Test" \
+    "" \
+    "## Pomodoros ⏱️ 1h40m" \
+    "" \
+    "- [x] (0800-0825) #task first ⏱️ 25m" \
+    "- [X] (08:30-09:45) #task second [p:: 5] ⏱️ 1h15m" \
+    "- [ ] (1000-1025) #task open"
+
+  local before
+  before="$(cat "${note}")"
+
+  run_script_with_fake_ob "${fake_bin}" "${note}" >/dev/null
+  assert_same "${before}" "$(cat "${note}")"
 
   run_script_with_fake_ob "${fake_bin}" --check "${note}" >/dev/null 2>&1
   assert_same 0 "$?"
@@ -111,15 +139,15 @@ function test_default_note_uses_bob_dir_and_date_override() {
 
   local updated
   updated="$(cat "${note}")"
-  assert_contains "## Pomodoros [runtime:: 0m]" "${updated}"
-  assert_contains "- [x] (10:00-10:00) #task zero [runtime:: 0m]" "${updated}"
+  assert_contains "## Pomodoros ⏱️ 0m" "${updated}"
+  assert_contains "- [x] (10:00-10:00) #task zero ⏱️ 0m" "${updated}"
   assert_contains "- [x] #task untimed" "${updated}"
-  assert_same "" "$(printf "%s\n" "${updated}" | grep 'untimed .*runtime::' || true)"
+  assert_same "" "$(printf "%s\n" "${updated}" | grep 'untimed .*⏱️' || true)"
 
   rm -rf "${temp_dir}"
 }
 
-function test_no_completed_timed_tasks_sets_zero_header_only() {
+function test_no_completed_timed_tasks_leaves_bare_header() {
   local temp_dir
   temp_dir="$(mktemp -d)"
   local fake_bin="${temp_dir}/bin"
@@ -139,10 +167,12 @@ function test_no_completed_timed_tasks_sets_zero_header_only() {
 
   local updated
   updated="$(cat "${note}")"
-  assert_contains "## Pomodoros [runtime:: 0m]" "${updated}"
+  # No completed timed task means the header stays a clean, bare `## Pomodoros`
+  # with no lonely ` ⏱️ 0m` suffix.
+  assert_contains "## Pomodoros" "${updated}"
+  assert_same "" "$(printf "%s\n" "${updated}" | grep -e '⏱️' -e 'runtime::' || true)"
   assert_contains "- [ ] (0800-0825) #task open" "${updated}"
   assert_contains "- [x] #task untimed" "${updated}"
-  assert_same "" "$(printf "%s\n" "${updated}" | grep 'untimed .*runtime::' || true)"
 
   rm -rf "${temp_dir}"
 }
@@ -181,9 +211,9 @@ function test_sync_runs_before_runtime_calculation() {
 
   local updated
   updated="$(cat "${note}")"
-  assert_contains "## Pomodoros [runtime:: 1h15m]" "${updated}"
-  assert_contains "- [x] (0900-0925) #task synced-one [runtime:: 25m]" "${updated}"
-  assert_contains "- [x] (10:00-10:50) #task synced-two [runtime:: 50m]" "${updated}"
+  assert_contains "## Pomodoros ⏱️ 1h15m" "${updated}"
+  assert_contains "- [x] (0900-0925) #task synced-one ⏱️ 25m" "${updated}"
+  assert_contains "- [x] (10:00-10:50) #task synced-two ⏱️ 50m" "${updated}"
 
   rm -rf "${temp_dir}"
 }
@@ -245,8 +275,8 @@ function test_already_running_sync_message_allows_runtime_calculation() {
 
   local updated
   updated="$(cat "${note}")"
-  assert_contains "## Pomodoros [runtime:: 25m]" "${updated}"
-  assert_contains "- [x] (0800-0825) #task allowed [runtime:: 25m]" "${updated}"
+  assert_contains "## Pomodoros ⏱️ 25m" "${updated}"
+  assert_contains "- [x] (0800-0825) #task allowed ⏱️ 25m" "${updated}"
 
   rm -rf "${temp_dir}"
 }
