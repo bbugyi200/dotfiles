@@ -14,9 +14,6 @@ Use this skill when project instructions or a prompt require reading SASE long-t
 - Pass the long-memory path relative to `memory/`, such as `long/generated_skills.md`.
 - Include a specific, non-empty reason with `--reason` or `-r`.
 - Do not read canonical `memory/long/*.md` files directly with shell commands or file-reading tools.
-- Dynamic `.sase/memory/long-*.md` files already carry the corresponding long-memory content for that prompt. When one
-  is listed in a dynamic memory section, use that dynamic copy as the provided context and do not separately read the
-  matching canonical long-memory file unless you need a fresh audited read.
 
 ## Command
 
