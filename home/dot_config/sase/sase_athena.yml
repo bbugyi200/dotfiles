@@ -135,6 +135,9 @@ axe:
         - name: memory_episodes
           description: "Build private connected memory episodes from completed agents"
           run_every: "15m"
+          env:
+            SASE_MEMORY_EPISODES_PROJECT: "sase"
+            SASE_MEMORY_EPISODES_REPO_ROOT: "/home/bryan/projects/github/sase-org/sase"
     telegram:
       interval: 5
       chops:
