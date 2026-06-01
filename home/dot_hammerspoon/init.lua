@@ -707,7 +707,7 @@ export PATH
 if [ -z "${DATE+x}" ] && command -v gdate >/dev/null 2>&1; then
 	export DATE=gdate
 fi
-exec "$HOME/bin/bob_pomodoro"
+exec bob pomodoro
 ]]
 
 syncBobPomodoro = function()
@@ -724,7 +724,7 @@ syncBobPomodoro = function()
 
 		if exitCode ~= 0 then
 			hideBobPomodoroMenu()
-			hs.printf("bob_pomodoro failed with exit code %s: %s", exitCode, trimText(stdErr))
+			hs.printf("bob pomodoro failed with exit code %s: %s", exitCode, trimText(stdErr))
 			return
 		end
 
@@ -737,7 +737,7 @@ syncBobPomodoro = function()
 		local parsed, parseError = parseBobPomodoroOutput(output)
 		if not parsed then
 			hideBobPomodoroMenu()
-			hs.printf("bob_pomodoro output could not be parsed: %s: %s", parseError, output)
+			hs.printf("bob pomodoro output could not be parsed: %s: %s", parseError, output)
 			return
 		end
 
@@ -750,7 +750,7 @@ syncBobPomodoro = function()
 
 	if not task then
 		hideBobPomodoroMenu()
-		hs.printf("bob_pomodoro task could not be created")
+		hs.printf("bob pomodoro task could not be created")
 		return
 	end
 
@@ -762,9 +762,9 @@ syncBobPomodoro = function()
 		bobPomodoroRuntime.task = nil
 		hideBobPomodoroMenu()
 		if startOk then
-			hs.printf("bob_pomodoro task could not be started")
+			hs.printf("bob pomodoro task could not be started")
 		else
-			hs.printf("bob_pomodoro task start failed: %s", startedOrError)
+			hs.printf("bob pomodoro task start failed: %s", startedOrError)
 		end
 	end
 end
