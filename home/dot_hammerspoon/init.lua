@@ -662,7 +662,7 @@ syncBobPomodoro = function()
 		bobPomodoroState = parsed
 		updateBobPomodoroMenuDetails()
 		renderBobPomodoroMenu()
-	end, nil, { "-lc", bobPomodoroCommand })
+	end, { "-lc", bobPomodoroCommand })
 
 	if not bobPomodoroTask:start() then
 		bobPomodoroTask = nil
