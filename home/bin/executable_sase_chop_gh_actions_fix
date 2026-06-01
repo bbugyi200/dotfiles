@@ -350,8 +350,8 @@ def pr_name(repo: str, run_id: str, attempt: str) -> str:
     return f"gha_fix_{repo_slug(repo).replace('-', '_')}_{run_id}_a{attempt}"
 
 
-def agent_name_template(repo: str) -> str:
-    return f"gha_fix_{repo_slug(repo).replace('-', '_')}-@"
+def agent_name(repo: str, run_id: str, attempt: str) -> str:
+    return f"gha-fix-{repo_slug(repo)}-{run_id}-a{attempt}"
 
 
 def fence_for(text: str) -> str:
@@ -363,7 +363,7 @@ def fence_for(text: str) -> str:
 
 def build_prompt(repo: str, run: dict[str, Any], failure_output: str) -> str:
     run_id, attempt = run_identity(run)
-    agent_name = agent_name_template(repo)
+    run_agent_name = agent_name(repo, run_id, attempt)
     change_name = pr_name(repo, run_id, attempt)
     truncated_output, truncation_note = truncate_log(failure_output)
     fence = fence_for(truncated_output)
@@ -377,7 +377,7 @@ def build_prompt(repo: str, run: dict[str, Any], failure_output: str) -> str:
     url = run.get("url") or "unknown"
 
     parts = [
-        f"%n:{agent_name} #gh:{repo} %g:chop #pr({change_name})",
+        f"#gh:{repo} %g:chop #pr({change_name}) %n:{run_agent_name}",
         "",
         "The latest completed GitHub Actions run failed. Diagnose the root cause, fix the repository, "
         "and run the relevant checks. Do not commit unless explicitly requested.",
