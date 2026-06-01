@@ -558,6 +558,20 @@ local function formatBobPomodoroSeconds(seconds)
 	return string.format("%s%d:%02d", sign, math.floor(seconds / 60), seconds % 60)
 end
 
+local bobPomodoroOverdueTitleAttributes = {
+	color = { hex = "#ff453a", alpha = 1 },
+	font = hs.styledtext.defaultFonts.menuBar,
+}
+
+local function bobPomodoroMenuTitle(seconds)
+	local title = formatBobPomodoroSeconds(seconds)
+	if seconds >= 0 then
+		return title
+	end
+
+	return hs.styledtext.new(title, bobPomodoroOverdueTitleAttributes)
+end
+
 local syncBobPomodoro
 
 local function hideBobPomodoroMenu()
@@ -617,7 +631,7 @@ local function renderBobPomodoroMenu()
 		syncBobPomodoro()
 	end
 
-	bobPomodoroMenu:setTitle(formatBobPomodoroSeconds(remaining))
+	bobPomodoroMenu:setTitle(bobPomodoroMenuTitle(remaining))
 	bobPomodoroMenu:returnToMenuBar()
 end
 
