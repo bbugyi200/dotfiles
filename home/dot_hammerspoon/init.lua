@@ -484,6 +484,208 @@ hs.hotkey.bind({ "cmd", "shift", "ctrl" }, "i", nil, function()
 	showTaskCapturePrompt()
 end)
 
+local bobPomodoroMenu = hs.menubar.new(false)
+local bobPomodoroTask = nil
+local bobPomodoroState = nil
+local bobPomodoroSyncTimer = nil
+local bobPomodoroTickTimer = nil
+local bobPomodoroWakeWatcher = nil
+
+local function trimText(rawText)
+	local text = tostring(rawText or "")
+	text = text:gsub("^%s+", "")
+	text = text:gsub("%s+$", "")
+	return text
+end
+
+local function parseBobPomodoroOutput(rawOutput)
+	local output = trimText(rawOutput)
+	if output == "" then
+		return nil
+	end
+
+	local status = "active"
+	local body = output
+	if body:match("^%[OVERDUE by %d+m%]%s+") then
+		status = "overdue"
+		body = body:gsub("^%[OVERDUE by %d+m%]%s+", "")
+	elseif body:match("^%[<%d+m%]%s+") then
+		body = body:gsub("^%[<%d+m%]%s+", "")
+	end
+
+	local range, taskText = body:match("^(%d%d%d%d%-%d%d%d%d)%s*(.*)$")
+	if not range then
+		return nil, "missing normalized HHMM-HHMM range"
+	end
+
+	local startHour, startMinute, endHour, endMinute =
+		range:match("^(%d%d)(%d%d)%-(%d%d)(%d%d)$")
+	startHour = tonumber(startHour)
+	startMinute = tonumber(startMinute)
+	endHour = tonumber(endHour)
+	endMinute = tonumber(endMinute)
+	if startHour > 23 or startMinute > 59 or endHour > 23 or endMinute > 59 then
+		return nil, "invalid normalized HHMM-HHMM range"
+	end
+
+	return {
+		rawOutput = output,
+		range = range,
+		taskText = trimText(taskText),
+		status = status,
+		endHour = endHour,
+		endMinute = endMinute,
+	}
+end
+
+local function todayEndEpoch(endHour, endMinute)
+	local today = os.date("*t")
+	today.hour = endHour
+	today.min = endMinute
+	today.sec = 0
+	today.isdst = nil
+	return os.time(today)
+end
+
+local function formatBobPomodoroSeconds(seconds)
+	local sign = ""
+	if seconds < 0 then
+		sign = "+"
+		seconds = -seconds
+	end
+
+	seconds = math.floor(seconds)
+	return string.format("%s%d:%02d", sign, math.floor(seconds / 60), seconds % 60)
+end
+
+local syncBobPomodoro
+
+local function hideBobPomodoroMenu()
+	bobPomodoroState = nil
+	if bobPomodoroMenu then
+		bobPomodoroMenu:setTitle("")
+		bobPomodoroMenu:setTooltip("")
+		bobPomodoroMenu:setMenu({})
+		bobPomodoroMenu:removeFromMenuBar()
+	end
+end
+
+local function updateBobPomodoroMenuDetails()
+	if not bobPomodoroMenu or not bobPomodoroState then
+		return
+	end
+
+	local menu = {
+		{ title = bobPomodoroState.rawOutput, disabled = true },
+		{
+			title = "Last sync " .. os.date("%H:%M:%S", bobPomodoroState.lastSyncEpoch),
+			disabled = true,
+		},
+		{ title = "-" },
+		{
+			title = "Refresh",
+			fn = function()
+				syncBobPomodoro()
+			end,
+		},
+	}
+
+	bobPomodoroMenu:setTooltip(bobPomodoroState.rawOutput)
+	bobPomodoroMenu:setMenu(menu)
+end
+
+local function renderBobPomodoroMenu()
+	if not bobPomodoroMenu or not bobPomodoroState then
+		if bobPomodoroMenu then
+			bobPomodoroMenu:removeFromMenuBar()
+		end
+		return
+	end
+
+	local remaining = bobPomodoroState.endEpoch - os.time()
+	if remaining < -600 then
+		hideBobPomodoroMenu()
+		syncBobPomodoro()
+		return
+	end
+
+	if remaining < 0
+		and bobPomodoroState.status == "active"
+		and not bobPomodoroState.zeroSyncRequested
+	then
+		bobPomodoroState.zeroSyncRequested = true
+		syncBobPomodoro()
+	end
+
+	bobPomodoroMenu:setTitle("pom " .. formatBobPomodoroSeconds(remaining))
+	bobPomodoroMenu:returnToMenuBar()
+end
+
+local bobPomodoroCommand = [[
+PATH="$HOME/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+export PATH
+if [ -z "${DATE+x}" ] && command -v gdate >/dev/null 2>&1; then
+	export DATE=gdate
+fi
+exec "$HOME/bin/bob_pomodoro"
+]]
+
+syncBobPomodoro = function()
+	if bobPomodoroTask then
+		return
+	end
+
+	bobPomodoroTask = hs.task.new("/bin/zsh", function(exitCode, stdOut, stdErr)
+		bobPomodoroTask = nil
+
+		if exitCode ~= 0 then
+			hideBobPomodoroMenu()
+			hs.printf("bob_pomodoro failed with exit code %s: %s", exitCode, trimText(stdErr))
+			return
+		end
+
+		local output = trimText(stdOut)
+		if output == "" then
+			hideBobPomodoroMenu()
+			return
+		end
+
+		local parsed, parseError = parseBobPomodoroOutput(output)
+		if not parsed then
+			hideBobPomodoroMenu()
+			hs.printf("bob_pomodoro output could not be parsed: %s: %s", parseError, output)
+			return
+		end
+
+		parsed.endEpoch = todayEndEpoch(parsed.endHour, parsed.endMinute)
+		parsed.lastSyncEpoch = os.time()
+		bobPomodoroState = parsed
+		updateBobPomodoroMenuDetails()
+		renderBobPomodoroMenu()
+	end, nil, { "-lc", bobPomodoroCommand })
+
+	if not bobPomodoroTask:start() then
+		bobPomodoroTask = nil
+		hideBobPomodoroMenu()
+		hs.printf("bob_pomodoro task could not be started")
+	end
+end
+
+bobPomodoroTickTimer = hs.timer.doEvery(1, renderBobPomodoroMenu)
+bobPomodoroSyncTimer = hs.timer.doEvery(15, function()
+	syncBobPomodoro()
+end)
+bobPomodoroWakeWatcher = hs.caffeinate.watcher.new(function(eventType)
+	if eventType == hs.caffeinate.watcher.systemDidWake
+		or eventType == hs.caffeinate.watcher.screensDidWake
+		or eventType == hs.caffeinate.watcher.screensDidUnlock
+	then
+		syncBobPomodoro()
+	end
+end)
+bobPomodoroWakeWatcher:start()
+syncBobPomodoro()
+
 -- Auto-reload the config whenever the deployed files change (e.g. after a
 -- `chezmoi apply`), so edits take effect without a manual reload. The watcher
 -- is retained in a module-level local to keep it from being garbage collected.
