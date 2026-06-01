@@ -484,26 +484,82 @@ hs.hotkey.bind({ "cmd", "shift", "ctrl" }, "i", nil, function()
 	showTaskCapturePrompt()
 end)
 
-local bobPomodoroClockIcon = [[ASCII:
-...............
-.....a...a.....
-...b.......h...
-...............
-.b.....i.....h.
-c.............g
-...............
-c......ij..j..g
-...............
-.d...........f.
-...............
-...d.......f...
-.....e...e.....
-...............
-]]
+local bobPomodoroClockIconRows = {
+	"...............",
+	".....a...a.....",
+	"...b.......h...",
+	"...............",
+	".b.....i.....h.",
+	"c.............g",
+	"...............",
+	"c......ij..j..g",
+	"...............",
+	".d...........f.",
+	"...............",
+	"...d.......f...",
+	".....e...e.....",
+	"...............",
+}
+local bobPomodoroClockIconASCII = table.concat(bobPomodoroClockIconRows, "\n")
+local bobPomodoroClockIcon = "ASCII:" .. bobPomodoroClockIconASCII
+local bobPomodoroTitlePrefix = ""
+
+local function bobPomodoroClockImage()
+	if not hs.image or not hs.image.imageFromASCII then
+		return bobPomodoroClockIcon
+	end
+
+	local imageOk, image = pcall(hs.image.imageFromASCII, bobPomodoroClockIconASCII)
+	if not imageOk or not image then
+		return bobPomodoroClockIcon
+	end
+
+	if type(image.size) == "function" then
+		local sizeOk, sizedImage = pcall(function()
+			return image:size({ w = 16, h = 16 })
+		end)
+		if sizeOk and sizedImage then
+			image = sizedImage
+		end
+	elseif type(image.setSize) == "function" then
+		local sizeOk, sizedImage = pcall(function()
+			return image:setSize({ w = 16, h = 16 })
+		end)
+		if sizeOk and sizedImage then
+			image = sizedImage
+		end
+	end
+
+	if type(image.template) == "function" then
+		pcall(function()
+			image:template(true)
+		end)
+	end
+
+	return image
+end
+
+local function setBobPomodoroMenuIcon(menu)
+	bobPomodoroTitlePrefix = ""
+
+	local icon = bobPomodoroClockImage()
+	local setIconOk, result = pcall(function()
+		return menu:setIcon(icon, true)
+	end)
+	if setIconOk and result then
+		return
+	end
+
+	bobPomodoroTitlePrefix = "clk "
+	hs.printf(
+		"Bob Pomodoro menu icon could not be loaded; using title fallback: %s",
+		setIconOk and "setIcon returned nil" or tostring(result)
+	)
+end
 
 local bobPomodoroMenu = hs.menubar.new(false)
 if bobPomodoroMenu then
-	bobPomodoroMenu:setIcon(bobPomodoroClockIcon, true)
+	setBobPomodoroMenuIcon(bobPomodoroMenu)
 end
 local bobPomodoroTask = nil
 local bobPomodoroState = nil
@@ -578,6 +634,10 @@ local function formatBobPomodoroSeconds(seconds)
 	return string.format("%s%d:%02d", sign, math.floor(seconds / 60), seconds % 60)
 end
 
+local function bobPomodoroMenuTitle(seconds)
+	return bobPomodoroTitlePrefix .. formatBobPomodoroSeconds(seconds)
+end
+
 local syncBobPomodoro
 
 local function hideBobPomodoroMenu()
@@ -637,7 +697,7 @@ local function renderBobPomodoroMenu()
 		syncBobPomodoro()
 	end
 
-	bobPomodoroMenu:setTitle(formatBobPomodoroSeconds(remaining))
+	bobPomodoroMenu:setTitle(bobPomodoroMenuTitle(remaining))
 	bobPomodoroMenu:returnToMenuBar()
 end
 
