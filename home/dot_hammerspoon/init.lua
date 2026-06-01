@@ -484,7 +484,27 @@ hs.hotkey.bind({ "cmd", "shift", "ctrl" }, "i", nil, function()
 	showTaskCapturePrompt()
 end)
 
+local bobPomodoroClockIcon = [[ASCII:
+...............
+.....a...a.....
+...b.......h...
+...............
+.b.....i.....h.
+c.............g
+...............
+c......ij..j..g
+...............
+.d...........f.
+...............
+...d.......f...
+.....e...e.....
+...............
+]]
+
 local bobPomodoroMenu = hs.menubar.new(false)
+if bobPomodoroMenu then
+	bobPomodoroMenu:setIcon(bobPomodoroClockIcon, true)
+end
 local bobPomodoroTask = nil
 local bobPomodoroState = nil
 local bobPomodoroSyncTimer = nil
@@ -617,7 +637,7 @@ local function renderBobPomodoroMenu()
 		syncBobPomodoro()
 	end
 
-	bobPomodoroMenu:setTitle("pom " .. formatBobPomodoroSeconds(remaining))
+	bobPomodoroMenu:setTitle(formatBobPomodoroSeconds(remaining))
 	bobPomodoroMenu:returnToMenuBar()
 end
 
