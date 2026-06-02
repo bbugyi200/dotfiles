@@ -98,7 +98,7 @@ fi
 # >>> Miscellaneous
 export ANSIBLE_NOCOWS=1
 export BETTER_EXCEPTIONS=1
-export EDITOR="$(command -v nvim)" # I set this so the crontab would use vim for editing
+export EDITOR=nvim # bare name resolves via PATH at exec time (crontab -e uses this)
 export FAV_CLIP_FILE="${HOME}"/Sync/var/notes/Journal/favs.txt
 export FPP_DISABLE_SPLIT=1 # disables 'fpp' vim pane splitting
 export FZF_DEFAULT_COMMAND='rg --files --hidden --smart-case'
@@ -120,6 +120,7 @@ export SASE_CORE_BACKEND="${SASE_CORE_BACKEND:-rust}"
 export SASE_TMPDIR="${HOME}"/tmp/sase
 export SHELLCHECK_OPTS="-e SC1090 -e SC1091 -e SC1117 -e SC2001 -e SC2016 -e SC2046 -e SC2059 -e SC2129 -e SC2155 -e SC2162"
 export SHV_SHELL_HISTORY_ROOT="${HOME}"/Sync/var/logs/shell-history
+export VISUAL=nvim # sensible-editor checks this first; keep consistent with EDITOR
 export WORKON_HOME=~/.virtualenvs
 export XDG_CONFIG_HOME="$HOME"/.config
 export ZIM_CONFIG_DIR="${HOME}"/.local/share/chezmoi/dot_config
