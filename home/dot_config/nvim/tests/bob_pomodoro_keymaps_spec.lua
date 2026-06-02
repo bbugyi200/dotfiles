@@ -71,7 +71,7 @@ local sample_lines = {
 	"",
 	"## Pomodoros ⏱️ 2h5m",
 	"",
-	"- [x] (1105-1245) #dev done [p:: 15]",
+	"- [x] (1105-1245 ⏱️ 1h40m) #dev done [p:: 15]",
 	"- [X] (1345-1410) #dev also done [p:: 5]",
 	"- [ ] (1450-1515) #dev first active [p:: 5]",
 	"- [ ] (17:45-18:10) #task latest active [[20260528_day]]",
@@ -169,7 +169,11 @@ do
 	local bufnr = new_buffer(sample_lines)
 	vim.api.nvim_win_set_cursor(0, { 13, 0 })
 
-	eq(bob_pomodoro.offset_time_range(bufnr, 10), true, "offset can edit completed current ledger line")
+	eq(
+		bob_pomodoro.offset_time_range(bufnr, 10),
+		true,
+		"offset can edit completed current ledger line with runtime metadata"
+	)
 	eq(line_at(bufnr, 13), "- [x] (1115-1255) #dev done [p:: 15]", "offset preserves compact time style")
 end
 

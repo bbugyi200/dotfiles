@@ -141,7 +141,7 @@ end
 
 function M.parse_time_range(line)
 	local start_pos, end_pos, start_hour, start_minute, end_hour, end_minute =
-		line:find("%((%d%d):(%d%d)%s*%-%s*(%d%d):(%d%d)%)")
+		line:find("%((%d%d):(%d%d)%s*%-%s*(%d%d):(%d%d)%s*[^%)]*%)")
 
 	if start_pos ~= nil then
 		local start_minutes = minutes_from_parts(start_hour, start_minute)
@@ -162,7 +162,7 @@ function M.parse_time_range(line)
 
 	local compact_start
 	local compact_end
-	start_pos, end_pos, compact_start, compact_end = line:find("%((%d%d%d%d)%s*%-%s*(%d%d%d%d)%)")
+	start_pos, end_pos, compact_start, compact_end = line:find("%((%d%d%d%d)%s*%-%s*(%d%d%d%d)%s*[^%)]*%)")
 
 	if start_pos == nil then
 		return nil
