@@ -1,7 +1,0 @@
-#!/bin/sh
-
-if command -v bob >/dev/null 2>&1; then
-  exec bob pomodoro-runtimes "$@"
-fi
-
-exec "$HOME/.cargo/bin/bob" pomodoro-runtimes "$@"
