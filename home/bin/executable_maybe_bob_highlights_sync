@@ -42,12 +42,40 @@ lock_dir=${TMPDIR:-/tmp}/maybe_bob_highlights_sync.lock
 if ! mkdir "$lock_dir" 2>/dev/null; then
   exit 0
 fi
-trap 'rmdir "$lock_dir" 2>/dev/null || true' 0 1 2 3 15
+scan_output=
+cleanup() {
+  if [ -n "$scan_output" ]; then
+    rm -f "$scan_output"
+  fi
+  rmdir "$lock_dir" 2>/dev/null || true
+}
+trap 'cleanup' 0
+trap 'cleanup; exit 129' 1
+trap 'cleanup; exit 130' 2
+trap 'cleanup; exit 131' 3
+trap 'cleanup; exit 143' 15
 
 if command -v bob >/dev/null 2>&1; then
   bob_bin=$(command -v bob)
 else
   bob_bin=$HOME/.cargo/bin/bob
+  if [ ! -x "$bob_bin" ]; then
+    printf 'maybe_bob_highlights_sync: bob command not found: %s\n' "$bob_bin" >&2
+    exit 127
+  fi
 fi
 
-"$bob_bin" highlights-ref scan
+scan_output=$(mktemp "${TMPDIR:-/tmp}/maybe_bob_highlights_sync.XXXXXX") || {
+  printf 'maybe_bob_highlights_sync: failed to create temporary output file\n' >&2
+  exit 1
+}
+
+"$bob_bin" highlights-ref scan >"$scan_output" 2>&1
+status=$?
+if [ "$status" -eq 0 ]; then
+  exit 0
+fi
+
+printf 'maybe_bob_highlights_sync: bob highlights-ref scan failed with status %s\n' "$status" >&2
+cat "$scan_output" >&2
+exit "$status"
