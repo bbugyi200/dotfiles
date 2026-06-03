@@ -1,0 +1,37 @@
+---
+name: sase_var
+description: Attach named output variables to the current SASE agent run.
+---
+
+Use this skill when you need a later SASE agent to consume a small string value produced by the current agent, or when
+you want the value to appear in the Agents-tab metadata for this run.
+
+## Workflow
+
+1. Make sure the producing agent has a stable name with `%name:<producer>` or an indexed template such as
+   `%name:build-@`.
+2. Set one or more output variables:
+
+   ```bash
+   sase var set KEY=VALUE [KEY=VALUE ...]
+   ```
+
+3. In later prompts, wait for the producer before referencing its namespace. For example, `%name:build-@` can produce:
+
+   ```bash
+   sase var set result_path=dist/report.md status=ok
+   ```
+
+   A later waited agent can render `{{ build.result_path }}` after the producer has written the variable.
+
+## Rules
+
+- Run this only inside a SASE agent; the command requires `SASE_AGENT=1` and `SASE_ARTIFACTS_DIR`.
+- Keys must be valid Jinja attribute identifiers: `[A-Za-z_][A-Za-z0-9_]*`.
+- Values are strings and are split on the first `=`, so `sase var set token=a=b=c` stores `a=b=c`.
+- Quote assignments when your shell would otherwise split or expand the value, for example
+  `sase var set "summary=tests passed"`.
+- Multiple calls merge into the same agent's variable map; later writes for the same key replace earlier values.
+- Do not store secrets. Output variables are persisted in `agent_meta.json` and shown in ACE.
+
+Use `%wait:<producer>` when a later agent needs a variable from another agent.
