@@ -2,15 +2,15 @@
 
 expand_home() {
   case "$1" in
-    "~")
-      printf '%s\n' "$HOME"
-      ;;
-    "~/"*)
-      printf '%s\n' "$HOME/${1#\~/}"
-      ;;
-    *)
-      printf '%s\n' "$1"
-      ;;
+  "~")
+    printf '%s\n' "$HOME"
+    ;;
+  "~/"*)
+    printf '%s\n' "$HOME/${1#\~/}"
+    ;;
+  *)
+    printf '%s\n' "$1"
+    ;;
   esac
 }
 
@@ -18,15 +18,15 @@ bob_dir=$(expand_home "${BOB_DIR:-"$HOME/bob"}")
 highlights_lib_dir=${BOB_HIGHLIGHTS_LIB_DIR:-lib}
 
 case "$highlights_lib_dir" in
-  /*)
-    lib_dir=$highlights_lib_dir
-    ;;
-  "~" | "~/"*)
-    lib_dir=$(expand_home "$highlights_lib_dir")
-    ;;
-  *)
-    lib_dir=$bob_dir/$highlights_lib_dir
-    ;;
+/*)
+  lib_dir=$highlights_lib_dir
+  ;;
+"~" | "~/"*)
+  lib_dir=$(expand_home "$highlights_lib_dir")
+  ;;
+*)
+  lib_dir=$bob_dir/$highlights_lib_dir
+  ;;
 esac
 
 if [ ! -d "$lib_dir" ]; then
@@ -70,7 +70,7 @@ scan_output=$(mktemp "${TMPDIR:-/tmp}/maybe_bob_highlights_sync.XXXXXX") || {
   exit 1
 }
 
-"$bob_bin" highlights-ref scan >"$scan_output" 2>&1
+"$bob_bin" highlights-ref scan "$@" >"$scan_output" 2>&1
 status=$?
 if [ "$status" -eq 0 ]; then
   exit 0
