@@ -273,6 +273,65 @@ local function ensureFile(path)
 	return true
 end
 
+local function isIndentedTaskContinuation(line)
+	return line:match("^[ \t]") ~= nil
+end
+
+local function isBlankMarkdownLine(line)
+	return line:match("^%s*$") ~= nil
+end
+
+local function nextNonBlankLineIsIndented(contents, lineStart)
+	while lineStart <= #contents do
+		local newlineAt = contents:find("\n", lineStart, true)
+		local line = newlineAt and contents:sub(lineStart, newlineAt - 1) or contents:sub(lineStart)
+		if not isBlankMarkdownLine(line) then
+			return isIndentedTaskContinuation(line)
+		end
+		if not newlineAt then
+			return false
+		end
+		lineStart = newlineAt + 1
+	end
+
+	return false
+end
+
+local function taskBlockInsertionPoint(contents, taskLineStart)
+	local lineStart = taskLineStart
+	local newlineAt = contents:find("\n", lineStart, true)
+
+	if not newlineAt then
+		return #contents + 1, true, #contents + 1
+	end
+
+	local insertAt = newlineAt + 1
+	lineStart = newlineAt + 1
+
+	while lineStart <= #contents do
+		newlineAt = contents:find("\n", lineStart, true)
+		local line = newlineAt and contents:sub(lineStart, newlineAt - 1) or contents:sub(lineStart)
+		local isTaskContinuation = isIndentedTaskContinuation(line)
+			or (
+				isBlankMarkdownLine(line)
+				and newlineAt
+				and nextNonBlankLineIsIndented(contents, newlineAt + 1)
+			)
+		if not isTaskContinuation then
+			break
+		end
+
+		if not newlineAt then
+			return #contents + 1, true, #contents + 1
+		end
+
+		insertAt = newlineAt + 1
+		lineStart = newlineAt + 1
+	end
+
+	return insertAt, false, lineStart
+end
+
 local function insertTaskAfterLastOpenTask(path, taskLine)
 	local ensureOk, ensureError = ensureFile(path)
 	if not ensureOk then
@@ -291,19 +350,13 @@ local function insertTaskAfterLastOpenTask(path, taskLine)
 		local newlineAt = contents:find("\n", lineStart, true)
 		local line = newlineAt and contents:sub(lineStart, newlineAt - 1) or contents:sub(lineStart)
 		if line:match("^%- %[.%]%s+.*#task") then
-			if newlineAt then
-				insertAt = newlineAt + 1
-				needsLeadingNewline = false
-			else
-				insertAt = #contents + 1
-				needsLeadingNewline = true
+			insertAt, needsLeadingNewline, lineStart = taskBlockInsertionPoint(contents, lineStart)
+		else
+			if not newlineAt then
+				break
 			end
+			lineStart = newlineAt + 1
 		end
-
-		if not newlineAt then
-			break
-		end
-		lineStart = newlineAt + 1
 	end
 
 	local insertion = taskLine .. "\n"
