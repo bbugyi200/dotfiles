@@ -16,18 +16,20 @@ you want the value to appear in the Agents-tab metadata for this run.
    sase var set KEY=VALUE [KEY=VALUE ...]
    ```
 
-3. In later prompts, wait for the producer before referencing its namespace. For example, `%name:build-@` can produce:
+3. In later prompts, wait for the producer before referencing its variables. Every producer's variables live under a
+   single `agents` dictionary keyed by agent name. For example, `%name:build-@` can produce:
 
    ```bash
    sase var set result_path=dist/report.md status=ok
    ```
 
-   A later waited agent can render `{{ build.result_path }}` after the producer has written the variable.
+   A later waited agent can render `{{ agents["build"].result_path }}` after the producer has written the variable.
 
-Indexed templates expose the template base as the namespace, so `%name:build-@` exposes `build`, not `build_1`. Dotted
-templates become nested namespaces such as `%name:research.final-@` → `{{ research.final.report_path }}`. Hyphens in
-plain names become underscores. Components that start with a digit are prefixed with `_`, so `%name:0n.cld` exposes
-`{{ _0n.cld.report_path }}`.
+The key is always the agent's stable name. Indexed templates use the template base, so `%name:build-@` is
+`{{ agents["build"].result_path }}`, not `build-1`. The key is the raw agent name with no identifier munging, so dotted,
+hyphenated, and digit-leading names all work via bracket access: `%name:research.final-@` →
+`{{ agents["research.final"].report_path }}`, and `%name:0n.cld` → `{{ agents["0n.cld"].report_path }}`. Identifier-safe
+keys also support attribute access such as `{{ agents.build.result_path }}`.
 
 ## Rules
 
