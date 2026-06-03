@@ -24,6 +24,10 @@ you want the value to appear in the Agents-tab metadata for this run.
 
    A later waited agent can render `{{ build.result_path }}` after the producer has written the variable.
 
+Indexed templates expose the template base as the namespace, so `%name:build-@` exposes `build`, not `build_1`. Dotted
+templates become nested namespaces such as `%name:research.final-@` → `{{ research.final.report_path }}`. Hyphens in
+plain names become underscores.
+
 ## Rules
 
 - Run this only inside a SASE agent; the command requires `SASE_AGENT=1` and `SASE_ARTIFACTS_DIR`.
