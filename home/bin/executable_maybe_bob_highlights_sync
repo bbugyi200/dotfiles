@@ -1,0 +1,53 @@
+#!/bin/sh
+
+expand_home() {
+  case "$1" in
+    "~")
+      printf '%s\n' "$HOME"
+      ;;
+    "~/"*)
+      printf '%s\n' "$HOME/${1#\~/}"
+      ;;
+    *)
+      printf '%s\n' "$1"
+      ;;
+  esac
+}
+
+bob_dir=$(expand_home "${BOB_DIR:-"$HOME/bob"}")
+highlights_lib_dir=${BOB_HIGHLIGHTS_LIB_DIR:-lib}
+
+case "$highlights_lib_dir" in
+  /*)
+    lib_dir=$highlights_lib_dir
+    ;;
+  "~" | "~/"*)
+    lib_dir=$(expand_home "$highlights_lib_dir")
+    ;;
+  *)
+    lib_dir=$bob_dir/$highlights_lib_dir
+    ;;
+esac
+
+if [ ! -d "$lib_dir" ]; then
+  exit 0
+fi
+
+recent_file=$(find "$lib_dir" -type f -mtime 0 -print | sed -n '1p')
+if [ -z "$recent_file" ]; then
+  exit 0
+fi
+
+lock_dir=${TMPDIR:-/tmp}/maybe_bob_highlights_sync.lock
+if ! mkdir "$lock_dir" 2>/dev/null; then
+  exit 0
+fi
+trap 'rmdir "$lock_dir" 2>/dev/null || true' 0 1 2 3 15
+
+if command -v bob >/dev/null 2>&1; then
+  bob_bin=$(command -v bob)
+else
+  bob_bin=$HOME/.cargo/bin/bob
+fi
+
+"$bob_bin" highlights-ref scan
