@@ -198,6 +198,18 @@ local function normalizeTaskText(rawText)
 	return text:gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
 end
 
+local function capturedTaskCreatedProperty(now)
+	if now then
+		return os.date("[created::%Y-%m-%d]", now)
+	end
+
+	return os.date("[created::%Y-%m-%d]")
+end
+
+local function capturedTaskLine(taskText, now)
+	return "- [ ] #task " .. taskText .. " " .. capturedTaskCreatedProperty(now)
+end
+
 local function routedCapturedTask(bobRoot, routeName, taskText)
 	local normalizedRouteName = routeName:lower()
 	return {
@@ -380,14 +392,14 @@ local function insertTaskAfterLastOpenTask(path, taskLine)
 	return writeFile(path, updatedContents)
 end
 
-local function appendCapturedTask(rawText)
+local function appendCapturedTask(rawText, now)
 	local text = normalizeTaskText(rawText)
 	if text == "" then
 		return true
 	end
 
 	local capturedTask = parseCapturedTaskTarget(text)
-	local taskLine = "- [ ] #task " .. capturedTask.text
+	local taskLine = capturedTaskLine(capturedTask.text, now)
 	if capturedTask.isRouted then
 		local insertOk, insertError = insertTaskAfterLastOpenTask(capturedTask.target, taskLine)
 		if not insertOk then
