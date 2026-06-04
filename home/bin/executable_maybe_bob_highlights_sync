@@ -70,7 +70,7 @@ scan_output=$(mktemp "${TMPDIR:-/tmp}/maybe_bob_highlights_sync.XXXXXX") || {
   exit 1
 }
 
-"$bob_bin" highlights-ref scan "$@" >"$scan_output" 2>&1
+"$bob_bin" highlights scan "$@" >"$scan_output" 2>&1
 status=$?
 if [ "$status" -eq 0 ]; then
   exit 0
