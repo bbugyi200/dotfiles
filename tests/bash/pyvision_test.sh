@@ -6,13 +6,19 @@
 
 PYVISION_SCRIPT="${PWD}/home/bin/executable_pyvision"
 
-function make_pyvision_repo() {
-  local repo_dir
-  repo_dir="$(mktemp -d)"
+function make_pyvision_repo_at() {
+  local repo_dir="$1"
+  mkdir -p "${repo_dir}"
   git -C "${repo_dir}" init -q
   mkdir -p "${repo_dir}/src/pkg" "${repo_dir}/tests" "${repo_dir}/docs"
   printf "" >"${repo_dir}/src/pkg/__init__.py"
   printf "%s" "${repo_dir}"
+}
+
+function make_pyvision_repo() {
+  local repo_dir
+  repo_dir="$(mktemp -d)"
+  make_pyvision_repo_at "${repo_dir}"
 }
 
 function track_repo_files() {
@@ -20,15 +26,22 @@ function track_repo_files() {
   git -C "${repo_dir}" add .
 }
 
-function make_external_pyvision_repo() {
-  local remote_url="$1"
-  local repo_dir
-  repo_dir="$(mktemp -d)"
+function make_external_pyvision_repo_at() {
+  local repo_dir="$1"
+  local remote_url="$2"
+  mkdir -p "${repo_dir}"
   git -C "${repo_dir}" init -q
   git -C "${repo_dir}" remote add origin "${remote_url}"
   mkdir -p "${repo_dir}/consumer" "${repo_dir}/tests"
   printf "" >"${repo_dir}/consumer/__init__.py"
   printf "%s" "${repo_dir}"
+}
+
+function make_external_pyvision_repo() {
+  local remote_url="$1"
+  local repo_dir
+  repo_dir="$(mktemp -d)"
+  make_external_pyvision_repo_at "${repo_dir}" "${remote_url}"
 }
 
 function run_pyvision() {
@@ -433,6 +446,92 @@ EOF
   local status=$?
 
   rm -rf "${repo_dir}" "${external_repo}"
+  assert_same 0 "${status}"
+  assert_contains "No public functions or classes found!" "${output}"
+}
+
+function test_pyvision_uri_pragma_prefers_canonical_sibling_checkout() {
+  local parent_dir repo_dir stale_repo canonical_repo remote_url
+  parent_dir="$(mktemp -d)"
+  repo_dir="$(make_pyvision_repo_at "${parent_dir}/producer")"
+  remote_url="https://github.com/example/pyvision-canonical-consumer.git"
+  stale_repo="$(
+    make_external_pyvision_repo_at \
+      "${parent_dir}/pyvision-canonical-consumer_10" \
+      "${remote_url}"
+  )"
+  canonical_repo="$(
+    make_external_pyvision_repo_at \
+      "${parent_dir}/pyvision-canonical-consumer" \
+      "${remote_url}"
+  )"
+  cat >"${repo_dir}/src/pkg/widgets.py" <<EOF
+# pyvision: ${remote_url}
+class WidgetFactory:
+    pass
+EOF
+  cat >"${stale_repo}/consumer/widgets.py" <<'EOF'
+def build_widget():
+    return "widget"
+EOF
+  cat >"${canonical_repo}/consumer/widgets.py" <<'EOF'
+from pkg.widgets import WidgetFactory
+
+
+def build_widget():
+    return WidgetFactory()
+EOF
+  track_repo_files "${repo_dir}"
+  track_repo_files "${stale_repo}"
+  track_repo_files "${canonical_repo}"
+
+  local output
+  output="$(run_pyvision "${repo_dir}" 2>&1)"
+  local status=$?
+
+  rm -rf "${parent_dir}"
+  assert_same 0 "${status}"
+  assert_contains "No public functions or classes found!" "${output}"
+}
+
+function test_pyvision_uri_pragma_checks_later_matching_checkout() {
+  local parent_dir repo_dir stale_repo canonical_repo remote_url
+  parent_dir="$(mktemp -d)"
+  repo_dir="$(make_pyvision_repo_at "${parent_dir}/producer")"
+  remote_url="https://github.com/example/pyvision-later-consumer.git"
+  stale_repo="$(make_external_pyvision_repo "${remote_url}")"
+  canonical_repo="$(
+    make_external_pyvision_repo_at \
+      "${parent_dir}/pyvision-later-consumer" \
+      "${remote_url}"
+  )"
+  cat >"${repo_dir}/src/pkg/widgets.py" <<EOF
+# pyvision: ${remote_url}
+class WidgetFactory:
+    pass
+EOF
+  cat >"${stale_repo}/consumer/widgets.py" <<'EOF'
+def build_widget():
+    return "widget"
+EOF
+  cat >"${canonical_repo}/consumer/widgets.py" <<'EOF'
+from pkg.widgets import WidgetFactory
+
+
+def build_widget():
+    return WidgetFactory()
+EOF
+  track_repo_files "${repo_dir}"
+  track_repo_files "${stale_repo}"
+  track_repo_files "${canonical_repo}"
+
+  local output
+  output="$(
+    PYVISION_EXTERNAL_REPO_PATHS="${stale_repo}" run_pyvision "${repo_dir}" 2>&1
+  )"
+  local status=$?
+
+  rm -rf "${parent_dir}" "${stale_repo}"
   assert_same 0 "${status}"
   assert_contains "No public functions or classes found!" "${output}"
 }

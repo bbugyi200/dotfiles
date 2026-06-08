@@ -448,8 +448,22 @@ def _normalizes_to_same_remote(left: str, right: str) -> bool:
     return left_target.normalized == right_target.normalized
 
 
+def _external_repo_candidate_sort_key(
+    candidate: Path, target: _ExternalRepoTarget
+) -> tuple[int, str, str]:
+    repo_name = target.normalized.rsplit("/", 1)[-1]
+    candidate_name = candidate.name.lower()
+    if candidate_name == repo_name:
+        checkout_rank = 0
+    elif re.fullmatch(rf"{re.escape(repo_name)}_\d+", candidate_name):
+        checkout_rank = 2
+    else:
+        checkout_rank = 1
+    return checkout_rank, candidate_name, str(candidate)
+
+
 def _iter_external_repo_candidates(
-    git_root: Path, external_repo_paths: list[Path]
+    git_root: Path, external_repo_paths: list[Path], target: _ExternalRepoTarget
 ) -> list[Path]:
     """Return explicit and nearby directories that may contain external repos."""
     candidates: list[Path] = []
@@ -468,15 +482,21 @@ def _iter_external_repo_candidates(
     for candidate in external_repo_paths:
         add(candidate)
 
-    add(git_root.parent)
+    nearby_candidates = [git_root.parent]
     try:
         for sibling in git_root.parent.iterdir():
             if sibling == git_root:
                 continue
             if sibling.is_dir():
-                add(sibling)
+                nearby_candidates.append(sibling)
     except OSError:
         pass
+
+    for candidate in sorted(
+        nearby_candidates,
+        key=lambda path: _external_repo_candidate_sort_key(path, target),
+    ):
+        add(candidate)
 
     return candidates
 
@@ -493,30 +513,44 @@ def _cache_dir_for_external_repo(target: _ExternalRepoTarget) -> Path:
     return cache_root / f"{slug[:64]}-{digest}"
 
 
-def _resolve_external_repo(
+def _resolve_external_repo_roots(
     ref_path: str, git_root: Path, external_repo_paths: list[Path]
-) -> tuple[Path | None, str | None]:
-    """Resolve an external repository pragma to a local git checkout."""
+) -> tuple[list[Path], str | None]:
+    """Resolve an external repository pragma to ordered local git checkouts."""
     target = _normalize_git_remote(ref_path)
     if target is None:
-        return None, f"unsupported external repository URI '{ref_path}'"
+        return [], f"unsupported external repository URI '{ref_path}'"
 
     if target.direct_path is not None:
         direct_root = _get_git_root(target.direct_path)
         if direct_root is not None:
-            return direct_root, None
-        return None, f"could not resolve external repository '{ref_path}'"
+            return [direct_root], None
+        return [], f"could not resolve external repository '{ref_path}'"
 
-    for candidate in _iter_external_repo_candidates(git_root, external_repo_paths):
+    matching_roots: list[Path] = []
+    seen_roots: set[Path] = set()
+    for candidate in _iter_external_repo_candidates(
+        git_root, external_repo_paths, target
+    ):
         candidate_root = _get_git_root(candidate)
         if candidate_root is None:
             continue
+        try:
+            resolved_root = candidate_root.resolve()
+        except OSError:
+            continue
+        if resolved_root in seen_roots:
+            continue
         origin = _get_git_origin(candidate_root)
         if origin and _normalizes_to_same_remote(origin, ref_path):
-            return candidate_root, None
+            seen_roots.add(resolved_root)
+            matching_roots.append(candidate_root)
+
+    if matching_roots:
+        return matching_roots, None
 
     if target.clone_url is None or shutil.which("git") is None:
-        return None, f"could not resolve external repository '{ref_path}'"
+        return [], f"could not resolve external repository '{ref_path}'"
 
     cache_dir = _cache_dir_for_external_repo(target)
     if cache_dir.exists():
@@ -525,8 +559,8 @@ def _resolve_external_repo(
         if cached_root and cached_origin and _normalizes_to_same_remote(
             cached_origin, ref_path
         ):
-            return cached_root, None
-        return None, (
+            return [cached_root], None
+        return [], (
             f"external repository cache path '{cache_dir}' exists but does not"
             f" match '{ref_path}'"
         )
@@ -540,12 +574,12 @@ def _resolve_external_repo(
     if result.returncode != 0:
         detail = (result.stderr or result.stdout).strip().splitlines()
         suffix = f": {detail[-1]}" if detail else ""
-        return None, f"could not fetch external repository '{ref_path}'{suffix}"
+        return [], f"could not fetch external repository '{ref_path}'{suffix}"
 
     cloned_root = _get_git_root(cache_dir)
     if cloned_root is None:
-        return None, f"could not resolve external repository '{ref_path}'"
-    return cloned_root, None
+        return [], f"could not resolve external repository '{ref_path}'"
+    return [cloned_root], None
 
 
 def _find_git_tracked_files(git_root: Path) -> list[Path]:
@@ -692,22 +726,25 @@ def _validate_pragmas(
                 f"Error: pyvision pragma in {pragma.source_file}:{pragma.pragma_line}:"
             )
             if _is_external_repo_target(pragma.ref_path):
-                external_repo_root, resolve_error = _resolve_external_repo(
+                external_repo_roots, resolve_error = _resolve_external_repo_roots(
                     pragma.ref_path, git_root, external_repo_paths
                 )
-                if external_repo_root is None:
+                if not external_repo_roots:
                     errors.append(f"{prefix} {resolve_error}")
                     continue
 
-                if not _external_repo_references_symbol(
-                    name, external_repo_root, tracked_modules
+                if any(
+                    _external_repo_references_symbol(
+                        name, external_repo_root, tracked_modules
+                    )
+                    for external_repo_root in external_repo_roots
                 ):
+                    externally_used_symbols.add(name)
+                else:
                     errors.append(
                         f"{prefix} external repository '{pragma.ref_path}'"
                         f" does not reference symbol '{name}'"
                     )
-                else:
-                    externally_used_symbols.add(name)
                 continue
 
             ref_file = git_root / pragma.ref_path
