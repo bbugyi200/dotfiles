@@ -76,6 +76,50 @@ function _update_references() {
   done < <(grep -rlI --exclude-dir=.git "${old_name}" "${search_dir}")
 }
 
+function _absolute_path() {
+  local path="$1"
+
+  if [[ -d "${path}" ]]; then
+    (cd "${path}" && pwd -P)
+    return
+  fi
+
+  local dir
+  dir="$(dirname "${path}")"
+
+  local base
+  base="$(basename "${path}")"
+
+  printf "%s/%s" "$(cd "${dir}" && pwd -P)" "${base}"
+}
+
+function _is_chezmoi_source_path() {
+  local source_root="${CHEZMOI_SOURCE_ROOT:-"${HOME}/.local/share/chezmoi"}"
+
+  if ! [[ -d "${source_root}" ]]; then
+    return 1
+  fi
+
+  local source_path_abs
+  source_path_abs="$(_absolute_path "$1")"
+
+  local source_root_abs
+  source_root_abs="$(_absolute_path "${source_root}")"
+
+  [[ "${source_path_abs}" == "${source_root_abs}" || "${source_path_abs}" == "${source_root_abs}/"* ]]
+}
+
+function _vendored_basename() {
+  local source_path="$1" source_basename="$2"
+  local vendored_basename="${source_basename}"
+
+  if _is_chezmoi_source_path "${source_path}" && [[ "${source_basename}" == executable_?* ]]; then
+    vendored_basename="${source_basename#executable_}"
+  fi
+
+  printf "%s" "${vendored_basename}"
+}
+
 function run() {
   parse_cli_args "$@"
 
@@ -88,23 +132,34 @@ function run() {
   local script_basename
   script_basename="$(basename "${SCRIPT_PATH}")"
 
+  local vendored_basename
+  vendored_basename="$(_vendored_basename "${SCRIPT_PATH}" "${script_basename}")"
+
   local dest_dir="${PROJECT_PATH}/${TOOLS_DIR}"
   mkdir -p "${dest_dir}"
 
   # Remove old date-stamped copies of this script in the tools dir.
-  local old_script
-  for old_script in "${dest_dir}/${script_basename}"-[0-9][0-9][0-9][0-9][0-9][0-9]; do
-    if [[ -f "${old_script}" ]]; then
-      local old_script_base
-      old_script_base="$(basename "${old_script}")"
-      old_names+=("${old_script_base}")
-      new_names+=("${script_basename}-${date_suffix}")
-      log::info "Removing old %s" "${old_script}"
-      rm "${old_script}"
-    fi
+  local -a stale_script_basenames=("${script_basename}")
+  if [[ "${vendored_basename}" != "${script_basename}" ]]; then
+    stale_script_basenames+=("${vendored_basename}")
+  fi
+
+  local stale_script_basename
+  for stale_script_basename in "${stale_script_basenames[@]}"; do
+    local old_script
+    for old_script in "${dest_dir}/${stale_script_basename}"-[0-9][0-9][0-9][0-9][0-9][0-9]; do
+      if [[ -f "${old_script}" ]]; then
+        local old_script_base
+        old_script_base="$(basename "${old_script}")"
+        old_names+=("${old_script_base}")
+        new_names+=("${vendored_basename}-${date_suffix}")
+        log::info "Removing old %s" "${old_script}"
+        rm "${old_script}"
+      fi
+    done
   done
 
-  local vendored_script="${dest_dir}/${script_basename}-${date_suffix}"
+  local vendored_script="${dest_dir}/${vendored_basename}-${date_suffix}"
   cp "${SCRIPT_PATH}" "${vendored_script}"
   log::info "Copied %s → %s" "${SCRIPT_PATH}" "${vendored_script}"
 
