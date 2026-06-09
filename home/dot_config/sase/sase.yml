@@ -111,6 +111,7 @@ xprompts:
   # %model aliases
   m_codex: "%model:#codex"
   m_flash: "%model:#flash"
+  m_fable: "%m:claude-fable-5"
   m_jet: "%model:#jet"
   m_jet_pro_flash: "#m_jet #m_pro_flash"
   m_opus: "%model:opus"
