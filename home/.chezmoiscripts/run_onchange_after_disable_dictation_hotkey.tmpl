@@ -1,0 +1,27 @@
+{{- if eq .chezmoi.os "darwin" -}}
+#!/bin/bash
+
+# Disable the "Press Control key twice" Dictation activation shortcut.
+#
+# macOS fires Voice Dictation when the Control key is double-tapped (symbolic
+# hotkey 164). Because Control is used constantly (vim, terminal, readline), an
+# accidental double-tap launches Dictation. Disabling hotkey 164 removes the
+# trigger entirely while leaving the Dictation feature reachable from the
+# Edit -> Start Dictation menu.
+
+source ~/.local/share/chezmoi/lib/chezmoi_utils.sh
+
+chez::log "DISABLING DICTATION DOUBLE-CONTROL HOTKEY (symbolic hotkey 164)."
+
+# Disable hotkey 164 while preserving its original modifier value (262144 =
+# Control mask, 4294705151 = the "press twice" sentinel) so the shortcut can be
+# restored later if desired.
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 164 \
+  '{ enabled = 0; value = { type = "modifier"; parameters = ( 262144, 4294705151 ); }; }'
+
+# Symbolic-hotkey changes are only read at login; reload settings so the change
+# takes effect in the running session without a logout.
+/System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u
+
+# vim: ft=bash
+{{- end -}}
