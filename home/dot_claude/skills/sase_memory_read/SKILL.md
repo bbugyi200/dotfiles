@@ -25,5 +25,5 @@ Examples:
 
 ```bash
 sase memory read long/generated_skills.md --reason "Need generated skill workflow before editing bundled skill sources"
-sase memory read long/tui_perf.md -r "Need TUI performance gotchas before changing TUI navigation"
+sase memory read long/tui_jk_baseline.md -r "Need baseline latency data before changing TUI navigation"
 ```
