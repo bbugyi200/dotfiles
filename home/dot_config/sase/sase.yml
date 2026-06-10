@@ -79,6 +79,7 @@ telemetry:
     pushgateway_url: "localhost:9091"
 
 llm_provider:
+  worker_model: codex/gpt-5.5
   model_aliases:
     other: claude/opus
 
