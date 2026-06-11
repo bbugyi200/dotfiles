@@ -1,0 +1,7 @@
+# Bullet properties offered by the Obsidian "Set bullet property" picker (Ctrl+Shift+P).
+# `values` is either the literal string `date` (YYYY-MM-DD values) or a list of allowed values.
+properties:
+  - name: scheduled
+    values: date
+  - name: p
+    values: [1, 2]
