@@ -14,11 +14,39 @@ Commit changes via the `sase_git_commit` wrapper. The wrapper records skill invo
 1. **Examine uncommitted changes** — Run `git status` and `git diff` to understand what files have changed and why. Pay
    attention to **untracked files** (newly created files) shown in `git status` — these must also be staged.
 
-2. **Determine the commit tag** — Pick the correct conventional commit tag:
-   - `feat` — New feature, feature improvement, or feature removal
-   - `fix` — User-facing bug fix
-   - `ref` — Refactor/restructure without changing external behavior
-   - `chore` — Build scripts, CI/CD, deps, docs, or other non-production changes
+2. **Determine the commit tag** — Pick the correct conventional commit tag. The header shape is
+   `tag(optional-scope)!: description`; the scope is optional and the `!` marks a breaking change.
+   - `feat` — Adds or meaningfully improves a user-facing feature or capability. This normally triggers a minor version
+     bump. Feature removal is also `feat`, but is backwards-incompatible and must carry the breaking-change marker
+     described below.
+   - `fix` — Fixes a user-facing bug or incorrect behavior. This normally triggers a patch version bump.
+   - `perf` — Improves performance without changing external behavior.
+   - `refactor` — Restructures code without changing external behavior; no new features, no bug fixes.
+   - `docs` — Documentation-only changes, including README files, docstrings, comments, or docs sites.
+   - `test` — Adds or corrects tests only; no production code changes.
+   - `build` — Build system, packaging, or dependency changes, including `pyproject.toml`, lockfiles, or justfiles.
+     Dependency bumps are conventionally scoped as `build(deps)` or `chore(deps)`.
+   - `ci` — CI/CD pipeline and workflow configuration changes.
+   - `style` — Formatting or whitespace only; no change to code meaning.
+   - `revert` — Reverts a previous commit; reference the reverted commit in the message body.
+   - `chore` — Maintenance that fits none of the tags above, such as tooling config, housekeeping, or asset updates.
+
+   A project may restrict its allowed tag set, for example via a PR-title check. When in doubt, prefer a tag the
+   project's history already uses.
+
+   Commit tags can drive automated release tooling such as release-please or release-plz. These tools parse tags to
+   compute semantic version bumps and changelog entries: `fix` -> patch, `feat` -> minor, and breaking changes -> major.
+   The tag is not cosmetic; picking the wrong tag can ship the wrong version number or omit a changelog entry.
+
+   Any backwards-incompatible API, CLI, config format, or behavior change MUST be marked using standard breaking-change
+   syntax that release-please and release-plz parse:
+   - Append `!` after the tag or scope, such as `feat!: drop legacy config format` or `feat(cli)!: remove old flag`;
+     and/or
+   - Add a footer line at the end of the commit message body:
+     `BREAKING CHANGE: <description of what broke and how to migrate>`.
+
+   The spec-standard footer token is singular `BREAKING CHANGE:`; `BREAKING-CHANGE:` is also accepted. Prefer the `!`
+   suffix even when the footer is present, since squash-merge workflows keep the title but can mangle bodies.
 
 3. **Write a commit message file** — Create a file (e.g., `commit_message.md`) containing the commit message. **NEVER
    mention "Claude" or "Claude Code"** — write as if a human authored the commit.
