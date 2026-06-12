@@ -2,7 +2,6 @@
   "model": "claude-fable-5[1m]",
   "env": {
     "CLAUDE_CODE_EFFORT_LEVEL": "xhigh",
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "DISABLE_INSTALLATION_CHECKS": "1"
   },
   "hooks": {
