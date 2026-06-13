@@ -57,8 +57,8 @@ Each row's `artifacts_dir` is the on-disk state for that agent. Files you may re
   `response_path`, and `plan_path` (if the agent submitted a plan).
 
 `workspace_num` resolves to `<parent-of-this-repo>/sase_<N>/` — the agent's ephemeral workspace clone. Pre-submission
-plan drafts live there as `<workspace>/sase_plan_*.md`; once the agent has run `sase plan`, the submitted copy is at
-`~/.sase/plans/<YYMM>/<descriptive>.md` and won't be rewritten.
+plan drafts live there as `<workspace>/sase_plan_*.md`; once the agent has run `sase plan propose`, the submitted copy
+is at `~/.sase/plans/<YYMM>/<descriptive>.md` and won't be rewritten.
 
 ### Stable vs streaming
 
