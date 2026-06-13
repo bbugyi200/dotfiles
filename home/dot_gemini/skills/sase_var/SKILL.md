@@ -42,3 +42,20 @@ keys also support attribute access such as `{{ agents.build.result_path }}`.
 - Do not store secrets. Output variables are persisted in `agent_meta.json` and shown in ACE.
 
 Use `%wait:<producer>` when a later agent needs a variable from another agent.
+
+## Stopping a `%repeat` / `%r` chain with `STOP`
+
+`STOP` is a reserved output variable that only affects later `%repeat` / `%r` slots. Inside a repeat iteration, run:
+
+```bash
+sase var set STOP=1
+```
+
+before the iteration completes to skip every remaining repeat slot. Each later slot wakes, sees its repeat predecessor's
+`STOP`, finalizes as a successful completed (skipped) slot, and exits without running its prompt. Set `STOP` when the
+current iteration determines no further repeat work is needed.
+
+`STOP` is conservative about truthiness: `""`, `0`, `false`, `no`, and `off` (case-insensitive) are treated as not-stop,
+so a computed `STOP=0` is a safe no-op; any other value stops the chain. It is otherwise an ordinary output variable:
+agents that simply `%wait` on this producer (outside a repeat chain) are not affected and can still read
+`{{ agents["name"].STOP }}`.
