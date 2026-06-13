@@ -5,6 +5,10 @@
 
 local vo = vim.opt
 
+if vim.env.SSH_CONNECTION ~= nil or vim.env.SSH_CLIENT ~= nil or vim.env.SSH_TTY ~= nil then
+	vim.g.clipboard = "osc52"
+end
+
 -- Use spaces instead of tabs.
 vo.expandtab = true
 vo.shiftwidth = 2
