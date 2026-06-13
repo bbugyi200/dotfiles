@@ -16,5 +16,5 @@ Use this skill when you need to plan before implementing. This replaces Gemini's
 
 3. **Submit the plan**:
    ```bash
-   sase plan sase_plan_<name>.md
+   sase plan propose sase_plan_<name>.md
    ```
