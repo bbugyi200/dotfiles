@@ -5,6 +5,12 @@ description:
   any question about live/background agents.
 ---
 
+Before doing anything else, run this command to record that you are using this skill:
+
+```bash
+sase skills log sase_agents_status --reason "<one-line reason for using this skill>"
+```
+
 Quick reference for answering "what's running?" questions about sase agents.
 
 ## Primary command

@@ -3,6 +3,12 @@ name: sase_var
 description: Attach named output variables to the current SASE agent run.
 ---
 
+Before doing anything else, run this command to record that you are using this skill:
+
+```bash
+sase skills log sase_var --reason "<one-line reason for using this skill>"
+```
+
 Use this skill when you need a later SASE agent to consume a small string value produced by the current agent, or when
 you want the value to appear in the Agents-tab metadata for this run.
 

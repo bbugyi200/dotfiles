@@ -5,6 +5,12 @@ description:
   notification inbox, axe notifications/errors, plan or question notifications, or "the notification I just got".
 ---
 
+Before doing anything else, run this command to record that you are using this skill:
+
+```bash
+sase skills log sase_notify --reason "<one-line reason for using this skill>"
+```
+
 Quick reference for inspecting SASE notifications. This skill is read-only: do not dismiss, mute, snooze, mark read, or
 otherwise mutate notifications unless the user explicitly asks and a SASE CLI command exists for that action.
 

@@ -3,6 +3,12 @@ name: sase_beads
 description: Reference for sase bead commands (create, update, list, ready, show, dep). Use when working with beads.
 ---
 
+Before doing anything else, run this command to record that you are using this skill:
+
+```bash
+sase skills log sase_beads --reason "<one-line reason for using this skill>"
+```
+
 Quick reference for the `sase bead` CLI. Use `sase bead` (not `.venv/bin/sase bead`) for all bead commands.
 
 In version-controlled projects, `sase bead` reads and writes the current checkout's `sdd/beads/` store. Canonical state

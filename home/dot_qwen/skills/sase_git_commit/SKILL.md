@@ -6,6 +6,12 @@ description:
   triggers it.
 ---
 
+Before doing anything else, run this command to record that you are using this skill:
+
+```bash
+sase skills log sase_git_commit --reason "<one-line reason for using this skill>"
+```
+
 Commit changes via the `sase_git_commit` wrapper. The wrapper records skill invocation evidence, then delegates to
 `sase commit`.
 

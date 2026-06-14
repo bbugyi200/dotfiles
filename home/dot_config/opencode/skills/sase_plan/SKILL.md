@@ -3,6 +3,12 @@ name: sase_plan
 description: Create an implementation plan. Use instead of plan mode (which is disabled).
 ---
 
+Before doing anything else, run this command to record that you are using this skill:
+
+```bash
+sase skills log sase_plan --reason "<one-line reason for using this skill>"
+```
+
 Use this skill when you need to plan before implementing. This replaces OpenCode's native plan mode, which is disabled.
 
 ## Instructions

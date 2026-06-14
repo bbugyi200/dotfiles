@@ -3,6 +3,12 @@ name: bob_dataview
 description: Run read-only Obsidian Dataview queries against Bryan's Bob vault via `bob dataview`.
 ---
 
+Before doing anything else, run this command to record that you are using this skill:
+
+```bash
+sase skills log bob_dataview --reason "<one-line reason for using this skill>"
+```
+
 Use this skill when you need read-only Dataview access to Bryan's Bob vault (`~/bob`).
 
 ## Rules

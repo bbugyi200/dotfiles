@@ -5,6 +5,12 @@ description:
   `memory/long/...` context or mention long-term memory procedure.
 ---
 
+Before doing anything else, run this command to record that you are using this skill:
+
+```bash
+sase skills log sase_memory_read --reason "<one-line reason for using this skill>"
+```
+
 Use this skill when project instructions or a prompt require reading SASE long-term memory.
 
 ## Rules

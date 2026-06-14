@@ -6,6 +6,12 @@ description: |
   it.
 ---
 
+Before doing anything else, run this command to record that you are using this skill:
+
+```bash
+sase skills log sase_hg_commit --reason "<one-line reason for using this skill>"
+```
+
 Commit changes via the `sase commit` command.
 
 ## Instructions
