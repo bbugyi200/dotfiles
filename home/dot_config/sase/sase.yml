@@ -71,6 +71,7 @@ ace:
     sa: "sase agent"
     w: "%w:"
     x: "xprompt"
+    xs: "xprompt skill"
     xw: "xprompt workflow"
 
 telemetry:
