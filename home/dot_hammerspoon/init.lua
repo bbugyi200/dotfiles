@@ -3,6 +3,24 @@ hs.hotkey.bind({ "cmd", "alt", "ctrl" }, "V", nil, function()
 	hs.task.new("/bin/bash", nil, { "-l", "-c", paste_parts }):start()
 end)
 
+-- Capture a selected screen region and upload it to Apollo via ~/bin/macscrot.
+-- Run asynchronously so Hammerspoon does not block while the region is selected.
+hs.hotkey.bind({ "ctrl", "alt", "shift" }, "s", nil, function()
+	local macscrot = os.getenv("HOME") .. "/bin/macscrot"
+	hs.task
+		.new("/bin/bash", function(exitCode, stdOut, stdErr)
+			local function tidy(text)
+				return (tostring(text or ""):gsub("^%s+", ""):gsub("%s+$", ""))
+			end
+			if exitCode == 0 then
+				hs.notify.show("Screenshot uploaded", "", tidy(stdOut))
+			else
+				hs.notify.show("Screenshot failed", "", tidy(stdErr))
+			end
+		end, { "-l", "-c", macscrot })
+		:start()
+end)
+
 local taskCapturePrompt = nil
 local taskCaptureController = nil
 local taskCapturePreviousApp = nil

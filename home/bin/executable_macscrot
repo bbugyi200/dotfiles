@@ -1,5 +1,38 @@
-#!/usr/bin/osascript
+#!/usr/bin/env bash
+#
+# Capture an interactively-selected screen region on the MacBook and upload it
+# to Apollo, the shared rendezvous host. SASE prompts on Athena later fetch the
+# most recent uploads with the `#sshot` xprompt.
+#
+# The MacBook never SSHes into Athena directly; it only pushes to Apollo.
 
-set f to text returned of (display dialog "Save screen capture as:" default answer "tmp")
-delay 0.1
-do shell script "/usr/sbin/screencapture -i -tpng ~/org/img/" & f's quoted form & ".png"
+set -euo pipefail
+
+screenshot_dir="$HOME/tmp/screenshots"
+remote_dir="tmp/screenshots"
+
+mkdir -p "$screenshot_dir"
+
+timestamp="$(date +"%Y%m%d_%H%M%S")"
+basename="${timestamp}.png"
+local_path="${screenshot_dir}/${basename}"
+
+# macOS native interactive capture. Exits 0 even when the user cancels, so we
+# also check for an empty/missing output file below. Tolerate a nonzero exit so
+# the cleanup-and-fail path runs regardless under `set -e`.
+/usr/sbin/screencapture -i -t png "$local_path" || true
+
+if [[ ! -s "$local_path" ]]; then
+	# Cancelled selection, or capture produced nothing — clean up the stub.
+	rm -f "$local_path"
+	echo "macscrot: capture cancelled or empty, nothing uploaded" >&2
+	exit 1
+fi
+
+ssh apollo "mkdir -p ~/${remote_dir}"
+
+remote_path="${remote_dir}/${basename}"
+scp -p "$local_path" "apollo:~/${remote_path}"
+
+echo "local:  ${local_path}"
+echo "apollo: ~/${remote_path}"
