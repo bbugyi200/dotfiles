@@ -9,13 +9,17 @@ hs.hotkey.bind({ "ctrl", "alt", "shift" }, "s", nil, function()
 	local macscrot = os.getenv("HOME") .. "/bin/macscrot"
 	hs.task
 		.new("/bin/bash", function(exitCode, stdOut, stdErr)
-			local function tidy(text)
-				return (tostring(text or ""):gsub("^%s+", ""):gsub("%s+$", ""))
-			end
-			if exitCode == 0 then
-				hs.notify.show("Screenshot uploaded", "", tidy(stdOut))
-			else
-				hs.notify.show("Screenshot failed", "", tidy(stdErr))
+			-- macscrot now owns the success notification for every invocation
+			-- path, so only surface failures here to avoid a duplicate.
+			if exitCode ~= 0 then
+				local function tidy(text)
+					return (tostring(text or ""):gsub("^%s+", ""):gsub("%s+$", ""))
+				end
+				local detail = tidy(stdErr)
+				if detail == "" then
+					detail = tidy(stdOut)
+				end
+				hs.notify.show("Screenshot failed", "", detail)
 			end
 		end, { "-l", "-c", macscrot })
 		:start()

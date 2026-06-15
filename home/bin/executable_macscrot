@@ -8,6 +8,41 @@
 
 set -euo pipefail
 
+# Copy a string to the macOS clipboard. Returns nonzero if pbcopy is missing or
+# the copy fails, so the caller can decide how to degrade.
+copy_to_clipboard() {
+	local text="$1"
+	local pbcopy_bin
+	if [[ -x /usr/bin/pbcopy ]]; then
+		pbcopy_bin=/usr/bin/pbcopy
+	elif command -v pbcopy >/dev/null 2>&1; then
+		pbcopy_bin=pbcopy
+	else
+		return 1
+	fi
+	printf '%s' "$text" | "$pbcopy_bin"
+}
+
+# Show a macOS notification titled "Screenshot uploaded" with the given subtitle
+# and message. Dynamic strings are passed as argv (read via `on run argv`)
+# instead of interpolated into AppleScript source, so paths/quotes/spaces never
+# need escaping. Returns nonzero if osascript is missing or fails.
+notify_upload_finished() {
+	local subtitle="$1"
+	local message="$2"
+	local osascript_bin
+	if [[ -x /usr/bin/osascript ]]; then
+		osascript_bin=/usr/bin/osascript
+	elif command -v osascript >/dev/null 2>&1; then
+		osascript_bin=osascript
+	else
+		return 1
+	fi
+	"$osascript_bin" -e 'on run argv
+	display notification (item 2 of argv) with title "Screenshot uploaded" subtitle (item 1 of argv)
+end run' "$subtitle" "$message"
+}
+
 screenshot_dir="$HOME/tmp/screenshots"
 remote_dir="tmp/screenshots"
 
@@ -34,5 +69,28 @@ ssh apollo "mkdir -p ~/${remote_dir}"
 remote_path="${remote_dir}/${basename}"
 scp -p "$local_path" "apollo:~/${remote_path}"
 
+# Upload succeeded. Copy the user-facing path to the clipboard and surface a
+# notification. Neither side effect should turn a good upload into a failure.
+clipboard_path="~/tmp/screenshots/${basename}"
+
+clipboard_ok=1
+if ! copy_to_clipboard "$clipboard_path"; then
+	clipboard_ok=0
+	echo "macscrot: warning: could not copy path to clipboard" >&2
+fi
+
+if [[ "$clipboard_ok" -eq 1 ]]; then
+	notification_message="Path copied: ${clipboard_path}"
+else
+	notification_message="Upload succeeded; clipboard copy failed"
+fi
+
+if ! notify_upload_finished "Apollo" "$notification_message"; then
+	echo "macscrot: warning: could not show notification" >&2
+fi
+
 echo "local:  ${local_path}"
 echo "apollo: ~/${remote_path}"
+if [[ "$clipboard_ok" -eq 1 ]]; then
+	echo "clipboard: ${clipboard_path}"
+fi
