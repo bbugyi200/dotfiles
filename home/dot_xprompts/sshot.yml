@@ -18,7 +18,7 @@ steps:
 
       # Ask Apollo for the nth most recent supported image (newest first). The
       # globs and ~ are expanded by the remote shell; n is a validated integer.
-      basename=$(ssh apollo "cd ~/tmp/screenshots 2>/dev/null && ls -1t -- *.png *.jpg *.jpeg *.webp *.gif 2>/dev/null | sed -n '${n}p'")
+      basename=$(ssh apollo "cd ~/tmp/screenshots 2>/dev/null && ls -1t -- *.png 2>/dev/null | sed -n '${n}p'")
       if [ -z "$basename" ]; then
         echo "ERROR: no screenshot #$n found on apollo (~/tmp/screenshots)" >&2
         exit 1
