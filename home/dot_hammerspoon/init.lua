@@ -28,6 +28,7 @@ end)
 local taskCapturePrompt = nil
 local taskCaptureController = nil
 local taskCapturePreviousApp = nil
+local taskCaptureTask = nil
 
 local taskCaptureHtml = [=[
 <!doctype html>
@@ -215,242 +216,6 @@ button:disabled {
 </html>
 ]=]
 
-local function normalizeTaskText(rawText)
-	local text = tostring(rawText or "")
-	return text:gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
-end
-
-local function capturedTaskCreatedProperty(now)
-	if now then
-		return os.date("[created::%Y-%m-%d]", now)
-	end
-
-	return os.date("[created::%Y-%m-%d]")
-end
-
-local function capturedTaskLine(taskText, now)
-	return "- [ ] #task " .. taskText .. " " .. capturedTaskCreatedProperty(now)
-end
-
-local function routedCapturedTask(bobRoot, routeName, taskText)
-	local normalizedRouteName = routeName:lower()
-	return {
-		target = bobRoot .. "/" .. normalizedRouteName .. ".md",
-		text = taskText,
-		isRouted = true,
-		label = normalizedRouteName .. ".md",
-	}
-end
-
-local function parseCapturedTaskTarget(text)
-	local bobRoot = os.getenv("HOME") .. "/bob"
-
-	local routeName, taskText = text:match("^@([A-Za-z0-9_-]+)%s+(.+)$")
-	if routeName then
-		return routedCapturedTask(bobRoot, routeName, taskText)
-	end
-
-	taskText, routeName = text:match("^(.+)%s+@([A-Za-z0-9_-]+)$")
-	if routeName then
-		return routedCapturedTask(bobRoot, routeName, taskText)
-	end
-
-	return {
-		target = bobRoot .. "/mac_inbox.md",
-		text = text,
-		isRouted = false,
-		label = "",
-	}
-end
-
-local function readFile(path)
-	local f, openError = io.open(path, "r")
-	if not f then
-		return nil, openError
-	end
-
-	local contents, readError = f:read("*a")
-	local closeOk, closeError = f:close()
-	if contents == nil or not closeOk then
-		return nil, readError or closeError or path
-	end
-
-	return contents
-end
-
-local function writeFile(path, contents)
-	local f, openError = io.open(path, "w")
-	if not f then
-		return false, openError
-	end
-
-	local writeOk, writeError = f:write(contents)
-	local closeOk, closeError = f:close()
-	if not writeOk or not closeOk then
-		return false, writeError or closeError or path
-	end
-
-	return true
-end
-
-local function ensureFile(path)
-	local f, openError = io.open(path, "a")
-	if not f then
-		return false, openError
-	end
-
-	local closeOk, closeError = f:close()
-	if not closeOk then
-		return false, closeError or path
-	end
-
-	return true
-end
-
-local function isIndentedTaskContinuation(line)
-	return line:match("^[ \t]") ~= nil
-end
-
-local function isBlankMarkdownLine(line)
-	return line:match("^%s*$") ~= nil
-end
-
-local function nextNonBlankLineIsIndented(contents, lineStart)
-	while lineStart <= #contents do
-		local newlineAt = contents:find("\n", lineStart, true)
-		local line = newlineAt and contents:sub(lineStart, newlineAt - 1) or contents:sub(lineStart)
-		if not isBlankMarkdownLine(line) then
-			return isIndentedTaskContinuation(line)
-		end
-		if not newlineAt then
-			return false
-		end
-		lineStart = newlineAt + 1
-	end
-
-	return false
-end
-
-local function taskBlockInsertionPoint(contents, taskLineStart)
-	local lineStart = taskLineStart
-	local newlineAt = contents:find("\n", lineStart, true)
-
-	if not newlineAt then
-		return #contents + 1, true, #contents + 1
-	end
-
-	local insertAt = newlineAt + 1
-	lineStart = newlineAt + 1
-
-	while lineStart <= #contents do
-		newlineAt = contents:find("\n", lineStart, true)
-		local line = newlineAt and contents:sub(lineStart, newlineAt - 1) or contents:sub(lineStart)
-		local isTaskContinuation = isIndentedTaskContinuation(line)
-			or (
-				isBlankMarkdownLine(line)
-				and newlineAt
-				and nextNonBlankLineIsIndented(contents, newlineAt + 1)
-			)
-		if not isTaskContinuation then
-			break
-		end
-
-		if not newlineAt then
-			return #contents + 1, true, #contents + 1
-		end
-
-		insertAt = newlineAt + 1
-		lineStart = newlineAt + 1
-	end
-
-	return insertAt, false, lineStart
-end
-
-local function insertTaskAfterLastOpenTask(path, taskLine)
-	local ensureOk, ensureError = ensureFile(path)
-	if not ensureOk then
-		return false, ensureError
-	end
-
-	local contents, readError = readFile(path)
-	if contents == nil then
-		return false, readError
-	end
-
-	local insertAt = nil
-	local needsLeadingNewline = false
-	local lineStart = 1
-	while lineStart <= #contents do
-		local newlineAt = contents:find("\n", lineStart, true)
-		local line = newlineAt and contents:sub(lineStart, newlineAt - 1) or contents:sub(lineStart)
-		if line:match("^%- %[.%]%s+.*#task") then
-			insertAt, needsLeadingNewline, lineStart = taskBlockInsertionPoint(contents, lineStart)
-		else
-			if not newlineAt then
-				break
-			end
-			lineStart = newlineAt + 1
-		end
-	end
-
-	local insertion = taskLine .. "\n"
-	if needsLeadingNewline then
-		insertion = "\n" .. insertion
-	end
-
-	local updatedContents
-	if insertAt then
-		updatedContents = contents:sub(1, insertAt - 1)
-			.. insertion
-			.. contents:sub(insertAt)
-	else
-		local separator = ""
-		if contents ~= "" and contents:sub(-1) ~= "\n" then
-			separator = "\n"
-		end
-		updatedContents = contents .. separator .. insertion
-	end
-
-	return writeFile(path, updatedContents)
-end
-
-local function appendCapturedTask(rawText, now)
-	local text = normalizeTaskText(rawText)
-	if text == "" then
-		return true
-	end
-
-	local capturedTask = parseCapturedTaskTarget(text)
-	local taskLine = capturedTaskLine(capturedTask.text, now)
-	if capturedTask.isRouted then
-		local insertOk, insertError = insertTaskAfterLastOpenTask(capturedTask.target, taskLine)
-		if not insertOk then
-			hs.notify.show("Task capture failed", "", insertError or capturedTask.target)
-			return false
-		end
-
-		hs.notify.show("Captured task", capturedTask.label, capturedTask.text)
-		return true
-	end
-
-	local target = capturedTask.target
-	local f, openError = io.open(target, "a")
-	if not f then
-		hs.notify.show("Task capture failed", "", openError or target)
-		return false
-	end
-
-	local writeOk, writeError = f:write(taskLine .. "\n")
-	local closeOk, closeError = f:close()
-	if not writeOk or not closeOk then
-		hs.notify.show("Task capture failed", "", writeError or closeError or target)
-		return false
-	end
-
-	hs.notify.show("Captured task", "", capturedTask.text)
-	return true
-end
-
 local function restoreTaskCaptureApp()
 	if taskCapturePreviousApp then
 		pcall(function()
@@ -460,7 +225,20 @@ local function restoreTaskCaptureApp()
 	end
 end
 
+-- Terminate any in-flight `bob capture` task so a late callback cannot act on a
+-- prompt that has already been dismissed.
+local function cancelTaskCaptureTask()
+	local task = taskCaptureTask
+	taskCaptureTask = nil
+	if task then
+		pcall(function()
+			task:terminate()
+		end)
+	end
+end
+
 local function closeTaskCapturePrompt()
+	cancelTaskCaptureTask()
 	local prompt = taskCapturePrompt
 	taskCapturePrompt = nil
 	taskCaptureController = nil
@@ -516,6 +294,113 @@ local function focusTaskCapturePrompt()
 	)
 end
 
+local function trimCaptureText(rawText)
+	local text = tostring(rawText or "")
+	text = text:gsub("^%s+", "")
+	text = text:gsub("%s+$", "")
+	return text
+end
+
+local function captureFailureDetail(decoded, stdOut, stdErr)
+	if type(decoded) == "table"
+		and type(decoded.error) == "string"
+		and decoded.error ~= ""
+	then
+		return decoded.error
+	end
+	if stdErr ~= "" then
+		return stdErr
+	end
+	if stdOut ~= "" then
+		return stdOut
+	end
+	return "bob capture reported no detail"
+end
+
+local function notifyCaptureFailure(detail)
+	hs.notify.show("Task capture failed", "", trimCaptureText(detail))
+end
+
+-- Reuse the proven Bob Pomodoro launch pattern: a login shell with the GUI PATH
+-- prepended and DATE=gdate exported when available. The task text is passed as
+-- the positional parameter $1 (never interpolated) so arbitrary input cannot be
+-- evaluated by the shell.
+local taskCaptureCommand = [[
+PATH="$HOME/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+export PATH
+if [ -z "${DATE+x}" ] && command -v gdate >/dev/null 2>&1; then
+	export DATE=gdate
+fi
+exec bob capture --format json -- "$1"
+]]
+
+local function submitCapturedTask(rawText)
+	if taskCaptureTask then
+		return
+	end
+
+	local text = trimCaptureText(rawText)
+	if text == "" then
+		return
+	end
+
+	local task
+	task = hs.task.new("/bin/zsh", function(exitCode, stdOut, stdErr)
+		if taskCaptureTask ~= task then
+			return
+		end
+		taskCaptureTask = nil
+
+		local out = trimCaptureText(stdOut)
+		local err = trimCaptureText(stdErr)
+
+		local decoded = nil
+		if out ~= "" then
+			local decodeOk, decodeResult = pcall(hs.json.decode, out)
+			if decodeOk then
+				decoded = decodeResult
+			end
+		end
+
+		if exitCode == 0
+			and type(decoded) == "table"
+			and decoded.ok == true
+		then
+			local routeLabel = ""
+			if type(decoded.route_label) == "string" then
+				routeLabel = decoded.route_label
+			end
+			local body = ""
+			if type(decoded.text) == "string" then
+				body = decoded.text
+			end
+			hs.notify.show("Captured task", routeLabel, body)
+			closeTaskCapturePrompt()
+			return
+		end
+
+		notifyCaptureFailure(captureFailureDetail(decoded, out, err))
+	end, { "-lc", taskCaptureCommand, "bob-capture", text })
+
+	if not task then
+		notifyCaptureFailure("could not create bob capture task")
+		return
+	end
+
+	taskCaptureTask = task
+	local startOk, started = pcall(function()
+		return task:start()
+	end)
+	if not startOk or not started then
+		taskCaptureTask = nil
+		if startOk then
+			notifyCaptureFailure("could not start bob capture task")
+		else
+			notifyCaptureFailure(started)
+		end
+	end
+end
+
 local function showTaskCapturePrompt()
 	if taskCapturePrompt then
 		focusTaskCapturePrompt()
@@ -539,8 +424,8 @@ local function showTaskCapturePrompt()
 			return
 		end
 
-		if payload.action == "submit" and appendCapturedTask(payload.text) then
-			closeTaskCapturePrompt()
+		if payload.action == "submit" then
+			submitCapturedTask(payload.text)
 		end
 	end)
 
@@ -560,6 +445,7 @@ local function showTaskCapturePrompt()
 		if action == "closing" and webview == taskCapturePrompt then
 			taskCapturePrompt = nil
 			taskCaptureController = nil
+			cancelTaskCaptureTask()
 			restoreTaskCaptureApp()
 		end
 	end)
