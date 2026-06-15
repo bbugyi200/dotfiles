@@ -6,7 +6,7 @@ description: Create explicit SASE artifacts from files produced during an agent 
 Before doing anything else, run this command to record that you are using this skill:
 
 ```bash
-sase skills log sase_artifact --reason "<one-line reason for using this skill>"
+sase skills use sase_artifact --reason "<one-line reason for using this skill>"
 ```
 
 Use this skill when the user asks you to produce an artifact that should be available from the SASE Agents tab.

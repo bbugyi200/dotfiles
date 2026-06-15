@@ -6,7 +6,7 @@ description: Read-only personal Gmail access through gog.
 Before doing anything else, run this command to record that you are using this skill:
 
 ```bash
-sase skills log sase_gmail --reason "<one-line reason for using this skill>"
+sase skills use sase_gmail --reason "<one-line reason for using this skill>"
 ```
 
 Use `gog` directly for personal Gmail inspection. Do not use raw Gmail API calls or any other mail connector.

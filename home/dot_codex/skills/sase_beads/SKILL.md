@@ -6,7 +6,7 @@ description: Reference for sase bead commands (create, update, list, ready, show
 Before doing anything else, run this command to record that you are using this skill:
 
 ```bash
-sase skills log sase_beads --reason "<one-line reason for using this skill>"
+sase skills use sase_beads --reason "<one-line reason for using this skill>"
 ```
 
 Quick reference for the `sase bead` CLI. Use `sase bead` (not `.venv/bin/sase bead`) for all bead commands.

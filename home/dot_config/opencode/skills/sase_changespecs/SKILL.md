@@ -8,7 +8,7 @@ description:
 Before doing anything else, run this command to record that you are using this skill:
 
 ```bash
-sase skills log sase_changespecs --reason "<one-line reason for using this skill>"
+sase skills use sase_changespecs --reason "<one-line reason for using this skill>"
 ```
 
 Quick reference for inspecting and reasoning about SASE ChangeSpecs.
