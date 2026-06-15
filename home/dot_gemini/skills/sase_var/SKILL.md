@@ -6,7 +6,7 @@ description: Attach named output variables to the current SASE agent run.
 Before doing anything else, run this command to record that you are using this skill:
 
 ```bash
-sase skills use sase_var --reason "<one-line reason for using this skill>"
+sase skill use sase_var --reason "<one-line reason for using this skill>"
 ```
 
 Use this skill when you need a later SASE agent to consume a small string value produced by the current agent, or when

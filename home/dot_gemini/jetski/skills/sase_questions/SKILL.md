@@ -6,7 +6,7 @@ description: Ask the user questions. Use instead of ask_user (which is disabled)
 Before doing anything else, run this command to record that you are using this skill:
 
 ```bash
-sase skills use sase_questions --reason "<one-line reason for using this skill>"
+sase skill use sase_questions --reason "<one-line reason for using this skill>"
 ```
 
 Use this skill when you need user input. This replaces Gemini's native ask_user tool.

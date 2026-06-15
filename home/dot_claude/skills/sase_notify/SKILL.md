@@ -8,7 +8,7 @@ description:
 Before doing anything else, run this command to record that you are using this skill:
 
 ```bash
-sase skills use sase_notify --reason "<one-line reason for using this skill>"
+sase skill use sase_notify --reason "<one-line reason for using this skill>"
 ```
 
 Quick reference for inspecting SASE notifications. This skill is read-only: do not dismiss, mute, snooze, mark read, or
