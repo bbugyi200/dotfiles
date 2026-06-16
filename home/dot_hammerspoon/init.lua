@@ -355,24 +355,16 @@ local function decodeCaptureJson(out)
 end
 
 -- Reuse the proven Bob Pomodoro launch pattern: a login shell with the GUI PATH
--- prepended and DATE=gdate exported when available. The task text is passed as
--- the positional parameter $1 and the optional forced route as $2 (never
--- interpolated) so arbitrary input cannot be evaluated by the shell.
-local taskCaptureDryRunCommand = [[
-PATH="$HOME/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
-export PATH
-if [ -z "${DATE+x}" ] && command -v gdate >/dev/null 2>&1; then
-	export DATE=gdate
-fi
-exec bob capture --dry-run --format json -- "$1"
-]]
-
+-- prepended and DATE=gdate exported when available.
 local taskCaptureTargetsCommand = [[
 PATH="$HOME/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 export PATH
 exec bob capture-targets --format json
 ]]
 
+-- The task text is passed as the positional parameter $1 and the optional forced
+-- route as $2 (never interpolated) so arbitrary input cannot be evaluated by the
+-- shell.
 local taskCaptureCommand = [[
 PATH="$HOME/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 export PATH
@@ -432,9 +424,9 @@ local function startCaptureStage(command, extraArgs, onComplete, notifyFailure)
 	return true
 end
 
--- Stage 3: write the task. An empty route runs the unrouted inbox path; a
--- non-empty route forces `--route`. On success the prompt is closed; on failure
--- the prompt stays open so the typed text is not lost.
+-- Write the task. A nil/empty route runs the unrouted inbox path; a non-empty
+-- route forces `--route`. On success the prompt is closed; on failure the prompt
+-- stays open so the typed text is not lost.
 local function runFinalCapture(text, route)
 	local extraArgs = { text }
 	if type(route) == "string" and route ~= "" then
@@ -502,18 +494,22 @@ local function captureTargetImage(kind)
 	return nil
 end
 
--- Map the CLI target contract onto chooser rows, preserving the emitted order
--- so mac_inbox stays pinned first.
+-- Map the CLI target contract onto chooser rows, keeping only area and project
+-- targets. Inbox/default rows are dropped because plain Enter already captures to
+-- the inbox; the picker exists purely to choose an area or project. The emitted
+-- CLI order is otherwise preserved.
 local function buildCaptureChoices(targets)
 	local choices = {}
 	for _, target in ipairs(targets) do
-		if type(target) == "table" and type(target.route) == "string" then
+		if type(target) == "table"
+			and type(target.route) == "string"
+			and (target.kind == "area" or target.kind == "project")
+		then
 			local choice = {
 				text = tostring(target.name or target.route),
 				subText = captureTargetSubText(target),
 				route = target.route,
 				kind = target.kind,
-				is_default = target.is_default == true,
 			}
 			local image = captureTargetImage(target.kind)
 			if image then
@@ -525,9 +521,9 @@ local function buildCaptureChoices(targets)
 	return choices
 end
 
--- Stage 2b: show the native picker for unrouted text. Dismissing it refocuses
--- the prompt with the typed text intact; the default inbox row runs the
--- unrouted capture path while any other row forces its route.
+-- Show the native area/project picker for a trailing `@` request. Dismissing it
+-- refocuses the prompt with the typed text intact; selecting any row forces that
+-- row's route, since the inbox is reachable only via plain Enter.
 local function showTaskCaptureChooser(text, targets)
 	local choices = buildCaptureChoices(targets)
 	if #choices == 0 then
@@ -542,16 +538,12 @@ local function showTaskCaptureChooser(text, targets)
 		end
 		taskCaptureChooser = nil
 
-		if type(choice) ~= "table" then
+		if type(choice) ~= "table" or type(choice.route) ~= "string" then
 			focusTaskCapturePrompt()
 			return
 		end
 
-		local route = nil
-		if choice.is_default ~= true and type(choice.route) == "string" then
-			route = choice.route
-		end
-		runFinalCapture(text, route)
+		runFinalCapture(text, choice.route)
 	end)
 
 	if not chooser then
@@ -565,8 +557,8 @@ local function showTaskCaptureChooser(text, targets)
 	chooser:show()
 end
 
--- Stage 2a: fetch the picker rows. A failure here surfaces a dedicated picker
--- notification instead of silently falling back to the inbox.
+-- Fetch the picker rows. A failure here surfaces a dedicated picker notification
+-- instead of silently falling back to the inbox.
 local function startTargetsStage(text)
 	startCaptureStage(taskCaptureTargetsCommand, {}, function(exitCode, decoded, out, err)
 		if exitCode == 0
@@ -587,35 +579,39 @@ local function startTargetsStage(text)
 	end, notifyTargetPickerFailure)
 end
 
--- Stage 1: snapshot the prompt text and run a dry-run to learn whether the text
--- already carries an explicit @route. Routed text captures immediately; unrouted
--- text opens the target picker.
+-- Detect the area/project picker marker: a bare trailing `@` preceded by
+-- whitespace, e.g. `foo bar baz @`. The marker is opt-in UI sugar handled
+-- entirely on the Hammerspoon side, so `foo@`, `foo @cash`, and `@cash foo` are
+-- left untouched and Bob's own route parser keeps owning explicit @route input.
+-- Returns the task text to capture and whether the picker was requested.
+local function parseCaptureRequest(rawText)
+	local text = trimCaptureText(rawText)
+	local stripped = text:match("^(.-)%s+@$")
+	if stripped then
+		return trimCaptureText(stripped), true
+	end
+	return text, false
+end
+
+-- Snapshot the prompt text and route it. A trailing bare `@` marker opts into the
+-- area/project picker with the marker stripped; everything else captures
+-- immediately, letting `bob capture` own route parsing and the inbox default.
 local function submitCapturedTask(rawText)
 	if taskCaptureTask or taskCaptureChooser then
 		return
 	end
 
-	local text = trimCaptureText(rawText)
+	local text, pickerRequested = parseCaptureRequest(rawText)
 	if text == "" then
 		return
 	end
 
-	startCaptureStage(taskCaptureDryRunCommand, { text }, function(exitCode, decoded, out, err)
-		if exitCode ~= 0
-			or type(decoded) ~= "table"
-			or decoded.ok ~= true
-		then
-			notifyCaptureFailure(captureFailureDetail(decoded, out, err))
-			return
-		end
-
-		if decoded.routed == true then
-			runFinalCapture(text, nil)
-			return
-		end
-
+	if pickerRequested then
 		startTargetsStage(text)
-	end, notifyCaptureFailure)
+		return
+	end
+
+	runFinalCapture(text, nil)
 end
 
 local function showTaskCapturePrompt()
