@@ -21,7 +21,11 @@ AXE_PID_FILE="$AXE_STATE_DIR/pid"
 
 axe_was_running=false
 maintenance_active=false
-sync_warnings=()
+sync_fail_labels=()
+sync_fail_paths=()
+sync_fail_reasons=()
+sync_fail_commands=()
+sync_fail_details=()
 
 axe_pid() {
     if [[ ! -s "$AXE_PID_FILE" ]]; then
@@ -65,60 +69,99 @@ stop_axe_if_running() {
     fi
 }
 
-record_sync_warning() {
-    local repo="$1"
-    local reason="$2"
-    sync_warnings+=("$repo: $reason")
+record_sync_failure() {
+    local label="$1"
+    local path="$2"
+    local reason="$3"
+    local command="$4"
+    local details="${5:-}"
+    sync_fail_labels+=("$label")
+    sync_fail_paths+=("$path")
+    sync_fail_reasons+=("$reason")
+    sync_fail_commands+=("$command")
+    sync_fail_details+=("$details")
 }
 
-repo_is_dirty() {
+# Sync a single required repo. Any problem (missing/non-git path, dirty
+# worktree, failed status, or non-fast-forward pull) is recorded as a fatal
+# sync failure instead of a tolerated warning. Returns non-zero on failure so
+# the caller can keep checking the remaining repos.
+sync_repo_or_record_failure() {
     local repo="$1"
-    local status_output
-    if ! status_output="$(git -C "$repo" status --porcelain)"; then
-        return 2
-    fi
-    [[ -n "$status_output" ]]
-}
+    local label status_output pull_output
+    label="$(basename "$repo")"
 
-sync_repo_best_effort() {
-    local repo="$1"
-    local dirty_status
-
-    echo ">>> Syncing $repo..."
+    echo ">>> Syncing $label at $repo..."
 
     if ! git -C "$repo" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-        record_sync_warning "$repo" "not a git repository or path is missing"
-        return 0
+        record_sync_failure "$label" "$repo" "missing or not a git repository" \
+            "git -C $repo rev-parse --is-inside-work-tree" ""
+        return 1
     fi
 
-    if repo_is_dirty "$repo"; then
-        record_sync_warning "$repo" "dirty worktree; skipped pull"
-        return 0
-    else
-        dirty_status=$?
-        if ((dirty_status != 1)); then
-            record_sync_warning "$repo" "git status failed; using local checkout"
-            return 0
+    if status_output="$(git -C "$repo" status --porcelain 2>&1)"; then
+        if [[ -n "$status_output" ]]; then
+            record_sync_failure "$label" "$repo" "dirty worktree" \
+                "git -C $repo status --porcelain" "$status_output"
+            return 1
         fi
+    else
+        record_sync_failure "$label" "$repo" "git status failed" \
+            "git -C $repo status --porcelain" "$status_output"
+        return 1
     fi
 
-    if ! git -C "$repo" pull --ff-only; then
-        record_sync_warning "$repo" "git pull --ff-only failed; using local checkout"
-        return 0
+    if ! pull_output="$(git -C "$repo" pull --ff-only 2>&1)"; then
+        record_sync_failure "$label" "$repo" "git pull --ff-only failed" \
+            "git -C $repo pull --ff-only" "$pull_output"
+        return 1
     fi
+
+    return 0
 }
 
-print_sync_summary() {
-    if ((${#sync_warnings[@]} == 0)); then
-        echo ">>> Repo sync complete."
-        return
+# Render a polished, dependency-free fatal error block to stderr describing
+# every repo that failed to sync. Uses TTY color when available and falls back
+# to plain ASCII otherwise.
+print_sync_failure_error() {
+    local bold="" red="" reset=""
+    if [[ -t 2 ]] && command -v tput >/dev/null 2>&1 && tput colors >/dev/null 2>&1; then
+        bold="$(tput bold 2>/dev/null || true)"
+        red="$(tput setaf 1 2>/dev/null || true)"
+        reset="$(tput sgr0 2>/dev/null || true)"
     fi
 
-    echo "WARNING: Some repos were not synced; continuing with local checkouts." >&2
-    local warning
-    for warning in "${sync_warnings[@]}"; do
-        echo "WARNING: $warning" >&2
-    done
+    local width=78
+    local title="$INSTALL_NAME could not sync required repositories"
+    local dashes border
+    dashes="$(printf '%*s' "$((width + 2))" '' | tr ' ' '-')"
+    border="+${dashes}+"
+
+    {
+        printf '%s%s%s\n' "$red$bold" "$border" "$reset"
+        printf '%s|%s %-*s %s|%s\n' "$red$bold" "$reset" "$width" "$title" "$red$bold" "$reset"
+        printf '%s%s%s\n' "$red$bold" "$border" "$reset"
+        printf '\n'
+        printf 'The install stopped before touching the uv-tool sase environment.\n'
+        printf '\n'
+        printf 'Failed repos:\n'
+        local i
+        for i in "${!sync_fail_labels[@]}"; do
+            printf '  - %s%s%s\n' "$bold" "${sync_fail_labels[$i]}" "$reset"
+            printf '    path:    %s\n' "${sync_fail_paths[$i]}"
+            printf '    reason:  %s\n' "${sync_fail_reasons[$i]}"
+            printf '    command: %s\n' "${sync_fail_commands[$i]}"
+            if [[ -n "${sync_fail_details[$i]}" ]]; then
+                printf '    details:\n'
+                printf '%s\n' "${sync_fail_details[$i]}" | awk 'NR<=10{print "      " $0}'
+            fi
+        done
+        printf '\n'
+        printf 'Next steps:\n'
+        printf '  1. cd into each repo above and inspect `git status`.\n'
+        printf '  2. Resolve local changes, branch divergence, or remote/auth problems.\n'
+        printf '  3. Re-run `%s`.\n' "$INSTALL_NAME"
+    } >&2
 }
 
 probe_uv_tool_health() {
@@ -153,13 +196,21 @@ finish() {
 }
 trap finish EXIT
 
+# Fatal sync gate: verify every required repo is clean and up to date BEFORE
+# entering axe maintenance or stopping axe. If any repo fails to sync we abort
+# here, while axe is still in its original state and the uv-tool environment is
+# untouched. All repos are checked so the error block can list every problem.
+for repo in "$SASE_DIR" "$SASE_CORE_DIR" "$SASE_GITHUB_DIR" "$SASE_TELEGRAM_DIR"; do
+    sync_repo_or_record_failure "$repo" || true
+done
+if ((${#sync_fail_labels[@]} > 0)); then
+    print_sync_failure_error
+    exit 1
+fi
+echo ">>> Repo sync complete."
+
 enter_axe_maintenance
 stop_axe_if_running
-
-for repo in "$SASE_DIR" "$SASE_CORE_DIR" "$SASE_GITHUB_DIR" "$SASE_TELEGRAM_DIR"; do
-    sync_repo_best_effort "$repo"
-done
-print_sync_summary
 
 if [[ ! -f "$SASE_CORE_RS_DIR/pyproject.toml" ]]; then
     echo "ERROR: Missing local sase-core-rs project: $SASE_CORE_RS_DIR/pyproject.toml" >&2
