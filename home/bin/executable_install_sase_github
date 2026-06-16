@@ -26,6 +26,10 @@ sync_fail_paths=()
 sync_fail_reasons=()
 sync_fail_commands=()
 sync_fail_details=()
+sync_ok_labels=()
+sync_ok_files=()
+sync_ok_insertions=()
+sync_ok_deletions=()
 
 axe_pid() {
     if [[ ! -s "$AXE_PID_FILE" ]]; then
@@ -82,13 +86,58 @@ record_sync_failure() {
     sync_fail_details+=("$details")
 }
 
+record_sync_success() {
+    local label="$1"
+    local files="$2"
+    local insertions="$3"
+    local deletions="$4"
+    sync_ok_labels+=("$label")
+    sync_ok_files+=("$files")
+    sync_ok_insertions+=("$insertions")
+    sync_ok_deletions+=("$deletions")
+}
+
+sync_change_counts() {
+    local repo="$1"
+    local before="$2"
+    local after="$3"
+    local numstat
+
+    if [[ -z "$before" || -z "$after" || "$before" == "$after" ]]; then
+        printf '0 0 0\n'
+        return 0
+    fi
+
+    if ! numstat="$(git -C "$repo" diff --numstat "$before" "$after" 2>/dev/null)"; then
+        printf '0 0 0\n'
+        return 0
+    fi
+
+    if ! awk '
+        NF {
+            files++
+            if ($1 != "-") {
+                insertions += $1
+            }
+            if ($2 != "-") {
+                deletions += $2
+            }
+        }
+        END {
+            printf "%d %d %d\n", files + 0, insertions + 0, deletions + 0
+        }
+    ' <<<"$numstat"; then
+        printf '0 0 0\n'
+    fi
+}
+
 # Sync a single required repo. Any problem (missing/non-git path, dirty
 # worktree, failed status, or non-fast-forward pull) is recorded as a fatal
 # sync failure instead of a tolerated warning. Returns non-zero on failure so
 # the caller can keep checking the remaining repos.
 sync_repo_or_record_failure() {
     local repo="$1"
-    local label status_output pull_output
+    local label status_output pull_output before after counts files insertions deletions
     label="$(basename "$repo")"
 
     echo ">>> Syncing $label at $repo..."
@@ -111,13 +160,57 @@ sync_repo_or_record_failure() {
         return 1
     fi
 
+    before="$(git -C "$repo" rev-parse HEAD 2>/dev/null || true)"
+
     if ! pull_output="$(git -C "$repo" pull --ff-only 2>&1)"; then
         record_sync_failure "$label" "$repo" "git pull --ff-only failed" \
             "git -C $repo pull --ff-only" "$pull_output"
         return 1
     fi
 
+    after="$(git -C "$repo" rev-parse HEAD 2>/dev/null || true)"
+    counts="$(sync_change_counts "$repo" "$before" "$after")"
+    read -r files insertions deletions <<<"$counts"
+    record_sync_success "$label" "${files:-0}" "${insertions:-0}" "${deletions:-0}"
+
     return 0
+}
+
+print_sync_summary() {
+    local green="" dim="" reset=""
+    if [[ -t 1 ]] && command -v tput >/dev/null 2>&1 && tput colors >/dev/null 2>&1; then
+        green="$(tput setaf 2 2>/dev/null || true)"
+        dim="$(tput dim 2>/dev/null || true)"
+        reset="$(tput sgr0 2>/dev/null || true)"
+    fi
+
+    local label_width=0
+    local label
+    for label in "${sync_ok_labels[@]}"; do
+        if ((${#label} > label_width)); then
+            label_width="${#label}"
+        fi
+    done
+
+    local i files insertions deletions file_word summary delta
+    for i in "${!sync_ok_labels[@]}"; do
+        files="${sync_ok_files[$i]}"
+        insertions="${sync_ok_insertions[$i]}"
+        deletions="${sync_ok_deletions[$i]}"
+
+        if ((files == 0)); then
+            printf '    %-*s   %sup to date%s\n' "$label_width" "${sync_ok_labels[$i]}" "$dim" "$reset"
+        else
+            file_word="files"
+            if ((files == 1)); then
+                file_word="file"
+            fi
+            summary="$files $file_word changed"
+            delta="(+$insertions / -$deletions)"
+            printf '    %-*s   %s%-17s%s %s%s%s\n' \
+                "$label_width" "${sync_ok_labels[$i]}" "$green" "$summary" "$reset" "$dim" "$delta" "$reset"
+        fi
+    done
 }
 
 # Render a polished, dependency-free fatal error block to stderr describing
@@ -208,6 +301,7 @@ if ((${#sync_fail_labels[@]} > 0)); then
     exit 1
 fi
 echo ">>> Repo sync complete."
+print_sync_summary
 
 enter_axe_maintenance
 stop_axe_if_running

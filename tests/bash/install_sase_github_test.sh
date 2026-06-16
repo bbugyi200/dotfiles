@@ -33,6 +33,7 @@ function set_up() {
     >"${SASE_CORE_DIR}/crates/sase_core_py/pyproject.toml"
   git -C "${SASE_CORE_DIR}" add crates/sase_core_py/pyproject.toml
   git -C "${SASE_CORE_DIR}" commit --quiet -m "add sase-core-rs project"
+  git -C "${SASE_CORE_DIR}" push --quiet origin HEAD >/dev/null 2>&1
 
   write_fake_bins
 }
@@ -55,6 +56,28 @@ function init_clean_repo() {
   git -C "${repo}" commit --quiet --allow-empty -m "init"
   git -C "${repo}" remote add origin "${remote}"
   git -C "${repo}" push --quiet -u origin HEAD >/dev/null 2>&1
+}
+
+function push_incoming_change() {
+  local repo="$1"
+  shift
+  local remote clone file
+
+  remote="$(git -C "${repo}" config --get remote.origin.url)"
+  clone="$(mktemp -d "${TEST_TMP}/incoming-$(basename "${repo}").XXXXXX")"
+  git clone --quiet "${remote}" "${clone}"
+  git -C "${clone}" config user.email "test@example.com"
+  git -C "${clone}" config user.name "Test"
+  git -C "${clone}" config commit.gpgsign false
+
+  for file in "$@"; do
+    mkdir -p "${clone}/$(dirname "${file}")"
+    printf 'incoming %s\n' "${file}" >"${clone}/${file}"
+    git -C "${clone}" add "${file}"
+  done
+
+  git -C "${clone}" commit --quiet -m "incoming change"
+  git -C "${clone}" push --quiet origin HEAD >/dev/null 2>&1
 }
 
 # Stub uv/just/cargo/sase so the post-gate install/build/health phase never
@@ -123,6 +146,12 @@ function calls_text() {
   fi
 }
 
+function sync_summary_line() {
+  local label="$1"
+  local output="$2"
+  printf '%s\n' "${output}" | awk -v label="${label}" '$1 == label { print; exit }'
+}
+
 function test_pull_failure_is_fatal_and_stops_before_install() {
   # Break sase-github's upstream so `git pull --ff-only` fails.
   git -C "${SASE_GITHUB_DIR}" remote set-url origin "${TEST_TMP}/missing-remote.git"
@@ -183,9 +212,38 @@ function test_clean_repos_pass_the_gate_and_reach_install() {
 
   assert_same "0" "${rc}"
   assert_contains ">>> Repo sync complete." "${output}"
+  assert_contains "up to date" "$(sync_summary_line "sase" "${output}")"
+  assert_contains "up to date" "$(sync_summary_line "sase-core" "${output}")"
+  assert_contains "up to date" "$(sync_summary_line "sase-github" "${output}")"
+  assert_contains "up to date" "$(sync_summary_line "sase-telegram" "${output}")"
   assert_not_contains "could not sync required repositories" "${output}"
 
   # The fake install/build commands were reached past the gate.
   assert_contains "uv tool install" "$(calls_text)"
   assert_contains "rust-install-uv-tool" "$(calls_text)"
+}
+
+function test_files_changed_count_is_reported_for_fast_forward_pull() {
+  push_incoming_change "${SASE_CORE_DIR}" one.txt two.txt nested/three.txt
+
+  local output rc
+  if output="$(run_install --install)"; then rc=0; else rc=$?; fi
+
+  assert_same "0" "${rc}"
+  assert_contains ">>> Repo sync complete." "${output}"
+  assert_contains "3 files changed" "$(sync_summary_line "sase-core" "${output}")"
+  assert_contains "up to date" "$(sync_summary_line "sase" "${output}")"
+  assert_contains "up to date" "$(sync_summary_line "sase-github" "${output}")"
+  assert_contains "up to date" "$(sync_summary_line "sase-telegram" "${output}")"
+}
+
+function test_files_changed_count_uses_singular_wording() {
+  push_incoming_change "${SASE_TELEGRAM_DIR}" single.txt
+
+  local output rc
+  if output="$(run_install --install)"; then rc=0; else rc=$?; fi
+
+  assert_same "0" "${rc}"
+  assert_contains "1 file changed" "$(sync_summary_line "sase-telegram" "${output}")"
+  assert_not_contains "1 files changed" "$(sync_summary_line "sase-telegram" "${output}")"
 }
