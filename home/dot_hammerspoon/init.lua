@@ -29,6 +29,7 @@ local taskCapturePrompt = nil
 local taskCaptureController = nil
 local taskCapturePreviousApp = nil
 local taskCaptureTask = nil
+local taskCaptureChooser = nil
 
 local taskCaptureHtml = [=[
 <!doctype html>
@@ -225,8 +226,8 @@ local function restoreTaskCaptureApp()
 	end
 end
 
--- Terminate any in-flight `bob capture` task so a late callback cannot act on a
--- prompt that has already been dismissed.
+-- Terminate any in-flight `bob` task so a late callback cannot act on a prompt
+-- that has already been dismissed.
 local function cancelTaskCaptureTask()
 	local task = taskCaptureTask
 	taskCaptureTask = nil
@@ -237,8 +238,23 @@ local function cancelTaskCaptureTask()
 	end
 end
 
+-- Tear down any open target picker. The module variable is cleared before the
+-- chooser is deleted so that the chooser's own dismissal callback, which is
+-- guarded by object identity, becomes a no-op and cannot refocus a prompt that
+-- is being closed.
+local function cancelTaskCaptureChooser()
+	local chooser = taskCaptureChooser
+	taskCaptureChooser = nil
+	if chooser then
+		pcall(function()
+			chooser:delete()
+		end)
+	end
+end
+
 local function closeTaskCapturePrompt()
 	cancelTaskCaptureTask()
+	cancelTaskCaptureChooser()
 	local prompt = taskCapturePrompt
 	taskCapturePrompt = nil
 	taskCaptureController = nil
@@ -301,7 +317,7 @@ local function trimCaptureText(rawText)
 	return text
 end
 
-local function captureFailureDetail(decoded, stdOut, stdErr)
+local function captureFailureDetail(decoded, stdOut, stdErr, fallback)
 	if type(decoded) == "table"
 		and type(decoded.error) == "string"
 		and decoded.error ~= ""
@@ -314,34 +330,72 @@ local function captureFailureDetail(decoded, stdOut, stdErr)
 	if stdOut ~= "" then
 		return stdOut
 	end
-	return "bob capture reported no detail"
+	return fallback or "bob capture reported no detail"
 end
 
 local function notifyCaptureFailure(detail)
 	hs.notify.show("Task capture failed", "", trimCaptureText(detail))
 end
 
+-- A picker failure is surfaced explicitly instead of silently falling back to
+-- the inbox, which would recreate the behavior this picker is meant to replace.
+local function notifyTargetPickerFailure(detail)
+	hs.notify.show("Task target picker failed", "", trimCaptureText(detail))
+end
+
+local function decodeCaptureJson(out)
+	if out == "" then
+		return nil
+	end
+	local decodeOk, decodeResult = pcall(hs.json.decode, out)
+	if decodeOk then
+		return decodeResult
+	end
+	return nil
+end
+
 -- Reuse the proven Bob Pomodoro launch pattern: a login shell with the GUI PATH
 -- prepended and DATE=gdate exported when available. The task text is passed as
--- the positional parameter $1 (never interpolated) so arbitrary input cannot be
--- evaluated by the shell.
+-- the positional parameter $1 and the optional forced route as $2 (never
+-- interpolated) so arbitrary input cannot be evaluated by the shell.
+local taskCaptureDryRunCommand = [[
+PATH="$HOME/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+export PATH
+if [ -z "${DATE+x}" ] && command -v gdate >/dev/null 2>&1; then
+	export DATE=gdate
+fi
+exec bob capture --dry-run --format json -- "$1"
+]]
+
+local taskCaptureTargetsCommand = [[
+PATH="$HOME/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+export PATH
+exec bob capture-targets --format json
+]]
+
 local taskCaptureCommand = [[
 PATH="$HOME/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 export PATH
 if [ -z "${DATE+x}" ] && command -v gdate >/dev/null 2>&1; then
 	export DATE=gdate
 fi
+if [ -n "${2:-}" ]; then
+	exec bob capture --format json --route "$2" -- "$1"
+fi
 exec bob capture --format json -- "$1"
 ]]
 
-local function submitCapturedTask(rawText)
+-- Run one staged `bob` invocation. The async callback is guarded by the live
+-- task object so a late response cannot act on a prompt that has already moved
+-- on or been dismissed. extraArgs become the positional parameters $1, $2, ...
+local function startCaptureStage(command, extraArgs, onComplete, notifyFailure)
 	if taskCaptureTask then
-		return
+		return false
 	end
 
-	local text = trimCaptureText(rawText)
-	if text == "" then
-		return
+	local args = { "-lc", command, "bob-capture" }
+	for _, value in ipairs(extraArgs) do
+		args[#args + 1] = value
 	end
 
 	local task
@@ -353,15 +407,41 @@ local function submitCapturedTask(rawText)
 
 		local out = trimCaptureText(stdOut)
 		local err = trimCaptureText(stdErr)
+		onComplete(exitCode, decodeCaptureJson(out), out, err)
+	end, args)
 
-		local decoded = nil
-		if out ~= "" then
-			local decodeOk, decodeResult = pcall(hs.json.decode, out)
-			if decodeOk then
-				decoded = decodeResult
-			end
+	if not task then
+		notifyFailure("could not create bob task")
+		return false
+	end
+
+	taskCaptureTask = task
+	local startOk, started = pcall(function()
+		return task:start()
+	end)
+	if not startOk or not started then
+		taskCaptureTask = nil
+		if startOk then
+			notifyFailure("could not start bob task")
+		else
+			notifyFailure(started)
 		end
+		return false
+	end
 
+	return true
+end
+
+-- Stage 3: write the task. An empty route runs the unrouted inbox path; a
+-- non-empty route forces `--route`. On success the prompt is closed; on failure
+-- the prompt stays open so the typed text is not lost.
+local function runFinalCapture(text, route)
+	local extraArgs = { text }
+	if type(route) == "string" and route ~= "" then
+		extraArgs[#extraArgs + 1] = route
+	end
+
+	startCaptureStage(taskCaptureCommand, extraArgs, function(exitCode, decoded, out, err)
 		if exitCode == 0
 			and type(decoded) == "table"
 			and decoded.ok == true
@@ -380,25 +460,162 @@ local function submitCapturedTask(rawText)
 		end
 
 		notifyCaptureFailure(captureFailureDetail(decoded, out, err))
-	end, { "-lc", taskCaptureCommand, "bob-capture", text })
+	end, notifyCaptureFailure)
+end
 
-	if not task then
-		notifyCaptureFailure("could not create bob capture task")
+-- Derive the picker subtext that distinguishes inbox, area, and project rows.
+-- This textual distinction is the source of truth even when a per-kind image is
+-- unavailable.
+local function captureTargetSubText(target)
+	if target.is_default == true or target.kind == "inbox" then
+		return "Inbox - default"
+	end
+	if target.kind == "area" then
+		return "Area"
+	end
+	if target.kind == "project" then
+		local status = target.status
+		if type(status) == "string" and status ~= "" then
+			return "Project - " .. status
+		end
+		return "Project"
+	end
+	return ""
+end
+
+-- Best-effort per-kind row image. A missing named image simply yields no image,
+-- leaving the subtext to carry the distinction.
+local function captureTargetImage(kind)
+	local names = {
+		inbox = "NSInbox",
+		area = "NSFolder",
+		project = "NSListViewTemplate",
+	}
+	local imageName = names[kind]
+	if not imageName then
+		return nil
+	end
+	local ok, image = pcall(hs.image.imageFromName, imageName)
+	if ok then
+		return image
+	end
+	return nil
+end
+
+-- Map the CLI target contract onto chooser rows, preserving the emitted order
+-- so mac_inbox stays pinned first.
+local function buildCaptureChoices(targets)
+	local choices = {}
+	for _, target in ipairs(targets) do
+		if type(target) == "table" and type(target.route) == "string" then
+			local choice = {
+				text = tostring(target.name or target.route),
+				subText = captureTargetSubText(target),
+				route = target.route,
+				kind = target.kind,
+				is_default = target.is_default == true,
+			}
+			local image = captureTargetImage(target.kind)
+			if image then
+				choice.image = image
+			end
+			choices[#choices + 1] = choice
+		end
+	end
+	return choices
+end
+
+-- Stage 2b: show the native picker for unrouted text. Dismissing it refocuses
+-- the prompt with the typed text intact; the default inbox row runs the
+-- unrouted capture path while any other row forces its route.
+local function showTaskCaptureChooser(text, targets)
+	local choices = buildCaptureChoices(targets)
+	if #choices == 0 then
+		notifyTargetPickerFailure("no capture targets were returned")
 		return
 	end
 
-	taskCaptureTask = task
-	local startOk, started = pcall(function()
-		return task:start()
-	end)
-	if not startOk or not started then
-		taskCaptureTask = nil
-		if startOk then
-			notifyCaptureFailure("could not start bob capture task")
-		else
-			notifyCaptureFailure(started)
+	local chooser
+	chooser = hs.chooser.new(function(choice)
+		if taskCaptureChooser ~= chooser then
+			return
 		end
+		taskCaptureChooser = nil
+
+		if type(choice) ~= "table" then
+			focusTaskCapturePrompt()
+			return
+		end
+
+		local route = nil
+		if choice.is_default ~= true and type(choice.route) == "string" then
+			route = choice.route
+		end
+		runFinalCapture(text, route)
+	end)
+
+	if not chooser then
+		notifyTargetPickerFailure("could not create the target picker")
+		return
 	end
+
+	taskCaptureChooser = chooser
+	chooser:placeholderText("Capture target")
+	chooser:choices(choices)
+	chooser:show()
+end
+
+-- Stage 2a: fetch the picker rows. A failure here surfaces a dedicated picker
+-- notification instead of silently falling back to the inbox.
+local function startTargetsStage(text)
+	startCaptureStage(taskCaptureTargetsCommand, {}, function(exitCode, decoded, out, err)
+		if exitCode == 0
+			and type(decoded) == "table"
+			and decoded.ok == true
+			and type(decoded.targets) == "table"
+		then
+			showTaskCaptureChooser(text, decoded.targets)
+			return
+		end
+
+		notifyTargetPickerFailure(captureFailureDetail(
+			decoded,
+			out,
+			err,
+			"bob capture-targets reported no detail"
+		))
+	end, notifyTargetPickerFailure)
+end
+
+-- Stage 1: snapshot the prompt text and run a dry-run to learn whether the text
+-- already carries an explicit @route. Routed text captures immediately; unrouted
+-- text opens the target picker.
+local function submitCapturedTask(rawText)
+	if taskCaptureTask or taskCaptureChooser then
+		return
+	end
+
+	local text = trimCaptureText(rawText)
+	if text == "" then
+		return
+	end
+
+	startCaptureStage(taskCaptureDryRunCommand, { text }, function(exitCode, decoded, out, err)
+		if exitCode ~= 0
+			or type(decoded) ~= "table"
+			or decoded.ok ~= true
+		then
+			notifyCaptureFailure(captureFailureDetail(decoded, out, err))
+			return
+		end
+
+		if decoded.routed == true then
+			runFinalCapture(text, nil)
+			return
+		end
+
+		startTargetsStage(text)
+	end, notifyCaptureFailure)
 end
 
 local function showTaskCapturePrompt()
@@ -446,6 +663,7 @@ local function showTaskCapturePrompt()
 			taskCapturePrompt = nil
 			taskCaptureController = nil
 			cancelTaskCaptureTask()
+			cancelTaskCaptureChooser()
 			restoreTaskCaptureApp()
 		end
 	end)
