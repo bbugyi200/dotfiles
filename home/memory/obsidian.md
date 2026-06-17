@@ -1,4 +1,6 @@
 ---
+type: long
+parent: AGENTS.md
 description: Obsidian vault, notes workflow, and obsidian-headless/ob usage.
 ---
 

@@ -1,3 +1,8 @@
+---
+type: short
+parent: AGENTS.md
+---
+
 # SASE = Structured Agentic Software Engineering
 
 ## Sibling Repositories

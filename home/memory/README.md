@@ -3,7 +3,7 @@
 The `memory/` directory holds agent-facing project context. Use `sase memory list` to inspect what a launch would load
 or reference, and `sase memory init` to create or refresh generated memory files.
 
-- `memory/short/` contains short-term context that is loaded when an instruction root reaches it through an
-  `@memory/...` reference.
-- `memory/long/` contains detailed long-term context. Plain `memory/...` mentions make files visible as references, but
-  do not load file contents unless the file is also reached through an `@...` reference.
+- Non-README Markdown files live directly under `memory/` and use YAML frontmatter for `type` and `parent`.
+- `type: short` notes are always-loaded context when reached through an `@memory/...` reference.
+- `type: long` notes are detailed reference material. They require a `description` and are read with `sase memory read`.
+- Long notes can set `parent: memory/<note>.md` to appear in that parent note's `## Children` section.
