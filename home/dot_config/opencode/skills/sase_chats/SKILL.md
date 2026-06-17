@@ -48,7 +48,7 @@ If `--agent <name>` exits non-zero, walk this fallback chain before giving up:
 
 1. `sase chat list -j -q '<name>'` — catches step-suffixed siblings (`<name>.plan`, `<name>.commit`, ...) that the named
    lookup missed.
-2. `sase agents list -a -j` filtered to `<name>` — includes recently DONE/FAILED agents, not just RUNNING.
+2. `sase agent list -a -j` filtered to `<name>` — includes recently DONE/FAILED agents, not just RUNNING.
 3. If the agent is still RUNNING, hand off to the `/sase_agents_status` skill for the artifacts-dir workflow (live
    reply, workflow checkpoints, mid-run plan drafts).
 
