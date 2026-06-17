@@ -37,8 +37,8 @@ This prints a stable-shape JSON array to stdout. Each row has: `name`, `project`
 - `sase agents status -p <project>` — filter by project name.
 - `sase agents show -n <name>` — full detail panel (prompt, pid, artifacts dir, live-tail hint).
 - `sase agents kill -n <name>` — SIGTERM an agent by name. No confirmation prompt; use with care.
-- For completed agents' transcripts, use the `/sase_chats` skill — `sase chats show --agent <name>` resolves to the
-  saved chat for any agent that has run.
+- For completed agents' transcripts, use the `/sase_chats` skill — `sase chat show --agent <name>` resolves to the saved
+  chat for any agent that has run.
 
 ## Retrying an agent
 
