@@ -16,7 +16,7 @@ Quick reference for answering "what's running?" questions about sase agents.
 ## Primary command
 
 ```bash
-sase agents status -j
+sase agents list -j
 ```
 
 This prints a stable-shape JSON array to stdout. Each row has: `name`, `project`, `pid`, `model`, `provider`,
@@ -32,21 +32,21 @@ This prints a stable-shape JSON array to stdout. Each row has: `name`, `project`
 
 ## Other useful forms
 
-- `sase agents status` — pretty rich table (for direct terminal use, not machine consumption).
-- `sase agents status -a` — include recently-completed DONE/FAILED agents.
-- `sase agents status -p <project>` — filter by project name.
+- `sase agents list` — pretty rich table (for direct terminal use, not machine consumption).
+- `sase agents list -a` — include recently-completed DONE/FAILED agents.
+- `sase agents list -p <project>` — filter by project name.
 - `sase agents show -n <name>` — full detail panel (prompt, pid, artifacts dir, live-tail hint).
 - `sase agents kill -n <name>` — SIGTERM an agent by name. No confirmation prompt; use with care.
-- For completed agents' transcripts, use the `/sase_chats` skill — `sase chat show --agent <name>` resolves to the saved
-  chat for any agent that has run.
+- For completed agents' transcripts, use the `/sase_chats` skill — `sase chats show --agent <name>` resolves to the
+  saved chat for any agent that has run.
 
 ## Retrying an agent
 
-For ordinary retries, locate the source with `sase agents status -a -j` or `sase agents show -n <name>`, prefer
+For ordinary retries, locate the source with `sase agents list -a -j` or `sase agents show -n <name>`, prefer
 `<artifacts_dir>/raw_xprompt.md` as the prompt source, allocate a fresh name with
 `sase.agent.names.allocate_retry_name("<name>")`, then rewrite the prompt through
 `sase.agent.retry_prompt.rewrite_retry_prompt_name(raw_prompt, retry_name)` before launching with
-`sase run -d "$rewritten_prompt"`. Confirm the new run with `sase agents status -a -j` or
+`sase run -d "$rewritten_prompt"`. Confirm the new run with `sase agents list -a -j` or
 `sase agents show -n <retry-name>`. Do not use `%name:!<name>` from non-TUI surfaces for ordinary retries; reserve
 forced same-name reuse for explicitly approved reruns through code paths that call `wipe_names_for_forced_reuse`.
 

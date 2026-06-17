@@ -17,7 +17,7 @@ Quick reference for answering "what did the previous agent say?" questions about
 ## Primary command
 
 ```bash
-sase chat list -j
+sase chats list -j
 ```
 
 Prints a stable-shape JSON array of recent transcripts, newest first. Each row has: `path`, `basename`, `mtime`,
@@ -26,15 +26,15 @@ when summarizing.
 
 Useful list options:
 
-- `sase chat list -j -l 20` — cap how many rows are returned (default is conservative).
-- `sase chat list -j -q '<text>'` — case-insensitive content/path/basename filter.
+- `sase chats list -j -l 20` — cap how many rows are returned (default is conservative).
+- `sase chats list -j -q '<text>'` — case-insensitive content/path/basename filter.
 
 ## Looking up a specific transcript
 
 When the user names an agent, resolve by name first:
 
 ```bash
-sase chat show --agent <name>
+sase chats show --agent <name>
 ```
 
 This follows the same fallback as `#fork`: completed agent's `done.json["response_path"]` first, then
@@ -46,9 +46,9 @@ Step-suffixed child workflows (e.g. `<name>.plan`, `<name>.commit`) are recorded
 
 If `--agent <name>` exits non-zero, walk this fallback chain before giving up:
 
-1. `sase chat list -j -q '<name>'` — catches step-suffixed siblings (`<name>.plan`, `<name>.commit`, ...) that the named
-   lookup missed.
-2. `sase agents status -a -j` filtered to `<name>` — includes recently DONE/FAILED agents, not just RUNNING.
+1. `sase chats list -j -q '<name>'` — catches step-suffixed siblings (`<name>.plan`, `<name>.commit`, ...) that the
+   named lookup missed.
+2. `sase agents list -a -j` filtered to `<name>` — includes recently DONE/FAILED agents, not just RUNNING.
 3. If the agent is still RUNNING, hand off to the `/sase_agents_status` skill for the artifacts-dir workflow (live
    reply, workflow checkpoints, mid-run plan drafts).
 
@@ -60,15 +60,15 @@ transcripts).
 When the user gives a path or basename:
 
 ```bash
-sase chat show --path <path>
-sase chat show --basename <basename>
+sase chats show --path <path>
+sase chats show --basename <basename>
 ```
 
 Exactly one selector (`--agent`, `--path`, or `--basename`) is required.
 
 ## Picking the right `--format`
 
-`sase chat show` defaults to `-f raw` (full transcript markdown). Switch when the question is narrower:
+`sase chats show` defaults to `-f raw` (full transcript markdown). Switch when the question is narrower:
 
 - `-f response` — just the agent's latest response. Use this for "what did agent X conclude?" or "what was the
   recommendation?". Exits non-zero if no response heading can be parsed; fall back to `-f raw` and say so rather than
@@ -81,7 +81,7 @@ Exactly one selector (`--agent`, `--path`, or `--basename`) is required.
 - Always cite the agent name and `path`/`basename` you read so the user can open the source.
 - Distinguish prompt content from response content — they live under separate headings in the transcript.
 - Prefer short excerpts over long quotes; only include a longer quote when the exact wording matters.
-- If `sase chat list -j` returns an empty array, say "no transcripts found" plainly — do not fabricate rows.
+- If `sase chats list -j` returns an empty array, say "no transcripts found" plainly — do not fabricate rows.
 - If a named-agent lookup fails AND the fallback chain above (content-filtered list, `-a` status, `/sase_agents_status`
   artifacts) turns up nothing, say so plainly instead of falling back to an unrelated transcript.
 
