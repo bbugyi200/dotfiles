@@ -1,6 +1,7 @@
 ---
 name: sase_beads
-description: Reference for sase bead commands (create, update, list, ready, show, dep). Use when working with beads.
+description:
+  Reference for sase bead commands (create, update, list, search, ready, show, dep). Use when working with beads.
 ---
 
 Before doing anything else, run this command to record that you are using this skill:
@@ -112,6 +113,29 @@ sase bead list --tier=legend
 ```
 
 Output format: `[icon] [id] · [title][ ← parent_id]` where icons are `○` open, `◐` in_progress, `✓` closed.
+
+### search
+
+```bash
+# Search every bead status with compact output
+sase bead search auth --format compact
+
+# Emit a machine-readable JSON envelope
+sase bead search auth --format json
+
+# Show complete bead details for the first 3 matches
+sase bead search auth --format full --limit 3
+
+# Scope by status and type
+sase bead search auth --status open --type phase
+
+# Scope plan beads by tier
+sase bead search auth --type plan --tier epic
+```
+
+Search uses a case-insensitive literal substring match across human-readable bead fields. It searches open, in-progress,
+and closed beads by default; use `--status`, `--type`, and `--tier` to narrow results. A missing `--limit` or
+`--limit 0` means unlimited results.
 
 ### ready
 
