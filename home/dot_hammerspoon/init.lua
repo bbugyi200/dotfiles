@@ -521,10 +521,14 @@ local function buildCaptureChoices(targets)
 	return choices
 end
 
--- Show the native area/project picker for a trailing `@` request. Dismissing it
--- refocuses the prompt with the typed text intact; selecting any row forces that
--- row's route, since the inbox is reachable only via plain Enter.
-local function showTaskCaptureChooser(text, targets)
+-- Show the native area/project picker for a trailing `@` or `@#section` request.
+-- Dismissing it refocuses the prompt with the typed text intact. For a bare `@`,
+-- selecting any row forces that row's route, since the inbox is reachable only
+-- via plain Enter. For an `@#section` request, the chosen route is synthesized
+-- into a concrete leading `@route#section` token so Bob's own parser owns the
+-- bullet placement; leading the token makes the picked route win even when the
+-- body itself begins with an explicit `@route`.
+local function showTaskCaptureChooser(text, targets, bulletSuffix)
 	local choices = buildCaptureChoices(targets)
 	if #choices == 0 then
 		notifyTargetPickerFailure("no capture targets were returned")
@@ -543,7 +547,11 @@ local function showTaskCaptureChooser(text, targets)
 			return
 		end
 
-		runFinalCapture(text, choice.route)
+		if bulletSuffix then
+			runFinalCapture("@" .. choice.route .. bulletSuffix .. " " .. text, nil)
+		else
+			runFinalCapture(text, choice.route)
+		end
 	end)
 
 	if not chooser then
@@ -558,15 +566,17 @@ local function showTaskCaptureChooser(text, targets)
 end
 
 -- Fetch the picker rows. A failure here surfaces a dedicated picker notification
--- instead of silently falling back to the inbox.
-local function startTargetsStage(text)
+-- instead of silently falling back to the inbox. The optional bullet suffix is
+-- threaded through to the chooser so an `@#section` request can be finalized as a
+-- routed bullet once a target is picked.
+local function startTargetsStage(text, bulletSuffix)
 	startCaptureStage(taskCaptureTargetsCommand, {}, function(exitCode, decoded, out, err)
 		if exitCode == 0
 			and type(decoded) == "table"
 			and decoded.ok == true
 			and type(decoded.targets) == "table"
 		then
-			showTaskCaptureChooser(text, decoded.targets)
+			showTaskCaptureChooser(text, decoded.targets, bulletSuffix)
 			return
 		end
 
@@ -579,35 +589,54 @@ local function startTargetsStage(text)
 	end, notifyTargetPickerFailure)
 end
 
--- Detect the area/project picker marker: a bare trailing `@` preceded by
--- whitespace, e.g. `foo bar baz @`. The marker is opt-in UI sugar handled
--- entirely on the Hammerspoon side, so `foo@`, `foo @cash`, and `@cash foo` are
--- left untouched and Bob's own route parser keeps owning explicit @route input.
--- Returns the task text to capture and whether the picker was requested.
+-- Detect the area/project picker marker as the final whitespace-separated token,
+-- preceded by whitespace, e.g. `foo bar baz @`. Two forms are recognized:
+--
+--   * `@`            -> open the picker and capture a normal task.
+--   * `@#<prefix>`   -> open the picker and capture a bullet routed to the chosen
+--                       note's matching section; a bare `@#` uses the first
+--                       non-`Tasks` section, mirroring Bob's concrete `@note#`.
+--
+-- The marker is opt-in UI sugar handled entirely on the Hammerspoon side, so
+-- `foo@`, `foo @cash`, `foo @cash#Ideas`, `@cash foo`, `foo @ #Ideas`, and
+-- `foo @#Ideas extra` are left untouched and Bob's own route parser keeps owning
+-- explicit @route input. The `#<prefix>` case is preserved exactly because Bob
+-- preserves the prefix and compares headings case-insensitively.
+--
+-- Returns the task text to capture, whether the picker was requested, and an
+-- optional bullet route suffix (`#Ideas` or `#`) for the `@#...` form.
 local function parseCaptureRequest(rawText)
 	local text = trimCaptureText(rawText)
+
+	local strippedBullet, bulletPrefix = text:match("^(.-)%s+@#(%S*)$")
+	if strippedBullet then
+		return trimCaptureText(strippedBullet), true, "#" .. bulletPrefix
+	end
+
 	local stripped = text:match("^(.-)%s+@$")
 	if stripped then
-		return trimCaptureText(stripped), true
+		return trimCaptureText(stripped), true, nil
 	end
-	return text, false
+
+	return text, false, nil
 end
 
--- Snapshot the prompt text and route it. A trailing bare `@` marker opts into the
--- area/project picker with the marker stripped; everything else captures
--- immediately, letting `bob capture` own route parsing and the inbox default.
+-- Snapshot the prompt text and route it. A trailing `@` or `@#section` marker
+-- opts into the area/project picker with the marker stripped; everything else
+-- captures immediately, letting `bob capture` own route parsing and the inbox
+-- default. An empty body after stripping the marker is a no-op.
 local function submitCapturedTask(rawText)
 	if taskCaptureTask or taskCaptureChooser then
 		return
 	end
 
-	local text, pickerRequested = parseCaptureRequest(rawText)
+	local text, pickerRequested, bulletSuffix = parseCaptureRequest(rawText)
 	if text == "" then
 		return
 	end
 
 	if pickerRequested then
-		startTargetsStage(text)
+		startTargetsStage(text, bulletSuffix)
 		return
 	end
 
