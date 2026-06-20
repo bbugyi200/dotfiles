@@ -4,7 +4,7 @@ precommit_command: "sase_git_fix"
 github_orgs:
   - bbugyi200
   - sase-org
-sibling_repos:
+linked_repos:
   - name: chezmoi
     path: ~/.local/share/chezmoi
     description: Chezmoi-managed dotfiles and global SASE configuration source.
