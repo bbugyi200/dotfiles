@@ -11,6 +11,7 @@ Enforces three rules:
 Directories that contain an __init__.py file are treated as Python packages
 and are skipped entirely — their files are modules, not standalone scripts.
 Markdown files (.md) are skipped — they are documentation, not scripts.
+Nested git repositories are skipped — they belong to separate checkouts.
 """
 
 import argparse
@@ -60,7 +61,13 @@ def _find_target_dirs(root: Path) -> list[Path]:
     """Find all scripts/ and tools/ directories under root."""
     result: list[Path] = []
     for dirpath, dirnames, _ in os.walk(root):
-        dirnames[:] = [d for d in dirnames if d not in _EXCLUDE_DIRS]
+        current_dir = Path(dirpath)
+        dirnames[:] = [
+            d
+            for d in dirnames
+            if d not in _EXCLUDE_DIRS
+            and not (current_dir / d / ".git").exists()
+        ]
         for d in list(dirnames):
             if d in _DIR_NAMES:
                 result.append(Path(dirpath) / d)
