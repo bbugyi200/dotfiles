@@ -86,6 +86,18 @@ llm_provider:
     codex: claude/opus
   model_aliases:
     other: claude/opus
+    # Antigravity (agy) model aliases. The exact `agy models` display names
+    # carry spaces and parentheses, so route them through stable alias tokens
+    # that %model fanout directives can reference safely.
+    agy_flash: "agy/Gemini 3.5 Flash (High)"
+    agy_flash_high: "agy/Gemini 3.5 Flash (High)"
+    agy_flash_mid: "agy/Gemini 3.5 Flash (Medium)"
+    agy_flash_low: "agy/Gemini 3.5 Flash (Low)"
+    agy_pro: "agy/Gemini 3.1 Pro (High)"
+    agy_pro_low: "agy/Gemini 3.1 Pro (Low)"
+    agy_sonnet: "agy/Claude Sonnet 4.6 (Thinking)"
+    agy_opus: "agy/Claude Opus 4.6 (Thinking)"
+    agy_gptoss: "agy/GPT-OSS 120B (Medium)"
 
 xprompts:
   # snippets
@@ -107,26 +119,50 @@ xprompts:
   # VCS project aliases
   gh_dotfiles: "#gh:dotfiles"
   gh_sase: "#gh:sase"
-  # models
-  flash: "gemini/gemini-3.5-flash"
+  # models / provider presets
+  flash: "#agy_flash"
   codex: "gpt-5.5"
   codex3: "gpt-5.3-codex"
-  gem: "#pro"
-  pro: "gemini-3.1-pro-preview"
+  gem: "#agy"
+  gemini: "#agy"
+  pro: "#agy_pro"
+  # Antigravity (agy) model presets. These expand to model-alias tokens
+  # defined in llm_provider.model_aliases above.
+  agy: "agy_flash"
+  agy_flash: "agy_flash"
+  agy_flash_high: "agy_flash_high"
+  agy_flash_mid: "agy_flash_mid"
+  agy_flash_low: "agy_flash_low"
+  agy_pro: "agy_pro"
+  agy_pro_low: "agy_pro_low"
+  agy_sonnet: "agy_sonnet"
+  agy_opus: "agy_opus"
+  agy_gptoss: "agy_gptoss"
   # %model aliases
+  m_agy: "%model:#agy"
+  m_agy_flash: "%model:#agy_flash"
+  m_agy_flash_mid: "%model:#agy_flash_mid"
+  m_agy_flash_low: "%model:#agy_flash_low"
+  m_agy_pro: "%model:#agy_pro"
+  m_agy_pro_low: "%model:#agy_pro_low"
+  m_agy_pro_flash: "%model(#agy_pro, #agy_flash)"
+  m_agy_sonnet: "%model:#agy_sonnet"
+  m_agy_opus: "%model:#agy_opus"
+  m_agy_gptoss: "%model:#agy_gptoss"
   m_codex: "%model:#codex"
-  m_flash: "%model:#flash"
+  m_flash: "#m_agy_flash"
   m_fable: "%m:claude/claude-fable-5"
   m_jet: "%model:#jet"
-  m_jet_pro_flash: "#m_jet #m_pro_flash"
+  m_jet_agy: "#m_jet #m_agy_pro_flash"
+  m_jet_pro_flash: "#m_jet_agy"
   m_opus: "%model:opus"
   m_opus_codex: "%model(opus, #codex)"
   m_opus_sonnet: "%model(opus, sonnet)"
-  m_pro: "%model:#gem"
-  m_pro_flash: "%model(#gem, #flash)"
+  m_pro: "#m_agy_pro"
+  m_pro_flash: "#m_agy_pro_flash"
   m_sonnet: "%model:sonnet"
   m_spark: "%model:codex/gpt-5.3-codex-spark"
-  m_swarm: "%model(opus, #codex, #gem)"
+  m_swarm: "%model(opus, #codex, #agy)"
   m_qwen: "%model:qwen3.6-plus"
   perf:
     snippet: true
