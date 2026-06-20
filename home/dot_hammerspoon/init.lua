@@ -317,6 +317,50 @@ local function trimCaptureText(rawText)
 	return text
 end
 
+local captureSuccessPrefix = "\226\156\147"
+local captureFailurePrefix = "\226\154\160"
+local captureLabelSeparator = " \194\183 "
+
+local function truncateForBanner(rawText, maxLength)
+	local text = trimCaptureText(rawText):gsub("%s+", " ")
+	maxLength = maxLength or 100
+	if text == "" or maxLength <= 0 then
+		return text
+	end
+
+	local ellipsis = "..."
+	local cutoffLength = math.max(maxLength - #ellipsis, 1)
+	local utf8Module = utf8 or hs.utf8
+	if type(utf8Module) == "table"
+		and type(utf8Module.len) == "function"
+		and type(utf8Module.offset) == "function"
+	then
+		local lenOk, textLength = pcall(utf8Module.len, text)
+		if lenOk and type(textLength) == "number" then
+			if textLength <= maxLength then
+				return text
+			end
+
+			local offsetOk, cutoff = pcall(utf8Module.offset, text, cutoffLength + 1)
+			if offsetOk and type(cutoff) == "number" then
+				return trimCaptureText(text:sub(1, cutoff - 1)) .. ellipsis
+			end
+		end
+	end
+
+	if #text <= maxLength then
+		return text
+	end
+	return trimCaptureText(text:sub(1, cutoffLength)) .. ellipsis
+end
+
+local function firstLineForBanner(rawText, maxLength)
+	local text = trimCaptureText(rawText)
+	text = text:gsub("\r\n", "\n"):gsub("\r", "\n")
+	text = text:match("^[^\n]*") or text
+	return truncateForBanner(text, maxLength or 140)
+end
+
 local function captureFailureDetail(decoded, stdOut, stdErr, fallback)
 	if type(decoded) == "table"
 		and type(decoded.error) == "string"
@@ -333,14 +377,150 @@ local function captureFailureDetail(decoded, stdOut, stdErr, fallback)
 	return fallback or "bob capture reported no detail"
 end
 
+local function captureKindLabel(kind)
+	if kind == "area" then
+		return "Area"
+	end
+	if kind == "project" then
+		return "Project"
+	end
+	return ""
+end
+
+local function titleCaseWords(text)
+	return (text:gsub("(%a)([%w_']*)", function(first, rest)
+		return first:upper() .. rest
+	end))
+end
+
+local function prettifyCaptureRouteLabel(rawLabel)
+	local label = trimCaptureText(rawLabel)
+	if label == "" then
+		return ""
+	end
+
+	label = label:gsub("^.*/", "")
+	label = label:gsub("%.md$", "")
+	if label == "mac_inbox" then
+		return "Inbox"
+	end
+
+	label = label:gsub("[_-]+", " ")
+	return titleCaseWords(label)
+end
+
+local function captureDestinationLabel(decoded, pickedName, pickedKind)
+	if type(decoded) ~= "table" or decoded.routed ~= true then
+		return "Inbox"
+	end
+
+	local label = trimCaptureText(pickedName)
+	local kindLabel = captureKindLabel(pickedKind)
+	if label ~= "" and kindLabel ~= "" then
+		label = label .. captureLabelSeparator .. kindLabel
+	elseif label == "" then
+		if type(decoded.route_label) == "string" then
+			label = prettifyCaptureRouteLabel(decoded.route_label)
+		end
+		if label == "" and type(decoded.target) == "string" then
+			label = prettifyCaptureRouteLabel(decoded.target)
+		end
+	end
+
+	if label == "" then
+		label = "Obsidian"
+	end
+	if decoded.placement == "created" and label ~= "Inbox" then
+		return "New note" .. captureLabelSeparator .. label
+	end
+	return label
+end
+
+local function obsidianOpenUrl(targetPath)
+	local path = trimCaptureText(targetPath)
+	if path == "" then
+		return nil
+	end
+	return "obsidian://open?path=" .. hs.http.encodeForQuery(path)
+end
+
+local function obsidianContentImage()
+	local ok, image = pcall(hs.image.imageFromAppBundle, "md.obsidian")
+	if ok then
+		return image
+	end
+	return nil
+end
+
+local function notifyWithAttributes(attributes, callback)
+	local ok, notification = pcall(hs.notify.new, callback, attributes)
+	if ok and notification then
+		notification:send()
+		return
+	end
+
+	hs.notify.show(
+		attributes.title or "Notification",
+		attributes.subTitle or "",
+		attributes.informativeText or ""
+	)
+end
+
+local function notifyCaptureSuccess(decoded, pickedName, pickedKind)
+	local title = captureSuccessPrefix .. " Captured"
+	if decoded.kind == "task" then
+		title = captureSuccessPrefix .. " Task captured"
+	elseif decoded.kind == "bullet" then
+		title = captureSuccessPrefix .. " Note captured"
+	end
+
+	local attributes = {
+		title = title,
+		subTitle = captureDestinationLabel(decoded, pickedName, pickedKind),
+	}
+
+	local body = truncateForBanner(decoded.text, 100)
+	if body ~= "" then
+		attributes.informativeText = body
+	end
+
+	local image = obsidianContentImage()
+	if image then
+		attributes.contentImage = image
+	end
+
+	local openUrl = obsidianOpenUrl(decoded.target)
+	local callback = nil
+	if openUrl then
+		callback = function()
+			hs.urlevent.openURL(openUrl)
+		end
+	end
+
+	notifyWithAttributes(attributes, callback)
+end
+
+local function notifyCaptureProblem(title, detail)
+	local body = firstLineForBanner(detail, 140)
+	if body == "" then
+		body = "bob capture reported no detail"
+	end
+
+	notifyWithAttributes({
+		title = captureFailurePrefix .. " " .. title,
+		informativeText = body,
+		soundName = hs.notify.defaultNotificationSound,
+	}, nil)
+end
+
 local function notifyCaptureFailure(detail)
-	hs.notify.show("Task capture failed", "", trimCaptureText(detail))
+	notifyCaptureProblem("Capture failed", detail)
 end
 
 -- A picker failure is surfaced explicitly instead of silently falling back to
 -- the inbox, which would recreate the behavior this picker is meant to replace.
 local function notifyTargetPickerFailure(detail)
-	hs.notify.show("Task target picker failed", "", trimCaptureText(detail))
+	notifyCaptureProblem("Capture target picker failed", detail)
 end
 
 local function decodeCaptureJson(out)
@@ -427,7 +607,7 @@ end
 -- Write the task. A nil/empty route runs the unrouted inbox path; a non-empty
 -- route forces `--route`. On success the prompt is closed; on failure the prompt
 -- stays open so the typed text is not lost.
-local function runFinalCapture(text, route)
+local function runFinalCapture(text, route, pickedName, pickedKind)
 	local extraArgs = { text }
 	if type(route) == "string" and route ~= "" then
 		extraArgs[#extraArgs + 1] = route
@@ -438,15 +618,7 @@ local function runFinalCapture(text, route)
 			and type(decoded) == "table"
 			and decoded.ok == true
 		then
-			local routeLabel = ""
-			if type(decoded.route_label) == "string" then
-				routeLabel = decoded.route_label
-			end
-			local body = ""
-			if type(decoded.text) == "string" then
-				body = decoded.text
-			end
-			hs.notify.show("Captured task", routeLabel, body)
+			notifyCaptureSuccess(decoded, pickedName, pickedKind)
 			closeTaskCapturePrompt()
 			return
 		end
@@ -548,9 +720,14 @@ local function showTaskCaptureChooser(text, targets, bulletSuffix)
 		end
 
 		if bulletSuffix then
-			runFinalCapture("@" .. choice.route .. bulletSuffix .. " " .. text, nil)
+			runFinalCapture(
+				"@" .. choice.route .. bulletSuffix .. " " .. text,
+				nil,
+				choice.text,
+				choice.kind
+			)
 		else
-			runFinalCapture(text, choice.route)
+			runFinalCapture(text, choice.route, choice.text, choice.kind)
 		end
 	end)
 
