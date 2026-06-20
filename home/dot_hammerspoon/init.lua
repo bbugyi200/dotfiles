@@ -436,34 +436,143 @@ local function captureDestinationLabel(decoded, pickedName, pickedKind)
 	return label
 end
 
+-- Lightweight breadcrumb logger for the capture notification path. Output lands
+-- in the Hammerspoon console so a missing banner can be diagnosed as a creation
+-- error, a send failure, or macOS declining to present a delivered notification.
+local function captureNotifyDebug(fmt, ...)
+	local ok, message = pcall(string.format, fmt, ...)
+	if not ok then
+		message = tostring(fmt)
+	end
+	hs.printf("%s", "[bob-capture-notify] " .. message)
+end
+
+-- Minimal percent-encoder used only when `hs.http.encodeForQuery` is missing, so
+-- an unavailable helper can never abort notification delivery.
+local function encodeForQueryFallback(text)
+	return (tostring(text):gsub("[^%w%-_%.~]", function(char)
+		return string.format("%%%02X", string.byte(char))
+	end))
+end
+
 local function obsidianOpenUrl(targetPath)
 	local path = trimCaptureText(targetPath)
 	if path == "" then
 		return nil
 	end
-	return "obsidian://open?path=" .. hs.http.encodeForQuery(path)
+
+	local encoded = nil
+	if hs.http and type(hs.http.encodeForQuery) == "function" then
+		local ok, result = pcall(hs.http.encodeForQuery, path)
+		if ok and type(result) == "string" then
+			encoded = result
+		end
+	end
+	if not encoded then
+		local ok, result = pcall(encodeForQueryFallback, path)
+		if ok and type(result) == "string" then
+			encoded = result
+		end
+	end
+	if not encoded then
+		return nil
+	end
+
+	return "obsidian://open?path=" .. encoded
 end
 
 local function obsidianContentImage()
+	if not (hs.image and type(hs.image.imageFromAppBundle) == "function") then
+		return nil
+	end
 	local ok, image = pcall(hs.image.imageFromAppBundle, "md.obsidian")
-	if ok then
+	if ok and type(image) == "userdata" then
 		return image
 	end
 	return nil
 end
 
-local function notifyWithAttributes(attributes, callback)
-	local ok, notification = pcall(hs.notify.new, callback, attributes)
-	if ok and notification then
-		notification:send()
+-- After sending, log whether macOS actually presented the banner. A delivered
+-- but unpresented notification (Focus mode, notification settings) is otherwise
+-- indistinguishable from "nothing happened". Best-effort: never throws and never
+-- shows a duplicate banner just because presented() is false.
+local function scheduleCapturePresentationCheck(notification, label)
+	if type(notification) ~= "userdata" then
+		return
+	end
+	if not (hs.timer and type(hs.timer.doAfter) == "function") then
 		return
 	end
 
-	hs.notify.show(
-		attributes.title or "Notification",
-		attributes.subTitle or "",
-		attributes.informativeText or ""
-	)
+	hs.timer.doAfter(1.0, function()
+		local function probe(method)
+			if type(notification[method]) ~= "function" then
+				return nil
+			end
+			local ok, value = pcall(notification[method], notification)
+			if ok then
+				return value
+			end
+			return nil
+		end
+
+		local delivered = probe("delivered")
+		local presented = probe("presented")
+		if presented == true then
+			captureNotifyDebug("%s presented", label)
+		elseif delivered == true then
+			captureNotifyDebug(
+				"%s delivered but not presented; check macOS Notification "
+					.. "settings / Focus mode for Hammerspoon",
+				label
+			)
+		else
+			captureNotifyDebug(
+				"%s not confirmed presented (delivered=%s presented=%s)",
+				label,
+				tostring(delivered),
+				tostring(presented)
+			)
+		end
+	end)
+end
+
+-- Deliver a notification, protecting every step so an optional attribute or a
+-- single failing API call can never suppress the banner. Rich delivery is tried
+-- first; any creation or send failure falls back to the proven
+-- `hs.notify.show(...)` path using the same title, destination, and body.
+local function notifyWithAttributes(attributes, callback, label)
+	label = label or "notification"
+
+	local title = attributes.title or "Notification"
+	local subTitle = attributes.subTitle or ""
+	local body = attributes.informativeText or ""
+
+	local newOk, notification = pcall(hs.notify.new, callback, attributes)
+	if newOk and type(notification) == "userdata" then
+		local sendOk, sendErr = pcall(function()
+			notification:send()
+		end)
+		if sendOk then
+			captureNotifyDebug("%s sent (rich)", label)
+			scheduleCapturePresentationCheck(notification, label)
+			return
+		end
+		captureNotifyDebug("%s rich send failed: %s", label, tostring(sendErr))
+	else
+		captureNotifyDebug(
+			"%s rich create failed: %s",
+			label,
+			tostring(notification)
+		)
+	end
+
+	local showOk, showErr = pcall(hs.notify.show, title, subTitle, body)
+	if showOk then
+		captureNotifyDebug("%s sent (fallback)", label)
+	else
+		captureNotifyDebug("%s fallback failed: %s", label, tostring(showErr))
+	end
 end
 
 local function notifyCaptureSuccess(decoded, pickedName, pickedKind)
@@ -474,30 +583,37 @@ local function notifyCaptureSuccess(decoded, pickedName, pickedKind)
 		title = captureSuccessPrefix .. " Note captured"
 	end
 
-	local attributes = {
-		title = title,
-		subTitle = captureDestinationLabel(decoded, pickedName, pickedKind),
-	}
+	-- Build the core banner from plain strings first so the optional
+	-- enhancements below can only add to a guaranteed-deliverable notification.
+	local attributes = { title = title }
 
-	local body = truncateForBanner(decoded.text, 100)
-	if body ~= "" then
+	local subOk, subTitle =
+		pcall(captureDestinationLabel, decoded, pickedName, pickedKind)
+	if subOk and type(subTitle) == "string" then
+		attributes.subTitle = subTitle
+	end
+
+	local bodyOk, body = pcall(truncateForBanner, decoded.text, 100)
+	if bodyOk and type(body) == "string" and body ~= "" then
 		attributes.informativeText = body
 	end
 
+	-- Obsidian icon: best-effort only.
 	local image = obsidianContentImage()
 	if image then
 		attributes.contentImage = image
 	end
 
-	local openUrl = obsidianOpenUrl(decoded.target)
+	-- Click-to-open callback: best-effort only.
 	local callback = nil
-	if openUrl then
+	local urlOk, openUrl = pcall(obsidianOpenUrl, decoded.target)
+	if urlOk and type(openUrl) == "string" and openUrl ~= "" then
 		callback = function()
 			hs.urlevent.openURL(openUrl)
 		end
 	end
 
-	notifyWithAttributes(attributes, callback)
+	notifyWithAttributes(attributes, callback, "capture-success")
 end
 
 local function notifyCaptureProblem(title, detail)
@@ -510,7 +626,7 @@ local function notifyCaptureProblem(title, detail)
 		title = captureFailurePrefix .. " " .. title,
 		informativeText = body,
 		soundName = hs.notify.defaultNotificationSound,
-	}, nil)
+	}, nil, "capture-problem")
 end
 
 local function notifyCaptureFailure(detail)
@@ -618,7 +734,23 @@ local function runFinalCapture(text, route, pickedName, pickedKind)
 			and type(decoded) == "table"
 			and decoded.ok == true
 		then
-			notifyCaptureSuccess(decoded, pickedName, pickedKind)
+			-- Notification delivery must never block closing the prompt. If the
+			-- success handler throws before it reaches its own fallback, show a
+			-- minimal banner and still close the prompt.
+			local notifyOk, notifyErr =
+				pcall(notifyCaptureSuccess, decoded, pickedName, pickedKind)
+			if not notifyOk then
+				captureNotifyDebug(
+					"capture-success handler error: %s",
+					tostring(notifyErr)
+				)
+				pcall(
+					hs.notify.show,
+					captureSuccessPrefix .. " Captured",
+					"",
+					""
+				)
+			end
 			closeTaskCapturePrompt()
 			return
 		end
