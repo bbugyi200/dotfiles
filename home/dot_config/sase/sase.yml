@@ -48,7 +48,7 @@ ace:
     git: "(see recent, related git commits)"
     gpti: "Can you use GPT image to generate a$1? Write the image to a new file in the $2."
     gsn: "`sase ace` snapshot"
-    gsnn: "in the below `sase ace` snapshot"
+    gsnn: "in the below #[gsn]"
     gsna: "(see the `sase ace` snapshot below)"
     gta: 'the "$1" tab of the `sase ace` TUI'
     gtu: "the `sase ace` TUI"
