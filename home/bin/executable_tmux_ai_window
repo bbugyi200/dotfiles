@@ -24,7 +24,7 @@ Optional Arguments
 Internal Arguments
 ------------------
 --launch PROVIDER
-    Launch PROVIDER directly. Supported values: claude, codex, agy.
+    Launch PROVIDER directly. Supported values: claude, codex, agy, qwen, opencode.
 
 --dir DIR
     Directory for the launched agent. Intended for internal tmux menu callbacks.
@@ -59,7 +59,7 @@ function show_provider_menu() {
   done
 
   if [[ "${installed_count}" -eq 0 ]]; then
-    tmux_message "No AI agent CLI found (claude/codex/agy)."
+    tmux_message "No AI agent CLI found (claude/codex/agy/qwen/opencode)."
     return 0
   fi
 
@@ -223,11 +223,11 @@ function parse_cli_args() {
   readonly VERBOSE
 }
 
-readonly -a PROVIDERS=(claude codex agy)
+readonly -a PROVIDERS=(claude codex agy qwen opencode)
 
 function provider_is_known() {
   case "$1" in
-  claude | codex | agy)
+  claude | codex | agy | qwen | opencode)
     return 0
     ;;
   *)
@@ -247,6 +247,12 @@ function provider_binary() {
   agy)
     echo "agy"
     ;;
+  qwen)
+    echo "qwen"
+    ;;
+  opencode)
+    echo "opencode"
+    ;;
   esac
 }
 
@@ -260,6 +266,12 @@ function provider_command() {
     ;;
   agy)
     echo "agy --dangerously-skip-permissions"
+    ;;
+  qwen)
+    echo "qwen --yolo"
+    ;;
+  opencode)
+    echo "opencode"
     ;;
   esac
 }
@@ -275,6 +287,12 @@ function provider_menu_key() {
   agy)
     echo "a"
     ;;
+  qwen)
+    echo "q"
+    ;;
+  opencode)
+    echo "o"
+    ;;
   esac
 }
 
@@ -288,6 +306,12 @@ function provider_display_name() {
     ;;
   agy)
     echo "agy"
+    ;;
+  qwen)
+    echo "qwen"
+    ;;
+  opencode)
+    echo "opencode"
     ;;
   esac
 }
@@ -303,6 +327,12 @@ function provider_description() {
   agy)
     echo "Antigravity"
     ;;
+  qwen)
+    echo "Alibaba"
+    ;;
+  opencode)
+    echo "SST"
+    ;;
   esac
 }
 
@@ -317,6 +347,12 @@ function provider_accent() {
   agy)
     echo "#7aa2f7"
     ;;
+  qwen)
+    echo "#bb9af7"
+    ;;
+  opencode)
+    echo "#7dcfff"
+    ;;
   esac
 }
 
@@ -327,7 +363,7 @@ function provider_is_installed() {
 function provider_menu_label() {
   local provider="$1"
 
-  printf "#[fg=%s,bold]%-8s#[fg=#565f89,nobold] %s" \
+  printf "#[fg=%s,bold]%-10s#[fg=#565f89,nobold] %s" \
     "$(provider_accent "${provider}")" \
     "$(provider_display_name "${provider}")" \
     "$(provider_description "${provider}")"
@@ -336,7 +372,7 @@ function provider_menu_label() {
 function provider_disabled_menu_label() {
   local provider="$1"
 
-  printf "#[fg=#565f89]%-8s %s not installed" \
+  printf "#[fg=#565f89]%-10s %s not installed" \
     "$(provider_display_name "${provider}")" \
     "$(provider_description "${provider}")"
 }
