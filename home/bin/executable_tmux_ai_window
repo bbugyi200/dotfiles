@@ -3,14 +3,15 @@
 source ~/lib/bugyi.sh
 
 export USAGE_GRAMMAR=(
-  "[-v]"
+  "[-v] [--launch PROVIDER --dir DIR]"
   "-h"
 )
 
 read -r -d '' DOC <<EOM
 $(usage)
 
-Open a new tmux window running claude in the current pane's directory.
+Choose an AI agent CLI and open it in a new tmux window in the current pane's
+directory.
 
 Optional Arguments
 ------------------
@@ -19,54 +20,157 @@ Optional Arguments
 
 -v | --verbose
     Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
+
+Internal Arguments
+------------------
+--launch PROVIDER
+    Launch PROVIDER directly. Supported values: claude, codex, agy.
+
+--dir DIR
+    Directory for the launched agent. Intended for internal tmux menu callbacks.
 EOM
 
 function run() {
   parse_cli_args "$@"
 
-  # Capture current pane's working directory before creating a new window
+  if [[ -n "${LAUNCH_PROVIDER}" ]]; then
+    launch_provider "${LAUNCH_PROVIDER}" "${LAUNCH_DIR}"
+  else
+    show_provider_menu
+  fi
+}
+
+function show_provider_menu() {
+  local pane_dir
   pane_dir="$(tmux display-message -p '#{pane_current_path}')"
 
+  local default_choice=""
+  local installed_count=0
+  local index=0
+  local provider
+  for provider in "${PROVIDERS[@]}"; do
+    if provider_is_installed "${provider}"; then
+      installed_count=$((installed_count + 1))
+      if [[ -z "${default_choice}" ]]; then
+        default_choice="${index}"
+      fi
+    fi
+    index=$((index + 1))
+  done
+
+  if [[ "${installed_count}" -eq 0 ]]; then
+    tmux_message "No AI agent CLI found (claude/codex/agy)."
+    return 0
+  fi
+
+  local -a menu_args=(
+    display-menu
+    -b rounded
+    -S "fg=#7aa2f7,bg=#1f2335"
+    -T "#[align=centre,fg=#1d202f,bg=#7aa2f7,bold] Launch AI Agent "
+    -s "fg=#a9b1d6,bg=#1f2335"
+    -H "fg=#1d202f,bg=#7aa2f7,bold"
+    -C "${default_choice}"
+    -x C
+    -y C
+  )
+
+  for provider in "${PROVIDERS[@]}"; do
+    add_provider_menu_item "${provider}" "${pane_dir}" menu_args
+  done
+
+  tmux "${menu_args[@]}"
+}
+
+function add_provider_menu_item() {
+  local provider="$1"
+  local pane_dir="$2"
+  local -n menu_args_ref="$3"
+
+  local label
+  label="$(provider_menu_label "${provider}")"
+
+  if provider_is_installed "${provider}"; then
+    local dir_arg
+    dir_arg="$(shell_quote "${pane_dir}")"
+
+    local shell_command
+    shell_command="${SCRIPTNAME} --launch ${provider} --dir ${dir_arg}"
+
+    menu_args_ref+=(
+      "${label}"
+      "$(provider_menu_key "${provider}")"
+      "run-shell $(tmux_quote "${shell_command}")"
+    )
+  else
+    menu_args_ref+=(
+      "-$(provider_disabled_menu_label "${provider}")"
+      ""
+      ""
+    )
+  fi
+}
+
+function launch_provider() {
+  local provider="$1"
+  local pane_dir="$2"
+
+  if ! provider_is_known "${provider}"; then
+    tmux_message "Unknown AI agent provider: ${provider}"
+    exit 2
+  fi
+
+  if ! provider_is_installed "${provider}"; then
+    tmux_message "AI agent CLI is not installed: $(provider_binary "${provider}")"
+    exit 1
+  fi
+
+  local ai_cmd
+  ai_cmd="$(provider_command "${provider}")"
+
   # Get all window names in the current session
+  local existing_windows
   existing_windows=$(tmux list-windows -F '#W')
 
   # Check if any window is an ai variant (ai, ai2, ai3, etc.)
-  if ! echo "$existing_windows" | grep -qE "^ai[0-9]*$"; then
+  local window_name
+  if ! grep -qE "^ai[0-9]*$" <<<"${existing_windows}"; then
     # No ai windows exist, create 'ai'
     window_name="ai"
   else
     # At least one ai window exists, find next available number
+    local n
     n=2
-    while echo "$existing_windows" | grep -q "^ai${n}$"; do
+    while grep -q "^ai${n}$" <<<"${existing_windows}"; do
       ((n++))
     done
     window_name="ai${n}"
   fi
 
   # Create a unique channel for this window's cleanup signal
+  local channel
   channel="ai-cleanup-$$"
 
   # Run waiter in tmux's background (-b flag)
   # This keeps the process alive as a tmux-managed job, avoiding orphaning issues
   tmux run-shell -b "tmux wait-for '$channel' && sleep 0.1 && tm-fix-layout && tm-renumber-ai-windows"
 
-  # Determine which AI CLI to use
-  if command -v claude &>/dev/null; then
-    ai_cmd="EDITOR=nvim claude --dangerously-skip-permissions"
-  else
-    ai_cmd="bb_gemini --yolo -m gemini-3.1-pro-preview"
-  fi
-
   # Create window - when AI CLI exits, signal the channel before window closes
-  tmux new-window -n "$window_name" "cd '$pane_dir' && $ai_cmd; tmux wait-for -S '$channel'"
+  tmux new-window -n "${window_name}" "cd $(shell_quote "${pane_dir}") && clear && ${ai_cmd}; tmux wait-for -S $(shell_quote "${channel}")"
 }
 
 function parse_cli_args() {
   log::debug "Command-Line Arguments: ($*)"
 
-  eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
+  local parsed_args
+  if ! parsed_args="$(getopt -o "hv" -l "help,verbose,launch:,dir:" -- "$@")"; then
+    die -x 2 "Invalid command-line arguments."
+  fi
+  eval set -- "${parsed_args}"
 
   VERBOSE=0
+  LAUNCH_PROVIDER=""
+  LAUNCH_DIR=""
   while [[ -n "$1" ]]; do
     case $1 in
     -h | --help)
@@ -75,6 +179,14 @@ function parse_cli_args() {
       ;;
     -v | --verbose)
       VERBOSE=$((VERBOSE + 1))
+      ;;
+    --launch)
+      shift
+      LAUNCH_PROVIDER="$1"
+      ;;
+    --dir)
+      shift
+      LAUNCH_DIR="$1"
       ;;
     --)
       shift
@@ -89,8 +201,163 @@ function parse_cli_args() {
     set -x
   fi
 
+  if [[ "$#" -gt 0 ]]; then
+    die -x 2 "Unexpected positional arguments: $*"
+  fi
+
+  if [[ -n "${LAUNCH_PROVIDER}" && -z "${LAUNCH_DIR}" ]]; then
+    die -x 2 "--launch requires --dir."
+  fi
+
+  if [[ -z "${LAUNCH_PROVIDER}" && -n "${LAUNCH_DIR}" ]]; then
+    die -x 2 "--dir requires --launch."
+  fi
+
+  if [[ -n "${LAUNCH_PROVIDER}" ]] && ! provider_is_known "${LAUNCH_PROVIDER}"; then
+    die -x 2 "Unsupported provider: ${LAUNCH_PROVIDER}"
+  fi
+
   readonly DOC
+  readonly LAUNCH_DIR
+  readonly LAUNCH_PROVIDER
   readonly VERBOSE
+}
+
+readonly -a PROVIDERS=(claude codex agy)
+
+function provider_is_known() {
+  case "$1" in
+  claude | codex | agy)
+    return 0
+    ;;
+  *)
+    return 1
+    ;;
+  esac
+}
+
+function provider_binary() {
+  case "$1" in
+  claude)
+    echo "claude"
+    ;;
+  codex)
+    echo "codex"
+    ;;
+  agy)
+    echo "agy"
+    ;;
+  esac
+}
+
+function provider_command() {
+  case "$1" in
+  claude)
+    echo "EDITOR=nvim claude --dangerously-skip-permissions"
+    ;;
+  codex)
+    echo "codex --dangerously-bypass-approvals-and-sandbox"
+    ;;
+  agy)
+    echo "agy --dangerously-skip-permissions"
+    ;;
+  esac
+}
+
+function provider_menu_key() {
+  case "$1" in
+  claude)
+    echo "c"
+    ;;
+  codex)
+    echo "x"
+    ;;
+  agy)
+    echo "a"
+    ;;
+  esac
+}
+
+function provider_display_name() {
+  case "$1" in
+  claude)
+    echo "claude"
+    ;;
+  codex)
+    echo "codex"
+    ;;
+  agy)
+    echo "agy"
+    ;;
+  esac
+}
+
+function provider_description() {
+  case "$1" in
+  claude)
+    echo "Anthropic"
+    ;;
+  codex)
+    echo "OpenAI"
+    ;;
+  agy)
+    echo "Antigravity"
+    ;;
+  esac
+}
+
+function provider_accent() {
+  case "$1" in
+  claude)
+    echo "#e0af68"
+    ;;
+  codex)
+    echo "#9ece6a"
+    ;;
+  agy)
+    echo "#7aa2f7"
+    ;;
+  esac
+}
+
+function provider_is_installed() {
+  command -v "$(provider_binary "$1")" &>/dev/null
+}
+
+function provider_menu_label() {
+  local provider="$1"
+
+  printf "#[fg=%s,bold]%-8s#[fg=#565f89,nobold] %s" \
+    "$(provider_accent "${provider}")" \
+    "$(provider_display_name "${provider}")" \
+    "$(provider_description "${provider}")"
+}
+
+function provider_disabled_menu_label() {
+  local provider="$1"
+
+  printf "#[fg=#565f89]%-8s %s not installed" \
+    "$(provider_display_name "${provider}")" \
+    "$(provider_description "${provider}")"
+}
+
+function shell_quote() {
+  printf "%q" "$1"
+}
+
+function tmux_quote() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//\$/\\\$}"
+
+  printf '"%s"' "${value}"
+}
+
+function tmux_message() {
+  local message="$1"
+
+  tmux display-message "${message}" 2>/dev/null || log::warn "%s" "${message}"
 }
 
 if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
