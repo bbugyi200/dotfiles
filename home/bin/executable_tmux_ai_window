@@ -259,16 +259,16 @@ function provider_binary() {
 function provider_command() {
   case "$1" in
   claude)
-    echo "EDITOR=nvim claude --dangerously-skip-permissions"
+    echo "EDITOR=nvim claude --effort max --dangerously-skip-permissions"
     ;;
   codex)
-    echo "codex --dangerously-bypass-approvals-and-sandbox"
+    echo "codex -c 'model_reasoning_effort=\"xhigh\"' --dangerously-bypass-approvals-and-sandbox"
     ;;
   agy)
-    echo "agy --dangerously-skip-permissions"
+    echo "agy --model 'Gemini 3.5 Flash (High)' --dangerously-skip-permissions"
     ;;
   qwen)
-    echo "qwen --yolo"
+    echo "qwen --model qwen3.6-plus --yolo"
     ;;
   opencode)
     echo "opencode"
