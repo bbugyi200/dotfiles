@@ -1,7 +1,6 @@
 {
   "model": "opus",
   "env": {
-    "CLAUDE_CODE_EFFORT_LEVEL": "xhigh",
     "DISABLE_INSTALLATION_CHECKS": "1"
   },
   "hooks": {
