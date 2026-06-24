@@ -87,18 +87,6 @@ llm_provider:
     codex: claude/opus
   model_aliases:
     other: claude/opus
-    # Antigravity (agy) model aliases. The exact `agy models` display names
-    # carry spaces and parentheses, so route them through stable alias tokens
-    # that %model fanout directives can reference safely.
-    agy_flash: "agy/Gemini 3.5 Flash (High)"
-    agy_flash_high: "agy/Gemini 3.5 Flash (High)"
-    agy_flash_mid: "agy/Gemini 3.5 Flash (Medium)"
-    agy_flash_low: "agy/Gemini 3.5 Flash (Low)"
-    agy_pro: "agy/Gemini 3.1 Pro (High)"
-    agy_pro_low: "agy/Gemini 3.1 Pro (Low)"
-    agy_sonnet: "agy/Claude Sonnet 4.6 (Thinking)"
-    agy_opus: "agy/Claude Opus 4.6 (Thinking)"
-    agy_gptoss: "agy/GPT-OSS 120B (Medium)"
 
 xprompts:
   # snippets
