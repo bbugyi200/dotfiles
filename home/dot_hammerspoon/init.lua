@@ -658,16 +658,24 @@ export PATH
 exec bob capture-targets --format json
 ]]
 
--- The task text is passed as the positional parameter $1 and the optional forced
--- route as $2 (never interpolated) so arbitrary input cannot be evaluated by the
--- shell.
+local taskCaptureSectionsCommand = [[
+PATH="$HOME/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+export PATH
+exec bob capture-sections --format json --route "$1"
+]]
+
+-- The task text is passed as the positional parameter $1, the optional forced
+-- route as $2, and the optional exact section as $3 (never interpolated) so
+-- arbitrary input cannot be evaluated by the shell.
 local taskCaptureCommand = [[
 PATH="$HOME/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 export PATH
 if [ -z "${DATE+x}" ] && command -v gdate >/dev/null 2>&1; then
 	export DATE=gdate
 fi
-if [ -n "${2:-}" ]; then
+if [ -n "${3:-}" ]; then
+	exec bob capture --format json --route "$2" --section "$3" -- "$1"
+elif [ -n "${2:-}" ]; then
 	exec bob capture --format json --route "$2" -- "$1"
 fi
 exec bob capture --format json -- "$1"
@@ -720,13 +728,17 @@ local function startCaptureStage(command, extraArgs, onComplete, notifyFailure)
 	return true
 end
 
--- Write the task. A nil/empty route runs the unrouted inbox path; a non-empty
--- route forces `--route`. On success the prompt is closed; on failure the prompt
+-- Write the capture. A nil/empty route runs the unrouted inbox path; a non-empty
+-- route forces `--route`, and a non-empty section with a route forces an exact
+-- `--section` bullet. On success the prompt is closed; on failure the prompt
 -- stays open so the typed text is not lost.
-local function runFinalCapture(text, route, pickedName, pickedKind)
+local function runFinalCapture(text, route, pickedName, pickedKind, section)
 	local extraArgs = { text }
 	if type(route) == "string" and route ~= "" then
 		extraArgs[#extraArgs + 1] = route
+		if type(section) == "string" and section ~= "" then
+			extraArgs[#extraArgs + 1] = section
+		end
 	end
 
 	startCaptureStage(taskCaptureCommand, extraArgs, function(exitCode, decoded, out, err)
@@ -825,14 +837,99 @@ local function buildCaptureChoices(targets)
 	return choices
 end
 
--- Show the native area/project picker for a trailing `@` or `@#section` request.
--- Dismissing it refocuses the prompt with the typed text intact. For a bare `@`,
--- selecting any row forces that row's route, since the inbox is reachable only
--- via plain Enter. For an `@#section` request, the chosen route is synthesized
--- into a concrete leading `@route#section` token so Bob's own parser owns the
--- bullet placement; leading the token makes the picked route win even when the
--- body itself begins with an explicit `@route`.
-local function showTaskCaptureChooser(text, targets, bulletSuffix)
+local function buildSectionChoices(sections)
+	local choices = {}
+	for _, section in ipairs(sections) do
+		if type(section) == "table" and type(section.title) == "string" then
+			local level = tonumber(section.level) or 0
+			choices[#choices + 1] = {
+				text = section.title,
+				subText = "H" .. tostring(level),
+				section = section.title,
+			}
+		end
+	end
+	return choices
+end
+
+local function showTaskSectionChooser(text, route, sections, pickedName, pickedKind)
+	local choices = buildSectionChoices(sections)
+	if #choices == 0 then
+		notifyTargetPickerFailure("no capture sections were returned")
+		return
+	end
+
+	local chooser
+	chooser = hs.chooser.new(function(choice)
+		if taskCaptureChooser ~= chooser then
+			return
+		end
+		taskCaptureChooser = nil
+
+		if type(choice) ~= "table" or type(choice.section) ~= "string" then
+			focusTaskCapturePrompt()
+			return
+		end
+
+		runFinalCapture(
+			text,
+			route,
+			pickedName or route,
+			pickedKind,
+			choice.section
+		)
+	end)
+
+	if not chooser then
+		notifyTargetPickerFailure("could not create the section picker")
+		return
+	end
+
+	taskCaptureChooser = chooser
+	chooser:placeholderText("Capture section")
+	chooser:choices(choices)
+	chooser:show()
+end
+
+local function startSectionStage(text, route, pickedName, pickedKind)
+	startCaptureStage(taskCaptureSectionsCommand, { route }, function(exitCode, decoded, out, err)
+		if exitCode == 0
+			and type(decoded) == "table"
+			and decoded.ok == true
+			and type(decoded.sections) == "table"
+		then
+			local count = tonumber(decoded.count) or #decoded.sections
+			if count >= 2 then
+				showTaskSectionChooser(text, route, decoded.sections, pickedName, pickedKind)
+				return
+			end
+
+			runFinalCapture(
+				"@" .. route .. "# " .. text,
+				nil,
+				pickedName or route,
+				pickedKind
+			)
+			return
+		end
+
+		notifyTargetPickerFailure(captureFailureDetail(
+			decoded,
+			out,
+			err,
+			"bob capture-sections reported no detail"
+		))
+	end, notifyTargetPickerFailure)
+end
+
+-- Show the native area/project picker for a trailing `@`, `@#`, or
+-- `@#section` request. Dismissing it refocuses the prompt with the typed text
+-- intact. A bare `@` forces the picked route. A prefixed `@#section`
+-- synthesizes a concrete leading `@route#section` token so Bob keeps owning
+-- prefix matching. A bare `@#` opens the section stage after the note is picked;
+-- when a section row is chosen, final capture uses `--section` for exact,
+-- case-insensitive title matching.
+local function showTaskCaptureChooser(request, targets)
 	local choices = buildCaptureChoices(targets)
 	if #choices == 0 then
 		notifyTargetPickerFailure("no capture targets were returned")
@@ -851,15 +948,17 @@ local function showTaskCaptureChooser(text, targets, bulletSuffix)
 			return
 		end
 
-		if bulletSuffix then
+		if request.mode == "note_bullet" then
 			runFinalCapture(
-				"@" .. choice.route .. bulletSuffix .. " " .. text,
+				"@" .. choice.route .. "#" .. request.prefix .. " " .. request.text,
 				nil,
 				choice.text,
 				choice.kind
 			)
+		elseif request.mode == "note_section" then
+			startSectionStage(request.text, choice.route, choice.text, choice.kind)
 		else
-			runFinalCapture(text, choice.route, choice.text, choice.kind)
+			runFinalCapture(request.text, choice.route, choice.text, choice.kind)
 		end
 	end)
 
@@ -875,17 +974,17 @@ local function showTaskCaptureChooser(text, targets, bulletSuffix)
 end
 
 -- Fetch the picker rows. A failure here surfaces a dedicated picker notification
--- instead of silently falling back to the inbox. The optional bullet suffix is
--- threaded through to the chooser so an `@#section` request can be finalized as a
--- routed bullet once a target is picked.
-local function startTargetsStage(text, bulletSuffix)
+-- instead of silently falling back to the inbox. The request descriptor is
+-- threaded through to the chooser so `@#section` can keep prefix behavior while
+-- bare `@#` advances to the exact section picker.
+local function startTargetsStage(request)
 	startCaptureStage(taskCaptureTargetsCommand, {}, function(exitCode, decoded, out, err)
 		if exitCode == 0
 			and type(decoded) == "table"
 			and decoded.ok == true
 			and type(decoded.targets) == "table"
 		then
-			showTaskCaptureChooser(text, decoded.targets, bulletSuffix)
+			showTaskCaptureChooser(request, decoded.targets)
 			return
 		end
 
@@ -898,58 +997,97 @@ local function startTargetsStage(text, bulletSuffix)
 	end, notifyTargetPickerFailure)
 end
 
--- Detect the area/project picker marker as the final whitespace-separated token,
--- preceded by whitespace, e.g. `foo bar baz @`. Two forms are recognized:
+local function isCaptureRouteToken(value)
+	if type(value) ~= "string" or value == "" then
+		return false
+	end
+	return value:match("^[A-Za-z0-9_-]+$") ~= nil
+end
+
+-- Detect capture UI markers as the final whitespace-separated token, preceded
+-- by whitespace. The parser returns a request descriptor with a mode:
 --
---   * `@`            -> open the picker and capture a normal task.
---   * `@#<prefix>`   -> open the picker and capture a bullet routed to the chosen
---                       note's matching section; a bare `@#` uses the first
---                       non-`Tasks` section, mirroring Bob's concrete `@note#`.
+--   * `@`          -> note picker, then task capture forced to the picked route.
+--   * `@#`         -> note picker, then conditional exact section picker.
+--   * `@#prefix`  -> note picker, then synthesize `@route#prefix` for Bob's
+--                    existing prefix matcher.
+--   * `@route#`   -> skip the note picker and conditionally show sections for
+--                    the explicit route.
 --
--- The marker is opt-in UI sugar handled entirely on the Hammerspoon side, so
--- `foo@`, `foo @cash`, `foo @cash#Ideas`, `@cash foo`, `foo @ #Ideas`, and
--- `foo @#Ideas extra` are left untouched and Bob's own route parser keeps owning
--- explicit @route input. The `#<prefix>` case is preserved exactly because Bob
--- preserves the prefix and compares headings case-insensitively.
---
--- Returns the task text to capture, whether the picker was requested, and an
--- optional bullet route suffix (`#Ideas` or `#`) for the `@#...` form.
+-- Prefix-bearing explicit routes (`@route#prefix`), plain `@route`, mid-text
+-- markers, and non-final markers are left untouched so Bob's parser keeps
+-- owning those cases.
 local function parseCaptureRequest(rawText)
 	local text = trimCaptureText(rawText)
 
 	local strippedBullet, bulletPrefix = text:match("^(.-)%s+@#(%S*)$")
 	if strippedBullet then
-		return trimCaptureText(strippedBullet), true, "#" .. bulletPrefix
+		if bulletPrefix == "" then
+			return {
+				text = trimCaptureText(strippedBullet),
+				mode = "note_section",
+			}
+		end
+		return {
+			text = trimCaptureText(strippedBullet),
+			mode = "note_bullet",
+			prefix = bulletPrefix,
+		}
+	end
+
+	local strippedRouteBullet, route =
+		text:match("^(.-)%s+@([A-Za-z0-9_-]+)#$")
+	if strippedRouteBullet and isCaptureRouteToken(route) then
+		return {
+			text = trimCaptureText(strippedRouteBullet),
+			mode = "section",
+			route = route:lower(),
+		}
 	end
 
 	local stripped = text:match("^(.-)%s+@$")
 	if stripped then
-		return trimCaptureText(stripped), true, nil
+		return {
+			text = trimCaptureText(stripped),
+			mode = "note",
+		}
 	end
 
-	return text, false, nil
+	return {
+		text = text,
+		mode = "none",
+	}
 end
 
--- Snapshot the prompt text and route it. A trailing `@` or `@#section` marker
--- opts into the area/project picker with the marker stripped; everything else
--- captures immediately, letting `bob capture` own route parsing and the inbox
--- default. An empty body after stripping the marker is a no-op.
+-- Snapshot the prompt text and route it. A trailing `@`, bare `@#`, or
+-- `@#section` marker opts into the note picker; a trailing bare `@route#` jumps
+-- straight to the section stage. Everything else captures immediately, letting
+-- `bob capture` own route parsing and the inbox default. An empty body after
+-- stripping a marker is a no-op.
 local function submitCapturedTask(rawText)
 	if taskCaptureTask or taskCaptureChooser then
 		return
 	end
 
-	local text, pickerRequested, bulletSuffix = parseCaptureRequest(rawText)
-	if text == "" then
+	local request = parseCaptureRequest(rawText)
+	if request.text == "" then
 		return
 	end
 
-	if pickerRequested then
-		startTargetsStage(text, bulletSuffix)
+	if request.mode == "note"
+		or request.mode == "note_bullet"
+		or request.mode == "note_section"
+	then
+		startTargetsStage(request)
 		return
 	end
 
-	runFinalCapture(text, nil)
+	if request.mode == "section" then
+		startSectionStage(request.text, request.route, request.route, nil)
+		return
+	end
+
+	runFinalCapture(request.text, nil)
 end
 
 local function showTaskCapturePrompt()
