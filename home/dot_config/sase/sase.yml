@@ -98,6 +98,7 @@ xprompts:
     content:
       "I want you to lead the design on this one. Make sure you design this feature so it is intuitive, reliable, and
       (last but not least) beautiful!"
+  drep: "Describe this repo."
   jet: "jetski/jetski-default"
   nvim:
     snippet: true
