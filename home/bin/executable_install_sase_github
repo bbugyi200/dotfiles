@@ -257,6 +257,20 @@ print_sync_failure_error() {
     } >&2
 }
 
+validate_sase_core_rs_version() {
+    if [[ ! -f "$SASE_CORE_RS_DIR/pyproject.toml" ]]; then
+        echo "ERROR: Missing local sase-core-rs project: $SASE_CORE_RS_DIR/pyproject.toml" >&2
+        return 1
+    fi
+    if ! command -v python3 >/dev/null 2>&1; then
+        echo "ERROR: python3 not on PATH; cannot validate sase-core-rs version." >&2
+        return 1
+    fi
+    python3 "$SASE_DIR/tools/validate_sase_core_rs_version" \
+        --sase-core-dir "$SASE_CORE_DIR" \
+        --pyproject "$SASE_DIR/pyproject.toml"
+}
+
 probe_uv_tool_health() {
     local tool_venv
     tool_venv="$(uv tool dir)/sase"
@@ -303,13 +317,10 @@ fi
 echo ">>> Repo sync complete."
 print_sync_summary
 
+validate_sase_core_rs_version
+
 enter_axe_maintenance
 stop_axe_if_running
-
-if [[ ! -f "$SASE_CORE_RS_DIR/pyproject.toml" ]]; then
-    echo "ERROR: Missing local sase-core-rs project: $SASE_CORE_RS_DIR/pyproject.toml" >&2
-    exit 1
-fi
 
 if ! $install; then
     tool_venv_python="$(uv tool dir)/sase/bin/python"
@@ -322,6 +333,10 @@ fi
 if $install; then
     echo ">>> Installing sase via uv tool..."
     uv tool install --force --editable \
+        --reinstall-package sase \
+        --reinstall-package sase-core-rs \
+        --reinstall-package sase-github \
+        --reinstall-package sase-telegram \
         "sase @ $SASE_DIR" \
         --with-editable "sase-core-rs @ $SASE_CORE_RS_DIR" \
         --with-editable "sase-github @ $SASE_GITHUB_DIR" \

@@ -94,6 +94,17 @@ fi
 exit 0
 EOF
 
+  cat >"${FAKE_BIN}/python3" <<'EOF'
+#!/bin/bash
+set -euo pipefail
+printf 'python3 %s\n' "$*" >>"${CALLS_FILE}"
+if [[ "${SASE_CORE_VERSION_GUARD_FAIL:-}" == "1" ]]; then
+  echo "[validate_sase_core_rs_version] sase-core checkout is behind: source version 0.1.4 does not satisfy \`sase\`'s \`sase-core-rs>=0.2.0,<0.3.0\` dependency." >&2
+  exit 1
+fi
+exit 0
+EOF
+
   cat >"${FAKE_BIN}/just" <<'EOF'
 #!/bin/bash
 set -euo pipefail
@@ -121,7 +132,7 @@ exit 0
 EOF
 
   chmod +x "${FAKE_BIN}/uv" "${FAKE_BIN}/just" "${FAKE_BIN}/cargo" \
-    "${FAKE_BIN}/sase" "${FAKE_BIN}/sase-xprompt-lsp"
+    "${FAKE_BIN}/sase" "${FAKE_BIN}/sase-xprompt-lsp" "${FAKE_BIN}/python3"
 
   # Provide a fake uv-tool python so probe_uv_tool_health passes on success.
   mkdir -p "${UV_TOOL_DIR}/sase/bin"
@@ -137,6 +148,7 @@ function run_install() {
     HOME="${TEST_HOME}" \
     CALLS_FILE="${CALLS_FILE}" \
     UV_TOOL_DIR="${UV_TOOL_DIR}" \
+    SASE_CORE_VERSION_GUARD_FAIL="${SASE_CORE_VERSION_GUARD_FAIL:-}" \
     bash "${INSTALL_SCRIPT}" "$@" 2>&1
 }
 
@@ -220,7 +232,24 @@ function test_clean_repos_pass_the_gate_and_reach_install() {
 
   # The fake install/build commands were reached past the gate.
   assert_contains "uv tool install" "$(calls_text)"
+  assert_contains "--reinstall-package sase-core-rs" "$(calls_text)"
   assert_contains "rust-install-uv-tool" "$(calls_text)"
+}
+
+function test_sase_core_rs_version_skew_is_fatal_before_axe_maintenance() {
+  local output rc
+  if output="$(SASE_CORE_VERSION_GUARD_FAIL=1 run_install --install)"; then rc=0; else rc=$?; fi
+
+  assert_same "1" "${rc}"
+  assert_contains "sase-core checkout is behind" "${output}"
+  assert_contains "source version 0.1.4" "${output}"
+
+  assert_contains "python3 ${SASE_DIR}/tools/validate_sase_core_rs_version" "$(calls_text)"
+  assert_not_contains "uv tool install" "$(calls_text)"
+  assert_not_contains "rust-install-uv-tool" "$(calls_text)"
+  assert_not_contains "cargo install" "$(calls_text)"
+  assert_not_contains "axe stop" "$(calls_text)"
+  assert_not_contains "maintenance remains active" "${output}"
 }
 
 function test_files_changed_count_is_reported_for_fast_forward_pull() {
