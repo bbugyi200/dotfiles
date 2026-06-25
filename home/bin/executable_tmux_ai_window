@@ -48,8 +48,7 @@ function show_provider_menu() {
   # tmux's reduced PATH (no ~/bin). Resolve our own absolute path so those
   # callbacks do not fail with exit status 127.
   local self_path
-  self_path="$(resolve_user_bin "${SCRIPTNAME}")"
-  if [[ -z "${self_path}" ]]; then
+  if ! resolve_user_bin_to self_path "${SCRIPTNAME}"; then
     self_path="${SCRIPTNAME}"
   fi
 
@@ -135,8 +134,7 @@ function launch_provider() {
   # ~/.zshrc, so a bare provider name (codex/claude/qwen) would otherwise fail
   # there with exit status 127.
   local provider_bin
-  provider_bin="$(resolve_user_bin "$(provider_binary "${provider}")")"
-  if [[ -z "${provider_bin}" ]]; then
+  if ! resolve_user_bin_to provider_bin "$(provider_binary "${provider}")"; then
     tmux_message "AI agent CLI is not installed: $(provider_binary "${provider}")"
     exit 1
   fi
@@ -149,9 +147,9 @@ function launch_provider() {
   # ~/bin and would otherwise make the final command fail with an opaque exit
   # status 127.
   local tmux_bin fix_layout_bin renumber_bin
-  tmux_bin="$(resolve_user_bin tmux)"
-  fix_layout_bin="$(resolve_user_bin tm-fix-layout)"
-  renumber_bin="$(resolve_user_bin tm-renumber-ai-windows)"
+  resolve_user_bin_to tmux_bin tmux || true
+  resolve_user_bin_to fix_layout_bin tm-fix-layout || true
+  resolve_user_bin_to renumber_bin tm-renumber-ai-windows || true
   if [[ -z "${tmux_bin}" || -z "${fix_layout_bin}" || -z "${renumber_bin}" ]]; then
     tmux_message "tmux_ai_window: cannot resolve cleanup commands on PATH (tmux=${tmux_bin:-MISSING}, tm-fix-layout=${fix_layout_bin:-MISSING}, tm-renumber-ai-windows=${renumber_bin:-MISSING})."
     exit 1
@@ -422,37 +420,80 @@ function provider_disabled_menu_label() {
 # that never sources ~/.zshrc.
 #
 # Resolution happens in two passes:
-#   1. Search the inherited PATH plus the user's personal bin directories
-#      (~/bin, ~/.local/bin). This covers tmux, the tm-* helpers, and any
-#      provider installed there (e.g. agy in ~/.local/bin).
-#   2. If still not found, source NVM in a subshell and retry. Several providers
-#      (codex, claude, qwen) are NVM-managed binaries that only land on PATH once
-#      NVM is sourced, which an interactive shell would normally do via ~/.zshrc.
+#   1. Search the inherited PATH plus common user/system bin directories. This
+#      covers tmux, the tm-* helpers, Homebrew installs on macOS, and providers
+#      installed in personal bins (e.g. agy in ~/.local/bin).
+#   2. If still not found, source NVM once in a subshell, cache the active node
+#      bin directory, and retry through that directory for all later lookups.
+#      Several providers (codex, claude, qwen) are NVM-managed binaries that
+#      only land on PATH once NVM is sourced, which an interactive shell would
+#      normally do via ~/.zshrc.
 #
 # Prints the absolute path on success and nothing (with a non-zero status) when
 # the command cannot be found.
+RESOLVE_USER_BIN_BASE_PATH=""
+RESOLVE_USER_BIN_LAST=""
+RESOLVE_USER_BIN_NVM_ATTEMPTED=0
+RESOLVE_USER_BIN_NVM_BIN_DIR=""
+
 function resolve_user_bin() {
   local cmd="$1"
   local resolved
+  RESOLVE_USER_BIN_LAST=""
 
-  if resolved="$(PATH="${HOME}/bin:${HOME}/.local/bin:${PATH}" command -v -- "${cmd}" 2>/dev/null)"; then
+  if [[ -z "${RESOLVE_USER_BIN_BASE_PATH}" ]]; then
+    RESOLVE_USER_BIN_BASE_PATH="${HOME}/bin:${HOME}/.local/bin"
+    if [[ -n "${PATH}" ]]; then
+      RESOLVE_USER_BIN_BASE_PATH+=":${PATH}"
+    fi
+    RESOLVE_USER_BIN_BASE_PATH+=":/opt/homebrew/bin:/usr/local/bin"
+  fi
+
+  if resolved="$(PATH="${RESOLVE_USER_BIN_BASE_PATH}" command -v -- "${cmd}" 2>/dev/null)"; then
+    RESOLVE_USER_BIN_LAST="${resolved}"
     printf '%s\n' "${resolved}"
     return 0
   fi
 
-  local nvm_script="${NVM_DIR:-${HOME}/.config/nvm}/nvm.sh"
-  if [[ -s "${nvm_script}" ]]; then
-    resolved="$(
-      # shellcheck source=/dev/null
-      . "${nvm_script}" >/dev/null 2>&1
-      PATH="${HOME}/bin:${HOME}/.local/bin:${PATH}" command -v -- "${cmd}" 2>/dev/null
-    )"
-    if [[ -n "${resolved}" ]]; then
+  if [[ "${RESOLVE_USER_BIN_NVM_ATTEMPTED}" -eq 0 ]]; then
+    RESOLVE_USER_BIN_NVM_ATTEMPTED=1
+
+    local nvm_script="${NVM_DIR:-${HOME}/.config/nvm}/nvm.sh"
+    if [[ -s "${nvm_script}" ]]; then
+      local node_path
+      node_path="$(
+        PATH="${RESOLVE_USER_BIN_BASE_PATH}"
+        # shellcheck source=/dev/null
+        . "${nvm_script}" >/dev/null 2>&1
+        command -v node 2>/dev/null
+      )"
+      if [[ "${node_path}" == */* ]]; then
+        RESOLVE_USER_BIN_NVM_BIN_DIR="${node_path%/*}"
+      fi
+    fi
+  fi
+
+  if [[ -n "${RESOLVE_USER_BIN_NVM_BIN_DIR}" ]]; then
+    if resolved="$(PATH="${RESOLVE_USER_BIN_NVM_BIN_DIR}:${RESOLVE_USER_BIN_BASE_PATH}" command -v -- "${cmd}" 2>/dev/null)"; then
+      RESOLVE_USER_BIN_LAST="${resolved}"
       printf '%s\n' "${resolved}"
       return 0
     fi
   fi
 
+  return 1
+}
+
+function resolve_user_bin_to() {
+  local out_var="$1"
+  local cmd="$2"
+
+  if resolve_user_bin "${cmd}" >/dev/null; then
+    printf -v "${out_var}" '%s' "${RESOLVE_USER_BIN_LAST}"
+    return 0
+  fi
+
+  printf -v "${out_var}" ''
   return 1
 }
 
