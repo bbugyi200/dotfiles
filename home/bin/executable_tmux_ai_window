@@ -48,30 +48,23 @@ function show_provider_menu() {
   # tmux's reduced PATH (no ~/bin). Resolve our own absolute path so those
   # callbacks do not fail with exit status 127.
   local self_path
-  self_path="$(resolve_user_bin "${SCRIPTNAME}")"
+  self_path="$(resolve_cleanup_bin "${SCRIPTNAME}")"
   if [[ -z "${self_path}" ]]; then
     self_path="${SCRIPTNAME}"
   fi
 
-  # Compute each provider's installed status once. provider_is_installed can now
-  # source NVM on a miss, so we cache the result here instead of recomputing it
-  # in the menu-building loop below.
-  local -a provider_installed=()
   local default_choice=""
   local installed_count=0
   local index=0
   local provider
-  for index in "${!PROVIDERS[@]}"; do
-    provider="${PROVIDERS[index]}"
+  for provider in "${PROVIDERS[@]}"; do
     if provider_is_installed "${provider}"; then
-      provider_installed[index]=1
       installed_count=$((installed_count + 1))
       if [[ -z "${default_choice}" ]]; then
         default_choice="${index}"
       fi
-    else
-      provider_installed[index]=0
     fi
+    index=$((index + 1))
   done
 
   if [[ "${installed_count}" -eq 0 ]]; then
@@ -91,9 +84,8 @@ function show_provider_menu() {
     -y C
   )
 
-  for index in "${!PROVIDERS[@]}"; do
-    provider="${PROVIDERS[index]}"
-    if [[ "${provider_installed[index]}" -eq 1 ]]; then
+  for provider in "${PROVIDERS[@]}"; do
+    if provider_is_installed "${provider}"; then
       local label
       label="$(provider_menu_label "${provider}")"
 
@@ -129,29 +121,22 @@ function launch_provider() {
     exit 2
   fi
 
-  # Resolve the provider binary to an absolute path now, while we can augment
-  # PATH with the user's personal bin directories and source NVM. The new tmux
-  # window runs a non-interactive shell whose PATH omits ~/bin and never sources
-  # ~/.zshrc, so a bare provider name (codex/claude/qwen) would otherwise fail
-  # there with exit status 127.
-  local provider_bin
-  provider_bin="$(resolve_user_bin "$(provider_binary "${provider}")")"
-  if [[ -z "${provider_bin}" ]]; then
+  if ! provider_is_installed "${provider}"; then
     tmux_message "AI agent CLI is not installed: $(provider_binary "${provider}")"
     exit 1
   fi
 
   local ai_cmd
-  ai_cmd="$(provider_command "${provider}" "$(shell_quote "${provider_bin}")")"
+  ai_cmd="$(provider_command "${provider}")"
 
-  # Resolve the cleanup executables to absolute paths now, for the same reason.
-  # The cleanup job runs later inside tmux's server-side shell, whose PATH omits
-  # ~/bin and would otherwise make the final command fail with an opaque exit
-  # status 127.
+  # Resolve the cleanup executables to absolute paths now, while we can still
+  # augment PATH with the user's personal bin directories. The cleanup job runs
+  # later inside tmux's server-side shell, whose PATH omits ~/bin and would
+  # otherwise make the final command fail with an opaque exit status 127.
   local tmux_bin fix_layout_bin renumber_bin
-  tmux_bin="$(resolve_user_bin tmux)"
-  fix_layout_bin="$(resolve_user_bin tm-fix-layout)"
-  renumber_bin="$(resolve_user_bin tm-renumber-ai-windows)"
+  tmux_bin="$(resolve_cleanup_bin tmux)"
+  fix_layout_bin="$(resolve_cleanup_bin tm-fix-layout)"
+  renumber_bin="$(resolve_cleanup_bin tm-renumber-ai-windows)"
   if [[ -z "${tmux_bin}" || -z "${fix_layout_bin}" || -z "${renumber_bin}" ]]; then
     tmux_message "tmux_ai_window: cannot resolve cleanup commands on PATH (tmux=${tmux_bin:-MISSING}, tm-fix-layout=${fix_layout_bin:-MISSING}, tm-renumber-ai-windows=${renumber_bin:-MISSING})."
     exit 1
@@ -291,27 +276,22 @@ function provider_binary() {
   esac
 }
 
-# Build the shell command that launches a provider. The binary is passed in as
-# an already shell-quoted absolute path ("${bin}") so the launch command does not
-# depend on the new window's reduced, non-interactive PATH.
 function provider_command() {
-  local provider="$1"
-  local bin="$2"
-  case "${provider}" in
+  case "$1" in
   claude)
-    echo "EDITOR=nvim ${bin} --effort max --dangerously-skip-permissions"
+    echo "EDITOR=nvim claude --effort max --dangerously-skip-permissions"
     ;;
   codex)
-    echo "${bin} -c 'model_reasoning_effort=\"xhigh\"' --dangerously-bypass-approvals-and-sandbox"
+    echo "codex -c 'model_reasoning_effort=\"xhigh\"' --dangerously-bypass-approvals-and-sandbox"
     ;;
   agy)
-    echo "${bin} --model 'Gemini 3.5 Flash (High)' --dangerously-skip-permissions"
+    echo "agy --model 'Gemini 3.5 Flash (High)' --dangerously-skip-permissions"
     ;;
   qwen)
-    echo "${bin} --model qwen3.6-plus --yolo"
+    echo "qwen --model qwen3.6-plus --yolo"
     ;;
   opencode)
-    echo "${bin}"
+    echo "opencode"
     ;;
   esac
 }
@@ -397,7 +377,7 @@ function provider_accent() {
 }
 
 function provider_is_installed() {
-  resolve_user_bin "$(provider_binary "$1")" >/dev/null 2>&1
+  command -v "$(provider_binary "$1")" &>/dev/null
 }
 
 function provider_menu_label() {
@@ -417,43 +397,13 @@ function provider_disabled_menu_label() {
     "$(provider_description "${provider}")"
 }
 
-# Resolve a command to an absolute path for use inside tmux callbacks, which run
-# under tmux's reduced server-side PATH (no ~/bin) and a non-interactive shell
-# that never sources ~/.zshrc.
-#
-# Resolution happens in two passes:
-#   1. Search the inherited PATH plus the user's personal bin directories
-#      (~/bin, ~/.local/bin). This covers tmux, the tm-* helpers, and any
-#      provider installed there (e.g. agy in ~/.local/bin).
-#   2. If still not found, source NVM in a subshell and retry. Several providers
-#      (codex, claude, qwen) are NVM-managed binaries that only land on PATH once
-#      NVM is sourced, which an interactive shell would normally do via ~/.zshrc.
-#
-# Prints the absolute path on success and nothing (with a non-zero status) when
-# the command cannot be found.
-function resolve_user_bin() {
-  local cmd="$1"
-  local resolved
-
-  if resolved="$(PATH="${HOME}/bin:${HOME}/.local/bin:${PATH}" command -v -- "${cmd}" 2>/dev/null)"; then
-    printf '%s\n' "${resolved}"
-    return 0
-  fi
-
-  local nvm_script="${NVM_DIR:-${HOME}/.config/nvm}/nvm.sh"
-  if [[ -s "${nvm_script}" ]]; then
-    resolved="$(
-      # shellcheck source=/dev/null
-      . "${nvm_script}" >/dev/null 2>&1
-      PATH="${HOME}/bin:${HOME}/.local/bin:${PATH}" command -v -- "${cmd}" 2>/dev/null
-    )"
-    if [[ -n "${resolved}" ]]; then
-      printf '%s\n' "${resolved}"
-      return 0
-    fi
-  fi
-
-  return 1
+# Resolve a command to an absolute path, searching the user's personal bin
+# directories in addition to the inherited PATH. This lets tmux callbacks (the
+# cleanup job and the provider menu) reference commands that live in ~/bin even
+# though tmux's server-side PATH omits it. Prints the absolute path on success
+# and nothing (with a non-zero status) when the command cannot be found.
+function resolve_cleanup_bin() {
+  PATH="${HOME}/bin:${HOME}/.local/bin:${PATH}" command -v -- "$1"
 }
 
 function shell_quote() {

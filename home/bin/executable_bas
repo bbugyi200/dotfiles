@@ -1,40 +1,11 @@
 #!/bin/bash
 #
 # BAS = Bugyi's Auto-SSH Tool
-#
-# Connect to a host with autossh and run a remote command (default: `tm sase`).
-#
-# SSH executes remote commands non-interactively, so the remote shell does not
-# source ~/.profile / ~/.zprofile. Under that reduced environment personal bin
-# directories (e.g. ~/bin) are missing from PATH, which made `tm` -- and the
-# helper commands it calls -- fail with exit code 127. To avoid that, the remote
-# command is run through a login Bash shell (`/bin/bash -lc`) so ~/.profile is
-# sourced and PATH is fully populated before the command runs.
 
 host="$1"
 shift
 
-# Join any remaining arguments into a single remote command. This supports both
-# the one-string form (`bas host "tm sase"`) and the split form
-# (`bas host tm sase`). With no command given, default to `tm sase`.
-if [[ "$#" -eq 0 ]]; then
-  remote_cmd="tm sase"
-else
-  remote_cmd="$*"
-fi
+cmd="${1:-tm sase}"
+shift
 
-# Single-quote a string for the remote shell: wrap it in single quotes and
-# escape any embedded single quote as '\''. This survives SSH joining the
-# command arguments and the remote login shell re-parsing them, regardless of
-# whether that login shell is bash or zsh.
-single_quote() {
-  local s="$1"
-  local escaped=${s//\'/\'\\\'\'}
-  printf "'%s'" "${escaped}"
-}
-
-# Run the remote command through a login Bash shell so ~/.profile is sourced and
-# personal bin directories are on PATH before the command executes.
-remote_login_cmd="/bin/bash -lc $(single_quote "${remote_cmd}")"
-
-autossh -M 0 -X -Y -t "${host}" "${remote_login_cmd}"
+autossh -M 0 -X -Y -t "${host}" "${cmd}"
