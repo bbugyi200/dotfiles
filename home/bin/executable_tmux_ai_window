@@ -44,15 +44,6 @@ function show_provider_menu() {
   local pane_dir
   pane_dir="$(tmux display-message -p '#{pane_current_path}')"
 
-  # The menu callbacks re-invoke this script via tmux run-shell, which uses
-  # tmux's reduced PATH (no ~/bin). Resolve our own absolute path so those
-  # callbacks do not fail with exit status 127.
-  local self_path
-  self_path="$(resolve_cleanup_bin "${SCRIPTNAME}")"
-  if [[ -z "${self_path}" ]]; then
-    self_path="${SCRIPTNAME}"
-  fi
-
   local default_choice=""
   local installed_count=0
   local index=0
@@ -93,7 +84,7 @@ function show_provider_menu() {
       dir_arg="$(shell_quote "${pane_dir}")"
 
       local shell_command
-      shell_command="$(shell_quote "${self_path}") --launch ${provider} --dir ${dir_arg}"
+      shell_command="${SCRIPTNAME} --launch ${provider} --dir ${dir_arg}"
 
       menu_args+=(
         "${label}"
@@ -129,19 +120,6 @@ function launch_provider() {
   local ai_cmd
   ai_cmd="$(provider_command "${provider}")"
 
-  # Resolve the cleanup executables to absolute paths now, while we can still
-  # augment PATH with the user's personal bin directories. The cleanup job runs
-  # later inside tmux's server-side shell, whose PATH omits ~/bin and would
-  # otherwise make the final command fail with an opaque exit status 127.
-  local tmux_bin fix_layout_bin renumber_bin
-  tmux_bin="$(resolve_cleanup_bin tmux)"
-  fix_layout_bin="$(resolve_cleanup_bin tm-fix-layout)"
-  renumber_bin="$(resolve_cleanup_bin tm-renumber-ai-windows)"
-  if [[ -z "${tmux_bin}" || -z "${fix_layout_bin}" || -z "${renumber_bin}" ]]; then
-    tmux_message "tmux_ai_window: cannot resolve cleanup commands on PATH (tmux=${tmux_bin:-MISSING}, tm-fix-layout=${fix_layout_bin:-MISSING}, tm-renumber-ai-windows=${renumber_bin:-MISSING})."
-    exit 1
-  fi
-
   # Get all window names in the current session
   local existing_windows
   existing_windows=$(tmux list-windows -F '#W')
@@ -166,14 +144,8 @@ function launch_provider() {
   channel="ai-cleanup-$$"
 
   # Run waiter in tmux's background (-b flag)
-  # This keeps the process alive as a tmux-managed job, avoiding orphaning issues.
-  # Absolute paths are used so the job does not depend on tmux's reduced PATH.
-  local cleanup_cmd
-  cleanup_cmd="$(shell_quote "${tmux_bin}") wait-for $(shell_quote "${channel}")"
-  cleanup_cmd+=" && sleep 0.1"
-  cleanup_cmd+=" && $(shell_quote "${fix_layout_bin}")"
-  cleanup_cmd+=" && $(shell_quote "${renumber_bin}")"
-  tmux run-shell -b "${cleanup_cmd}"
+  # This keeps the process alive as a tmux-managed job, avoiding orphaning issues
+  tmux run-shell -b "tmux wait-for '$channel' && sleep 0.1 && tm-fix-layout && tm-renumber-ai-windows"
 
   # Create window - when AI CLI exits, signal the channel before window closes
   tmux new-window -n "${window_name}" "cd $(shell_quote "${pane_dir}") && clear && ${ai_cmd}; tmux wait-for -S $(shell_quote "${channel}")"
@@ -395,15 +367,6 @@ function provider_disabled_menu_label() {
   printf "#[fg=#565f89]%-10s %s not installed" \
     "$(provider_display_name "${provider}")" \
     "$(provider_description "${provider}")"
-}
-
-# Resolve a command to an absolute path, searching the user's personal bin
-# directories in addition to the inherited PATH. This lets tmux callbacks (the
-# cleanup job and the provider menu) reference commands that live in ~/bin even
-# though tmux's server-side PATH omits it. Prints the absolute path on success
-# and nothing (with a non-zero status) when the command cannot be found.
-function resolve_cleanup_bin() {
-  PATH="${HOME}/bin:${HOME}/.local/bin:${PATH}" command -v -- "$1"
 }
 
 function shell_quote() {
