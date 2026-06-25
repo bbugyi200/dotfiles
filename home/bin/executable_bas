@@ -1,0 +1,11 @@
+#!/bin/bash
+#
+# BAS = Bugyi's Auto-SSH Tool
+
+host="$1"
+shift
+
+cmd="${1:-tm sase}"
+shift
+
+autossh -M 0 -X -Y -t "${host}" "${cmd}"
