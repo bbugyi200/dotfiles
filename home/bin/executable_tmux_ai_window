@@ -76,39 +76,31 @@ function show_provider_menu() {
   )
 
   for provider in "${PROVIDERS[@]}"; do
-    add_provider_menu_item "${provider}" "${pane_dir}" menu_args
+    if provider_is_installed "${provider}"; then
+      local label
+      label="$(provider_menu_label "${provider}")"
+
+      local dir_arg
+      dir_arg="$(shell_quote "${pane_dir}")"
+
+      local shell_command
+      shell_command="${SCRIPTNAME} --launch ${provider} --dir ${dir_arg}"
+
+      menu_args+=(
+        "${label}"
+        "$(provider_menu_key "${provider}")"
+        "run-shell $(tmux_quote "${shell_command}")"
+      )
+    else
+      menu_args+=(
+        "-$(provider_disabled_menu_label "${provider}")"
+        ""
+        ""
+      )
+    fi
   done
 
   tmux "${menu_args[@]}"
-}
-
-function add_provider_menu_item() {
-  local provider="$1"
-  local pane_dir="$2"
-  local -n menu_args_ref="$3"
-
-  local label
-  label="$(provider_menu_label "${provider}")"
-
-  if provider_is_installed "${provider}"; then
-    local dir_arg
-    dir_arg="$(shell_quote "${pane_dir}")"
-
-    local shell_command
-    shell_command="${SCRIPTNAME} --launch ${provider} --dir ${dir_arg}"
-
-    menu_args_ref+=(
-      "${label}"
-      "$(provider_menu_key "${provider}")"
-      "run-shell $(tmux_quote "${shell_command}")"
-    )
-  else
-    menu_args_ref+=(
-      "-$(provider_disabled_menu_label "${provider}")"
-      ""
-      ""
-    )
-  fi
 }
 
 function launch_provider() {
