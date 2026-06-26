@@ -45,6 +45,7 @@ ace:
       {% endif %}
     gact: "GitHub Actions"
     gactt: "GitHub Actions is failing with the below error."
+    gh: "GitHub"
     git: "(see recent, related git commits)"
     gpti: "Can you use GPT image to generate a$1? Write the image to a new file in the $2."
     gsn: "`sase ace` snapshot"
@@ -69,6 +70,7 @@ ace:
     prp: "plan review panel"
     rep: "the ../sase-$1 repo"
     sa: "sase agent"
+    sac: "SASE Admin Center"
     w: "%w:"
     x: "xprompt"
     xs: "xprompt skill"
