@@ -148,6 +148,7 @@ describe("SMOKE TEST:", function()
 
 		holder_nvim = vim.fn.jobstart({
 			"nvim",
+			"--clean",
 			"--headless",
 			"--cmd",
 			"set directory=" .. temp_dir .. "//",
