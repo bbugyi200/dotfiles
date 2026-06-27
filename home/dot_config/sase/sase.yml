@@ -75,6 +75,8 @@ ace:
     x: "xprompt"
     xs: "xprompt skill"
     xw: "xprompt workflow"
+    Key: |
+      The `$1` keymap
 
 telemetry:
   enabled: true
