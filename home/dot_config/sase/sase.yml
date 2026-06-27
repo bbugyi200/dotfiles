@@ -75,6 +75,8 @@ ace:
     x: "xprompt"
     xs: "xprompt skill"
     xw: "xprompt workflow"
+    foo: |
+      foo bar baz
 
 telemetry:
   enabled: true
