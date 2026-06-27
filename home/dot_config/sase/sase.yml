@@ -12,6 +12,10 @@ linked_repos:
       strategy: none
 ace:
   snippets:
+    # keep-sorted start
+    Cmd: "The `$1` command"
+    Key: |
+      The `$1` keymap
     ace: "`sase ace`"
     amac: "on another machine"
     amp: 'the agent metadata panel on the "Agents" tab of the `sase ace` TUI'
@@ -29,7 +33,6 @@ ace:
     cbi: "`<$1>`"
     chez: "my chezmoi repo"
     cmd: "the `$1` command"
-    Cmd: "The `$1` command"
     cmdd: "a new `$1` command"
     cmt: "`sase commit`"
     cs: "ChangeSpec"
@@ -49,8 +52,8 @@ ace:
     git: "(see recent, related git commits)"
     gpti: "Can you use GPT image to generate a$1? Write the image to a new file in the $2."
     gsn: "`sase ace` snapshot"
-    gsnn: "in the below #[gsn]"
     gsna: "(see the `sase ace` snapshot below)"
+    gsnn: "in the below #[gsn]"
     gta: 'the "$1" tab of the `sase ace` TUI'
     gtu: "the `sase ace` TUI"
     h: "http://"
@@ -75,8 +78,7 @@ ace:
     x: "xprompt"
     xs: "xprompt skill"
     xw: "xprompt workflow"
-    Key: |
-      The `$1` keymap
+    # keep-sorted end
 
 telemetry:
   enabled: true

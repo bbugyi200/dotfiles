@@ -48,6 +48,23 @@ jobs:
 
       - uses: astral-sh/setup-uv@v4
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          cache: false
+
+      - name: Cache Go binaries
+        id: cache-go-bin
+        uses: actions/cache@v4
+        with:
+          path: ~/go/bin
+          key: go-bin-v4-linux-amd64-${{ hashFiles('.github/workflows/ci.yml') }}
+
+      - name: Install Go tools (keep-sorted)
+        if: steps.cache-go-bin.outputs.cache-hit != 'true'
+        run: |
+          CGO_ENABLED=0 go install github.com/google/keep-sorted@latest
+
       - name: Run linters
         run: just lint
   test:
