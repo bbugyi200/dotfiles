@@ -4,7 +4,7 @@ IMPORTANT: You should not modify any of these memory files without approval from
 
 ## Tier 1 (short-term) Memory
 
-The following memory contains core (always loaded) context:
+The following memories contains core (always loaded) context:
 
 ### memory/sase.md (SASE = Structured Agentic Software Engineering)
 
