@@ -1,12 +1,23 @@
+local ScreenshotRegion = require("screenshot_region")
+
 hs.hotkey.bind({ "cmd", "alt", "ctrl" }, "V", nil, function()
 	local paste_parts = os.getenv("HOME") .. "/bin/paste_parts"
 	hs.task.new("/bin/bash", nil, { "-l", "-c", paste_parts }):start()
 end)
 
--- Capture a selected screen region and upload it to Apollo via ~/bin/macscrot.
--- Run asynchronously so Hammerspoon does not block while the region is selected.
-hs.hotkey.bind({ "ctrl", "alt", "shift" }, "s", nil, function()
+local function shellQuote(value)
+	return "'" .. tostring(value):gsub("'", "'\\''") .. "'"
+end
+
+local function runMacscrot(region)
 	local macscrot = os.getenv("HOME") .. "/bin/macscrot"
+	local command = shellQuote(macscrot)
+	if region then
+		command = command
+			.. " "
+			.. shellQuote(string.format("%d,%d,%d,%d", region.x, region.y, region.w, region.h))
+	end
+
 	hs.task
 		.new("/bin/bash", function(exitCode, stdOut, stdErr)
 			-- macscrot now owns the success notification for every invocation
@@ -21,8 +32,17 @@ hs.hotkey.bind({ "ctrl", "alt", "shift" }, "s", nil, function()
 				end
 				hs.notify.show("Screenshot failed", "", detail)
 			end
-		end, { "-l", "-c", macscrot })
+		end, { "-l", "-c", command })
 		:start()
+end
+
+-- Capture a selected screen region and upload it to Apollo via ~/bin/macscrot.
+-- The selector preloads the last confirmed rectangle, then macscrot owns
+-- capture, upload, clipboard, and success notification behavior.
+hs.hotkey.bind({ "ctrl", "alt", "shift" }, "s", nil, function()
+	ScreenshotRegion.pick(function(region)
+		runMacscrot(region)
+	end)
 end)
 
 local taskCapturePrompt = nil

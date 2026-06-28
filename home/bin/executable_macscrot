@@ -52,10 +52,26 @@ timestamp="$(date +"%Y%m%d_%H%M%S")"
 basename="${timestamp}.png"
 local_path="${screenshot_dir}/${basename}"
 
-# macOS native interactive capture. Exits 0 even when the user cancels, so we
-# also check for an empty/missing output file below. Tolerate a nonzero exit so
-# the cleanup-and-fail path runs regardless under `set -e`.
-/usr/sbin/screencapture -i -t png "$local_path" || true
+capture_region="${1:-}"
+if [[ $# -gt 1 ]]; then
+	echo "usage: macscrot [x,y,w,h]" >&2
+	exit 2
+fi
+if [[ -n "$capture_region" && ! "$capture_region" =~ ^-?[0-9]+,-?[0-9]+,[0-9]+,[0-9]+$ ]]; then
+	echo "macscrot: invalid region '${capture_region}' (expected x,y,w,h)" >&2
+	exit 2
+fi
+
+# macOS native capture. Without a region, keep the original interactive
+# crosshair behavior. With a region, capture the exact rectangle preselected by
+# Hammerspoon. screencapture exits 0 even when the user cancels interactive
+# capture, so we also check for an empty/missing output file below. Tolerate a
+# nonzero exit so the cleanup-and-fail path runs regardless under `set -e`.
+if [[ -n "$capture_region" ]]; then
+	/usr/sbin/screencapture -R "$capture_region" -t png "$local_path" || true
+else
+	/usr/sbin/screencapture -i -t png "$local_path" || true
+fi
 
 if [[ ! -s "$local_path" ]]; then
 	# Cancelled selection, or capture produced nothing — clean up the stub.
