@@ -6,7 +6,7 @@ IMPORTANT: You should not modify any of these memory files without approval from
 
 The following memories contains core (always loaded) context:
 
-### SASE = Structured Agentic Software Engineering (sase)
+### 1. SASE = Structured Agentic Software Engineering (sase)
 
 #### Linked Repositories
 
