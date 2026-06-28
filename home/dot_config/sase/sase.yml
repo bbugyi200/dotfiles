@@ -76,6 +76,8 @@ ace:
     sac: "SASE Admin Center"
     w: "%w:"
     x: "xprompt"
+    xp: |-
+      xprompt property
     xs: "xprompt skill"
     xw: "xprompt workflow"
     # keep-sorted end
