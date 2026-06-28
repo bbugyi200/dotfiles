@@ -1,7 +1,10 @@
 # Bullet properties offered by the Obsidian "Set bullet property" picker (Ctrl+Shift+P).
-# `values` is either the literal string `date` (YYYY-MM-DD values) or a list of allowed values.
+# `values` is the literal string `date` (YYYY-MM-DD), the literal string `local_task_id`
+# (the identifier of an open #task chosen from the current file), or a list of allowed values.
 properties:
   - name: scheduled
     values: date
   - name: p
     values: [1, 2]
+  - name: dependsOn
+    values: local_task_id
