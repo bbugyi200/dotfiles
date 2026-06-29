@@ -4,7 +4,9 @@
 # organization) or a single `repo` (`owner/name`). No secrets live here;
 # actstat reads its GitHub token from the environment or `gh auth token`.
 projects:
-  - org: sase-org # all repositories in the sase-org organization
+  - org: sase-org # all repositories in the sase-org organization...
+    exclude:
+      - sase-org/sase-android # ...except this one
   - org: bobs-org # all repositories in the bobs-org organization
   - repo: bbugyi200/dotfiles # a single repository
   - repo: bbugyi200/actstat # this repository
