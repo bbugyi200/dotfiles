@@ -37,6 +37,7 @@ ace:
     cmt: "`sase commit`"
     cs: "ChangeSpec"
     di: "the $1 directory"
+    drep: "Describe this repo."
     fi: "the $1 file"
     fix: "Can you help me fix this?"
     fixx: "Can you help me diagnose the root cause of this issue and fix it?"
@@ -118,7 +119,6 @@ xprompts:
     content:
       "I want you to lead the design on this one. Make sure you design this feature so it is intuitive, reliable, and
       (last but not least) beautiful!"
-  drep: "Describe this repo."
   jet: "jetski/jetski-default"
   nvim:
     snippet: true
