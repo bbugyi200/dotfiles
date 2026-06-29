@@ -50,6 +50,7 @@ ace:
     gact: "GitHub Actions"
     gactt: "GitHub Actions is failing with the below error."
     gh: "GitHub"
+    gha: "GitHub Actions"
     git: "(see recent, related git commits)"
     gpti: "Can you use GPT image to generate a$1? Write the image to a new file in the $2."
     gsn: "`sase ace` snapshot"
