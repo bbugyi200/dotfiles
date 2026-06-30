@@ -98,7 +98,7 @@ sase bead update <id> --status in_progress --assignee alice
 # List open and in-progress beads
 sase bead list
 
-# Limit printed beads; 0 means unlimited
+# Limit printed beads; closed listings default to 20, 0 means unlimited
 sase bead list --limit 5
 sase bead list -n 0
 
@@ -119,6 +119,10 @@ sase bead list --tier=legend
 Output format: `[icon] [id] · [title][ ← parent_id]` where icons are `○` open, `◐` in_progress, `✓` closed. If no
 `--status` is provided and no open or in-progress beads match, `list` falls back to closed beads and prints a notice
 that it implied `--status closed`.
+
+Whenever the final result set includes closed beads — via `--status closed`, a repeated status filter that includes
+`closed`, or the implicit closed fallback — and `--limit` is omitted, `list` prints only the newest 20 matching beads.
+Pass `--limit 0` to print all matching closed beads. The default open/in-progress listing stays unlimited.
 
 ### search
 
