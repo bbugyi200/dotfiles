@@ -111,7 +111,17 @@ llm_provider:
     agy_gptoss: "agy/GPT-OSS 120B (Medium)"
 
 xprompts:
-  # snippets
+  # keep-sorted start
+  agy: "agy_flash"
+  agy_flash: "agy_flash"
+  agy_flash_high: "agy_flash_high"
+  agy_flash_low: "agy_flash_low"
+  agy_flash_mid: "agy_flash_mid"
+  agy_gptoss: "agy_gptoss"
+  agy_opus: "agy_opus"
+  agy_pro: "agy_pro"
+  agy_pro_low: "agy_pro_low"
+  agy_sonnet: "agy_sonnet"
   bea:
     snippet: true
     content: "I want you to lead the design on this one. Just make sure it looks beautiful!"
@@ -120,49 +130,27 @@ xprompts:
     content:
       "I want you to lead the design on this one. Make sure you design this feature so it is intuitive, reliable, and
       (last but not least) beautiful!"
-  jet: "jetski/jetski-default"
-  nvim:
-    snippet: true
-    content: "Neovim (my neovim config lives in my chezmoi repo)"
-  rchat:
-    snippet: true
-    content: "Review recent, related sase agent chats for context."
-  # VCS project aliases
-  gh_dotfiles: "#gh:dotfiles"
-  gh_sase: "#gh:sase"
-  # models / provider presets
-  flash: "#agy_flash"
-  codex: "gpt-5.5"
   codex3: "gpt-5.3-codex"
+  codex: "gpt-5.5"
+  flash: "#agy_flash"
   gem: "#agy"
   gemini: "#agy"
-  pro: "#agy_pro"
-  # Antigravity (agy) model presets. These expand to model-alias tokens
-  # defined in llm_provider.model_aliases above.
-  agy: "agy_flash"
-  agy_flash: "agy_flash"
-  agy_flash_high: "agy_flash_high"
-  agy_flash_mid: "agy_flash_mid"
-  agy_flash_low: "agy_flash_low"
-  agy_pro: "agy_pro"
-  agy_pro_low: "agy_pro_low"
-  agy_sonnet: "agy_sonnet"
-  agy_opus: "agy_opus"
-  agy_gptoss: "agy_gptoss"
-  # %model aliases
+  gh_dotfiles: "#gh:dotfiles"
+  gh_sase: "#gh:sase"
+  jet: "jetski/jetski-default"
   m_agy: "%model:#agy"
   m_agy_flash: "%model:#agy_flash"
-  m_agy_flash_mid: "%model:#agy_flash_mid"
   m_agy_flash_low: "%model:#agy_flash_low"
-  m_agy_pro: "%model:#agy_pro"
-  m_agy_pro_low: "%model:#agy_pro_low"
-  m_agy_pro_flash: "%{%m:#agy_pro | %m:#agy_flash}"
-  m_agy_sonnet: "%model:#agy_sonnet"
-  m_agy_opus: "%model:#agy_opus"
+  m_agy_flash_mid: "%model:#agy_flash_mid"
   m_agy_gptoss: "%model:#agy_gptoss"
+  m_agy_opus: "%model:#agy_opus"
+  m_agy_pro: "%model:#agy_pro"
+  m_agy_pro_flash: "%{%m:#agy_pro | %m:#agy_flash}"
+  m_agy_pro_low: "%model:#agy_pro_low"
+  m_agy_sonnet: "%model:#agy_sonnet"
   m_codex: "%model:#codex"
-  m_flash: "#m_agy_flash"
   m_fable: "%m:claude/claude-fable-5"
+  m_flash: "#m_agy_flash"
   m_jet: "%model:#jet"
   m_jet_agy: "%{%m:#jet | %m:#agy_pro | %m:#agy_flash}"
   m_jet_pro_flash: "#m_jet_agy"
@@ -171,13 +159,17 @@ xprompts:
   m_opus_sonnet: "%{%m:opus | %m:sonnet}"
   m_pro: "#m_agy_pro"
   m_pro_flash: "#m_agy_pro_flash"
+  m_qwen: "%model:qwen3.6-plus"
   m_sonnet: "%model:sonnet"
   m_spark: "%model:codex/gpt-5.3-codex-spark"
   m_swarm: "%{%m:opus | %m:#codex | %m:#agy}"
-  m_qwen: "%model:qwen3.6-plus"
+  nvim:
+    snippet: true
+    content: "Neovim (my neovim config lives in my chezmoi repo)"
   perf:
     snippet: true
     content: "Make sure your solution doesn't harm performance at all."
+  pro: "#agy_pro"
   prs/compare:
     input:
       pr_a: int
@@ -190,3 +182,7 @@ xprompts:
       that we could improve the accepted PR by integrating parts of the rejected PRs changes (if the PR has a better
       interface or better tests, for example). Do NOT attempt to merge the accepted PR or make any file changes. You job
       is analysis ONLY!
+  rchat:
+    snippet: true
+    content: "Review recent, related sase agent chats for context."
+  # keep-sorted end
