@@ -103,7 +103,7 @@ llm_provider:
     coder: "@default"
     epic_creator: "@default"
     epic_lander: "@default"
-    phase_worker: "@default"
+    phase_worker: "claude/opus"
     # Antigravity (agy) model aliases. The exact `agy models` display names
     # carry spaces and parentheses, so route them through stable alias tokens
     # that %model fanout directives can reference safely.
