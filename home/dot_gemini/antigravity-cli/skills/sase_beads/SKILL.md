@@ -95,8 +95,12 @@ sase bead update <id> --status in_progress --assignee alice
 ### list
 
 ```bash
-# List all beads
+# List open and in-progress beads
 sase bead list
+
+# Limit printed beads; 0 means unlimited
+sase bead list --limit 5
+sase bead list -n 0
 
 # Filter by status
 sase bead list --status=open
@@ -112,7 +116,9 @@ sase bead list --tier=epic
 sase bead list --tier=legend
 ```
 
-Output format: `[icon] [id] · [title][ ← parent_id]` where icons are `○` open, `◐` in_progress, `✓` closed.
+Output format: `[icon] [id] · [title][ ← parent_id]` where icons are `○` open, `◐` in_progress, `✓` closed. If no
+`--status` is provided and no open or in-progress beads match, `list` falls back to closed beads and prints a notice
+that it implied `--status closed`.
 
 ### search
 
