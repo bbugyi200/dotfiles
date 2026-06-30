@@ -92,11 +92,18 @@ telemetry:
 
 llm_provider:
   default_effort: xhigh
-  worker_models:
-    claude: codex/gpt-5.5
-    codex: claude/opus
   model_aliases:
-    other: claude/opus
+    # Coder follow-ups: a Claude-authored plan hands coding to Codex and a
+    # Codex-authored plan hands coding to Claude Opus (migrated from the retired
+    # worker_models lane in epic sase-5d).
+    claude_coder: codex/gpt-5.5
+    codex_coder: claude/opus
+    # Remaining bead/epic role aliases are listed explicitly for readability;
+    # each just tracks the default launch model (@default), the implicit default.
+    coder: "@default"
+    epic_creator: "@default"
+    epic_lander: "@default"
+    phase_worker: "@default"
     # Antigravity (agy) model aliases. The exact `agy models` display names
     # carry spaces and parentheses, so route them through stable alias tokens
     # that %model fanout directives can reference safely.
