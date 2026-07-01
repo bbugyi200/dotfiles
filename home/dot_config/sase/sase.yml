@@ -96,7 +96,7 @@ llm_provider:
     # Coder follow-ups: a Claude-authored plan hands coding to Codex and a
     # Codex-authored plan hands coding to Claude Opus (migrated from the retired
     # worker_models lane in epic sase-5d).
-    claude_coder: opus
+    claude_coder: gpt-5.5
     codex_coder: claude/opus
     # Remaining bead/epic role aliases are listed explicitly for readability;
     # each just tracks the default launch model (@default), the implicit default.
