@@ -107,13 +107,12 @@ llm_provider:
     # Antigravity (agy) model aliases. The exact `agy models` display names
     # carry spaces and parentheses, so route them through stable alias tokens
     # that %model fanout directives can reference safely.
-    agy_flash: "agy/Gemini 3.5 Flash (High)"
+    agy: "agy/Gemini 3.5 Flash (High)"
     agy_pro: "agy/Gemini 3.1 Pro (High)"
 
 xprompts:
   # keep-sorted start
-  agy: "agy_flash"
-  agy_flash: "agy_flash"
+  agy: "agy"
   agy_pro: "agy_pro"
   bea:
     snippet: true
@@ -125,15 +124,13 @@ xprompts:
       (last but not least) beautiful!"
   codex3: "gpt-5.3-codex"
   codex: "gpt-5.5"
-  flash: "#agy_flash"
   gem: "#agy"
   gemini: "#agy"
   gh_dotfiles: "#gh:dotfiles"
   gh_sase: "#gh:sase"
   m_agy: "%model:@#agy"
-  m_agy_flash: "%model:@#agy_flash"
   m_agy_pro: "%model:@#agy_pro"
-  m_agy_pro_flash: "%{%m:@#agy_pro | %m:@#agy_flash}"
+  m_agy_pro_flash: "%{%m:@#agy_pro | %m:@#agy}"
   m_codex: "%model:#codex"
   m_fable: "%m:claude/claude-fable-5"
   m_flash: "#m_agy_flash"
