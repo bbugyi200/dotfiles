@@ -135,8 +135,6 @@ xprompts:
   m_opus: "%model:opus"
   m_opus_codex: "%{%m:opus | %m:#codex}"
   m_opus_sonnet: "%{%m:opus | %m:sonnet}"
-  m_pro: "#m_agy_pro"
-  m_pro_flash: "#m_agy_pro_flash"
   m_qwen: "%model:qwen3.6-plus"
   m_sonnet: "%model:sonnet"
   m_spark: "%model:codex/gpt-5.3-codex-spark"
