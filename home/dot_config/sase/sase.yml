@@ -124,8 +124,6 @@ xprompts:
       (last but not least) beautiful!"
   codex3: "gpt-5.3-codex"
   codex: "gpt-5.5"
-  gem: "#agy"
-  gemini: "#agy"
   gh_dotfiles: "#gh:dotfiles"
   gh_sase: "#gh:sase"
   m_agy: "%model:@#agy"
