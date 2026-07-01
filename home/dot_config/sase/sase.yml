@@ -104,16 +104,9 @@ llm_provider:
     epic_creator: "@default"
     epic_lander: "@default"
     phase_worker: "claude/opus"
-    # Antigravity (agy) model aliases. The exact `agy models` display names
-    # carry spaces and parentheses, so route them through stable alias tokens
-    # that %model fanout directives can reference safely.
-    agy: "agy/Gemini 3.5 Flash (High)"
-    agy_pro: "agy/Gemini 3.1 Pro (High)"
 
 xprompts:
   # keep-sorted start
-  agy: "agy"
-  agy_pro: "agy_pro"
   bea:
     snippet: true
     content: "I want you to lead the design on this one. Just make sure it looks beautiful!"
@@ -126,26 +119,25 @@ xprompts:
   codex: "gpt-5.5"
   gh_dotfiles: "#gh:dotfiles"
   gh_sase: "#gh:sase"
-  m_agy: "%model:@#agy"
-  m_agy_pro: "%model:@#agy_pro"
-  m_agy_pro_flash: "%{%m:@#agy_pro | %m:@#agy}"
+  m_agy: '%model("agy/Gemini 3.5 Flash (High)")'
+  m_agy_pro: '%model("agy/Gemini 3.1 Pro (High)")'
+  m_agy_pro_flash: '%{%m("agy/Gemini 3.1 Pro (High)") | %m("agy/Gemini 3.5 Flash (High)")}'
   m_codex: "%model:#codex"
   m_fable: "%m:claude/claude-fable-5"
-  m_flash: "#m_agy_flash"
+  m_flash: "#m_agy"
   m_opus: "%model:opus"
   m_opus_codex: "%{%m:opus | %m:#codex}"
   m_opus_sonnet: "%{%m:opus | %m:sonnet}"
   m_qwen: "%model:qwen3.6-plus"
   m_sonnet: "%model:sonnet"
   m_spark: "%model:codex/gpt-5.3-codex-spark"
-  m_swarm: "%{%m:opus | %m:#codex | %m:@#agy}"
+  m_swarm: '%{%m:opus | %m:#codex | %m("agy/Gemini 3.5 Flash (High)")}'
   nvim:
     snippet: true
     content: "Neovim (my neovim config lives in my chezmoi repo)"
   perf:
     snippet: true
     content: "Make sure your solution doesn't harm performance at all."
-  pro: "#agy_pro"
   prs/compare:
     input:
       pr_a: int
