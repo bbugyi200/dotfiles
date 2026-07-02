@@ -137,7 +137,7 @@ axe:
             SASE_TELEGRAM_BOT_USERNAME: sase_athena_bot
             SASE_TELEGRAM_BOT_CHAT_ID: "8990449281"
         - name: tg_outbound
-          description: "Send unread notifications to Telegram when user is inactive"
+          description: "Send unread notifications to Telegram"
           env:
             SASE_TELEGRAM_BOT_USERNAME: sase_athena_bot
             SASE_TELEGRAM_BOT_CHAT_ID: "8990449281"
