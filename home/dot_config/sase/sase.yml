@@ -93,6 +93,9 @@ telemetry:
 llm_provider:
   default_effort: xhigh
   model_aliases:
+    # Builtin alias overrides only. User-defined aliases belong under
+    # custom_model_aliases so the Models panel and %model completion can show a
+    # description.
     # Coder follow-ups: a Claude-authored plan hands coding to Codex and a
     # Codex-authored plan hands coding to Claude Opus (migrated from the retired
     # worker_models lane in epic sase-5d).
@@ -104,6 +107,10 @@ llm_provider:
     epic_creator: "@default"
     epic_lander: "@default"
     phase_worker: "claude/opus"
+  # custom_model_aliases:
+  #   blogger:
+  #     model: claude/opus
+  #     description: "Agents that draft and edit blog posts."
 
 xprompts:
   # keep-sorted start
