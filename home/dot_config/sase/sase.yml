@@ -90,6 +90,22 @@ telemetry:
     exposition_port: 9464
     pushgateway_url: "localhost:9091"
 
+axe:
+  lumberjacks:
+    telegram:
+      interval: 5
+      chops:
+        - name: tg_inbound
+          description: "Process Telegram inline keyboard responses and text messages"
+          env:
+            SASE_TELEGRAM_BOT_USERNAME: sase_athena_bot
+            SASE_TELEGRAM_BOT_CHAT_ID: "8990449281"
+        - name: tg_outbound
+          description: "Send unread notifications to Telegram"
+          env:
+            SASE_TELEGRAM_BOT_USERNAME: sase_athena_bot
+            SASE_TELEGRAM_BOT_CHAT_ID: "8990449281"
+
 llm_provider:
   default_effort: xhigh
   model_aliases:

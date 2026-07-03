@@ -128,16 +128,3 @@ axe:
           timeout: "120s"
           env:
             SASE_GHA_FIX_REPOS: "bbugyi200/dotfiles sase-org/sase"
-    telegram:
-      interval: 5
-      chops:
-        - name: tg_inbound
-          description: "Process Telegram inline keyboard responses and text messages"
-          env:
-            SASE_TELEGRAM_BOT_USERNAME: sase_athena_bot
-            SASE_TELEGRAM_BOT_CHAT_ID: "8990449281"
-        - name: tg_outbound
-          description: "Send unread notifications to Telegram"
-          env:
-            SASE_TELEGRAM_BOT_USERNAME: sase_athena_bot
-            SASE_TELEGRAM_BOT_CHAT_ID: "8990449281"
