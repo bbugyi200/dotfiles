@@ -123,7 +123,7 @@ llm_provider:
       coder: "@default"
       epic_creator: "gpt-5.5"
       epic_lander: "@default"
-      phase_worker: "claude/opus"
+      phase_worker: "gpt-5.5"
     custom:
       research:
         model: codex/gpt-5.5
