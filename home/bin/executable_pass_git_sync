@@ -1,0 +1,146 @@
+#!/bin/bash
+
+source ~/lib/bugyi.sh
+
+export USAGE_GRAMMAR=(
+  "[-v]"
+  "-h"
+)
+
+read -r -d '' DOC <<EOM
+$(usage)
+
+Sync the pass password store with upstream.
+
+Runs 'pass git pull' followed by 'pass git push'. When no usable SSH agent is
+present in the environment, this script probes the per-login ssh-agent sockets
+under /tmp/ssh-* and uses the newest socket that has loaded identities.
+
+Known Limitations
+-----------------
+- After a reboot, no agent may hold the unlocked GitHub key until you log in and
+  use SSH once. Until then, this script fails fast with a clear log message.
+- Merge conflicts in the password store still require manual resolution.
+
+Optional Arguments
+------------------
+-h | --help
+    View this help message.
+
+-v | --verbose
+    Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
+
+Examples
+--------
+pass_git_sync            # Pull and push the password store
+pass_git_sync -v         # Run with verbose output
+
+EOM
+
+set -e
+
+LOCK_FILE=${LOCK_FILE:-/var/tmp/pass_git_sync.lock}
+
+function run() {
+  parse_cli_args "$@"
+  acquire_lock "$@"
+
+  ensure_usable_ssh_agent
+
+  log::info "Pulling password-store changes..."
+  pass git pull
+
+  log::info "Pushing password-store changes..."
+  pass git push
+
+  log::info "Password-store sync complete."
+}
+
+function acquire_lock() {
+  if [[ "${PASS_GIT_SYNC_FLOCKED}" == true ]]; then
+    return
+  fi
+
+  local exit_code
+  if PASS_GIT_SYNC_FLOCKED=true flock -n -E 75 "${LOCK_FILE}" "$0" "$@"; then
+    exit 0
+  fi
+
+  exit_code=$?
+  if [[ "${exit_code}" -eq 75 ]]; then
+    log::info "Another pass_git_sync instance is already running; skipping."
+    exit 0
+  fi
+
+  exit "${exit_code}"
+}
+
+function ensure_usable_ssh_agent() {
+  if ssh_agent_has_identities; then
+    log::debug "Using existing SSH_AUTH_SOCK: ${SSH_AUTH_SOCK}"
+    return
+  fi
+
+  log::info "No usable SSH agent in current environment; probing /tmp/ssh-* sockets."
+
+  local socket
+  while IFS= read -r socket; do
+    [[ -n "${socket}" ]] || continue
+    [[ -S "${socket}" ]] || continue
+
+    log::debug "Checking SSH agent socket: ${socket}"
+    if SSH_AUTH_SOCK="${socket}" ssh_agent_has_identities; then
+      export SSH_AUTH_SOCK="${socket}"
+      log::info "Using SSH agent socket: ${SSH_AUTH_SOCK}"
+      return
+    fi
+  done < <(candidate_ssh_agent_sockets)
+
+  die "No usable SSH agent found. Log in and unlock the GitHub SSH key, then retry."
+}
+
+function ssh_agent_has_identities() {
+  ssh-add -l >/dev/null 2>&1
+}
+
+function candidate_ssh_agent_sockets() {
+  find /tmp -maxdepth 2 -path '/tmp/ssh-*/agent.*' -type s -printf '%T@ %p\n' 2>/dev/null |
+    sort -rn |
+    sed 's/^[^ ]* //'
+}
+
+function parse_cli_args() {
+  log::debug "Command-Line Arguments: ($*)"
+
+  eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
+
+  VERBOSE=0
+  while [[ -n "$1" ]]; do
+    case $1 in
+    -h | --help)
+      echo "${DOC}"
+      exit 0
+      ;;
+    -v | --verbose)
+      VERBOSE=$((VERBOSE + 1))
+      ;;
+    --)
+      shift
+      break
+      ;;
+    esac
+    shift
+  done
+
+  if [[ "${VERBOSE}" -gt 1 ]]; then
+    PS4='$LINENO: '
+    set -x
+  fi
+
+  readonly DOC
+  readonly VERBOSE
+}
+
+if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+  run "$@"
+fi
