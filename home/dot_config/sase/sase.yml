@@ -121,7 +121,7 @@ llm_provider:
       # Remaining bead/epic role aliases are listed explicitly for readability;
       # each just tracks the default launch model (@default), the implicit default.
       coder: "@default"
-      epic_creator: "@default"
+      epic_creator: "gpt-5.5"
       epic_lander: "@default"
       phase_worker: "claude/opus"
     custom:
