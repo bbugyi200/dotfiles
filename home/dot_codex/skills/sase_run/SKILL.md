@@ -37,6 +37,41 @@ sase launch request -f launch_request.json -o json
 The command creates `launch_request.json`, `launch_preview.md`, and a pending `LaunchApproval`; it does not spawn the
 agent.
 
+## Compose The Requested Prompt
+
+The requested prompt is a full sase prompt: `%` directives and `#` xprompt references all work. Before submitting, think
+hard about the workspace and wait choices below; they determine where the agent runs and which changes it sees.
+
+### VCS Workspace xprompt
+
+Standalone (non-family) prompts should normally start with a VCS workspace reference:
+
+- `#gh:<ref>` (GitHub), `#git:<ref>` (bare git), `#hg:<ref>` (Mercurial), or `#cd:<path>` (plain directory, no VCS
+  workspace management).
+- `<ref>` is usually a project name (`#gh:sase`). Use a ChangeSpec name (`#gh:my_change`) only when the agent must
+  continue that existing CL/PR branch, or `#gh:@agent` to target the ChangeSpec created by the named agent.
+- A prompt with no workspace reference defaults to `#git:home`, which is usually wrong for repo work.
+- Family-attach launches (`%n(parent, suffix)`) inherit the parent's workspace and ChangeSpec; do not add a workspace
+  reference to them.
+
+### Wait Directive
+
+`%w(<agent>)` parks the launch until the named agent completes successfully. The workspace is checked out only after the
+wait resolves, so the new agent sees the awaited agent's landed changes. Think hard about whether you need it:
+
+- Wait on your own agent name (from `$SASE_AGENT_NAME`) when the new agent must build on changes this run has not landed
+  yet; wait on another agent's name when it depends on that agent instead.
+- Omit `%w` when the work is independent, so the agent starts immediately.
+- Failed or killed runs never satisfy `%w`; the launch stays parked until a successful run of that name exists.
+- `%w(time=10m)` defers by time instead; arguments compose: `%w(planner, time=5m)`.
+
+### Other xprompts
+
+`#name` / `#name(args)` references expand reusable templates and multi-step workflows: they can inject prompt text, run
+python/bash steps, set environment variables, and split work across multiple agents. Rollover workflows `#commit`,
+`#propose`, and `#pr(<name>)` control how the launched agent's changes land. Discover what is available with
+`sase xprompt list`; preview a prompt's expansion with `sase xprompt expand '<prompt>'`.
+
 ## Family Members
 
 To attach the approved launch to an existing family, put the family directive in the requested prompt:
