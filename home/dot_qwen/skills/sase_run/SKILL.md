@@ -37,6 +37,9 @@ sase launch request -f launch_request.json -o json
 The command creates `launch_request.json`, `launch_preview.md`, and a pending `LaunchApproval`; it does not spawn the
 agent.
 
+A prompt containing `---` separator lines outside fenced code blocks plans one slot per segment. Set `max_slots` at
+least to the segment count; otherwise the request fails with `max_slots_exceeded`.
+
 ## Compose The Requested Prompt
 
 The requested prompt is a full sase prompt: `%` directives and `#` xprompt references all work. Before submitting, think
@@ -71,6 +74,20 @@ wait resolves, so the new agent sees the awaited agent's landed changes. Think h
 python/bash steps, set environment variables, and split work across multiple agents. Rollover workflows `#commit`,
 `#propose`, and `#pr(<name>)` control how the launched agent's changes land. Discover what is available with
 `sase xprompt list`; preview a prompt's expansion with `sase xprompt expand '<prompt>'`.
+
+### Literal Directive Text
+
+The requested prompt is re-parsed at dispatch: every `%` directive and `#` reference anywhere in it is live, even
+mid-sentence. A stray `#git:<ref>` in prose silently re-targets the workspace; a stray `%m` mention fails the launch
+after approval. When the prompt must show prompt syntax literally (docs, demos, tests):
+
+- Put the literal syntax in a fenced code block; fenced content is never parsed.
+- Or enclose a prose region between `%xprompts_enabled:false` and `%xprompts_enabled:true` marker lines; the markers are
+  stripped before the launched agent sees the prompt.
+- Otherwise name the syntax in words ("the model directive") instead of writing the token.
+
+Always preflight with `sase xprompt expand '<prompt>'`: it must succeed and report only the directives and references
+you intended.
 
 ## Family Members
 
