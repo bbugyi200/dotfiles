@@ -13,6 +13,9 @@ repomix[-_]*.xml
 # Python virtual environment
 .venv
 
+# LuaRocks local install tree
+.luarocks/
+
 # Local SASE beads database
 .beads/
 sdd/beads/beads.db
