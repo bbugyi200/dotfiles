@@ -52,7 +52,7 @@ Standalone (non-family) prompts should normally start with a VCS workspace refer
 - `#gh:<ref>` (GitHub), `#git:<ref>` (bare git), `#hg:<ref>` (Mercurial), or `#cd:<path>` (plain directory, no VCS
   workspace management).
 - `<ref>` is usually a project name (`#gh:sase`). Use a ChangeSpec name (`#gh:my_change`) only when the agent must
-  continue that existing CL/PR branch, or `#gh:@agent` to target the ChangeSpec created by the named agent.
+  continue that existing PR branch, or `#gh:@agent` to target the ChangeSpec created by the named agent.
 - A prompt with no workspace reference defaults to `#git:home`, which is usually wrong for repo work.
 - Family-attach launches (`%n(parent, suffix)`) inherit the parent's workspace and ChangeSpec; do not add a workspace
   reference to them.

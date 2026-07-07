@@ -1,7 +1,7 @@
 ---
 name: sase_changespecs
 description:
-  Analyze and work with SASE ChangeSpecs. Use when inspecting CL/PR status, dependencies, commits, hooks, comments,
+  Analyze and work with SASE ChangeSpecs. Use when inspecting PR status, dependencies, commits, hooks, comments,
   mentors, or `.sase` project files.
 ---
 
@@ -15,15 +15,14 @@ Quick reference for inspecting and reasoning about SASE ChangeSpecs.
 
 ## Current ChangeSpec
 
-When the task concerns the current CL/PR or checkout, start with:
+When the task concerns the current PR or checkout, start with:
 
 ```bash
 sase changespec current -f markdown
 ```
 
-This resolves by current PR/CL URL first, then by branch/bookmark name, and prints the matching ChangeSpec with its
-project, status, parent, PR/CL, and file location. Use `-f json` when a script or automation step needs structured
-fields.
+This resolves by current PR URL first, then by branch/bookmark name, and prints the matching ChangeSpec with its
+project, status, parent, PR, and file location. Use `-f json` when a script or automation step needs structured fields.
 
 ## Primary command
 
@@ -31,8 +30,8 @@ fields.
 sase changespec search '<query>' -f markdown
 ```
 
-This prints agent-friendly markdown with each ChangeSpec's name, project, status, parent, PR/CL, and the file/line where
-it lives.
+This prints agent-friendly markdown with each ChangeSpec's name, project, status, parent, PR, and the file/line where it
+lives.
 
 ## Exact lookup
 
@@ -65,7 +64,7 @@ Boolean queries work too: `'"feature" AND %r'`, `'+myproject AND (!!! OR @@@)'`.
 
 ## How to summarize
 
-- Lead with `name`, `project`, `status`, `parent`, PR/CL, and the file location when available.
+- Lead with `name`, `project`, `status`, `parent`, PR, and the file location when available.
 - Call out blockers explicitly: non-terminal parent, failed hooks, unresolved comments, running agents/processes,
   rejected or new proposals.
 - For multi-result queries, group by project and status, and surface the most relevant ChangeSpecs first.
@@ -156,6 +155,7 @@ live in `<project>-archive.sase`; active specs live in `<project>.sase` under `~
 
 ## Implementation notes
 
-ChangeSpec sections: `NAME`, `DESCRIPTION`, `PARENT`, `CL` / `PR`, `BUG`, `STATUS`, `COMMITS`, `TIMESTAMPS`, `HOOKS`,
-`COMMENTS`, `MENTORS`. Search reads both `<project>.sase` and `<project>-archive.sase` (and their legacy `.gp` siblings
-during the migration window), so submitted and archived specs are reachable via the same queries.
+ChangeSpec sections: `NAME`, `DESCRIPTION`, `PARENT`, `PR`, `BUG`, `STATUS`, `COMMITS`, `TIMESTAMPS`, `HOOKS`,
+`COMMENTS`, `MENTORS`. Legacy `CL:` fields are readable during the compatibility window. Search reads both
+`<project>.sase` and `<project>-archive.sase` (and their legacy `.gp` siblings during the migration window), so
+submitted and archived specs are reachable via the same queries.
