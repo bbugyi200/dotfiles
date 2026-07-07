@@ -133,6 +133,14 @@ llm_provider:
 
 xprompts:
   # keep-sorted start
+  actstat:
+    input:
+      repo:
+        type: word
+        default: sase
+        description: The name of the repo that is failing GitHub Actions.
+    content: |-
+      #gh:sase GitHub Actions is failing for the {{ repo }} repo. Can you run the `actstat` command to get more information about the failing jobs, diagnose the root cause of these failures, and then fix them?
   bea:
     snippet: true
     content: "I want you to lead the design on this one. Just make sure it looks beautiful!"
