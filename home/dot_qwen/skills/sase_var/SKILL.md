@@ -10,7 +10,7 @@ sase skill use sase_var --reason "<one-line reason for using this skill>"
 ```
 
 Use this skill when you need a later SASE agent to consume a small string value produced by the current agent, or when
-you want the value to appear in the Agents-tab metadata for this run.
+you want the value to appear in the Agents-tab metadata and Telegram completion message for this run.
 
 ## Workflow
 
@@ -45,7 +45,8 @@ keys also support attribute access such as `{{ agents.build.result_path }}`.
 - Quote assignments when your shell would otherwise split or expand the value, for example
   `sase var set "summary=tests passed"`.
 - Multiple calls merge into the same agent's variable map; later writes for the same key replace earlier values.
-- Do not store secrets. Output variables are persisted in `agent_meta.json` and shown in ACE.
+- Do not store secrets. Output variables are persisted in `agent_meta.json` and shown in ACE and the Telegram
+  agent-completion message.
 
 Use `%wait:<producer>` when a later agent needs a variable from another agent.
 
