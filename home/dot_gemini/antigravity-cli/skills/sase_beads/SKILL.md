@@ -12,9 +12,18 @@ sase skill use sase_beads --reason "<one-line reason for using this skill>"
 
 Quick reference for the `sase bead` CLI. Use `sase bead` (not `.venv/bin/sase bead`) for all bead commands.
 
-In version-controlled projects, `sase bead` reads and writes the current checkout's `sdd/beads/` store. Canonical state
-lives in `sdd/beads/events/**` when present; `issues.jsonl` is a generated compatibility projection. It does not merge
-bead records from numbered sibling workspaces or legacy bead stores.
+## SDD Path Convention
+
+Do not assume `sdd/...` is relative to the current checkout. In launched agents, use `SASE_SDD_DIR` for the effective
+SDD root. Outside a launched agent, run `SASE_SDD_DIR=$(sase sdd path)` first, or use `sase sdd path <kind>` for a
+specific child directory.
+
+The examples below use `${SASE_SDD_DIR}/...` plan paths. Quote `--type` values so shell expansion works reliably.
+
+`sase bead` reads and writes the current effective SDD bead store. In-tree projects use `sdd/beads/`; local and
+separate-repo stores use `.sase/sdd/beads/`. Canonical state lives in `beads/events/**` when present; `issues.jsonl` is
+a generated compatibility projection. It does not merge bead records from numbered sibling workspaces or legacy bead
+stores.
 
 ## Statuses
 
@@ -28,9 +37,9 @@ bead records from numbered sibling workspaces or legacy bead stores.
 - `phase` — child of a plan (created with `--type phase(...)`)
 
 Plan beads can carry `--tier plan`, `--tier epic`, or `--tier legend`. Normal approved plans live under
-`sdd/tales/{YYYYMM}/`, executable epics under `sdd/epics/{YYYYMM}/`, and legends under `sdd/legends/{YYYYMM}/`.
-`sase bead work` runs `epic`-tier plan beads by launching phase + land agents, and `legend`-tier plan beads by launching
-one epic-planning agent per stored `epic_count`.
+`${SASE_SDD_DIR}/tales/{YYYYMM}/`, executable epics under `${SASE_SDD_DIR}/epics/{YYYYMM}/`, and legends under
+`${SASE_SDD_DIR}/legends/{YYYYMM}/`. `sase bead work` runs `epic`-tier plan beads by launching phase + land agents, and
+`legend`-tier plan beads by launching one epic-planning agent per stored `epic_count`.
 
 ## Commands
 
@@ -38,22 +47,22 @@ one epic-planning agent per stored `epic_count`.
 
 ```bash
 # Create a plan bead (top-level, linked to a plan file)
-sase bead create --title "Add auth system" --type plan(sdd/tales/202605/auth.md) --tier plan
+sase bead create --title "Add auth system" --type "plan(${SASE_SDD_DIR}/tales/202605/auth.md)" --tier plan
 
 # Create an executable epic bead
-sase bead create --title "Auth epic" --type plan(sdd/epics/202605/auth.md) --tier epic
+sase bead create --title "Auth epic" --type "plan(${SASE_SDD_DIR}/epics/202605/auth.md)" --tier epic
 
 # Create an executable epic bead with a land-agent model
-sase bead create --title "Auth epic" --type plan(sdd/epics/202605/auth.md) --tier epic --model claude/opus
+sase bead create --title "Auth epic" --type "plan(${SASE_SDD_DIR}/epics/202605/auth.md)" --tier epic --model claude/opus
 
 # Create a legend bead that proposes 5 epics
-sase bead create --title "Auth roadmap" --type plan(sdd/legends/202605/auth.md) --tier legend --epic-count 5
+sase bead create --title "Auth roadmap" --type "plan(${SASE_SDD_DIR}/legends/202605/auth.md)" --tier legend --epic-count 5
 
 # Create a legend bead with a land-agent model
-sase bead create --title "Auth roadmap" --type plan(sdd/legends/202605/auth.md) --tier legend --epic-count 5 --model claude/opus
+sase bead create --title "Auth roadmap" --type "plan(${SASE_SDD_DIR}/legends/202605/auth.md)" --tier legend --epic-count 5 --model claude/opus
 
 # Create an epic linked under a legend
-sase bead create --title "Auth epic" --type plan(sdd/epics/202605/auth.md,<legend-bead-id>) --tier epic
+sase bead create --title "Auth epic" --type "plan(${SASE_SDD_DIR}/epics/202605/auth.md,<legend-bead-id>)" --tier epic
 
 # Create a phase bead (child of a plan)
 sase bead create --title "Implement login endpoint" --type phase(<plan-bead-id>)
@@ -62,7 +71,7 @@ sase bead create --title "Implement login endpoint" --type phase(<plan-bead-id>)
 sase bead create --title "Implement login endpoint" --type phase(<plan-bead-id>) --model codex/gpt-5.5
 
 # Create a nested plan (plan with parent)
-sase bead create --title "Sub-plan" --type plan(sdd/tales/202605/sub.md,<parent-bead-id>)
+sase bead create --title "Sub-plan" --type "plan(${SASE_SDD_DIR}/tales/202605/sub.md,<parent-bead-id>)"
 
 # With optional fields
 sase bead create --title "..." --type phase(<id>) --description "Details here" --assignee alice
@@ -83,7 +92,7 @@ sase bead update <id> --title "New title"
 sase bead update <id> --description "Updated description"
 sase bead update <id> --notes "Implementation notes"
 sase bead update <id> --assignee bob
-sase bead update <id> --design sdd/tales/202605/revised.md
+sase bead update <id> --design "${SASE_SDD_DIR}/tales/202605/revised.md"
 sase bead update <id> --model codex/gpt-5.5
 sase bead update <id> --model ""  # clear the stored model
 sase bead update <legend-id> --epic-count 6
@@ -174,7 +183,8 @@ sase bead dep add <issue> <depends_on>
 
 ## Typical Workflow
 
-1. `sase bead create --title "..." --type plan(sdd/epics/202605/plan.md) --tier epic` — create an epic plan bead
+1. `sase bead create --title "..." --type "plan(${SASE_SDD_DIR}/epics/202605/plan.md)" --tier epic` — create an epic
+   plan bead
 2. `sase bead create --title "Phase 1" --type phase(<plan-id>)` — add phases
 3. `sase bead dep add <phase-2-id> <phase-1-id>` — set ordering
 4. `sase bead ready` — find unblocked work
@@ -187,7 +197,7 @@ sase bead dep add <issue> <depends_on>
 Legend beads store the number of epics they propose with `--epic-count` / `-E`.
 
 ```bash
-sase bead create --title "Roadmap" --type plan(sdd/legends/202605/roadmap.md) --tier legend --epic-count 3
+sase bead create --title "Roadmap" --type "plan(${SASE_SDD_DIR}/legends/202605/roadmap.md)" --tier legend --epic-count 3
 sase bead work <legend-id> --dry-run
 sase bead work <legend-id> --yes
 ```
