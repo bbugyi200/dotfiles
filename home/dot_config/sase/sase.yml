@@ -206,4 +206,6 @@ xprompts:
       {{ prompt }}
   research: |
     Write this research to a new markdown file under the sdd/research/$(date +%Y%m)/ directory.
+  tale: |-
+    #plan %a:tale
   # keep-sorted end
