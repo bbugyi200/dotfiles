@@ -40,4 +40,4 @@ Research request:
 
 ---
 
-%name:research.@.image %model:codex/gpt-5.5 %wait:research.@.final %g:research #fork:research.@.final #research/image
+%name:research.@.image %model:codex/gpt-5.6 %wait:research.@.final %g:research #fork:research.@.final #research/image
