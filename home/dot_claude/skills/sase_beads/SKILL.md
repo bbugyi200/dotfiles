@@ -58,7 +58,7 @@ sase bead create --title "Auth epic" --type "plan(${SASE_SDD_DIR}/epics/202605/a
 sase bead create --title "Implement login endpoint" --type phase(<plan-bead-id>)
 
 # Create a phase bead with a phase-work model
-sase bead create --title "Implement login endpoint" --type phase(<plan-bead-id>) --model codex/gpt-5.6
+sase bead create --title "Implement login endpoint" --type phase(<plan-bead-id>) --model codex/gpt-5.6-sol
 
 # Create a nested plan (plan with parent)
 sase bead create --title "Sub-plan" --type "plan(${SASE_SDD_DIR}/tales/202605/sub.md,<parent-bead-id>)"
@@ -83,7 +83,7 @@ sase bead update <id> --description "Updated description"
 sase bead update <id> --notes "Implementation notes"
 sase bead update <id> --assignee bob
 sase bead update <id> --design "${SASE_SDD_DIR}/tales/202605/revised.md"
-sase bead update <id> --model codex/gpt-5.6
+sase bead update <id> --model codex/gpt-5.6-sol
 sase bead update <id> --model ""  # clear the stored model
 # Combine multiple updates
 sase bead update <id> --status in_progress --assignee alice

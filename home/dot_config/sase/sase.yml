@@ -116,16 +116,16 @@ llm_provider:
       # Coder follow-ups: a Claude-authored plan hands coding to Codex and a
       # Codex-authored plan hands coding to Claude Opus (migrated from the retired
       # worker_models lane in epic sase-5d).
-      claude_coder: gpt-5.6
+      claude_coder: gpt-5.6-sol
       # Remaining bead/epic role aliases are listed explicitly for readability;
       # each just tracks the default launch model (@default), the implicit default.
       coder: "@default"
-      epic_creator: codex/gpt-5.6
+      epic_creator: codex/gpt-5.6-sol
       epic_lander: claude/opus
-      phase_worker: codex/gpt-5.6
+      phase_worker: codex/gpt-5.6-sol
     custom:
       research:
-        model: codex/gpt-5.6
+        model: codex/gpt-5.6-sol
         description: "Primary research-swarm agents: the lead researcher and the consolidator."
       research_assist:
         model: claude/opus
@@ -151,7 +151,7 @@ xprompts:
       "I want you to lead the design on this one. Make sure you design this feature so it is intuitive, reliable, and
       (last but not least) beautiful!"
   codex3: "gpt-5.3-codex"
-  codex: "gpt-5.6"
+  codex: "gpt-5.6-sol"
   gh_dotfiles: "#gh:dotfiles"
   gh_sase: "#gh:sase"
   m_agy: '%model("agy/Gemini 3.5 Flash (High)")'

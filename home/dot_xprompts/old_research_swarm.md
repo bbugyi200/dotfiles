@@ -14,4 +14,4 @@ input:
 
 ---
 
-%w %g:research #fork #research/image %m:gpt-5.6
+%w %g:research #fork #research/image %m:gpt-5.6-sol
