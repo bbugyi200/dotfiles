@@ -36,10 +36,9 @@ stores.
 - `plan` — plan-like work item (created with `--type plan(...)`)
 - `phase` — child of a plan (created with `--type phase(...)`)
 
-Plan beads can carry `--tier plan`, `--tier epic`, or `--tier legend`. Normal approved plans live under
-`${SASE_SDD_DIR}/tales/{YYYYMM}/`, executable epics under `${SASE_SDD_DIR}/epics/{YYYYMM}/`, and legends under
-`${SASE_SDD_DIR}/legends/{YYYYMM}/`. `sase bead work` runs `epic`-tier plan beads by launching phase + land agents, and
-`legend`-tier plan beads by launching one epic-planning agent per stored `epic_count`.
+Plan beads can carry `--tier plan` or `--tier epic`. Normal approved plans live under `${SASE_SDD_DIR}/tales/{YYYYMM}/`,
+and executable epics live under `${SASE_SDD_DIR}/epics/{YYYYMM}/`. `sase bead work` runs `epic`-tier plan beads by
+launching phase + land agents.
 
 ## Commands
 
@@ -54,15 +53,6 @@ sase bead create --title "Auth epic" --type "plan(${SASE_SDD_DIR}/epics/202605/a
 
 # Create an executable epic bead with a land-agent model
 sase bead create --title "Auth epic" --type "plan(${SASE_SDD_DIR}/epics/202605/auth.md)" --tier epic --model claude/opus
-
-# Create a legend bead that proposes 5 epics
-sase bead create --title "Auth roadmap" --type "plan(${SASE_SDD_DIR}/legends/202605/auth.md)" --tier legend --epic-count 5
-
-# Create a legend bead with a land-agent model
-sase bead create --title "Auth roadmap" --type "plan(${SASE_SDD_DIR}/legends/202605/auth.md)" --tier legend --epic-count 5 --model claude/opus
-
-# Create an epic linked under a legend
-sase bead create --title "Auth epic" --type "plan(${SASE_SDD_DIR}/epics/202605/auth.md,<legend-bead-id>)" --tier epic
 
 # Create a phase bead (child of a plan)
 sase bead create --title "Implement login endpoint" --type phase(<plan-bead-id>)
@@ -95,8 +85,6 @@ sase bead update <id> --assignee bob
 sase bead update <id> --design "${SASE_SDD_DIR}/tales/202605/revised.md"
 sase bead update <id> --model codex/gpt-5.5
 sase bead update <id> --model ""  # clear the stored model
-sase bead update <legend-id> --epic-count 6
-
 # Combine multiple updates
 sase bead update <id> --status in_progress --assignee alice
 ```
@@ -122,7 +110,7 @@ sase bead list --type=phase
 
 # Filter by plan-bead tier
 sase bead list --tier=epic
-sase bead list --tier=legend
+sase bead list --tier=plan
 ```
 
 Output format: `[icon] [id] · [title][ ← parent_id]` where icons are `○` open, `◐` in_progress, `✓` closed. If no
@@ -191,16 +179,3 @@ sase bead dep add <issue> <depends_on>
 5. `sase bead update <id> --status in_progress` — claim work
 6. _(do the work)_
 7. `sase bead update <id> --status closed` — mark done
-
-## Legend Workflow
-
-Legend beads store the number of epics they propose with `--epic-count` / `-E`.
-
-```bash
-sase bead create --title "Roadmap" --type "plan(${SASE_SDD_DIR}/legends/202605/roadmap.md)" --tier legend --epic-count 3
-sase bead work <legend-id> --dry-run
-sase bead work <legend-id> --yes
-```
-
-Working a legend does not create phase beads directly. It launches one epic-planning agent per proposed epic; each
-created epic then follows the normal `bd/new_epic` automation.
