@@ -372,12 +372,12 @@ function test_pyvision_pragma_not_stale_when_only_test_imports_exist() {
   local repo_dir
   repo_dir="$(make_pyvision_repo)"
   cat >"${repo_dir}/src/pkg/widgets.py" <<'EOF'
-# pyvision: docs/reference.md
+# pyvision: docs/reference.toml
 class WidgetFactory:
     pass
 EOF
-  cat >"${repo_dir}/docs/reference.md" <<'EOF'
-The WidgetFactory symbol is referenced from generated documentation.
+  cat >"${repo_dir}/docs/reference.toml" <<'EOF'
+factory = "WidgetFactory"
 EOF
   cat >"${repo_dir}/tests/test_widgets.py" <<'EOF'
 from pkg.widgets import WidgetFactory
@@ -401,6 +401,28 @@ function test_pyvision_keeps_non_test_pragmas() {
   local repo_dir
   repo_dir="$(make_pyvision_repo)"
   cat >"${repo_dir}/src/pkg/widgets.py" <<'EOF'
+# pyvision: docs/reference.toml
+class WidgetFactory:
+    pass
+EOF
+  cat >"${repo_dir}/docs/reference.toml" <<'EOF'
+factory = "WidgetFactory"
+EOF
+  track_repo_files "${repo_dir}"
+
+  local output
+  output="$(run_pyvision "${repo_dir}" 2>&1)"
+  local status=$?
+
+  rm -rf "${repo_dir}"
+  assert_same 0 "${status}"
+  assert_contains "No public functions or classes found!" "${output}"
+}
+
+function test_pyvision_rejects_md_local_pragmas() {
+  local repo_dir
+  repo_dir="$(make_pyvision_repo)"
+  cat >"${repo_dir}/src/pkg/widgets.py" <<'EOF'
 # pyvision: docs/reference.md
 class WidgetFactory:
     pass
@@ -415,8 +437,32 @@ EOF
   local status=$?
 
   rm -rf "${repo_dir}"
-  assert_same 0 "${status}"
-  assert_contains "No public functions or classes found!" "${output}"
+  assert_same 1 "${status}"
+  assert_contains "referenced markdown path 'docs/reference.md' is forbidden" "${output}"
+  assert_contains "markdown docs are not valid pyvision consumers" "${output}"
+}
+
+function test_pyvision_rejects_markdown_local_pragmas() {
+  local repo_dir
+  repo_dir="$(make_pyvision_repo)"
+  cat >"${repo_dir}/src/pkg/widgets.py" <<'EOF'
+# pyvision: docs/reference.markdown
+class WidgetFactory:
+    pass
+EOF
+  cat >"${repo_dir}/docs/reference.markdown" <<'EOF'
+The WidgetFactory symbol is referenced from generated documentation.
+EOF
+  track_repo_files "${repo_dir}"
+
+  local output
+  output="$(run_pyvision "${repo_dir}" 2>&1)"
+  local status=$?
+
+  rm -rf "${repo_dir}"
+  assert_same 1 "${status}"
+  assert_contains "referenced markdown path 'docs/reference.markdown' is forbidden" "${output}"
+  assert_contains "markdown docs are not valid pyvision consumers" "${output}"
 }
 
 function test_pyvision_uri_pragma_passes_when_external_repo_imports_symbol() {

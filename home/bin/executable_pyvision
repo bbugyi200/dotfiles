@@ -747,6 +747,14 @@ def _validate_pragmas(
                     )
                 continue
 
+            if _is_markdown_reference_path(pragma.ref_path):
+                errors.append(
+                    f"{prefix} referenced markdown path '{pragma.ref_path}' is forbidden"
+                    " because markdown docs are not valid pyvision consumers; use a"
+                    " code or configuration reference instead"
+                )
+                continue
+
             ref_file = git_root / pragma.ref_path
 
             # Referenced file doesn't exist
@@ -780,6 +788,11 @@ def _validate_pragmas(
                 )
 
     return errors
+
+
+def _is_markdown_reference_path(ref_path: str) -> bool:
+    """Return whether a local pyvision pragma points at a markdown file."""
+    return Path(ref_path).suffix.lower() in {".md", ".markdown"}
 
 
 def _is_test_reference_path(ref_path: str) -> bool:
