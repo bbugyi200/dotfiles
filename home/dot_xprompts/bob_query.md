@@ -1,19 +1,14 @@
 ---
-name: bob_dataview
-description: Run read-only Obsidian Dataview queries against Bryan's Bob vault via `bob dataview`.
+name: bob_query
+description: Run read-only Obsidian Dataview queries against Bryan's Bob vault via `bob query`.
+skill: true
 ---
-
-Before doing anything else, run this command to record that you are using this skill:
-
-```bash
-sase skill use bob_dataview --reason "<one-line reason for using this skill>"
-```
 
 Use this skill when you need read-only Dataview access to Bryan's Bob vault (`~/bob`).
 
 ## Rules
 
-- Use `bob dataview` instead of manually parsing large parts of the vault.
+- Use `bob query` instead of manually parsing large parts of the vault.
 - Treat this skill as read-only. Do not modify Bob vault files.
 - Prefer `--query-file -` or a temporary query file for multiline DQL.
 - Use `--format markdown` when the result is going into a prompt, transcript, or human-readable answer.
@@ -36,5 +31,5 @@ SORT title ASC
 Run it as Markdown:
 
 ```bash
-bob dataview --format markdown --query-file /path/to/query.dql
+bob query --format markdown --query-file /path/to/query.dql
 ```
