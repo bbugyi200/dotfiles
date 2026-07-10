@@ -49,7 +49,7 @@ hard about the workspace and wait choices below; they determine where the agent 
 
 Standalone (non-family) prompts should normally start with a VCS workspace reference:
 
-- `#gh:<ref>` (GitHub), `#git:<ref>` (bare git), `#hg:<ref>` (Mercurial), or another plugin-provided workspace ref.
+- `#gh:<ref>` (GitHub), `#git:<ref>` (bare git), or another ref registered by an installed workspace plugin.
 - `<ref>` is usually a project name (`#gh:sase`). Use a ChangeSpec name (`#gh:my_change`) only when the agent must
   continue that existing PR branch, or `#gh:@agent` to target the ChangeSpec created by the named agent.
 - A prompt with no workspace reference defaults to `#git:home`, which is usually wrong for repo work.
