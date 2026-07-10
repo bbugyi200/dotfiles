@@ -1,8 +1,11 @@
-# Agent Instructions
+---
+type: short
+parent: AGENTS.md
+---
 
-### 1. SASE = Structured Agentic Software Engineering (sase)
+# SASE = Structured Agentic Software Engineering
 
-#### Ephemeral `dotfiles_<N>` Workspace Directories
+## Ephemeral `dotfiles_<N>` Workspace Directories
 
 SASE runs agents (like you) from ephemeral workspace directories, which are full clones of the dotfiles repo. These
 directories are named `dotfiles_<N>` where `<N>` is some integer. You need to be mindful not to run commands outside of
@@ -12,6 +15,6 @@ IMPORTANT: Do NOT mention your workspace directory (or any sibling workspace dir
 generate using your `/sase_plan` skill. The agent(s) that implement the plan might not run in the same workspace
 directory as you!
 
-#### Linked Repositories
+## Linked Repositories
 
 No linked repositories are configured for this context.
