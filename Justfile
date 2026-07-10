@@ -57,7 +57,7 @@ fmt-py: _setup
 # Format Lua files with stylua
 fmt-lua:
     @printf "\n---------- Formatting Lua files with stylua... ----------\n"
-    stylua ./home/dot_config/nvim ./tests/nvim ./home/lib
+    stylua ./home/dot_config/nvim ./home/dot_hammerspoon ./tests/nvim ./tests/hammerspoon ./home/lib
 
 # Format Markdown files with prettier
 fmt-md:
@@ -114,12 +114,17 @@ lint-keep-sorted: _setup-keep-sorted
     git ls-files '*.yml' '*.yaml' | xargs {{ keep_sorted_bin }} --mode lint
 
 # Run all tests
-test: _setup (_header "test") test-nvim test-bash test-python
+test: _setup (_header "test") test-nvim test-hammerspoon test-bash test-python
 
 # Run Neovim tests using busted
 test-nvim:
     @printf "\n---------- Running Neovim tests using busted... ----------\n"
     busted -p _test ./tests/nvim
+
+# Run pure-Lua Hammerspoon request-model tests using busted
+test-hammerspoon:
+    @printf "\n---------- Running Hammerspoon tests using busted... ----------\n"
+    busted ./tests/hammerspoon
 
 # Run bash tests using bashunit
 test-bash:

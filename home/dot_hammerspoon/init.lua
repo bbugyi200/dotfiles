@@ -1,4 +1,5 @@
 local ScreenshotRegion = require("screenshot_region")
+local TaskCapture = require("task_capture")
 
 hs.hotkey.bind({ "cmd", "alt", "ctrl" }, "V", nil, function()
 	local paste_parts = os.getenv("HOME") .. "/bin/paste_parts"
@@ -13,9 +14,7 @@ local function runMacscrot(region)
 	local macscrot = os.getenv("HOME") .. "/bin/macscrot"
 	local command = shellQuote(macscrot)
 	if region then
-		command = command
-			.. " "
-			.. shellQuote(string.format("%d,%d,%d,%d", region.x, region.y, region.w, region.h))
+		command = command .. " " .. shellQuote(string.format("%d,%d,%d,%d", region.x, region.y, region.w, region.h))
 	end
 
 	hs.task
@@ -50,6 +49,8 @@ local taskCaptureController = nil
 local taskCapturePreviousApp = nil
 local taskCaptureTask = nil
 local taskCaptureChooser = nil
+local taskCapturePromptMode = "task"
+local taskCaptureState = TaskCapture.new_state()
 
 local taskCaptureHtml = [=[
 <!doctype html>
@@ -157,7 +158,7 @@ button:disabled {
 </head>
 <body>
 <main class="shell">
-	<h1>Capture Task</h1>
+	<h1 id="title">Capture Task</h1>
 	<input id="capture" type="text" aria-label="Task text" autocomplete="off" spellcheck="true">
 	<footer>
 		<button id="cancel" type="button">Cancel</button>
@@ -169,6 +170,7 @@ button:disabled {
 	const input = document.getElementById("capture");
 	const addButton = document.getElementById("add");
 	const cancelButton = document.getElementById("cancel");
+	const title = document.getElementById("title");
 
 	function post(message) {
 		try {
@@ -231,6 +233,16 @@ button:disabled {
 		input.focus();
 		updateAddState();
 	};
+
+	window.configureCapturePrompt = (config) => {
+		title.textContent = config.title;
+		input.setAttribute("aria-label", config.ariaLabel);
+		input.value = config.value || "";
+		addButton.textContent = config.buttonLabel;
+		input.focus();
+		input.select();
+		updateAddState();
+	};
 })();
 </script>
 </body>
@@ -278,6 +290,8 @@ local function closeTaskCapturePrompt()
 	local prompt = taskCapturePrompt
 	taskCapturePrompt = nil
 	taskCaptureController = nil
+	taskCapturePromptMode = "task"
+	TaskCapture.reset(taskCaptureState)
 	if prompt then
 		prompt:windowCallback(nil)
 		prompt:delete()
@@ -325,9 +339,18 @@ local function focusTaskCapturePrompt()
 		promptWindow:focus()
 	end
 
+	taskCapturePrompt:evaluateJavaScript("if (window.focusCaptureInput) { window.focusCaptureInput(); }")
+end
+
+local function configureTaskCapturePrompt(config)
+	if not taskCapturePrompt then
+		return
+	end
+	local encoded = hs.json.encode(config)
 	taskCapturePrompt:evaluateJavaScript(
-		"if (window.focusCaptureInput) { window.focusCaptureInput(); }"
+		"if (window.configureCapturePrompt) { window.configureCapturePrompt(" .. encoded .. "); }"
 	)
+	focusTaskCapturePrompt()
 end
 
 local function trimCaptureText(rawText)
@@ -351,10 +374,7 @@ local function truncateForBanner(rawText, maxLength)
 	local ellipsis = "..."
 	local cutoffLength = math.max(maxLength - #ellipsis, 1)
 	local utf8Module = utf8 or hs.utf8
-	if type(utf8Module) == "table"
-		and type(utf8Module.len) == "function"
-		and type(utf8Module.offset) == "function"
-	then
+	if type(utf8Module) == "table" and type(utf8Module.len) == "function" and type(utf8Module.offset) == "function" then
 		local lenOk, textLength = pcall(utf8Module.len, text)
 		if lenOk and type(textLength) == "number" then
 			if textLength <= maxLength then
@@ -382,10 +402,7 @@ local function firstLineForBanner(rawText, maxLength)
 end
 
 local function captureFailureDetail(decoded, stdOut, stdErr, fallback)
-	if type(decoded) == "table"
-		and type(decoded.error) == "string"
-		and decoded.error ~= ""
-	then
+	if type(decoded) == "table" and type(decoded.error) == "string" and decoded.error ~= "" then
 		return decoded.error
 	end
 	if stdErr ~= "" then
@@ -542,8 +559,7 @@ local function scheduleCapturePresentationCheck(notification, label)
 			captureNotifyDebug("%s presented", label)
 		elseif delivered == true then
 			captureNotifyDebug(
-				"%s delivered but not presented; check macOS Notification "
-					.. "settings / Focus mode for Hammerspoon",
+				"%s delivered but not presented; check macOS Notification " .. "settings / Focus mode for Hammerspoon",
 				label
 			)
 		else
@@ -580,11 +596,7 @@ local function notifyWithAttributes(attributes, callback, label)
 		end
 		captureNotifyDebug("%s rich send failed: %s", label, tostring(sendErr))
 	else
-		captureNotifyDebug(
-			"%s rich create failed: %s",
-			label,
-			tostring(notification)
-		)
+		captureNotifyDebug("%s rich create failed: %s", label, tostring(notification))
 	end
 
 	local showOk, showErr = pcall(hs.notify.show, title, subTitle, body)
@@ -607,8 +619,7 @@ local function notifyCaptureSuccess(decoded, pickedName, pickedKind)
 	-- enhancements below can only add to a guaranteed-deliverable notification.
 	local attributes = { title = title }
 
-	local subOk, subTitle =
-		pcall(captureDestinationLabel, decoded, pickedName, pickedKind)
+	local subOk, subTitle = pcall(captureDestinationLabel, decoded, pickedName, pickedKind)
 	if subOk and type(subTitle) == "string" then
 		attributes.subTitle = subTitle
 	end
@@ -762,26 +773,14 @@ local function runFinalCapture(text, route, pickedName, pickedKind, section)
 	end
 
 	startCaptureStage(taskCaptureCommand, extraArgs, function(exitCode, decoded, out, err)
-		if exitCode == 0
-			and type(decoded) == "table"
-			and decoded.ok == true
-		then
+		if exitCode == 0 and type(decoded) == "table" and decoded.ok == true then
 			-- Notification delivery must never block closing the prompt. If the
 			-- success handler throws before it reaches its own fallback, show a
 			-- minimal banner and still close the prompt.
-			local notifyOk, notifyErr =
-				pcall(notifyCaptureSuccess, decoded, pickedName, pickedKind)
+			local notifyOk, notifyErr = pcall(notifyCaptureSuccess, decoded, pickedName, pickedKind)
 			if not notifyOk then
-				captureNotifyDebug(
-					"capture-success handler error: %s",
-					tostring(notifyErr)
-				)
-				pcall(
-					hs.notify.show,
-					captureSuccessPrefix .. " Captured",
-					"",
-					""
-				)
+				captureNotifyDebug("capture-success handler error: %s", tostring(notifyErr))
+				pcall(hs.notify.show, captureSuccessPrefix .. " Captured", "", "")
 			end
 			closeTaskCapturePrompt()
 			return
@@ -789,6 +788,28 @@ local function runFinalCapture(text, route, pickedName, pickedKind, section)
 
 		notifyCaptureFailure(captureFailureDetail(decoded, out, err))
 	end, notifyCaptureFailure)
+end
+
+local function runPomodoroCapture(request, route, blockId, pickedName, pickedKind)
+	local finalText, validationError = TaskCapture.finalize(request, route, blockId)
+	if not finalText then
+		notifyCaptureFailure(validationError)
+		return
+	end
+
+	TaskCapture.stage(taskCaptureState, request, route, blockId, pickedName, pickedKind)
+	runFinalCapture(finalText, nil, pickedName or taskCaptureState.route, pickedKind)
+end
+
+local function showPomodoroBlockIdPrompt(request, route, pickedName, pickedKind, value)
+	taskCapturePromptMode = "pomodoro_block_id"
+	TaskCapture.stage(taskCaptureState, request, route, value, pickedName, pickedKind)
+	configureTaskCapturePrompt({
+		title = "Pomodoro block ID",
+		ariaLabel = "Pomodoro block ID",
+		value = taskCaptureState.block_id or "",
+		buttonLabel = "Capture",
+	})
 end
 
 -- Derive the picker subtext that distinguishes inbox, area, and project rows.
@@ -837,7 +858,8 @@ end
 local function buildCaptureChoices(targets)
 	local choices = {}
 	for _, target in ipairs(targets) do
-		if type(target) == "table"
+		if
+			type(target) == "table"
 			and type(target.route) == "string"
 			and (target.kind == "area" or target.kind == "project")
 		then
@@ -891,13 +913,7 @@ local function showTaskSectionChooser(text, route, sections, pickedName, pickedK
 			return
 		end
 
-		runFinalCapture(
-			text,
-			route,
-			pickedName or route,
-			pickedKind,
-			choice.section
-		)
+		runFinalCapture(text, route, pickedName or route, pickedKind, choice.section)
 	end)
 
 	if not chooser then
@@ -913,32 +929,18 @@ end
 
 local function startSectionStage(text, route, pickedName, pickedKind)
 	startCaptureStage(taskCaptureSectionsCommand, { route }, function(exitCode, decoded, out, err)
-		if exitCode == 0
-			and type(decoded) == "table"
-			and decoded.ok == true
-			and type(decoded.sections) == "table"
-		then
+		if exitCode == 0 and type(decoded) == "table" and decoded.ok == true and type(decoded.sections) == "table" then
 			local count = tonumber(decoded.count) or #decoded.sections
 			if count >= 2 then
 				showTaskSectionChooser(text, route, decoded.sections, pickedName, pickedKind)
 				return
 			end
 
-			runFinalCapture(
-				"@" .. route .. "# " .. text,
-				nil,
-				pickedName or route,
-				pickedKind
-			)
+			runFinalCapture("@" .. route .. "# " .. text, nil, pickedName or route, pickedKind)
 			return
 		end
 
-		notifyTargetPickerFailure(captureFailureDetail(
-			decoded,
-			out,
-			err,
-			"bob capture-sections reported no detail"
-		))
+		notifyTargetPickerFailure(captureFailureDetail(decoded, out, err, "bob capture-sections reported no detail"))
 	end, notifyTargetPickerFailure)
 end
 
@@ -964,11 +966,24 @@ local function showTaskCaptureChooser(request, targets)
 		taskCaptureChooser = nil
 
 		if type(choice) ~= "table" or type(choice.route) ~= "string" then
+			if request.mode == "pomodoro" then
+				TaskCapture.reset(taskCaptureState)
+			end
 			focusTaskCapturePrompt()
 			return
 		end
 
-		if request.mode == "note_bullet" then
+		if request.mode == "pomodoro" then
+			local route = choice.route:lower()
+			if request.needs_block_id then
+				showPomodoroBlockIdPrompt(request, route, choice.text, choice.kind)
+			else
+				-- Keep the chosen route and supplied ID visible for a retry if the
+				-- asynchronous CLI capture fails.
+				showPomodoroBlockIdPrompt(request, route, choice.text, choice.kind, request.block_id)
+				runPomodoroCapture(request, route, request.block_id, choice.text, choice.kind)
+			end
+		elseif request.mode == "note_bullet" then
 			runFinalCapture(
 				"@" .. choice.route .. "#" .. request.prefix .. " " .. request.text,
 				nil,
@@ -999,33 +1014,17 @@ end
 -- bare `@#` advances to the exact section picker.
 local function startTargetsStage(request)
 	startCaptureStage(taskCaptureTargetsCommand, {}, function(exitCode, decoded, out, err)
-		if exitCode == 0
-			and type(decoded) == "table"
-			and decoded.ok == true
-			and type(decoded.targets) == "table"
-		then
+		if exitCode == 0 and type(decoded) == "table" and decoded.ok == true and type(decoded.targets) == "table" then
 			showTaskCaptureChooser(request, decoded.targets)
 			return
 		end
 
-		notifyTargetPickerFailure(captureFailureDetail(
-			decoded,
-			out,
-			err,
-			"bob capture-targets reported no detail"
-		))
+		notifyTargetPickerFailure(captureFailureDetail(decoded, out, err, "bob capture-targets reported no detail"))
 	end, notifyTargetPickerFailure)
 end
 
-local function isCaptureRouteToken(value)
-	if type(value) ~= "string" or value == "" then
-		return false
-	end
-	return value:match("^[A-Za-z0-9_-]+$") ~= nil
-end
-
 -- Detect capture UI markers as the final whitespace-separated token, preceded
--- by whitespace. The parser returns a request descriptor with a mode:
+-- by whitespace. The pure request model returns a descriptor with a mode:
 --
 --   * `@`          -> note picker, then task capture forced to the picked route.
 --   * `@#`         -> note picker, then conditional exact section picker.
@@ -1033,51 +1032,16 @@ end
 --                    existing prefix matcher.
 --   * `@route#`   -> skip the note picker and conditionally show sections for
 --                    the explicit route.
+--   * `@route:id` -> capture a Pomodoro-linked task immediately.
+--   * `@route:`   -> prompt for only the block ID.
+--   * `@:id`      -> choose only the note.
+--   * `@:`        -> choose the note, then prompt for the block ID.
 --
 -- Prefix-bearing explicit routes (`@route#prefix`), plain `@route`, mid-text
 -- markers, and non-final markers are left untouched so Bob's parser keeps
--- owning those cases.
-local function parseCaptureRequest(rawText)
-	local text = trimCaptureText(rawText)
-
-	local strippedBullet, bulletPrefix = text:match("^(.-)%s+@#(%S*)$")
-	if strippedBullet then
-		if bulletPrefix == "" then
-			return {
-				text = trimCaptureText(strippedBullet),
-				mode = "note_section",
-			}
-		end
-		return {
-			text = trimCaptureText(strippedBullet),
-			mode = "note_bullet",
-			prefix = bulletPrefix,
-		}
-	end
-
-	local strippedRouteBullet, route =
-		text:match("^(.-)%s+@([A-Za-z0-9_-]+)#$")
-	if strippedRouteBullet and isCaptureRouteToken(route) then
-		return {
-			text = trimCaptureText(strippedRouteBullet),
-			mode = "section",
-			route = route:lower(),
-		}
-	end
-
-	local stripped = text:match("^(.-)%s+@$")
-	if stripped then
-		return {
-			text = trimCaptureText(stripped),
-			mode = "note",
-		}
-	end
-
-	return {
-		text = text,
-		mode = "none",
-	}
-end
+-- owning those cases. Legacy `@!route:id`, `@!route`, and `@!` shorthands
+-- are accepted only here; every CLI request is synthesized with canonical
+-- `@route:block-id` syntax.
 
 -- Snapshot the prompt text and route it. A trailing `@`, bare `@#`, or
 -- `@#section` marker opts into the note picker; a trailing bare `@route#` jumps
@@ -1089,15 +1053,30 @@ local function submitCapturedTask(rawText)
 		return
 	end
 
-	local request = parseCaptureRequest(rawText)
+	local request = TaskCapture.parse(rawText)
 	if request.text == "" then
 		return
 	end
+	if request.mode == "invalid" then
+		notifyCaptureFailure(request.error)
+		return
+	end
 
-	if request.mode == "note"
-		or request.mode == "note_bullet"
-		or request.mode == "note_section"
-	then
+	if request.mode == "pomodoro" then
+		if request.needs_target then
+			TaskCapture.stage(taskCaptureState, request)
+			startTargetsStage(request)
+			return
+		end
+		if request.needs_block_id then
+			showPomodoroBlockIdPrompt(request, request.route)
+			return
+		end
+		runPomodoroCapture(request, request.route, request.block_id)
+		return
+	end
+
+	if request.mode == "note" or request.mode == "note_bullet" or request.mode == "note_section" then
 		startTargetsStage(request)
 		return
 	end
@@ -1134,15 +1113,27 @@ local function showTaskCapturePrompt()
 		end
 
 		if payload.action == "submit" then
+			if taskCapturePromptMode == "pomodoro_block_id" then
+				local blockId, validationError = TaskCapture.set_block_id(taskCaptureState, payload.text)
+				if not blockId then
+					notifyCaptureFailure(validationError)
+					return
+				end
+				runPomodoroCapture(
+					taskCaptureState.request,
+					taskCaptureState.route,
+					blockId,
+					taskCaptureState.picked_name,
+					taskCaptureState.picked_kind
+				)
+				return
+			end
 			submitCapturedTask(payload.text)
 		end
 	end)
 
-	taskCapturePrompt = hs.webview.new(
-		taskCaptureFrame(),
-		{ javaScriptCanOpenWindowsAutomatically = false },
-		taskCaptureController
-	)
+	taskCapturePrompt =
+		hs.webview.new(taskCaptureFrame(), { javaScriptCanOpenWindowsAutomatically = false }, taskCaptureController)
 	taskCapturePrompt:windowStyle({ "titled", "closable" })
 	taskCapturePrompt:shadow(true)
 	taskCapturePrompt:allowTextEntry(true)
@@ -1154,6 +1145,8 @@ local function showTaskCapturePrompt()
 		if action == "closing" and webview == taskCapturePrompt then
 			taskCapturePrompt = nil
 			taskCaptureController = nil
+			taskCapturePromptMode = "task"
+			TaskCapture.reset(taskCaptureState)
 			cancelTaskCaptureTask()
 			cancelTaskCaptureChooser()
 			restoreTaskCaptureApp()
@@ -1268,8 +1261,7 @@ local function parseBobPomodoroOutput(rawOutput)
 		return nil, "missing normalized HHMM-HHMM range"
 	end
 
-	local startHour, startMinute, endHour, endMinute =
-		range:match("^(%d%d)(%d%d)%-(%d%d)(%d%d)$")
+	local startHour, startMinute, endHour, endMinute = range:match("^(%d%d)(%d%d)%-(%d%d)(%d%d)$")
 	startHour = tonumber(startHour)
 	startMinute = tonumber(startMinute)
 	endHour = tonumber(endHour)
@@ -1372,10 +1364,7 @@ local function renderBobPomodoroMenu()
 		return
 	end
 
-	if remaining < 0
-		and state.status == "active"
-		and not state.zeroSyncRequested
-	then
+	if remaining < 0 and state.status == "active" and not state.zeroSyncRequested then
 		state.zeroSyncRequested = true
 		syncBobPomodoro()
 	end
@@ -1399,37 +1388,41 @@ syncBobPomodoro = function()
 	end
 
 	local task
-	task = hs.task.new("/bin/zsh", guardedBobPomodoroCallback("task completion", function(exitCode, stdOut, stdErr)
-		if bobPomodoroRuntime.task ~= task then
-			return
-		end
-		bobPomodoroRuntime.task = nil
+	task = hs.task.new(
+		"/bin/zsh",
+		guardedBobPomodoroCallback("task completion", function(exitCode, stdOut, stdErr)
+			if bobPomodoroRuntime.task ~= task then
+				return
+			end
+			bobPomodoroRuntime.task = nil
 
-		if exitCode ~= 0 then
-			hideBobPomodoroMenu()
-			hs.printf("bob pomodoro failed with exit code %s: %s", exitCode, trimText(stdErr))
-			return
-		end
+			if exitCode ~= 0 then
+				hideBobPomodoroMenu()
+				hs.printf("bob pomodoro failed with exit code %s: %s", exitCode, trimText(stdErr))
+				return
+			end
 
-		local output = trimText(stdOut)
-		if output == "" then
-			hideBobPomodoroMenu()
-			return
-		end
+			local output = trimText(stdOut)
+			if output == "" then
+				hideBobPomodoroMenu()
+				return
+			end
 
-		local parsed, parseError = parseBobPomodoroOutput(output)
-		if not parsed then
-			hideBobPomodoroMenu()
-			hs.printf("bob pomodoro output could not be parsed: %s: %s", parseError, output)
-			return
-		end
+			local parsed, parseError = parseBobPomodoroOutput(output)
+			if not parsed then
+				hideBobPomodoroMenu()
+				hs.printf("bob pomodoro output could not be parsed: %s: %s", parseError, output)
+				return
+			end
 
-		parsed.endEpoch = todayEndEpoch(parsed.endHour, parsed.endMinute)
-		parsed.lastSyncEpoch = os.time()
-		bobPomodoroRuntime.state = parsed
-		updateBobPomodoroMenuDetails()
-		renderBobPomodoroMenu()
-	end), { "-lc", bobPomodoroCommand })
+			parsed.endEpoch = todayEndEpoch(parsed.endHour, parsed.endMinute)
+			parsed.lastSyncEpoch = os.time()
+			bobPomodoroRuntime.state = parsed
+			updateBobPomodoroMenuDetails()
+			renderBobPomodoroMenu()
+		end),
+		{ "-lc", bobPomodoroCommand }
+	)
 
 	if not task then
 		hideBobPomodoroMenu()
@@ -1453,24 +1446,19 @@ syncBobPomodoro = function()
 end
 
 hideBobPomodoroMenu()
-bobPomodoroRuntime.tickTimer = hs.timer.new(
-	1,
-	guardedBobPomodoroCallback("render timer", renderBobPomodoroMenu),
-	true
-):start()
-bobPomodoroRuntime.syncTimer = hs.timer.new(
-	15,
-	guardedBobPomodoroCallback("sync timer", syncBobPomodoro),
-	true
-):start()
-bobPomodoroRuntime.wakeWatcher = hs.caffeinate.watcher.new(guardedBobPomodoroCallback("wake watcher", function(eventType)
-	if eventType == hs.caffeinate.watcher.systemDidWake
-		or eventType == hs.caffeinate.watcher.screensDidWake
-		or eventType == hs.caffeinate.watcher.screensDidUnlock
-	then
-		syncBobPomodoro()
-	end
-end))
+bobPomodoroRuntime.tickTimer =
+	hs.timer.new(1, guardedBobPomodoroCallback("render timer", renderBobPomodoroMenu), true):start()
+bobPomodoroRuntime.syncTimer = hs.timer.new(15, guardedBobPomodoroCallback("sync timer", syncBobPomodoro), true):start()
+bobPomodoroRuntime.wakeWatcher =
+	hs.caffeinate.watcher.new(guardedBobPomodoroCallback("wake watcher", function(eventType)
+		if
+			eventType == hs.caffeinate.watcher.systemDidWake
+			or eventType == hs.caffeinate.watcher.screensDidWake
+			or eventType == hs.caffeinate.watcher.screensDidUnlock
+		then
+			syncBobPomodoro()
+		end
+	end))
 bobPomodoroRuntime.wakeWatcher:start()
 runBobPomodoroCallback("initial sync", syncBobPomodoro)
 
