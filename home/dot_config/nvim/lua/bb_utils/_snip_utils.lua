@@ -242,6 +242,11 @@ function M.get_markdown_snippets()
 			t("."),
 			i(4),
 		}),
+		-- SNIPPET: duck
+		s(
+			{ trig = "duck", desc = "rubber duck debugging" },
+			{ t("Explain this to me like I'm a rubber duck who just woke up.") }
+		),
 		-- SNIPPET: er
 		s(
 			{ trig = "er", desc = "err_*.txt file explanation" },
