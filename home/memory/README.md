@@ -36,8 +36,8 @@ reference notes that agents read only when relevant.
 - Type: `short`
 - Description: No description set.
 - Parent: `AGENTS.md`
-- Lines: 14
-- Approx. tokens: 109
+- Lines: 26
+- Approx. tokens: 238
 
 ### `memory/obsidian.md`
 
@@ -52,8 +52,8 @@ reference notes that agents read only when relevant.
 - Total notes: 2
 - Short notes: 1
 - Long notes: 1
-- Total lines: 32
-- Total approx. tokens: 273
+- Total lines: 44
+- Total approx. tokens: 402
 
 ## Commands
 
