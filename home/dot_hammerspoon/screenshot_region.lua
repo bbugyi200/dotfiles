@@ -52,10 +52,7 @@ local function roundedRect(rect)
 end
 
 local function frameContainsPoint(frame, point)
-	return point.x >= frame.x
-		and point.x <= frame.x + frame.w
-		and point.y >= frame.y
-		and point.y <= frame.y + frame.h
+	return point.x >= frame.x and point.x <= frame.x + frame.w and point.y >= frame.y and point.y <= frame.y + frame.h
 end
 
 local function frameContainsRect(frame, rect)
@@ -191,7 +188,10 @@ local function buildElements(region, screenFrame)
 		rectangle(localFrame({ x = 0, y = 0, w = screenFrame.w, h = rect.y }, screenFrame), dimColor),
 		rectangle(localFrame({ x = 0, y = rect.y, w = rect.x, h = rect.h }, screenFrame), dimColor),
 		rectangle(localFrame({ x = right, y = rect.y, w = screenFrame.w - right, h = rect.h }, screenFrame), dimColor),
-		rectangle(localFrame({ x = 0, y = bottom, w = screenFrame.w, h = screenFrame.h - bottom }, screenFrame), dimColor),
+		rectangle(
+			localFrame({ x = 0, y = bottom, w = screenFrame.w, h = screenFrame.h - bottom }, screenFrame),
+			dimColor
+		),
 		{
 			type = "rectangle",
 			action = "stroke",
@@ -270,10 +270,7 @@ local function buildElements(region, screenFrame)
 end
 
 local function pointInRect(point, rect)
-	return point.x >= rect.x
-		and point.x <= rect.x + rect.w
-		and point.y >= rect.y
-		and point.y <= rect.y + rect.h
+	return point.x >= rect.x and point.x <= rect.x + rect.w and point.y >= rect.y and point.y <= rect.y + rect.h
 end
 
 local function handleAt(point, rect)
