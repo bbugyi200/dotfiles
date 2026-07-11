@@ -138,7 +138,7 @@ llm_provider:
         description: "Final research-swarm lead and consolidator."
         bucket: researchers
       smartest:
-        model: codex/gpt-5.6-sol
+        model: claude-fable-5
         description: "Shared highest-capability model alias."
     buckets:
       researchers:
