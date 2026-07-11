@@ -6,15 +6,15 @@ input:
     description: Research topic or question for the swarm to investigate.
 ---
 
-%name:research.@.cdx %model:@research %g:research {{ prompt }} #research
+%name:research.@.cdx %model:@research_a %g:research {{ prompt }} #research
 
 ---
 
-%name:research.@.cld %m:@research_assist %g:research {{ prompt }} #research
+%name:research.@.cld %m:@research_b %g:research {{ prompt }} #research
 
 ---
 
-%name:research.@.final %m:@research %wait:research.@.cdx %wait:research.@.cld %g:research
+%name:research.@.final %m:@research_a %wait:research.@.cdx %wait:research.@.cld %g:research
 
 The two independent research agents have finished. Their chat transcript paths are available here:
 

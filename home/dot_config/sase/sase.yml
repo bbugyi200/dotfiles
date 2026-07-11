@@ -125,12 +125,21 @@ llm_provider:
       epic_lander: claude/opus
       phase_worker: codex/gpt-5.6-sol
     custom:
-      research:
+      research_a:
         model: codex/gpt-5.6-sol
         description: "Primary research-swarm agents: the lead researcher and the consolidator."
-      research_assist:
+        bucket: research
+      research_b:
         model: claude/opus
         description: "Assisting (second-opinion) research-swarm agents."
+        bucket: research
+      research_c:
+        model: codex/gpt-5.6-sol
+        description: "Extra research-swarm lane for manual use and future expansion."
+        bucket: research
+    buckets:
+      research:
+        description: "Research-swarm model roles: lead, second-opinion, extra."
 
 xprompts:
   # keep-sorted start
