@@ -1,6 +1,3 @@
-chat_install:
-  command: "install_sase_github"
-
 amd_h1_title: "athena - Bryan Bugyi's Home Server"
 
 llm_provider:
@@ -99,24 +96,26 @@ axe:
         - name: sase_core_refresh_docs
           description: "Run the #!sase/refresh_docs xprompt workflow for sase-core"
           agent:
-            "%n:sase_core_refresh_docs-@ #gh:sase-org/sase %g:chop #!sase/refresh_docs(project=sase-core, gh_ref=sase-org/sase-core, threshold=25)"
+            "%n:sase_core_refresh_docs-@ #gh:sase-org/sase %g:chop #!sase/refresh_docs(project=sase-core,
+            gh_ref=sase-org/sase-core, threshold=25)"
           run_every: 24h
         - name: sase_github_refresh_docs
           description: "Run the #!sase/refresh_docs xprompt workflow for sase-github"
           agent:
-            "%n:sase_github_refresh_docs-@ #gh:sase-org/sase %g:chop #!sase/refresh_docs(project=sase-github, gh_ref=sase-org/sase-github,
-            threshold=25)"
+            "%n:sase_github_refresh_docs-@ #gh:sase-org/sase %g:chop #!sase/refresh_docs(project=sase-github,
+            gh_ref=sase-org/sase-github, threshold=25)"
           run_every: 24h
         - name: sase_nvim_refresh_docs
           description: "Run the #!sase/refresh_docs xprompt workflow for sase-nvim"
           agent:
-            "%n:sase_nvim_refresh_docs-@ #gh:sase-org/sase %g:chop #!sase/refresh_docs(project=sase-nvim, gh_ref=sase-org/sase-nvim, threshold=25)"
+            "%n:sase_nvim_refresh_docs-@ #gh:sase-org/sase %g:chop #!sase/refresh_docs(project=sase-nvim,
+            gh_ref=sase-org/sase-nvim, threshold=25)"
           run_every: 24h
         - name: sase_telegram_refresh_docs
           description: "Run the #!sase/refresh_docs xprompt workflow for sase-telegram"
           agent:
-            "%n:sase_telegram_refresh_docs-@ #gh:sase-org/sase %g:chop #!sase/refresh_docs(project=sase-telegram, gh_ref=sase-org/sase-telegram,
-            threshold=25)"
+            "%n:sase_telegram_refresh_docs-@ #gh:sase-org/sase %g:chop #!sase/refresh_docs(project=sase-telegram,
+            gh_ref=sase-org/sase-telegram, threshold=25)"
           run_every: 24h
     github_actions:
       interval: 300
