@@ -36,9 +36,9 @@ stores.
 - `plan` — plan-like work item (created with `--type plan(...)`)
 - `phase` — child of a plan (created with `--type phase(...)`)
 
-Plan beads can carry `--tier plan` or `--tier epic`. Normal approved plans live under `${SASE_SDD_DIR}/tales/{YYYYMM}/`,
-and executable epics live under `${SASE_SDD_DIR}/epics/{YYYYMM}/`. `sase bead work` runs `epic`-tier plan beads by
-launching phase + land agents.
+Plan beads can carry bead tier `--tier plan` or `--tier epic`. Plan files live under `${SASE_SDD_DIR}/plans/{YYYYMM}/`
+and independently carry plan-file tier `tier: tale` or `tier: epic` in frontmatter. `sase bead work` runs `epic`-tier
+plan beads by launching phase + land agents.
 
 ## Commands
 
@@ -46,13 +46,13 @@ launching phase + land agents.
 
 ```bash
 # Create a plan bead (top-level, linked to a plan file)
-sase bead create --title "Add auth system" --type "plan(${SASE_SDD_DIR}/tales/202605/auth.md)" --tier plan
+sase bead create --title "Add auth system" --type "plan(${SASE_SDD_DIR}/plans/202605/auth.md)" --tier plan
 
 # Create an executable epic bead
-sase bead create --title "Auth epic" --type "plan(${SASE_SDD_DIR}/epics/202605/auth.md)" --tier epic
+sase bead create --title "Auth epic" --type "plan(${SASE_SDD_DIR}/plans/202605/auth.md)" --tier epic
 
 # Create an executable epic bead with a land-agent model
-sase bead create --title "Auth epic" --type "plan(${SASE_SDD_DIR}/epics/202605/auth.md)" --tier epic --model claude/opus
+sase bead create --title "Auth epic" --type "plan(${SASE_SDD_DIR}/plans/202605/auth.md)" --tier epic --model claude/opus
 
 # Create a phase bead (child of a plan)
 sase bead create --title "Implement login endpoint" --type phase(<plan-bead-id>)
@@ -61,7 +61,7 @@ sase bead create --title "Implement login endpoint" --type phase(<plan-bead-id>)
 sase bead create --title "Implement login endpoint" --type phase(<plan-bead-id>) --model codex/gpt-5.6-sol
 
 # Create a nested plan (plan with parent)
-sase bead create --title "Sub-plan" --type "plan(${SASE_SDD_DIR}/tales/202605/sub.md,<parent-bead-id>)"
+sase bead create --title "Sub-plan" --type "plan(${SASE_SDD_DIR}/plans/202605/sub.md,<parent-bead-id>)"
 
 # With optional fields
 sase bead create --title "..." --type phase(<id>) --description "Details here" --assignee alice
@@ -82,7 +82,7 @@ sase bead update <id> --title "New title"
 sase bead update <id> --description "Updated description"
 sase bead update <id> --notes "Implementation notes"
 sase bead update <id> --assignee bob
-sase bead update <id> --design "${SASE_SDD_DIR}/tales/202605/revised.md"
+sase bead update <id> --design "${SASE_SDD_DIR}/plans/202605/revised.md"
 sase bead update <id> --model codex/gpt-5.6-sol
 sase bead update <id> --model ""  # clear the stored model
 # Combine multiple updates
@@ -171,7 +171,7 @@ sase bead dep add <issue> <depends_on>
 
 ## Typical Workflow
 
-1. `sase bead create --title "..." --type "plan(${SASE_SDD_DIR}/epics/202605/plan.md)" --tier epic` — create an epic
+1. `sase bead create --title "..." --type "plan(${SASE_SDD_DIR}/plans/202605/plan.md)" --tier epic` — create an epic
    plan bead
 2. `sase bead create --title "Phase 1" --type phase(<plan-id>)` — add phases
 3. `sase bead dep add <phase-2-id> <phase-1-id>` — set ordering
