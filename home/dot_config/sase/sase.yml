@@ -77,6 +77,8 @@ ace:
     rep: "the ../sase-$1 repo"
     sa: "sase agent"
     sac: "SASE Admin Center"
+    ss: |-
+      /sase_
     w: "%w"
     x: "xprompt"
     xp: |-
