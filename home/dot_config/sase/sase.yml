@@ -127,19 +127,19 @@ llm_provider:
     custom:
       research_a:
         model: codex/gpt-5.6-sol
-        description: "Primary research-swarm agents: the lead researcher and the consolidator."
+        description: "Primary independent research-swarm researcher."
         bucket: research
       research_b:
         model: claude/opus
         description: "Assisting (second-opinion) research-swarm agents."
         bucket: research
-      research_c:
+      research_lead:
         model: codex/gpt-5.6-sol
-        description: "Extra research-swarm lane for manual use and future expansion."
+        description: "Final research-swarm lead and consolidator."
         bucket: research
     buckets:
       research:
-        description: "Research-swarm model roles: lead, second-opinion, extra."
+        description: "Research-swarm model roles: primary researcher, second-opinion researcher, lead/consolidator."
 
 xprompts:
   # keep-sorted start

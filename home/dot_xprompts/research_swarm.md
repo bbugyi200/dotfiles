@@ -14,7 +14,7 @@ input:
 
 ---
 
-%name:research.@.final %m:@research_a %wait:research.@.cdx %wait:research.@.cld %g:research
+%name:research.@.final %m:@research_lead %wait:research.@.cdx %wait:research.@.cld %g:research
 
 The two independent research agents have finished. Their chat transcript paths are available here:
 
