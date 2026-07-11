@@ -1,6 +1,7 @@
 timezone: "America/New_York"
 use_chezmoi: true
-precommit_command: "sase_git_fix"
+commit_hooks:
+  before: "sase_git_fix"
 github_orgs:
   - bbugyi200
   - sase-org

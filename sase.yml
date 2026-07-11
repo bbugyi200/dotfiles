@@ -1,0 +1,2 @@
+commit_hooks:
+  after: "chezmoi update -a --force"
