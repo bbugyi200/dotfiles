@@ -122,7 +122,7 @@ llm_provider:
       # each just tracks the default launch model (@default), the implicit default.
       coder: "@default"
       epic_creator: codex/gpt-5.6-sol
-      epic_lander: claude/opus
+      epic_lander: "@smartest"
       phase_worker: codex/gpt-5.6-sol
     custom:
       research_a:
@@ -134,9 +134,12 @@ llm_provider:
         description: "Assisting (second-opinion) research-swarm agents."
         bucket: research
       research_lead:
-        model: codex/gpt-5.6-sol
+        model: "@smartest"
         description: "Final research-swarm lead and consolidator."
         bucket: research
+      smartest:
+        model: codex/gpt-5.6-sol
+        description: "Shared highest-capability model alias."
     buckets:
       research:
         description: "Research-swarm model roles: primary researcher, second-opinion researcher, lead/consolidator."
