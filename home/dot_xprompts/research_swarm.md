@@ -27,7 +27,7 @@ source reports are assigned deterministically rather than by filesystem ordering
 
 Effective research directory:
 
-$(sase sdd path research)
+$(sase sdd path research --ensure)
 
 Before moving or writing any files, choose a descriptive final markdown filename `<name>.md` and derive `<name>` by
 removing its `.md` suffix. The completed layout must be:
