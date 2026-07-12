@@ -19,3 +19,6 @@ repomix[-_]*.xml
 # Local SASE beads database
 .beads/
 sdd/beads/beads.db
+
+# SASE-managed companion and linked repository checkouts
+sase/repos/
