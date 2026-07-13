@@ -70,7 +70,7 @@ axe:
       chops:
         - name: sase_toobig_split
           description: "Run the #!sase/toobig_split xprompt workflow"
-          agent: "%n:sase_toobig_split-@ %w(runners=0) #gh:sase %g:chop #!sase/toobig_split %auto"
+          agent: "%n:sase_toobig_split-@ #gh:sase %g:chop #!sase/toobig_split %auto"
           run_every: 60m
         - name: sase_fix_just
           description: "Run the #!sase/fix_just xprompt workflow"
@@ -80,41 +80,41 @@ axe:
       chops:
         - name: sase_recent_bug_audit
           description: "Audit recent sase commits for confirmed bugs and fix only verified issues"
-          agent: "%n:sase_recent_bug_audit-@ %w(runners=0) #gh:sase %g:chop #!sase/audit_recent_bugs"
+          agent: "%n:sase_recent_bug_audit-@ #gh:sase %g:chop #!sase/audit_recent_bugs"
           run_every: 60m
         - name: sase_recent_improvement_audit
           description: "Audit recent sase commits for clear objective improvements without speculative churn"
-          agent: "%n:sase_recent_improvement_audit-@ %w(runners=0) #gh:sase %g:chop #!sase/audit_recent_improvements"
+          agent: "%n:sase_recent_improvement_audit-@ #gh:sase %g:chop #!sase/audit_recent_improvements"
           run_every: 60m
     refresh_docs:
       interval: 60
       chops:
         - name: sase_refresh_docs
           description: "Run the #!sase/refresh_docs xprompt workflow"
-          agent: "%n:sase_refresh_docs-@ %w(runners=0) #gh:sase-org/sase %g:chop #!sase/refresh_docs"
+          agent: "%n:sase_refresh_docs-@ #gh:sase-org/sase %g:chop #!sase/refresh_docs"
           run_every: 3h
         - name: sase_core_refresh_docs
           description: "Run the #!sase/refresh_docs xprompt workflow for sase-core"
           agent:
-            "%n:sase_core_refresh_docs-@ %w(runners=0) #gh:sase-org/sase %g:chop #!sase/refresh_docs(project=sase-core,
+            "%n:sase_core_refresh_docs-@ #gh:sase-org/sase %g:chop #!sase/refresh_docs(project=sase-core,
             gh_ref=sase-org/sase-core, threshold=25)"
           run_every: 24h
         - name: sase_github_refresh_docs
           description: "Run the #!sase/refresh_docs xprompt workflow for sase-github"
           agent:
-            "%n:sase_github_refresh_docs-@ %w(runners=0) #gh:sase-org/sase %g:chop #!sase/refresh_docs(project=sase-github,
+            "%n:sase_github_refresh_docs-@ #gh:sase-org/sase %g:chop #!sase/refresh_docs(project=sase-github,
             gh_ref=sase-org/sase-github, threshold=25)"
           run_every: 24h
         - name: sase_nvim_refresh_docs
           description: "Run the #!sase/refresh_docs xprompt workflow for sase-nvim"
           agent:
-            "%n:sase_nvim_refresh_docs-@ %w(runners=0) #gh:sase-org/sase %g:chop #!sase/refresh_docs(project=sase-nvim,
+            "%n:sase_nvim_refresh_docs-@ #gh:sase-org/sase %g:chop #!sase/refresh_docs(project=sase-nvim,
             gh_ref=sase-org/sase-nvim, threshold=25)"
           run_every: 24h
         - name: sase_telegram_refresh_docs
           description: "Run the #!sase/refresh_docs xprompt workflow for sase-telegram"
           agent:
-            "%n:sase_telegram_refresh_docs-@ %w(runners=0) #gh:sase-org/sase %g:chop #!sase/refresh_docs(project=sase-telegram,
+            "%n:sase_telegram_refresh_docs-@ #gh:sase-org/sase %g:chop #!sase/refresh_docs(project=sase-telegram,
             gh_ref=sase-org/sase-telegram, threshold=25)"
           run_every: 24h
     github_actions:

@@ -198,6 +198,7 @@ function test_failure_launches_agent_with_failed_logs() {
   assert_same "1" "$(prompt_count)"
   assert_contains "#gh:owner/repo %g:chop #pr(gha_fix_owner_repo_12345_a1) %n:gha-fix-owner-repo-12345-a1 %w(runners=0)" "$(cat "${PROMPTS_FILE}")"
   assert_same "1" "$(grep -o '%w(runners=0)' "${PROMPTS_FILE}" | wc -l | tr -d ' ')"
+  assert_not_contains "#!" "$(cat "${PROMPTS_FILE}")"
   assert_contains "Workflow: Unit Tests" "$(cat "${PROMPTS_FILE}")"
   assert_contains "boom failed in pytest" "$(cat "${PROMPTS_FILE}")"
 }
