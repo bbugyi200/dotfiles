@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# CHEZMOI WILL RUN THIS SCRIPT MONTHLY: {{ output "date" "+%Y-%m" | trim }}
+
+source ~/.local/share/chezmoi/lib/chezmoi_utils.sh
+
+# Install the latest basher release and export its packaged bugyi.sh library.
+function install_basher() {
+  chez::log "INSTALLING LATEST VERSION OF BASHER"
+  uv tool install --upgrade basher || return 1
+
+  chez::log "EXPORTING BASHER'S BUGYI.SH LIBRARY TO ~/lib"
+  basher export ~/lib
+}
+
+install_basher

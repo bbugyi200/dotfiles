@@ -1,3 +1,4 @@
-# My personal, general-purpose bash library. Keep an eye out for opportunities to use this library's functions in my
-# scripts! This library should be sourced via the `source ~/lib/bugyi.sh` command at the top of _most_ of my scripts.
-home/lib/bugyi.sh
+# My personal, general-purpose bash library. Its canonical source is https://github.com/bbugyi200/basher, and the
+# installed library can be inspected with `basher cat`. Keep an eye out for opportunities to use its functions in my
+# scripts! The library should be sourced via `source ~/lib/bugyi.sh` at the top of _most_ of my scripts.
+[[bugyi.sh]] basher cat
