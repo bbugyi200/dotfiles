@@ -9,7 +9,7 @@ linked_repos:
   - name: chezmoi
     path: ~/.local/share/chezmoi
     description: |-
-      Chezmoi-managed dotfiles and global SASE configuration source. Use `sase workspace open` to access a private linked
+      Chezmoi-managed dotfiles and global SASE configuration source. Use `sase repo open` to access a private linked
       workspace when running from a numbered host workspace.
 ace:
   snippets:
