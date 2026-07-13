@@ -68,9 +68,9 @@ axe:
     run_every:
       interval: 60
       chops:
-        - name: sase_pylimit_split
-          description: "Run the #!sase/pylimit_split xprompt workflow"
-          agent: "%n:sase_pylimit_split-@ #gh:sase %g:chop #!sase/pylimit_split %auto"
+        - name: sase_toobig_split
+          description: "Run the #!sase/toobig_split xprompt workflow"
+          agent: "%n:sase_toobig_split-@ #gh:sase %g:chop #!sase/toobig_split %auto"
           run_every: 60m
         - name: sase_fix_just
           description: "Run the #!sase/fix_just xprompt workflow"
