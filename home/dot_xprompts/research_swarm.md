@@ -1,5 +1,7 @@
 ---
-description: Launch two independent research agents, consolidate their findings, and generate an infographic.
+description:
+  Launch two independent research agents, then have a lead researcher extend and consolidate their findings and generate
+  an infographic.
 input:
   - name: prompt
     type: text
@@ -16,42 +18,40 @@ input:
 
 %name:research.@.final %m:@research_lead %wait:research.@.cdx %wait:research.@.cld %g:research
 
-The two independent research agents have finished. Their chat transcript paths are available here:
-
-{% raw %}{{ wait_chats }}{% endraw %}
-
-Read both chat transcripts first. From those transcripts, identify which markdown file in the effective research
-directory was created by the first (`research.@.cdx` / `research_a`) agent and which was created by the second
-(`research.@.cld` / `research_b`) agent, then read both files. Keep this producer-to-report association explicit so the
-source reports are assigned deterministically rather than by filesystem ordering.
-
-Effective research directory:
-
-$(sase sdd path research --ensure)
-
-Before moving or writing any files, choose a descriptive final markdown filename `<name>.md` and derive `<name>` by
-removing its `.md` suffix. The completed layout must be:
-
-```text
-<effective-research-directory>/
-└── <name>/
-    ├── <name>__a.md
-    ├── <name>__b.md
-    └── <name>.md
-```
-
-Do not silently overwrite an existing `<name>` directory or any destination file. If the chosen stem would collide,
-select a distinct descriptive stem before moving anything. Once the stem is collision-free, create
-`<effective-research-directory>/<name>/` and safely move and rename the first agent's report to `<name>/<name>__a.md`
-and the second agent's report to `<name>/<name>__b.md`. Preserve both source reports.
-
-After both source reports have been safely relocated, verify the prior work against the request below. Consolidate and
-improve the research into `<name>/<name>.md` without unnecessary length growth. Preserve the strongest findings, resolve
-conflicts, add any missing critical context, and remove duplication.
+You are the lead researcher: two independent researchers have reported on the request below, and you will add your own
+research and merge all three perspectives into one consolidated report.
 
 Research request:
 
 {{ prompt }}
+
+The researchers' chat transcripts:
+
+{% raw %}{{ wait_chats }}{% endraw %}
+
+Month directory (create it if missing):
+
+$(sase sdd path research --ensure)/$(date +%Y%m)
+
+Steps:
+
+1. Read both transcripts to learn which report file each researcher wrote (`research.@.cdx` -> `__a`, `research.@.cld`
+   -> `__b`), then read both reports. Never assign `__a`/`__b` from filesystem order.
+2. Research the request yourself, prioritizing gaps, weak evidence, and disagreements between the two reports.
+3. Pick a descriptive stem `<name>` that collides with nothing in the month directory, create `<month-dir>/<name>/`, and
+   move the two reports to `<name>__a.md` and `<name>__b.md` inside it. Preserve both files and never overwrite: on any
+   collision, pick a different stem first.
+4. Write the consolidated report to `<name>/<name>.md`: merge the strongest findings from both reports and your own
+   research, resolve conflicts, cut duplication, and add missing critical context without unnecessary length.
+
+Final layout:
+
+```text
+<month-dir>/<name>/
+├── <name>__a.md
+├── <name>__b.md
+└── <name>.md
+```
 
 ---
 
