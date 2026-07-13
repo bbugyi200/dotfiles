@@ -5,7 +5,7 @@
 #################################################################################
 
 SASE_FIX_JUST_SCRIPT="${PWD}/home/bin/executable_sase_chop_sase_fix_just"
-FIX_JUST_PROMPT="#gh:sase %g:chop #!sase/fix_just"
+FIX_JUST_PROMPT="%n:sase_fix_just-@ %w(runners=0) #gh:sase %g:chop #!sase/fix_just"
 
 function set_up() {
   TEST_TMP="$(mktemp -d)"
@@ -93,6 +93,7 @@ JSON
   assert_contains "launched fix_just workflow" "${output}"
   assert_same "1" "$(prompt_count)"
   assert_contains "${FIX_JUST_PROMPT}" "$(cat "${PROMPTS_FILE}")"
+  assert_same "1" "$(grep -o '%w(runners=0)' "${PROMPTS_FILE}" | wc -l | tr -d ' ')"
 }
 
 function test_missing_changespec_snapshot_skips_safely() {

@@ -4,6 +4,7 @@ mypy
 pytest
 pytest-asyncio
 pytest-cov
+PyYAML
 
 # Include all module dependencies
 -r home/lib/xfile/requirements.txt
