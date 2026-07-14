@@ -5,12 +5,18 @@ commit_hooks:
 github_orgs:
   - bbugyi200
   - sase-org
-linked_repos:
-  - name: chezmoi
-    path: ~/.local/share/chezmoi
-    description: |-
-      Chezmoi-managed dotfiles and global SASE configuration source. Use `sase repo open` to access a private linked
-      workspace when running from a numbered host workspace.
+repos:
+  linked:
+    - name: chezmoi
+      path: ~/.local/share/chezmoi
+      description: |-
+        Chezmoi-managed dotfiles and global SASE configuration source. Use `sase repo open` to access a private linked
+        workspace when running from a numbered host workspace.
+  sidecar:
+    - name: research
+      repo: sase-org/sase--research
+      auto_clone: false
+      description: Durable SASE research reports and generated media.
 ace:
   snippets:
     # keep-sorted start
@@ -211,7 +217,7 @@ xprompts:
   research/more: |
     Can you help me improve this research markdown file by doing your own research and filling in any gaps missed by the
     previous agent? Preserve the existing file path unless I explicitly ask for a new file, and follow
-    $(sase sdd path research --ensure)/README.md conventions when present.
+    $(sase repo path research --ensure)/README.md conventions when present.
   research/prompt:
     input:
       prompt: text
@@ -222,7 +228,7 @@ xprompts:
       ## THE PROMPT
       {{ prompt }}
   research: |
-    Write this research to a new markdown file under the $(sase sdd path research --ensure)/$(date +%Y%m)/ directory.
+    Write this research to a new markdown file under the $(sase repo path research --ensure)/$(date +%Y%m)/ directory.
   tale: |-
     #plan %a:tale
   # keep-sorted end

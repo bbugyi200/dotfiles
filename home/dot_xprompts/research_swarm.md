@@ -31,7 +31,7 @@ The researchers' chat transcripts:
 
 Month directory (create it if missing):
 
-$(sase sdd path research --ensure)/$(date +%Y%m)
+$(sase repo path research --ensure)/$(date +%Y%m)
 
 Steps:
 
