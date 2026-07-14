@@ -16,7 +16,7 @@ Quick reference for the `sase bead` CLI. Use `sase bead` (not `.venv/bin/sase be
 
 Do not assume `sdd/...` is relative to the current checkout. In launched agents, use `SASE_SDD_PLANS_DIR` for plan paths
 and `SASE_SDD_BEADS_DIR` for the bead store. Outside a launched agent, resolve them with
-`SASE_SDD_PLANS_DIR=$(sase sdd path plans)` and `SASE_SDD_BEADS_DIR=$(sase sdd path beads)`.
+`SASE_SDD_PLANS_DIR=$(sase repo path plans)` and `SASE_SDD_BEADS_DIR=$(sase repo path plans)/beads`.
 
 The examples below use `${SASE_SDD_PLANS_DIR}/...` plan paths. Quote `--type` values so shell expansion works reliably.
 
@@ -37,9 +37,9 @@ not merge bead records from numbered sibling workspaces or legacy bead stores.
 - `phase` — child of a plan (created with `--type phase(...)`)
 
 Plan beads can carry bead tier `--tier plan` or `--tier epic`. Plan files live under `${SASE_SDD_PLANS_DIR}/{YYYYMM}/`
-in migrated projects; `sase sdd path plans` preserves the legacy layout for older stores. Plan files independently carry
-`tier: tale` or `tier: epic` in frontmatter. `sase bead work` runs `epic`-tier plan beads by launching phase + land
-agents.
+in migrated projects; `sase repo path plans` preserves the legacy layout for older stores. Plan files independently
+carry `tier: tale` or `tier: epic` in frontmatter. `sase bead work` runs `epic`-tier plan beads by launching phase +
+land agents.
 
 ## Commands
 
