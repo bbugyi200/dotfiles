@@ -1,0 +1,380 @@
+#!/usr/bin/env python3
+"""Launch one split-file SASE agent for each oversized Python file."""
+
+from __future__ import annotations
+
+import argparse
+import fcntl
+import hashlib
+import json
+import os
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+DEFAULT_TREES = ("src", "tests")
+DEFAULT_LIMITS = (1000, 850, 700)
+DETAIL_LIMIT_CHARS = 500
+SAMPLE_FILE_LIMIT = 5
+ENV_PREFIX = "SASE_TOOBIG_SPLIT_"
+
+
+@dataclass(frozen=True)
+class Target:
+    repo_root: Path
+    launch_ref: str
+
+
+def log(message: str) -> None:
+    print(f"[toobig_split] {message}", flush=True)
+
+
+def _env(name: str) -> str | None:
+    value = os.environ.get(f"{ENV_PREFIX}{name}")
+    if value is None or not value.strip():
+        return None
+    return value.strip()
+
+
+def _env_words(name: str, default: tuple[str, ...]) -> tuple[str, ...]:
+    value = _env(name)
+    if value is None:
+        return default
+    try:
+        words = tuple(shlex.split(value))
+    except ValueError as exc:
+        raise RuntimeError(f"invalid {ENV_PREFIX}{name}: {exc}") from exc
+    if not words:
+        raise RuntimeError(f"{ENV_PREFIX}{name} must not be empty")
+    return words
+
+
+def _env_limits() -> tuple[int, int, int]:
+    words = _env_words("LIMITS", tuple(str(limit) for limit in DEFAULT_LIMITS))
+    if len(words) != 3:
+        raise RuntimeError(f"{ENV_PREFIX}LIMITS must contain exactly three integers")
+    try:
+        limits = tuple(int(word) for word in words)
+    except ValueError as exc:
+        raise RuntimeError(f"{ENV_PREFIX}LIMITS must contain only integers") from exc
+    if any(limit <= 0 for limit in limits):
+        raise RuntimeError(f"{ENV_PREFIX}LIMITS values must be positive")
+    return limits[0], limits[1], limits[2]
+
+
+def _default_state_dir() -> Path:
+    state_home = os.environ.get("XDG_STATE_HOME")
+    if state_home:
+        return Path(state_home) / "sase" / "chops" / "toobig_split"
+    return Path.home() / ".local" / "state" / "sase" / "chops" / "toobig_split"
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Launch split-file agents for oversized Python files.",
+    )
+    parser.add_argument(
+        "--context",
+        help="Path to the SASE chop context JSON file (accepted for axe).",
+    )
+    parser.add_argument(
+        "--project",
+        default=_env("PROJECT"),
+        help=f"SASE project to resolve (env: {ENV_PREFIX}PROJECT).",
+    )
+    parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=Path(value) if (value := _env("REPO_ROOT")) else None,
+        help=f"Repository root override (env: {ENV_PREFIX}REPO_ROOT).",
+    )
+    parser.add_argument(
+        "--launch-ref",
+        default=_env("LAUNCH_REF"),
+        help=f"SASE VCS launch ref override (env: {ENV_PREFIX}LAUNCH_REF).",
+    )
+    parser.add_argument(
+        "--trees",
+        nargs="+",
+        default=list(_env_words("TREES", DEFAULT_TREES)),
+        help=f"Trees to scan (env: {ENV_PREFIX}TREES; default: src tests).",
+    )
+    parser.add_argument(
+        "--limits",
+        nargs=3,
+        type=int,
+        default=list(_env_limits()),
+        metavar=("ERROR", "WARNING", "INFO"),
+        help=f"Line-count thresholds (env: {ENV_PREFIX}LIMITS).",
+    )
+    parser.add_argument(
+        "--state-dir",
+        type=Path,
+        default=Path(value) if (value := _env("STATE_DIR")) else _default_state_dir(),
+        help=f"Lock state directory (env: {ENV_PREFIX}STATE_DIR).",
+    )
+    parser.add_argument(
+        "--toobig",
+        type=Path,
+        default=Path(value) if (value := _env("TOOBIG")) else None,
+        help=f"toobig executable override (env: {ENV_PREFIX}TOOBIG).",
+    )
+    return parser.parse_args()
+
+
+def compact_detail(detail: str) -> str:
+    compacted = " ".join(detail.strip().split())
+    if len(compacted) <= DETAIL_LIMIT_CHARS:
+        return compacted
+    return compacted[: DETAIL_LIMIT_CHARS - 3].rstrip() + "..."
+
+
+def run_command(
+    args: list[str], *, cwd: Path | None = None
+) -> subprocess.CompletedProcess[str]:
+    try:
+        return subprocess.run(
+            args,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError as exc:
+        raise RuntimeError(f"failed to execute {args[0]}: {exc}") from exc
+
+
+def _project_data(project: str) -> dict[str, Any]:
+    result = run_command(["sase", "project", "show", project, "--json"])
+    if result.returncode != 0:
+        detail = compact_detail(result.stderr or result.stdout)
+        raise RuntimeError(
+            f"project resolution failed: project={project!r} "
+            f"exit_code={result.returncode} detail={detail or '-'}"
+        )
+    try:
+        data = json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(
+            f"project resolution returned invalid JSON for {project!r}: {exc}"
+        ) from exc
+    if not isinstance(data, dict):
+        raise RuntimeError(
+            f"project resolution returned non-object JSON for {project!r}"
+        )
+    return data
+
+
+def _required_project_string(data: dict[str, Any], key: str, project: str) -> str:
+    value = data.get(key)
+    if not isinstance(value, str) or not value.strip():
+        raise RuntimeError(f"project {project!r} is missing {key!r}")
+    return value.strip()
+
+
+def normalize_launch_ref(value: str) -> str:
+    launch_ref = value.strip()
+    if not launch_ref.startswith("#"):
+        launch_ref = f"#{launch_ref}"
+    if ":" not in launch_ref or any(char.isspace() for char in launch_ref):
+        raise RuntimeError(f"invalid launch ref: {value!r}")
+    return launch_ref
+
+
+def resolve_target(args: argparse.Namespace) -> Target:
+    project_data: dict[str, Any] | None = None
+    if args.project:
+        project_data = _project_data(args.project)
+
+    repo_root = args.repo_root
+    if repo_root is None and project_data is not None:
+        repo_root = Path(
+            _required_project_string(project_data, "workspace_dir", args.project)
+        )
+    if repo_root is None:
+        raise RuntimeError("either --project or --repo-root is required")
+
+    try:
+        repo_root = repo_root.expanduser().resolve(strict=True)
+    except OSError as exc:
+        raise RuntimeError(
+            f"failed to resolve repository root {repo_root}: {exc}"
+        ) from exc
+    if not repo_root.is_dir():
+        raise RuntimeError(f"repository root is not a directory: {repo_root}")
+
+    launch_ref = args.launch_ref
+    if launch_ref is None and project_data is not None:
+        vcs_kind = _required_project_string(project_data, "vcs_kind", args.project)
+        effective_name = _required_project_string(
+            project_data, "effective_project_name", args.project
+        )
+        launch_ref = f"#{vcs_kind}:{effective_name}"
+    if launch_ref is None:
+        raise RuntimeError("--launch-ref is required when --project is not supplied")
+
+    return Target(repo_root=repo_root, launch_ref=normalize_launch_ref(launch_ref))
+
+
+def find_toobig(repo_root: Path, override: Path | None) -> Path:
+    candidates = []
+    if override is not None:
+        candidates.append(override.expanduser())
+    candidates.extend(
+        [
+            repo_root / ".venv" / "bin" / "toobig",
+            repo_root / ".venv" / "Scripts" / "toobig.exe",
+        ]
+    )
+    for candidate in candidates:
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return candidate.resolve()
+
+    executable = shutil.which("toobig")
+    if executable:
+        return Path(executable).resolve()
+    if override is not None:
+        raise RuntimeError(f"toobig executable is unavailable: {override}")
+    raise RuntimeError(f"toobig executable is unavailable for repository {repo_root}")
+
+
+def normalize_scanned_path(raw_path: str, repo_root: Path) -> str:
+    path = Path(raw_path)
+    if path.is_absolute():
+        try:
+            path = path.resolve().relative_to(repo_root)
+        except ValueError as exc:
+            raise RuntimeError(
+                f"scanner returned a path outside the repository: {raw_path}"
+            ) from exc
+    else:
+        path = Path(os.path.normpath(raw_path))
+        if path == Path("..") or ".." in path.parts:
+            raise RuntimeError(
+                f"scanner returned a path outside the repository: {raw_path}"
+            )
+    normalized = path.as_posix()
+    if (
+        not normalized
+        or normalized == "."
+        or any(char.isspace() for char in normalized)
+    ):
+        raise RuntimeError(f"scanner returned an unsupported path: {raw_path!r}")
+    return normalized
+
+
+def scan_files(
+    toobig: Path, repo_root: Path, trees: list[str], limits: list[int]
+) -> list[str]:
+    files: list[str] = []
+    seen: set[str] = set()
+    for tree in trees:
+        result = run_command(
+            [str(toobig), "--files-only", tree, *(str(limit) for limit in limits)],
+            cwd=repo_root,
+        )
+        if result.returncode != 0:
+            detail = compact_detail(result.stderr or result.stdout)
+            raise RuntimeError(
+                f"scanner failed: tree={tree!r} exit_code={result.returncode} "
+                f"detail={detail or '-'}"
+            )
+        for line in result.stdout.splitlines():
+            raw_path = line.strip()
+            if not raw_path:
+                continue
+            path = normalize_scanned_path(raw_path, repo_root)
+            if path not in seen:
+                seen.add(path)
+                files.append(path)
+    return files
+
+
+def agent_name_template(path: str) -> str:
+    stem = Path(path).stem
+    slug = re.sub(r"[^A-Za-z0-9_.-]+", "_", stem).strip("._-") or "file"
+    return f"split_file.{slug}-@"
+
+
+def build_prompt(path: str, launch_ref: str) -> str:
+    return (
+        f"%name:{agent_name_template(path)}\n"
+        "%w(runners=0)\n"
+        f"{launch_ref} %group:chop %auto #split_file:{path}"
+    )
+
+
+def build_multi_prompt(paths: list[str], launch_ref: str) -> str:
+    prompts = [build_prompt(path, launch_ref) for path in paths]
+    segments = [prompts[0], *(f"%wait\n{prompt}" for prompt in prompts[1:])]
+    return "\n---\n".join(segments)
+
+
+def lock_path(state_dir: Path, repo_root: Path) -> Path:
+    digest = hashlib.sha256(str(repo_root).encode()).hexdigest()[:16]
+    repo_slug = re.sub(r"[^A-Za-z0-9_.-]+", "_", repo_root.name) or "repo"
+    return state_dir / f"{repo_slug}-{digest}.lock"
+
+
+def run_locked(args: argparse.Namespace, target: Target) -> int:
+    toobig = find_toobig(target.repo_root, args.toobig)
+    files = scan_files(toobig, target.repo_root, args.trees, args.limits)
+    sample = ", ".join(files[:SAMPLE_FILE_LIMIT]) if files else "-"
+    log(
+        f"scanned_trees={','.join(args.trees)} "
+        f"limits={' '.join(str(limit) for limit in args.limits)} "
+        f"file_count={len(files)} sample_files={sample}"
+    )
+    if not files:
+        log("launched=0 reason=no_files_over_limits")
+        return 0
+
+    multi_prompt = build_multi_prompt(files, target.launch_ref)
+    log(
+        f"launching={len(files)} launch_ref={target.launch_ref} "
+        f"repo_root={target.repo_root}"
+    )
+    result = run_command(["sase", "run", multi_prompt], cwd=target.repo_root)
+    if result.returncode != 0:
+        detail = compact_detail(result.stderr or result.stdout)
+        log(f"launch_failed=1 exit_code={result.returncode} detail={detail or '-'}")
+        return 1
+    detail = compact_detail(result.stdout or result.stderr)
+    if detail:
+        log(f"sase_run_output={detail}")
+    log(f"launched={len(files)}")
+    return 0
+
+
+def main() -> int:
+    try:
+        args = parse_args()
+        if any(limit <= 0 for limit in args.limits):
+            raise RuntimeError("--limits values must be positive")
+        if not args.trees or any(not tree.strip() for tree in args.trees):
+            raise RuntimeError("--trees must contain at least one non-empty path")
+        target = resolve_target(args)
+        args.state_dir.mkdir(parents=True, exist_ok=True)
+        path = lock_path(args.state_dir, target.repo_root)
+        with path.open("a+") as lock_file:
+            try:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                log(f"launched=0 reason=lock_busy repo_root={target.repo_root}")
+                return 0
+            return run_locked(args, target)
+    except RuntimeError as exc:
+        log(f"failure={exc}")
+        return 1
+    except OSError as exc:
+        log(f"failure={exc}")
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

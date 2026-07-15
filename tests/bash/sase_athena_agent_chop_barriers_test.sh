@@ -30,7 +30,6 @@ standalone_refs = {
     "sase_recent_improvement_audit": "#!sase/audit_recent_improvements",
     "sase_refresh_docs": "#!sase/refresh_docs",
     "sase_telegram_refresh_docs": "#!sase/refresh_docs",
-    "sase_toobig_split": "#!sase/toobig_split",
 }
 
 for name, standalone_ref in standalone_refs.items():
@@ -53,8 +52,7 @@ PY
   expected+=$'sase_recent_bug_audit\t#!sase/audit_recent_bugs\t1\t1\t0\n'
   expected+=$'sase_recent_improvement_audit\t#!sase/audit_recent_improvements\t1\t1\t0\n'
   expected+=$'sase_refresh_docs\t#!sase/refresh_docs\t1\t1\t0\n'
-  expected+=$'sase_telegram_refresh_docs\t#!sase/refresh_docs\t1\t1\t0\n'
-  expected+=$'sase_toobig_split\t#!sase/toobig_split\t1\t1\t0'
+  expected+=$'sase_telegram_refresh_docs\t#!sase/refresh_docs\t1\t1\t0'
 
   assert_same "${expected}" "${actual}"
 }

@@ -68,9 +68,10 @@ axe:
     run_every:
       interval: 60
       chops:
-        - name: sase_toobig_split
-          description: "Run the #!sase/toobig_split xprompt workflow"
-          agent: "%n:sase_toobig_split-@ #gh:sase %g:chop #!sase/toobig_split %auto"
+        - name: toobig_split
+          description: "Launch split-file agents for oversized Python files in sase"
+          env:
+            SASE_TOOBIG_SPLIT_PROJECT: "sase"
           run_every: 60m
         - name: sase_fix_just
           description: "Run the #!sase/fix_just xprompt workflow"
