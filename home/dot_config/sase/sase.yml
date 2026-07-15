@@ -12,11 +12,6 @@ repos:
       description: |-
         Chezmoi-managed dotfiles and global SASE configuration source. Use `sase repo open` to access a private linked
         workspace when running from a numbered host workspace.
-  sidecar:
-    - name: research
-      repo: sase-org/sase--research
-      auto_clone: false
-      description: Durable SASE research reports and generated media.
 ace:
   snippets:
     # keep-sorted start
