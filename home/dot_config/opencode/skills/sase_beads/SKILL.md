@@ -21,9 +21,9 @@ and `SASE_SDD_BEADS_DIR` for the bead store. Outside a launched agent, resolve t
 The examples below use `${SASE_SDD_PLANS_DIR}/...` plan paths. Quote `--type` values so shell expansion works reliably.
 
 `sase bead` reads and writes the current effective SDD bead store. In migrated projects this is `beads/` in the plans
-sidecar; in-tree projects use `sdd/beads/`. Canonical state lives in `beads/events/**` when present; `issues.jsonl` is a
-generated compatibility projection. It does not merge bead records from numbered sibling workspaces or legacy bead
-stores.
+sidecar; legacy in-tree projects use `sdd/beads/`, and legacy local/separate-repo stores use `.sase/sdd/beads/`.
+Canonical state lives in `beads/events/**` when present; `issues.jsonl` is a generated compatibility projection. It does
+not merge bead records from numbered sibling workspaces or legacy bead stores.
 
 ## Statuses
 
