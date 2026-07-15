@@ -12,7 +12,7 @@ from typing import Any
 
 CHANGESPEC_GUARD_PREFIX = "sase_fix_just_"
 FIX_JUST_PROMPT = "%n:sase_fix_just-@ #gh:sase %g:chop #!sase/fix_just"
-OPEN_CHANGESPEC_STATUSES = {"WIP", "Draft", "Ready", "Mailed"}
+TERMINAL_CHANGESPEC_STATUSES = {"Submitted", "Archived", "Reverted"}
 DETAIL_LIMIT_CHARS = 500
 CHANGESPEC_MATCH_LOG_LIMIT = 5
 
@@ -85,7 +85,10 @@ def open_changespec_names(context: dict[str, Any], prefix: str) -> list[str]:
         name = item.get("name")
         if not isinstance(name, str) or not name.startswith(prefix):
             continue
-        if changespec_base_status(item.get("status")) in OPEN_CHANGESPEC_STATUSES:
+        if (
+            changespec_base_status(item.get("status"))
+            not in TERMINAL_CHANGESPEC_STATUSES
+        ):
             names.append(name)
     return sorted(names)
 

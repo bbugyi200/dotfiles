@@ -77,10 +77,55 @@ JSON
   assert_same "0" "$(prompt_count)"
 }
 
+function test_reserved_fix_just_changespec_blocks_launch() {
+  write_changespecs <<'JSON'
+[
+  {
+    "name": "sase_fix_just_tests_42",
+    "description": null,
+    "parent": null,
+    "cl": null,
+    "status": "Reserved",
+    "file_path": "/tmp/sase.gp",
+    "line_number": 42,
+    "bug": null,
+    "commits": null,
+    "hooks": null,
+    "comments": null,
+    "mentors": null
+  }
+]
+JSON
+
+  local output
+  output="$(run_chop)"
+
+  assert_contains "open ChangeSpecs block launch: prefix='sase_fix_just_'" "${output}"
+  assert_contains "sase_fix_just_tests_42" "${output}"
+  assert_contains "no fix_just workflow launched" "${output}"
+  assert_same "0" "$(prompt_count)"
+}
+
+function test_unknown_fix_just_changespec_status_blocks_launch() {
+  write_changespecs <<'JSON'
+[
+  {"name": "sase_fix_just_future", "status": "NeedsAttention"}
+]
+JSON
+
+  local output
+  output="$(run_chop)"
+
+  assert_contains "open ChangeSpecs block launch: prefix='sase_fix_just_'" "${output}"
+  assert_contains "sase_fix_just_future" "${output}"
+  assert_contains "no fix_just workflow launched" "${output}"
+  assert_same "0" "$(prompt_count)"
+}
+
 function test_terminal_fix_just_changespec_allows_launch() {
   write_changespecs <<'JSON'
 [
-  {"name": "sase_fix_just_old", "status": "Submitted"},
+  {"name": "sase_fix_just_old", "status": "Submitted - merged"},
   {"name": "sase_fix_just_archived", "status": "Archived"},
   {"name": "sase_fix_just_reverted", "status": "Reverted"}
 ]
@@ -110,6 +155,18 @@ function test_missing_changespec_snapshot_skips_safely() {
 
   assert_contains "changespec guard check_error:" "${output}"
   assert_contains "failed to read ChangeSpec snapshot" "${output}"
+  assert_contains "skipping fix_just workflow launch" "${output}"
+  assert_same "0" "$(prompt_count)"
+}
+
+function test_malformed_changespec_snapshot_skips_safely() {
+  printf '{not-json\n' >"${CHANGESPECS_FILE}"
+
+  local output
+  output="$(run_chop)"
+
+  assert_contains "changespec guard check_error:" "${output}"
+  assert_contains "failed to parse ChangeSpec snapshot" "${output}"
   assert_contains "skipping fix_just workflow launch" "${output}"
   assert_same "0" "$(prompt_count)"
 }
