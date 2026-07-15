@@ -21,7 +21,10 @@ DEFAULT_TREES = ("src", "tests")
 DEFAULT_LIMITS = (1000, 850, 700)
 DETAIL_LIMIT_CHARS = 500
 SAMPLE_FILE_LIMIT = 5
+BLOCKER_SAMPLE_LIMIT = 5
 ENV_PREFIX = "SASE_TOOBIG_SPLIT_"
+SPLIT_FILE_HOOD = "split_file"
+ACTIVE_AGENT_STATUSES = frozenset({"STARTING", "RUNNING", "WAITING"})
 
 
 @dataclass(frozen=True)
@@ -221,6 +224,53 @@ def resolve_target(args: argparse.Namespace) -> Target:
     return Target(repo_root=repo_root, launch_ref=normalize_launch_ref(launch_ref))
 
 
+def active_split_file_agents() -> list[tuple[str, str]]:
+    result = run_command(["sase", "agent", "list", "-j"])
+    if result.returncode != 0:
+        detail = compact_detail(result.stderr or result.stdout)
+        raise RuntimeError(
+            "agent occupancy check failed: "
+            f"exit_code={result.returncode} detail={detail or '-'}"
+        )
+    try:
+        data = json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(
+            f"agent occupancy check returned invalid JSON: {exc}"
+        ) from exc
+    if not isinstance(data, list):
+        raise RuntimeError("agent occupancy check returned non-array JSON")
+
+    blockers: list[tuple[str, str]] = []
+    for index, record in enumerate(data):
+        if not isinstance(record, dict):
+            raise RuntimeError(f"agent occupancy check record {index} is not an object")
+        name = record.get("name")
+        if not isinstance(name, str) or not name.strip():
+            raise RuntimeError(
+                f"agent occupancy check record {index} has invalid 'name'"
+            )
+        status = record.get("status")
+        if not isinstance(status, str) or not status.strip():
+            raise RuntimeError(
+                f"agent occupancy check record {index} has invalid 'status'"
+            )
+        name = name.strip()
+        status = status.strip()
+        in_hood = name == SPLIT_FILE_HOOD or name.startswith(f"{SPLIT_FILE_HOOD}.")
+        if in_hood and status in ACTIVE_AGENT_STATUSES:
+            blockers.append((name, status))
+    return blockers
+
+
+def blocker_detail(blockers: list[tuple[str, str]]) -> str:
+    sampled = blockers[:BLOCKER_SAMPLE_LIMIT]
+    detail = ",".join(f"{name}:{status}" for name, status in sampled)
+    if len(blockers) > len(sampled):
+        detail += f",...(+{len(blockers) - len(sampled)} more)"
+    return compact_detail(detail)
+
+
 def find_toobig(repo_root: Path, override: Path | None) -> Path:
     candidates = []
     if override is not None:
@@ -322,6 +372,14 @@ def lock_path(state_dir: Path, repo_root: Path) -> Path:
 
 
 def run_locked(args: argparse.Namespace, target: Target) -> int:
+    blockers = active_split_file_agents()
+    if blockers:
+        log(
+            "launched=0 reason=active_split_file_hood "
+            f"blocker_count={len(blockers)} blockers={blocker_detail(blockers)}"
+        )
+        return 0
+
     toobig = find_toobig(target.repo_root, args.toobig)
     files = scan_files(toobig, target.repo_root, args.trees, args.limits)
     sample = ", ".join(files[:SAMPLE_FILE_LIMIT]) if files else "-"

@@ -16,11 +16,14 @@ function set_up() {
   PROMPTS_FILE="${TEST_TMP}/prompts.txt"
   SASE_CALLS_FILE="${TEST_TMP}/sase_calls.txt"
   TOOBIG_CALLS_FILE="${TEST_TMP}/toobig_calls.txt"
+  COMMANDS_FILE="${TEST_TMP}/commands.txt"
   PROJECT_NAME="demo"
   SRC_OUTPUT=""
   TESTS_OUTPUT=""
   LIB_OUTPUT=""
   SPEC_OUTPUT=""
+  AGENT_LIST_JSON="[]"
+  AGENT_LIST_FAILURE="0"
   PROJECT_FAILURE="0"
   SCANNER_FAILURE_TREE=""
   LAUNCH_FAILURE="0"
@@ -46,6 +49,16 @@ function write_fake_sase() {
 set -euo pipefail
 
 printf '%s\n' "$*" >>"${FAKE_SASE_CALLS}"
+printf 'sase:%s\n' "$1" >>"${FAKE_COMMANDS}"
+
+if [[ "$1" == "agent" && "$2" == "list" && "$3" == "-j" && "$#" == "3" ]]; then
+  if [[ "${FAKE_AGENT_LIST_FAILURE}" == "1" ]]; then
+    printf 'agent list unavailable\n' >&2
+    exit 29
+  fi
+  printf '%s\n' "${FAKE_AGENT_LIST_JSON}"
+  exit 0
+fi
 
 if [[ "$1" == "project" && "$2" == "show" && "$4" == "--json" ]]; then
   if [[ "${FAKE_PROJECT_FAILURE}" == "1" ]]; then
@@ -82,6 +95,7 @@ function write_fake_toobig() {
 set -euo pipefail
 
 printf '%s\n' "$*" >>"${FAKE_TOOBIG_CALLS}"
+printf 'toobig\n' >>"${FAKE_COMMANDS}"
 tree="$2"
 if [[ "${FAKE_SCANNER_FAILURE_TREE}" == "${tree}" ]]; then
   printf 'scanner exploded for %s\n' "${tree}" >&2
@@ -114,6 +128,9 @@ function run_chop_with_args() {
     FAKE_REPO_ROOT="${REPO_ROOT}" \
     FAKE_SASE_CALLS="${SASE_CALLS_FILE}" \
     FAKE_SASE_PROMPTS="${PROMPTS_FILE}" \
+    FAKE_COMMANDS="${COMMANDS_FILE}" \
+    FAKE_AGENT_LIST_JSON="${AGENT_LIST_JSON}" \
+    FAKE_AGENT_LIST_FAILURE="${AGENT_LIST_FAILURE}" \
     FAKE_PROJECT_FAILURE="${PROJECT_FAILURE}" \
     FAKE_LAUNCH_FAILURE="${LAUNCH_FAILURE}" \
     FAKE_TOOBIG_CALLS="${TOOBIG_CALLS_FILE}" \
@@ -163,6 +180,12 @@ function wait_for_file() {
   return 1
 }
 
+function assert_no_scan_or_launch() {
+  assert_same "0" "$(occurrence_count "--files-only" "${TOOBIG_CALLS_FILE}")"
+  assert_same "0" "$(occurrence_count "run " "${SASE_CALLS_FILE}")"
+  assert_same "0" "$(prompt_count)"
+}
+
 function test_project_resolution_deduplicates_paths_and_builds_wait_chain() {
   SRC_OUTPUT=$'src/pkg/large.py\nsrc/pkg/shared.py\n'
   TESTS_OUTPUT=$'src/pkg/shared.py\ntests/large.py\n'
@@ -174,6 +197,9 @@ function test_project_resolution_deduplicates_paths_and_builds_wait_chain() {
   assert_contains "launched=3" "${output}"
   assert_same "1" "$(prompt_count)"
   assert_contains "project show demo --json" "$(cat "${SASE_CALLS_FILE}")"
+  assert_same "1" "$(occurrence_count "agent list -j" "${SASE_CALLS_FILE}")"
+  assert_same $'sase:project\nsase:agent\ntoobig\ntoobig\nsase:run' \
+    "$(cat "${COMMANDS_FILE}")"
   assert_contains "--files-only src 1000 850 700" "$(cat "${TOOBIG_CALLS_FILE}")"
   assert_contains "--files-only tests 1000 850 700" "$(cat "${TOOBIG_CALLS_FILE}")"
 
@@ -218,6 +244,115 @@ function test_no_oversized_files_reports_noop_without_launching() {
   assert_contains "file_count=0 sample_files=-" "${output}"
   assert_contains "launched=0 reason=no_files_over_limits" "${output}"
   assert_same "0" "$(prompt_count)"
+}
+
+function test_running_dotted_hood_agent_aborts_before_scanning() {
+  AGENT_LIST_JSON='[{"name":"split_file.large-1","status":"RUNNING"}]'
+  SRC_OUTPUT=$'src/large.py\n'
+
+  local output
+  output="$(run_chop)"
+
+  assert_contains "launched=0 reason=active_split_file_hood" "${output}"
+  assert_contains "blocker_count=1 blockers=split_file.large-1:RUNNING" "${output}"
+  assert_no_scan_or_launch
+}
+
+function test_waiting_exact_hood_root_aborts_before_scanning() {
+  AGENT_LIST_JSON='[{"name":"split_file","status":"WAITING"}]'
+  SRC_OUTPUT=$'src/large.py\n'
+
+  local output
+  output="$(run_chop)"
+
+  assert_contains "launched=0 reason=active_split_file_hood" "${output}"
+  assert_contains "blockers=split_file:WAITING" "${output}"
+  assert_no_scan_or_launch
+}
+
+function test_starting_dotted_hood_agent_aborts_before_scanning() {
+  AGENT_LIST_JSON='[{"name":"split_file.large-1","status":"STARTING"}]'
+  SRC_OUTPUT=$'src/large.py\n'
+
+  local output
+  output="$(run_chop)"
+
+  assert_contains "launched=0 reason=active_split_file_hood" "${output}"
+  assert_contains "blockers=split_file.large-1:STARTING" "${output}"
+  assert_no_scan_or_launch
+}
+
+function test_unrelated_names_and_terminal_hood_agents_do_not_block_launch() {
+  AGENT_LIST_JSON='[
+    {"name":"split_file_backup","status":"RUNNING"},
+    {"name":"split_filex","status":"WAITING"},
+    {"name":"split_file.done-1","status":"DONE"},
+    {"name":"split_file","status":"FAILED"}
+  ]'
+  SRC_OUTPUT=$'src/large.py\n'
+
+  local output
+  output="$(run_chop)"
+
+  assert_contains "launched=1" "${output}"
+  assert_same "1" "$(occurrence_count "agent list -j" "${SASE_CALLS_FILE}")"
+  assert_same "1" "$(prompt_count)"
+}
+
+function test_active_blocker_details_are_bounded() {
+  AGENT_LIST_JSON='[
+    {"name":"split_file.one","status":"RUNNING"},
+    {"name":"split_file.two","status":"RUNNING"},
+    {"name":"split_file.three","status":"RUNNING"},
+    {"name":"split_file.four","status":"RUNNING"},
+    {"name":"split_file.five","status":"RUNNING"},
+    {"name":"split_file.six","status":"RUNNING"}
+  ]'
+
+  local output
+  output="$(run_chop)"
+
+  assert_contains "blocker_count=6" "${output}"
+  assert_contains "split_file.five:RUNNING,...(+1 more)" "${output}"
+  assert_not_contains "split_file.six" "${output}"
+  assert_no_scan_or_launch
+}
+
+function test_agent_list_failure_is_visible_nonzero_and_launch_free() {
+  AGENT_LIST_FAILURE="1"
+  SRC_OUTPUT=$'src/large.py\n'
+
+  local output status
+  output="$(run_chop)" && status=0 || status=$?
+
+  assert_same "1" "${status}"
+  assert_contains "agent occupancy check failed: exit_code=29" "${output}"
+  assert_contains "agent list unavailable" "${output}"
+  assert_no_scan_or_launch
+}
+
+function test_malformed_agent_list_json_is_visible_nonzero_and_launch_free() {
+  AGENT_LIST_JSON='{not-json'
+  SRC_OUTPUT=$'src/large.py\n'
+
+  local output status
+  output="$(run_chop)" && status=0 || status=$?
+
+  assert_same "1" "${status}"
+  assert_contains "agent occupancy check returned invalid JSON" "${output}"
+  assert_no_scan_or_launch
+}
+
+function test_agent_list_schema_failure_is_visible_nonzero_and_launch_free() {
+  AGENT_LIST_JSON='[{"name":"split_file.large-1"}]'
+  SRC_OUTPUT=$'src/large.py\n'
+
+  local output status
+  output="$(run_chop)" && status=0 || status=$?
+
+  assert_same "1" "${status}"
+  assert_contains "agent occupancy check record 0 has invalid 'status'" "${output}"
+  assert_no_scan_or_launch
 }
 
 function test_project_resolution_failure_is_visible_and_nonzero() {
