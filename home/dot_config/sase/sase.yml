@@ -37,6 +37,8 @@ ace:
     cmd: "the `$1` command"
     cmdd: "a new `$1` command"
     cmt: "`sase commit`"
+    cout: |-
+      see the output below
     cs: "ChangeSpec"
     di: "the $1 directory"
     drep: "Describe this repo."
