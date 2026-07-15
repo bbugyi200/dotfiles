@@ -73,9 +73,6 @@ axe:
           env:
             SASE_TOOBIG_SPLIT_PROJECT: "sase"
           run_every: 60m
-        - name: sase_fix_just
-          description: "Run the #!sase/fix_just xprompt workflow"
-          run_every: 60m
     code_quality:
       interval: 60
       chops:
