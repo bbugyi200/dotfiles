@@ -29,6 +29,13 @@ reference notes that agents read only when relevant.
 - Plain `sase/memory/<note>.md` mentions keep a note discoverable without loading it automatically.
 - Long notes parented under another long note are reachable through that parent for validation.
 
+### Canonical And Legacy Roots
+
+- Project memory is written to `<project>/sase/memory/`; home memory is written to `~/sase/memory/`.
+- Legacy project `memory/` and home `~/memory/` trees are read only for migration compatibility.
+- Canonical and legacy trees are never merged. Non-identical coexistence blocks initialization; identical legacy trees
+  can be removed during a safe initialization pass.
+
 ## Memory Notes
 
 ### `sase/memory/sase.md`
@@ -60,10 +67,10 @@ reference notes that agents read only when relevant.
 - `sase memory list` shows loaded, referenced, available, and missing memory files.
 - `sase memory init` creates or refreshes generated memory files, renders `AGENTS.md` and provider shims from
   `AGENTS.template.md`, and refreshes this asset-backed README.
-- Set `amd_agents_template` (or `amd_agents_minimal_template`) to a root-relative project template in `sase.yml`; home
-  roots can instead use `AGENTS.template.md` (or `AGENTS.minimal.template.md`) in the SASE user config directory.
-- Set `memory_sase_template` or `memory_readme_template` to root-relative project templates in `sase.yml`; home roots
-  can instead use `memory-sase.template.md` or `memory-README.template.md` in the SASE user config directory.
+- Set `amd_agents_template` (or `amd_agents_minimal_template`) to a root-relative project template in `sase/sase.yml`;
+  home roots can instead use `AGENTS.template.md` (or `AGENTS.minimal.template.md`) in the SASE user config directory.
+- Set `memory_sase_template` or `memory_readme_template` to root-relative project templates in `sase/sase.yml`; home
+  roots can instead use `memory-sase.template.md` or `memory-README.template.md` in the SASE user config directory.
 - `sase memory init --check` reports drift without writing files.
 - `sase memory read <note>.md --reason <reason>` reads a long note and records an audited access event.
 - `sase memory write` proposes a new long-term memory note for review.
