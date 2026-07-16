@@ -3,6 +3,14 @@ amd_h1_title: "athena - Bryan Bugyi's Home Server"
 llm_provider:
   provider: codex
 
+telegram:
+  commands:
+    tasks:
+      description: "📋 Obsidian tasks dashboard (WIP/NEXT/READY) as a PDF"
+      run: tg_cmd_tasks
+      output: pdf
+      timeout: 90s
+
 xprompts:
   sase_gmail:
     skill: true

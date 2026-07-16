@@ -1,0 +1,302 @@
+#!/usr/bin/env python3
+"""Render the Bob vault's Obsidian Tasks dashboard as Markdown."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+from collections import OrderedDict
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+DEFAULT_NOTE = "dash.md"
+SECTION_META = {
+    "WIP": ("🔨", "WIP"),
+    "NEXT": ("⏭️", "NEXT"),
+    "READY": ("✅", "READY"),
+}
+PRIORITY_EMOJI = {
+    "highest": "🔺",
+    "high": "⏫",
+    "medium": "🔼",
+    "low": "🔽",
+    "lowest": "⏬",
+}
+TASK_TAG_RE = re.compile(r"(?<![\w/])#task(?:/[\w-]+)?\b", re.IGNORECASE)
+BLOCK_ANCHOR_RE = re.compile(r"(?:^|\s)\^[A-Za-z0-9-]+(?=\s|$)")
+
+
+class TasksReportError(RuntimeError):
+    """A user-facing failure while building the tasks report."""
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Render an Obsidian Tasks dashboard from the Bob vault.",
+    )
+    parser.add_argument(
+        "--note",
+        default=DEFAULT_NOTE,
+        help=f"Tasks note to query (default: {DEFAULT_NOTE}).",
+    )
+    return parser.parse_args(argv)
+
+
+def resolve_bob() -> str:
+    """Resolve bob from PATH, then fall back to its Cargo install path."""
+    executable = shutil.which("bob")
+    if executable:
+        return executable
+
+    fallback = Path.home() / ".cargo" / "bin" / "bob"
+    if fallback.is_file() and os.access(fallback, os.X_OK):
+        return str(fallback)
+    raise TasksReportError("bob executable not found on PATH or at ~/.cargo/bin/bob")
+
+
+def query_tasks(note: str) -> dict[str, Any]:
+    """Run the note's Tasks blocks and return their JSON representation."""
+    command = [
+        resolve_bob(),
+        "query",
+        "--tasks-note",
+        note,
+        "--format",
+        "json",
+    ]
+    try:
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError as exc:
+        raise TasksReportError(f"failed to execute bob: {exc}") from exc
+
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()
+        suffix = f": {detail}" if detail else ""
+        raise TasksReportError(f"bob query failed (exit {result.returncode}){suffix}")
+
+    try:
+        payload = json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        raise TasksReportError(f"bob query returned invalid JSON: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise TasksReportError("bob query returned a non-object JSON document")
+    if not isinstance(payload.get("blocks"), list):
+        raise TasksReportError("bob query JSON is missing the blocks list")
+    return payload
+
+
+def _block_result(block: dict[str, Any]) -> dict[str, Any]:
+    result = block.get("result")
+    return result if isinstance(result, dict) else {}
+
+
+def _tasks(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    return [task for task in value if isinstance(task, dict)]
+
+
+def _block_tasks(block: dict[str, Any]) -> list[dict[str, Any]]:
+    result = _block_result(block)
+    tasks = _tasks(result.get("tasks"))
+    if tasks:
+        return tasks
+
+    groups = result.get("groups")
+    if not isinstance(groups, list):
+        return []
+    return [
+        task
+        for group in groups
+        if isinstance(group, dict)
+        for task in _tasks(group.get("tasks"))
+    ]
+
+
+def _block_count(block: dict[str, Any]) -> int:
+    result = _block_result(block)
+    count = result.get("count")
+    if isinstance(count, int) and count >= 0:
+        return count
+    return len(_block_tasks(block))
+
+
+def _section_kind(heading: str) -> str | None:
+    normalized = heading.upper()
+    for kind in SECTION_META:
+        if kind in normalized:
+            return kind
+    return None
+
+
+def _source_stem(task: dict[str, Any]) -> str:
+    file_value = task.get("file")
+    path_value = file_value.get("path") if isinstance(file_value, dict) else None
+    if not isinstance(path_value, str) or not path_value:
+        path_value = task.get("path")
+    if not isinstance(path_value, str) or not path_value:
+        return "Other"
+    return Path(path_value).stem or "Other"
+
+
+def _group_tasks(
+    block: dict[str, Any],
+) -> list[tuple[str, list[dict[str, Any]]]]:
+    grouped: OrderedDict[str, list[dict[str, Any]]] = OrderedDict()
+    for task in _block_tasks(block):
+        grouped.setdefault(_source_stem(task), []).append(task)
+    return list(grouped.items())
+
+
+def _clean_description(task: dict[str, Any]) -> str:
+    description = task.get("descriptionWithoutTags")
+    if not isinstance(description, str) or not description.strip():
+        for key in ("displayDescription", "description", "text"):
+            value = task.get(key)
+            if isinstance(value, str) and value.strip():
+                description = value
+                break
+        else:
+            return "Untitled task"
+
+    description = TASK_TAG_RE.sub("", description)
+    description = BLOCK_ANCHOR_RE.sub(" ", description)
+    return " ".join(description.split()) or "Untitled task"
+
+
+def _date_value(value: Any) -> str | None:
+    if isinstance(value, str) and value:
+        return value
+    if not isinstance(value, dict):
+        return None
+    for key in ("value", "raw"):
+        candidate = value.get(key)
+        if isinstance(candidate, str) and candidate:
+            return candidate
+    return None
+
+
+def _task_badges(task: dict[str, Any]) -> list[str]:
+    badges: list[str] = []
+    due = _date_value(task.get("due"))
+    if due:
+        badges.append(f"📅 {due}")
+    scheduled = _date_value(task.get("scheduled"))
+    if scheduled:
+        badges.append(f"⏳ {scheduled}")
+
+    priority = task.get("priority")
+    if isinstance(priority, str) and priority.casefold() != "normal":
+        emoji = PRIORITY_EMOJI.get(priority.casefold(), "⚡")
+        badges.append(f"{emoji} {priority}")
+    return badges
+
+
+def _render_task(task: dict[str, Any]) -> str:
+    line = f"- {_clean_description(task)}"
+    badges = _task_badges(task)
+    if badges:
+        line += " · " + " · ".join(badges)
+    return line
+
+
+def _human_date(now: datetime) -> str:
+    return f"{now:%A, %B} {now.day}, {now:%Y}"
+
+
+def render_report(payload: dict[str, Any], now: datetime | None = None) -> str:
+    """Render a bob Tasks-query payload using the Telegram script contract."""
+    now = now or datetime.now().astimezone()
+    raw_blocks = payload.get("blocks")
+    blocks = (
+        [block for block in raw_blocks if isinstance(block, dict)]
+        if isinstance(raw_blocks, list)
+        else []
+    )
+
+    summary_counts = dict.fromkeys(SECTION_META, 0)
+    for block in blocks:
+        heading = block.get("heading")
+        kind = _section_kind(heading) if isinstance(heading, str) else None
+        if kind:
+            summary_counts[kind] += _block_count(block)
+
+    summary = " · ".join(
+        f"{emoji} {summary_counts[kind]} {label}"
+        for kind, (emoji, label) in SECTION_META.items()
+    )
+    caption = f"📋 *Tasks Dashboard* — {summary}"
+    filename = f"tasks_dashboard_{now:%Y-%m-%d}.pdf"
+
+    body = [
+        "# 📋 Tasks Dashboard",
+        "",
+        f"_{_human_date(now)}_",
+        "",
+        f"**{summary}**",
+    ]
+    if sum(_block_count(block) for block in blocks) == 0:
+        body.extend(["", "🎉 **No open tasks!**"])
+
+    for block in blocks:
+        heading_value = block.get("heading")
+        heading = (
+            heading_value.strip()
+            if isinstance(heading_value, str) and heading_value.strip()
+            else "Tasks"
+        )
+        kind = _section_kind(heading)
+        emoji = SECTION_META[kind][0] if kind else "📌"
+        body.extend(["", f"## {emoji} {heading} · {_block_count(block)}"])
+
+        groups = _group_tasks(block)
+        if not groups:
+            body.extend(["", "_No tasks in this view._"])
+            continue
+        for source, tasks in groups:
+            body.extend(["", f"### 🗂️ `{source}`", ""])
+            body.extend(_render_task(task) for task in tasks)
+
+    body.extend(
+        [
+            "",
+            "---",
+            "",
+            f"_Generated at {now:%Y-%m-%d %H:%M %Z}._",
+        ]
+    )
+    frontmatter = [
+        "---",
+        f"caption: {json.dumps(caption, ensure_ascii=False)}",
+        f"filename: {json.dumps(filename)}",
+        "---",
+        "",
+    ]
+    return "\n".join(frontmatter + body) + "\n"
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+    try:
+        payload = query_tasks(args.note)
+        report = render_report(payload)
+    except TasksReportError as exc:
+        print(f"tg_cmd_tasks: {exc}", file=sys.stderr)
+        return 1
+    print(report, end="")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
