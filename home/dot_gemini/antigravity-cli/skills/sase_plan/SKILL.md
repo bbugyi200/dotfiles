@@ -22,11 +22,12 @@ disabled.
      technical implementation.
    - The file must start at byte 0 with valid YAML frontmatter and have a non-empty Markdown body.
 
-   A tale requires this frontmatter shape:
+   Both tiers require a non-empty frontmatter `title`. A tale requires this frontmatter shape:
 
    ```yaml
    ---
    tier: tale
+   title: Focused capability rollout
    goal: Describe the outcome this plan will achieve.
    ---
    # Plan: Descriptive title
