@@ -131,7 +131,7 @@ llm_provider:
       # each just tracks the default launch model (@default), the implicit default.
       coder: "@default"
       epic_creator: codex/gpt-5.6-sol
-      epic_lander: "@smartest"
+      epic_lander: "gpt-5.6-sol"
       phase_worker: codex/gpt-5.6-sol
     custom:
       research_a:
