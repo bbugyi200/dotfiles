@@ -34,8 +34,8 @@ Then submit it:
 sase launch request -f launch_request.json -o json
 ```
 
-The command creates `launch_request.json`, `launch_preview.md`, and a pending `LaunchApproval`; it does not spawn the
-agent.
+The command creates a durable pending `LaunchApproval` and waits mechanically for its terminal response. It does not
+spawn an agent unless the approver accepts the request and host dispatch succeeds.
 
 A prompt containing `---` separator lines outside fenced code blocks plans one slot per segment. Set `max_slots` at
 least to the segment count; otherwise the request fails with `max_slots_exceeded`.
@@ -102,18 +102,28 @@ Use `%n(parent, @)` only when the next free feedback suffix is acceptable. Use a
 
 ## Handle The Outcome
 
-The JSON output includes `response_file`. Poll that path until `launch_response.json` appears.
+The command returns only after approval, rejection, feedback, dispatch failure, cancellation, or timeout. Read its
+single JSON result; do not poll request files yourself.
 
 Approved responses look like:
 
 ```json
-{ "action": "approve", "dispatch_status": "launched", "launched_count": 1 }
+{
+  "status": "approved",
+  "choice_id": "approve",
+  "message": "Launch approved and dispatched 1 agent"
+}
 ```
 
-Rejected responses look like:
+Rejected or feedback responses use `status` values `rejected` and `feedback`. A host dispatch failure uses
+`dispatch_failed` and includes the failure detail in `message`.
 
 ```json
-{ "action": "reject", "feedback": "Narrow the requested launch." }
+{
+  "status": "feedback",
+  "choice_id": "feedback",
+  "message": "Launch rejected with feedback"
+}
 ```
 
 If rejected, do not spawn anyway. Use the feedback to revise the request or continue without launching.
