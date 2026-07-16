@@ -37,6 +37,10 @@ sase launch request -f launch_request.json -o json
 The command creates a durable pending `LaunchApproval` and waits mechanically for its terminal response. It does not
 spawn an agent unless the approver accepts the request and host dispatch succeeds.
 
+The pending request lives in SASE's neutral `interaction_requests/launch/<request-id>/` layout. Every terminal choice
+uses the bundle's hash-verified command; do not write the legacy launch-request tree or execute a command from the
+request bundle yourself.
+
 A prompt containing `---` separator lines outside fenced code blocks plans one slot per segment. Set `max_slots` at
 least to the segment count; otherwise the request fails with `max_slots_exceeded`.
 

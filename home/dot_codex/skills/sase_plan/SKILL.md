@@ -79,3 +79,9 @@ Use this skill when you need to plan before implementing. This replaces Codex's 
    ```bash
    sase plan propose sase_plan_<name>.md
    ```
+
+   Submission consumes the scratch plan into SASE's durable plan archive, writes a handoff marker, and sends `SIGTERM`
+   to the current agent runner process group. The runner treats that signal as an intentional handoff: it creates the
+   tier-specific `PlanApproval` or `EpicApproval` gate, waits mechanically for a terminal response, and continues with
+   feedback or the approved follow-up. Do not expect the current provider turn to return normally after a successful
+   proposal, and do not poll response files yourself.
