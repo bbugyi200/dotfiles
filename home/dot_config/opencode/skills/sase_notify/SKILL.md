@@ -54,11 +54,12 @@ notification.
 
 ## Command-backed gate notifications
 
-`PlanApproval`, `EpicApproval`, `UserQuestion`, and `LaunchApproval` are typed projections of command-backed interaction
-gates. Their `action_data` includes stable request identifiers and owned paths; rich definitions and reviewed content
-stay in the neutral `interaction_requests/<kind>/<request-id>/request.json` bundle. Inspect those identifiers when they
-help answer the user's question, but do not write `response.json`, invoke bundle commands, or mutate a pending action by
-hand. ACE, mobile, Telegram, and the typed CLI commands resolve and execute the same validated gate.
+`PlanApproval`, `EpicApproval`, `UserQuestion`, `LaunchApproval`, and `CustomGate` are typed projections of
+command-backed interaction gates. Their `action_data` includes stable request identifiers and owned paths; rich
+definitions and reviewed content stay in the neutral `interaction_requests/<kind>/<request-id>/request.json` bundle.
+Inspect those identifiers when they help answer the user's question, but do not write `response.json`, invoke bundle
+commands, or mutate a pending action by hand. ACE, mobile, Telegram, and the typed CLI commands resolve and execute the
+same validated gate. Use `/sase_gate` to author a custom gate that proposes commands for user confirmation.
 
 `sase notify create --gate` is the low-level creation API for a registered gate specification on stdin. Ordinary raw
 notifications use `sase notify create`; their JSON may include `"silent": true`, which keeps the audit row while hiding
