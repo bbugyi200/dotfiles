@@ -1,6 +1,6 @@
 ---
 name: sase_artifact_file
-description: Register files produced during an agent run as explicit SASE artifact files.
+description: Create explicit SASE artifact files produced during an agent run.
 ---
 
 Before doing anything else, run this command to record that you are using this skill:
@@ -9,7 +9,7 @@ Before doing anything else, run this command to record that you are using this s
 sase skill use sase_artifact_file --reason "<one-line reason for using this skill>"
 ```
 
-Use this skill when the user asks you to produce a file that should be available from the SASE Agents tab.
+Use this skill when the user asks you to produce an artifact file that should be available from the SASE Agents tab.
 
 ## Workflow
 

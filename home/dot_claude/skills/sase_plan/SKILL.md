@@ -45,12 +45,15 @@ Use this skill when you need to plan before implementing. This replaces Claude's
      - id: core
        title: GC planner and safety checks
        depends_on: []
+       description: "'GC planner and safety checks' section: implement workspace selection and safety guards."
      - id: cli
        title: sase workspace gc command
        depends_on: [core]
+       description: "'sase workspace gc command' section: add the CLI flow and progress reporting."
      - id: smoke
        title: End-to-end GC smoke exercises
        depends_on: [cli]
+       description: "'End-to-end GC smoke exercises' section: exercise successful and guarded cleanup."
        model: haiku
    ---
    # Plan: Workspace GC rewrite
@@ -59,10 +62,12 @@ Use this skill when you need to plan before implementing. This replaces Claude's
    ```
 
    Phase IDs must be unique slugs. Dependencies may only name earlier-listed phases; do not use self, duplicate,
-   unknown, or forward references. A phase's `description` and `model` are optional. Only set a phase `model` when the
-   user's prompt requested a specific model, or when that phase's agent does not do real consequential work (for
-   example, a phase that exercises or tests the feature itself). Otherwise omit it so the configured `@phase_worker`
-   role alias applies. The optional top-level `model` selects the tale's coder follow-up or the epic's land agent.
+   unknown, or forward references. Give every phase a `description` that names its section in the plan body and briefly
+   summarizes that section; do not reference the plan file itself because `sase bead show` already displays it. A
+   phase's `model` is optional. Only set it when the user's prompt requested a specific model, or when that phase's
+   agent does not do real consequential work (for example, a phase that exercises or tests the feature itself).
+   Otherwise omit it so the configured `@phase_worker` role alias applies. The optional top-level `model` selects the
+   tale's coder follow-up or the epic's land agent.
 
 4. **Validate, edit, and revalidate** with the same tier authored in the file:
 
