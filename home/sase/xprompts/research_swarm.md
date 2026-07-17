@@ -8,11 +8,11 @@ input:
     description: Research topic or question for the swarm to investigate.
 ---
 
-%name:research.@.cdx %model:@research_a %g:research {{ prompt }} #research
+%name:research.@.cdx %model:@research_a %g:research %family(research.@.final, role=researcher) {{ prompt }} #research
 
 ---
 
-%name:research.@.cld %m:@research_b %g:research {{ prompt }} #research
+%name:research.@.cld %m:@research_b %g:research %family(research.@.final, role=researcher) {{ prompt }} #research
 
 ---
 
@@ -55,5 +55,5 @@ Final layout:
 
 ---
 
-%name:research.@.image %model:codex/gpt-5.6-sol %wait:research.@.final %g:research #fork:research.@.final
-#research/image
+%name:research.@.image %model:codex/gpt-5.6-sol %wait:research.@.final %g:research %family(research.@.final, role=image)
+#fork:research.@.final #research/image
