@@ -66,7 +66,8 @@ reference notes that agents read only when relevant.
 
 - `sase memory list` shows loaded, referenced, available, and missing memory files.
 - `sase memory init` creates or refreshes generated memory files, renders `AGENTS.md` and provider shims from
-  `AGENTS.template.md`, and refreshes this asset-backed README.
+  `AGENTS.template.md`, and refreshes this asset-backed README. After a user-requested memory note edit, running it is
+  mandatory follow-through and requires no additional permission.
 - Set `amd_agents_template` (or `amd_agents_minimal_template`) to a root-relative project template in `sase/sase.yml`;
   home roots can instead use `AGENTS.template.md` (or `AGENTS.minimal.template.md`) in the SASE user config directory.
 - Set `memory_sase_template` or `memory_readme_template` to root-relative project templates in `sase/sase.yml`; home
