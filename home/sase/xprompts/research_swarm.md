@@ -8,15 +8,15 @@ input:
     description: Research topic or question for the swarm to investigate.
 ---
 
-%name:research.@.cdx %model:@research_a %g:research %family(research.@.final, role=researcher) {{ prompt }} #research
+%name:research.@.cdx %model:@research_a %t:research %clan:research.@ {{ prompt }} #research
 
 ---
 
-%name:research.@.cld %m:@research_b %g:research %family(research.@.final, role=researcher) {{ prompt }} #research
+%name:research.@.cld %m:@research_b %t:research %clan:research.@ {{ prompt }} #research
 
 ---
 
-%name:research.@.final %m:@research_lead %wait:research.@.cdx %wait:research.@.cld %g:research
+%name:research.@.final %m:@research_lead %wait:research.@.cdx %wait:research.@.cld %t:research %clan:research.@
 
 You are the lead researcher: two independent researchers have reported on the request below, and you will add your own
 research and merge all three perspectives into one consolidated report.
@@ -55,5 +55,5 @@ Final layout:
 
 ---
 
-%name:research.@.image %model:codex/gpt-5.6-sol %wait:research.@.final %g:research %family(research.@.final, role=image)
+%name:research.@.image %model:codex/gpt-5.6-sol %wait:research.@.final %t:research %clan:research.@
 #fork:research.@.final #research/image

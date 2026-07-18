@@ -6,12 +6,12 @@ input:
     description: Research topic or question for the swarm to investigate.
 ---
 
-%g:research {{ prompt }} #research
+%t:research {{ prompt }} #research
 
 ---
 
-%w %g:research #fork #research/more %m:@default
+%w %t:research #fork #research/more %m:@default
 
 ---
 
-%w %g:research #fork #research/image %m:gpt-5.6-sol
+%w %t:research #fork #research/image %m:gpt-5.6-sol
