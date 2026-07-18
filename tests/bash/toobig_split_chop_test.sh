@@ -205,12 +205,12 @@ function test_project_resolution_deduplicates_paths_and_builds_wait_chain() {
 
   local prompt
   prompt="$(cat "${PROMPTS_FILE}")"
-  assert_same "3" "$(occurrence_count "%w(runners=0)" "${PROMPTS_FILE}")"
+  assert_same "3" "$(occurrence_count "%w(runners=1)" "${PROMPTS_FILE}")"
   assert_same "2" "$(grep -c '^%wait$' "${PROMPTS_FILE}")"
   assert_same "3" "$(occurrence_count "#split_file:" "${PROMPTS_FILE}")"
   assert_same "2" "$(occurrence_count "%name:split_file.large-@" "${PROMPTS_FILE}")"
   assert_contains "%name:split_file.shared-@" "${prompt}"
-  assert_contains "#gh:demo %group:chop %auto #split_file:src/pkg/large.py" "${prompt}"
+  assert_contains "#gh:demo %tribe:chop %auto #split_file:src/pkg/large.py" "${prompt}"
   assert_contains "#split_file:src/pkg/shared.py" "${prompt}"
   assert_contains "#split_file:tests/large.py" "${prompt}"
   assert_contains $'%wait\n%name:split_file.shared-@' "${prompt}"
@@ -234,7 +234,7 @@ function test_direct_mode_honors_custom_trees_limits_and_launch_ref() {
   assert_same "0" "$(occurrence_count "project show" "${SASE_CALLS_FILE}")"
   assert_contains "--files-only lib 40 30 20" "$(cat "${TOOBIG_CALLS_FILE}")"
   assert_contains "--files-only spec 40 30 20" "$(cat "${TOOBIG_CALLS_FILE}")"
-  assert_contains "#git:other %group:chop %auto #split_file:lib/huge.py" "$(cat "${PROMPTS_FILE}")"
+  assert_contains "#git:other %tribe:chop %auto #split_file:lib/huge.py" "$(cat "${PROMPTS_FILE}")"
 }
 
 function test_no_oversized_files_reports_noop_without_launching() {

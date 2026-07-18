@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 CHANGESPEC_GUARD_PREFIX = "sase_fix_just_"
-FIX_JUST_PROMPT = "%n:sase_fix_just-@ #gh:sase %g:chop #!sase/fix_just"
+FIX_JUST_PROMPT = "%n:sase_fix_just-@ #gh:sase %t:chop #!sase/fix_just"
 TERMINAL_CHANGESPEC_STATUSES = {"Submitted", "Archived", "Reverted"}
 DETAIL_LIMIT_CHARS = 500
 CHANGESPEC_MATCH_LOG_LIMIT = 5

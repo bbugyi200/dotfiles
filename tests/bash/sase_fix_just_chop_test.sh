@@ -5,7 +5,7 @@
 #################################################################################
 
 SASE_FIX_JUST_SCRIPT="${PWD}/home/bin/executable_sase_chop_sase_fix_just"
-FIX_JUST_PROMPT="%n:sase_fix_just-@ #gh:sase %g:chop #!sase/fix_just"
+FIX_JUST_PROMPT="%n:sase_fix_just-@ #gh:sase %t:chop #!sase/fix_just"
 
 function set_up() {
   TEST_TMP="$(mktemp -d)"
@@ -142,7 +142,7 @@ JSON
   assert_contains "${FIX_JUST_PROMPT}" "${captured_prompt}"
   assert_contains "%n:sase_fix_just-@" "${captured_prompt}"
   assert_contains "#gh:sase" "${captured_prompt}"
-  assert_contains "%g:chop" "${captured_prompt}"
+  assert_contains "%t:chop" "${captured_prompt}"
   assert_contains "#!sase/fix_just" "${captured_prompt}"
   assert_not_contains "%w(runners=0)" "${captured_prompt}"
 }
