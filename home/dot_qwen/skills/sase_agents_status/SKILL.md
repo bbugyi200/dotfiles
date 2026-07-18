@@ -21,9 +21,9 @@ sase agent list -j
 
 This prints a stable-shape JSON array to stdout. Each row has: `name`, `project`, `pid`, `model`, `provider`,
 `workspace_num`, `status`, `duration_seconds`, `started_at`, `approve`, `prompt_snippet`, `artifacts_dir`, wait and
-runner slot context, `parent_agent_name`, and `agent_family`. Clan members appear as their own agent rows; the clan
-container itself is an ACE projection rather than a running process. Waiting rows include `runner_slots_in_use` and
-`runner_slot_holders`, which identify the agents keeping them parked.
+runner slot context, `parent_agent_name`, and `agent_family`. Slot-holding or slot-queued parallel family children
+appear as their own rows. Waiting rows include `runner_slots_in_use` and `runner_slot_holders`, which identify the
+agents keeping them parked.
 
 ## How to summarize
 

@@ -61,10 +61,10 @@ Inspect those identifiers when they help answer the user's question, but do not 
 commands, or mutate a pending action by hand. ACE, mobile, Telegram, and the typed CLI commands resolve and execute the
 same validated gate. Use `/sase_gate` to author a custom gate that proposes commands for user confirmation.
 
-`sase notify create --gate` is the low-level creation API for a registered gate specification on stdin. Ordinary raw
-notifications use `sase notify create`; their JSON may include `"silent": true`, which keeps the audit row while hiding
-it from live delivery surfaces. Raw creation cannot mint a privileged typed gate action. This skill remains read-only
-unless the user explicitly asks for a supported notification mutation or creation.
+`sase gate create` is the creation API for a registered gate specification on stdin; `sase gate wait` waits for its
+terminal result. Ordinary raw notifications use `sase notify create`; their JSON may include `"silent": true`, which
+keeps the audit row while hiding it from live delivery surfaces. Raw creation cannot mint a privileged typed gate
+action. This skill remains read-only unless the user explicitly asks for a supported notification mutation or creation.
 
 ## Axe digest notifications
 

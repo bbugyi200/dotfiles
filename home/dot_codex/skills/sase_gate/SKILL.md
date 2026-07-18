@@ -20,29 +20,42 @@ reviewed command should execute.
 
 ## Design The Gate
 
+Start with one option query that reads like the decision:
+
+```text
+(restart AND verify) OR reject
+```
+
+Each `OR` branch is a mutually exclusive way to resolve the gate. A singleton branch is one button that runs its option.
+An `AND` branch is a group of independently selectable options with one submit button; the user may submit any non-empty
+subset. `AND` binds tighter than `OR`, and every option id must appear exactly once in the query and exactly once in the
+`options` list.
+
 - Give the notification a fitting single-glyph icon. Examples: `🛡️` for a safety check, `🚀` for a deployment, `🧹` for
   cleanup, or `🔐` for an access change.
-- Give every terminal choice its own clear label, command, and fitting icon such as `✅` for approve, `✋` for reject,
-  or `⏸️` for defer. Even a reject choice needs an owned command; use a no-op command that emits a JSON result.
-- Put independently selectable, ORable follow-up commands in `extras`. Each extra has its own icon and
-  `default_selected` value. The terminal choice runs first, then selected extras run in their authored order.
-- Set each choice's `feedback` to `disabled`, `optional`, or `required`. Custom gates default to `optional`, but write
-  the mode explicitly so the user-facing contract is obvious.
+- Give every option its own clear label, command, and fitting icon such as `✅` for approve, `✋` for reject, or `⏸️`
+  for defer. Even a reject option needs an owned command; use a no-op command that emits a JSON result.
+- Set `default_selected` on members of an `AND` branch. It defaults to `true`; singleton branches ignore it.
+- Add a `groups` entry when an `AND` branch's submit button should differ from its first option. Match the branch by its
+  option ids, then configure the submit `label` and `icon`.
+- Set every option's `feedback` to `disabled`, `optional`, or `required`. Custom gate options default to `optional`, but
+  write the mode explicitly so the user-facing contract is obvious. An `AND` selection uses the strongest feedback mode
+  among the selected options.
 - Set `gate_timeout_seconds` when waiting forever would be unsafe. Omit it only when the request should remain pending
   until it is answered or cancelled.
 
 Command `argv` arrays are executed without a shell. Their first element must name an executable `command` resource in
-the bundle. A command receives the choice input as JSON on stdin and must print exactly one JSON value on stdout;
-diagnostics belong on stderr. A terminal command's output must satisfy its `result_schema`.
+the bundle. A command receives the gate input as JSON on stdin and must print exactly one JSON value on stdout;
+diagnostics belong on stderr. Every command's output must satisfy its option's `result_schema`.
 
 ## Author The Request
 
-Write the complete request to a JSON file. This example asks permission to restart a service and offers two independent
-post-restart commands:
+Write the complete schema-version 2 request to a JSON file. This example asks permission to restart a service, lets the
+user include or omit the health check, and provides a separate rejection path:
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "kind": "custom",
   "producer": {
     "agent": "my-agent"
@@ -54,14 +67,16 @@ post-restart commands:
   "presentation": {
     "icon": "🚀",
     "sender": "deployment-confirmation",
-    "notes": ["Restart example.service now?", "Select any follow-up checks you also want to run."],
+    "notes": ["Restart example.service now?", "Select whether to verify it afterward."],
     "tags": ["deployment", "confirmation"]
   },
-  "choices": [
+  "query": "(restart AND verify) OR reject",
+  "options": [
     {
       "id": "restart",
       "label": "Restart service",
-      "icon": "✅",
+      "icon": "🚀",
+      "default_selected": true,
       "feedback": "optional",
       "command": {
         "argv": ["commands/restart"]
@@ -75,27 +90,24 @@ post-restart commands:
         "properties": {
           "status": { "const": "restarted" }
         }
+      }
+    },
+    {
+      "id": "verify",
+      "label": "Verify service health",
+      "icon": "🧪",
+      "default_selected": true,
+      "feedback": "disabled",
+      "command": {
+        "argv": ["commands/verify"]
       },
-      "extras": [
-        {
-          "id": "verify",
-          "label": "Verify service health",
-          "icon": "🧪",
-          "default_selected": true,
-          "command": {
-            "argv": ["commands/verify"]
-          }
-        },
-        {
-          "id": "audit",
-          "label": "Write an audit record",
-          "icon": "📝",
-          "default_selected": false,
-          "command": {
-            "argv": ["commands/audit"]
-          }
+      "result_schema": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": { "const": "healthy" }
         }
-      ]
+      }
     },
     {
       "id": "reject",
@@ -105,9 +117,6 @@ post-restart commands:
       "command": {
         "argv": ["commands/reject"]
       },
-      "input_schema": {
-        "type": "object"
-      },
       "result_schema": {
         "type": "object",
         "required": ["status"],
@@ -115,6 +124,13 @@ post-restart commands:
           "status": { "const": "rejected" }
         }
       }
+    }
+  ],
+  "groups": [
+    {
+      "options": ["restart", "verify"],
+      "label": "Restart service",
+      "icon": "🚀"
     }
   ],
   "resources": [
@@ -127,11 +143,6 @@ post-restart commands:
       "path": "commands/verify",
       "role": "command",
       "content": "#!/bin/sh\nset -eu\nsystemctl --user is-active example.service >/dev/null\nprintf '{\"status\":\"healthy\"}\\n'\n"
-    },
-    {
-      "path": "commands/audit",
-      "role": "command",
-      "content": "#!/bin/sh\nset -eu\nprintf '%s\\n' 'example.service restart approved' >> \"$HOME/.local/state/example-audit.log\"\nprintf '{\"status\":\"recorded\"}\\n'\n"
     },
     {
       "path": "commands/reject",
@@ -152,25 +163,25 @@ of `source` or `content`. Keep command resources narrowly scoped to the action s
 Create the durable gate and save its stable descriptor:
 
 ```bash
-sase notify create --gate < gate-request.json > gate-descriptor.json
+sase gate create < gate-request.json > gate-descriptor.json
 ```
 
 Read `request_id` and `kind` from that descriptor, then wait mechanically:
 
 ```bash
-sase notify wait --id <request-id> --kind custom --json
+sase gate wait --id <request-id> --kind custom --json
 ```
 
-`sase notify wait` honors the request timeout. Its optional `--timeout` can shorten that deadline. If the rest of your
+`sase gate wait` honors the request timeout. Its optional `--timeout` can shorten that deadline. If the rest of your
 work does not depend on the answer, proceed detached after creation instead of waiting; keep the descriptor as the
 durable handoff.
 
 ## Handle The Result
 
-The wait result has `status` (`answered`, `cancelled`, or `timeout`), `choice_id`, `selected_extra_ids`, `feedback`, and
-`response_path`. An answered result tells you exactly which terminal choice ran, which ORable extras the user selected,
-and what feedback they supplied. Respect cancellation and timeout as terminal outcomes; do not run the proposed action
-through another path.
+The wait result has `status` (`answered`, `cancelled`, or `timeout`), `selected_option_ids`, `feedback`, and
+`response_path`. An answered result lists the selected options in query order. For the example, `["restart", "verify"]`
+runs both group members, `["restart"]` runs only the restart command, and `["reject"]` takes the singleton rejection
+branch. Respect cancellation and timeout as terminal outcomes; do not run the proposed action through another path.
 
 Never poll bundle files directly. Never run bundle commands by hand. Creation hashes every owned command and the shared
 executor verifies and runs the selected commands. Automatic resolution is forbidden for custom gates: never enable

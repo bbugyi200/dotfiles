@@ -37,7 +37,7 @@ sase launch request -f launch_request.json -o json
 The command creates a durable pending `LaunchApproval` and waits mechanically for its terminal response. It does not
 spawn an agent unless the approver accepts the request and host dispatch succeeds.
 
-The pending request lives in SASE's neutral `interaction_requests/launch/<request-id>/` layout. Every terminal choice
+The pending request lives in SASE's neutral `interaction_requests/launch/<request-id>/` layout. Every terminal option
 uses the bundle's hash-verified command; do not write the legacy launch-request tree or execute a command from the
 request bundle yourself.
 
@@ -51,7 +51,7 @@ hard about the workspace and wait choices below; they determine where the agent 
 
 ### VCS Workspace xprompt
 
-Prompts that are not family attachments should normally start with a VCS workspace reference:
+Standalone (non-family) prompts should normally start with a VCS workspace reference:
 
 - `#gh:<ref>` (GitHub), `#git:<ref>` (bare git), or another ref registered by an installed workspace plugin.
 - `<ref>` is usually a project name (`#gh:sase`). Use a ChangeSpec name (`#gh:my_change`) only when the agent must
@@ -92,7 +92,7 @@ after approval. When the prompt must show prompt syntax literally (docs, demos, 
 Always preflight with `sase xprompt expand '<prompt>'`: it must succeed and report only the directives and references
 you intended.
 
-## Sequential Family Members
+## Family Members
 
 To attach the approved launch to an existing family, put the family directive in the requested prompt:
 
@@ -104,22 +104,6 @@ Review the current result and report whether it is ready.
 Use `%n(parent, @)` only when the next free feedback suffix is acceptable. Use a concrete suffix such as
 `%n(parent, tester)` when the role matters.
 
-## Parallel Clan Members
-
-To launch parallel agents as one rootless clan, give every segment the same colon-form clan directive and name every
-member inside that clan's hood:
-
-```text
-%n:review.security %clan:review
-Audit the security boundary.
----
-%n:review.performance %clan:review
-Audit the performance boundary.
-```
-
-The clan name is reserved and is never an agent. `%clan` does not add ordering; use `%wait` explicitly. Set `max_slots`
-to at least the number of segments in the request.
-
 ## Handle The Outcome
 
 The command returns only after approval, rejection, feedback, dispatch failure, cancellation, or timeout. Read its
@@ -130,7 +114,7 @@ Approved responses look like:
 ```json
 {
   "status": "approved",
-  "choice_id": "approve",
+  "selected_option_ids": ["approve"],
   "message": "Launch approved and dispatched 1 agent"
 }
 ```
@@ -141,7 +125,7 @@ Rejected or feedback responses use `status` values `rejected` and `feedback`. A 
 ```json
 {
   "status": "feedback",
-  "choice_id": "feedback",
+  "selected_option_ids": ["feedback"],
   "message": "Launch rejected with feedback"
 }
 ```
