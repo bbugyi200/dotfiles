@@ -36,6 +36,8 @@ subset. `AND` binds tighter than `OR`, and every option id must appear exactly o
 - Give every option its own clear label, command, and fitting icon such as `✅` for approve, `✋` for reject, or `⏸️`
   for defer. Even a reject option needs an owned command; use a no-op command that emits a JSON result.
 - Set `default_selected` on members of an `AND` branch. It defaults to `true`; singleton branches ignore it.
+- Declare exactly one complete query branch as `primary_branch`, with its option ids in canonical query order. Enter
+  submits this branch from the review modal; for an `AND` branch it preserves any options the user toggled with Space.
 - Add a `groups` entry when an `AND` branch's submit button should differ from its first option. Match the branch by its
   option ids, then configure the submit `label` and `icon`.
 - Set every option's `feedback` to `disabled`, `optional`, or `required`. Custom gate options default to `optional`, but
@@ -50,12 +52,12 @@ diagnostics belong on stderr. Every command's output must satisfy its option's `
 
 ## Author The Request
 
-Write the complete schema-version 2 request to a JSON file. This example asks permission to restart a service, lets the
+Write the complete schema-version 3 request to a JSON file. This example asks permission to restart a service, lets the
 user include or omit the health check, and provides a separate rejection path:
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "kind": "custom",
   "producer": {
     "agent": "my-agent"
@@ -71,6 +73,7 @@ user include or omit the health check, and provides a separate rejection path:
     "tags": ["deployment", "confirmation"]
   },
   "query": "(restart AND verify) OR reject",
+  "primary_branch": ["restart", "verify"],
   "options": [
     {
       "id": "restart",
