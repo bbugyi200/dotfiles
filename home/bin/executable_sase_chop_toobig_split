@@ -355,7 +355,7 @@ def build_prompt(path: str, launch_ref: str) -> str:
     return (
         f"%name:{agent_name_template(path)}\n"
         "%w(runners=0)\n"
-        f"{launch_ref} %group:chop %auto #split_file:{path}"
+        f"{launch_ref} %tribe:chop %auto #split_file:{path}"
     )
 
 
