@@ -43,6 +43,8 @@ ace:
       see the output below
     cs: "ChangeSpec"
     di: "the $1 directory"
+    dir: |-
+      the `%$1` directive
     drep: "Describe this repo."
     epic: |-
       the sase-$1 epic bead
