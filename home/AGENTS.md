@@ -1,10 +1,6 @@
 # athena - Bryan Bugyi's Home Server
 
-IMPORTANT: You should not modify any of these memory files without approval from the user. However, when the user
-explicitly asks you to update a SASE memory file, that request already carries the required approval for the full
-workflow: make the requested edit to the canonical note under `sase/memory/`, then you MUST run `sase memory init` to
-regenerate `AGENTS.md`, the provider instruction shims, and the memory README. Do NOT ask for separate permission to
-initialize sase memory in that case.
+IMPORTANT: You should not modify any of these memory files without approval from the user.
 
 ## Tier 1 (short-term) Memory
 

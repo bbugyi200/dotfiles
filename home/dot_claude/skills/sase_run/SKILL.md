@@ -63,16 +63,13 @@ Prompts that are not family attachments should normally start with a VCS workspa
 ### Wait Directive
 
 `%w(<agent>)` parks the launch until the named agent completes successfully. The workspace is checked out only after the
-wait resolves, so the new agent sees the awaited agent's landed changes. `%w(@<tribe>)` instead binds to the next agent
-or clan launched into that tribe after the waiting launch. Think hard about whether you need it:
+wait resolves, so the new agent sees the awaited agent's landed changes. Think hard about whether you need it:
 
 - Wait on your own agent name (from `$SASE_AGENT_NAME`) when the new agent must build on changes this run has not landed
   yet; wait on another agent's name when it depends on that agent instead.
 - Omit `%w` when the work is independent, so the agent starts immediately.
 - Failed or killed runs never satisfy `%w`; the launch stays parked until a successful run of that name exists.
 - `%w(time=10m)` defers by time instead; arguments compose: `%w(planner, time=5m)`.
-- A tribe wait binds to the earliest qualifying successful entity launched after the waiter. For a clan, every member
-  must complete successfully.
 
 ### Other xprompts
 
@@ -80,11 +77,6 @@ or clan launched into that tribe after the waiting launch. Think hard about whet
 python/bash steps, set environment variables, and split work across multiple agents. Rollover workflows `#commit`,
 `#propose`, and `#pr(<name>)` control how the launched agent's changes land. Discover what is available with
 `sase xprompt list`; preview a prompt's expansion with `sase xprompt expand '<prompt>'`.
-
-`#fork:<agent>` continues from one agent's chat. `#fork:<clan>` injects every clan member's sanitized prompts plus reply
-outcome, model, launch time, size statistics, and transcript path; full member replies are intentionally omitted so the
-child can open only the transcripts it needs. `#fork:@<tribe>` implies the matching tribe wait and then forks the same
-next entity, using the lean clan block when that entity is a clan.
 
 ### Literal Directive Text
 
