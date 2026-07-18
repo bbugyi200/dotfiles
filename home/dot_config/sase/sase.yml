@@ -21,6 +21,8 @@ ace:
     ace: "`sase ace`"
     amac: "on another machine"
     amp: 'the agent metadata panel on the "Agents" tab of the `sase ace` TUI'
+    artt: |-
+      the "$1" sub-tab of the "Artifacts" tab
     awe: "agent/workflow entry"
     axe: "`sase axe`"
     can: "Can you $1?"
