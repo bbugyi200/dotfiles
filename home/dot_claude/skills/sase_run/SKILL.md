@@ -21,7 +21,7 @@ Write a JSON request file:
 ```json
 {
   "schema_version": 1,
-  "prompt": "%n(parent, reviewer)\nReview the proposed implementation and report issues.",
+  "prompt": "%i(parent, reviewer)\nReview the proposed implementation and report issues.",
   "reason": "Need a reviewer family member before continuing.",
   "approval": "required",
   "max_slots": 1
@@ -57,7 +57,7 @@ Prompts that are not family attachments should normally start with a VCS workspa
 - `<ref>` is usually a project name (`#gh:sase`). Use a ChangeSpec name (`#gh:my_change`) only when the agent must
   continue that existing PR branch, or `#gh:@agent` to target the ChangeSpec created by the named agent.
 - A prompt with no workspace reference defaults to `#git:home`, which is usually wrong for repo work.
-- Family-attach launches (`%n(parent, suffix)`) inherit the parent's workspace and ChangeSpec; do not add a workspace
+- Family-attach launches (`%i(parent, suffix)`) inherit the parent's workspace and ChangeSpec; do not add a workspace
   reference to them.
 
 ### Wait Directive
@@ -105,28 +105,30 @@ you intended.
 To attach the approved launch to an existing family, put the family directive in the requested prompt:
 
 ```text
-%n(parent, reviewer)
+%i(parent, reviewer)
 Review the current result and report whether it is ready.
 ```
 
-Use `%n(parent, @)` only when the next free feedback suffix is acceptable. Use a concrete suffix such as
-`%n(parent, tester)` when the role matters.
+Use `%i(parent, @)` only when the next free feedback suffix is acceptable. Use a concrete suffix such as
+`%i(parent, tester)` when the role matters.
 
 ## Parallel Clan Members
 
-To launch parallel agents as one rootless clan, give every segment the same clan directive and name every member inside
-that clan's hood:
+To launch parallel agents as one rootless clan, declare it in one segment and use the `clan=` join form for every other
+member:
 
 ```text
-%n:review.security %clan:review
+%i:review.security %clan:review
 Audit the security boundary.
 ---
-%n:review.performance %clan:review
+%i(performance, clan=review)
 Audit the performance boundary.
 ```
 
-The clan name is reserved and is never an agent. `%clan` does not add ordering; use `%wait` explicitly. Set `max_slots`
-to at least the number of segments in the request.
+The clan name is reserved and is never an agent. `%clan` is create-only and errors if the clan already exists or a
+second prompt declares it. `%id(<id>, clan=<clan>)` joins an existing clan or creates it implicitly without a tribe.
+Clan membership does not add ordering; use `%wait` explicitly. Set `max_slots` to at least the number of segments in the
+request.
 
 Use `%clan(review, tribe=quality)` (or `%c(review, tribe=quality)`) when the clan should appear in a tribe. Keep
 `%tribe:quality` / `%t:quality` for standalone agents and sequential families that are not clan members. Never combine
