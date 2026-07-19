@@ -18,6 +18,8 @@ ace:
     Cmd: "The `$1` command"
     Key: |-
       The `$1` keymap
+    ac: |-
+      agent clan
     ace: "`sase ace`"
     af: |-
       agent family
