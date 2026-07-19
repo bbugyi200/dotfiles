@@ -14,8 +14,8 @@ you want the value to appear in the Agents-tab metadata and Telegram completion 
 
 ## Workflow
 
-1. Make sure the producing agent has a stable name with `%name:<producer>` or an agent-name template such as
-   `%name:build-@`.
+1. Make sure the producing agent has a stable name with `%id:<producer>` or an agent-name template such as
+   `%id:build-@`.
 2. Set one or more output variables:
 
    ```bash
@@ -23,7 +23,7 @@ you want the value to appear in the Agents-tab metadata and Telegram completion 
    ```
 
 3. In later prompts, wait for the producer before referencing its variables. Every producer's variables live under a
-   single `agents` dictionary keyed by agent name. For example, `%name:build-@` can produce:
+   single `agents` dictionary keyed by agent name. For example, `%id:build-@` can produce:
 
    ```bash
    sase var set result_path=dist/report.md status=ok
@@ -31,10 +31,10 @@ you want the value to appear in the Agents-tab metadata and Telegram completion 
 
    A later waited agent can render `{{ agents["build"].result_path }}` after the producer has written the variable.
 
-The key is always the agent's stable name. Agent-name templates use the template base, so `%name:build-@` is
+The key is always the agent's stable name. Agent-name templates use the template base, so `%id:build-@` is
 `{{ agents["build"].result_path }}`, not `build-0`. The key is the raw agent name with no identifier munging, so dotted,
-hyphenated, and digit-leading names all work via bracket access: `%name:research.@.final` →
-`{{ agents["research.final"].report_path }}`, and `%name:0n.cld` → `{{ agents["0n.cld"].report_path }}`. Identifier-safe
+hyphenated, and digit-leading names all work via bracket access: `%id:research.@.final` →
+`{{ agents["research.final"].report_path }}`, and `%id:0n.cld` → `{{ agents["0n.cld"].report_path }}`. Identifier-safe
 keys also support attribute access such as `{{ agents.build.result_path }}`.
 
 ## Rules

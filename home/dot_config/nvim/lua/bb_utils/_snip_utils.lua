@@ -302,6 +302,8 @@ function M.get_markdown_snippets()
 		}),
 		-- SNIPPET: mrp
 		s({ trig = "mrp", desc = "Mentor Review panel" }, { t("Mentor Review panel") }),
+		-- SNIPPET: n
+		s({ trig = "n", desc = "%i: identity directive" }, { t("%i:") }),
 		-- SNIPPET: phase
 		s({ trig = "phase", desc = "Split into phases" }, {
 			t(

@@ -55,5 +55,4 @@ Final layout:
 
 ---
 
-%name:research.@.image %model:codex/gpt-5.6-sol %wait:research.@.final %clan(research.@, tribe=research)
-#fork:research.@.final #research/image
+%id(image, clan=research.@) %model:codex/gpt-5.6-sol %wait:research.@.final #fork:research.@.final #research/image

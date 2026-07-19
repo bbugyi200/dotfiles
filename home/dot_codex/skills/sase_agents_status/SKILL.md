@@ -50,7 +50,7 @@ For ordinary retries, locate the source with `sase agent list -a -j` or `sase ag
 `sase.agent.names.allocate_retry_name("<name>")`, then rewrite the prompt through
 `sase.agent.retry_prompt.rewrite_retry_prompt_name(raw_prompt, retry_name)` before launching with
 `sase run "$rewritten_prompt"`. Confirm the new run with `sase agent list -a -j` or `sase agent show -n <retry-name>`.
-Do not use `%name:!<name>` from non-TUI surfaces for ordinary retries; reserve forced same-name reuse for explicitly
+Do not use `%id:!<name>` from non-TUI surfaces for ordinary retries; reserve forced same-name reuse for explicitly
 approved reruns through code paths that call `wipe_names_for_forced_reuse`.
 
 ## Artifacts directory
