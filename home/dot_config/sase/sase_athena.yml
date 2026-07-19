@@ -76,8 +76,65 @@ axe:
     run_every:
       interval: 60
       chops:
-        - name: toobig_split
-          description: "Launch split-file agents for oversized Python files in sase"
-          env:
-            SASE_TOOBIG_SPLIT_PROJECT: "sase"
+        toobig_split:
+          script: bugyi_chop_toobig_split
+          description: "Propose split-file agents for oversized Python files in sase"
           run_every: 60m
+          inhibit_if:
+            agent_hood: { hood: split_file }
+          for_each:
+            source: projects
+            names: [sase]
+          vars:
+            trees: [src, tests]
+            limits: ["1000", "850", "700"]
+        fix_just:
+          script: bugyi_chop_fix_just
+          description: "Propose an agent to repair failing sase repository gates"
+          run_every: 30m
+          inhibit_if:
+            changespec: { name_prefix: sase_fix_just_ }
+          once_per: "{proposal.id}"
+          vars:
+            workspace: gh:sase-org/sase
+    code_quality:
+      interval: 60
+      chops:
+        recent_bug_audit:
+          script: bugyi_chop_recent_bug_audit
+          description: "Audit recent sase commits for confirmed bugs and fix only verified issues"
+          run_every: 60m
+          trigger:
+            git.commits_since:
+              project: "{target.name}"
+              threshold: 200
+              checkpoint: on_action_success
+          for_each:
+            source: projects
+            names: [sase]
+        recent_improvement_audit:
+          script: bugyi_chop_recent_improvement_audit
+          description: "Audit recent sase commits for clear objective improvements without speculative churn"
+          run_every: 60m
+          trigger:
+            git.commits_since:
+              project: "{target.name}"
+              threshold: 200
+              checkpoint: on_action_success
+          for_each:
+            source: projects
+            names: [sase]
+    refresh_docs:
+      interval: 60
+      chops:
+        refresh_docs:
+          script: sase_chop_refresh_docs
+          description: "Refresh documentation for enabled projects after meaningful repository drift"
+          run_every: 3h
+          trigger:
+            git.commits_since:
+              project: "{target.name}"
+              threshold: 100
+              checkpoint: on_action_success
+          for_each:
+            source: projects
