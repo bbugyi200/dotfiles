@@ -19,6 +19,8 @@ ace:
     Key: |-
       The `$1` keymap
     ace: "`sase ace`"
+    af: |-
+      agent family
     amac: "on another machine"
     amp: 'the agent metadata panel on the "Agents" tab of the `sase ace` TUI'
     artt: |-
