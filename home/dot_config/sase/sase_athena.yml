@@ -94,7 +94,6 @@ axe:
           run_every: 30m
           inhibit_if:
             changespec: { name_prefix: sase_fix_just_ }
-          once_per: "{proposal.id}"
           vars:
             workspace: gh:sase-org/sase
     code_quality:
@@ -104,6 +103,8 @@ axe:
           script: bugyi_chop_recent_bug_audit
           description: "Audit recent sase commits for confirmed bugs and fix only verified issues"
           run_every: 60m
+          inhibit_if:
+            agent_hood: { hood: audit_bugs }
           trigger:
             git.commits_since:
               project: "{target.name}"
@@ -116,6 +117,8 @@ axe:
           script: bugyi_chop_recent_improvement_audit
           description: "Audit recent sase commits for clear objective improvements without speculative churn"
           run_every: 60m
+          inhibit_if:
+            agent_hood: { hood: audit_improvements }
           trigger:
             git.commits_since:
               project: "{target.name}"
