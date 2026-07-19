@@ -8,15 +8,15 @@ input:
     description: Research topic or question for the swarm to investigate.
 ---
 
-%name:research.@.cdx %model:@research_a %clan(research.@, tribe=research) {{ prompt }} #research
+%clan(research.@, tribe=research) %id:research.@.cdx %model:@research_a {{ prompt }} #research
 
 ---
 
-%name:research.@.cld %m:@research_b %clan(research.@, tribe=research) {{ prompt }} #research
+%id(cld, clan=research.@) %m:@research_b {{ prompt }} #research
 
 ---
 
-%name:research.@.final %m:@research_lead %wait:research.@.cdx %wait:research.@.cld %clan(research.@, tribe=research)
+%id(final, clan=research.@) %m:@research_lead %wait:research.@.cdx %wait:research.@.cld
 
 You are the lead researcher: two independent researchers have reported on the request below, and you will add your own
 research and merge all three perspectives into one consolidated report.
