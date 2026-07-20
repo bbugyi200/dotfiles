@@ -242,3 +242,4 @@ xprompts:
   tale: |-
     #plan %a:tale
   # keep-sorted end
+max_running_agents: 4
