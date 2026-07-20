@@ -88,14 +88,6 @@ axe:
           vars:
             trees: [src, tests]
             limits: ["1000", "850", "700"]
-        fix_just:
-          script: bugyi_chop_fix_just
-          description: "Propose an agent to repair failing sase repository gates"
-          run_every: 30m
-          inhibit_if:
-            changespec: { name_prefix: sase_fix_just_ }
-          vars:
-            workspace: gh:sase-org/sase
     code_quality:
       interval: 60
       chops:
