@@ -81,7 +81,7 @@ axe:
           description: "Propose split-file agents for oversized Python files in sase"
           run_every: 60m
           inhibit_if:
-            agent_hood: { hood: split_file }
+            agent_clan: { name_prefix: toobig- }
           for_each:
             source: projects
             names: [sase]
