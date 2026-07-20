@@ -8,7 +8,8 @@ input:
     description: Research topic or question for the swarm to investigate.
 ---
 
-%clan(research.@, tribe=research) %id:research.@.cdx %model:@research_a {{ prompt }} #research
+%clan(research.@, tribe=research, summary=[[[bold]RESEARCH PROMPT:[/bold] {{ prompt }}]]) %id:research.@.cdx
+%model:@research_a {{ prompt }} #research
 
 ---
 
