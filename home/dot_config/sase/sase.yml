@@ -96,6 +96,8 @@ ace:
     rep: "the ../sase-$1 repo"
     sa: "sase agent"
     sac: "SASE Admin Center"
+    sact: |-
+      the "$1" tab of the "#[sac]" panel
     ss: |-
       /sase_
     w: "%w"
