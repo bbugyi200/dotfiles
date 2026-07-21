@@ -72,12 +72,14 @@ Use this skill when you need to plan before implementing. This replaces OpenCode
    justifies its own plan file. Use `large` when you suspect that plan file would itself be large enough to merit an
    epic tier. Use `small` otherwise. Medium and large phase agents plan before implementation. A phase with no explicit
    model routes through the alias matching its size: `@small_phase_worker`, `@medium_phase_worker`, or
-   `@large_phase_worker`. Each size alias falls back to the shared `@phase_worker` alias.
+   `@large_phase_worker`. Small phases fall back to the load-balanced `@cheapest` pool, medium phases fall back to the
+   shared `@phase_worker`, and large phases fall back to `@smartest`.
 
    A phase's `model` is optional. Only set it when the user's prompt requested a specific model, or when that phase's
    agent does not do real consequential work (for example, a phase that exercises or tests the feature itself). An
-   explicit phase model always wins over size-derived routing. `@smartest` remains available for explicit use but is not
-   selected automatically. The optional top-level `model` selects the tale's coder follow-up or the epic's land agent.
+   explicit phase model always wins over size-derived routing. Overriding bare `phase_worker` changes medium and
+   explicit `@phase_worker` uses, but no longer changes small or large phases unless their size aliases are configured
+   back to `@phase_worker`. The optional top-level `model` selects the tale's coder follow-up or the epic's land agent.
 
 4. **Validate, edit, and revalidate** with the same tier authored in the file:
 
