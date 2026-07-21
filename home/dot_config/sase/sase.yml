@@ -30,7 +30,7 @@ ace:
     atr: |-
       agent tribe
     atrp: |-
-      #(atr) panel
+      #[atr] panel
     awe: "agent/workflow entry"
     axe: "`sase axe`"
     can: "Can you $1?"
