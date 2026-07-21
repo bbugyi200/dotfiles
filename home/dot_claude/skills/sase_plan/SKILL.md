@@ -69,16 +69,14 @@ Use this skill when you need to plan before implementing. This replaces Claude's
    summarizes that section; do not reference the plan file itself because `sase bead show` already displays it. Every
    phase must declare `size: small | medium | large`. Use `medium` when the phase is potentially a lot of work and
    justifies its own plan file. Use `large` when you suspect that plan file would itself be large enough to merit an
-   epic tier. Use `small` otherwise. Medium and large phase agents plan before implementation. A phase with no explicit
-   model routes through the alias matching its size: `@small_phase_worker`, `@medium_phase_worker`, or
-   `@large_phase_worker`. Small phases fall back to the load-balanced `@cheapest` pool, medium phases fall back to the
-   shared `@phase_worker`, and large phases fall back to `@smartest`.
+   epic tier. Use `small` otherwise. Small phase agents implement directly and do not create plans. Medium and large
+   phase agents create plans before implementation. By default, phase size also selects the model capability appropriate
+   for the work, unless that phase has an explicit `model` override.
 
    A phase's `model` is optional. Only set it when the user's prompt requested a specific model, or when that phase's
    agent does not do real consequential work (for example, a phase that exercises or tests the feature itself). An
-   explicit phase model always wins over size-derived routing. Overriding bare `phase_worker` changes medium and
-   explicit `@phase_worker` uses, but no longer changes small or large phases unless their size aliases are configured
-   back to `@phase_worker`. The optional top-level `model` selects the tale's coder follow-up or the epic's land agent.
+   explicit phase model is allowed for every size and always takes precedence over the size-derived default. The
+   optional top-level `model` selects the tale's coder follow-up or the epic's land agent.
 
 4. **Validate, edit, and revalidate** with the same tier authored in the file:
 
