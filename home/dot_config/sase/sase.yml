@@ -148,7 +148,6 @@ llm_provider:
       epic_lander: "gpt-5.6-sol"
       phase_worker: codex/gpt-5.6-sol
       big_epic_lander: "@smartest"
-      smartest: claude-fable-5
     custom:
       research_a:
         model: codex/gpt-5.6-sol
