@@ -29,6 +29,8 @@ ace:
       the "$1" sub-tab of the "Artifacts" tab
     atr: |-
       agent tribe
+    atrp: |-
+      #(atr) panel
     awe: "agent/workflow entry"
     axe: "`sase axe`"
     can: "Can you $1?"
