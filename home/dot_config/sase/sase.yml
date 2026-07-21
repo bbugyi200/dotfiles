@@ -147,7 +147,6 @@ llm_provider:
       epic_creator: codex/gpt-5.6-sol
       epic_lander: "gpt-5.6-sol"
       phase_worker: codex/gpt-5.6-sol
-      big_epic_lander: "@smartest"
     custom:
       research_a:
         model: codex/gpt-5.6-sol
