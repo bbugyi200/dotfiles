@@ -11,83 +11,28 @@ Use this skill when you need to plan before implementing. This replaces OpenCode
 
 2. **Choose the plan tier** before writing:
    - Use `tale` for work that one follow-up coding agent can implement as a single plan.
-   - Use `epic` when the work should be split into ordered phases that distinct agents can complete. Declare every
-     dependency explicitly; use `depends_on: []` for a phase with no dependencies.
+   - Use `epic` when the work should be split into phases that distinct agents can complete. Declare every phase
+     dependency explicitly (so we can support parallel work if needed/desirable). Every phase in an epic plan file MUST
+     have a unique slug ID.
 
 3. **Write a self-contained plan** to `sase_plan_<name>.md` (descriptive underscore name).
    - You should construct the same type of implementation plan that you would have written in OpenCode's native plan
      mode.
-   - Be ambitious about scope, but stay focused on product context and high-level technical design rather than detailed
-     technical implementation.
-   - The file must start at byte 0 with valid YAML frontmatter and have a non-empty Markdown body.
+   - The file must start at byte 0 with valid YAML frontmatter that contains a single `tier: <tier>` property, where
+     `<tier>` is either `tale` or `epic`.
 
-   Both tiers require a non-empty frontmatter `title`. A tale requires this frontmatter shape:
+4. **Validate (with `--explain`), edit, and revalidate (without `--explain`)**:
 
-   ```yaml
-   ---
-   tier: tale
-   title: Focused capability rollout
-   goal: Describe the outcome this plan will achieve.
-   ---
-   # Plan: Descriptive title
-
-   Describe the implementation.
-   ```
-
-   An epic requires a title and a non-empty ordered phase list:
-
-   ```yaml
-   ---
-   tier: epic
-   title: Workspace GC rewrite
-   goal: >
-     Stale workspace checkouts are garbage-collected safely, and reclaim progress is visible.
-   phases:
-     - id: core
-       title: GC planner and safety checks
-       depends_on: []
-       size: medium
-       description: "'GC planner and safety checks' section: implement workspace selection and safety guards."
-     - id: cli
-       title: sase workspace gc command
-       depends_on: [core]
-       size: small
-       description: "'sase workspace gc command' section: add the CLI flow and progress reporting."
-     - id: smoke
-       title: End-to-end GC smoke exercises
-       depends_on: [cli]
-       size: small
-       description: "'End-to-end GC smoke exercises' section: exercise successful and guarded cleanup."
-       model: haiku
-   ---
-   # Plan: Workspace GC rewrite
-
-   Describe the context, design, phase goals, testing, and risks.
-   ```
-
-   Phase IDs must be unique slugs. Dependencies may only name earlier-listed phases; do not use self, duplicate,
-   unknown, or forward references. Give every phase a `description` that names its section in the plan body and briefly
-   summarizes that section; do not reference the plan file itself because `sase bead show` already displays it. Every
-   phase must declare `size: small | medium | large`. Use `medium` when the phase is potentially a lot of work and
-   justifies its own plan file. Use `large` when you suspect that plan file would itself be large enough to merit an
-   epic tier. Use `small` otherwise. Small phase agents implement directly and do not create plans. Medium and large
-   phase agents create plans before implementation. By default, phase size also selects the model capability appropriate
-   for the work, unless that phase has an explicit `model` override.
-
-   A phase's `model` is optional. Only set it when the user's prompt requested a specific model, or when that phase's
-   agent does not do real consequential work (for example, a phase that exercises or tests the feature itself). An
-   explicit phase model is allowed for every size and always takes precedence over the size-derived default. The
-   optional top-level `model` selects the tale's coder follow-up or the epic's land agent.
-
-4. **Validate, edit, and revalidate** with the same tier authored in the file:
+   The first validation run with `--explain` prints the expected schema and all diagnostics. Use that information to
+   edit the plan file. Then rerun validation without `--explain` to check that the file is now valid. Continue until
+   validation exits successfully. Do not propose a plan that has not passed validation.
 
    ```bash
-   sase plan validate sase_plan_<name>.md --tier tale
-   # or: sase plan validate sase_plan_<name>.md --tier epic
+   sase plan validate sase_plan_<name>.md --explain
+   # ... edit the file to fix all reported issues ...
+   sase plan validate sase_plan_<name>.md
+   # ... repeat until validation exits successfully ...
    ```
-
-   If validation fails, use all reported diagnostics and the printed expected schema to edit the file, then rerun the
-   command. Continue until validation exits successfully. Do not propose a plan that has not passed validation.
 
 5. **Submit the validated plan**:
 
