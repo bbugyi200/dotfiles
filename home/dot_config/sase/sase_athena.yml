@@ -1,3 +1,7 @@
+id:
+  username: bbugyi200
+  machine_name: athena
+
 amd_h1_title: "athena - Bryan Bugyi's Home Server"
 
 llm_provider:
@@ -133,6 +137,3 @@ axe:
               checkpoint: on_action_success
           for_each:
             source: projects
-id:
-  username: bbugyi200
-  machine_name: athena
