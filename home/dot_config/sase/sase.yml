@@ -101,6 +101,8 @@ ace:
       /sase_
     td: |-
       TODO
+    tx: |-
+      the `#$1` xprompt
     w: "%w"
     x: "xprompt"
     xp: |-
