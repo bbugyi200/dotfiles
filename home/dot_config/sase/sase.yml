@@ -15,9 +15,6 @@ repos:
 ace:
   snippets:
     # keep-sorted start
-    Cmd: "The `$1` command"
-    Key: |-
-      The `$1` keymap
     ac: |-
       agent clan
     ace: "`sase ace`"
