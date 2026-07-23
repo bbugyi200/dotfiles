@@ -17,8 +17,6 @@ disabled.
      have a unique slug ID.
 
 3. **Write a self-contained plan** to `sase_plan_<name>.md` (descriptive underscore name).
-   - You should construct the same type of implementation plan that you would have written in Antigravity's native plan
-     mode.
    - The file must start at byte 0 with valid YAML frontmatter that contains a single `tier: <tier>` property, where
      `<tier>` is either `tale` or `epic`.
 
