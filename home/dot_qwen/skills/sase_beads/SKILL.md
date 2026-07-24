@@ -28,8 +28,13 @@ not merge bead records from numbered sibling workspaces or legacy bead stores.
 ## Statuses
 
 - `open` — not started (default)
+- `claimed` — reserved by a live agent that has not started working yet (runtime-managed)
 - `in_progress` — actively being worked
 - `closed` — complete
+
+Do NOT set `claimed` by hand. The agent runner owns it: it claims a bead when a bead-carrying agent starts waiting,
+promotes the claim to `in_progress` right before that agent begins working, and releases it back to `open` if the agent
+dies before it ever started. A bead you were told to work on is already `in_progress` by the time you read your prompt.
 
 ## Types
 
@@ -93,7 +98,7 @@ sase bead update <id> --status in_progress --assignee alice
 ### list
 
 ```bash
-# List open and in-progress beads
+# List open, claimed, and in-progress beads
 sase bead list
 
 # Limit printed beads; closed listings default to 20, 0 means unlimited
@@ -102,6 +107,7 @@ sase bead list -n 0
 
 # Filter by status
 sase bead list --status=open
+sase bead list --status=claimed
 sase bead list --status=in_progress
 sase bead list --status=closed
 
@@ -114,13 +120,13 @@ sase bead list --tier=epic
 sase bead list --tier=plan
 ```
 
-Output format: `[icon] [id] · [title][ ← parent_id]` where icons are `○` open, `◐` in_progress, `✓` closed. If no
-`--status` is provided and no open or in-progress beads match, `list` falls back to closed beads and prints a notice
-that it implied `--status closed`.
+Output format: `[icon] [id] · [title][ ← parent_id]` where icons are `○` open, `◎` claimed, `◐` in_progress, `✓` closed.
+If no `--status` is provided and no open, claimed, or in-progress beads match, `list` falls back to closed beads and
+prints a notice that it implied `--status closed`.
 
 Whenever the final result set includes closed beads — via `--status closed`, a repeated status filter that includes
 `closed`, or the implicit closed fallback — and `--limit` is omitted, `list` prints only the newest 20 matching beads.
-Pass `--limit 0` to print all matching closed beads. The default open/in-progress listing stays unlimited.
+Pass `--limit 0` to print all matching closed beads. The default open/claimed/in-progress listing stays unlimited.
 
 ### search
 
@@ -141,9 +147,9 @@ sase bead search auth --status open --type phase
 sase bead search auth --type plan --tier epic
 ```
 
-Search uses a case-insensitive literal substring match across human-readable bead fields. It searches open, in-progress,
-and closed beads by default; use `--status`, `--type`, and `--tier` to narrow results. A missing `--limit` or
-`--limit 0` means unlimited results.
+Search uses a case-insensitive literal substring match across human-readable bead fields. It searches open, claimed,
+in-progress, and closed beads by default; use `--status`, `--type`, and `--tier` to narrow results. A missing `--limit`
+or `--limit 0` means unlimited results.
 
 ### ready
 
@@ -152,7 +158,8 @@ and closed beads by default; use `--status`, `--type`, and `--tier` to narrow re
 sase bead ready
 ```
 
-No arguments. Lists all beads that are open and have no unresolved dependencies blocking them.
+No arguments. Lists all beads that are open and have no unresolved dependencies blocking them. Claimed beads are already
+reserved by a live agent, so they do not appear here.
 
 ### show
 
