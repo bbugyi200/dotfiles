@@ -1,0 +1,140 @@
+#!/bin/bash
+
+##############################################################################
+#  Purge XDG trash directories that live on a temp filesystem.               #
+#                                                                            #
+#  The XDG trash spec requires the trash to sit on the SAME filesystem as    #
+#  the file being trashed, so trashing something under /tmp just relabels it #
+#  as `/tmp/.Trash-$UID/...` and reclaims zero bytes. On this host /tmp is a #
+#  32G tmpfs, so that "deleted" data stays resident in RAM until something   #
+#  empties the trash -- which nothing did, and it grew to ~3.9G.             #
+#                                                                            #
+#  The `rm` -> `trash` alias that caused the bulk of this is gone, but       #
+#  `trash`/`trash-put` can still be invoked directly (nvim's file-delete     #
+#  mapping does), so this script exists as a backstop. ~/.profile runs it in #
+#  the background with --periodic on shell startup.                          #
+##############################################################################
+
+set -e
+
+STAMP_FILE="${XDG_CACHE_HOME:-${HOME}/.cache}"/tmp_trash_empty.stamp
+PERIOD_HOURS=24
+
+function usage() {
+  cat <<EOM
+usage: $(basename "$0") [-h] [-n] [-p] [-v]
+
+Empty the XDG trash directories that live under /tmp and \$TMPDIR.
+
+Optional Arguments
+------------------
+-h | --help
+    View this help message.
+
+-n | --dry-run
+    Show what would be purged without deleting anything.
+
+-p | --periodic
+    Do nothing if this script already ran within the last ${PERIOD_HOURS}h. Used by
+    ~/.profile so every new shell does not re-scan the trash.
+
+-v | --verbose
+    List each file as it is purged.
+
+Examples
+--------
+tmp_trash_empty           # Purge /tmp and \$TMPDIR trash now
+tmp_trash_empty -n -v     # Show what would be purged
+tmp_trash_empty -p        # Purge only if we have not done so in ${PERIOD_HOURS}h
+EOM
+}
+
+# Emit every trash directory that could exist under the given temp root. Both
+# layouts the spec allows are checked, since which one gets used depends on the
+# sticky-bit / ownership checks trash-cli makes at runtime.
+function trash_dirs_under() {
+  local root="$1"
+  local uid
+  uid="$(id -u)"
+
+  printf '%s\n' "${root}/.Trash-${uid}" "${root}/.Trash/${uid}"
+}
+
+function run() {
+  local dry_run=0
+  local periodic=0
+  local verbose=0
+
+  while [[ -n "$1" ]]; do
+    case $1 in
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    -n | --dry-run)
+      dry_run=1
+      ;;
+    -p | --periodic)
+      periodic=1
+      ;;
+    -v | --verbose)
+      verbose=1
+      ;;
+    *)
+      printf 'error: unrecognized argument: %s\n\n' "$1" >&2
+      usage >&2
+      exit 2
+      ;;
+    esac
+    shift
+  done
+
+  if ! command -v trash-empty > /dev/null 2>&1; then
+    # trash-cli is not installed on this machine, so there is no trash to empty.
+    exit 0
+  fi
+
+  if [[ "${periodic}" -eq 1 ]] && stamp_is_fresh; then
+    exit 0
+  fi
+
+  local empty_args=(-f)
+  [[ "${dry_run}" -eq 1 ]] && empty_args+=(--dry-run)
+  [[ "${verbose}" -eq 1 ]] && empty_args+=(-v)
+
+  # /tmp is always checked, even when TMPDIR points elsewhere, since trash-cli
+  # and most other tools fall back to it.
+  local roots=(/tmp)
+  if [[ -n "${TMPDIR}" ]] && [[ "${TMPDIR%/}" != "/tmp" ]]; then
+    roots+=("${TMPDIR%/}")
+  fi
+
+  local root trash_dir
+  for root in "${roots[@]}"; do
+    while read -r trash_dir; do
+      [[ -d "${trash_dir}" ]] || continue
+
+      # `0` days means "purge everything" -- anything in a tmpfs trash is
+      # already-deleted data occupying RAM, so there is nothing to retain.
+      trash-empty "${empty_args[@]}" --trash-dir "${trash_dir}" 0
+    done < <(trash_dirs_under "${root}")
+  done
+
+  if [[ "${dry_run}" -eq 0 ]]; then
+    mkdir -p "$(dirname "${STAMP_FILE}")"
+    : > "${STAMP_FILE}"
+  fi
+}
+
+# Has this script run within the last ${PERIOD_HOURS} hours?
+function stamp_is_fresh() {
+  [[ -f "${STAMP_FILE}" ]] || return 1
+
+  local now stamp_mtime
+  now="$(date +%s)"
+  stamp_mtime="$(date -r "${STAMP_FILE}" +%s 2> /dev/null)" || return 1
+
+  [[ $((now - stamp_mtime)) -lt $((PERIOD_HOURS * 3600)) ]]
+}
+
+run "$@"

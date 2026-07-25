@@ -189,6 +189,16 @@ export GEM_HOME="${HOME}"/.gems
 source_if_exists "$HOME/.cargo/env"
 source_if_exists "$HOME/.profile.local"
 
+########################################
+#  Reclaim Trash Stuck on /tmp         #
+########################################
+# /tmp is a tmpfs, and the XDG trash must live on the same filesystem as the
+# file it holds -- so anything trashed under /tmp keeps occupying RAM until the
+# trash is emptied. Purge it in the background, at most once a day.
+if command -v tmp_trash_empty > /dev/null 2>&1; then
+  (tmp_trash_empty --periodic &) > /dev/null 2>&1
+fi
+
 # HACK: So `source ~/.profile` always exits successfully (i.e. with an exit
 # code of 0) if we make it to this point.
 test 0
