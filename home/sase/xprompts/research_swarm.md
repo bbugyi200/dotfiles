@@ -9,15 +9,15 @@ input:
 ---
 
 %clan(research.@, tribe=research, summary=[[[bold]RESEARCH PROMPT:[/bold] {{ prompt }}]]) %id:research.@.cdx
-%model:@research_a {{ prompt }} #research
+%wait(priority=20) %model:@research_a {{ prompt }} #research
 
 ---
 
-%id(cld, clan=research.@) %m:@research_b {{ prompt }} #research
+%id(cld, clan=research.@) %wait(priority=20) %m:@research_b {{ prompt }} #research
 
 ---
 
-%id(final, clan=research.@) %m:@research_lead %wait:research.@.cdx %wait:research.@.cld
+%id(final, clan=research.@) %wait(priority=20) %m:@research_lead %wait:research.@.cdx %wait:research.@.cld
 
 You are the lead researcher: two independent researchers have reported on the request below, and you will add your own
 research and merge all three perspectives into one consolidated report.
@@ -57,4 +57,5 @@ Final layout:
 
 ---
 
-%id(image, clan=research.@) %model:codex/gpt-5.6-sol %wait:research.@.final #fork:research.@.final #research/image
+%id(image, clan=research.@) %wait(priority=20) %model:codex/gpt-5.6-sol %wait:research.@.final #fork:research.@.final
+#research/image
