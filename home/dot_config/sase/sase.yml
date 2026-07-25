@@ -21,7 +21,8 @@ ace:
     af: |-
       agent family
     amac: "on another machine"
-    amp: 'the agent metadata panel on the "Agents" tab of the `sase ace` TUI'
+    amp: |-
+      agent metadata panel
     artt: |-
       the "$1" sub-tab of the "Artifacts" tab
     atr: |-
