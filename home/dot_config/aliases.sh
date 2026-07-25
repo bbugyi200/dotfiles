@@ -480,7 +480,6 @@ rgn() { rgna -g '!*_done*' -g '!*snippets*' -g '!*.git*' "$@"; }
 rgna() { rg "$@" ~/org; }
 rgz() { rg "$@" ~/org/**/*.zo; }
 alias r='/bin/rm'
-alias rm='trash'
 alias rrm='r'
 alias rng='ranger'
 alias root='sudo su -p'
