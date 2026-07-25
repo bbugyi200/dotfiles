@@ -24,15 +24,23 @@ Prints a stable-shape JSON array of recent transcripts, newest first. Each row h
 `size_bytes`, `workflow`, `agent`, `timestamp`, `prompt_snippet`, `response_snippet`, followed by the sync-provenance
 fields `provenance`, `source_machine`, `source_username`, `project_key`, `agent_artifact_dir`, `agent_local_name`,
 `agent_global_name`, `sidecar_repo`, `sidecar_relpath`, `publication_pending`, `publication_last_error`,
-`publication_quarantined`. Prefer JSON over the pretty table when summarizing.
+`publication_quarantined`, `publication_attempts`, `publication_disposition`. Prefer JSON over the pretty table when
+summarizing.
 
 `provenance` is one of `local` (written here, not published), `shared` (written here and published to an agents
 sidecar), `remote` (imported from another machine — `source_machine` names the origin), or `unknown` (provenance could
 not be determined). Never report `unknown` as `local`.
 
-`publication_pending` means an active outbox item will retry automatically. `publication_quarantined` means the retry
-budget was exhausted; preserve `publication_last_error` in diagnostics and tell the user to run
-`sase agent sync --retry-quarantined` when they want to release it for retry.
+Publication is independent of provenance: a `shared` chat can still have outstanding work for a committed-but-not-pushed
+publication or a later revision. `publication_disposition` is `queued` when every matching request is active,
+`quarantined` when every request has stopped retrying, `mixed` when active and quarantined requests coexist, or `null`
+when no matching request exists. `publication_attempts` is the maximum matching attempt count, and
+`publication_last_error` comes from the deterministically most recently updated request.
+
+The compatibility boolean `publication_pending` is true for `queued` and `mixed`, because retryable work exists.
+`publication_quarantined` is true only for a fully `quarantined` disposition. Preserve `publication_last_error` in
+diagnostics and tell the user to run `sase agent sync --retry-quarantined` when they want to release quarantined work
+for retry. Remote provenance is authoritative and carries no local publication state.
 
 Useful list options:
 
