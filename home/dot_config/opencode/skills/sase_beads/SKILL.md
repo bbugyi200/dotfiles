@@ -36,10 +36,6 @@ Do NOT set `claimed` by hand. The agent runner owns it: it claims a bead when a 
 promotes the claim to `in_progress` right before that agent begins working, and releases it back to `open` if the agent
 dies before it ever started. A bead you were told to work on is already `in_progress` by the time you read your prompt.
 
-The wait-time claim is best-effort, and the `bead_claim_checks` chop reconciles whatever it misses, so a waiting agent's
-bead can turn `claimed` a few seconds after that agent starts waiting rather than instantly. A freshly launched epic
-whose phases are still `open` is normal for one reconciler interval; it is not a signal to claim anything by hand.
-
 ## Types
 
 - `plan` — plan-like work item (created with `--type plan(...)`)
