@@ -23,12 +23,16 @@ sase chat list -j
 Prints a stable-shape JSON array of recent transcripts, newest first. Each row has: `path`, `basename`, `mtime`,
 `size_bytes`, `workflow`, `agent`, `timestamp`, `prompt_snippet`, `response_snippet`, followed by the sync-provenance
 fields `provenance`, `source_machine`, `source_username`, `project_key`, `agent_artifact_dir`, `agent_local_name`,
-`agent_global_name`, `sidecar_repo`, `sidecar_relpath`, `publication_pending`, `publication_last_error`. Prefer JSON
-over the pretty table when summarizing.
+`agent_global_name`, `sidecar_repo`, `sidecar_relpath`, `publication_pending`, `publication_last_error`,
+`publication_quarantined`. Prefer JSON over the pretty table when summarizing.
 
 `provenance` is one of `local` (written here, not published), `shared` (written here and published to an agents
 sidecar), `remote` (imported from another machine — `source_machine` names the origin), or `unknown` (provenance could
 not be determined). Never report `unknown` as `local`.
+
+`publication_pending` means an active outbox item will retry automatically. `publication_quarantined` means the retry
+budget was exhausted; preserve `publication_last_error` in diagnostics and tell the user to run
+`sase agent sync --retry-quarantined` when they want to release it for retry.
 
 Useful list options:
 
