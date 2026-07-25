@@ -2,6 +2,7 @@
 line-length = 88
 target-version = "py312"
 exclude = ["bb/*"]
+extend-exclude = ["*.md"]
 
 [tool.ruff.format]
 # Use black-compatible formatting
