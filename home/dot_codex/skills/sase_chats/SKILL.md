@@ -21,12 +21,20 @@ sase chat list -j
 ```
 
 Prints a stable-shape JSON array of recent transcripts, newest first. Each row has: `path`, `basename`, `mtime`,
-`size_bytes`, `workflow`, `agent`, `timestamp`, `prompt_snippet`, `response_snippet`. Prefer JSON over the pretty table
-when summarizing.
+`size_bytes`, `workflow`, `agent`, `timestamp`, `prompt_snippet`, `response_snippet`, followed by the sync-provenance
+fields `provenance`, `source_machine`, `source_username`, `project_key`, `agent_artifact_dir`, `agent_local_name`,
+`agent_global_name`, `sidecar_repo`, `sidecar_relpath`, `publication_pending`, `publication_last_error`. Prefer JSON
+over the pretty table when summarizing.
+
+`provenance` is one of `local` (written here, not published), `shared` (written here and published to an agents
+sidecar), `remote` (imported from another machine — `source_machine` names the origin), or `unknown` (provenance could
+not be determined). Never report `unknown` as `local`.
 
 Useful list options:
 
 - `sase chat list -j -l 20` — cap how many rows are returned (default is conservative).
+- `sase chat list -j -m '<machine>'` — only transcripts whose source machine matches.
+- `sase chat list -j -P remote` — only transcripts with that provenance.
 - `sase chat list -j -q '<text>'` — case-insensitive content/path/basename filter.
 
 ## Looking up a specific transcript
