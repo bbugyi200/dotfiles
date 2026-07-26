@@ -54,6 +54,8 @@ ace:
     drep: "Describe this repo."
     epic: |-
       the sase-$1 epic bead
+    fe: |-
+      for example
     fex: |-
       for example,
     fi: "the $1 file"
