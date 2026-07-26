@@ -123,7 +123,15 @@ telemetry:
 axe:
   lumberjacks:
     telegram:
-      description: "Fast lane that relays Telegram messages and notification delivery every few seconds"
+      description: |-
+        Fast lane that relays Telegram messages and notification delivery every few seconds
+
+        Runs every five seconds because chat buttons, slash commands, and outbound notifications are useful only when
+        they feel near-real-time. Keep Telegram transport chops in this lane; broader notification maintenance belongs
+        elsewhere so bot network calls do not delay unrelated work.
+
+        The lumberjack supplies the bot username, chat id, and token environment to both chops. It intentionally avoids
+        `run_every` delays so inbound decisions and outbound acknowledgements are checked on every tick.
       interval: 5
       env:
         SASE_TELEGRAM_BOT_USERNAME: sase_athena_bot
@@ -132,10 +140,25 @@ axe:
       chops:
         tg_inbound:
           script: sase_chop_tg_inbound
-          description: "Process Telegram inline keyboard responses and text messages"
+          description: |-
+            Process Telegram inline keyboard responses and text messages
+
+            Polls the bot API for callbacks, slash commands, chat text, and attachments, then writes the matching SASE
+            response or launch request for core workflows to consume.
+
+            This chop runs on every five-second tick so approvals and questions resolve quickly. It uses the
+            lumberjack-level bot environment; Telegram launch-disabling policy can still block free-form agent starts
+            without stopping callbacks or feedback responses.
         tg_outbound:
           script: sase_chop_tg_outbound
-          description: "Send unread notifications to Telegram"
+          description: |-
+            Send unread notifications to Telegram
+
+            Reads the same SASE notification store used by ACE, formats unread non-silent notifications for Telegram,
+            and sends messages, PDFs, or generated images to the configured chat.
+
+            The fast cadence keeps approval requests and completion notices visible without a daemon. Delivery state and
+            rate-limit checks stay in the Telegram plugin, so repeated AXE ticks do not resend handled notifications.
 
 llm_provider:
   default_effort: xhigh

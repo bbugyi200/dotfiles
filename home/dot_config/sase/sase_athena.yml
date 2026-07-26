@@ -78,12 +78,27 @@ xprompts:
 axe:
   lumberjacks:
     run_every:
-      description: "Minute lane that proposes scheduled maintenance across enabled project targets"
+      description: |-
+        Propose scheduled maintenance for configured projects once a minute
+
+        Runs every 60 seconds so low-cost maintenance checks can notice stale conditions without waiting for a slower
+        audit lane. Use this lane for chores controlled mainly by `run_every` and AXE inhibit guards, not for
+        commit-threshold reviews or documentation refreshes.
+
+        The current chop targets only `sase` and is guarded by the `toobig-` clan prefix, so a previous split-file swarm
+        must clear before another scan can propose work.
       interval: 60
       chops:
         toobig_split:
           script: bugyi_chop_toobig_split
-          description: "Propose split-file agents for oversized Python files in sase"
+          description: |-
+            Propose split-file agents for oversized Python files in sase
+
+            Runs `bugyi_chop_toobig_split` every 60 minutes for the `sase` target, scanning the configured `src` and
+            `tests` trees with line limits `1000`, `850`, and `700`.
+
+            The `toobig-` clan inhibit guard prevents overlapping split-file swarms. Each scan emits a sequential clan
+            of content-deduped `%auto #split_file:<path>` proposals, so large files are handled one at a time.
           run_every: 60m
           inhibit_if:
             agent_clan: { name_prefix: toobig- }
@@ -94,12 +109,27 @@ axe:
             trees: [src, tests]
             limits: ["1000", "850", "700"]
     code_quality:
-      description: "Minute lane that audits recent project commits for bugs and concrete improvements"
+      description: |-
+        Audit recent commits for bugs and objective improvements once a minute
+
+        Runs every 60 seconds to let the shared `git.commits_since` trigger decide when enough repository drift has
+        accumulated. Only recent-commit quality audits belong here; scheduled maintenance and documentation refreshes
+        have separate lanes.
+
+        Both chops target `sase` and checkpoint only after the proposed audit agent succeeds, so failed or inconclusive
+        audits do not advance the commit window.
       interval: 60
       chops:
         recent_bug_audit:
           script: bugyi_chop_recent_bug_audit
-          description: "Audit recent sase commits for confirmed bugs and fix only verified issues"
+          description: |-
+            Audit recent sase commits for confirmed bugs and fix only verified issues
+
+            Checks the `sase` target no more than every 60 minutes and proposes work only after `git.commits_since` sees
+            200 commits since the last successful action.
+
+            The `audit_bugs` hood inhibit guard prevents concurrent bug-audit agents. `checkpoint: on_action_success`
+            advances the window only after the launched audit succeeds, preserving failed reviews for retry.
           run_every: 60m
           inhibit_if:
             agent_hood: { hood: audit_bugs }
@@ -113,7 +143,15 @@ axe:
             names: [sase]
         recent_improvement_audit:
           script: bugyi_chop_recent_improvement_audit
-          description: "Audit recent sase commits for clear objective improvements without speculative churn"
+          description: |-
+            Audit recent sase commits for clear objective improvements without speculative churn
+
+            Checks the `sase` target no more than every 60 minutes and proposes work only after `git.commits_since` sees
+            200 commits since the last successful action.
+
+            The `audit_improvements` hood prevents concurrent improvement audits. `checkpoint: on_action_success`
+            advances the window only after the launched audit succeeds, so speculative or failed passes do not hide
+            unreviewed commits.
           run_every: 60m
           inhibit_if:
             agent_hood: { hood: audit_improvements }
@@ -126,12 +164,27 @@ axe:
             source: projects
             names: [sase]
     refresh_docs:
-      description: "Minute lane that refreshes project docs after meaningful repository drift"
+      description: |-
+        Refresh project documentation after meaningful repository drift
+
+        Runs every 60 seconds so each project target can let `git.commits_since` decide when documentation has drifted
+        enough to refresh. Documentation-only proposal chops belong here; quality audits and file-splitting maintenance
+        stay in their own lanes.
+
+        The current chop fans out across enabled projects and checkpoints only after the documentation agents succeed,
+        which keeps failed refreshes eligible for a later tick.
       interval: 60
       chops:
         refresh_docs:
           script: sase_chop_refresh_docs
-          description: "Refresh documentation for enabled projects after meaningful repository drift"
+          description: |-
+            Refresh documentation for enabled projects after meaningful repository drift
+
+            Runs `sase_chop_refresh_docs` every three hours for each enabled project, but only after
+            `git.commits_since` reports 100 commits since the last successful refresh.
+
+            The chop emits an update proposal followed by a polish proposal that waits on the update.
+            `checkpoint: on_action_success` keeps the commit window open until the documentation refresh actually lands.
           run_every: 3h
           trigger:
             git.commits_since:
