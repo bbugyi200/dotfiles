@@ -78,6 +78,7 @@ xprompts:
 axe:
   lumberjacks:
     run_every:
+      description: "Minute lane that proposes scheduled maintenance across enabled project targets"
       interval: 60
       chops:
         toobig_split:
@@ -93,6 +94,7 @@ axe:
             trees: [src, tests]
             limits: ["1000", "850", "700"]
     code_quality:
+      description: "Minute lane that audits recent project commits for bugs and concrete improvements"
       interval: 60
       chops:
         recent_bug_audit:
@@ -124,6 +126,7 @@ axe:
             source: projects
             names: [sase]
     refresh_docs:
+      description: "Minute lane that refreshes project docs after meaningful repository drift"
       interval: 60
       chops:
         refresh_docs:

@@ -123,6 +123,7 @@ telemetry:
 axe:
   lumberjacks:
     telegram:
+      description: "Fast lane that relays Telegram messages and notification delivery every few seconds"
       interval: 5
       env:
         SASE_TELEGRAM_BOT_USERNAME: sase_athena_bot
