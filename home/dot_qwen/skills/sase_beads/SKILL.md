@@ -50,6 +50,25 @@ in migrated projects; `sase repo path plans` preserves the legacy layout for old
 carry `tier: tale` or `tier: epic` in frontmatter. `sase bead work` runs `epic`-tier plan beads by launching phase +
 land agents.
 
+## Phase Bead Descriptions
+
+An epic phase bead's description comes from the matching `phases:` entry in the epic plan file's frontmatter. By
+convention, the description starts with that phase's slug ID followed by `: `, then a short summary. For example:
+`serialize: put the bead-store worktree materialization inside the store-write-lock critical section.`
+
+The prefix identifies the phase without repeating its `title`, which already names the phase's section in the plan body.
+Resolve a slug to its section by looking up the ID in the plan frontmatter that `sase bead show` displays.
+
+Use the same prefix when authoring or editing a phase bead description by hand:
+
+```bash
+sase bead create --title "Implement login endpoint" --type phase(<plan-bead-id>) \
+  --description "login: add the endpoint and its auth checks."
+sase bead update <phase-bead-id> --description "login: add the endpoint and its auth checks."
+```
+
+This prefix applies only to phase beads. Plan/epic bead descriptions carry the plan's goal and do not take it.
+
 ## Commands
 
 ### create
