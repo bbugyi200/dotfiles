@@ -30,7 +30,7 @@ not merge bead records from numbered sibling workspaces or legacy bead stores.
 - `open` — not started (default)
 - `claimed` — reserved by a live agent that has not started working yet (runtime-managed)
 - `in_progress` — actively being worked
-- `closed` — complete
+- `closed` — complete, canceled, or superseded
 
 Do NOT set `claimed` by hand. The agent runner owns it: it claims a bead when a bead-carrying agent starts waiting,
 promotes the claim to `in_progress` right before that agent begins working, and releases it back to `open` if the agent
