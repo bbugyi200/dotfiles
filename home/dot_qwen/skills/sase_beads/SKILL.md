@@ -115,7 +115,9 @@ sase bead update <id> --size medium
 sase bead update <id> --status in_progress --assignee alice
 ```
 
-Use `close` for completion and `open` for reopening.
+Use `close` for completion and `open` for reopening. `--notes` **replaces** the whole field; use `sase bead note` when
+you are recording progress that should accumulate. Moving a bead to `closed` through `update` obeys the same descendant
+guard `close` does.
 
 ### close / open
 
@@ -124,11 +126,71 @@ Use `close` for completion and `open` for reopening.
 sase bead close <id>
 sase bead close <id1> <id2> --reason "why"
 
-# Reopen a closed bead
+# Cancel or supersede an unfinished tree (explicit, never the normal path)
+sase bead close <id> --force --resolution canceled --reason "why this tree stops here"
+
+# Reopen a closed bead (and every closed ancestor above it)
 sase bead open <id>
 ```
 
 `close` accepts multiple IDs and an optional `-r`/`--reason`; prefer it over `update --status closed`.
+
+Every close records a typed resolution with `-R`/`--resolution`: `done` (the default), `canceled`, or `superseded`.
+`--reason` stays free text for the human explanation. Historical closures made before resolutions existed are not
+backfilled and render as `(unrecorded)`.
+
+**Closing does not cascade.** A bead with any descendant that is not already closed is rejected, and the error names the
+unfinished beads. Nothing is written — a multi-ID close either applies completely or leaves the store untouched. The
+same guard applies to `sase bead update <id> --status closed`. Closing your own assigned phase bead is unaffected by
+this guard, because a phase bead normally has no descendants.
+
+`--force` (`-f`) is the deliberate exception: it sweeps the unfinished descendants closed, and it requires both a
+`--reason` and a `--resolution` other than `done`. `--force --resolution done` is rejected — you may close an unfinished
+tree, but you may not call it done. Each swept descendant gets the same resolution plus a close reason naming the
+forcing parent, and the swept IDs are recorded on the parent's close event. Never force merely to make a rejected close
+succeed; finish or reopen the named beads instead.
+
+`sase bead open <id>` reopens the bead and every closed ancestor above it, clears their resolutions, and prints the
+ancestor IDs it changed, so a closed parent never sits above reopened work.
+
+### history
+
+```bash
+sase bead history <id>                                  # compact timeline
+sase bead history <id> --format full                    # every from/to value
+sase bead history <id> --field notes --format full      # one field's revision chain
+sase bead history <id> --limit 5                        # newest 5 entries
+sase bead history <id> --format json                    # machine-readable envelope
+```
+
+Replays a bead's canonical event stream as an ordered, field-level timeline. `compact` (the default) prints one line per
+event with timestamp, actor, operation, and the changed field names; `full` prints each change's prior and new value,
+which is how an earlier note revision that a later update replaced becomes readable again; `json` emits one envelope
+with `issue_id`, `schema_version`, and `entries`. `-F`/`--field` is repeatable, and `-n`/`--limit 0` means unlimited.
+
+```bash
+sase bead history --lost-notes            # scan the store for notes text that vanished
+sase bead history <id> --lost-notes       # check one bead
+sase bead history --lost-notes --restore  # re-append findings after one confirmation
+```
+
+`-l`/`--lost-notes` reports beads whose current notes no longer contain text an earlier revision held (with no ID it
+scans the whole store). `-R`/`--restore` previews the provenance-tagged appends, prompts once, and restores them through
+the same atomic append used by `note`. It is idempotent — a second scan finds nothing — and `--restore` without
+`--lost-notes` is a usage error.
+
+### note
+
+```bash
+# Append an attributed entry to a bead's notes
+sase bead note <id> "Verified with just check; symvision clean"
+sase bead note <id> "..." --author alice
+```
+
+`note` appends; `update --notes` replaces. Prefer `note` for recording progress, verification results, and handoff
+state, so you never destroy what an earlier writer left behind. Each entry lands as `[<timestamp> · <author>] <text>`
+separated by a blank line, written atomically inside the Rust bead store's mutation lock, so concurrent writers do not
+clobber each other. `-a`/`--author` defaults to the current agent and falls back to the store owner.
 
 ### list
 
@@ -183,16 +245,32 @@ sase bead show <id> --format json
 ```
 
 Displays full details: status, type, tier, owner, assignee, model, parent, children, dependencies, blocks, description,
-notes, and linked design file. `full` is the default; `compact` prints the same single row as `sase bead list`. `json`
-emits a single-bead envelope with `issue`, `ancestors`, `children`, `depends_on`, `blocks`, and `plan`. Every
-relationship reference has a `resolved` flag, with unresolved IDs retaining fixed null-valued fields.
+notes, and linked design file. A closed bead also shows its resolution, close reason, and close timestamp; use
+`sase bead history <id>` to read how any of those fields got their current value. `full` is the default; `compact`
+prints the same single row as `sase bead list`. `json` emits a single-bead envelope with `issue`, `ancestors`,
+`children`, `depends_on`, `blocks`, and `plan`. Every relationship reference has a `resolved` flag, with unresolved IDs
+retaining fixed null-valued fields.
 
-### dep add
+### dep
 
 ```bash
-# Make <issue> depend on <depends_on> (issue is blocked until depends_on is closed)
+sase bead dep list <id>                                  # see what blocks <id> and what <id> blocks
+sase bead dep tree <id>                                  # follow the blocking graph
+sase bead dep rm <issue> <depends_on> [<depends_on2> ...] # remove wrong dependency edges
 sase bead dep add <issue> <depends_on>
 ```
+
+`sase bead dep` with no child subcommand delegates to `sase bead dep list`. Use `list` first when diagnosing readiness:
+it prints `DEPENDS ON` and `BLOCKS`, marks outgoing edges as `satisfied` or `blocking`, and `--format full` includes the
+edge's recorded `added <timestamp> by <author>` provenance.
+
+`dep tree` walks dependencies as a terminating tree. `--direction out` follows what the root waits on, `--direction in`
+follows what waits on the root, and `--direction both` renders both. It marks repeats as `⇡ (shown above)`, cycles as
+`↻ (cycle)`, depth truncation as `(+N more, use --levels 0)`, and unresolved targets as `? <id> (not found)`.
+
+`dep rm` mirrors `dep add` argument order: the source issue first, then one or more targets it should no longer depend
+on. The removal is all-or-nothing, records `dependency_removed` events, and prints whether the source bead is now ready
+or still blocked.
 
 ### other commands
 
@@ -212,5 +290,6 @@ sase bead dep add <issue> <depends_on>
    automatically because plan approval runs `sase bead work`. Hand-create beads with `create` and `dep add` only for
    standalone tracker or backlog work.
 2. **Working loop.** `sase bead ready` → `sase bead update <id> --status in_progress` → do the work →
-   `sase bead close <id>`. A bead you were launched to work is already `in_progress` (see Statuses). Never close the
-   parent epic bead; the epic's land agent does that.
+   `sase bead note <id> "<what you verified>"` → `sase bead close <id>`. A bead you were launched to work is already
+   `in_progress` (see Statuses). Never close the parent epic bead; the epic's land agent does that, and the descendant
+   guard now rejects that close outright while sibling phases are unfinished.
