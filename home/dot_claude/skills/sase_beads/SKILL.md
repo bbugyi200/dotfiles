@@ -200,7 +200,9 @@ sase bead dep add <issue> <depends_on>
 - `sase bead rm <id> [<id2> ...]` — remove beads and all their children.
 - `sase bead stats` — show project statistics.
 - `sase bead sync` — stage bead state in git.
-- `sase bead doctor` — run health checks.
+- `sase bead doctor` — run bead-store and plan-link health checks.
+- `sase bead doctor --fix-design-refs` — preview recoverable legacy plan links and repair them only after an interactive
+  default-no confirmation.
 - `sase bead work <epic-id|plan.md>` — launch an epic's phase and land agents (`--dry-run` previews). Normally driven by
   plan approval; do not run it casually from a working agent.
 
