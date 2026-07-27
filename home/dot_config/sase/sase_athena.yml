@@ -193,3 +193,41 @@ axe:
               checkpoint: on_action_success
           for_each:
             source: projects
+    ci_watch:
+      description: |-
+        Watch GitHub Actions health across SASE repos and drive fixes or releases
+
+        Runs every five minutes. The single chop owns its own actstat config so unrelated orgs are never swept,
+        launches at most one CI-fix agent per tick and only when zero other agents are running, and is the only
+        gate on release merges because no SASE repo has branch protection. Merging stays disabled until the fix
+        half has soaked.
+      interval: 300
+      chop_timeout: "120s"
+      chops:
+        ci_watch:
+          script: bugyi_chop_ci_watch
+          description: |-
+            Sweep actstat once, propose idle-gated CI fixes, and merge ready release PRs when enabled
+
+            Red default branches propose one deduplicated fix agent (zero-agents gate, one per tick); green
+            branches with fully green release PRs merge deterministically in dependency order, capped per tick.
+            Everything unknown fails closed; the seconds-wide gap between the idle check and agent launch is
+            accepted.
+          env:
+            ACTSTAT_CONFIG: /home/bryan/.config/sase/actstat-ci-watch.yml
+          vars:
+            actstat_bin: /home/bryan/.cargo/bin/actstat
+            gh_bin: gh
+            sase_bin: sase
+            repos:
+              [sase-org/sase, sase-org/sase-core, sase-org/sase-github, sase-org/sase-telegram, sase-org/sase-nvim]
+            release_repositories:
+              sase-org/sase: release-please
+              sase-org/sase-core: release-plz
+              sase-org/sase-github: release-please
+              sase-org/sase-telegram: release-please
+            merge_order: [sase-core, sase-github, sase-telegram, sase-nvim, sase]
+            max_merges_per_tick: 1
+            max_fix_proposals_per_tick: 1
+            fix_enabled: true
+            merge_enabled: false

@@ -1,0 +1,15 @@
+# actstat configuration owned by the `ci_watch` AXE chop — materializes at
+# ~/.config/sase/actstat-ci-watch.yml and is passed to actstat through the
+# chop's `ACTSTAT_CONFIG` env value.
+#
+# This config is deliberately narrower than ~/.config/actstat/config.yml so the
+# chop never sweeps unrelated organizations. The chop's `vars.repos` allowlist
+# is a second, independent scoping mechanism, so new sase-org repositories never
+# silently widen what the chop can act on.
+#
+# No secrets live here; actstat reads its GitHub token from the environment or
+# `gh auth token`.
+projects:
+  - org: sase-org # all repositories in the sase-org organization...
+    exclude:
+      - sase-org/sase-android # ...except this one
