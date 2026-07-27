@@ -178,10 +178,14 @@ reserved by a live agent, so they do not appear here.
 
 ```bash
 sase bead show <id>
+sase bead show <id> --format compact
+sase bead show <id> --format json
 ```
 
 Displays full details: status, type, tier, owner, assignee, model, parent, children, dependencies, blocks, description,
-notes, and linked design file.
+notes, and linked design file. `full` is the default; `compact` prints the same single row as `sase bead list`. `json`
+emits a single-bead envelope with `issue`, `ancestors`, `children`, `depends_on`, `blocks`, and `plan`. Every
+relationship reference has a `resolved` flag, with unresolved IDs retaining fixed null-valued fields.
 
 ### dep add
 
