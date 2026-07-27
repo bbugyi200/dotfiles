@@ -96,6 +96,8 @@ ace:
     piw: "prompt input widget"
     prp: "plan review panel"
     rep: "the ../sase-$1 repo"
+    s: |-
+      sase
     sa: "sase agent"
     sac: "SASE Admin Center"
     sact: |-
