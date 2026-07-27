@@ -124,11 +124,6 @@ sase bead update <id> --status in_progress --assignee alice
 # List open, claimed, and in-progress beads
 sase bead list
 
-# Choose compact, machine-readable JSON, or full detail output
-sase bead list --format compact
-sase bead list --format json
-sase bead list --format full --limit 3
-
 # Limit printed beads; closed listings default to 20, 0 means unlimited
 sase bead list --limit 5
 sase bead list -n 0
@@ -148,11 +143,7 @@ sase bead list --tier=epic
 sase bead list --tier=plan
 ```
 
-`compact` is the default and prints `[icon] [id] · [title][ ← parent_id]`, where icons are `○` open, `◎` claimed, `◐`
-in_progress, and `✓` closed. `full` prints the same detail blocks as `sase bead show`, separated by 60-dash rules.
-`json` emits an envelope with `count`, `total`, `statuses`, `implied_status_closed`, and flat issue objects in
-`results`.
-
+Output format: `[icon] [id] · [title][ ← parent_id]` where icons are `○` open, `◎` claimed, `◐` in_progress, `✓` closed.
 If no `--status` is provided and no open, claimed, or in-progress beads match, `list` falls back to closed beads and
 prints a notice that it implied `--status closed`.
 
