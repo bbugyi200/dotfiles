@@ -198,9 +198,10 @@ axe:
         Watch GitHub Actions health across SASE repos and drive fixes or releases
 
         Runs every five minutes. The single chop owns its own actstat config so unrelated orgs are never swept,
-        launches at most one CI-fix agent per tick and only when zero other agents are running, and is the only
-        gate on release merges because no SASE repo has branch protection. Merging stays disabled until the fix
-        half has soaked.
+        classifies high-cadence repos from terminal job evidence instead of blanket in-flight state, launches at
+        most one debounced CI-fix agent per tick and only when zero other agents are running, and is the only gate
+        on release merges because no SASE repo has branch protection. Merging stays disabled until the fix half has
+        soaked.
       interval: 300
       chop_timeout: "120s"
       chops:
@@ -209,10 +210,11 @@ axe:
           description: |-
             Sweep actstat once, propose idle-gated CI fixes, and merge ready release PRs when enabled
 
-            Red default branches propose one deduplicated fix agent (zero-agents gate, one per tick); green
-            branches with fully green release PRs merge deterministically in dependency order, capped per tick.
-            Everything unknown fails closed; the seconds-wide gap between the idle check and agent launch is
-            accepted.
+            Terminal job failures propose one sha-independent, deduplicated fix agent after the same failing job
+            fingerprint survives the debounce window (zero-agents gate, one per tick); green branches with fully
+            green release PRs merge deterministically in dependency order, capped per tick. Repos with no Actions
+            report no_ci, while everything unknown fails closed; the seconds-wide gap between the idle check and
+            agent launch is accepted.
           env:
             ACTSTAT_CONFIG: /home/bryan/.config/sase/actstat-ci-watch.yml
           vars:
@@ -226,8 +228,9 @@ axe:
               sase-org/sase-core: release-plz
               sase-org/sase-github: release-please
               sase-org/sase-telegram: release-please
-            merge_order: [sase-core, sase-github, sase-telegram, sase-nvim, sase]
+            merge_order: [sase-core, sase-github, sase-telegram, sase]
             max_merges_per_tick: 1
             max_fix_proposals_per_tick: 1
+            red_debounce_ticks: 2
             fix_enabled: true
             merge_enabled: false
