@@ -251,12 +251,26 @@ prints the same single row as `sase bead list`. `json` emits a single-bead envel
 `children`, `depends_on`, `blocks`, and `plan`. Every relationship reference has a `resolved` flag, with unresolved IDs
 retaining fixed null-valued fields.
 
-### dep add
+### dep
 
 ```bash
-# Make <issue> depend on <depends_on> (issue is blocked until depends_on is closed)
+sase bead dep list <id>                                  # see what blocks <id> and what <id> blocks
+sase bead dep tree <id>                                  # follow the blocking graph
+sase bead dep rm <issue> <depends_on> [<depends_on2> ...] # remove wrong dependency edges
 sase bead dep add <issue> <depends_on>
 ```
+
+`sase bead dep` with no child subcommand delegates to `sase bead dep list`. Use `list` first when diagnosing readiness:
+it prints `DEPENDS ON` and `BLOCKS`, marks outgoing edges as `satisfied` or `blocking`, and `--format full` includes the
+edge's recorded `added <timestamp> by <author>` provenance.
+
+`dep tree` walks dependencies as a terminating tree. `--direction out` follows what the root waits on, `--direction in`
+follows what waits on the root, and `--direction both` renders both. It marks repeats as `⇡ (shown above)`, cycles as
+`↻ (cycle)`, depth truncation as `(+N more, use --levels 0)`, and unresolved targets as `? <id> (not found)`.
+
+`dep rm` mirrors `dep add` argument order: the source issue first, then one or more targets it should no longer depend
+on. The removal is all-or-nothing, records `dependency_removed` events, and prints whether the source bead is now ready
+or still blocked.
 
 ### other commands
 
