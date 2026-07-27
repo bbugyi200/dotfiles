@@ -1,7 +1,7 @@
 ---
 name: sase_beads
 description:
-  Reference for sase bead commands (create, update, list, search, ready, show, dep). Use when working with beads.
+  Reference for sase bead commands (create, update, close, list, search, ready, show, dep). Use when working with beads.
 ---
 
 Before doing anything else, run this command to record that you are using this skill:
@@ -42,8 +42,8 @@ whose phases are still `open` is normal for one reconciler interval; it is not a
 
 ## Types
 
-- `plan` — plan-like work item (created with `--type plan(...)`)
-- `phase` — child of a plan (created with `--type phase(...)`)
+- `plan` — plan-like work item (created with `--type "plan(...)"`)
+- `phase` — child of a plan (created with `--type "phase(...)"`)
 
 Plan beads can carry bead tier `--tier plan` or `--tier epic`. Plan files live under `${SASE_SDD_PLANS_DIR}/{YYYYMM}/`
 in migrated projects; `sase repo path plans` preserves the legacy layout for older stores. Plan files independently
@@ -59,15 +59,15 @@ convention, the description starts with that phase's slug ID followed by `: `, t
 The prefix identifies the phase without repeating its `title`, which already names the phase's section in the plan body.
 Resolve a slug to its section by looking up the ID in the plan frontmatter that `sase bead show` displays.
 
-Use the same prefix when authoring or editing a phase bead description by hand:
+Use this prefix when authoring a phase bead description by hand:
 
 ```bash
-sase bead create --title "Implement login endpoint" --type phase(<plan-bead-id>) \
+sase bead create --title "Implement login endpoint" --type "phase(<plan-bead-id>)" \
   --description "login: add the endpoint and its auth checks."
-sase bead update <phase-bead-id> --description "login: add the endpoint and its auth checks."
 ```
 
-This prefix applies only to phase beads. Plan/epic bead descriptions carry the plan's goal and do not take it.
+The same prefix applies when editing the description by hand. This prefix applies only to phase beads. Plan/epic bead
+descriptions carry the plan's goal and do not take it.
 
 ## Commands
 
@@ -80,31 +80,27 @@ sase bead create --title "Add auth system" --type "plan(${SASE_SDD_PLANS_DIR}/20
 # Create an executable epic bead
 sase bead create --title "Auth epic" --type "plan(${SASE_SDD_PLANS_DIR}/202605/auth.md)" --tier epic
 
-# Create an executable epic bead with a land-agent model
+# Set the launch model (epic plan bead → land-agent model; phase bead → per-phase work model)
 sase bead create --title "Auth epic" --type "plan(${SASE_SDD_PLANS_DIR}/202605/auth.md)" --tier epic --model claude/opus
 
 # Create a phase bead (child of a plan)
-sase bead create --title "Implement login endpoint" --type phase(<plan-bead-id>)
-
-# Create a phase bead with a phase-work model
-sase bead create --title "Implement login endpoint" --type phase(<plan-bead-id>) --model codex/gpt-5.6-sol
+sase bead create --title "Implement login endpoint" --type "phase(<plan-bead-id>)"
 
 # Create a nested plan (plan with parent)
 sase bead create --title "Sub-plan" --type "plan(${SASE_SDD_PLANS_DIR}/202605/sub.md,<parent-bead-id>)"
 
 # With optional fields
-sase bead create --title "..." --type phase(<id>) --description "Details here" --assignee alice
+sase bead create --title "..." --type "phase(<id>)" --description "Details here" --assignee alice --size medium
 ```
 
 `--type` / `-T` is required. Syntax: `plan(<plan_file>)`, `plan(<plan_file>,<parent_id>)`, or `phase(<parent_id>)`.
+`--size` / `-z` accepts `xsmall|small|medium|large|xlarge` and controls plan-first prompting and default model routing.
 
 ### update
 
 ```bash
-# Change status (most common use)
+# Claim ready work by hand
 sase bead update <id> --status in_progress
-sase bead update <id> --status closed
-sase bead update <id> --status open
 
 # Update other fields
 sase bead update <id> --title "New title"
@@ -114,60 +110,54 @@ sase bead update <id> --assignee bob
 sase bead update <id> --design "${SASE_SDD_PLANS_DIR}/202605/revised.md"
 sase bead update <id> --model codex/gpt-5.6-sol
 sase bead update <id> --model ""  # clear the stored model
+sase bead update <id> --size medium
 # Combine multiple updates
 sase bead update <id> --status in_progress --assignee alice
 ```
 
+Use `close` for completion and `open` for reopening.
+
+### close / open
+
+```bash
+# Close finished work (the standard completion path; used by runtime prompts)
+sase bead close <id>
+sase bead close <id1> <id2> --reason "why"
+
+# Reopen a closed bead
+sase bead open <id>
+```
+
+`close` accepts multiple IDs and an optional `-r`/`--reason`; prefer it over `update --status closed`.
+
 ### list
 
 ```bash
-# List open, claimed, and in-progress beads
 sase bead list
-
-# Limit printed beads; closed listings default to 20, 0 means unlimited
-sase bead list --limit 5
-sase bead list -n 0
-
-# Filter by status
-sase bead list --status=open
-sase bead list --status=claimed
-sase bead list --status=in_progress
-sase bead list --status=closed
-
-# Filter by type
-sase bead list --type=plan
-sase bead list --type=phase
-
-# Filter by plan-bead tier
-sase bead list --tier=epic
-sase bead list --tier=plan
+sase bead list --format json
+sase bead list --format full --limit 3
+sase bead list --status open --type phase
+sase bead list --tier epic
+sase bead list --status closed --limit 0
 ```
 
-Output format: `[icon] [id] · [title][ ← parent_id]` where icons are `○` open, `◎` claimed, `◐` in_progress, `✓` closed.
+`compact` is the default and prints `[icon] [id] · [title][ ← parent_id]`, where icons are `○` open, `◎` claimed, `◐`
+in_progress, and `✓` closed. `full` prints the same detail blocks as `sase bead show`, separated by 60-dash rules.
+`json` emits an envelope with `count`, `total`, `statuses`, `implied_status_closed`, and flat issue objects in
+`results`.
+
 If no `--status` is provided and no open, claimed, or in-progress beads match, `list` falls back to closed beads and
 prints a notice that it implied `--status closed`.
 
-Whenever the final result set includes closed beads — via `--status closed`, a repeated status filter that includes
-`closed`, or the implicit closed fallback — and `--limit` is omitted, `list` prints only the newest 20 matching beads.
-Pass `--limit 0` to print all matching closed beads. The default open/claimed/in-progress listing stays unlimited.
+Closed results default to the newest 20 unless `--limit` / `-n` is given (`0` means unlimited); the default
+open/claimed/in-progress listing is unlimited. `--status`, `--type`, and `--tier` are repeatable.
 
 ### search
 
 ```bash
-# Search every bead status with compact output
-sase bead search auth --format compact
-
-# Emit a machine-readable JSON envelope
-sase bead search auth --format json
-
-# Show complete bead details for the first 3 matches
+sase bead search auth
 sase bead search auth --format full --limit 3
-
-# Scope by status and type
 sase bead search auth --status open --type phase
-
-# Scope plan beads by tier
-sase bead search auth --type plan --tier epic
 ```
 
 Search uses a case-insensitive literal substring match across human-readable bead fields. It searches open, claimed,
@@ -200,13 +190,23 @@ notes, and linked design file.
 sase bead dep add <issue> <depends_on>
 ```
 
+### other commands
+
+- `sase bead blocked` — list blocked beads with their blockers.
+- `sase bead rm <id> [<id2> ...]` — remove beads and all their children.
+- `sase bead stats` — show project statistics.
+- `sase bead sync` — stage bead state in git.
+- `sase bead doctor` — run bead-store and plan-link health checks.
+- `sase bead doctor --fix-design-refs` — preview recoverable legacy plan links and repair them only after an interactive
+  default-no confirmation.
+- `sase bead work <epic-id|plan.md>` — launch an epic's phase and land agents (`--dry-run` previews). Normally driven by
+  plan approval; do not run it casually from a working agent.
+
 ## Typical Workflow
 
-1. `sase bead create --title "..." --type "plan(${SASE_SDD_PLANS_DIR}/202605/plan.md)" --tier epic` — create an epic
-   plan bead
-2. `sase bead create --title "Phase 1" --type phase(<plan-id>)` — add phases
-3. `sase bead dep add <phase-2-id> <phase-1-id>` — set ordering
-4. `sase bead ready` — find unblocked work
-5. `sase bead update <id> --status in_progress` — claim work
-6. _(do the work)_
-7. `sase bead update <id> --status closed` — mark done
+1. **Epics come from plans.** An approved epic plan file creates the plan bead, phase beads, and dependencies
+   automatically because plan approval runs `sase bead work`. Hand-create beads with `create` and `dep add` only for
+   standalone tracker or backlog work.
+2. **Working loop.** `sase bead ready` → `sase bead update <id> --status in_progress` → do the work →
+   `sase bead close <id>`. A bead you were launched to work is already `in_progress` (see Statuses). Never close the
+   parent epic bead; the epic's land agent does that.
