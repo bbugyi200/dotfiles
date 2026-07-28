@@ -177,6 +177,7 @@ llm_provider:
       # each just tracks the default launch model (@default), the implicit default.
       coder: "@default"
       epic_lander: "@default"
+      smartest: opus@max
     custom:
       research_a:
         model: codex/gpt-5.6-sol
