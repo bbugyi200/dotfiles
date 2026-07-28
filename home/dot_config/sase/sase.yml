@@ -103,6 +103,8 @@ ace:
     sac: "SASE Admin Center"
     sact: |-
       the "$1" tab of the "#[sac]" panel
+    scr: |-
+      sidecar repo
     ss: |-
       /sase_
     td: |-
