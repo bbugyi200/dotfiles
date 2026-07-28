@@ -238,4 +238,4 @@ axe:
             max_fix_proposals_per_tick: 1
             red_debounce_ticks: 2
             fix_enabled: true
-            merge_enabled: false
+            merge_enabled: true
