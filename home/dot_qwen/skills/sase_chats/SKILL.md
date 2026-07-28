@@ -33,14 +33,15 @@ not be determined). Never report `unknown` as `local`.
 
 Publication is independent of provenance: a `shared` chat can still have outstanding work for a committed-but-not-pushed
 publication or a later revision. `publication_disposition` is `queued` when every matching request is active,
-`quarantined` when every request has stopped retrying, `mixed` when active and quarantined requests coexist, or `null`
-when no matching request exists. `publication_attempts` is the maximum matching attempt count, and
-`publication_last_error` comes from the deterministically most recently updated request.
+`quarantined` when every request has stopped retrying, `retired` when every request was retired as unpublishable,
+`mixed` when those states coexist, or `null` when no matching request exists. `publication_attempts` is the maximum
+matching attempt count, and `publication_last_error` comes from the deterministically most recently updated request.
 
 The compatibility boolean `publication_pending` is true for `queued` and `mixed`, because retryable work exists.
 `publication_quarantined` is true only for a fully `quarantined` disposition. Preserve `publication_last_error` in
 diagnostics and tell the user to run `sase agent sync --retry-quarantined` when they want to release quarantined work
-for retry. Remote provenance is authoritative and carries no local publication state.
+for retry. A `retired` request can never be published, so retrying it does nothing — tell the user to run
+`sase agent sync --drop-retired` instead. Remote provenance is authoritative and carries no local publication state.
 
 Useful list options:
 
