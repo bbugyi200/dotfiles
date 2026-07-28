@@ -116,9 +116,13 @@ axe:
         accumulated. Only recent-commit quality audits belong here; scheduled maintenance and documentation refreshes
         have separate lanes.
 
+        Agents launched from this lane wait for an idle machine (`%wait(runners=0)`) so commit audits never compete
+        with interactive work.
+
         Both chops target `sase` and checkpoint only after the proposed audit agent succeeds, so failed or inconclusive
         audits do not advance the commit window.
       interval: 60
+      wait_runners: 0
       chops:
         recent_bug_audit:
           script: bugyi_chop_recent_bug_audit
