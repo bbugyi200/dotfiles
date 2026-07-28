@@ -22,6 +22,16 @@ you want the value to appear in the Agents-tab metadata and Telegram completion 
    sase var set KEY=VALUE [KEY=VALUE ...]
    ```
 
+   Use `--value` for text containing spaces, or a heredoc through `--value-file -` for a multi-line value:
+
+   ```bash
+   sase var set summary --value "tests passed"
+   sase var set details --value-file - <<'EOF'
+   Tests passed.
+   The release artifact is ready.
+   EOF
+   ```
+
 3. In later prompts, wait for the producer before referencing its variables. Every producer's variables live under a
    single `agents` dictionary keyed by agent name. For example, `%id:build-@` can produce:
 
@@ -42,8 +52,10 @@ keys also support attribute access such as `{{ agents.build.result_path }}`.
 - Run this only inside a SASE agent; the command requires `SASE_AGENT=1` and `SASE_ARTIFACTS_DIR`.
 - Keys must be valid Jinja attribute identifiers: `[A-Za-z_][A-Za-z0-9_]*`.
 - Values are strings and are split on the first `=`, so `sase var set token=a=b=c` stores `a=b=c`.
-- Quote assignments when your shell would otherwise split or expand the value, for example
-  `sase var set "summary=tests passed"`.
+- Use `KEY=VALUE` for simple tokens, `--value` for values containing spaces, and a heredoc into `--value-file -` for
+  multi-line bodies.
+- Each value is limited to 8 KiB of UTF-8 text. Output variables are for small handoff values, not report bodies; store
+  a report as an artifact file and publish its path instead.
 - Multiple calls merge into the same agent's variable map; later writes for the same key replace earlier values.
 - Do not store secrets. Output variables are persisted in `agent_meta.json` and shown in ACE and the Telegram
   agent-completion message.
