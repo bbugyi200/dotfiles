@@ -5,6 +5,7 @@ commit_hooks:
 github_orgs:
   - bbugyi200
   - sase-org
+  - bobs-org
 repos:
   linked:
     - name: chezmoi
