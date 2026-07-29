@@ -207,7 +207,8 @@ axe:
         classifies high-cadence repos from terminal job evidence instead of blanket in-flight state, and proposes at
         most one debounced CI-fix agent per tick. Fix proposals are suppressed only while a `ci_fix` hood agent is live;
         `wait_runners: 0` delays a launched fixer until the machine is idle. The chop also guards release merges because
-        no SASE repo has branch protection.
+        no SASE repo has branch protection, publishes a durable current release report, and links release notifications
+        directly to that report.
       interval: 300
       wait_runners: 0
       chop_timeout: "120s"
@@ -221,7 +222,8 @@ axe:
             fingerprint survives the debounce window (suppressed while a `ci_fix` hood agent is live, one per tick);
             lane-level `wait_runners: 0` keeps launched fixers from competing with interactive work. Green branches
             with fully green release PRs merge deterministically in dependency order, capped per tick. Repos with no
-            Actions report no_ci, while everything unknown fails closed.
+            Actions report no_ci, while everything unknown fails closed. Every tick publishes the current release
+            ledger report, and merge or blocked-release notifications open that live report in ACE.
           env:
             ACTSTAT_CONFIG: /home/bryan/.config/sase/actstat-ci-watch.yml
           vars:
