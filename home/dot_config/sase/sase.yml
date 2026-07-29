@@ -21,6 +21,8 @@ ace:
     ace: "`sase ace`"
     af: |-
       agent family
+    al: |-
+      agent lane
     amac: "on another machine"
     amp: |-
       agent metadata panel
