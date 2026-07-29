@@ -132,6 +132,9 @@ guard `close` does.
 sase bead close <id> --note "<what you verified>"
 sase bead close <id1> <id2> --reason "why"
 
+# Close selected phase beads by their numeric suffix without closing the epic
+sase bead close <epic-id> -p 1-3
+
 # Cancel or supersede an unfinished tree (explicit, never the normal path)
 sase bead close <id> --force --resolution canceled --reason "why this tree stops here"
 
@@ -140,6 +143,9 @@ sase bead open <id>
 ```
 
 `close` accepts multiple IDs and an optional `-r`/`--reason`; prefer it over `update --status closed`.
+
+For an epic plan bead, `-p`/`--phases` accepts comma-separated phase numbers and inclusive ranges. It requires exactly
+one epic ID, treats each number as the phase bead's ID suffix, and closes only those phases—not the epic itself.
 
 Every close records a typed resolution with `-R`/`--resolution`: `done` (the default), `canceled`, or `superseded`.
 `--reason` stays free text for the human explanation. Historical closures made before resolutions existed are not
