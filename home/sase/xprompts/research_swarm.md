@@ -8,16 +8,16 @@ input:
     description: Research topic or question for the swarm to investigate.
 ---
 
-%clan(research.@, tribe=research, summary=[[[bold]RESEARCH PROMPT:[/bold] {{ prompt }}]]) %id:research.@.cdx
+%clan(research.{@1}, tribe=research, summary=[[[bold]RESEARCH PROMPT:[/bold] {{ prompt }}]]) %id:research.{@1}.cdx
 %wait(priority=20) %model:@research_a {{ prompt }} #research
 
 ---
 
-%id(cld, clan=research.@) %wait(priority=20) %m:@research_b {{ prompt }} #research
+%id(cld, clan=research.{@1}) %wait(priority=20) %m:@research_b {{ prompt }} #research
 
 ---
 
-%id(final, clan=research.@) %wait(priority=20) %m:@research_lead %wait:research.@.cdx %wait:research.@.cld
+%id(final, clan=research.{@1}) %wait(priority=20) %m:@research_lead %wait:research.{@1}.cdx %wait:research.{@1}.cld
 
 You are the lead researcher: two independent researchers have reported on the request below, and you will add your own
 research and merge all three perspectives into one consolidated report.
@@ -36,8 +36,8 @@ $(sase repo path research --ensure)/$(date +%Y%m)
 
 Steps:
 
-1. Read both transcripts to learn which report file each researcher wrote (`research.@.cdx` -> `__a`, `research.@.cld`
-   -> `__b`), then read both reports. Never assign `__a`/`__b` from filesystem order.
+1. Read both transcripts to learn which report file each researcher wrote (`research.{@1}.cdx` -> `__a`,
+   `research.{@1}.cld` -> `__b`), then read both reports. Never assign `__a`/`__b` from filesystem order.
 2. Research the request yourself, prioritizing gaps, weak evidence, and disagreements between the two reports.
 3. Pick a descriptive stem `<name>` that collides with nothing in the month directory (do NOT end the name with
    `_consolidated` or `_<YYYYmmdd>` or anything similar unless it relates to the research topic), create
@@ -57,5 +57,5 @@ Final layout:
 
 ---
 
-%id(image, clan=research.@) %wait(priority=20) %model:codex/gpt-5.6-sol %wait:research.@.final #fork:research.@.final
-#research/image
+%id(image, clan=research.{@1}) %wait(priority=20) %model:codex/gpt-5.6-sol %wait:research.{@1}.final
+#fork:research.{@1}.final #research/image
