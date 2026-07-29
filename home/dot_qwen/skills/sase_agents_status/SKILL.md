@@ -22,13 +22,13 @@ sase agent list -j
 This prints a stable-shape JSON array to stdout. Each row has: `name`, `project`, `pid`, `model`, `provider`,
 `workspace_num`, `status`, `duration_seconds`, `started_at`, `approve`, `prompt_snippet`, `artifacts_dir`, wait and
 runner slot context, `parent_agent_name`, and `agent_family`. Clan members appear as their own agent rows; the clan
-container itself is an ACE projection rather than a running process. Waiting rows include `runner_slots_in_use` and
+container itself is an ACE projection rather than a running process. Runner-slot rows include `runner_slots_in_use` and
 `runner_slot_holders`, which identify the agents keeping them parked.
 
-An implicit global-cap waiter is reported as `QUEUED`; authored `%wait(runners=N)` threshold waits remain `WAITING`.
-`runner_slot_queue_position` and `runner_slot_queue_size` cover every live slot waiter in priority-then-request-FIFO
-admission order, including while the pool is full. Use the position on `QUEUED` rows when explaining what will start
-next; do not describe their stale dependency or time-wait marker fields as active blockers.
+Every live runner-slot waiter is reported as `QUEUED`, whether its threshold comes from the global cap or an authored
+`%wait(runners=N)`. `runner_slot_queue_position` and `runner_slot_queue_size` cover the same waiters in
+priority-then-request-FIFO admission order, including while the pool is full. Use the position on `QUEUED` rows when
+explaining what will start next; do not describe their stale dependency or time-wait marker fields as active blockers.
 
 ## How to summarize
 

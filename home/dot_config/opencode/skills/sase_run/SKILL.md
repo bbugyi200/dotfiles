@@ -73,6 +73,8 @@ or clan launched into that tribe after the waiting launch. Think hard about whet
 - `%w(time=10m)` defers by time instead; arguments compose: `%w(planner, time=5m)`.
 - A tribe wait binds to the earliest qualifying successful entity launched after the waiter. For a clan, every member
   must complete successfully.
+- In ACE, tribe waits use their own `[tribes]` lane: a known entity appears as `@tribe → name` with its status badge,
+  while a wait with no qualifying launch yet appears as `@tribe (next launch)`.
 
 ### Other xprompts
 

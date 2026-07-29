@@ -32,13 +32,19 @@ not merge bead records from numbered sibling workspaces or legacy bead stores.
 - `in_progress` — actively being worked
 - `closed` — complete, canceled, or superseded
 
-Do NOT set `claimed` by hand. The agent runner owns it: it claims a bead when a bead-carrying agent starts waiting,
-promotes the claim to `in_progress` right before that agent begins working, and releases it back to `open` if the agent
-dies before it ever started. A bead you were told to work on is already `in_progress` by the time you read your prompt.
+Do NOT set `claimed` by hand. For an ad-hoc bead-carrying launch, the agent runner owns this transition: it claims the
+bead when the agent starts waiting, promotes the claim to `in_progress` right before work begins, and releases it back
+to `open` if the agent dies before it ever started.
 
-The wait-time claim is best-effort, and the `bead_claim_checks` chop reconciles whatever it misses, so a waiting agent's
-bead can turn `claimed` a few seconds after that agent starts waiting rather than instantly. A freshly launched epic
-whose phases are still `open` is normal for one reconciler interval; it is not a signal to claim anything by hand.
+`sase bead work` uses a stronger epic-launch path. Before any runner spawns, it assigns every rendered phase bead and
+the epic land bead directly to `in_progress` under their exact agent names, then commits and publishes that complete
+launch state. The runner's later wait claim, launch promotion, and waiting-claim release therefore become quiet no-ops.
+If an epic-launched runner dies while waiting, its bead stays `in_progress`; rerun `sase bead work <epic-id|plan.md>` to
+recover and reassign every remaining non-closed bead. Closed phases are never reassigned.
+
+The ad-hoc wait-time claim remains best-effort, and the `bead_claim_checks` chop reconciles whatever it misses, so a
+waiting ad-hoc agent's bead can turn `claimed` a few seconds after that agent starts waiting rather than instantly. A
+bead you were told to work on is already `in_progress` by the time you read your prompt.
 
 ## Types
 
@@ -123,7 +129,7 @@ guard `close` does.
 
 ```bash
 # Close finished work (the standard completion path; used by runtime prompts)
-sase bead close <id>
+sase bead close <id> --note "<what you verified>"
 sase bead close <id1> <id2> --reason "why"
 
 # Cancel or supersede an unfinished tree (explicit, never the normal path)
@@ -138,6 +144,10 @@ sase bead open <id>
 Every close records a typed resolution with `-R`/`--resolution`: `done` (the default), `canceled`, or `superseded`.
 `--reason` stays free text for the human explanation. Historical closures made before resolutions existed are not
 backfilled and render as `(unrecorded)`.
+
+`-n`/`--note` appends the same attributed entry to every explicitly listed bead before closing them. The note and close
+events are written in one mutation, one commit, and one push. Use it for completion evidence; keep `sase bead note` for
+mid-work progress and handoff notes.
 
 **Closing does not cascade.** A bead with any descendant that is not already closed is rejected, and the error names the
 unfinished beads. Nothing is written — a multi-ID close either applies completely or leaves the store untouched. The
@@ -290,6 +300,6 @@ or still blocked.
    automatically because plan approval runs `sase bead work`. Hand-create beads with `create` and `dep add` only for
    standalone tracker or backlog work.
 2. **Working loop.** `sase bead ready` → `sase bead update <id> --status in_progress` → do the work →
-   `sase bead note <id> "<what you verified>"` → `sase bead close <id>`. A bead you were launched to work is already
-   `in_progress` (see Statuses). Never close the parent epic bead; the epic's land agent does that, and the descendant
-   guard now rejects that close outright while sibling phases are unfinished.
+   `sase bead close <id> --note "<what you verified>"`. A bead you were launched to work is already `in_progress` (see
+   Statuses). Never close the parent epic bead; the epic's land agent does that, and the descendant guard now rejects
+   that close outright while sibling phases are unfinished.
