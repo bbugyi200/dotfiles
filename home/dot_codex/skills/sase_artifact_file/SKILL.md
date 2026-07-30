@@ -40,6 +40,29 @@ Options:
 
 The command moves the file into SASE artifact-file storage, so do not edit the original path after registration.
 
+Explicit artifacts always keep their own bytes; the automatic-capture rules below never apply to `create`.
+
+## VCS-Backed Artifacts
+
+Automatic capture at agent finalization keeps bytes only for files the run authored that version control cannot
+reproduce. When a candidate's exact content is already reachable from a durable (pushed) commit, SASE writes a byte-free
+**reference** row carrying `vcs_repo`, `vcs_sha`, and `vcs_relpath` instead of copying the file. A file that is only
+mentioned in a prompt, lives inside a known repo, and is not reproducible from version control gets no row at all.
+
+Reference rows are ordinary artifacts everywhere except that they have no stored path:
+
+- `sase artifact list` renders them normally; their JSON records carry `"path": null` plus the three `vcs_*` fields.
+- `sase artifact show` reports `stored_path_status: vcs-backed (<repo>@<sha>:<relpath>)` and
+  `resolution_status: vcs_backed`.
+- `sase artifact path` and `sase artifact open` materialize the content on demand into a content-keyed cache under
+  `~/.sase/artifacts/vcs-cache/` and then behave exactly as they do for a stored file. `@file:` references in a prompt
+  expand the same way.
+- Materialization is content-verified: bytes are only handed back after their SHA-256 matches the recorded digest. If no
+  known checkout of the repo can produce them, `path` exits 1 with a diagnostic naming the repo, commit, and path rather
+  than returning a wrong or empty file.
+
+Deleting `vcs-cache/` is safe; it only costs re-materialization.
+
 ## Find Prior Artifacts
 
 `sase artifact list` prints a table of KIND, REF, LABEL, PROJECT, AGENT, SIZE, and CREATED, newest first. Filters:
@@ -85,3 +108,7 @@ opens `bug:` references in a browser.
 `sase artifact doctor` reports index health and exits 1 when it finds problems. Add `-f/--fix` to backfill missing
 `sha256` / `size_bytes` / `mime_type` fields, and `-v/--verify` to re-hash live stored files against their recorded
 digests.
+
+Byte-free VCS-backed rows are healthy, not missing. Doctor counts them under `VCS reference rows`, flags rows with a
+partial `vcs_*` triple under `Incomplete VCS provenance`, and — with `-v/--verify` — materializes each one and reports
+any that cannot be reproduced under `Unresolvable VCS references`.
