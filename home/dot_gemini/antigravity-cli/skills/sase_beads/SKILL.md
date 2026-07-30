@@ -147,20 +147,13 @@ sase bead open <id>
 For an epic plan bead, `-p`/`--phases` accepts comma-separated phase numbers and inclusive ranges. It requires exactly
 one epic ID, treats each number as the phase bead's ID suffix, and closes only those phases—not the epic itself.
 
-Every real close records a typed resolution with `-R`/`--resolution`: `done`, `canceled`, or `superseded`. A real close
-defaults to `done` when no resolution is supplied; an already-closed bead is not compared unless `--resolution` is
-explicitly supplied. `--reason` stays free text for the human explanation. Historical closures made before resolutions
-existed are not backfilled and render as `(unrecorded)`.
-
-Closing an already-closed bead is safe and free: it exits 0, reports `Already closed`, writes no close event, and
-creates no commit. If the request supplies a conflicting `--resolution` or `--reason`, the command is refused before
-writing rather than applying the new value. To add completion evidence after closure, use `sase bead note <id> "..."` or
-`sase bead close <id> --note "..."`; that records a note-only mutation instead of another close.
+Every close records a typed resolution with `-R`/`--resolution`: `done` (the default), `canceled`, or `superseded`.
+`--reason` stays free text for the human explanation. Historical closures made before resolutions existed are not
+backfilled and render as `(unrecorded)`.
 
 `-n`/`--note` appends the same attributed entry to every explicitly listed bead before closing them. The note and close
-events are written in one mutation, one commit, and one push when a real close happens; on an already-closed bead it is
-a note-only mutation. Use it for completion evidence; keep `sase bead note` for mid-work progress, handoff notes, and
-evidence on already-closed beads.
+events are written in one mutation, one commit, and one push. Use it for completion evidence; keep `sase bead note` for
+mid-work progress and handoff notes.
 
 **Closing does not cascade.** A bead with any descendant that is not already closed is rejected, and the error names the
 unfinished beads. Nothing is written — a multi-ID close either applies completely or leaves the store untouched. The
@@ -173,8 +166,8 @@ tree, but you may not call it done. Each swept descendant gets the same resoluti
 forcing parent, and the swept IDs are recorded on the parent's close event. Never force merely to make a rejected close
 succeed; finish or reopen the named beads instead.
 
-`sase bead open <id>` reopens the bead and every closed ancestor above it, clears their resolutions, close reasons, and
-close timestamps, and prints the ancestor IDs it changed, so a closed parent never sits above reopened work.
+`sase bead open <id>` reopens the bead and every closed ancestor above it, clears their resolutions, and prints the
+ancestor IDs it changed, so a closed parent never sits above reopened work.
 
 ### history
 
@@ -195,13 +188,12 @@ with `issue_id`, `schema_version`, and `entries`. `-F`/`--field` is repeatable, 
 sase bead history --lost-notes            # scan the store for notes text that vanished
 sase bead history <id> --lost-notes       # check one bead
 sase bead history --lost-notes --restore  # re-append findings after one confirmation
-sase bead history --lost-notes --restore --yes  # non-interactive restore
 ```
 
 `-l`/`--lost-notes` reports beads whose current notes no longer contain text an earlier revision held (with no ID it
 scans the whole store). `-R`/`--restore` previews the provenance-tagged appends, prompts once, and restores them through
-the same atomic append used by `note`; add `-y`/`--yes` for non-interactive approved restores. It is idempotent — a
-second scan finds nothing — and `--restore` without `--lost-notes` is a usage error.
+the same atomic append used by `note`. It is idempotent — a second scan finds nothing — and `--restore` without
+`--lost-notes` is a usage error.
 
 ### note
 
@@ -211,11 +203,10 @@ sase bead note <id> "Verified with just check; symvision clean"
 sase bead note <id> "..." --author alice
 ```
 
-`note` appends through a `note_appended` event; `update --notes` replaces the whole field. Prefer `note` for recording
-progress, verification results, and handoff state, so you never destroy what an earlier writer left behind. Each entry
-lands as `[<timestamp> · <author>] <text>` separated by a blank line, written atomically inside the Rust bead store's
-mutation lock, so concurrent writers do not clobber each other. `-a`/`--author` defaults to the current agent and falls
-back to the store owner.
+`note` appends; `update --notes` replaces. Prefer `note` for recording progress, verification results, and handoff
+state, so you never destroy what an earlier writer left behind. Each entry lands as `[<timestamp> · <author>] <text>`
+separated by a blank line, written atomically inside the Rust bead store's mutation lock, so concurrent writers do not
+clobber each other. `-a`/`--author` defaults to the current agent and falls back to the store owner.
 
 ### list
 
@@ -306,8 +297,6 @@ or still blocked.
 - `sase bead doctor` — run bead-store and plan-link health checks.
 - `sase bead doctor --fix-design-refs` — preview recoverable legacy plan links and repair them only after an interactive
   default-no confirmation.
-- `sase bead doctor --fix-projection` — preview `issues.jsonl` drift against canonical event streams and repair only the
-  expected projection shape after confirmation.
 - `sase bead work <epic-id|plan.md>` — launch an epic's phase and land agents (`--dry-run` previews). Normally driven by
   plan approval; do not run it casually from a working agent.
 
