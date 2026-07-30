@@ -2,6 +2,14 @@ timezone: "America/New_York"
 use_chezmoi: true
 commit_hooks:
   before: "sase_git_fix"
+file_hooks:
+  - name: research-highlights
+    description: Render new consolidated research reports into Highlights PDFs for the Obsidian reading queue.
+    command: bob highlights create
+    sidecars: [research]
+    globs: ["20*/*/*.md", "!20*/*/*__*.md"]
+    ops: [ADD]
+    timeout: 120s
 github_orgs:
   - bbugyi200
   - sase-org
