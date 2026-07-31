@@ -26,6 +26,13 @@ sidecar; legacy in-tree projects use `sdd/beads/`, and legacy local/separate-rep
 Canonical state lives in `beads/events/**` when present; `issues.jsonl` is a generated compatibility projection. It does
 not merge bead records from numbered sibling workspaces or legacy bead stores.
 
+## ID Arguments
+
+Every `sase bead` command argument that names an existing bead accepts either the full ID (`sase-a1`) or the complete
+suffix after the final dash (`a1`). Dotted descendants work too: `a1.2` resolves to `sase-a1.2`. Output, stored
+relationships, commit summaries, agent metadata, and generated page paths always use canonical full IDs. If a shorthand
+matches multiple full IDs, the command fails and lists the candidates.
+
 ## Statuses
 
 - `open` — not started (default)
@@ -114,6 +121,9 @@ sase bead create --title "Auth epic" --type "plan(${SASE_SDD_PLANS_DIR}/202605/a
 
 # Create a phase bead (child of a plan)
 sase bead create --title "Implement login endpoint" --type "phase(<plan-bead-id>)"
+
+# Shorthand parent ID is accepted when it is unique
+sase bead create --title "Implement login endpoint" --type "phase(a1)"
 
 # Create a standalone task bead (open draft)
 sase bead create --title "Fix flaky login test" --type task --description "Failure details and provenance"
@@ -299,6 +309,7 @@ not appear because phase agents are preassigned at launch.
 
 ```bash
 sase bead show <id>
+sase bead show a1
 sase bead show <id> --format compact
 sase bead show <id> --format json
 ```
@@ -317,6 +328,7 @@ sase bead dep list <id>                                  # see what blocks <id> 
 sase bead dep tree <id>                                  # follow the blocking graph
 sase bead dep rm <issue> <depends_on> [<depends_on2> ...] # remove wrong dependency edges
 sase bead dep add <issue> <depends_on>
+sase bead dep add a1.2 a1.1
 ```
 
 `sase bead dep` with no child subcommand delegates to `sase bead dep list`. Use `list` first when diagnosing readiness:
