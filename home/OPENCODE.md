@@ -54,3 +54,8 @@ skill to review their contents. Do not read canonical memory files directly.
 
 **`sase/memory/obsidian.md`**  
 Obsidian vault, notes workflow, and obsidian-headless/ob usage.
+
+**`sase/memory/sase_beads.md`**  
+Read before creating, updating, closing, or querying sase beads — bead types and tiers, the status lifecycle agents must
+never hand-edit, task-bead triage, phase-bead description prefixes, and non-cascading close, resolution, and note
+semantics.
