@@ -261,10 +261,11 @@ sase bead list --tier epic
 sase bead list --status closed --limit 0
 ```
 
-`compact` is the default and prints `[icon] [id] · [title][ ← parent_id]`, where icons are `○` open, `◎` claimed, `◇`
-ready, `◐` in_progress, and `✓` closed. `full` prints the same detail blocks as `sase bead show`, separated by 60-dash
-rules. `json` emits an envelope with `count`, `total`, `statuses`, `implied_status_closed`, and flat issue objects in
-`results`.
+`compact` is the default and prints `[type_icon] [status_icon] [id] · [title][ ← parent_id]`, where type icons are `▸`
+plan, `↳` phase, and `◆` task, and status icons are `○` open, `◎` claimed, `◇` ready, `◐` in_progress, and `✓` closed.
+`--color auto|always|never` (`-c`) controls compact output color and honors `NO_COLOR`; piped or non-TTY output is
+colorless by default. `full` prints the same detail blocks as `sase bead show`, separated by 60-dash rules. `json` emits
+an envelope with `count`, `total`, `statuses`, `implied_status_closed`, and flat issue objects in `results`.
 
 If no `--status` is provided and no open, claimed, ready, or in-progress beads match, `list` falls back to closed beads
 and prints a notice that it implied `--status closed`.
