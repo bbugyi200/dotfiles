@@ -94,6 +94,21 @@ sase changespec search '&<name>' -f plain
 The `COMMITS` drawer lists every commit/proposal with its `CHAT` and `DIFF` paths; the highest-numbered entry is the
 most recent.
 
+### Manage durable artifact references
+
+ChangeSpecs can carry a `REFS:` section between `STATUS:` and `COMMITS:`. Store one canonical artifact reference per
+2-space-indented line, without the prompt-time `@` sigil:
+
+```bash
+sase changespec ref add -c <name> research:202607/report.md
+sase changespec ref list -c <name> --resolve
+sase changespec ref rm -c <name> research:202607/report.md
+```
+
+Omit `-c/--changespec` to target the ChangeSpec for the current checkout. `add` normalizes and deduplicates entries;
+`rm` detaches normalized entries; `list --json` emits machine-readable reference data. Use
+`sase doctor -C project.changespec_refs` when you need to audit malformed, unresolvable, or ambiguous REFS entries.
+
 ### Find children/descendants of a ChangeSpec
 
 ```bash
@@ -141,6 +156,7 @@ live in `<project>-archive.sase`; active specs live in `<project>.sase` under `~
   operations.
 - **Do not** set `PARENT` to a VCS ref like `origin/main`, `origin/master`, or `p4head`. `PARENT` must be another
   ChangeSpec name, or omitted.
+- Prefer `sase changespec ref add` and `sase changespec ref rm` over direct `REFS:` edits.
 - Prefer `sase commit`, `sase revert <name>`, and `sase restore <name>` over direct `.sase` surgery for tracked workflow
   changes.
 - If you must edit a `.sase` file directly, preserve two blank lines between ChangeSpecs and 2-space indentation for
@@ -155,7 +171,7 @@ live in `<project>-archive.sase`; active specs live in `<project>.sase` under `~
 
 ## Implementation notes
 
-ChangeSpec sections: `NAME`, `DESCRIPTION`, `PARENT`, `PR`, `BUG`, `STATUS`, `COMMITS`, `TIMESTAMPS`, `HOOKS`,
-`COMMENTS`, `MENTORS`. Legacy `CL:` fields are readable during the compatibility window. Search reads both
+ChangeSpec sections: `NAME`, `DESCRIPTION`, `PARENT`, `PR`, `BUG`, `STATUS`, `REFS`, `COMMITS`, `DELTAS`, `HOOKS`,
+`COMMENTS`, `MENTORS`, `TIMESTAMPS`. Legacy `CL:` fields are readable during the compatibility window. Search reads both
 `<project>.sase` and `<project>-archive.sase` (and their legacy `.gp` siblings during the migration window), so
 submitted and archived specs are reachable via the same queries.
