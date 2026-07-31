@@ -24,3 +24,18 @@ the local checkout instead. Web tools remain appropriate only for content a chec
 posts, docs sites, and GitHub issue/PR discussions.
 
 IMPORTANT REMINDER: Do NOT locate, clone, or web-fetch another repo's contents any other way than by using `/sase_repo`!
+
+## File Discovered Work As Task Beads
+
+Unless your prompt explicitly forbids creating beads (epic phase workers, for example, must record `PROPOSED FOLLOW-UP:`
+notes on their own bead instead), you can and SHOULD capture discovered follow-up work as sase task beads:
+
+- A linter or test is flaky or failing and you did not cause it: file a task bead instead of ignoring the failure.
+- A sase memory file or skill contains out-of-date information that should be updated: file a task bead proposing the
+  update.
+- A tool, command, or script this project is responsible for has a bug or a clear, objective improvement that would help
+  future agents: file a task bead to fix or improve it.
+
+Create the bead with `sase bead create -T task -t "<title>" -d "<details>"`, refine it while it is `open` (draft), and
+mark it ready to triage with `sase bead update <id> -s ready`. Ready task beads are proposed to the project owner, who
+either launches an agent to work them or closes them with a reason.
