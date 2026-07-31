@@ -55,23 +55,13 @@ reference notes that agents read only when relevant.
 - Lines: 18
 - Approx. tokens: 164
 
-### `sase/memory/sase_beads.md`
-
-- Type: `long`
-- Description: Read before creating, updating, closing, or querying sase beads — bead types and tiers, the status
-  lifecycle agents must never hand-edit, task-bead triage, phase-bead description prefixes, and non-cascading close,
-  resolution, and note semantics.
-- Parent: `AGENTS.md`
-- Lines: 98
-- Approx. tokens: 1333
-
 ## Statistics
 
-- Total notes: 3
+- Total notes: 2
 - Short notes: 1
-- Long notes: 2
-- Total lines: 157
-- Total approx. tokens: 2101
+- Long notes: 1
+- Total lines: 59
+- Total approx. tokens: 768
 
 ## Commands
 
