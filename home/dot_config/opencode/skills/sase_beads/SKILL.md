@@ -1,7 +1,8 @@
 ---
 name: sase_beads
 description:
-  Reference for sase bead commands (create, update, close, list, search, ready, show, dep). Use when working with beads.
+  Reference for sase bead commands (create, update, close, list, search, ready, show, dep, ref). Use when working with
+  beads.
 ---
 
 Before doing anything else, run this command to record that you are using this skill:
@@ -29,6 +30,7 @@ not merge bead records from numbered sibling workspaces or legacy bead stores.
 
 - `open` — not started (default)
 - `claimed` — reserved by a live agent that has not started working yet (runtime-managed)
+- `ready` — a drafted task bead awaiting human triage (task beads only)
 - `in_progress` — actively being worked
 - `closed` — complete, canceled, or superseded
 
@@ -50,11 +52,32 @@ bead you were told to work on is already `in_progress` by the time you read your
 
 - `plan` — plan-like work item (created with `--type "plan(...)"`)
 - `phase` — child of a plan (created with `--type "phase(...)"`)
+- `task` — standalone discovered follow-up (created with `--type task`)
 
 Plan beads can carry bead tier `--tier plan` or `--tier epic`. Plan files live under `${SASE_SDD_PLANS_DIR}/{YYYYMM}/`
 in migrated projects; `sase repo path plans` preserves the legacy layout for older stores. Plan files independently
 carry `tier: tale` or `tier: epic` in frontmatter. `sase bead work` runs `epic`-tier plan beads by launching phase +
-land agents.
+land agents. Task beads are top-level, have no tier, and may carry a size for launch-model routing.
+
+## Task Bead Workflow
+
+Task beads capture discovered work that is useful but outside the current task. Unless a prompt forbids bead creation,
+create one as an `open` draft, refine its description and dependencies, then mark it `ready` for the project owner:
+
+```bash
+sase bead create --type task --title "Fix flaky integration test" \
+  --description "The retry test flakes under parallel pytest; discovered while landing sase-xy."
+sase bead update <task-id> --status ready
+```
+
+The `bead_task_triage` chop raises one human-only `TaskTriage` gate for each ready task bead. Its default **Launch**
+branch runs `sase bead work <task-id>` in a detached background task; optional launch feedback is appended to the worker
+prompt. Its **Close** branch requires a reason and closes the bead with `resolution=canceled`. A pending gate is
+canceled if the bead leaves `ready`, and the chop does not raise duplicate gates while one remains pending.
+
+Epic phase workers are the exception: they must not create beads themselves. They append a
+`PROPOSED FOLLOW-UP: <summary — detail>` note to their own phase bead, and the epic land agent decides which proposals
+become ready task beads.
 
 ## Phase Bead Descriptions
 
@@ -92,21 +115,30 @@ sase bead create --title "Auth epic" --type "plan(${SASE_SDD_PLANS_DIR}/202605/a
 # Create a phase bead (child of a plan)
 sase bead create --title "Implement login endpoint" --type "phase(<plan-bead-id>)"
 
+# Create a standalone task bead (open draft)
+sase bead create --title "Fix flaky login test" --type task --description "Failure details and provenance"
+
 # Create a nested plan (plan with parent)
 sase bead create --title "Sub-plan" --type "plan(${SASE_SDD_PLANS_DIR}/202605/sub.md,<parent-bead-id>)"
 
 # With optional fields
 sase bead create --title "..." --type "phase(<id>)" --description "Details here" --assignee alice --size medium
+sase bead create --title "..." --type "phase(<id>)" --ref research:202607/report.md
 ```
 
-`--type` / `-T` is required. Syntax: `plan(<plan_file>)`, `plan(<plan_file>,<parent_id>)`, or `phase(<parent_id>)`.
-`--size` / `-z` accepts `xsmall|small|medium|large|xlarge` and controls plan-first prompting and default model routing.
+`--type` / `-T` is required. Syntax: `task`, `plan(<plan_file>)`, `plan(<plan_file>,<parent_id>)`, or
+`phase(<parent_id>)`. `--size` / `-z` accepts `xsmall|small|medium|large|xlarge` on phase and task beads and controls
+plan-first prompting and default model routing. `--ref` / `-R` attaches a durable artifact reference to the bead and can
+be repeated.
 
 ### update
 
 ```bash
-# Claim ready work by hand
+# Start work by hand (task beads normally use `sase bead work <task-id>`)
 sase bead update <id> --status in_progress
+
+# Propose a drafted task bead for triage
+sase bead update <task-id> --status ready
 
 # Update other fields
 sase bead update <id> --title "New title"
@@ -223,21 +255,22 @@ back to the store owner.
 sase bead list
 sase bead list --format json
 sase bead list --format full --limit 3
+sase bead list --status ready --type task
 sase bead list --status open --type phase
 sase bead list --tier epic
 sase bead list --status closed --limit 0
 ```
 
-`compact` is the default and prints `[icon] [id] · [title][ ← parent_id]`, where icons are `○` open, `◎` claimed, `◐`
-in_progress, and `✓` closed. `full` prints the same detail blocks as `sase bead show`, separated by 60-dash rules.
-`json` emits an envelope with `count`, `total`, `statuses`, `implied_status_closed`, and flat issue objects in
+`compact` is the default and prints `[icon] [id] · [title][ ← parent_id]`, where icons are `○` open, `◎` claimed, `◇`
+ready, `◐` in_progress, and `✓` closed. `full` prints the same detail blocks as `sase bead show`, separated by 60-dash
+rules. `json` emits an envelope with `count`, `total`, `statuses`, `implied_status_closed`, and flat issue objects in
 `results`.
 
-If no `--status` is provided and no open, claimed, or in-progress beads match, `list` falls back to closed beads and
-prints a notice that it implied `--status closed`.
+If no `--status` is provided and no open, claimed, ready, or in-progress beads match, `list` falls back to closed beads
+and prints a notice that it implied `--status closed`.
 
 Closed results default to the newest 20 unless `--limit` / `-n` is given (`0` means unlimited); the default
-open/claimed/in-progress listing is unlimited. `--status`, `--type`, and `--tier` are repeatable.
+open/claimed/ready/in-progress listing is unlimited. `--status`, `--type`, and `--tier` are repeatable.
 
 ### search
 
@@ -248,18 +281,18 @@ sase bead search auth --status open --type phase
 ```
 
 Search uses a case-insensitive literal substring match across human-readable bead fields. It searches open, claimed,
-in-progress, and closed beads by default; use `--status`, `--type`, and `--tier` to narrow results. A missing `--limit`
-or `--limit 0` means unlimited results.
+ready, in-progress, and closed beads by default; use `--status`, `--type`, and `--tier` to narrow results. A missing
+`--limit` or `--limit 0` means unlimited results.
 
 ### ready
 
 ```bash
-# Show open beads with no active blockers
+# Show ready task beads with no active blockers
 sase bead ready
 ```
 
-No arguments. Lists all beads that are open and have no unresolved dependencies blocking them. Claimed beads are already
-reserved by a live agent, so they do not appear here.
+No arguments. Lists task beads whose explicit status is `ready` and whose dependencies are all closed. Epic work does
+not appear because phase agents are preassigned at launch.
 
 ### show
 
@@ -270,11 +303,11 @@ sase bead show <id> --format json
 ```
 
 Displays full details: status, type, tier, owner, assignee, model, parent, children, dependencies, blocks, description,
-notes, and linked design file. A closed bead also shows its resolution, close reason, and close timestamp; use
-`sase bead history <id>` to read how any of those fields got their current value. `full` is the default; `compact`
-prints the same single row as `sase bead list`. `json` emits a single-bead envelope with `issue`, `ancestors`,
-`children`, `depends_on`, `blocks`, and `plan`. Every relationship reference has a `resolved` flag, with unresolved IDs
-retaining fixed null-valued fields.
+notes, linked design file, artifact references, and each reference's current resolution when context is available. A
+closed bead also shows its resolution, close reason, and close timestamp; use `sase bead history <id>` to read how any
+of those fields got their current value. `full` is the default; `compact` prints the same single row as
+`sase bead list`. `json` emits a single-bead envelope with `issue`, `ancestors`, `children`, `depends_on`, `blocks`, and
+`plan`. Every relationship reference has a `resolved` flag, with unresolved IDs retaining fixed null-valued fields.
 
 ### dep
 
@@ -297,26 +330,44 @@ follows what waits on the root, and `--direction both` renders both. It marks re
 on. The removal is all-or-nothing, records `dependency_removed` events, and prints whether the source bead is now ready
 or still blocked.
 
+### ref
+
+```bash
+sase bead ref list [<id>]                       # list stored artifact references
+sase bead ref list <id> --resolve               # include current resolution status
+sase bead ref list <id> --json                  # machine-readable reference data
+sase bead ref add <id> <ref> [<ref2> ...]       # attach references
+sase bead ref rm <id> <ref> [<ref2> ...]        # detach references
+```
+
+`sase bead ref` with no child subcommand delegates to `sase bead ref list`. Store references without the prompt-time `@`
+sigil, for example `research:202607/report.md`, `file:default:<id>`, or `bead:sase-b7`. Add and remove normalize
+references through the shared artifact-reference parser; they do not require the reference to resolve on this machine.
+Use `--resolve` when listing if you need the current path or unresolved marker.
+
 ### other commands
 
 - `sase bead blocked` — list blocked beads with their blockers.
 - `sase bead rm <id> [<id2> ...]` — remove beads and all their children.
 - `sase bead stats` — show project statistics.
 - `sase bead sync` — stage bead state in git.
-- `sase bead doctor` — run bead-store and plan-link health checks.
+- `sase bead doctor` — run bead-store, plan-link, and artifact-reference health checks.
 - `sase bead doctor --fix-design-refs` — preview recoverable legacy plan links and repair them only after an interactive
   default-no confirmation.
 - `sase bead doctor --fix-projection` — preview `issues.jsonl` drift against canonical event streams and repair only the
   expected projection shape after confirmation.
-- `sase bead work <epic-id|plan.md>` — launch an epic's phase and land agents (`--dry-run` previews). Normally driven by
-  plan approval; do not run it casually from a working agent.
+- `sase bead doctor` reports artifact references with unknown namespaces, missing targets, or ambiguous targets.
+- `sase bead work <epic-id|plan.md|task-id>` — launch an epic's phase and land agents or one standalone task worker
+  (`--dry-run` previews). Epic launches are normally driven by plan approval; task launches are normally driven by a
+  `TaskTriage` gate.
 
 ## Typical Workflow
 
 1. **Epics come from plans.** An approved epic plan file creates the plan bead, phase beads, and dependencies
    automatically because plan approval runs `sase bead work`. Hand-create beads with `create` and `dep add` only for
    standalone tracker or backlog work.
-2. **Working loop.** `sase bead ready` → `sase bead update <id> --status in_progress` → do the work →
-   `sase bead close <id> --note "<what you verified>"`. A bead you were launched to work is already `in_progress` (see
-   Statuses). Never close the parent epic bead; the epic's land agent does that, and the descendant guard now rejects
-   that close outright while sibling phases are unfinished.
+2. **Tasks go through triage.** `sase bead create --type task ...` → refine the `open` draft →
+   `sase bead update <id> --status ready` → the owner launches or closes it from its `TaskTriage` gate.
+3. **Assigned working loop.** Do the work → `sase bead close <id> --note "<what you verified>"`. A bead you were
+   launched to work is already `in_progress` (see Statuses). Never close the parent epic bead; the epic's land agent
+   does that, and the descendant guard now rejects that close outright while sibling phases are unfinished.
