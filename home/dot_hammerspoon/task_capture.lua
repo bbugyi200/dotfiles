@@ -29,7 +29,20 @@ local function pomodoro_candidate(token)
 
 	local colon = marker:find(":", 1, true)
 	local hash = marker:find("#", 1, true)
-	return colon ~= nil and (hash == nil or colon < hash)
+	local caret = marker:find("^", 1, true)
+	return colon ~= nil and (hash == nil or colon < hash) and (caret == nil or colon < caret)
+end
+
+local function sub_bullet_candidate(token)
+	local marker = token:match("^@(.*)$")
+	if not marker or token:sub(1, 2) == "@!" then
+		return false
+	end
+
+	local caret = marker:find("^", 1, true)
+	local colon = marker:find(":", 1, true)
+	local hash = marker:find("#", 1, true)
+	return caret ~= nil and (colon == nil or caret < colon) and (hash == nil or caret < hash)
 end
 
 local function invalid(message, text)
@@ -85,6 +98,36 @@ local function parse_pomodoro(body, token)
 	}
 end
 
+local function parse_sub_bullet(body, token)
+	local marker = token:sub(2)
+	local caret = marker:find("^", 1, true)
+	local route = marker:sub(1, caret - 1)
+	local block_id = marker:sub(caret + 1)
+
+	if route == "" then
+		route = nil
+	elseif not valid_component(route) then
+		return invalid("sub-bullet capture route must contain only A-Z, a-z, 0-9, '_' or '-'", body)
+	else
+		route = route:lower()
+	end
+
+	if block_id == "" then
+		block_id = nil
+	elseif block_id:match("^[A-Za-z0-9-]+$") == nil then
+		return invalid("sub-bullet capture block ID must be non-empty and contain only A-Z, a-z, 0-9 or '-'", body)
+	end
+
+	return {
+		mode = "sub_bullet",
+		text = body,
+		route = route,
+		block_id = block_id,
+		needs_target = route == nil,
+		needs_task = block_id == nil,
+	}
+end
+
 function M.is_route(value)
 	return valid_component(value)
 end
@@ -101,15 +144,17 @@ function M.reset(state)
 	state.request = nil
 	state.route = nil
 	state.block_id = nil
+	state.task_ref = nil
 	state.picked_name = nil
 	state.picked_kind = nil
 	return state
 end
 
-function M.stage(state, request, route, block_id, picked_name, picked_kind)
+function M.stage(state, request, route, block_id, picked_name, picked_kind, task_ref)
 	state.request = request
 	state.route = route or request.route
 	state.block_id = block_id or request.block_id
+	state.task_ref = task_ref or request.task_ref
 	state.picked_name = picked_name
 	state.picked_kind = picked_kind
 	return state
@@ -127,6 +172,10 @@ end
 function M.parse(raw_text)
 	local text = trim(raw_text)
 	local body, token = split_terminal_token(text)
+
+	if sub_bullet_candidate(token) then
+		return parse_sub_bullet(body, token)
+	end
 
 	if pomodoro_candidate(token) then
 		return parse_pomodoro(body, token)
@@ -161,6 +210,23 @@ function M.parse(raw_text)
 		text = text,
 		mode = "none",
 	}
+end
+
+function M.finalize_sub_bullet(request, route, block_id)
+	if type(request) ~= "table" or request.mode ~= "sub_bullet" then
+		return nil, "Sub-bullet capture request is missing"
+	end
+
+	route = route or request.route
+	block_id = block_id or request.block_id
+	if not valid_component(route) then
+		return nil, "sub-bullet capture route must contain only A-Z, a-z, 0-9, '_' or '-'"
+	end
+	if type(block_id) ~= "string" or block_id == "" or block_id:match("^[A-Za-z0-9-]+$") == nil then
+		return nil, "sub-bullet capture block ID must be non-empty and contain only A-Z, a-z, 0-9 or '-'"
+	end
+
+	return "@" .. route:lower() .. "^" .. block_id .. " " .. request.text
 end
 
 function M.finalize(request, route, block_id)

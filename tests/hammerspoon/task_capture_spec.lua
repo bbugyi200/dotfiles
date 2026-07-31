@@ -46,6 +46,54 @@ describe("Hammerspoon task capture request model", function()
 		assert.is_true(neither.needs_block_id)
 	end)
 
+	it("parses all four canonical sub-bullet forms", function()
+		local complete = capture.parse("Add context @Dev^focus-123")
+		assert.same({
+			mode = "sub_bullet",
+			text = "Add context",
+			route = "dev",
+			block_id = "focus-123",
+			needs_target = false,
+			needs_task = false,
+		}, complete)
+
+		local needs_task = capture.parse("Add context @Dev^")
+		assert.is_false(needs_task.needs_target)
+		assert.is_true(needs_task.needs_task)
+		assert.equals("dev", needs_task.route)
+
+		local needs_target = capture.parse("Add context @^focus-123")
+		assert.is_true(needs_target.needs_target)
+		assert.is_false(needs_target.needs_task)
+		assert.equals("focus-123", needs_target.block_id)
+
+		local needs_both = capture.parse("Add context @^")
+		assert.is_true(needs_both.needs_target)
+		assert.is_true(needs_both.needs_task)
+	end)
+
+	it("gives sub-bullet markers precedence over Pomodoro markers", function()
+		local malformed = capture.parse("Add context @route^bad:id")
+		assert.equals("invalid", malformed.mode)
+		assert.matches("sub%-bullet", malformed.error)
+
+		local pomodoro = capture.parse("Do work @route:id")
+		assert.equals("pomodoro", pomodoro.mode)
+		assert.equals("id", pomodoro.block_id)
+	end)
+
+	it("rejects invalid sub-bullet components", function()
+		for _, raw_text in ipairs({
+			"Add context @bad.route^id",
+			"Add context @route^bad.id",
+			"Add context @route^bad_id",
+		}) do
+			local request = capture.parse(raw_text)
+			assert.equals("invalid", request.mode, raw_text)
+			assert.is_truthy(request.error, raw_text)
+		end
+	end)
+
 	it("rejects invalid Pomodoro components", function()
 		for _, raw_text in ipairs({
 			"Do work @bad.route:id",
@@ -66,6 +114,12 @@ describe("Hammerspoon task capture request model", function()
 		}, capture.parse("Discuss @dev:id later"))
 		assert.equals("", capture.parse("@dev:id").text)
 		assert.equals("", capture.parse("@:").text)
+		assert.same({
+			text = "Discuss @dev^id later",
+			mode = "none",
+		}, capture.parse("Discuss @dev^id later"))
+		assert.equals("", capture.parse("@dev^id").text)
+		assert.equals("", capture.parse("@^").text)
 	end)
 
 	it("preserves existing note and section descriptors", function()
@@ -111,6 +165,21 @@ describe("Hammerspoon task capture request model", function()
 		end
 	end)
 
+	it("converges every sub-bullet form on canonical synthesis", function()
+		local expected = "@dev^focus-123 Add context"
+		for _, raw_text in ipairs({
+			"Add context @Dev^focus-123",
+			"Add context @Dev^",
+			"Add context @^focus-123",
+			"Add context @^",
+		}) do
+			local request = capture.parse(raw_text)
+			local final, err = capture.finalize_sub_bullet(request, "dev", "focus-123")
+			assert.is_nil(err, raw_text)
+			assert.equals(expected, final, raw_text)
+		end
+	end)
+
 	it("retains validation failures for the caller to display", function()
 		local state = capture.new_state()
 		local request = capture.parse("Do work @dev:")
@@ -130,9 +199,21 @@ describe("Hammerspoon task capture request model", function()
 	it("clears staged picker values on cancellation", function()
 		local state = capture.new_state()
 		local request = capture.parse("Do work @:")
-		capture.stage(state, request, "dev", "focus-123", "Dev", "area")
+		capture.stage(state, request, "dev", "focus-123", "Dev", "area", "24:1f3a9c2b")
 		capture.reset(state)
 		assert.same({}, state)
+	end)
+
+	it("keeps a staged task ref available after capture failure", function()
+		local state = capture.new_state()
+		local request = capture.parse("Add context @dev^")
+		capture.stage(state, request, nil, nil, "Dev", "area", "24:1f3a9c2b")
+
+		-- A CLI failure does not transition or reset the pure request state.
+		assert.equals("dev", state.route)
+		assert.equals("24:1f3a9c2b", state.task_ref)
+		assert.equals("Dev", state.picked_name)
+		assert.equals("area", state.picked_kind)
 	end)
 
 	it("keeps staged values available after capture failure", function()

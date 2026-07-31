@@ -613,6 +613,8 @@ local function notifyCaptureSuccess(decoded, pickedName, pickedKind)
 		title = captureSuccessPrefix .. " Task captured"
 	elseif decoded.kind == "bullet" then
 		title = captureSuccessPrefix .. " Note captured"
+	elseif decoded.kind == "sub_bullet" then
+		title = captureSuccessPrefix .. " Sub-bullet captured"
 	end
 
 	-- Build the core banner from plain strings first so the optional
@@ -621,6 +623,9 @@ local function notifyCaptureSuccess(decoded, pickedName, pickedKind)
 
 	local subOk, subTitle = pcall(captureDestinationLabel, decoded, pickedName, pickedKind)
 	if subOk and type(subTitle) == "string" then
+		if decoded.kind == "sub_bullet" and type(decoded.parent_text) == "string" then
+			subTitle = truncateForBanner(subTitle .. captureLabelSeparator .. decoded.parent_text, 140)
+		end
 		attributes.subTitle = subTitle
 	end
 
@@ -695,16 +700,24 @@ export PATH
 exec bob capture-sections --format json --route "$1"
 ]]
 
+local taskCaptureTasksCommand = [[
+PATH="$HOME/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+export PATH
+exec bob capture-tasks --format json --route "$1"
+]]
+
 -- The task text is passed as the positional parameter $1, the optional forced
--- route as $2, and the optional exact section as $3 (never interpolated) so
--- arbitrary input cannot be evaluated by the shell.
+-- route as $2, the optional exact section as $3, and the optional task ref as
+-- $4 (never interpolated) so arbitrary input cannot be evaluated by the shell.
 local taskCaptureCommand = [[
 PATH="$HOME/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 export PATH
 if [ -z "${DATE+x}" ] && command -v gdate >/dev/null 2>&1; then
 	export DATE=gdate
 fi
-if [ -n "${3:-}" ]; then
+if [ -n "${4:-}" ]; then
+	exec bob capture --format json --route "$2" --task-ref "$4" -- "$1"
+elif [ -n "${3:-}" ]; then
 	exec bob capture --format json --route "$2" --section "$3" -- "$1"
 elif [ -n "${2:-}" ]; then
 	exec bob capture --format json --route "$2" -- "$1"
@@ -761,13 +774,17 @@ end
 
 -- Write the capture. A nil/empty route runs the unrouted inbox path; a non-empty
 -- route forces `--route`, and a non-empty section with a route forces an exact
--- `--section` bullet. On success the prompt is closed; on failure the prompt
--- stays open so the typed text is not lost.
-local function runFinalCapture(text, route, pickedName, pickedKind, section)
+-- `--section` bullet. A task ref forces a stale-safe sub-bullet capture. On
+-- success the prompt is closed; on failure the prompt stays open so the typed
+-- text and staged picker values are not lost.
+local function runFinalCapture(text, route, pickedName, pickedKind, section, taskRef)
 	local extraArgs = { text }
 	if type(route) == "string" and route ~= "" then
 		extraArgs[#extraArgs + 1] = route
-		if type(section) == "string" and section ~= "" then
+		if type(taskRef) == "string" and taskRef ~= "" then
+			extraArgs[#extraArgs + 1] = ""
+			extraArgs[#extraArgs + 1] = taskRef
+		elseif type(section) == "string" and section ~= "" then
 			extraArgs[#extraArgs + 1] = section
 		end
 	end
@@ -788,6 +805,17 @@ local function runFinalCapture(text, route, pickedName, pickedKind, section)
 
 		notifyCaptureFailure(captureFailureDetail(decoded, out, err))
 	end, notifyCaptureFailure)
+end
+
+local function runSubBulletCapture(request, route, blockId, pickedName, pickedKind)
+	local finalText, validationError = TaskCapture.finalize_sub_bullet(request, route, blockId)
+	if not finalText then
+		notifyCaptureFailure(validationError)
+		return
+	end
+
+	TaskCapture.stage(taskCaptureState, request, route, blockId, pickedName, pickedKind)
+	runFinalCapture(finalText, nil, pickedName or taskCaptureState.route, pickedKind)
 end
 
 local function runPomodoroCapture(request, route, blockId, pickedName, pickedKind)
@@ -894,6 +922,65 @@ local function buildSectionChoices(sections)
 	return choices
 end
 
+local function taskMarkerColor(statusSymbol)
+	if statusSymbol == "/" then
+		return "#0a84ff"
+	end
+	if statusSymbol == "*" then
+		return "#ff9f0a"
+	end
+	if statusSymbol == "?" then
+		return "#ff453a"
+	end
+	return "#8e8e93"
+end
+
+local function styledTaskChoiceText(text, markerStart, markerEnd, statusSymbol)
+	local ok, styled = pcall(function()
+		local value = hs.styledtext.new(text)
+		return value:setStyle({ color = { hex = taskMarkerColor(statusSymbol), alpha = 1 } }, markerStart, markerEnd)
+	end)
+	if ok then
+		return styled
+	end
+	return text
+end
+
+local function buildTaskChoices(tasks)
+	local choices = {}
+	for _, task in ipairs(tasks) do
+		if type(task) == "table" and type(task.ref) == "string" and type(task.text) == "string" then
+			local statusSymbol = tostring(task.status_symbol or " ")
+			local marker = "[" .. statusSymbol .. "]"
+			local depth = math.max(tonumber(task.depth) or 0, 0)
+			local indentation = string.rep("  ", depth)
+			local text = indentation .. marker .. " " .. task.text
+			local details = {}
+			if type(task.status_name) == "string" and task.status_name ~= "" then
+				details[#details + 1] = task.status_name
+			end
+			if type(task.block_id) == "string" and task.block_id ~= "" then
+				details[#details + 1] = "^" .. task.block_id
+			end
+			if type(task.section) == "string" and task.section ~= "" then
+				details[#details + 1] = task.section
+			end
+			local childCount = tonumber(task.child_count) or 0
+			if childCount > 0 then
+				details[#details + 1] = tostring(childCount) .. " notes"
+			end
+
+			local markerStart = #indentation + 1
+			choices[#choices + 1] = {
+				text = styledTaskChoiceText(text, markerStart, markerStart + #marker - 1, statusSymbol),
+				subText = table.concat(details, captureLabelSeparator),
+				task_ref = task.ref,
+			}
+		end
+	end
+	return choices
+end
+
 local function showTaskSectionChooser(text, route, sections, pickedName, pickedKind)
 	local choices = buildSectionChoices(sections)
 	if #choices == 0 then
@@ -944,6 +1031,57 @@ local function startSectionStage(text, route, pickedName, pickedKind)
 	end, notifyTargetPickerFailure)
 end
 
+local function showTaskChooser(request, route, tasks, pickedName, pickedKind)
+	local choices = buildTaskChoices(tasks)
+	if #choices == 0 then
+		notifyTargetPickerFailure("no open tasks in " .. route .. ".md")
+		return
+	end
+
+	local chooser
+	chooser = hs.chooser.new(function(choice)
+		if taskCaptureChooser ~= chooser then
+			return
+		end
+		taskCaptureChooser = nil
+
+		if type(choice) ~= "table" or type(choice.task_ref) ~= "string" then
+			focusTaskCapturePrompt()
+			return
+		end
+
+		TaskCapture.stage(taskCaptureState, request, route, nil, pickedName, pickedKind, choice.task_ref)
+		runFinalCapture(request.text, route, pickedName or route, pickedKind, nil, choice.task_ref)
+	end)
+
+	if not chooser then
+		notifyTargetPickerFailure("could not create the task picker")
+		return
+	end
+
+	taskCaptureChooser = chooser
+	chooser:placeholderText("Capture under task")
+	chooser:searchSubText(true)
+	chooser:choices(choices)
+	chooser:show()
+end
+
+local function startTaskStage(request, route, pickedName, pickedKind)
+	startCaptureStage(taskCaptureTasksCommand, { route }, function(exitCode, decoded, out, err)
+		if exitCode == 0 and type(decoded) == "table" and decoded.ok == true and type(decoded.tasks) == "table" then
+			local count = tonumber(decoded.count) or #decoded.tasks
+			if count == 0 then
+				notifyTargetPickerFailure("no open tasks in " .. route .. ".md")
+				return
+			end
+			showTaskChooser(request, route, decoded.tasks, pickedName, pickedKind)
+			return
+		end
+
+		notifyTargetPickerFailure(captureFailureDetail(decoded, out, err, "bob capture-tasks reported no detail"))
+	end, notifyTargetPickerFailure)
+end
+
 -- Show the native area/project picker for a trailing `@`, `@#`, or
 -- `@#section` request. Dismissing it refocuses the prompt with the typed text
 -- intact. A bare `@` forces the picked route. A prefixed `@#section`
@@ -966,7 +1104,7 @@ local function showTaskCaptureChooser(request, targets)
 		taskCaptureChooser = nil
 
 		if type(choice) ~= "table" or type(choice.route) ~= "string" then
-			if request.mode == "pomodoro" then
+			if request.mode == "pomodoro" or request.mode == "sub_bullet" then
 				TaskCapture.reset(taskCaptureState)
 			end
 			focusTaskCapturePrompt()
@@ -982,6 +1120,14 @@ local function showTaskCaptureChooser(request, targets)
 				-- asynchronous CLI capture fails.
 				showPomodoroBlockIdPrompt(request, route, choice.text, choice.kind, request.block_id)
 				runPomodoroCapture(request, route, request.block_id, choice.text, choice.kind)
+			end
+		elseif request.mode == "sub_bullet" then
+			local route = choice.route:lower()
+			if request.needs_task then
+				TaskCapture.stage(taskCaptureState, request, route, nil, choice.text, choice.kind)
+				startTaskStage(request, route, choice.text, choice.kind)
+			else
+				runSubBulletCapture(request, route, request.block_id, choice.text, choice.kind)
 			end
 		elseif request.mode == "note_bullet" then
 			runFinalCapture(
@@ -1036,6 +1182,10 @@ end
 --   * `@route:`   -> prompt for only the block ID.
 --   * `@:id`      -> choose only the note.
 --   * `@:`        -> choose the note, then prompt for the block ID.
+--   * `@route^id` -> capture a sub-bullet immediately.
+--   * `@route^`   -> choose an open task in the explicit route.
+--   * `@^id`      -> choose only the note, then capture under the supplied ID.
+--   * `@^`        -> choose the note, then choose one of its open tasks.
 --
 -- Prefix-bearing explicit routes (`@route#prefix`), plain `@route`, mid-text
 -- markers, and non-final markers are left untouched so Bob's parser keeps
@@ -1073,6 +1223,21 @@ local function submitCapturedTask(rawText)
 			return
 		end
 		runPomodoroCapture(request, request.route, request.block_id)
+		return
+	end
+
+	if request.mode == "sub_bullet" then
+		if request.needs_target then
+			TaskCapture.stage(taskCaptureState, request)
+			startTargetsStage(request)
+			return
+		end
+		if request.needs_task then
+			TaskCapture.stage(taskCaptureState, request)
+			startTaskStage(request, request.route, request.route, nil)
+			return
+		end
+		runSubBulletCapture(request, request.route, request.block_id)
 		return
 	end
 
