@@ -257,7 +257,7 @@ function provider_command() {
     echo "codex -c 'model_reasoning_effort=\"xhigh\"' --dangerously-bypass-approvals-and-sandbox"
     ;;
   agy)
-    echo "agy --model 'Gemini 3.5 Flash (High)' --dangerously-skip-permissions"
+    echo "agy --model gemini-3.6-flash-high --dangerously-skip-permissions"
     ;;
   qwen)
     echo "qwen --model qwen3.6-plus --yolo"
