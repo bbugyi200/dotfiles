@@ -6,6 +6,30 @@ amd_h1_title: "athena - Bryan Bugyi's Home Server"
 
 llm_provider:
   provider: codex
+  model_aliases:
+    custom:
+      # GLM-5.2 pilot aliases. Effort MUST stay pinned to @high or @max: OpenCode
+      # only generates `high` and `max` variants for GLM-5.2 and rejects any other
+      # --variant, and the base config's default_effort is xhigh.
+      glm52_high:
+        model: opencode/zai/glm-5.2@high
+        description: "GLM-5.2 via OpenCode on the metered Z.AI API (high effort)."
+        bucket: glm_pilot
+      glm52_max:
+        model: opencode/zai/glm-5.2@max
+        description: "GLM-5.2 via OpenCode on the metered Z.AI API (max effort)."
+        bucket: glm_pilot
+      glm52cp_high:
+        model: opencode/zai-coding-plan/glm-5.2@high
+        description: "GLM-5.2 via OpenCode on the Z.AI Coding Plan subscription (high effort)."
+        bucket: glm_pilot
+      glm52cp_max:
+        model: opencode/zai-coding-plan/glm-5.2@max
+        description: "GLM-5.2 via OpenCode on the Z.AI Coding Plan subscription (max effort)."
+        bucket: glm_pilot
+    buckets:
+      glm_pilot:
+        description: "GLM-5.2 pilot models routed through OpenCode. Not part of any built-in role pool."
 
 telegram:
   commands:

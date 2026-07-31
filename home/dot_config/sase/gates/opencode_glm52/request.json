@@ -1,0 +1,177 @@
+{
+  "schema_version": 3,
+  "kind": "custom",
+  "producer": { "agent": "qt" },
+  "payload": {
+    "intent": "Install the OpenCode CLI and authenticate a Z.AI credential so SASE can run GLM-5.2",
+    "runtime": "opencode",
+    "package": "opencode-ai",
+    "models": ["zai/glm-5.2", "zai-coding-plan/glm-5.2"],
+    "credential_path": "~/.local/share/opencode/auth.json"
+  },
+  "presentation": {
+    "icon": "🔌",
+    "sender": "opencode-glm52-setup",
+    "notes": [
+      "Install OpenCode and authenticate GLM-5.2 for SASE.",
+      "Pick ONE billing route: the metered Z.AI API (recommended for the pilot) or the Z.AI Coding Plan subscription.",
+      "Prerequisite: the API key must already be in pass — `pass insert zai_sase_api_key` (metered) or `pass insert zai_coding_plan_sase_api_key` (Coding Plan); $ZHIPU_API_KEY is used as a fallback. No agent ever sees the key.",
+      "Install runs `npm install -g opencode-ai`. Authenticate writes only the chosen provider's entry into ~/.local/share/opencode/auth.json (mode 0600). Verify makes two small paid GLM-5.2 calls in a temp directory.",
+      "If gpg-agent is locked, run `pass show zai_sase_api_key >/dev/null` in a terminal first so the key read cannot block."
+    ],
+    "tags": ["opencode", "glm-5.2", "provider-setup"]
+  },
+  "query": "(install_api AND auth_api AND verify_api) OR (install_plan AND auth_plan AND verify_plan) OR decline",
+  "primary_branch": ["install_api", "auth_api", "verify_api"],
+  "options": [
+    {
+      "id": "install_api",
+      "label": "Install OpenCode (npm -g opencode-ai)",
+      "icon": "📦",
+      "default_selected": true,
+      "feedback": "optional",
+      "command": { "argv": ["commands/install"] },
+      "input_schema": { "type": "object" },
+      "result_schema": {
+        "type": "object",
+        "required": ["status", "version"],
+        "properties": {
+          "status": { "const": "installed" },
+          "version": { "type": "string" },
+          "path": { "type": "string" }
+        }
+      }
+    },
+    {
+      "id": "auth_api",
+      "label": "Authenticate metered Z.AI API",
+      "icon": "💳",
+      "default_selected": true,
+      "feedback": "optional",
+      "command": { "argv": ["commands/authenticate", "zai", "zai_sase_api_key"] },
+      "input_schema": { "type": "object" },
+      "result_schema": {
+        "type": "object",
+        "required": ["status", "provider", "key_source"],
+        "properties": {
+          "status": { "const": "authenticated" },
+          "provider": { "const": "zai" },
+          "credential_path": { "type": "string" },
+          "key_source": { "enum": ["pass", "env"] }
+        }
+      }
+    },
+    {
+      "id": "verify_api",
+      "label": "Verify GLM-5.2 on the metered API",
+      "icon": "🧪",
+      "default_selected": true,
+      "feedback": "optional",
+      "command": { "argv": ["commands/verify", "zai"] },
+      "input_schema": { "type": "object" },
+      "result_schema": {
+        "type": "object",
+        "required": ["status", "marker", "tool_read"],
+        "properties": {
+          "status": { "const": "verified" },
+          "provider": { "const": "zai" },
+          "model": { "type": "string" },
+          "variant": { "type": "string" },
+          "marker": { "const": true },
+          "tool_read": { "const": true }
+        }
+      }
+    },
+    {
+      "id": "install_plan",
+      "label": "Install OpenCode (npm -g opencode-ai)",
+      "icon": "📦",
+      "default_selected": true,
+      "feedback": "optional",
+      "command": { "argv": ["commands/install"] },
+      "input_schema": { "type": "object" },
+      "result_schema": {
+        "type": "object",
+        "required": ["status", "version"],
+        "properties": {
+          "status": { "const": "installed" },
+          "version": { "type": "string" },
+          "path": { "type": "string" }
+        }
+      }
+    },
+    {
+      "id": "auth_plan",
+      "label": "Authenticate Z.AI Coding Plan",
+      "icon": "🎟️",
+      "default_selected": true,
+      "feedback": "optional",
+      "command": { "argv": ["commands/authenticate", "zai-coding-plan", "zai_coding_plan_sase_api_key"] },
+      "input_schema": { "type": "object" },
+      "result_schema": {
+        "type": "object",
+        "required": ["status", "provider", "key_source"],
+        "properties": {
+          "status": { "const": "authenticated" },
+          "provider": { "const": "zai-coding-plan" },
+          "credential_path": { "type": "string" },
+          "key_source": { "enum": ["pass", "env"] }
+        }
+      }
+    },
+    {
+      "id": "verify_plan",
+      "label": "Verify GLM-5.2 on the Coding Plan",
+      "icon": "🧪",
+      "default_selected": true,
+      "feedback": "optional",
+      "command": { "argv": ["commands/verify", "zai-coding-plan"] },
+      "input_schema": { "type": "object" },
+      "result_schema": {
+        "type": "object",
+        "required": ["status", "marker", "tool_read"],
+        "properties": {
+          "status": { "const": "verified" },
+          "provider": { "const": "zai-coding-plan" },
+          "model": { "type": "string" },
+          "variant": { "type": "string" },
+          "marker": { "const": true },
+          "tool_read": { "const": true }
+        }
+      }
+    },
+    {
+      "id": "decline",
+      "label": "Do not install or authenticate",
+      "icon": "✋",
+      "feedback": "required",
+      "command": { "argv": ["commands/decline"] },
+      "input_schema": { "type": "object" },
+      "result_schema": {
+        "type": "object",
+        "required": ["status"],
+        "properties": { "status": { "const": "declined" } }
+      }
+    }
+  ],
+  "groups": [
+    {
+      "options": ["install_api", "auth_api", "verify_api"],
+      "label": "Install + metered Z.AI API",
+      "icon": "💳"
+    },
+    {
+      "options": ["install_plan", "auth_plan", "verify_plan"],
+      "label": "Install + Z.AI Coding Plan",
+      "icon": "🎟️"
+    }
+  ],
+  "resources": [
+    { "path": "commands/install", "role": "command", "source": "commands/install" },
+    { "path": "commands/authenticate", "role": "command", "source": "commands/authenticate" },
+    { "path": "commands/verify", "role": "command", "source": "commands/verify" },
+    { "path": "commands/decline", "role": "command", "source": "commands/decline" }
+  ],
+  "gate_timeout_seconds": 86400,
+  "auto": false
+}

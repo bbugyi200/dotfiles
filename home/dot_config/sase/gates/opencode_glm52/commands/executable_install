@@ -1,0 +1,57 @@
+#!/bin/sh
+# Install or upgrade the OpenCode CLI globally with npm.
+# stdin: gate input JSON (ignored). stdout: exactly one JSON object. Logs -> stderr.
+set -eu
+
+log() { printf '%s\n' "$*" >&2; }
+json_safe() { printf '%s' "$1" | tr -cd 'A-Za-z0-9._/+ -'; }
+
+cat >/dev/null 2>&1 || true
+
+find_npm() {
+  if command -v npm >/dev/null 2>&1; then
+    command -v npm
+    return 0
+  fi
+  found=""
+  for candidate in \
+    "${NVM_DIR:-$HOME/.config/nvm}/versions/node"/*/bin/npm \
+    "$HOME/.config/nvm/versions/node"/*/bin/npm \
+    /usr/local/bin/npm \
+    /opt/homebrew/bin/npm \
+    /usr/bin/npm
+  do
+    [ -x "$candidate" ] && found="$candidate"
+  done
+  [ -n "$found" ] || return 1
+  printf '%s\n' "$found"
+}
+
+if ! npm_bin="$(find_npm)"; then
+  log "ERROR: npm was not found on PATH or in any known nvm/homebrew location."
+  log "Install Node.js/npm (or start the gate from a shell where 'npm' resolves) and try again."
+  exit 1
+fi
+log "Using npm: $npm_bin"
+
+log "Running: $npm_bin install -g opencode-ai"
+"$npm_bin" install -g opencode-ai --no-fund --no-audit >&2
+
+opencode_bin=""
+if prefix="$("$npm_bin" prefix -g 2>/dev/null)" && [ -x "$prefix/bin/opencode" ]; then
+  opencode_bin="$prefix/bin/opencode"
+elif command -v opencode >/dev/null 2>&1; then
+  opencode_bin="$(command -v opencode)"
+fi
+
+if [ -z "$opencode_bin" ]; then
+  log "ERROR: 'opencode' was not found after installation."
+  exit 1
+fi
+
+version="$("$opencode_bin" --version 2>/dev/null | head -n 1 | tr -d '\r')"
+[ -n "$version" ] || version="unknown"
+log "Installed opencode $version at $opencode_bin"
+
+printf '{"status":"installed","version":"%s","path":"%s"}\n' \
+  "$(json_safe "$version")" "$(json_safe "$opencode_bin")"

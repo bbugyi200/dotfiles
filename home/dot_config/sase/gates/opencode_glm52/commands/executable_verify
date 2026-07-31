@@ -1,0 +1,55 @@
+#!/bin/sh
+# Smoke-test GLM-5.2 through OpenCode: one marker reply and one tool-backed read.
+# usage: verify <zai|zai-coding-plan>
+# stdout: exactly one JSON object. All OpenCode output -> stderr.
+set -eu
+
+log() { printf '%s\n' "$*" >&2; }
+
+cat >/dev/null 2>&1 || true
+
+provider="${1:-}"
+case "$provider" in
+  zai|zai-coding-plan) ;;
+  *) log "ERROR: provider must be 'zai' or 'zai-coding-plan' (got '${provider}')."; exit 1 ;;
+esac
+model="$provider/glm-5.2"
+
+oc=""
+if command -v opencode >/dev/null 2>&1; then
+  oc="$(command -v opencode)"
+elif command -v npm >/dev/null 2>&1 && prefix="$(npm prefix -g 2>/dev/null)" && [ -x "$prefix/bin/opencode" ]; then
+  oc="$prefix/bin/opencode"
+fi
+[ -n "$oc" ] || { log "ERROR: 'opencode' not found; run the install step first."; exit 1; }
+
+work="$(mktemp -d)"
+trap 'rm -rf "$work"' EXIT
+
+marker="GLM52_OK"
+log "Probe 1/2: text reply from $model (--variant high)"
+if ! "$oc" run --model "$model" --variant high --dangerously-skip-permissions \
+      --dir "$work" "Reply with exactly: $marker" > "$work/probe1.txt" 2>&1; then
+  cat "$work/probe1.txt" >&2
+  log "ERROR: opencode run failed for $model."
+  exit 1
+fi
+cat "$work/probe1.txt" >&2
+grep -q "$marker" "$work/probe1.txt" || { log "ERROR: marker '$marker' not found in the reply."; exit 1; }
+
+token="glm52probe$$"
+printf '%s\n' "$token" > "$work/GLM_PROBE.txt"
+log "Probe 2/2: tool-backed file read"
+if ! "$oc" run --model "$model" --variant high --dangerously-skip-permissions --dir "$work" \
+      "Read the file GLM_PROBE.txt in this directory and reply with exactly its contents." \
+      > "$work/probe2.txt" 2>&1; then
+  cat "$work/probe2.txt" >&2
+  log "ERROR: tool-backed probe failed."
+  exit 1
+fi
+cat "$work/probe2.txt" >&2
+grep -q "$token" "$work/probe2.txt" || { log "ERROR: file contents were not echoed back; tool calling did not work."; exit 1; }
+
+log "Both probes passed for $model."
+printf '{"status":"verified","provider":"%s","model":"%s","variant":"high","marker":true,"tool_read":true}\n' \
+  "$provider" "$model"

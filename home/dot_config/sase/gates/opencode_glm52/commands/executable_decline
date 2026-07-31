@@ -1,0 +1,5 @@
+#!/bin/sh
+# No-op rejection path: change nothing, record the decision.
+set -eu
+cat >/dev/null 2>&1 || true
+printf '{"status":"declined"}\n'

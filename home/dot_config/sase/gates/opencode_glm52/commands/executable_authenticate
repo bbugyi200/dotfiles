@@ -1,0 +1,91 @@
+#!/bin/sh
+# Store a Z.AI API key in OpenCode's credential store, exactly as
+# `opencode auth login` would: ~/.local/share/opencode/auth.json, mode 0600.
+# usage: authenticate <zai|zai-coding-plan> <pass-entry-name>
+# stdout: exactly one JSON object. Logs -> stderr. The key is NEVER printed or
+# passed through argv (it reaches jq through the environment only).
+set -eu
+
+log() { printf '%s\n' "$*" >&2; }
+
+cat >/dev/null 2>&1 || true
+
+provider="${1:-}"
+pass_entry="${2:-}"
+
+case "$provider" in
+  zai|zai-coding-plan) ;;
+  *) log "ERROR: provider must be 'zai' or 'zai-coding-plan' (got '${provider}')."; exit 1 ;;
+esac
+
+command -v jq >/dev/null 2>&1 || { log "ERROR: jq is required but was not found."; exit 1; }
+
+store="${PASSWORD_STORE_DIR:-$HOME/.password-store}"
+key=""
+key_source=""
+
+read_pass() {
+  entry="$1"
+  [ -n "$entry" ] || return 1
+  [ -f "$store/$entry.gpg" ] || return 1
+  command -v pass >/dev/null 2>&1 || return 1
+  if command -v timeout >/dev/null 2>&1; then
+    timeout 120 pass show "$entry" 2>/dev/null | head -n 1
+  else
+    pass show "$entry" 2>/dev/null | head -n 1
+  fi
+}
+
+for entry in "$pass_entry" "zai_sase_api_key"; do
+  [ -n "$key" ] && break
+  candidate="$(read_pass "$entry" || true)"
+  if [ -n "$candidate" ]; then
+    key="$candidate"
+    key_source="pass"
+    log "Using key from pass entry: $entry"
+  fi
+done
+
+if [ -z "$key" ] && [ -n "${ZHIPU_API_KEY:-}" ]; then
+  key="$ZHIPU_API_KEY"
+  key_source="env"
+  log "Using key from \$ZHIPU_API_KEY"
+fi
+
+if [ -z "$key" ]; then
+  log "ERROR: no Z.AI API key available."
+  log "Store one first:  pass insert ${pass_entry:-zai_sase_api_key}"
+  log "(or export ZHIPU_API_KEY before starting the gate)."
+  log "If pass timed out, unlock gpg-agent once with: pass show ${pass_entry:-zai_sase_api_key} >/dev/null"
+  exit 1
+fi
+
+data_dir="${XDG_DATA_HOME:-$HOME/.local/share}/opencode"
+auth_file="$data_dir/auth.json"
+mkdir -p "$data_dir"
+chmod 700 "$data_dir"
+
+umask 077
+tmp="$auth_file.tmp.$$"
+trap 'rm -f "$tmp"' EXIT
+
+existing='{}'
+if [ -s "$auth_file" ]; then
+  existing="$(cat "$auth_file")"
+fi
+
+printf '%s' "$existing" \
+  | ZAI_KEY="$key" jq --arg provider "$provider" \
+      '.[$provider] = {"type": "api", "key": env.ZAI_KEY}' > "$tmp"
+chmod 600 "$tmp"
+mv "$tmp" "$auth_file"
+trap - EXIT
+
+jq -e --arg p "$provider" \
+  '.[$p].type == "api" and ((.[$p].key // "") | length) > 0' "$auth_file" >/dev/null \
+  || { log "ERROR: credential was not stored correctly."; exit 1; }
+
+log "Stored '$provider' credential in $auth_file (mode 0600)."
+
+printf '{"status":"authenticated","provider":"%s","credential_path":"%s","key_source":"%s"}\n' \
+  "$provider" "$auth_file" "$key_source"
