@@ -128,6 +128,14 @@ ace:
     xs: "xprompt skill"
     xw: "xprompt workflow"
     # keep-sorted end
+  # Tribes assigned by my own xprompts, not by sase itself. sase bundles
+  # display config only for the tribes its own source can assign (default,
+  # epic, chop, pinned, review); anything else is mine to configure here.
+  tribes:
+    research:
+      icon: "∴"
+      color: "#5FD7AF"
+      description: "Research swarm agents from #research_swarm that ship durable reports instead of code changes."
 
 axe:
   lumberjacks:
