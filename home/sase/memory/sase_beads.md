@@ -57,10 +57,6 @@ sase bead create -T task -t "<title>" -d "<what is wrong and how you found it>"
 sase bead update <id> -s ready
 ```
 
-`sase bead update` accepts one or more bead IDs and applies the same requested fields to the whole batch atomically.
-Beads that already match are reported as unchanged and are not committed; descendant-close validation evaluates the
-entire batch together.
-
 Epic phase workers are the exception: they never create beads. They append `PROPOSED FOLLOW-UP: <summary — detail>` to
 their own phase bead, and the epic's land agent decides which proposals become task beads.
 
