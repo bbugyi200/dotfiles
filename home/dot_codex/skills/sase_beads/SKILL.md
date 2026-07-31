@@ -354,6 +354,9 @@ Use `--resolve` when listing if you need the current path or unresolved marker.
 - `sase bead doctor` — run bead-store, plan-link, and artifact-reference health checks.
 - `sase bead doctor --fix-design-refs` — preview recoverable legacy plan links and repair them only after an interactive
   default-no confirmation.
+- `sase bead doctor --fix-issue-prefix` — preview and, after confirmation, reset a store's issue prefix when it was
+  leaked as the project's ProjectSpec directory key instead of its `PROJECT_NAME`. A deliberately customized prefix is
+  never flagged. Forward-only: existing bead IDs keep the old prefix, only new top-level beads use the corrected one.
 - `sase bead doctor --fix-projection` — preview `issues.jsonl` drift against canonical event streams and repair only the
   expected projection shape after confirmation.
 - `sase bead doctor` reports artifact references with unknown namespaces, missing targets, or ambiguous targets.

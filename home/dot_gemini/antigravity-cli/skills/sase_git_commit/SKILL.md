@@ -37,8 +37,12 @@ Commit changes via the `sase_git_commit` wrapper. The wrapper records skill invo
    - `revert` — Reverts a previous commit; reference the reverted commit in the message body.
    - `chore` — Maintenance that fits none of the tags above, such as tooling config, housekeeping, or asset updates.
 
-   A project may restrict its allowed tag set, for example via a PR-title check. When in doubt, prefer a tag the
-   project's history already uses.
+   Picking a tag is mandatory, not advisory: `sase commit` **rejects** a message whose subject line is not a
+   conventional header, before it closes any bead or runs any hook. If that happens, rewrite the subject in the same
+   `-M` message file (which is preserved on failure) and re-run the identical command — do not disable the check.
+
+   A project may restrict its allowed tag set, for example via a PR-title check or `commit.message.allowed_types`. When
+   in doubt, prefer a tag the project's history already uses.
 
    Commit tags can drive automated release tooling such as release-please or release-plz. These tools parse tags to
    compute semantic version bumps and changelog entries: `fix` -> patch, `feat` -> minor, and breaking changes -> major.
@@ -54,15 +58,18 @@ Commit changes via the `sase_git_commit` wrapper. The wrapper records skill invo
    The spec-standard footer token is singular `BREAKING CHANGE:`; `BREAKING-CHANGE:` is also accepted. Prefer the `!`
    suffix even when the footer is present, since squash-merge workflows keep the title but can mangle bodies.
 
-3. **Write a commit message file** — Create a file (e.g., `commit_message.md`) containing the commit message. **NEVER
-   mention "Antigravity" or "Antigravity CLI"** — write as if a human authored the commit. Do not preemptively stash,
-   fast-forward, pull, or hand-sync before committing; `sase commit` commits first, rebases automatically, and handles
-   mechanical bead-store conflicts.
+3. **Write a commit message file** — Create the file at `.sase/commit_message.md`, relative to the repository being
+   committed, containing the commit message. Create the `.sase/` directory first if it does not exist yet (e.g.
+   `mkdir -p .sase`) — do not rely on a file-writing tool to auto-create parent directories. `.sase/` is git-ignored in
+   every SASE-managed checkout, so this temporary file never shows up as an uncommitted change to the post-completion
+   commit finalizer and can never be swept into a whole-repository commit. **NEVER mention "Antigravity" or "Antigravity
+   CLI"** — write as if a human authored the commit. Do not preemptively stash, fast-forward, pull, or hand-sync before
+   committing; `sase commit` commits first, rebases automatically, and handles mechanical bead-store conflicts.
 
 4. **Run the commit** — Execute:
 
    ```bash
-   sase_git_commit -M commit_message.md -f file1.py -f file2.py
+   sase_git_commit -M .sase/commit_message.md -f file1.py -f file2.py
    ```
 
    For post-completion finalizer-triggered commits, use one `-f` flag for each listed file you intend to commit. Omit
@@ -101,7 +108,7 @@ Commit changes via the `sase_git_commit` wrapper. The wrapper records skill invo
 ## Example
 
 ```bash
-sase_git_commit -M commit_message.md -f src/auth.py -f src/login.py
+sase_git_commit -M .sase/commit_message.md -f src/auth.py -f src/login.py
 ```
 
 ## On Merge Conflict
