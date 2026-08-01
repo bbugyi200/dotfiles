@@ -21,6 +21,10 @@ The canonical command group is `sase artifact`. `sase artifact-file` remains a c
 lifecycle subcommands (`prune`, `reclaim`, `trash`) are operator tools — see
 [Retention](#retention-what-survives-and-what-does-not) before touching them.
 
+This skill covers the persistent artifact-file index. Canonical committed prompts and prompt-linked archive files live
+in the project's agents sidecar under `prompts/<YYYYMM>/` and `artifacts/<YYYYMM>/`; inspect those with
+`sase agent prompts list`, `sase agent prompts show`, and `sase agent prompts validate`.
+
 ## Create an Artifact
 
 1. Create the requested file in your workspace.
@@ -80,6 +84,19 @@ Reference rows are ordinary artifacts everywhere except that they have no stored
   than returning a wrong or empty file.
 
 Deleting `vcs-cache/` is safe; it only costs re-materialization.
+
+## Prompt Archive Staging
+
+Launch-time `@...` prompt references are also staged under the current workspace's `.sase/artifacts/` tree so the
+committing agent can publish a canonical prompt archive:
+
+- `.sase/artifacts/home/` holds readable working copies for home-directory `@path` references. This replaces the old
+  `.sase/home/` staging directory.
+- `.sase/artifacts/pool/` holds content-addressed external file copies named `<sha12>-<basename>`.
+- `.sase/artifacts/prompt-artifacts.jsonl` records one manifest row per staged reference.
+
+This staging is best-effort launch provenance and is separate from the `sase artifact list` index. If `sase doctor`
+reports a stale `.sase/home/` directory, remove it only after confirming no live agent is using that workspace.
 
 ## Find Prior Artifacts
 
