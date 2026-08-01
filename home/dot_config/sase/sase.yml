@@ -1,5 +1,8 @@
 timezone: "America/New_York"
 use_chezmoi: true
+artifacts:
+  retention:
+    enabled: true
 commit_hooks:
   before: "sase_git_fix"
 file_hooks:
