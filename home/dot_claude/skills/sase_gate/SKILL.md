@@ -45,6 +45,11 @@ subset. `AND` binds tighter than `OR`, and every option id must appear exactly o
   among the selected options.
 - Set `gate_timeout_seconds` when waiting forever would be unsafe. Omit it only when the request should remain pending
   until it is answered or cancelled.
+- Set `presentation.panel` when the notification belongs in a named panel tab. Panel names are stripped, lowercased,
+  limited to 32 characters, and may contain lowercase letters, digits, underscores, and hyphens. Do not use the reserved
+  names `errors`, `general`, or `muted`, or a name beginning with `__`; `hitl` is allowed.
+- Set `presentation.origin_agent` to the agent the gate was filed on behalf of. It is an attribution label rather than a
+  routing identity, so remote agent names are valid even when the local host has never seen them.
 
 Command `argv` arrays are executed without a shell. Their first element must name an executable `command` resource in
 the bundle. A command receives the gate input as JSON on stdin and must print exactly one JSON value on stdout;
@@ -68,6 +73,7 @@ user include or omit the health check, and provides a separate rejection path:
   },
   "presentation": {
     "icon": "🚀",
+    "panel": "deployments",
     "sender": "deployment-confirmation",
     "notes": ["Restart example.service now?", "Select whether to verify it afterward."],
     "tags": ["deployment", "confirmation"]
