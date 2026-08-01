@@ -36,6 +36,7 @@ notes on their own bead instead), you can and SHOULD capture discovered follow-u
 - A tool, command, or script this project is responsible for has a bug or a clear, objective improvement that would help
   future agents: file a task bead to fix or improve it.
 
-Create the bead with `sase bead create -T task -t "<title>" -d "<details>"`, refine it while it is `open` (draft), and
-mark it ready to triage with `sase bead update <id> -s ready`. Ready task beads are proposed to the project owner, who
-either launches an agent to work them or closes them with a reason.
+Before creating any task bead, you MUST use `/sase_new_task`. That skill checks every task status for semantic
+duplicates, checks in-progress epics for a credible causal link, and records the issue in the right place. Only a
+genuinely new task becomes an `open` draft, and every new task requires an intentional `--size`. Ready task beads are
+proposed to the project owner, who either launches an agent to work them or closes them with a reason.
