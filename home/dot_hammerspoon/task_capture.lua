@@ -9,12 +9,105 @@ local function valid_component(value)
 	return type(value) == "string" and value ~= "" and value:match("^[A-Za-z0-9_-]+$") ~= nil
 end
 
-local function split_terminal_token(text)
-	local body, token = text:match("^(.-)%s+(%S+)$")
-	if body then
-		return trim(body), token
+local function significant_digits(value)
+	local significant = value:gsub("^0+", "")
+	if significant == "" then
+		return nil
 	end
-	return "", text
+	return significant
+end
+
+local function unsigned_integer_fits(value, max_value)
+	local significant = significant_digits(value)
+	if not significant then
+		return true
+	end
+	if #significant ~= #max_value then
+		return #significant < #max_value
+	end
+	return significant <= max_value
+end
+
+local function positive_integer_fits(value, max_value)
+	return significant_digits(value) ~= nil and unsigned_integer_fits(value, max_value)
+end
+
+local function terminal_marker_kind(token)
+	local schedule = token:match("^s:(%d+)$")
+	if schedule and unsigned_integer_fits(schedule, "18446744073709551615") then
+		return "schedule"
+	end
+
+	local clip = token:match("^%%(.*)$")
+	if not clip then
+		return nil
+	end
+	if clip == "" then
+		return "clip"
+	end
+	if clip:match("^%d+$") then
+		if positive_integer_fits(clip, "18446744073709551615") then
+			return "clip"
+		end
+		return nil
+	end
+	if valid_component(clip) then
+		return "clip"
+	end
+	return nil
+end
+
+local function split_tokens(text)
+	local tokens = {}
+	for start_index, token in text:gmatch("()(%S+)") do
+		tokens[#tokens + 1] = {
+			start_index = start_index,
+			end_index = start_index + #token - 1,
+			value = token,
+		}
+	end
+	return tokens
+end
+
+local function remove_token(text, token)
+	local before = trim(text:sub(1, token.start_index - 1))
+	local after = trim(text:sub(token.end_index + 1))
+	if before ~= "" and after ~= "" then
+		return before .. " " .. after
+	end
+	return before .. after
+end
+
+local function split_interactive_terminal_token(text)
+	local tokens = split_tokens(text)
+	if #tokens == 0 then
+		return "", ""
+	end
+
+	local index = #tokens
+	local seen_clip = false
+	local seen_schedule = false
+	while index > 0 do
+		local kind = terminal_marker_kind(tokens[index].value)
+		if not kind then
+			break
+		end
+		if kind == "clip" then
+			if seen_clip then
+				break
+			end
+			seen_clip = true
+		elseif kind == "schedule" then
+			if seen_schedule then
+				break
+			end
+			seen_schedule = true
+		end
+		index = index - 1
+	end
+
+	local token = tokens[index] or tokens[#tokens]
+	return remove_token(text, token), token.value
 end
 
 local function pomodoro_candidate(token)
@@ -171,7 +264,7 @@ end
 
 function M.parse(raw_text)
 	local text = trim(raw_text)
-	local body, token = split_terminal_token(text)
+	local body, token = split_interactive_terminal_token(text)
 
 	if sub_bullet_candidate(token) then
 		return parse_sub_bullet(body, token)

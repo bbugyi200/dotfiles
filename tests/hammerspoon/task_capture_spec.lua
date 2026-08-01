@@ -2,6 +2,18 @@ package.path = "./home/dot_hammerspoon/?.lua;" .. package.path
 
 local capture = require("task_capture")
 
+local function assert_request(raw_text, expected)
+	local request = capture.parse(raw_text)
+	assert.equals(expected.mode, request.mode, raw_text .. " mode")
+	assert.equals(expected.text, request.text, raw_text .. " text")
+	for key, value in pairs(expected) do
+		if key ~= "mode" and key ~= "text" then
+			assert.same(value, request[key], raw_text .. " " .. key)
+		end
+	end
+	return request
+end
+
 describe("Hammerspoon task capture request model", function()
 	it("parses all four canonical Pomodoro forms", function()
 		local complete = capture.parse("Do work @Dev:focus-123")
@@ -122,6 +134,177 @@ describe("Hammerspoon task capture request model", function()
 		assert.equals("", capture.parse("@^").text)
 	end)
 
+	it("composes clipboard terminal markers around every picker token", function()
+		local cases = {
+			{
+				token = "@",
+				expected = { mode = "note" },
+			},
+			{
+				token = "@#",
+				expected = { mode = "note_section" },
+			},
+			{
+				token = "@#Ideas",
+				expected = { mode = "note_bullet", prefix = "Ideas" },
+			},
+			{
+				token = "@Notes#",
+				expected = { mode = "section", route = "notes" },
+			},
+			{
+				token = "@Dev:focus-123",
+				expected = {
+					mode = "pomodoro",
+					route = "dev",
+					block_id = "focus-123",
+					needs_target = false,
+					needs_block_id = false,
+				},
+			},
+			{
+				token = "@Dev:",
+				expected = {
+					mode = "pomodoro",
+					route = "dev",
+					needs_target = false,
+					needs_block_id = true,
+				},
+			},
+			{
+				token = "@:focus-123",
+				expected = {
+					mode = "pomodoro",
+					block_id = "focus-123",
+					needs_target = true,
+					needs_block_id = false,
+				},
+			},
+			{
+				token = "@:",
+				expected = {
+					mode = "pomodoro",
+					needs_target = true,
+					needs_block_id = true,
+				},
+			},
+			{
+				token = "@!Dev:focus-123",
+				expected = {
+					mode = "pomodoro",
+					route = "dev",
+					block_id = "focus-123",
+					needs_target = false,
+					needs_block_id = false,
+				},
+			},
+			{
+				token = "@!Dev",
+				expected = {
+					mode = "pomodoro",
+					route = "dev",
+					needs_target = false,
+					needs_block_id = true,
+				},
+			},
+			{
+				token = "@!",
+				expected = {
+					mode = "pomodoro",
+					needs_target = true,
+					needs_block_id = true,
+				},
+			},
+			{
+				token = "@Dev^focus-123",
+				expected = {
+					mode = "sub_bullet",
+					route = "dev",
+					block_id = "focus-123",
+					needs_target = false,
+					needs_task = false,
+				},
+			},
+			{
+				token = "@Dev^",
+				expected = {
+					mode = "sub_bullet",
+					route = "dev",
+					needs_target = false,
+					needs_task = true,
+				},
+			},
+			{
+				token = "@^focus-123",
+				expected = {
+					mode = "sub_bullet",
+					block_id = "focus-123",
+					needs_target = true,
+					needs_task = false,
+				},
+			},
+			{
+				token = "@^",
+				expected = {
+					mode = "sub_bullet",
+					needs_target = true,
+					needs_task = true,
+				},
+			},
+		}
+		local clip_markers = { "%", "%03", "%build_log" }
+
+		for _, case in ipairs(cases) do
+			for _, marker in ipairs(clip_markers) do
+				local expected = {}
+				for key, value in pairs(case.expected) do
+					expected[key] = value
+				end
+				expected.text = "Body " .. marker
+
+				assert_request("Body " .. marker .. " " .. case.token, expected)
+				assert_request("Body " .. case.token .. " " .. marker, expected)
+			end
+		end
+	end)
+
+	it("preserves crossed clipboard and schedule markers in terminal order", function()
+		assert_request("Body @Notes# % s:2", {
+			mode = "section",
+			text = "Body % s:2",
+			route = "notes",
+		})
+		assert_request("Body @Notes# s:2 %03", {
+			mode = "section",
+			text = "Body s:2 %03",
+			route = "notes",
+		})
+		assert_request("Body % @Notes# s:2", {
+			mode = "section",
+			text = "Body % s:2",
+			route = "notes",
+		})
+		assert_request("Body s:2 @Notes# %build_log", {
+			mode = "section",
+			text = "Body s:2 %build_log",
+			route = "notes",
+		})
+		assert_request("Body @:focus-123 % s:0", {
+			mode = "pomodoro",
+			text = "Body % s:0",
+			block_id = "focus-123",
+			needs_target = true,
+			needs_block_id = false,
+		})
+		assert_request("Body @Dev^ s:10 %build_log", {
+			mode = "sub_bullet",
+			text = "Body s:10 %build_log",
+			route = "dev",
+			needs_target = false,
+			needs_task = true,
+		})
+	end)
+
 	it("preserves existing note and section descriptors", function()
 		assert.same({ text = "Task", mode = "note" }, capture.parse("Task @"))
 		assert.same({ text = "Idea", mode = "note_section" }, capture.parse("Idea @#"))
@@ -165,6 +348,13 @@ describe("Hammerspoon task capture request model", function()
 		end
 	end)
 
+	it("canonical Pomodoro synthesis retains terminal markers for Bob", function()
+		local request = capture.parse("Do work @Dev: % s:2")
+		local final, err = capture.finalize(request, nil, "focus-123")
+		assert.is_nil(err)
+		assert.equals("@dev:focus-123 Do work % s:2", final)
+	end)
+
 	it("converges every sub-bullet form on canonical synthesis", function()
 		local expected = "@dev^focus-123 Add context"
 		for _, raw_text in ipairs({
@@ -177,6 +367,33 @@ describe("Hammerspoon task capture request model", function()
 			local final, err = capture.finalize_sub_bullet(request, "dev", "focus-123")
 			assert.is_nil(err, raw_text)
 			assert.equals(expected, final, raw_text)
+		end
+	end)
+
+	it("canonical sub-bullet synthesis retains terminal markers for Bob", function()
+		local request = capture.parse("Add context s:2 @Dev^ %build_log")
+		local final, err = capture.finalize_sub_bullet(request, nil, "focus-123")
+		assert.is_nil(err)
+		assert.equals("@dev^focus-123 Add context s:2 %build_log", final)
+	end)
+
+	it("leaves invalid or unsupported terminal regions to bob capture", function()
+		for _, raw_text in ipairs({
+			"Idea @Notes# %0",
+			"Idea @Notes# %bad.header",
+			"Idea @Notes# %18446744073709551616",
+			"Idea @Notes# s:18446744073709551616",
+			"Idea @Notes# % %3",
+			"Idea @Notes# s:1 s:2",
+			"Idea @Notes# % s:1 %build_log",
+			"Idea @Notes# middle %",
+			"Task @dev %",
+			"Idea @notes#Ideas %",
+		}) do
+			assert.same({
+				text = raw_text,
+				mode = "none",
+			}, capture.parse(raw_text), raw_text)
 		end
 	end)
 

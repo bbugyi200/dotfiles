@@ -1082,13 +1082,13 @@ local function startTaskStage(request, route, pickedName, pickedKind)
 	end, notifyTargetPickerFailure)
 end
 
--- Show the native area/project picker for a trailing `@`, `@#`, or
--- `@#section` request. Dismissing it refocuses the prompt with the typed text
--- intact. A bare `@` forces the picked route. A prefixed `@#section`
--- synthesizes a concrete leading `@route#section` token so Bob keeps owning
--- prefix matching. A bare `@#` opens the section stage after the note is picked;
--- when a section row is chosen, final capture uses `--section` for exact,
--- case-insensitive title matching.
+-- Show the native area/project picker for an interactive `@`, `@#`, or
+-- `@#section` request in the terminal marker region. Dismissing it refocuses
+-- the prompt with the typed text intact. A bare `@` forces the picked route. A
+-- prefixed `@#section` synthesizes a concrete leading `@route#section` token so
+-- Bob keeps owning prefix matching. A bare `@#` opens the section stage after
+-- the note is picked; when a section row is chosen, final capture uses
+-- `--section` for exact, case-insensitive title matching.
 local function showTaskCaptureChooser(request, targets)
 	local choices = buildCaptureChoices(targets)
 	if #choices == 0 then
@@ -1169,8 +1169,11 @@ local function startTargetsStage(request)
 	end, notifyTargetPickerFailure)
 end
 
--- Detect capture UI markers as the final whitespace-separated token, preceded
--- by whitespace. The pure request model returns a descriptor with a mode:
+-- Detect capture UI markers in the terminal whitespace-separated token region,
+-- optionally adjacent to Bob's terminal `%...` clipboard and lowercase `s:<N>`
+-- schedule markers. The route token may appear immediately before those
+-- terminal markers; crossed markers stay in request text for `bob capture` to
+-- interpret. The pure request model returns a descriptor with a mode:
 --
 --   * `@`          -> note picker, then task capture forced to the picked route.
 --   * `@#`         -> note picker, then conditional exact section picker.
@@ -1188,16 +1191,16 @@ end
 --   * `@^`        -> choose the note, then choose one of its open tasks.
 --
 -- Prefix-bearing explicit routes (`@route#prefix`), plain `@route`, mid-text
--- markers, and non-final markers are left untouched so Bob's parser keeps
--- owning those cases. Legacy `@!route:id`, `@!route`, and `@!` shorthands
--- are accepted only here; every CLI request is synthesized with canonical
--- `@route:block-id` syntax.
+-- markers, invalid or duplicate terminal markers, and unsupported terminal
+-- regions are left untouched so Bob's parser keeps owning those cases. Legacy
+-- `@!route:id`, `@!route`, and `@!` shorthands are accepted only here; every
+-- CLI request is synthesized with canonical `@route:block-id` syntax.
 
--- Snapshot the prompt text and route it. A trailing `@`, bare `@#`, or
--- `@#section` marker opts into the note picker; a trailing bare `@route#` jumps
--- straight to the section stage. Everything else captures immediately, letting
--- `bob capture` own route parsing and the inbox default. An empty body after
--- stripping a marker is a no-op.
+-- Snapshot the prompt text and route it. An interactive `@`, bare `@#`, or
+-- `@#section` marker in the terminal region opts into the note picker; a bare
+-- `@route#` in that region jumps straight to the section stage. Everything
+-- else captures immediately, letting `bob capture` own route parsing and the
+-- inbox default. An empty body after stripping a marker is a no-op.
 local function submitCapturedTask(rawText)
 	if taskCaptureTask or taskCaptureChooser then
 		return
