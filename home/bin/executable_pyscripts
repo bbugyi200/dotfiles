@@ -80,6 +80,16 @@ def _is_python_package(directory: Path) -> bool:
 
 
 _SKIP_EXTENSIONS = frozenset({".md"})
+_EXTERNAL_REF_IGNORE_DIRS = frozenset({"sdd"})
+
+
+def _is_ignored_external_ref(ref_file: Path, repo_root: Path) -> bool:
+    """Return True for planning/docs refs that should not count as script users."""
+    try:
+        rel = ref_file.relative_to(repo_root)
+    except ValueError:
+        return False
+    return bool(rel.parts) and rel.parts[0] in _EXTERNAL_REF_IGNORE_DIRS
 
 
 def _collect_scripts(script_dir: Path) -> list[Path]:
@@ -166,8 +176,17 @@ def _find_refs_outside(
         if rel == ".":
             rel = ""
         all_refs = _git_grep(basename, rel or ".", git_root)
-        return [r for r in all_refs if not r.is_relative_to(parent_dir)]
-    return _manual_grep(basename, repo_root, exclude_subtree=parent_dir)
+        return [
+            r
+            for r in all_refs
+            if not r.is_relative_to(parent_dir)
+            and not _is_ignored_external_ref(r, repo_root)
+        ]
+    return [
+        r
+        for r in _manual_grep(basename, repo_root, exclude_subtree=parent_dir)
+        if not _is_ignored_external_ref(r, repo_root)
+    ]
 
 
 def _has_closer_target_dir(
@@ -175,7 +194,7 @@ def _has_closer_target_dir(
     script_dir: Path,
     parent_dir: Path,
     dir_name: str,
-    all_target_dirs: set[Path],
+    placement_target_dirs: set[Path],
 ) -> Path | None:
     """Check if a closer scripts/tools dir exists between ref_file and parent_dir.
 
@@ -184,7 +203,7 @@ def _has_closer_target_dir(
     current = ref_file.parent
     while current != parent_dir and current.is_relative_to(parent_dir):
         candidate = current / dir_name
-        if candidate in all_target_dirs and candidate != script_dir:
+        if candidate in placement_target_dirs and candidate != script_dir:
             return candidate
         current = current.parent
     return None
@@ -194,7 +213,9 @@ def _validate(repo_root: Path, *, verbose: bool = False) -> list[_Violation]:
     """Run all validation checks and return violations."""
     git_root = _get_git_root(repo_root)
     target_dirs = _find_target_dirs(repo_root)
-    all_target_dirs = set(target_dirs)
+    placement_target_dirs = {
+        d for d in target_dirs if not _is_python_package(d)
+    }
     violations: list[_Violation] = []
 
     if verbose:
@@ -257,7 +278,7 @@ def _validate(repo_root: Path, *, verbose: bool = False) -> list[_Violation]:
                     script_dir,
                     parent_dir,
                     dir_name,
-                    all_target_dirs,
+                    placement_target_dirs,
                 )
                 if closer is not None:
                     violations.append(
