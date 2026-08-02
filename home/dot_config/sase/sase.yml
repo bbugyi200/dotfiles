@@ -194,7 +194,6 @@ llm_provider:
       # Remaining bead/epic role aliases are listed explicitly for readability;
       # each just tracks the default launch model (@default), the implicit default.
       coder: "@default"
-      epic_lander: "@default"
       smartest: opus@max
     custom:
       research_a:
