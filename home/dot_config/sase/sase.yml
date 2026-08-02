@@ -193,7 +193,6 @@ llm_provider:
       # Remaining bead/epic role aliases are listed explicitly for readability;
       # each just tracks the default launch model (@default), the implicit default.
       coder: "@default"
-      smartest: opus@max
     custom:
       research_a:
         model: codex/gpt-5.6-sol
