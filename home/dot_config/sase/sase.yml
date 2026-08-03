@@ -107,6 +107,8 @@ ace:
     mrp: "Mentor Review panel"
     n: "%i:"
     ob: "Obsidian"
+    pan: |-
+      the "$1" panel
     piw: "prompt input widget"
     prp: "plan review panel"
     rep: "the ../sase-$1 repo"
