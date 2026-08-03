@@ -104,6 +104,8 @@ ace:
     logp:
       "This issue is occurring on another machine that uses the ../sase-google plugin. I've saved a `sase logs` logpack
       to the ~/tmp/$1/ directory to help you figure this out."
+    ma: |-
+      model alias
     mrp: "Mentor Review panel"
     n: "%i:"
     ob: "Obsidian"
