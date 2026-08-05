@@ -1170,10 +1170,11 @@ local function startTargetsStage(request)
 end
 
 -- Detect capture UI markers in the terminal whitespace-separated token region,
--- optionally adjacent to Bob's terminal `%...` clipboard and lowercase `s:<N>`
--- schedule markers. The route token may appear immediately before those
--- terminal markers; crossed markers stay in request text for `bob capture` to
--- interpret. The pure request model returns a descriptor with a mode:
+-- optionally adjacent to Bob's terminal `%...` clipboard, lowercase `s:<N>`
+-- schedule, and lowercase `p:<N>` priority markers. The route token may appear
+-- immediately before those terminal markers; crossed markers stay in request
+-- text for `bob capture` to interpret. The pure request model returns a
+-- descriptor with a mode:
 --
 --   * `@`          -> note picker, then task capture forced to the picked route.
 --   * `@#`         -> note picker, then conditional exact section picker.

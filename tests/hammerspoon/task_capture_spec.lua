@@ -303,6 +303,44 @@ describe("Hammerspoon task capture request model", function()
 			needs_target = false,
 			needs_task = true,
 		})
+		assert_request("Body @Notes# p:2 s:1", {
+			mode = "section",
+			text = "Body p:2 s:1",
+			route = "notes",
+		})
+		assert_request("Body p:2 @Notes# s:1", {
+			mode = "section",
+			text = "Body p:2 s:1",
+			route = "notes",
+		})
+		assert_request("Body @:focus-123 p:3 s:0", {
+			mode = "pomodoro",
+			text = "Body p:3 s:0",
+			block_id = "focus-123",
+			needs_target = true,
+			needs_block_id = false,
+		})
+		assert_request("Body p:3 @:focus-123 s:0", {
+			mode = "pomodoro",
+			text = "Body p:3 s:0",
+			block_id = "focus-123",
+			needs_target = true,
+			needs_block_id = false,
+		})
+		assert_request("Body @Dev^ p:4 s:10", {
+			mode = "sub_bullet",
+			text = "Body p:4 s:10",
+			route = "dev",
+			needs_target = false,
+			needs_task = true,
+		})
+		assert_request("Body p:4 @Dev^ s:10", {
+			mode = "sub_bullet",
+			text = "Body p:4 s:10",
+			route = "dev",
+			needs_target = false,
+			needs_task = true,
+		})
 	end)
 
 	it("preserves existing note and section descriptors", function()
@@ -349,10 +387,10 @@ describe("Hammerspoon task capture request model", function()
 	end)
 
 	it("canonical Pomodoro synthesis retains terminal markers for Bob", function()
-		local request = capture.parse("Do work @Dev: % s:2")
+		local request = capture.parse("Do work @Dev: % p:2 s:2")
 		local final, err = capture.finalize(request, nil, "focus-123")
 		assert.is_nil(err)
-		assert.equals("@dev:focus-123 Do work % s:2", final)
+		assert.equals("@dev:focus-123 Do work % p:2 s:2", final)
 	end)
 
 	it("converges every sub-bullet form on canonical synthesis", function()
@@ -371,10 +409,10 @@ describe("Hammerspoon task capture request model", function()
 	end)
 
 	it("canonical sub-bullet synthesis retains terminal markers for Bob", function()
-		local request = capture.parse("Add context s:2 @Dev^ %build_log")
+		local request = capture.parse("Add context s:2 @Dev^ p:3 %build_log")
 		local final, err = capture.finalize_sub_bullet(request, nil, "focus-123")
 		assert.is_nil(err)
-		assert.equals("@dev^focus-123 Add context s:2 %build_log", final)
+		assert.equals("@dev^focus-123 Add context s:2 p:3 %build_log", final)
 	end)
 
 	it("leaves invalid or unsupported terminal regions to bob capture", function()
@@ -389,6 +427,8 @@ describe("Hammerspoon task capture request model", function()
 			"Idea @Notes# middle %",
 			"Task @dev %",
 			"Idea @notes#Ideas %",
+			"Idea @Notes# p:1 p:2",
+			"Idea @Notes# p:18446744073709551616",
 		}) do
 			assert.same({
 				text = raw_text,

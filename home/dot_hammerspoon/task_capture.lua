@@ -38,6 +38,11 @@ local function terminal_marker_kind(token)
 		return "schedule"
 	end
 
+	local priority = token:match("^p:(%d+)$")
+	if priority and unsigned_integer_fits(priority, "18446744073709551615") then
+		return "priority"
+	end
+
 	local clip = token:match("^%%(.*)$")
 	if not clip then
 		return nil
@@ -87,6 +92,7 @@ local function split_interactive_terminal_token(text)
 	local index = #tokens
 	local seen_clip = false
 	local seen_schedule = false
+	local seen_priority = false
 	while index > 0 do
 		local kind = terminal_marker_kind(tokens[index].value)
 		if not kind then
@@ -102,6 +108,11 @@ local function split_interactive_terminal_token(text)
 				break
 			end
 			seen_schedule = true
+		elseif kind == "priority" then
+			if seen_priority then
+				break
+			end
+			seen_priority = true
 		end
 		index = index - 1
 	end
