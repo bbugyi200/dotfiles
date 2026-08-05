@@ -60,7 +60,7 @@ ace:
     cmdd: "a new `$1` command"
     cmt: "`sase commit`"
     cout: |-
-      see the output below
+      the command output below
     cs: "ChangeSpec"
     di: "the $1 directory"
     dir: |-
