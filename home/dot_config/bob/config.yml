@@ -10,7 +10,7 @@ properties:
     values: local_task_id
   # Choosing a level writes `[priority:: <value>]` and rolls a random date into the
   # property named by `schedules`, drawn inclusively from that level's day window.
-  # A task with no priority field is implicitly P1: do it now, no roll.
+  # A task with no priority field is implicitly P0: do it now, no roll.
   #
   # `value` is what lands in the note and MUST stay one of Obsidian Tasks' priority
   # names (highest, high, medium, low, lowest). Tasks-format parsers read trailing
@@ -22,15 +22,19 @@ properties:
     values: priority
     schedules: scheduled
     levels:
-      - label: P2
+      - label: P1
         value: high
         min_days: 2
         max_days: 7
-      - label: P3
+      - label: P2
         value: medium
         min_days: 8
         max_days: 30
-      - label: P4
+      - label: P3
         value: low
         min_days: 31
         max_days: 90
+      - label: P4
+        value: lowest
+        min_days: 91
+        max_days: 365
