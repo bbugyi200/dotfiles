@@ -62,6 +62,8 @@ ace:
     cout: |-
       the command output below
     cs: "ChangeSpec"
+    ctx: |-
+      see $1 for context
     di: "the $1 directory"
     dir: |-
       the `%$1` directive
