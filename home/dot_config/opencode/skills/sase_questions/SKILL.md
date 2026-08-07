@@ -24,7 +24,9 @@ sase questions '<json>'
   {
     "question": "Full question text (required)",
     "header": "Short sidebar label (optional)",
-    "options": [{ "label": "Option label (required)", "description": "Details (optional)" }],
+    "options": [
+      { "label": "Option label (required)", "description": "Details (optional)" }
+    ],
     "multiSelect": false
   }
 ]
@@ -46,12 +48,13 @@ sase questions '[{"question": "Approach?", "header": "Approach", "options": [{"l
 
 ## Handoff And Continuation
 
-On success, `sase questions` writes a durable handoff marker and sends `SIGTERM` to the current
-agent runner process group. The runner recognizes this as an intentional question handoff, creates a
-command-backed `UserQuestion` gate, yields its runner slot while it waits, and reacquires a slot
-before continuing. The answer is added to the Q&A history and reconstructed follow-up prompt; the
-interrupted provider turn does not return normally.
+On success, `sase questions` writes a durable handoff marker and sends `SIGTERM` to the
+current agent runner process group. The runner recognizes this as an intentional
+question handoff, creates a command-backed `UserQuestion` gate, yields its runner slot
+while it waits, and reacquires a slot before continuing. The answer is added to the Q&A
+history and reconstructed follow-up prompt; the interrupted provider turn does not
+return normally.
 
-Do not poll question request or response files. ACE, mobile, and Telegram submit the complete
-validated form through the same write-once gate command, and the runner observes the terminal
-response mechanically.
+Do not poll question request or response files. ACE, mobile, and Telegram submit the
+complete validated form through the same write-once gate command, and the runner
+observes the terminal response mechanically.

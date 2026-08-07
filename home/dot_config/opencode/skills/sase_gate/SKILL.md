@@ -1,9 +1,9 @@
 ---
 name: sase_gate
 description:
-  Create beautiful, robust, and powerful custom notification gates on the fly. Use this as the easy
-  way to propose commands for user confirmation, especially dangerous commands or commands the user
-  asked to confirm before use.
+  Create beautiful, robust, and powerful custom notification gates on the fly. Use this
+  as the easy way to propose commands for user confirmation, especially dangerous
+  commands or commands the user asked to confirm before use.
 ---
 
 Before doing anything else, run this command to record that you are using this skill:
@@ -14,11 +14,11 @@ sase skill use sase_gate --reason "<one-line reason for using this skill>"
 
 Use this skill when work must pause for a durable, command-backed user decision.
 
-Create beautiful, robust, and powerful custom notification gates on the fly. A custom gate is the
-easy way to propose commands for confirmation before they run: for example, a dangerous or
-irreversible command, a production change, or any command the user explicitly asked to approve
-first. Use `/sase_questions` instead when you only need an answer and no reviewed command should
-execute.
+Create beautiful, robust, and powerful custom notification gates on the fly. A custom
+gate is the easy way to propose commands for confirmation before they run: for example,
+a dangerous or irreversible command, a production change, or any command the user
+explicitly asked to approve first. Use `/sase_questions` instead when you only need an
+answer and no reviewed command should execute.
 
 ## Design The Gate
 
@@ -28,45 +28,60 @@ Start with one option query that reads like the decision:
 (restart AND verify) OR reject
 ```
 
-Each `OR` branch is a mutually exclusive way to resolve the gate. A singleton branch is one button
-that runs its option. An `AND` branch is a group of independently selectable options with one submit
-button; the user may submit any non-empty subset. `AND` binds tighter than `OR`, and every option id
-must appear exactly once in the query and exactly once in the `options` list.
+Each `OR` branch is a mutually exclusive way to resolve the gate. A singleton branch is
+one button that runs its option. An `AND` branch is a group of independently selectable
+options with one submit button; the user may submit any non-empty subset. `AND` binds
+tighter than `OR`, and every option id must appear exactly once in the query and exactly
+once in the `options` list.
 
-- Give the notification a fitting single-glyph icon. Examples: `🛡️` for a safety check, `🚀` for a
-  deployment, `🧹` for cleanup, or `🔐` for an access change.
-- Give every option its own clear label, command, and fitting icon such as `✅` for approve, `✋`
-  for reject, or `⏸️` for defer. Even a reject option needs an owned command; use a no-op command
-  that emits a JSON result.
-- Set `default_selected` on members of an `AND` branch. It defaults to `true`; singleton branches
-  ignore it.
-- Declare exactly one complete query branch as `primary_branch`, with its option ids in canonical
-  query order. Enter submits this branch from the review modal; for an `AND` branch it preserves any
-  options the user toggled with Space.
-- Add a `groups` entry when an `AND` branch's submit button should differ from its first option.
-  Match the branch by its option ids, then configure the submit `label` and `icon`.
-- Set every option's `feedback` to `disabled`, `optional`, or `required`. Custom gate options
-  default to `optional`, but write the mode explicitly so the user-facing contract is obvious. An
-  `AND` selection uses the strongest feedback mode among the selected options.
-- Set `gate_timeout_seconds` when waiting forever would be unsafe. Omit it only when the request
-  should remain pending until it is answered or cancelled.
-- Set `presentation.panel` when the notification belongs in a named panel tab. Panel names are
-  stripped, lowercased, limited to 32 characters, and may contain lowercase letters, digits,
-  underscores, and hyphens. Do not use the reserved names `errors`, `general`, or `muted`, or a name
-  beginning with `__`; `hitl` is allowed.
-- Set `presentation.origin_agent` to the agent the gate was filed on behalf of. It is an attribution
-  label rather than a routing identity, so remote agent names are valid even when the local host has
-  never seen them.
+- Give the notification a fitting single-glyph icon. Examples: `🛡️` for a safety check,
+  `🚀` for a deployment, `🧹` for cleanup, or `🔐` for an access change.
+- Set `presentation.title` to the one-line decision headline: for example
+  `"Restart example.service"`, not `"Confirmation needed"`. It is stripped, must be a
+  single line, and must be at most 120 characters.
+- Give every option its own clear label, command, and fitting icon such as `✅` for
+  approve, `✋` for reject, or `⏸️` for defer. Even a reject option needs an owned
+  command; use a no-op command that emits a JSON result.
+- Set `default_selected` on members of an `AND` branch. It defaults to `true`; singleton
+  branches ignore it.
+- Declare exactly one complete query branch as `primary_branch`, with its option ids in
+  canonical query order. Enter submits this branch from the review modal; for an `AND`
+  branch it preserves any options the user toggled with Space.
+- Add a `groups` entry when an `AND` branch's submit button should differ from its first
+  option. Match the branch by its option ids, then configure the submit `label` and
+  `icon`.
+- Set every option's `feedback` to `disabled`, `optional`, or `required`. Custom gate
+  options default to `optional`, but write the mode explicitly so the user-facing
+  contract is obvious. An `AND` selection uses the strongest feedback mode among the
+  selected options.
+- Set `gate_timeout_seconds` when waiting forever would be unsafe. Omit it only when the
+  request should remain pending until it is answered or cancelled.
+- Set `presentation.panel` when the notification belongs in a named panel tab. Panel
+  names are stripped, lowercased, limited to 32 characters, and may contain lowercase
+  letters, digits, underscores, and hyphens. Reserved names — `errors`, `gates`,
+  `general`, `hitl`, `muted`, `snoozed`, and any name beginning with `__` — are all
+  rejected.
+- Set `presentation.origin_agent` to the agent the gate was filed on behalf of. It is an
+  attribution label rather than a routing identity, so remote agent names are valid even
+  when the local host has never seen them.
 
-Command `argv` arrays are executed without a shell. Their first element must name an executable
-`command` resource in the bundle. A command receives the gate input as JSON on stdin and must print
-exactly one JSON value on stdout; diagnostics belong on stderr. Every command's output must satisfy
-its option's `result_schema`.
+`presentation.title`, `presentation.icon`, and at least one non-blank
+`presentation.notes` line are **required** for every custom gate — creation fails with
+`missing_presentation` otherwise. Everything you put in `title`, `icon`, `notes`, option
+labels, option icons, and command paths is rendered directly in the notification panel's
+detail pane, so those fields are the user's whole view of the decision: write them for
+the reviewer, not for yourself.
+
+Command `argv` arrays are executed without a shell. Their first element must name an
+executable `command` resource in the bundle. A command receives the gate input as JSON
+on stdin and must print exactly one JSON value on stdout; diagnostics belong on stderr.
+Every command's output must satisfy its option's `result_schema`.
 
 ## Author The Request
 
-Write the complete schema-version 3 request to a JSON file. This example asks permission to restart
-a service, lets the user include or omit the health check, and provides a separate rejection path:
+Write the complete schema-version 3 request to a JSON file. This example asks permission
+to restart a service, lets the user include or omit the health check, and provides a
+separate rejection path:
 
 ```json
 {
@@ -81,6 +96,7 @@ a service, lets the user include or omit the health check, and provides a separa
   },
   "presentation": {
     "icon": "🚀",
+    "title": "Restart example.service",
     "panel": "deployments",
     "sender": "deployment-confirmation",
     "notes": ["Restart example.service now?", "Select whether to verify it afterward."],
@@ -172,9 +188,9 @@ a service, lets the user include or omit the health check, and provides a separa
 }
 ```
 
-For larger commands, set a resource's `source` to a script you authored instead of embedding
-`content`; use exactly one of `source` or `content`. Keep command resources narrowly scoped to the
-action shown to the user.
+For larger commands, set a resource's `source` to a script you authored instead of
+embedding `content`; use exactly one of `source` or `content`. Keep command resources
+narrowly scoped to the action shown to the user.
 
 ## Create And Wait
 
@@ -190,19 +206,20 @@ Read `request_id` and `kind` from that descriptor, then wait mechanically:
 sase gate wait --id <request-id> --kind custom --json
 ```
 
-`sase gate wait` honors the request timeout. Its optional `--timeout` can shorten that deadline. If
-the rest of your work does not depend on the answer, proceed detached after creation instead of
-waiting; keep the descriptor as the durable handoff.
+`sase gate wait` honors the request timeout. Its optional `--timeout` can shorten that
+deadline. If the rest of your work does not depend on the answer, proceed detached after
+creation instead of waiting; keep the descriptor as the durable handoff.
 
 ## Handle The Result
 
-The wait result has `status` (`answered`, `cancelled`, or `timeout`), `selected_option_ids`,
-`feedback`, and `response_path`. An answered result lists the selected options in query order. For
-the example, `["restart", "verify"]` runs both group members, `["restart"]` runs only the restart
-command, and `["reject"]` takes the singleton rejection branch. Respect cancellation and timeout as
-terminal outcomes; do not run the proposed action through another path.
+The wait result has `status` (`answered`, `cancelled`, or `timeout`),
+`selected_option_ids`, `feedback`, and `response_path`. An answered result lists the
+selected options in query order. For the example, `["restart", "verify"]` runs both
+group members, `["restart"]` runs only the restart command, and `["reject"]` takes the
+singleton rejection branch. Respect cancellation and timeout as terminal outcomes; do
+not run the proposed action through another path.
 
-Never poll bundle files directly. Never run bundle commands by hand. Creation hashes every owned
-command and the shared executor verifies and runs the selected commands. Automatic resolution is
-forbidden for custom gates: never enable `auto` or use an automatic-resolution path to bypass the
-user's decision.
+Never poll bundle files directly. Never run bundle commands by hand. Creation hashes
+every owned command and the shared executor verifies and runs the selected commands.
+Automatic resolution is forbidden for custom gates: never enable `auto` or use an
+automatic-resolution path to bypass the user's decision.

@@ -1,9 +1,10 @@
 ---
 name: sase_chats
 description:
-  Inspect prior sase agent chat transcripts. Use when the user asks about previous chats, chat
-  transcripts, prior agent conversations, "what did agent X say?", "summarize the previous agent",
-  or any question about an earlier sase agent's prompt or response.
+  Inspect prior sase agent chat transcripts. Use when the user asks about previous
+  chats, chat transcripts, prior agent conversations, "what did agent X say?",
+  "summarize the previous agent", or any question about an earlier sase agent's prompt
+  or response.
 ---
 
 Before doing anything else, run this command to record that you are using this skill:
@@ -12,8 +13,8 @@ Before doing anything else, run this command to record that you are using this s
 sase skill use sase_chats --reason "<one-line reason for using this skill>"
 ```
 
-Quick reference for answering "what did the previous agent say?" questions about sase chat
-transcripts.
+Quick reference for answering "what did the previous agent say?" questions about sase
+chat transcripts.
 
 ## Primary command
 
@@ -21,32 +22,35 @@ transcripts.
 sase chat list -j
 ```
 
-Prints a stable-shape JSON array of recent transcripts, newest first. Each row has: `path`,
-`basename`, `mtime`, `size_bytes`, `workflow`, `agent`, `timestamp`, `prompt_snippet`,
-`response_snippet`, followed by the sync-provenance fields `provenance`, `source_machine`,
-`source_username`, `project_key`, `agent_artifact_dir`, `agent_local_name`, `agent_global_name`,
-`sidecar_repo`, `sidecar_relpath`, `publication_pending`, `publication_last_error`,
-`publication_quarantined`, `publication_attempts`, `publication_disposition`. Prefer JSON over the
-pretty table when summarizing.
+Prints a stable-shape JSON array of recent transcripts, newest first. Each row has:
+`path`, `basename`, `mtime`, `size_bytes`, `workflow`, `agent`, `timestamp`,
+`prompt_snippet`, `response_snippet`, followed by the sync-provenance fields
+`provenance`, `source_machine`, `source_username`, `project_key`, `agent_artifact_dir`,
+`agent_local_name`, `agent_global_name`, `sidecar_repo`, `sidecar_relpath`,
+`publication_pending`, `publication_last_error`, `publication_quarantined`,
+`publication_attempts`, `publication_disposition`. Prefer JSON over the pretty table
+when summarizing.
 
-`provenance` is one of `local` (written here, not published), `shared` (written here and published
-to an agents sidecar), `remote` (imported from another machine — `source_machine` names the origin),
-or `unknown` (provenance could not be determined). Never report `unknown` as `local`.
+`provenance` is one of `local` (written here, not published), `shared` (written here and
+published to an agents sidecar), `remote` (imported from another machine —
+`source_machine` names the origin), or `unknown` (provenance could not be determined).
+Never report `unknown` as `local`.
 
-Publication is independent of provenance: a `shared` chat can still have outstanding work for a
-committed-but-not-pushed publication or a later revision. `publication_disposition` is `queued` when
-every matching request is active, `quarantined` when every request has stopped retrying, `retired`
-when every request was retired as unpublishable, `mixed` when those states coexist, or `null` when
-no matching request exists. `publication_attempts` is the maximum matching attempt count, and
+Publication is independent of provenance: a `shared` chat can still have outstanding
+work for a committed-but-not-pushed publication or a later revision.
+`publication_disposition` is `queued` when every matching request is active,
+`quarantined` when every request has stopped retrying, `retired` when every request was
+retired as unpublishable, `mixed` when those states coexist, or `null` when no matching
+request exists. `publication_attempts` is the maximum matching attempt count, and
 `publication_last_error` comes from the deterministically most recently updated request.
 
-The compatibility boolean `publication_pending` is true for `queued` and `mixed`, because retryable
-work exists. `publication_quarantined` is true only for a fully `quarantined` disposition. Preserve
-`publication_last_error` in diagnostics and tell the user to run
-`sase agent sync --retry-quarantined` when they want to release quarantined work for retry. A
-`retired` request can never be published, so retrying it does nothing — tell the user to run
-`sase agent sync --drop-retired` instead. Remote provenance is authoritative and carries no local
-publication state.
+The compatibility boolean `publication_pending` is true for `queued` and `mixed`,
+because retryable work exists. `publication_quarantined` is true only for a fully
+`quarantined` disposition. Preserve `publication_last_error` in diagnostics and tell the
+user to run `sase agent sync --retry-quarantined` when they want to release quarantined
+work for retry. A `retired` request can never be published, so retrying it does nothing
+— tell the user to run `sase agent sync --drop-retired` instead. Remote provenance is
+authoritative and carries no local publication state.
 
 Useful list options:
 
@@ -63,27 +67,28 @@ When the user names an agent, resolve by name first:
 sase chat show --agent <name>
 ```
 
-This follows the same fallback as `#fork`: completed agent's `done.json["response_path"]` first,
-then `agent_meta.json["chat_path"]`.
+This follows the same fallback as `#fork`: completed agent's
+`done.json["response_path"]` first, then `agent_meta.json["chat_path"]`.
 
-Step-suffixed child workflows (e.g. `<name>.plan`, `<name>.commit`) are recorded as separate
-transcript entries — `--agent <name>` does NOT include them. A submitted plan in particular appears
-as a `<name>.plan` chat whose `response_snippet` begins with `Plan submitted for review.` and names
-the `~/.sase/plans/<YYMM>/<file>.md` path.
+Step-suffixed child workflows (e.g. `<name>.plan`, `<name>.commit`) are recorded as
+separate transcript entries — `--agent <name>` does NOT include them. A submitted plan
+in particular appears as a `<name>.plan` chat whose `response_snippet` begins with
+`Plan submitted for review.` and names the `~/.sase/plans/<YYMM>/<file>.md` path.
 
 If `--agent <name>` exits non-zero, walk this fallback chain before giving up:
 
-1. `sase chat list -j -q '<name>'` — catches step-suffixed siblings (`<name>.plan`, `<name>.commit`,
-   ...) that the named lookup missed.
-2. `sase agent list -a -j` filtered to `<name>` — includes recently DONE/FAILED agents, not just
-   RUNNING.
-3. If the agent is still RUNNING, hand off to the `/sase_agents_status` skill for the artifacts-dir
-   workflow (live reply, workflow checkpoints, mid-run plan drafts).
+1. `sase chat list -j -q '<name>'` — catches step-suffixed siblings (`<name>.plan`,
+   `<name>.commit`, ...) that the named lookup missed.
+2. `sase agent list -a -j` filtered to `<name>` — includes recently DONE/FAILED agents,
+   not just RUNNING.
+3. If the agent is still RUNNING, hand off to the `/sase_agents_status` skill for the
+   artifacts-dir workflow (live reply, workflow checkpoints, mid-run plan drafts).
 
-Only after that chain is exhausted should you tell the user the agent has no recoverable transcript
-or artifact. When that chain reaches live artifacts, name the artifact paths you read and label the
-evidence source as draft/live (`live_reply.md` from a running agent) or stable/completed
-(checkpoints, submitted plans, `done.json`, or saved transcripts).
+Only after that chain is exhausted should you tell the user the agent has no recoverable
+transcript or artifact. When that chain reaches live artifacts, name the artifact paths
+you read and label the evidence source as draft/live (`live_reply.md` from a running
+agent) or stable/completed (checkpoints, submitted plans, `done.json`, or saved
+transcripts).
 
 When the user gives a path or basename:
 
@@ -96,29 +101,32 @@ Exactly one selector (`--agent`, `--path`, or `--basename`) is required.
 
 ## Picking the right `--format`
 
-`sase chat show` defaults to `-f raw` (full transcript markdown). Switch when the question is
-narrower:
+`sase chat show` defaults to `-f raw` (full transcript markdown). Switch when the
+question is narrower:
 
-- `-f response` — just the agent's latest response. Use this for "what did agent X conclude?" or
-  "what was the recommendation?". Exits non-zero if no response heading can be parsed; fall back to
-  `-f raw` and say so rather than guessing.
-- `-f resume` — flattened User/Assistant turns with nested resume references expanded. Use this when
-  the user wants the full chronological context (e.g. "summarize the back-and-forth").
+- `-f response` — just the agent's latest response. Use this for "what did agent X
+  conclude?" or "what was the recommendation?". Exits non-zero if no response heading
+  can be parsed; fall back to `-f raw` and say so rather than guessing.
+- `-f resume` — flattened User/Assistant turns with nested resume references expanded.
+  Use this when the user wants the full chronological context (e.g. "summarize the
+  back-and-forth").
 
 ## How to summarize
 
-- Always cite the agent name and `path`/`basename` you read so the user can open the source.
-- Distinguish prompt content from response content — they live under separate headings in the
-  transcript.
-- Prefer short excerpts over long quotes; only include a longer quote when the exact wording
-  matters.
-- If `sase chat list -j` returns an empty array, say "no transcripts found" plainly — do not
-  fabricate rows.
-- If a named-agent lookup fails AND the fallback chain above (content-filtered list, `-a` status,
-  `/sase_agents_status` artifacts) turns up nothing, say so plainly instead of falling back to an
-  unrelated transcript.
+- Always cite the agent name and `path`/`basename` you read so the user can open the
+  source.
+- Distinguish prompt content from response content — they live under separate headings
+  in the transcript.
+- Prefer short excerpts over long quotes; only include a longer quote when the exact
+  wording matters.
+- If `sase chat list -j` returns an empty array, say "no transcripts found" plainly — do
+  not fabricate rows.
+- If a named-agent lookup fails AND the fallback chain above (content-filtered list,
+  `-a` status, `/sase_agents_status` artifacts) turns up nothing, say so plainly instead
+  of falling back to an unrelated transcript.
 
 ## Not for continuing a conversation
 
-This skill is read-only. To continue a prior conversation in a new agent, use `#fork:<name>` or
-`#fork_by_chat:<basename>` xprompts — they remain the right tool for that.
+This skill is read-only. To continue a prior conversation in a new agent, use
+`#fork:<name>` or `#fork_by_chat:<basename>` xprompts — they remain the right tool for
+that.
