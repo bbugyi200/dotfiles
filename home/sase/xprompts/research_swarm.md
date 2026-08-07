@@ -1,15 +1,16 @@
 ---
 description:
-  Launch two independent research agents, then have a lead researcher extend and consolidate their
-  findings and generate an infographic.
+  Launch two independent research agents, then have a lead researcher extend and
+  consolidate their findings and generate an infographic.
 input:
   - name: prompt
     type: text
     description: Research topic or question for the swarm to investigate.
 ---
 
-%clan(research.{@1}, tribe=research, summary=[[[bold]RESEARCH PROMPT:[/bold] {{ prompt }}]])
-%id:research.{@1}.cdx %wait(priority=20) %model:@research_a {{ prompt }} #research
+%clan(research.{@1}, tribe=research,
+summary=[[[bold]RESEARCH PROMPT:[/bold] {{ prompt }}]]) %id:research.{@1}.cdx
+%wait(priority=20) %model:@research_a {{ prompt }} #research
 
 ---
 
@@ -17,11 +18,12 @@ input:
 
 ---
 
-%id(final, clan=research.{@1}) %wait(priority=20) %m:@research_lead %wait:research.{@1}.cdx
-%wait:research.{@1}.cld
+%id(final, clan=research.{@1}) %wait(priority=20) %m:@research_lead
+%wait:research.{@1}.cdx %wait:research.{@1}.cld
 
-You are the lead researcher: two independent researchers have reported on the request below, and you
-will add your own research and merge all three perspectives into one consolidated report.
+You are the lead researcher: two independent researchers have reported on the request
+below, and you will add your own research and merge all three perspectives into one
+consolidated report.
 
 Research request:
 
@@ -37,19 +39,19 @@ $(sase repo path research --ensure)/$(date +%Y%m)
 
 Steps:
 
-1. Read both transcripts to learn which report file each researcher wrote (`research.{@1}.cdx` ->
-   `__a`, `research.{@1}.cld` -> `__b`), then read both reports. Never assign `__a`/`__b` from
-   filesystem order.
-2. Research the request yourself, prioritizing gaps, weak evidence, and disagreements between the
-   two reports.
-3. Pick a descriptive stem `<name>` that collides with nothing in the month directory (do NOT end
-   the name with `_consolidated` or `_<YYYYmmdd>` or anything similar unless it relates to the
-   research topic), create `<month-dir>/<name>/`, and move the two reports to `<name>__a.md` and
-   `<name>__b.md` inside it. Preserve both files and never overwrite: on any collision, pick a
-   different stem first.
-4. Write the consolidated report to `<name>/<name>.md`: merge the strongest findings from both
-   reports and your own research, resolve conflicts, cut duplication, and add missing critical
-   context without unnecessary length.
+1. Read both transcripts to learn which report file each researcher wrote
+   (`research.{@1}.cdx` -> `__a`, `research.{@1}.cld` -> `__b`), then read both reports.
+   Never assign `__a`/`__b` from filesystem order.
+2. Research the request yourself, prioritizing gaps, weak evidence, and disagreements
+   between the two reports.
+3. Pick a descriptive stem `<name>` that collides with nothing in the month directory
+   (do NOT end the name with `_consolidated` or `_<YYYYmmdd>` or anything similar unless
+   it relates to the research topic), create `<month-dir>/<name>/`, and move the two
+   reports to `<name>__a.md` and `<name>__b.md` inside it. Preserve both files and never
+   overwrite: on any collision, pick a different stem first.
+4. Write the consolidated report to `<name>/<name>.md`: merge the strongest findings
+   from both reports and your own research, resolve conflicts, cut duplication, and add
+   missing critical context without unnecessary length.
 
 Final layout:
 
@@ -62,5 +64,5 @@ Final layout:
 
 ---
 
-%id(image, clan=research.{@1}) %wait(priority=20) %model:codex/gpt-5.6-sol %wait:research.{@1}.final
-#fork:research.{@1}.final #research/image
+%id(image, clan=research.{@1}) %wait(priority=20) %model:codex/gpt-5.6-sol
+%wait:research.{@1}.final #fork:research.{@1}.final #research/image

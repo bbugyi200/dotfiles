@@ -62,7 +62,7 @@ fmt-lua:
 # Format Markdown files with prettier
 fmt-md:
     @printf "\n---------- Formatting Markdown with prettier... ----------\n"
-    prettier --write --prose-wrap=always --print-width=100 "**/*.md"
+    prettier --write --prose-wrap=always --print-width=88 "**/*.md"
 
 # Auto-fix keep-sorted blocks in YAML files
 fix-keep-sorted: _setup-keep-sorted
@@ -80,7 +80,7 @@ fmt-py-check: _setup
 # Check Markdown formatting (CI mode)
 fmt-md-check:
     @printf "\n---------- Checking Markdown formatting with prettier... ----------\n"
-    prettier --check --prose-wrap=always --print-width=100 "**/*.md"
+    prettier --check --prose-wrap=always --print-width=88 "**/*.md"
 
 # Run all linters
 lint: (_header "lint") lint-keep-sorted lint-py lint-lua lint-md
@@ -106,7 +106,7 @@ lint-lua:
 # Check Markdown formatting with prettier
 lint-md:
     @printf "\n---------- Checking Markdown formatting with prettier... ----------\n"
-    prettier --check --prose-wrap=always --print-width=100 "**/*.md"
+    prettier --check --prose-wrap=always --print-width=88 "**/*.md"
 
 # Lint keep-sorted blocks in YAML files (CI mode)
 lint-keep-sorted: _setup-keep-sorted

@@ -4,8 +4,8 @@
 
 ### Single-File Plugins (Preferred)
 
-Most plugins should be contained in **single files** in the `/lua/plugins/` directory. Each plugin
-file should:
+Most plugins should be contained in **single files** in the `/lua/plugins/` directory.
+Each plugin file should:
 
 1. Start with module documentation comments
 2. Include any helper functions (preferably private)
@@ -70,7 +70,8 @@ vim.keymap.set(
 
 #### Keymap Groups
 
-For multi-part keymaps (e.g., `<leader>q`, `<leader>qa`, `<leader>qf`), use `-- KEYMAP GROUP:`:
+For multi-part keymaps (e.g., `<leader>q`, `<leader>qa`, `<leader>qf`), use
+`-- KEYMAP GROUP:`:
 
 ```lua
 -- KEYMAP GROUP: <leader>q

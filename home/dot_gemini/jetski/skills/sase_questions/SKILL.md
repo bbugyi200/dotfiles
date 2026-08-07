@@ -24,7 +24,9 @@ sase questions '<json>'
   {
     "question": "Full question text (required)",
     "header": "Short sidebar label (optional)",
-    "options": [{ "label": "Option label (required)", "description": "Details (optional)" }],
+    "options": [
+      { "label": "Option label (required)", "description": "Details (optional)" }
+    ],
     "multiSelect": false
   }
 ]
