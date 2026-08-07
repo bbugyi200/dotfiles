@@ -60,17 +60,21 @@ once in the `options` list.
   names are stripped, lowercased, limited to 32 characters, and may contain lowercase
   letters, digits, underscores, and hyphens. Reserved names — `errors`, `gates`,
   `general`, `hitl`, `muted`, `snoozed`, and any name beginning with `__` — are all
-  rejected.
+  rejected. Declaring `panel` requires also declaring `presentation.panel_icon`: one
+  emoji or glyph identifying that tab at a glance. A gate that names a tab is the thing
+  introducing that tab to the user, so it is the thing responsible for saying what the
+  tab looks like.
 - Set `presentation.origin_agent` to the agent the gate was filed on behalf of. It is an
   attribution label rather than a routing identity, so remote agent names are valid even
   when the local host has never seen them.
 
 `presentation.title`, `presentation.icon`, and at least one non-blank
 `presentation.notes` line are **required** for every custom gate — creation fails with
-`missing_presentation` otherwise. Everything you put in `title`, `icon`, `notes`, option
-labels, option icons, and command paths is rendered directly in the notification panel's
-detail pane, so those fields are the user's whole view of the decision: write them for
-the reviewer, not for yourself.
+`missing_presentation` otherwise. `presentation.panel_icon` is likewise **required**
+whenever `presentation.panel` is declared. Everything you put in `title`, `icon`,
+`notes`, option labels, option icons, and command paths is rendered directly in the
+notification panel's detail pane, so those fields are the user's whole view of the
+decision: write them for the reviewer, not for yourself.
 
 Command `argv` arrays are executed without a shell. Their first element must name an
 executable `command` resource in the bundle. A command receives the gate input as JSON
@@ -98,6 +102,7 @@ separate rejection path:
     "icon": "🚀",
     "title": "Restart example.service",
     "panel": "deployments",
+    "panel_icon": "🚀",
     "sender": "deployment-confirmation",
     "notes": ["Restart example.service now?", "Select whether to verify it afterward."],
     "tags": ["deployment", "confirmation"]
