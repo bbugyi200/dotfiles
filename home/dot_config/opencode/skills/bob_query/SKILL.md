@@ -16,11 +16,13 @@ Use this skill when you need read-only Dataview access to Bryan's Bob vault (`~/
 - Use `bob query` instead of manually parsing large parts of the vault.
 - Treat this skill as read-only. Do not modify Bob vault files.
 - Prefer `--query-file -` or a temporary query file for multiline DQL.
-- Use `--format markdown` when the result is going into a prompt, transcript, or human-readable answer.
+- Use `--format markdown` when the result is going into a prompt, transcript, or human-readable
+  answer.
 - Use `--format paths` only when you need source expression results or path-only output.
-- Omit `--bob-dir` for Bryan's default vault. Include `--bob-dir <path>` only when the user asks for a nondefault vault.
-- Treat command failures as actionable diagnostics. Fix the DQL, vault path, or command invocation; do not use failure
-  as permission to scan and parse the whole vault ad hoc.
+- Omit `--bob-dir` for Bryan's default vault. Include `--bob-dir <path>` only when the user asks for
+  a nondefault vault.
+- Treat command failures as actionable diagnostics. Fix the DQL, vault path, or command invocation;
+  do not use failure as permission to scan and parse the whole vault ad hoc.
 
 ## Example
 

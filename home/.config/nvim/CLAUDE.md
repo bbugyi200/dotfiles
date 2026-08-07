@@ -4,7 +4,8 @@
 
 ### Single-File Plugins (Preferred)
 
-Most plugins should be contained in **single files** in the `/lua/plugins/` directory. Each plugin file should:
+Most plugins should be contained in **single files** in the `/lua/plugins/` directory. Each plugin
+file should:
 
 1. Start with module documentation comments
 2. Include any helper functions (preferably private)
@@ -88,7 +89,8 @@ vim.keymap.set("n", "<leader>qf", "<cmd>copen<cr>", { desc = "Open quickfix wind
 
 1. **Always include `desc` field**: Used by which-key plugin for documentation
 2. **Use `<nop>` for groups**: Creates prefix groups without executing commands
-3. **Document before defining**: Place `-- KEYMAP:` comment immediately before the `vim.keymap.set()` call
+3. **Document before defining**: Place `-- KEYMAP:` comment immediately before the
+   `vim.keymap.set()` call
 
 ### Examples
 

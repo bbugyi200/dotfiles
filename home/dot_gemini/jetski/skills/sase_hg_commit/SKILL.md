@@ -16,9 +16,11 @@ Commit changes via the `sase commit` command.
 
 ## Instructions
 
-1. **Examine uncommitted changes** — Run `hg status` or `hg diff` to understand what files have changed and why.
+1. **Examine uncommitted changes** — Run `hg status` or `hg diff` to understand what files have
+   changed and why.
 
-2. **Write a commit message file** — Create a file (e.g., `commit_message.md`) containing a good commit message.
+2. **Write a commit message file** — Create a file (e.g., `commit_message.md`) containing a good
+   commit message.
 
 3. **Run the commit** — Execute:
 
@@ -32,8 +34,9 @@ Commit changes via the `sase commit` command.
    - `-f`: File to include (repeat for multiple files). Omit to include all changes.
    - `--name`: CL name (only needed for `create_pull_request` method).
 
-   The `$SASE_COMMIT_METHOD` environment variable is read automatically to determine the dispatch method
-   (`create_commit`, `create_proposal`, or `create_pull_request`). Do NOT pass `--type` unless you need to override.
+   The `$SASE_COMMIT_METHOD` environment variable is read automatically to determine the dispatch
+   method (`create_commit`, `create_proposal`, or `create_pull_request`). Do NOT pass `--type`
+   unless you need to override.
 
 ## Example
 
@@ -43,13 +46,14 @@ sase commit -M commit_message.md -f auth.py -f login.py
 
 ## On Merge Conflict
 
-If `sase commit` exits with code **2** and prints a "merge conflict" message, the local repository is in a paused
-evolve/rebase state and the post-commit bookkeeping has been deferred. Do NOT re-run the original `sase commit` command.
-Instead, resolve the conflict and finalize:
+If `sase commit` exits with code **2** and prints a "merge conflict" message, the local repository
+is in a paused evolve/rebase state and the post-commit bookkeeping has been deferred. Do NOT re-run
+the original `sase commit` command. Instead, resolve the conflict and finalize:
 
 1. **Find conflicted files**: Run `hg resolve --list` (lines starting with `U` are unresolved).
 2. **Read each file** and resolve conflict markers. Prefer the INCOMING version when uncertain.
 3. **Mark resolved**: Run `hg resolve --mark <file>` for each.
-4. **Continue the rebase/evolve**: Run `hg rebase --continue` (or `hg evolve --continue`). Repeat steps 1–4 until clean.
+4. **Continue the rebase/evolve**: Run `hg rebase --continue` (or `hg evolve --continue`). Repeat
+   steps 1–4 until clean.
 5. **Verify the working tree is clean**: `hg status` should be empty.
 6. **Finalize the sase commit**: Run `sase commit --resume`.

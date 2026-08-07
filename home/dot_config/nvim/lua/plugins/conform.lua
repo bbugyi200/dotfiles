@@ -184,7 +184,7 @@ local function get_conform_opts()
 						stdin = true,
 					},
 					prettier = {
-						prepend_args = { "--prose-wrap=always", "--print-width=120" },
+						prepend_args = { "--prose-wrap=always", "--print-width=100" },
 					},
 				},
 			})
@@ -208,7 +208,7 @@ local function get_conform_opts()
 			},
 			formatters = {
 				prettier = {
-					prepend_args = { "--prose-wrap=always", "--print-width=120" },
+					prepend_args = { "--prose-wrap=always", "--print-width=100" },
 				},
 			},
 		}
