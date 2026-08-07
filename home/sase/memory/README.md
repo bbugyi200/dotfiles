@@ -53,7 +53,7 @@ notes from detailed reference notes that agents read only when relevant.
 - Type: `long`
 - Description: Obsidian vault, notes workflow, and obsidian-headless/ob usage.
 - Parent: `AGENTS.md`
-- Lines: 18
+- Lines: 19
 - Approx. tokens: 164
 
 ## Statistics
@@ -61,7 +61,7 @@ notes from detailed reference notes that agents read only when relevant.
 - Total notes: 2
 - Short notes: 1
 - Long notes: 1
-- Total lines: 66
+- Total lines: 67
 - Total approx. tokens: 803
 
 ## Commands
