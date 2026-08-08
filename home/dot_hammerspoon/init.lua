@@ -1,3 +1,4 @@
+local PomodoroCountdown = require("pomodoro_countdown")
 local ScreenshotRegion = require("screenshot_region")
 local TaskCapture = require("task_capture")
 
@@ -1458,29 +1459,25 @@ local function todayEndEpoch(endHour, endMinute)
 	return os.time(today)
 end
 
-local function formatBobPomodoroSeconds(seconds)
-	local sign = ""
-	if seconds < 0 then
-		sign = "+"
-		seconds = -seconds
-	end
-
-	seconds = math.floor(seconds)
-	return string.format("%s%d:%02d", sign, math.floor(seconds / 60), seconds % 60)
-end
-
 local bobPomodoroOverdueTitleAttributes = {
 	color = { hex = "#ff453a", alpha = 1 },
 	font = hs.styledtext.defaultFonts.menuBar,
 }
 
-local function bobPomodoroMenuTitle(seconds)
-	local title = formatBobPomodoroSeconds(seconds)
-	if seconds >= 0 then
-		return title
+local bobPomodoroMissingTitleAttributes = {
+	color = { hex = "#ff453a", alpha = 1 },
+	font = hs.styledtext.convertFont(hs.styledtext.defaultFonts.menuBar, hs.styledtext.fontTraits.boldFont),
+}
+
+local function bobPomodoroMenuTitle(presentation)
+	if presentation.appearance == "normal" then
+		return presentation.title
+	end
+	if presentation.appearance == "missing" then
+		return hs.styledtext.new(presentation.title, bobPomodoroMissingTitleAttributes)
 	end
 
-	return hs.styledtext.new(title, bobPomodoroOverdueTitleAttributes)
+	return hs.styledtext.new(presentation.title, bobPomodoroOverdueTitleAttributes)
 end
 
 local syncBobPomodoro
@@ -1526,19 +1523,15 @@ local function renderBobPomodoroMenu()
 		return
 	end
 
-	local remaining = state.endEpoch - os.time()
-	if remaining < -600 then
-		hideBobPomodoroMenu()
-		syncBobPomodoro()
-		return
-	end
+	local remaining = state.endEpoch and state.endEpoch - os.time() or nil
 
-	if remaining < 0 and state.status == "active" and not state.zeroSyncRequested then
+	if remaining and remaining < 0 and state.status == "active" and not state.zeroSyncRequested then
 		state.zeroSyncRequested = true
 		syncBobPomodoro()
 	end
 
-	menuBarItem:setTitle(bobPomodoroMenuTitle(remaining))
+	local presentation = PomodoroCountdown.presentation(remaining)
+	menuBarItem:setTitle(bobPomodoroMenuTitle(presentation))
 	menuBarItem:returnToMenuBar()
 end
 
@@ -1573,7 +1566,13 @@ syncBobPomodoro = function()
 
 			local output = trimText(stdOut)
 			if output == "" then
-				hideBobPomodoroMenu()
+				bobPomodoroRuntime.state = {
+					rawOutput = "No current Pomodoro",
+					status = "missing",
+					lastSyncEpoch = os.time(),
+				}
+				updateBobPomodoroMenuDetails()
+				renderBobPomodoroMenu()
 				return
 			end
 
