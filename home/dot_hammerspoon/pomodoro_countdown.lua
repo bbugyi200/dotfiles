@@ -1,6 +1,6 @@
 local M = {}
 
-M.MISSING_AFTER_SECONDS = 10 * 60
+M.OVERDUE_WARNING_AFTER_SECONDS = 10 * 60
 
 local function format_seconds(seconds)
 	local sign = ""
@@ -14,10 +14,17 @@ local function format_seconds(seconds)
 end
 
 function M.presentation(remaining_seconds)
-	if remaining_seconds == nil or remaining_seconds <= -M.MISSING_AFTER_SECONDS then
+	if remaining_seconds == nil then
 		return {
 			title = "NO POMODORO",
 			appearance = "missing",
+		}
+	end
+
+	if remaining_seconds <= -M.OVERDUE_WARNING_AFTER_SECONDS then
+		return {
+			title = "OVERDUE POMODORO",
+			appearance = "overdue_warning",
 		}
 	end
 

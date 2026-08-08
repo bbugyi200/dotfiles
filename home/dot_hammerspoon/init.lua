@@ -1464,20 +1464,34 @@ local bobPomodoroOverdueTitleAttributes = {
 	font = hs.styledtext.defaultFonts.menuBar,
 }
 
+local bobPomodoroBoldMenuBarFont =
+	hs.styledtext.convertFont(hs.styledtext.defaultFonts.menuBar, hs.styledtext.fontTraits.boldFont)
+
 local bobPomodoroMissingTitleAttributes = {
+	color = { hex = "#30d158", alpha = 1 },
+	font = bobPomodoroBoldMenuBarFont,
+}
+
+local bobPomodoroOverdueWarningTitleAttributes = {
 	color = { hex = "#ff453a", alpha = 1 },
-	font = hs.styledtext.convertFont(hs.styledtext.defaultFonts.menuBar, hs.styledtext.fontTraits.boldFont),
+	font = bobPomodoroBoldMenuBarFont,
 }
 
 local function bobPomodoroMenuTitle(presentation)
 	if presentation.appearance == "normal" then
 		return presentation.title
 	end
+	if presentation.appearance == "overdue" then
+		return hs.styledtext.new(presentation.title, bobPomodoroOverdueTitleAttributes)
+	end
 	if presentation.appearance == "missing" then
 		return hs.styledtext.new(presentation.title, bobPomodoroMissingTitleAttributes)
 	end
+	if presentation.appearance == "overdue_warning" then
+		return hs.styledtext.new(presentation.title, bobPomodoroOverdueWarningTitleAttributes)
+	end
 
-	return hs.styledtext.new(presentation.title, bobPomodoroOverdueTitleAttributes)
+	return presentation.title
 end
 
 local syncBobPomodoro
@@ -1541,7 +1555,7 @@ export PATH
 if [ -z "${DATE+x}" ] && command -v gdate >/dev/null 2>&1; then
 	export DATE=gdate
 fi
-exec bob pomodoro
+exec bob pomodoro --show-stale
 ]]
 
 syncBobPomodoro = function()
