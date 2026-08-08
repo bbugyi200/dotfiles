@@ -133,6 +133,8 @@ ace:
       the `#$1` xprompt
     w: "%w"
     x: "xprompt"
+    xm: |-
+      xprompt memory
     xp: |-
       xprompt property
     xs: "xprompt skill"
