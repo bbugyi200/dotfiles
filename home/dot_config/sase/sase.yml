@@ -8,7 +8,7 @@ commit_hooks:
 file_hooks:
   - name: research-highlights
     description: Render new research reports into Highlights PDFs for the Obsidian reading queue.
-    command: bob highlights create
+    command: bob highlights create --research-root .
     sidecars: [research]
     path_globs: ["20*/**/*.md", "!20*/*/*__*.md"]
     agent_name_globs: ["!research.*.cld", "!research.*.cdx"]
