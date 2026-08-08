@@ -81,6 +81,29 @@ executable `command` resource in the bundle. A command receives the gate input a
 on stdin and must print exactly one JSON value on stdout; diagnostics belong on stderr.
 Every command's output must satisfy its option's `result_schema`.
 
+## Declare Inputs And Actions
+
+When an option's command needs a real value — not just free-text feedback — declare it
+under that option's `inputs`, a closed, typed vocabulary that compiles into the option's
+`input_schema` at creation. Never invent a way to smuggle a value through `argv`; the
+command always reads its input as JSON on stdin. Each field needs an `id` (the JSON
+property name, `^[a-z][a-z0-9_]*$`), a `label`, and a `type`: `word`, `line`, `text`,
+`path`, `agent`, `int`, `bool`, `float`, or `enum` (which also requires a non-empty
+`choices` list of strings or `{value, label}` objects). Mark a field `required` when the
+command cannot run without it, `secret: true` when its value must never be written to
+durable audit data unredacted, and `repeatable: true` when the command accepts a list.
+An option declaring neither `inputs` nor `input_schema` takes no input at all —
+`sase gate create` rejects any option whose declared schema could never be satisfied by
+a real submission, naming the offending property, so an unanswerable gate fails loudly
+at creation instead of dying silently on first submission.
+
+A gate may also declare repeatable **actions** under `operations`: commands the reviewer
+can run any number of times without answering the gate, useful for a diff view, a health
+probe, or anything else that helps them decide before committing to an option. Give each
+one a stable `id`, `kind: "run_command"`, a `label`, and a `command`; its stdout must be
+one JSON value, and the reviewer sees its `summary` (a one-line toast) and `body`
+(rendered per the declared `display`).
+
 ## Author The Request
 
 Write the complete schema-version 3 request to a JSON file. This example asks permission
@@ -119,9 +142,18 @@ separate rejection path:
       "command": {
         "argv": ["commands/restart"]
       },
-      "input_schema": {
-        "type": "object"
-      },
+      "inputs": [
+        {
+          "id": "mode",
+          "label": "Restart mode",
+          "type": "enum",
+          "required": true,
+          "choices": [
+            { "value": "quick", "label": "Quick restart" },
+            { "value": "full", "label": "Full restart (clears cache)" }
+          ]
+        }
+      ],
       "result_schema": {
         "type": "object",
         "required": ["status"],
@@ -171,6 +203,22 @@ separate rejection path:
       "icon": "🚀"
     }
   ],
+  "operations": [
+    {
+      "id": "show_status",
+      "kind": "run_command",
+      "label": "Show current status",
+      "icon": "🔍",
+      "key": "s",
+      "command": { "argv": ["commands/show_status"] },
+      "result_schema": {
+        "type": "object",
+        "required": ["summary"],
+        "properties": { "summary": { "type": "string" } }
+      },
+      "display": "text"
+    }
+  ],
   "resources": [
     {
       "path": "commands/restart",
@@ -186,12 +234,22 @@ separate rejection path:
       "path": "commands/reject",
       "role": "command",
       "content": "#!/bin/sh\nprintf '{\"status\":\"rejected\"}\\n'\n"
+    },
+    {
+      "path": "commands/show_status",
+      "role": "command",
+      "content": "#!/bin/sh\nset -eu\nstate=$(systemctl --user is-active example.service || true)\nprintf '{\"summary\":\"example.service is %s\"}\\n' \"$state\"\n"
     }
   ],
   "gate_timeout_seconds": 900,
   "auto": false
 }
 ```
+
+`show_status` never answers the gate and may be run any number of times before the
+reviewer decides. It declares no `targets`, so it must not rewrite any resource; an
+action that does need to rewrite one lists that resource's path under `targets`, or the
+run is rejected after the fact for touching something it never declared.
 
 For larger commands, set a resource's `source` to a script you authored instead of
 embedding `content`; use exactly one of `source` or `content`. Keep command resources

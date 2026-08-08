@@ -46,8 +46,8 @@ evidence, then delegates to `sase commit`.
      housekeeping, or asset updates.
 
    Picking a tag is mandatory, not advisory: `sase commit` **rejects** a message whose
-   subject line is not a conventional header, before it closes any bead or runs any
-   hook. If that happens, rewrite the subject in the same `-M` message file (which is
+   subject line is not a conventional header, before it syncs any bead or runs any hook.
+   If that happens, rewrite the subject in the same `-M` message file (which is
    preserved on failure) and re-run the identical command — do not disable the check.
 
    A project may restrict its allowed tag set, for example via a PR-title check or
@@ -111,7 +111,9 @@ evidence, then delegates to `sase commit`.
    Exit codes:
    - `0`: Commit succeeded.
    - `1`: Commit failed with a printed reason. Fix the cause and re-run the same
-     command. Bead close is idempotent, so re-runs are safe.
+     command. Committing never closes a bead — it only syncs the bead store — so re-runs
+     are safe. Close your own bead with `sase bead close` when the work is actually
+     done; a commit made while the bead is still open prints a reminder, not a close.
    - `2`: A rebase is paused for a real conflict. Do not re-run the original command
      while the rebase is paused; use the recovery flow below.
 
