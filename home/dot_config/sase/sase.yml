@@ -112,6 +112,8 @@ ace:
       to the ~/tmp/$1/ directory to help you figure this out."
     ma: |-
       model alias
+    mf: |-
+      memory file
     mrp: "Mentor Review panel"
     n: "%i:"
     ob: "Obsidian"
