@@ -25,12 +25,17 @@ Use this skill before creating any task bead.
    materially supports the report, use `/sase_artifact_file` to register it and retain
    the canonical artifact reference.
 
-3. Inspect every existing task status, then show plausible matches:
+3. Search existing task beads for prior reports, then show plausible matches:
 
    ```bash
-   sase bead list --type task --format full --limit 0 --status open --status claimed --status ready --status in_progress --status closed
+   sase bead search '<distinctive-term>' --type task
    sase bead show <plausible-task-id>
    ```
+
+   Search is a case-insensitive substring match across every status, closed and snoozed
+   included. Run a few short, distinctive queries -- a symbol, filename, command, or
+   error fragment -- because a whole sentence rarely matches verbatim. Do not list every
+   task bead.
 
    A semantic duplicate has the same underlying defect/root cause or desired
    remediation, not merely the same subsystem or a similar symptom. For a duplicate,
