@@ -63,7 +63,7 @@ ace:
     cmt: "`sase commit`"
     cout: |-
       the command output below
-    cs: "ChangeSpec"
+    cs: "Patch"
     ctx: |-
       see $1 for context
     di: "the $1 directory"

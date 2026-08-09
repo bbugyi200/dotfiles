@@ -230,7 +230,7 @@ function M.get_markdown_snippets()
 			{ t("Can you help me address the Critique comments?") }
 		),
 		-- SNIPPET: cs
-		s({ trig = "cs", desc = "ChangeSpec" }, { t("ChangeSpec") }),
+		s({ trig = "cs", desc = "Patch" }, { t("Patch") }),
 		-- SNIPPET: di
 		s({ trig = "di", desc = "diff_*.txt file explanation" }, {
 			t("The diff"),
