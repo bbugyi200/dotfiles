@@ -28,14 +28,15 @@ Use this skill before creating any task bead.
 3. Search existing task beads for prior reports, then show plausible matches:
 
    ```bash
-   sase bead search '<distinctive-term>' --type task
+   sase bead search 'symbol|filename|command|error-fragment' --regex --type task
    sase bead show <plausible-task-id>
    ```
 
-   Search is a case-insensitive substring match across every status, closed and snoozed
-   included. Run a few short, distinctive queries -- a symbol, filename, command, or
-   error fragment -- because a whole sentence rarely matches verbatim. Do not list every
-   task bead.
+   Search is case-insensitive across every status, closed and snoozed included. When
+   several clues are available, combine a few short, distinctive terms -- a symbol,
+   filename, command, or error fragment -- with `--regex` alternation and escape
+   metacharacters that should match literally. When one substring is sufficient, use the
+   default literal search. Do not list every task bead.
 
    A semantic duplicate has the same underlying defect/root cause or desired
    remediation, not merely the same subsystem or a similar symptom. For a duplicate,
