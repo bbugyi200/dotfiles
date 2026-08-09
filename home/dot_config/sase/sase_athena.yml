@@ -2,7 +2,8 @@ id:
   username: bbugyi200
   machine_name: athena
 
-amd_h1_title: "athena - Bryan Bugyi's Home Server"
+memory:
+  h1_title: "athena - Bryan Bugyi's Home Server"
 
 llm_provider:
   provider: codex
