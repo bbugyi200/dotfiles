@@ -13,7 +13,7 @@ The following memories contain core (always loaded) context:
 
 ### 1. SASE = Structured Agentic Software Engineering (sase)
 
-#### Repositories
+#### 1.1 Repositories
 
 Configured linked and sidecar repositories for this context:
 
@@ -38,7 +38,7 @@ discussions.
 IMPORTANT REMINDER: Do NOT locate, clone, or web-fetch another repo's contents any other
 way than by using `/sase_repo`!
 
-#### File Discovered Work As Task Beads
+#### 1.2 File Discovered Work As Task Beads
 
 Unless your prompt explicitly forbids creating beads (epic phase workers, for example,
 must record `PROPOSED FOLLOW-UP:` notes on their own bead instead), you can and SHOULD
