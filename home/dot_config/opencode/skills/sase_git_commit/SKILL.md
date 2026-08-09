@@ -157,8 +157,8 @@ and finalize:
 5. **Verify the working tree is clean**: `git status` should show "nothing to commit,
    working tree clean".
 6. **Finalize the sase commit**: Run `sase_git_commit --resume`. This replays the
-   post-commit bookkeeping (push, ChangeSpec row, COMMITS entry, result marker) and
-   exits 0 on success.
+   post-commit bookkeeping (push, Patch row, STITCHES entry, result marker) and exits 0
+   on success.
 
 ```bash
 sase_git_commit --resume

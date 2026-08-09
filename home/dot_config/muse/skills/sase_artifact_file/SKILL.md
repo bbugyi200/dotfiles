@@ -174,8 +174,8 @@ rely on:
 A `file:` ref becomes protected the moment it is durably recorded: an ID that appears in
 a ProjectSpec, plan, bead, bead page, or research document is excluded from every
 removal, as is any ref an agent consumed through an `@file:` prompt reference. So when
-you hand a `file:` ref to the user or write it into a bead, plan, or ChangeSpec, you
-have also pinned it. Handing a ref out only in your chat reply does not pin it.
+you hand a `file:` ref to the user or write it into a bead, plan, or Patch, you have
+also pinned it. Handing a ref out only in your chat reply does not pin it.
 
 `sase artifact reclaim` may convert a stored automatic row into a byte-free VCS-backed
 row, and that **changes the row's ID** because a reference row's ID derives from its VCS

@@ -61,13 +61,13 @@ reference:
 
 - `#gh:<ref>` (GitHub), `#git:<ref>` (bare git), or another ref registered by an
   installed workspace plugin.
-- `<ref>` is usually a project name (`#gh:sase`). Use a ChangeSpec name
-  (`#gh:my_change`) only when the agent must continue that existing PR branch, or
-  `#gh:@agent` to target the ChangeSpec created by the named agent.
+- `<ref>` is usually a project name (`#gh:sase`). Use a Patch name (`#gh:my_change`)
+  only when the agent must continue that existing PR branch, or `#gh:@agent` to target
+  the Patch created by the named agent.
 - A prompt with no workspace reference defaults to `#git:home`, which is usually wrong
   for repo work.
 - Family-attach launches (`%i(suffix, family=parent)`) inherit the parent's workspace
-  and ChangeSpec; do not add a workspace reference to them.
+  and Patch; do not add a workspace reference to them.
 
 ### Wait Directive
 
