@@ -9,7 +9,12 @@ native plan mode, which is disabled.
 
 ## Instructions
 
-1. **Explore and understand** the problem thoroughly.
+1. **Explore and understand** the problem thoroughly. Before choosing a plan or phase
+   size, read the canonical SASE size guidance:
+
+   ```bash
+   sase memory read sase_sizes.md --reason "Need SASE size guidance before authoring a plan"
+   ```
 
 2. **Choose the plan tier** before writing:
    - Use `tale` for work that one follow-up coding agent can implement as a single plan.
@@ -17,11 +22,15 @@ native plan mode, which is disabled.
      complete. Declare every phase dependency explicitly (so we can support parallel
      work if needed/desirable). Every phase in an epic plan file MUST have a unique slug
      ID.
+   - Authoring a tale plan is `large` work; authoring an epic plan is `xlarge` work.
 
 3. **Write a self-contained plan** to `sase_plan_<name>.md` (descriptive underscore
    name).
    - The file must start at byte 0 with valid YAML frontmatter that contains a single
      `tier: <tier>` property, where `<tier>` is either `tale` or `epic`.
+   - Tale frontmatter must declare `size: xsmall | small | medium`.
+   - Epic frontmatter must omit top-level `size`; each epic phase declares its own
+     `size`.
 
 4. **Validate (with `--explain`), edit, and revalidate (without `--explain`)**:
 
