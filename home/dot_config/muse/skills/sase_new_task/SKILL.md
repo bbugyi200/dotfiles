@@ -52,6 +52,13 @@ Use this skill before creating any task bead.
    sase bead +1 <task-id> --note "<independent reproduction and impact>" --ref <artifact-ref>
    ```
 
+   If the duplicate bead is closed, read the command output before moving on. When it
+   says the reopen was withheld because the report's observation window started before
+   the close, do not reflexively retry with an override. Use
+   `sase bead +1 <task-id> --verified-after-close ...` only when you actually reproduced
+   the defect on a tree that already contains the close; otherwise the recorded +1 is
+   the correct durable corroboration.
+
    Do not create a task. A reporter counts at most once; use `sase bead note` for later
    supplementary evidence.
 

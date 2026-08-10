@@ -29,8 +29,9 @@ the agents keeping them parked.
 
 Every live runner-slot waiter is reported as `QUEUED`, whether its threshold comes from
 the global cap or an authored `%wait(runners=N)`. `runner_slot_queue_position` and
-`runner_slot_queue_size` cover the same waiters in priority-then-request-FIFO admission
-order, including while the pool is full. Use the position on `QUEUED` rows when
+`runner_slot_queue_size` cover the same waiters in capacity-aware display order:
+eligible waiters first, then parked waiters by nearest-opening threshold, with priority
+and request FIFO preserved inside each group. Use the position on `QUEUED` rows when
 explaining what will start next; do not describe their stale dependency or time-wait
 marker fields as active blockers.
 

@@ -101,6 +101,7 @@ evidence, then delegates to `sase commit`.
    - `-f`: File to stage (repeat for multiple files). **Include both modified AND newly
      created (untracked) files.** Omitting all `-f` flags stages all changes (including
      untracked files); reserve that for an intentional whole-repository commit.
+   - `-B`: Do not auto-close your assigned task bead; use it for mid-flight commits.
    - `--name`: Branch name (only needed for `create_pull_request` method).
 
    The `$SASE_COMMIT_METHOD` environment variable is read automatically to determine the
@@ -111,9 +112,9 @@ evidence, then delegates to `sase commit`.
    Exit codes:
    - `0`: Commit succeeded.
    - `1`: Commit failed with a printed reason. Fix the cause and re-run the same
-     command. Committing never closes a bead — it only syncs the bead store — so re-runs
-     are safe. Close your own bead with `sase bead close` when the work is actually
-     done; a commit made while the bead is still open prints a reminder, not a close.
+     command. A successful commit auto-closes an `in_progress` task bead in this repo;
+     phase and plan beads are never auto-closed, and agents still close those
+     themselves. Re-runs stay safe because re-closing is a no-op.
    - `2`: A rebase is paused for a real conflict. Do not re-run the original command
      while the rebase is paused; use the recovery flow below.
 
