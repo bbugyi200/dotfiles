@@ -45,8 +45,19 @@ Use this skill before creating any task bead.
    default literal search. Do not list every task bead.
 
    A semantic duplicate has the same underlying defect/root cause or desired
-   remediation, not merely the same subsystem or a similar symptom. For a duplicate,
-   record independent reproduction or impact evidence and any artifact refs:
+   remediation, not merely the same subsystem or a similar symptom. Before corroborating
+   a duplicate, check whether the candidate is a retired umbrella: a closed task whose
+   close reason declares it retired and forbids `+1`. Retired umbrellas are tracking
+   patterns that intentionally stop accepting corroboration. Do not `+1` or reopen them.
+   Route the report to step 7 instead, create a node-specific task bead named for the
+   failing node ID, and add a related-context note:
+
+   ```bash
+   sase bead note <new-task-id> "RELATED: <retired-task-id> — <how it bears on this task>"
+   ```
+
+   For any other duplicate, record independent reproduction or impact evidence and any
+   artifact refs:
 
    ```bash
    sase bead +1 <task-id> --note "<independent reproduction and impact>" --ref <artifact-ref>
