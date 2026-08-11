@@ -85,8 +85,6 @@ ace:
       Can you help me confirm/deny my suspicion, diagnose the true root cause, and fix the issue?
     fm: |-
       frontmatter
-    foo: |-
-      foo bar baz
     forw: |-
       {% for chat in wait_chats -%}
 
