@@ -3,18 +3,17 @@ use_chezmoi: true
 artifacts:
   retention:
     enabled: true
+artifact_refs:
+  file:
+    roots:
+      - name: bob
+        path: ~/bob
+        path_globs: ["**/*.md"]
 commit_hooks:
   before: "sase_git_fix"
 file_hooks:
-  - name: research-highlights
-    description: Render new research reports into Highlights PDFs for the Obsidian reading queue.
+  - use: research-highlights
     command: bob highlights create --include-id
-    filters:
-      sidecars: [research]
-      path_globs: ["20*/**/*.md", "!20*/*/*__*.md"]
-      agent_name_globs: ["!research.*.cld", "!research.*.cdx"]
-      ops: [ADD]
-    timeout: 120s
 github_orgs:
   - bbugyi200
   - sase-org
