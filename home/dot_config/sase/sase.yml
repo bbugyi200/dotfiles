@@ -229,19 +229,22 @@ xprompts:
     content: |-
       GitHub Actions is failing for the {{ repo }} repo. Can you run the `actstat` command to get more information about
       the failing jobs, diagnose the root cause of these failures, and then fix them?
-  bd/review_tasks: |-
-    #gh:sase Can you review all of the current task sase beads that are opened for
-    the "sase" project? There are currently too many open task beads for me to
-    review or approve right now. Can you help me complete the following sequence of
-    steps to address this?:
+  bd/review_tasks:
+    input:
+      project:
+        type: line
+        default: sase
+    content: |-
+      Can you review all of the current task sase beads that are opened for
+      the "{{ project }}" project? There are currently too many open task beads for me to
+      review or approve right now. Can you help me complete the following sequence of
+      steps to address this?:
 
-    1. Select just seven that are definitely still relevant (or less if there are <7
-       relevant open task beads) and will provide the highest impact once addressed.
-    2. Close all of the other task beads with a good reason.
-    3. Set some sase variables to express which tasks out of the seven are most
-       important in ranked order.
-
-    #m_opus
+      1. Select just seven that are definitely still relevant (or less if there are <7
+         relevant open task beads) and will provide the highest impact once addressed.
+      2. Close all of the other task beads with a good reason.
+      3. Set some sase variables to express which tasks out of the seven are most
+         important in ranked order.
   bea:
     snippet: true
     content: "I want you to lead the design on this one. Just make sure it looks beautiful!"
