@@ -1,9 +1,9 @@
 ---
 name: sase_git_commit
 description:
-  Commit changes using sase commit for git-based VCS (bare git and GitHub). This is the
-  ONLY way you should EVER commit to git repos. NEVER invoke this skill unless the user
-  explicitly asks you to commit or a post-completion finalizer triggers it.
+  Commit changes using sase stitch create for git-based VCS (bare git and GitHub). This
+  is the ONLY way you should EVER commit to git repos. NEVER invoke this skill unless
+  the user explicitly asks you to commit or a post-completion finalizer triggers it.
 ---
 
 Before doing anything else, run this command to record that you are using this skill:
@@ -13,7 +13,7 @@ sase skill use sase_git_commit --reason "<one-line reason for using this skill>"
 ```
 
 Commit changes via the `sase_git_commit` wrapper. The wrapper records skill invocation
-evidence, then delegates to `sase commit`.
+evidence, then delegates to `sase stitch create`.
 
 ## Instructions
 
@@ -45,9 +45,9 @@ evidence, then delegates to `sase commit`.
    - `chore` — Maintenance that fits none of the tags above, such as tooling config,
      housekeeping, or asset updates.
 
-   Picking a tag is mandatory, not advisory: `sase commit` **rejects** a message whose
-   subject line is not a conventional header, before it syncs any bead or runs any hook.
-   If that happens, rewrite the subject in the same `-M` message file (which is
+   Picking a tag is mandatory, not advisory: `sase stitch create` **rejects** a message
+   whose subject line is not a conventional header, before it syncs any bead or runs any
+   hook. If that happens, rewrite the subject in the same `-M` message file (which is
    preserved on failure) and re-run the identical command — do not disable the check.
 
    A project may restrict its allowed tag set, for example via a PR-title check or
@@ -79,8 +79,8 @@ evidence, then delegates to `sase commit`.
    an uncommitted change to the post-completion commit finalizer and can never be swept
    into a whole-repository commit. **NEVER mention "Codex"** — write as if a human
    authored the commit. Do not preemptively stash, fast-forward, pull, or hand-sync
-   before committing; `sase commit` commits first, rebases automatically, and handles
-   mechanical bead-store conflicts.
+   before committing; `sase stitch create` commits first, rebases automatically, and
+   handles mechanical bead-store conflicts.
 
 4. **Run the commit** — Execute:
 
@@ -119,8 +119,8 @@ evidence, then delegates to `sase commit`.
      while the rebase is paused; use the recovery flow below.
 
 5. **Verify clean and pushed** — For git repos, `sase_git_commit` delegates to
-   `sase commit`, which normally pushes commits as part of the `create_commit` workflow.
-   After it exits successfully, run:
+   `sase stitch create`, which normally pushes commits as part of the `create_commit`
+   workflow. After it exits successfully, run:
 
    ```bash
    git status --short --branch
@@ -157,7 +157,7 @@ and finalize:
    repeat steps 1–4 until clean.
 5. **Verify the working tree is clean**: `git status` should show "nothing to commit,
    working tree clean".
-6. **Finalize the sase commit**: Run `sase_git_commit --resume`. This replays the
+6. **Finalize the sase stitch create**: Run `sase_git_commit --resume`. This replays the
    post-commit bookkeeping (push, Patch row, STITCHES entry, result marker) and exits 0
    on success.
 
