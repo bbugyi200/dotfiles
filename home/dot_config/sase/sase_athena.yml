@@ -74,65 +74,6 @@ axe:
           vars:
             trees: [src, tests]
             limits: ["1000", "850", "700"]
-    code_quality:
-      description: |-
-        Audit recent commits for bugs and objective improvements once a minute
-
-        Runs every 60 seconds to let the shared `git.commits_since` trigger decide when enough repository drift has
-        accumulated. Only recent-commit quality audits belong here; scheduled maintenance and documentation refreshes
-        have separate lanes.
-
-        Agents launched from this lane wait for an idle machine (`%wait(runners=0)`) so commit audits never compete
-        with interactive work.
-
-        Both chops target `sase` and checkpoint only after the proposed audit agent succeeds, so failed or inconclusive
-        audits do not advance the commit window.
-      interval: 60
-      wait_runners: 0
-      chops:
-        recent_bug_audit:
-          script: bugyi_chop_recent_bug_audit
-          description: |-
-            Audit recent sase commits for confirmed bugs and fix only verified issues
-
-            Checks the `sase` target no more than every 60 minutes and proposes work only after `git.commits_since` sees
-            200 commits since the last successful action.
-
-            The `audit_bugs` hood inhibit guard prevents concurrent bug-audit agents. `checkpoint: on_action_success`
-            advances the window only after the launched audit succeeds, preserving failed reviews for retry.
-          run_every: 60m
-          inhibit_if:
-            agent_hood: { hood: audit_bugs }
-          trigger:
-            git.commits_since:
-              project: "{target.name}"
-              threshold: 200
-              checkpoint: on_action_success
-          for_each:
-            source: projects
-            names: [sase]
-        recent_improvement_audit:
-          script: bugyi_chop_recent_improvement_audit
-          description: |-
-            Audit recent sase commits for clear objective improvements without speculative churn
-
-            Checks the `sase` target no more than every 60 minutes and proposes work only after `git.commits_since` sees
-            200 commits since the last successful action.
-
-            The `audit_improvements` hood prevents concurrent improvement audits. `checkpoint: on_action_success`
-            advances the window only after the launched audit succeeds, so speculative or failed passes do not hide
-            unreviewed commits.
-          run_every: 60m
-          inhibit_if:
-            agent_hood: { hood: audit_improvements }
-          trigger:
-            git.commits_since:
-              project: "{target.name}"
-              threshold: 200
-              checkpoint: on_action_success
-          for_each:
-            source: projects
-            names: [sase]
     refresh_docs:
       description: |-
         Refresh project documentation after meaningful repository drift
