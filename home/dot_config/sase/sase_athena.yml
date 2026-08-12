@@ -131,6 +131,10 @@ axe:
             branches with fully green release PRs merge deterministically in dependency order, capped per tick.
             Repos with no Actions report no_ci, while everything unknown fails closed. Every tick publishes the
             current release ledger report, and merge or blocked-release notifications open that live report in ACE.
+            The whole chop is also inhibited while any SASE agent holds a runner slot, so it only sweeps, gates, or
+            merges on an otherwise idle machine.
+          inhibit_if:
+            agent_runners: { max: 0 }
           env:
             ACTSTAT_CONFIG: /home/bryan/.config/sase/actstat-ci-watch.yml
           vars:
