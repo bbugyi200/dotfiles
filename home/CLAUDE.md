@@ -7,13 +7,13 @@ edit to the canonical note under `sase/memory/`, then you MUST run `sase memory 
 regenerate `AGENTS.md`, the provider instruction shims, and the memory README. Do NOT
 ask for separate permission to initialize sase memory in that case.
 
-## Tier 1 (short-term) Memory
+## 1. Tier 1 (short-term) Memory
 
 The following memories contain core (always loaded) context:
 
-### 1. SASE = Structured Agentic Software Engineering (sase)
+### 1.1 SASE = Structured Agentic Software Engineering (sase)
 
-#### 1.1 Repositories
+#### 1.1.1 Repositories
 
 Configured linked and sidecar repositories for this context:
 
@@ -38,7 +38,7 @@ discussions.
 IMPORTANT REMINDER: Do NOT locate, clone, or web-fetch another repo's contents any other
 way than by using `/sase_repo`!
 
-#### 1.2 File Discovered Work As Task Beads
+#### 1.1.2 File Discovered Work As Task Beads
 
 Unless your prompt explicitly forbids creating beads (epic phase workers, for example,
 must record `PROPOSED FOLLOW-UP:` notes on their own bead instead), you can and SHOULD
@@ -59,7 +59,7 @@ link, and records the issue in the right place. Only a genuinely new task become
 proposed to the project owner, who either launches an agent to work them or closes them
 with a reason.
 
-## Tier 2 (long-term) Memory
+## 2. Tier 2 (long-term) Memory
 
 The below files contain detailed reference material. When working in their domain, you
 MUST use your `/sase_memory_read` skill to review their contents. Do not read canonical
