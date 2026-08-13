@@ -123,6 +123,8 @@ ace:
     piw: "prompt input widget"
     prp: "plan review panel"
     rep: "the ../sase-$1 repo"
+    repic: |-
+      Make sure you review #[epic] for related work first and leave notes on the appropriate epic/phase bead(s) if necessary.
     s: |-
       sase
     sa: "sase agent"
