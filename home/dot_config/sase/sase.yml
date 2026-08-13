@@ -135,6 +135,8 @@ ace:
       sase config
     scr: |-
       sidecar repo
+    sctx: |-
+      the `SASE CONTEXT` section
     ss: |-
       /sase_
     td: |-
