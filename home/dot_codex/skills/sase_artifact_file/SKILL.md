@@ -193,17 +193,18 @@ unless the user asked for it.
 
 ## Resolve a Reference You Were Handed
 
-`show`, `path`, and `open` accept any artifact reference — `file:`, `chat:`, `bug:`,
-`commit:`, and document roles such as `plans:`, `research:`, and `designs:` — plus `#L`,
-`#page=`, and `#t=` fragments. A bare `default:<hash>` or `explicit:<hash>` id is
-accepted as sugar for `file:<id>`.
+`show`, `path`, and `open` accept any artifact reference — `file:`, `stitch:`, `patch:`,
+`bead:`, `agent:`, and document kinds such as `plan:`, `research:`, and `designs:` —
+plus `#L`, `#page=`, and `#t=` fragments. Historical `commit:`, `chat:`, `bug:`, and
+`plans:` aliases remain readable for compatibility. A bare `default:<hash>` or
+`explicit:<hash>` id is accepted as sugar for `file:<id>`.
 
 ```bash
 # Full metadata plus a resolution report (add -j for JSON).
 sase artifact show file:explicit:0123456789abcdef01234567
 
 # Exactly one absolute path on stdout — use this to compose with other tools.
-sase artifact path plans:202607/artifact_read_cli.md
+sase artifact path plan:202607/artifact_read_cli.md
 
 # Open with the right viewer for the kind and mime type.
 sase artifact open file:default:0123456789abcdef01234567

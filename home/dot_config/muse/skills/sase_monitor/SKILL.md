@@ -35,6 +35,10 @@ sase monitor start \
 
 ## Hazards
 
+- `sase monitor start` only kills the current agent once the supervisor has acknowledged
+  it is actually alive. A non-zero exit means the supervisor never acknowledged startup
+  — you are still running and nothing was handed off. Read the error and either retry or
+  run the command inline instead of assuming a monitor exists.
 - The command runs under the shell (`sh -c` on Unix). Quote paths, variables, and nested
   commands exactly as you would in a shell script.
 - Only one monitor can be active in a lane. An identical replay returns the existing
@@ -95,8 +99,11 @@ sase monitor start \
 ## Inspect Or Stop
 
 - `sase monitor list` shows active monitors by default; add `--all` to include history.
+  A lane whose `--next` action did not launch (or launched degraded) is flagged with an
+  amber `⚑` next to its state, so it is visible without `--json`.
 - `sase monitor show <id>` shows details and the output tail; add `--follow` to stream
-  until the monitor reaches a terminal state.
+  until the monitor reaches a terminal state. A dropped or degraded follow-up prints a
+  `Follow-up error` line.
 - `sase monitor stop <id>` stops a running monitor. Stopped monitors do not launch their
   recorded follow-up agent.
 
@@ -115,3 +122,10 @@ output. With `--next-output none`, it gets only the outcome summary and a
 If the command fails or times out, the follow-up still launches. Its breakdown says
 whether the total timeout or idle timeout fired. If the monitor is stopped manually or
 marked `lost` after a reboot, the recorded follow-up does not launch.
+
+The follow-up launch does not depend on the monitor's original workspace claim
+transferring cleanly: if that claim is gone, the follow-up still launches (into a fresh
+claim on the same workspace, or workspace `0` if that was taken), and the prompt says
+which happened so the follow-up does not assume the command's artifacts are present.
+Only when a follow-up genuinely cannot be launched is it dropped, and even then the
+composed prompt is saved as a durable artifact rather than lost.
