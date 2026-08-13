@@ -102,8 +102,8 @@ sase monitor start \
   A lane whose `--next` action did not launch (or launched degraded) is flagged with an
   amber `⚑` next to its state, so it is visible without `--json`.
 - `sase monitor show <id>` shows details and the output tail; add `--follow` to stream
-  until the monitor reaches a terminal state. A dropped or degraded follow-up prints a
-  `Follow-up error` line.
+  until the monitor reaches a terminal state. A dropped follow-up prints a
+  `Follow-up error` line; a degraded one prints a `Follow-up degraded` line.
 - `sase monitor stop <id>` stops a running monitor. Stopped monitors do not launch their
   recorded follow-up agent.
 
