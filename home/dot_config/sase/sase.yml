@@ -137,6 +137,8 @@ ace:
       sidecar repo
     sctx: |-
       the `SASE CONTEXT` section
+    smo: |-
+      sase monitor
     ss: |-
       /sase_
     td: |-
