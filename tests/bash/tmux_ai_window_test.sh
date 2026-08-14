@@ -67,13 +67,12 @@ function install_all_providers() {
   done
 }
 
-function visible_menu_index() {
+function menu_index() {
   local target="$1"
-  shift
 
   local index=0
   local provider
-  for provider in "$@"; do
+  for provider in "${MENU_ORDER[@]}"; do
     if [[ "${provider}" == "${target}" ]]; then
       printf '%s\n' "${index}"
       return 0
@@ -81,6 +80,75 @@ function visible_menu_index() {
     index=$((index + 1))
   done
   return 1
+}
+
+function expected_provider_description() {
+  case "$1" in
+  claude)
+    echo "Anthropic"
+    ;;
+  codex)
+    echo "OpenAI"
+    ;;
+  agy)
+    echo "Antigravity"
+    ;;
+  qwen)
+    echo "Alibaba"
+    ;;
+  opencode)
+    echo "SST"
+    ;;
+  grok)
+    echo "xAI"
+    ;;
+  muse)
+    echo "Meta"
+    ;;
+  esac
+}
+
+function expected_provider_accent() {
+  case "$1" in
+  claude)
+    echo "#e0af68"
+    ;;
+  codex)
+    echo "#9ece6a"
+    ;;
+  agy)
+    echo "#7aa2f7"
+    ;;
+  qwen)
+    echo "#bb9af7"
+    ;;
+  opencode)
+    echo "#7dcfff"
+    ;;
+  grok)
+    echo "#2ac3de"
+    ;;
+  muse)
+    echo "#4a9dff"
+    ;;
+  esac
+}
+
+function expected_enabled_label() {
+  local provider="$1"
+
+  printf "#[fg=%s,bold]%-10s#[fg=#565f89,nobold] %s" \
+    "$(expected_provider_accent "${provider}")" \
+    "${provider}" \
+    "$(expected_provider_description "${provider}")"
+}
+
+function expected_disabled_label() {
+  local provider="$1"
+
+  printf -- "-#[fg=#565f89,bold]%-10s#[fg=#565f89,nobold] %-11s#[fg=#565f89,nobold] (not installed)" \
+    "${provider}" \
+    "$(expected_provider_description "${provider}")"
 }
 
 function run_tmux_ai_window() {
@@ -118,6 +186,23 @@ function display_menu_args() {
   ' "${TMUX_CALLS_FILE}"
 }
 
+function display_menu_items() {
+  awk '
+    /^ARG:-?#\[fg=/ {
+      label = $0
+      sub(/^ARG:/, "", label)
+
+      getline key
+      sub(/^ARG:/, "", key)
+
+      getline command
+      sub(/^ARG:/, "", command)
+
+      print label "\t" key "\t" command
+    }
+  ' < <(display_menu_args)
+}
+
 function display_menu_default_choice() {
   awk '
     /^CALL:display-menu$/ { in_display_menu = 1; next }
@@ -132,26 +217,91 @@ function display_menu_default_choice() {
 }
 
 function display_menu_provider_keys() {
-  awk '
-    /^ARG:#\[fg=/ { next_arg_is_key = 1; next }
-    next_arg_is_key {
-      sub(/^ARG:/, "")
-      print
-      next_arg_is_key = 0
-    }
-  ' < <(display_menu_args)
+  awk -F '\t' '{ print $2 }' < <(display_menu_items)
 }
 
 function display_menu_provider_names() {
-  awk '
-    /^ARG:#\[fg=/ {
-      line = $0
-      sub(/^ARG:#\[fg=[^]]*\]/, "", line)
-      sub(/#\[fg=#565f89,nobold\].*$/, "", line)
-      sub(/ +$/, "", line)
-      print line
+  awk -F '\t' '
+    {
+      line = $1
+      sub(/^-/, "", line)
+      gsub(/#\[[^]]*\]/, "", line)
+      split(line, parts, /[[:space:]]+/)
+      print parts[1]
     }
-  ' < <(display_menu_args)
+  ' < <(display_menu_items)
+}
+
+function display_menu_row() {
+  local target="$1"
+
+  awk -F '\t' -v target="${target}" '
+    {
+      line = $1
+      sub(/^-/, "", line)
+      gsub(/#\[[^]]*\]/, "", line)
+      split(line, parts, /[[:space:]]+/)
+      if (parts[1] == target) {
+        print
+        exit
+      }
+    }
+  ' < <(display_menu_items)
+}
+
+function display_menu_row_label() {
+  display_menu_row "$1" | awk -F '\t' '{ print $1 }'
+}
+
+function display_menu_row_key() {
+  display_menu_row "$1" | awk -F '\t' '{ print $2 }'
+}
+
+function display_menu_row_command() {
+  display_menu_row "$1" | awk -F '\t' '{ print $3 }'
+}
+
+function assert_enabled_provider_row() {
+  local provider="$1"
+
+  assert_same "$(expected_enabled_label "${provider}")" "$(display_menu_row_label "${provider}")"
+  assert_same "$(provider_menu_key "${provider}")" "$(display_menu_row_key "${provider}")"
+  assert_contains "run-shell \"executable_tmux_ai_window --launch ${provider}" \
+    "$(display_menu_row_command "${provider}")"
+}
+
+function assert_disabled_provider_row() {
+  local provider="$1"
+
+  assert_same "$(expected_disabled_label "${provider}")" "$(display_menu_row_label "${provider}")"
+  assert_same "" "$(display_menu_row_key "${provider}")"
+  assert_same "" "$(display_menu_row_command "${provider}")"
+}
+
+function provider_menu_key() {
+  case "$1" in
+  agy)
+    echo "a"
+    ;;
+  claude)
+    echo "c"
+    ;;
+  grok)
+    echo "g"
+    ;;
+  muse)
+    echo "m"
+    ;;
+  opencode)
+    echo "o"
+    ;;
+  qwen)
+    echo "q"
+    ;;
+  codex)
+    echo "x"
+    ;;
+  esac
 }
 
 function test_launch_grok_uses_max_effort_and_auto_approval() {
@@ -201,26 +351,24 @@ function test_menu_includes_grok_and_muse_rows_with_keys() {
   assert_contains "ARG:run-shell \"executable_tmux_ai_window --launch muse" "${menu}"
 }
 
-function test_menu_filters_to_installed_providers_and_keeps_key_order() {
+function test_partial_install_menu_shows_complete_catalog_with_disabled_rows() {
   install_provider muse
   install_provider claude
   install_provider agy
 
   run_tmux_ai_window
 
-  local menu
-  menu="$(display_menu_args)"
-  assert_same "$(printf 'agy\nclaude\nmuse')" "$(display_menu_provider_names)"
-  assert_same "$(printf 'a\nc\nm')" "$(display_menu_provider_keys)"
-  assert_same "$(visible_menu_index claude agy claude muse)" "$(display_menu_default_choice)"
-  assert_not_contains "codex" "${menu}"
-  assert_not_contains "grok" "${menu}"
-  assert_not_contains "opencode" "${menu}"
-  assert_not_contains "qwen" "${menu}"
-  assert_not_contains "--launch codex" "${menu}"
-  assert_not_contains "--launch grok" "${menu}"
-  assert_not_contains "--launch opencode" "${menu}"
-  assert_not_contains "--launch qwen" "${menu}"
+  assert_same "$(printf '%s\n' "${MENU_ORDER[@]}")" "$(display_menu_provider_names)"
+  assert_same "$(menu_index claude)" "$(display_menu_default_choice)"
+
+  assert_enabled_provider_row agy
+  assert_enabled_provider_row claude
+  assert_enabled_provider_row muse
+
+  assert_disabled_provider_row grok
+  assert_disabled_provider_row opencode
+  assert_disabled_provider_row qwen
+  assert_disabled_provider_row codex
 }
 
 function test_only_grok_installed_makes_grok_the_default_choice() {
@@ -228,9 +376,14 @@ function test_only_grok_installed_makes_grok_the_default_choice() {
 
   run_tmux_ai_window
 
-  assert_same "grok" "$(display_menu_provider_names)"
-  assert_same "g" "$(display_menu_provider_keys)"
-  assert_same "0" "$(display_menu_default_choice)"
+  assert_same "$(printf '%s\n' "${MENU_ORDER[@]}")" "$(display_menu_provider_names)"
+  assert_same "$(menu_index grok)" "$(display_menu_default_choice)"
+  assert_enabled_provider_row grok
+
+  local provider
+  for provider in agy claude muse opencode qwen codex; do
+    assert_disabled_provider_row "${provider}"
+  done
 }
 
 function test_launch_unknown_provider_exits_2() {
@@ -285,12 +438,20 @@ function test_menu_rows_are_ordered_by_provider_name_matching_keys() {
   assert_same "$(printf '%s\n' "${MENU_ORDER[@]}")" "$(display_menu_provider_names)"
 }
 
+function test_all_installed_menu_has_no_disabled_rows() {
+  install_all_providers
+
+  run_tmux_ai_window
+
+  assert_not_contains "not installed" "$(display_menu_args)"
+}
+
 function test_claude_is_the_default_choice_even_when_not_the_first_row() {
   install_all_providers
 
   run_tmux_ai_window
 
-  assert_same "$(visible_menu_index claude "${MENU_ORDER[@]}")" "$(display_menu_default_choice)"
+  assert_same "$(menu_index claude)" "$(display_menu_default_choice)"
 }
 
 function test_claude_is_preferred_over_an_earlier_installed_provider() {
@@ -299,9 +460,8 @@ function test_claude_is_preferred_over_an_earlier_installed_provider() {
 
   run_tmux_ai_window
 
-  assert_same "$(printf 'agy\nclaude')" "$(display_menu_provider_names)"
-  assert_same "$(printf 'a\nc')" "$(display_menu_provider_keys)"
-  assert_same "$(visible_menu_index claude agy claude)" "$(display_menu_default_choice)"
+  assert_same "$(printf '%s\n' "${MENU_ORDER[@]}")" "$(display_menu_provider_names)"
+  assert_same "$(menu_index claude)" "$(display_menu_default_choice)"
 }
 
 function test_first_installed_provider_is_default_when_claude_is_missing() {
@@ -310,9 +470,15 @@ function test_first_installed_provider_is_default_when_claude_is_missing() {
 
   run_tmux_ai_window
 
-  assert_same "$(printf 'opencode\nqwen')" "$(display_menu_provider_names)"
-  assert_same "$(printf 'o\nq')" "$(display_menu_provider_keys)"
-  assert_same "0" "$(display_menu_default_choice)"
+  assert_same "$(printf '%s\n' "${MENU_ORDER[@]}")" "$(display_menu_provider_names)"
+  assert_same "$(menu_index opencode)" "$(display_menu_default_choice)"
+  assert_enabled_provider_row opencode
+  assert_enabled_provider_row qwen
+
+  local provider
+  for provider in agy claude grok muse codex; do
+    assert_disabled_provider_row "${provider}"
+  done
 }
 
 function test_no_installed_providers_shows_message_without_menu() {
@@ -322,4 +488,9 @@ function test_no_installed_providers_shows_message_without_menu() {
   calls="$(tmux_calls)"
   assert_contains "ARG:No AI agent CLI found (claude/codex/agy/qwen/opencode/grok/muse)." "${calls}"
   assert_not_contains "CALL:display-menu" "${calls}"
+}
+
+function test_launch_known_missing_provider_exits_1() {
+  assert_exit_code "1" "$(run_tmux_ai_window --launch codex --dir "${TEST_TMP}" 2>&1)"
+  assert_contains "ARG:AI agent CLI is not installed: codex" "$(tmux_calls)"
 }
