@@ -250,6 +250,25 @@ function test_provider_menu_keys_are_unique() {
     "$(printf '%s\n' "${keys}" | sort -u | wc -l | tr -d ' ')"
 }
 
+# tmux_ai_window is deployed to macOS too, where the `#!/bin/bash` shebang
+# resolves to Apple's bash 3.2.57 (macOS cannot ship bash 4+, which is GPLv3).
+# Bash 4-only builtins therefore fail at runtime there: a `mapfile` call once
+# broke the menu with `line 48: mapfile: command not found` and left the user
+# with a false "No AI agent CLI found" message. Every other test in this file
+# runs under the host's bash (5.x on Linux and in CI) and so cannot catch that
+# class of regression -- this static check is the only thing that can.
+function test_script_avoids_bash_4_only_features() {
+  local bash_4_only='(mapfile|readarray)'
+  bash_4_only+='|(declare|local|typeset|readonly) +-[A-Za-z]*(A|n)([^A-Za-z]|$)'
+  bash_4_only+='|\$\{[A-Za-z_][A-Za-z_0-9]*(\[[^]]*\])?(\^\^?|,,?|@[A-Za-z])'
+  bash_4_only+='|;;&|\|&|&>>|wait +-n|globstar'
+
+  # Comment lines are excluded so the script can name the builtins it avoids.
+  assert_same "" \
+    "$(grep -nE "${bash_4_only}" "${TMUX_AI_WINDOW_SCRIPT}" |
+      grep -vE '^[0-9]+:[[:space:]]*#')"
+}
+
 function test_menu_rows_are_sorted_by_menu_key() {
   install_all_providers
 

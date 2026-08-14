@@ -44,16 +44,16 @@ function show_provider_menu() {
   local pane_dir
   pane_dir="$(tmux display-message -p '#{pane_current_path}')"
 
-  local -a sorted_providers=()
-  mapfile -t sorted_providers < <(providers_sorted_by_menu_key)
-
+  # Collect the installed providers in menu-key order. macOS ships bash 3.2,
+  # which has no mapfile/readarray builtin, so read the sorted list with a
+  # while-read loop instead.
   local -a menu_providers=()
   local provider
-  for provider in "${sorted_providers[@]}"; do
+  while IFS= read -r provider; do
     if provider_is_installed "${provider}"; then
       menu_providers+=("${provider}")
     fi
-  done
+  done < <(providers_sorted_by_menu_key)
 
   if [[ "${#menu_providers[@]}" -eq 0 ]]; then
     local provider_list
