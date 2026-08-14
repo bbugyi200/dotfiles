@@ -262,9 +262,9 @@ xprompts:
   codex: "gpt-5.6-sol"
   gh_dotfiles: "#gh:dotfiles"
   gh_sase: "#gh:sase"
-  m_agy: "%model:agy/gemini-3.5-flash-high"
-  m_agy_pro: "%model:agy/gemini-3.6-flash-high"
-  m_agy_pro_flash: "%{%m:agy/gemini-3.6-flash-high | %m:agy/gemini-3.5-flash-high}"
+  m_agy: "%model:agy/gemini-3.7-flash-high"
+  m_agy_pro: "%model:agy/gemini-3.7-flash-high"
+  m_agy_pro_flash: "%{%m:agy/gemini-3.7-flash-high | %m:agy/gemini-3.6-flash-high}"
   m_cheap: |-
     %m:@cheaper
   m_codex: "%model:#codex"
@@ -276,7 +276,7 @@ xprompts:
   m_qwen: "%model:qwen3.6-plus"
   m_sonnet: "%model:sonnet"
   m_spark: "%model:codex/gpt-5.3-codex-spark"
-  m_swarm: "%{%m:opus | %m:#codex | %m:agy/gemini-3.5-flash-high}"
+  m_swarm: "%{%m:opus | %m:#codex | %m:agy/gemini-3.7-flash-high}"
   nvim:
     snippet: true
     content: "Neovim (my neovim config lives in my chezmoi repo)"

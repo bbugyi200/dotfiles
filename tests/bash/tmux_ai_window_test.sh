@@ -327,6 +327,16 @@ function test_launch_grok_uses_max_effort_and_auto_approval() {
   assert_contains "cd ${quoted_dir} && clear && grok --effort xhigh --always-approve" "$(new_window_command)"
 }
 
+function test_launch_agy_uses_pinned_gemini_37_flash_high_model() {
+  install_provider agy
+  local dir="${TEST_TMP}/project dir"
+  mkdir -p "${dir}"
+
+  run_tmux_ai_window --launch agy --dir "${dir}"
+
+  assert_contains "agy --model gemini-3.7-flash-high --dangerously-skip-permissions" "$(new_window_command)"
+}
+
 function test_launch_muse_uses_pinned_model_ultra_effort_and_yolo() {
   install_provider muse
   local dir="${TEST_TMP}/project dir"
