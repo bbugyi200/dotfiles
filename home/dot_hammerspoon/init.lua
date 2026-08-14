@@ -44,6 +44,10 @@ hs.hotkey.bind({ "ctrl", "alt", "shift" }, "s", nil, function()
 	end)
 end)
 
+if type(BobPomodoroCountdown) ~= "table" then
+	BobPomodoroCountdown = {}
+end
+
 local bobPomodoroRuntime = BobPomodoroCountdown
 local unpackArgs = table.unpack or unpack
 
@@ -172,23 +176,65 @@ local function todayEndEpoch(endHour, endMinute)
 	return os.time(today)
 end
 
+local bobPomodoroMenuBarFont = hs.styledtext.defaultFonts.menuBar
+
 local bobPomodoroOverdueTitleAttributes = {
 	color = { hex = "#ff453a", alpha = 1 },
-	font = hs.styledtext.defaultFonts.menuBar,
+	font = bobPomodoroMenuBarFont,
 }
 
-local bobPomodoroBoldMenuBarFont =
-	hs.styledtext.convertFont(hs.styledtext.defaultFonts.menuBar, hs.styledtext.fontTraits.boldFont)
+local function validBobPomodoroFont(font)
+	if type(font) ~= "table" or type(font.name) ~= "string" or font.name == "" then
+		return nil
+	end
+	if type(hs.styledtext.validFont) ~= "function" or not hs.styledtext.validFont(font.name) then
+		return nil
+	end
+	return font
+end
 
-local bobPomodoroMissingTitleAttributes = {
-	color = { hex = "#30d158", alpha = 1 },
-	font = bobPomodoroBoldMenuBarFont,
-}
+local function bobPomodoroFontWithMenuBarSize(fontName)
+	local font = { name = fontName }
+	if type(bobPomodoroMenuBarFont) == "table" and bobPomodoroMenuBarFont.size then
+		font.size = bobPomodoroMenuBarFont.size
+	end
+	return font
+end
 
-local bobPomodoroOverdueWarningTitleAttributes = {
-	color = { hex = "#ff453a", alpha = 1 },
-	font = bobPomodoroBoldMenuBarFont,
-}
+local function resolveBobPomodoroBoldMenuBarFont()
+	local convertedFont = hs.styledtext.convertFont(bobPomodoroMenuBarFont, hs.styledtext.fontTraits.boldFont)
+	local validConvertedFont = validBobPomodoroFont(convertedFont)
+	if validConvertedFont then
+		return validConvertedFont
+	end
+
+	for _, fallbackName in ipairs({ "Helvetica-Bold", "HelveticaNeue-Bold", "Arial-BoldMT" }) do
+		local fallbackFont = validBobPomodoroFont(bobPomodoroFontWithMenuBarSize(fallbackName))
+		if fallbackFont then
+			return fallbackFont
+		end
+	end
+
+	return nil
+end
+
+local function bobPomodoroTitleAttributes(color, font)
+	local attributes = {
+		color = color,
+	}
+	if font then
+		attributes.font = font
+	end
+	return attributes
+end
+
+local bobPomodoroBoldMenuBarFont = resolveBobPomodoroBoldMenuBarFont()
+
+local bobPomodoroMissingTitleAttributes =
+	bobPomodoroTitleAttributes({ hex = "#30d158", alpha = 1 }, bobPomodoroBoldMenuBarFont)
+
+local bobPomodoroOverdueWarningTitleAttributes =
+	bobPomodoroTitleAttributes({ hex = "#ff453a", alpha = 1 }, bobPomodoroBoldMenuBarFont)
 
 local function bobPomodoroMenuTitle(presentation)
 	if presentation.appearance == "normal" then

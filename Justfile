@@ -121,7 +121,7 @@ test-nvim:
     @printf "\n---------- Running Neovim tests using busted... ----------\n"
     busted -p _test ./tests/nvim
 
-# Run pure-Lua Hammerspoon request-model tests using busted
+# Run Hammerspoon Lua tests using busted
 test-hammerspoon:
     @printf "\n---------- Running Hammerspoon tests using busted... ----------\n"
     busted ./tests/hammerspoon
