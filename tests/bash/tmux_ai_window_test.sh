@@ -67,11 +67,13 @@ function install_all_providers() {
   done
 }
 
-function menu_index() {
+function visible_menu_index() {
   local target="$1"
+  shift
+
   local index=0
   local provider
-  for provider in "${MENU_ORDER[@]}"; do
+  for provider in "$@"; do
     if [[ "${provider}" == "${target}" ]]; then
       printf '%s\n' "${index}"
       return 0
@@ -199,12 +201,36 @@ function test_menu_includes_grok_and_muse_rows_with_keys() {
   assert_contains "ARG:run-shell \"executable_tmux_ai_window --launch muse" "${menu}"
 }
 
+function test_menu_filters_to_installed_providers_and_keeps_key_order() {
+  install_provider muse
+  install_provider claude
+  install_provider agy
+
+  run_tmux_ai_window
+
+  local menu
+  menu="$(display_menu_args)"
+  assert_same "$(printf 'agy\nclaude\nmuse')" "$(display_menu_provider_names)"
+  assert_same "$(printf 'a\nc\nm')" "$(display_menu_provider_keys)"
+  assert_same "$(visible_menu_index claude agy claude muse)" "$(display_menu_default_choice)"
+  assert_not_contains "codex" "${menu}"
+  assert_not_contains "grok" "${menu}"
+  assert_not_contains "opencode" "${menu}"
+  assert_not_contains "qwen" "${menu}"
+  assert_not_contains "--launch codex" "${menu}"
+  assert_not_contains "--launch grok" "${menu}"
+  assert_not_contains "--launch opencode" "${menu}"
+  assert_not_contains "--launch qwen" "${menu}"
+}
+
 function test_only_grok_installed_makes_grok_the_default_choice() {
   install_provider grok
 
   run_tmux_ai_window
 
-  assert_same "$(menu_index grok)" "$(display_menu_default_choice)"
+  assert_same "grok" "$(display_menu_provider_names)"
+  assert_same "g" "$(display_menu_provider_keys)"
+  assert_same "0" "$(display_menu_default_choice)"
 }
 
 function test_launch_unknown_provider_exits_2() {
@@ -245,7 +271,7 @@ function test_claude_is_the_default_choice_even_when_not_the_first_row() {
 
   run_tmux_ai_window
 
-  assert_same "$(menu_index claude)" "$(display_menu_default_choice)"
+  assert_same "$(visible_menu_index claude "${MENU_ORDER[@]}")" "$(display_menu_default_choice)"
 }
 
 function test_claude_is_preferred_over_an_earlier_installed_provider() {
@@ -254,7 +280,9 @@ function test_claude_is_preferred_over_an_earlier_installed_provider() {
 
   run_tmux_ai_window
 
-  assert_same "$(menu_index claude)" "$(display_menu_default_choice)"
+  assert_same "$(printf 'agy\nclaude')" "$(display_menu_provider_names)"
+  assert_same "$(printf 'a\nc')" "$(display_menu_provider_keys)"
+  assert_same "$(visible_menu_index claude agy claude)" "$(display_menu_default_choice)"
 }
 
 function test_first_installed_provider_is_default_when_claude_is_missing() {
@@ -263,5 +291,16 @@ function test_first_installed_provider_is_default_when_claude_is_missing() {
 
   run_tmux_ai_window
 
-  assert_same "$(menu_index opencode)" "$(display_menu_default_choice)"
+  assert_same "$(printf 'opencode\nqwen')" "$(display_menu_provider_names)"
+  assert_same "$(printf 'o\nq')" "$(display_menu_provider_keys)"
+  assert_same "0" "$(display_menu_default_choice)"
+}
+
+function test_no_installed_providers_shows_message_without_menu() {
+  run_tmux_ai_window
+
+  local calls
+  calls="$(tmux_calls)"
+  assert_contains "ARG:No AI agent CLI found (claude/codex/agy/qwen/opencode/grok/muse)." "${calls}"
+  assert_not_contains "CALL:display-menu" "${calls}"
 }

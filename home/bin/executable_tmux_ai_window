@@ -44,37 +44,33 @@ function show_provider_menu() {
   local pane_dir
   pane_dir="$(tmux display-message -p '#{pane_current_path}')"
 
-  local -a menu_providers=()
-  mapfile -t menu_providers < <(providers_sorted_by_menu_key)
+  local -a sorted_providers=()
+  mapfile -t sorted_providers < <(providers_sorted_by_menu_key)
 
-  local default_choice=""
-  local first_installed_choice=""
-  local installed_count=0
-  local index=0
+  local -a menu_providers=()
   local provider
-  for provider in "${menu_providers[@]}"; do
+  for provider in "${sorted_providers[@]}"; do
     if provider_is_installed "${provider}"; then
-      installed_count=$((installed_count + 1))
-      if [[ -z "${first_installed_choice}" ]]; then
-        first_installed_choice="${index}"
-      fi
-      if [[ "${provider}" == "${DEFAULT_PROVIDER}" ]]; then
-        default_choice="${index}"
-      fi
+      menu_providers+=("${provider}")
     fi
-    index=$((index + 1))
   done
 
-  if [[ "${installed_count}" -eq 0 ]]; then
+  if [[ "${#menu_providers[@]}" -eq 0 ]]; then
     local provider_list
     provider_list="$(IFS=/; echo "${PROVIDERS[*]}")"
     tmux_message "No AI agent CLI found (${provider_list})."
     return 0
   fi
 
-  if [[ -z "${default_choice}" ]]; then
-    default_choice="${first_installed_choice}"
-  fi
+  local default_choice=0
+  local index=0
+  for provider in "${menu_providers[@]}"; do
+    if [[ "${provider}" == "${DEFAULT_PROVIDER}" ]]; then
+      default_choice="${index}"
+      break
+    fi
+    index=$((index + 1))
+  done
 
   local -a menu_args=(
     display-menu
@@ -89,28 +85,20 @@ function show_provider_menu() {
   )
 
   for provider in "${menu_providers[@]}"; do
-    if provider_is_installed "${provider}"; then
-      local label
-      label="$(provider_menu_label "${provider}")"
+    local label
+    label="$(provider_menu_label "${provider}")"
 
-      local dir_arg
-      dir_arg="$(shell_quote "${pane_dir}")"
+    local dir_arg
+    dir_arg="$(shell_quote "${pane_dir}")"
 
-      local shell_command
-      shell_command="${SCRIPTNAME} --launch ${provider} --dir ${dir_arg}"
+    local shell_command
+    shell_command="${SCRIPTNAME} --launch ${provider} --dir ${dir_arg}"
 
-      menu_args+=(
-        "${label}"
-        "$(provider_menu_key "${provider}")"
-        "run-shell $(tmux_quote "${shell_command}")"
-      )
-    else
-      menu_args+=(
-        "-$(provider_disabled_menu_label "${provider}")"
-        ""
-        ""
-      )
-    fi
+    menu_args+=(
+      "${label}"
+      "$(provider_menu_key "${provider}")"
+      "run-shell $(tmux_quote "${shell_command}")"
+    )
   done
 
   tmux "${menu_args[@]}"
@@ -421,14 +409,6 @@ function provider_menu_label() {
 
   printf "#[fg=%s,bold]%-10s#[fg=#565f89,nobold] %s" \
     "$(provider_accent "${provider}")" \
-    "$(provider_display_name "${provider}")" \
-    "$(provider_description "${provider}")"
-}
-
-function provider_disabled_menu_label() {
-  local provider="$1"
-
-  printf "#[fg=#565f89]%-10s %s not installed" \
     "$(provider_display_name "${provider}")" \
     "$(provider_description "${provider}")"
 }
