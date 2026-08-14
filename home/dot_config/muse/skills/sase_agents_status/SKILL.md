@@ -49,7 +49,7 @@ marker fields as active blockers.
   consumption).
 - `sase agent list -a` — include recently-completed DONE/FAILED agents.
 - `sase agent list -p <project>` — filter by project name.
-- `sase agent show -n <name>` — full detail panel (prompt, pid, artifacts dir, live-tail
+- `sase agent show <name>` — full detail panel (prompt, pid, artifacts dir, live-tail
   hint).
 - `sase agent kill -n <name>` — SIGTERM an agent by name. No confirmation prompt; use
   with care.
@@ -59,14 +59,14 @@ marker fields as active blockers.
 ## Retrying an agent
 
 For ordinary retries, locate the source with `sase agent list -a -j` or
-`sase agent show -n <name>`, prefer `<artifacts_dir>/raw_xprompt.md` as the prompt
-source, allocate a fresh name with `sase.agent.names.allocate_retry_name("<name>")`,
-then rewrite the prompt through
+`sase agent show <name>`, prefer `<artifacts_dir>/raw_xprompt.md` as the prompt source,
+allocate a fresh name with `sase.agent.names.allocate_retry_name("<name>")`, then
+rewrite the prompt through
 `sase.agent.retry_prompt.rewrite_retry_prompt_name(raw_prompt, retry_name)` before
 launching with `sase run "$rewritten_prompt"`. Confirm the new run with
-`sase agent list -a -j` or `sase agent show -n <retry-name>`. Do not use `%id:!<name>`
-from non-TUI surfaces for ordinary retries; reserve forced same-name reuse for
-explicitly approved reruns through code paths that call `wipe_names_for_forced_reuse`.
+`sase agent list -a -j` or `sase agent show <retry-name>`. Do not use `%id:!<name>` from
+non-TUI surfaces for ordinary retries; reserve forced same-name reuse for explicitly
+approved reruns through code paths that call `wipe_names_for_forced_reuse`.
 
 ## Artifacts directory
 

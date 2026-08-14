@@ -2,9 +2,9 @@
 name: sase_monitor
 description:
   Run a long command without blocking your turn. Use this INSTEAD of any built-in
-  monitor, background-task, or scheduled wake-up tool - those do not work in SASE, which
-  runs agents for a single turn. Also use it to sleep/wait (for a CI job, a deploy, a
-  rate limit) by monitoring a `sleep` command.
+  monitor, provider-native background-execution, or scheduled wake-up tool - those do
+  not work in SASE, which runs agents for a single turn. Also use it to sleep/wait (for
+  a CI job, a deploy, a rate limit) by monitoring a `sleep` command.
 ---
 
 Use this skill when a command may take long enough that waiting inline would block the
@@ -18,8 +18,8 @@ sleep, or wait for the monitored command yourself after starting it; put any
 continuation work in `--next` so a follow-up agent can resume from the same workspace
 and conversation.
 
-Provider-native monitor, background-task, and scheduled wake-up tools do not work in
-SASE's single-turn agent model. Use `sase monitor start` instead.
+Provider-native monitor, background-execution, and scheduled wake-up tools do not work
+in SASE's single-turn agent model. Use `sase monitor start` instead.
 
 ## Canonical Invocation
 
@@ -48,6 +48,9 @@ sase monitor start \
 - Output is bounded and can rotate. Use `sase monitor show <id> --all-lines` or the log
   path from the follow-up prompt for retained output, not an assumption that every byte
   is preserved forever.
+- `--reason` and `--next` text reaches the follow-up literally. A next action like
+  `--next '#commit ...'` or `--next '%model:opus ...'` will not route or expand
+  anything, but writing `#412` or a directive name in prose is safe.
 - Do not poll, sleep, or wait after `sase monitor start`; the starting agent is handed
   off and killed when running inside an agent.
 
@@ -112,7 +115,8 @@ sase monitor start \
 When `--next` is set, the follow-up agent receives the previous conversation through
 `#fork`, the original reason, the requested next action, and a command-run breakdown:
 outcome, exit code, elapsed time, selected output policy, and the path to the retained
-captured log.
+captured log. The reason, next action, table fields, and embedded output are wrapped as
+literal prompt text; only the follow-up's routing prefix remains live.
 
 With `--next-output tail`, the retained tail is fenced and labeled as untrusted command
 output. With `--next-output file`, the follow-up gets the log path instead of embedded
