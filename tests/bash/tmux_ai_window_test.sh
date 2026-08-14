@@ -10,6 +10,9 @@
 
 TMUX_AI_WINDOW_SCRIPT="${PWD}/home/bin/executable_tmux_ai_window"
 PROVIDERS=(claude codex agy qwen opencode grok muse)
+# Expected on-screen row order: providers sorted by their menu key
+# (a=agy, c=claude, g=grok, m=muse, o=opencode, q=qwen, x=codex).
+MENU_ORDER=(agy claude grok muse opencode qwen codex)
 SYSTEM_PATH="/usr/bin:/bin"
 
 function set_up() {
@@ -62,6 +65,20 @@ function install_all_providers() {
   for provider in "${PROVIDERS[@]}"; do
     install_provider "${provider}"
   done
+}
+
+function menu_index() {
+  local target="$1"
+  local index=0
+  local provider
+  for provider in "${MENU_ORDER[@]}"; do
+    if [[ "${provider}" == "${target}" ]]; then
+      printf '%s\n' "${index}"
+      return 0
+    fi
+    index=$((index + 1))
+  done
+  return 1
 }
 
 function run_tmux_ai_window() {
@@ -123,6 +140,18 @@ function display_menu_provider_keys() {
   ' < <(display_menu_args)
 }
 
+function display_menu_provider_names() {
+  awk '
+    /^ARG:#\[fg=/ {
+      line = $0
+      sub(/^ARG:#\[fg=[^]]*\]/, "", line)
+      sub(/#\[fg=#565f89,nobold\].*$/, "", line)
+      sub(/ +$/, "", line)
+      print line
+    }
+  ' < <(display_menu_args)
+}
+
 function test_launch_grok_uses_max_effort_and_auto_approval() {
   install_provider grok
   local dir="${TEST_TMP}/project dir"
@@ -175,13 +204,15 @@ function test_only_grok_installed_makes_grok_the_default_choice() {
 
   run_tmux_ai_window
 
-  assert_same "5" "$(display_menu_default_choice)"
+  assert_same "$(menu_index grok)" "$(display_menu_default_choice)"
 }
 
 function test_launch_unknown_provider_exits_2() {
   assert_exit_code "2" "$(run_tmux_ai_window --launch bogus --dir "${TEST_TMP}" 2>&1)"
 }
 
+# Key uniqueness is what makes the menu sort deterministic, so this test is
+# load-bearing for row ordering and not merely a nicety.
 function test_provider_menu_keys_are_unique() {
   install_all_providers
 
@@ -191,4 +222,46 @@ function test_provider_menu_keys_are_unique() {
   keys="$(display_menu_provider_keys)"
   assert_same "$(printf '%s\n' "${keys}" | wc -l | tr -d ' ')" \
     "$(printf '%s\n' "${keys}" | sort -u | wc -l | tr -d ' ')"
+}
+
+function test_menu_rows_are_sorted_by_menu_key() {
+  install_all_providers
+
+  run_tmux_ai_window
+
+  assert_same "$(printf 'a\nc\ng\nm\no\nq\nx')" "$(display_menu_provider_keys)"
+}
+
+function test_menu_rows_are_ordered_by_provider_name_matching_keys() {
+  install_all_providers
+
+  run_tmux_ai_window
+
+  assert_same "$(printf '%s\n' "${MENU_ORDER[@]}")" "$(display_menu_provider_names)"
+}
+
+function test_claude_is_the_default_choice_even_when_not_the_first_row() {
+  install_all_providers
+
+  run_tmux_ai_window
+
+  assert_same "$(menu_index claude)" "$(display_menu_default_choice)"
+}
+
+function test_claude_is_preferred_over_an_earlier_installed_provider() {
+  install_provider agy
+  install_provider claude
+
+  run_tmux_ai_window
+
+  assert_same "$(menu_index claude)" "$(display_menu_default_choice)"
+}
+
+function test_first_installed_provider_is_default_when_claude_is_missing() {
+  install_provider qwen
+  install_provider opencode
+
+  run_tmux_ai_window
+
+  assert_same "$(menu_index opencode)" "$(display_menu_default_choice)"
 }

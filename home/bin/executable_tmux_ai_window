@@ -44,14 +44,21 @@ function show_provider_menu() {
   local pane_dir
   pane_dir="$(tmux display-message -p '#{pane_current_path}')"
 
+  local -a menu_providers=()
+  mapfile -t menu_providers < <(providers_sorted_by_menu_key)
+
   local default_choice=""
+  local first_installed_choice=""
   local installed_count=0
   local index=0
   local provider
-  for provider in "${PROVIDERS[@]}"; do
+  for provider in "${menu_providers[@]}"; do
     if provider_is_installed "${provider}"; then
       installed_count=$((installed_count + 1))
-      if [[ -z "${default_choice}" ]]; then
+      if [[ -z "${first_installed_choice}" ]]; then
+        first_installed_choice="${index}"
+      fi
+      if [[ "${provider}" == "${DEFAULT_PROVIDER}" ]]; then
         default_choice="${index}"
       fi
     fi
@@ -63,6 +70,10 @@ function show_provider_menu() {
     provider_list="$(IFS=/; echo "${PROVIDERS[*]}")"
     tmux_message "No AI agent CLI found (${provider_list})."
     return 0
+  fi
+
+  if [[ -z "${default_choice}" ]]; then
+    default_choice="${first_installed_choice}"
   fi
 
   local -a menu_args=(
@@ -77,7 +88,7 @@ function show_provider_menu() {
     -y C
   )
 
-  for provider in "${PROVIDERS[@]}"; do
+  for provider in "${menu_providers[@]}"; do
     if provider_is_installed "${provider}"; then
       local label
       label="$(provider_menu_label "${provider}")"
@@ -218,6 +229,19 @@ function parse_cli_args() {
 }
 
 readonly -a PROVIDERS=(claude codex agy qwen opencode grok muse)
+
+# Provider that starts selected in the menu whenever it is installed.
+readonly DEFAULT_PROVIDER="claude"
+
+# Menu rows render in shortcut-key order so that appending to PROVIDERS never
+# has to match the on-screen order. Menu keys are unique (pinned by the
+# bashunit regression test), so sorting on the key alone is a total order.
+function providers_sorted_by_menu_key() {
+  local provider
+  for provider in "${PROVIDERS[@]}"; do
+    printf '%s\t%s\n' "$(provider_menu_key "${provider}")" "${provider}"
+  done | LC_ALL=C sort | cut -f2
+}
 
 function provider_is_known() {
   case "$1" in
