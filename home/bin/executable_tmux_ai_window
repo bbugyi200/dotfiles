@@ -24,7 +24,7 @@ Optional Arguments
 Internal Arguments
 ------------------
 --launch PROVIDER
-    Launch PROVIDER directly. Supported values: claude, codex, agy, qwen, opencode.
+    Launch PROVIDER directly. Supported values: claude, codex, agy, qwen, opencode, grok, muse.
 
 --dir DIR
     Directory for the launched agent. Intended for internal tmux menu callbacks.
@@ -59,7 +59,9 @@ function show_provider_menu() {
   done
 
   if [[ "${installed_count}" -eq 0 ]]; then
-    tmux_message "No AI agent CLI found (claude/codex/agy/qwen/opencode)."
+    local provider_list
+    provider_list="$(IFS=/; echo "${PROVIDERS[*]}")"
+    tmux_message "No AI agent CLI found (${provider_list})."
     return 0
   fi
 
@@ -215,11 +217,11 @@ function parse_cli_args() {
   readonly VERBOSE
 }
 
-readonly -a PROVIDERS=(claude codex agy qwen opencode)
+readonly -a PROVIDERS=(claude codex agy qwen opencode grok muse)
 
 function provider_is_known() {
   case "$1" in
-  claude | codex | agy | qwen | opencode)
+  claude | codex | agy | qwen | opencode | grok | muse)
     return 0
     ;;
   *)
@@ -245,6 +247,12 @@ function provider_binary() {
   opencode)
     echo "opencode"
     ;;
+  grok)
+    echo "grok"
+    ;;
+  muse)
+    echo "muse"
+    ;;
   esac
 }
 
@@ -264,6 +272,14 @@ function provider_command() {
     ;;
   opencode)
     echo "opencode"
+    ;;
+  grok)
+    echo "grok --effort xhigh --always-approve"
+    ;;
+  muse)
+    # Pin the non-contributor model so source-code sessions are never routed to
+    # a training-on-inputs-and-outputs variant if Muse's default changes.
+    echo "muse --model muse-spark-1.2 --reasoning-effort ultra --yolo"
     ;;
   esac
 }
@@ -285,6 +301,12 @@ function provider_menu_key() {
   opencode)
     echo "o"
     ;;
+  grok)
+    echo "g"
+    ;;
+  muse)
+    echo "m"
+    ;;
   esac
 }
 
@@ -304,6 +326,12 @@ function provider_display_name() {
     ;;
   opencode)
     echo "opencode"
+    ;;
+  grok)
+    echo "grok"
+    ;;
+  muse)
+    echo "muse"
     ;;
   esac
 }
@@ -325,6 +353,12 @@ function provider_description() {
   opencode)
     echo "SST"
     ;;
+  grok)
+    echo "xAI"
+    ;;
+  muse)
+    echo "Meta"
+    ;;
   esac
 }
 
@@ -344,6 +378,12 @@ function provider_accent() {
     ;;
   opencode)
     echo "#7dcfff"
+    ;;
+  grok)
+    echo "#2ac3de"
+    ;;
+  muse)
+    echo "#4a9dff"
     ;;
   esac
 }
