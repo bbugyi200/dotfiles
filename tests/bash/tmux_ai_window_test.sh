@@ -15,6 +15,17 @@ PROVIDERS=(claude codex agy qwen opencode grok muse)
 MENU_ORDER=(agy claude grok muse opencode qwen codex)
 SYSTEM_PATH="/usr/bin:/bin"
 
+function set_up_before_script() {
+  if [[ ! -f "${HOME}/lib/bugyi.sh" ]]; then
+    printf '%s\n' \
+      "error: tmux_ai_window sources ~/lib/bugyi.sh, which is not installed." \
+      "Install it with: uvx basher export ~/lib" >&2
+    # `false` (not `exit 1`): bashunit's hook runner traps ERR and prints the
+    # captured message. `exit` kills the runner before that report is written.
+    false
+  fi
+}
+
 function set_up() {
   TEST_TMP="$(mktemp -d)"
   FAKE_BIN="${TEST_TMP}/bin"

@@ -117,5 +117,8 @@ jobs:
 
       - uses: astral-sh/setup-uv@v4
 
+      - name: Install the bugyi.sh Bash library
+        run: uvx basher export "$HOME/lib"
+
       - name: Run tests
         run: just test
