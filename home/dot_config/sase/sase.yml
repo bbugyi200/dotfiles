@@ -208,6 +208,10 @@ axe:
 llm_provider:
   default_effort: xhigh
   model_aliases:
+    builtin:
+      medium_worker: codex/gpt-5.5@xhigh
+      small_worker: codex/gpt-5.5@high
+      xsmall_worker: codex/gpt-5.5@medium
     custom:
       research_a:
         model: codex/gpt-5.6-sol
