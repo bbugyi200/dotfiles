@@ -124,17 +124,6 @@ zim() { "$HOME"/.local/bin/zim "$@" || {
   if [[ "${EC}" -eq 3 ]]; then so; else return "${EC}"; fi
 }; }
 
-# ---------- File Copy / Cut / Paste ----------
-p() { echo "The following files have been pasted into ${PWD}/${1}:" && ls -A /tmp/copy && /bin/mv -i /tmp/copy/* "${PWD}"/"${1}"; }
-x() {
-  mkdir /tmp/copy &>/dev/null
-  /bin/mv "$@" /tmp/copy/
-}
-y() {
-  mkdir /tmp/copy &>/dev/null
-  /bin/cp -r "$@" /tmp/copy/
-}
-
 # ---------- Salary ----------
 daily_salary() { printf "%f\n" $(($(weekly_salary "$1") / 5.0)); }
 hourly_salary() { printf "%f\n" $(($(weekly_salary "$1") / 40.0)); }
@@ -446,7 +435,7 @@ no_proxy() { (
 ); }
 alias ok='xspawn okular'
 onething() { vim -c "/$(date --date="yesterday" +%m\\/%d\\/%Y)" ~/Sync/var/notes/Onething/"$1".txt; }
-alias P='popd'
+alias p='popd'
 pdb() { { [[ -f ./"$1" ]] && python -m pdb "$@"; } || python -m pdb "$(which -a "$1" | tail -n 1)" "${@:2}"; }
 pgr() { pgrep -f ".*$1.*"; }
 function pip { "$(get_python_exe)" -m pip "$@"; }
