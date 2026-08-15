@@ -41,7 +41,7 @@ sase monitor start \
   run the command inline instead of assuming a monitor exists.
 - The command runs under the shell (`sh -c` on Unix). Quote paths, variables, and nested
   commands exactly as you would in a shell script.
-- Only one monitor can be active in a lane. An identical replay returns the existing
+- Only one monitor can be active per agent. An identical replay returns the existing
   monitor; a different request errors until the active monitor settles.
 - Do not monitor interactive or TTY-requiring commands. Use monitors for batch commands,
   sleeps, deploy checks, and other noninteractive waits.
@@ -86,10 +86,11 @@ sase monitor start \
 
 ## Useful Flags
 
-- `--cwd DIR` runs the command from a specific directory. The default is the lane's
+- `--cwd DIR` runs the command from a specific directory. The default is the agent's
   workspace when SASE can resolve it, otherwise the current directory.
-- `--lane NAME` targets a specific agent lane. Inside an agent, the current lane is the
-  default; outside an agent, pass it explicitly.
+- `--agent NAME` targets a specific agent. Inside an agent, the current agent is the
+  default; outside an agent, pass it explicitly. (`--lane` still works as a deprecated
+  alias.)
 - `--label TEXT` controls the short row label shown in monitor lists.
 - `--tail-lines N` controls how many output lines are included when `--next-output tail`
   is used for the follow-up prompt.
@@ -102,8 +103,8 @@ sase monitor start \
 ## Inspect Or Stop
 
 - `sase monitor list` shows active monitors by default; add `--all` to include history.
-  A lane whose `--next` action did not launch (or launched degraded) is flagged with an
-  amber `⚑` next to its state, so it is visible without `--json`.
+  An agent whose `--next` action did not launch (or launched degraded) is flagged with
+  an amber `⚑` next to its state, so it is visible without `--json`.
 - `sase monitor show <id>` shows details and the output tail; add `--follow` to stream
   until the monitor reaches a terminal state. A dropped follow-up prints a
   `Follow-up error` line; a degraded one prints a `Follow-up degraded` line.

@@ -1,5 +1,5 @@
 {
-  "deployed_at": "2026-08-14T22:08:31.200025Z",
-  "source_commit": "191e9f2196830a547306d6de0f660a3cccf00235",
-  "xprompt_set_sha256": "03989d4c89a3d32b73e67cdb8e4a7a44a9ebb1783a2c347b8921103012e36d5c"
+  "deployed_at": "2026-08-15T01:22:15.647584Z",
+  "source_commit": "2265f2618c149e6c29cada008d8121c7544b9332",
+  "xprompt_set_sha256": "bb5cc6aae7656a03517684101157d2f1abb841d0dd5b7382365cba05d203f39b"
 }
