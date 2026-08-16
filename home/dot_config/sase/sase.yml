@@ -64,6 +64,8 @@ ace:
     cmt: "`sase commit`"
     cout: |-
       the command output below
+    coutt: |-
+      the partial command output below
     cs: "Patch"
     ctx: |-
       see $1 for context
