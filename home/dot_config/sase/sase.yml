@@ -146,7 +146,7 @@ ace:
     td: |-
       TODO
     tdd: |-
-      TODO:
+      TODO: $1
     tx: |-
       the `#$1` xprompt
     w: "%w"
