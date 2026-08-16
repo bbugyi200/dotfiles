@@ -272,6 +272,8 @@ xprompts:
   codex: "gpt-5.6-sol"
   gh_dotfiles: "#gh:dotfiles"
   gh_sase: "#gh:sase"
+  if_so_plan: |-
+    If so, use your /sase_plan skill to plan the appropriate changes.
   m_agy: "%model:agy/gemini-3.7-flash-high"
   m_agy_pro: "%model:agy/gemini-3.7-flash-high"
   m_agy_pro_flash: "%{%m:agy/gemini-3.7-flash-high | %m:agy/gemini-3.6-flash-high}"
