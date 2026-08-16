@@ -106,8 +106,6 @@ ace:
     h: "http://"
     help: "Can you help me $1?"
     helpp: "Can you now help me $1?"
-    if_so_plan: |-
-      If so, use your /sase_plan skill to plan the appropriate changes.
     im: "IMPORTANT: "
     jya: "Justify your answer."
     key: "the `$1` keymap"
