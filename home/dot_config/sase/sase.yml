@@ -107,6 +107,8 @@ ace:
     help: "Can you help me $1?"
     helpp: "Can you now help me $1?"
     im: "IMPORTANT: "
+    iow: |-
+      in other words
     jya: "Justify your answer."
     key: "the `$1` keymap"
     keyy: "a new `$1` keymap"
