@@ -145,6 +145,8 @@ ace:
       /sase_
     td: |-
       TODO
+    tdd: |-
+      TODO:
     tx: |-
       the `#$1` xprompt
     w: "%w"
