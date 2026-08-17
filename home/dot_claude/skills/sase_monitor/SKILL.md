@@ -89,8 +89,9 @@ sase monitor start \
 - `--cwd DIR` runs the command from a specific directory. The default is the agent's
   workspace when SASE can resolve it, otherwise the current directory.
 - `--agent NAME` targets a specific agent. Inside an agent, the current agent is the
-  default; outside an agent, pass it explicitly. (`--lane` still works as a deprecated
-  alias.)
+  default -- including inside an epic phase lane and inside a promoted agent family, so
+  no `--agent` is needed there either; outside an agent, pass it explicitly. (`--lane`
+  still works as a deprecated alias.)
 - `--label TEXT` controls the short row label shown in monitor lists.
 - `--tail-lines N` controls how many output lines are included when `--next-output tail`
   is used for the follow-up prompt.
