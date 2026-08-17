@@ -228,7 +228,7 @@ llm_provider:
         description: "Assisting (second-opinion) research-swarm agents."
         bucket: researchers
       research_lead:
-        model: "@smartest"
+        model: "claude/opus@max || codex/gpt-5.6-sol@max || grok/grok-4.6@max"
         description: "Final research-swarm lead and consolidator."
         bucket: researchers
     buckets:
