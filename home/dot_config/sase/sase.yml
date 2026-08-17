@@ -12,7 +12,7 @@ artifact_refs:
 commit_hooks:
   before: "sase_git_fix"
 file_hooks:
-  - use: research-highlights
+  - use: sase-research-artifacts@research-highlights
     command: bob highlights create --include-id
 github_orgs:
   - bbugyi200
