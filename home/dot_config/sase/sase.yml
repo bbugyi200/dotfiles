@@ -220,11 +220,11 @@ llm_provider:
       xsmall_worker: codex/gpt-5.5@medium | grok/grok-4.6
     custom:
       research_a:
-        model: codex/gpt-5.6-sol
+        model: "codex/gpt-5.6-sol@xhigh || grok/grok-4.6@xhigh"
         description: "Primary independent research-swarm researcher."
         bucket: researchers
       research_b:
-        model: claude/opus
+        model: "claude/opus@xhigh || grok/grok-4.6@xhigh"
         description: "Assisting (second-opinion) research-swarm agents."
         bucket: researchers
       research_lead:
