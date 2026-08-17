@@ -1,2 +1,3 @@
 .luarocks/
+.pytest_cache/
 .venv/
