@@ -57,8 +57,8 @@ always-loaded notes from detailed reference notes that agents read only when rel
 - Type: `short`
 - Description: No description set.
 - Parent: `AGENTS.md`
-- Lines: 62
-- Approx. tokens: 757
+- Lines: 52
+- Approx. tokens: 640
 
 ### `sase/memory/obsidian.md`
 
@@ -73,8 +73,8 @@ always-loaded notes from detailed reference notes that agents read only when rel
 - Total notes: 2
 - Short notes: 1
 - Long notes: 1
-- Total lines: 81
-- Total approx. tokens: 921
+- Total lines: 71
+- Total approx. tokens: 804
 
 ## Commands
 

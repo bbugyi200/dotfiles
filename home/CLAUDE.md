@@ -59,16 +59,6 @@ link, and records the issue in the right place. Only a genuinely new task become
 proposed to the project owner, who either launches an agent to work them or closes them
 with a reason.
 
-#### 1.1.3 Feature Flags
-
-You MUST put a feature flag on user-reaching behavior before it is ready: a disabled
-beta, an early landed path, or a deprecation whose old branch must stay reachable. You
-SHOULD NOT flag anything users are meant to choose forever; that is a config field.
-
-Create one only with `sase flag new <key>`, which also files its `flag` removal bead.
-Read `sase/memory/sase_flags.md` with `/sase_memory_read` before adding, deferring, or
-removing any flag.
-
 ## 2. Tier 2 (long-term) Memory
 
 The below files contain detailed reference material. When working in their domain, you
