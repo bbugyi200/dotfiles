@@ -27,8 +27,8 @@ always-loaded notes from detailed reference notes that agents read only when rel
   belongs under another long note.
 - `description`: required for long notes and used in generated agent instructions and
   this README. Long-note descriptions may be Markdown blocks authored as YAML literal
-  block scalars; Tier 2 entries render those blocks verbatim, while single-line surfaces
-  collapse them.
+  block scalars; Tier 2 sections render those blocks verbatim, while single-line
+  surfaces collapse them.
 
 ### Linking
 
