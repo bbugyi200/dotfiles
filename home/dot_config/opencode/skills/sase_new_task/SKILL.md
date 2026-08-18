@@ -120,11 +120,12 @@ Use this skill before creating any task bead.
    the `task_type` whose `when_to_use` matches what you found -- run
    `sase bead task-type list` for the current catalog and
    `sase bead task-type show <slug>` for one type's fields in full -- and supply a
-   repeatable `-f/--field name=value` for each of its required fields (`-f name=@<path>`
-   reads a value from a file, for prose too long to survive shell quoting):
+   repeatable `-f/--field name=value` for each of its required fields (`-d @<path>` and
+   `-f name=@<path>` read a value from a file, for prose too long to survive shell
+   quoting):
 
    ```bash
-   sase bead create -T "task(<slug>)" -t "<title>" -d "<reproduction, impact, and scope>" --size <size> -f <field>=<value> --ref <artifact-ref>
+   sase bead create -T "task(<slug>)" -t "<title>" -d @<path> --size <size> -f <field>=<value> --ref <artifact-ref>
    sase bead dep add <task-id> <blocking-bead-id>
    sase bead update <task-id> --status ready
    ```

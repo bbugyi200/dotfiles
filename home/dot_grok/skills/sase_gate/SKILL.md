@@ -67,6 +67,14 @@ once in the `options` list.
 - Set `presentation.origin_agent` to the agent the gate was filed on behalf of. It is an
   attribution label rather than a routing identity, so remote agent names are valid even
   when the local host has never seen them.
+- Set `presentation.chip` when the gate's subject should carry a one-glyph identity chip
+  (glyph, short label, optional `#RRGGBB` color) on the toast, the notification row, the
+  gate detail pane, and the review modal. The glyph is one grapheme; the label is
+  stripped, single-line, at most 32 characters, and free of control characters. A
+  declared chip is projected into `action_data` as `gate_chip_glyph`, `gate_chip_label`,
+  and `gate_chip_color` (the colour key is omitted when there is no colour). Do not
+  write those keys through `presentation.action_data`. Every gate whose subject is a
+  typed task bead already declares this chip from the presentation frozen at creation.
 
 `presentation.title`, `presentation.icon`, and at least one non-blank
 `presentation.notes` line are **required** for every custom gate — creation fails with
@@ -128,7 +136,8 @@ separate rejection path:
     "panel_icon": "🚀",
     "sender": "deployment-confirmation",
     "notes": ["Restart example.service now?", "Select whether to verify it afterward."],
-    "tags": ["deployment", "confirmation"]
+    "tags": ["deployment", "confirmation"],
+    "chip": { "glyph": "🚀", "label": "deploy", "color": "#5FD75F" }
   },
   "query": "(restart AND verify) OR reject",
   "primary_branch": ["restart", "verify"],
