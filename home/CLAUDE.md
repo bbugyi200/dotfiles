@@ -38,27 +38,6 @@ discussions.
 IMPORTANT REMINDER: Do NOT locate, clone, or web-fetch another repo's contents any other
 way than by using `/sase_repo`!
 
-#### 1.1.2 File Discovered Work As Task Beads
-
-Unless your prompt explicitly forbids creating beads (epic phase workers, for example,
-must record `PROPOSED FOLLOW-UP:` notes on their own bead instead), you can and SHOULD
-capture discovered follow-up work as sase task beads:
-
-- A linter or test is flaky or failing and you did not cause it: file a task bead
-  instead of ignoring the failure.
-- A sase memory file or skill contains out-of-date information that should be updated:
-  file a task bead proposing the update.
-- A tool, command, or script this project is responsible for has a bug or a clear,
-  objective improvement that would help future agents: file a task bead to fix or
-  improve it.
-
-Before creating any task bead, you MUST use `/sase_new_task`. That skill checks every
-task status for semantic duplicates, checks in-progress epics for a credible causal
-link, and records the issue in the right place. Only a genuinely new task becomes an
-`open` draft, and every new task requires an intentional `--size`. Ready task beads are
-proposed to the project owner, who either launches an agent to work them or closes them
-with a reason.
-
 ### 1.2 Task Bead Types (task_types)
 
 Every task bead can carry a `task_type` drawn from this project's catalog.
