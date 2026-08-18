@@ -19,6 +19,9 @@ memory.
   file-reading tools.
 - When the note has nested long-term child notes, `sase memory read` appends a
   `## Children` section listing them.
+- `sase memory show` prints the same content but records no audit event, so it is for
+  humans and tooling — never use it in place of `sase memory read` when consulting
+  memory to do work.
 
 ## Command
 
