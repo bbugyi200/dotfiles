@@ -218,6 +218,7 @@ llm_provider:
       medium_worker: codex/gpt-5.5@xhigh | grok/grok-4.6
       small_worker: codex/gpt-5.5@high | grok/grok-4.6
       xsmall_worker: codex/gpt-5.5@medium | grok/grok-4.6
+      medium: codex/gpt-5.5@xhigh | claude/sonnet@xhigh | 3 grok/grok-4.6@xhigh
     custom:
       research_a:
         model: "codex/gpt-5.6-sol@xhigh || grok/grok-4.6@xhigh"
