@@ -78,7 +78,7 @@ ace:
     fe: |-
       for example
     fex: |-
-      for example,
+      for example, $1
     fi: "the $1 file"
     fix: "Can you help me fix this?"
     fixx: "Can you help me diagnose the root cause of this issue and fix it?"
