@@ -44,6 +44,12 @@ Use this skill before creating any task bead.
    metacharacters that should match literally. When one substring is sufficient, use the
    default literal search. Do not list every task bead.
 
+   When you already know which catalog type the report is (`sase bead task-type list`
+   shows the current set), add `--task-type <slug>` to the search first: a semantic
+   duplicate almost always shares the same type. Broaden to an all-types search only
+   when the same-type search comes up empty, since a report can legitimately cross
+   types.
+
    A semantic duplicate has the same underlying defect/root cause or desired
    remediation, not merely the same subsystem or a similar symptom. Before corroborating
    a duplicate, check whether the candidate is a retired umbrella: a closed task whose
@@ -87,6 +93,9 @@ Use this skill before creating any task bead.
    with `--format full`. Judge each row by the semantic-duplicate test above and
    corroborate with `sase bead +1` instead of creating a task when one matches.
 
+   As in step 4, add `--task-type <slug>` when you already know the type to sweep the
+   same-type set first, then broaden to every type if nothing plausible turns up.
+
 6. Independently inspect in-progress epic plans and their plausible children:
 
    ```bash
@@ -105,15 +114,23 @@ Use this skill before creating any task bead.
    Do not create a task. If both the duplicate and active-epic branches apply, record
    both.
 
-7. Only when neither branch applies, choose a size and create an evidence-rich draft,
-   attach refs, refine its scope and dependencies, then mark it ready. Default to
-   `large` unless the size memory note's narrower or wider criteria clearly apply:
+7. Only when neither branch applies, choose a size and a type, create an evidence-rich
+   draft, attach refs, refine its scope and dependencies, then mark it ready. Default to
+   `large` unless the size memory note's narrower or wider criteria clearly apply. Pick
+   the `task_type` whose `when_to_use` matches what you found -- run
+   `sase bead task-type list` for the current catalog and
+   `sase bead task-type show <slug>` for one type's fields in full -- and supply a
+   repeatable `-f/--field name=value` for each of its required fields (`-f name=@<path>`
+   reads a value from a file, for prose too long to survive shell quoting):
 
    ```bash
-   sase bead create -T task -t "<title>" -d "<reproduction, impact, and scope>" --size <size> --ref <artifact-ref>
+   sase bead create -T "task(<slug>)" -t "<title>" -d "<reproduction, impact, and scope>" --size <size> -f <field>=<value> --ref <artifact-ref>
    sase bead dep add <task-id> <blocking-bead-id>
    sase bead update <task-id> --status ready
    ```
+
+   `task_type` is immutable once set, so pick the closest match rather than the first
+   plausible one. Bare `-T task` is an error; every new task must use a catalog slug.
 
    When the search or the sweep surfaced beads that are related but are not duplicates —
    an adjacent defect, a shared root file, a bead whose fix could collide — record one
