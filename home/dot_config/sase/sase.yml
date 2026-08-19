@@ -1,5 +1,10 @@
 timezone: "America/New_York"
 use_chezmoi: true
+bead:
+  task_types:
+    # Only the `sase` project files `feature` beads; sase/sase.yml re-enables it there.
+    - use: builtin@feature
+      agent_creatable: false
 artifacts:
   retention:
     enabled: true

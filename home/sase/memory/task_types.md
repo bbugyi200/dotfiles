@@ -36,17 +36,6 @@ Use flake instead when a rerun on the same tree passed.
 Run `sase bead task-type show ci` for the full field list, validators, and body
 template.
 
-### `feature` — Feature
-
-File one when you discovered a product or capability idea that is outside the current
-task or epic. State the proposal and why it is out of scope for the work you were doing.
-Do not file one for in-scope follow-up that belongs on the current epic.
-
-- Required fields: `proposal`, `why_out_of_scope`
-
-Run `sase bead task-type show feature` for the full field list, validators, and body
-template.
-
 ### `flake` — Flaky test
 
 File one when a test or lint failed, a rerun on the same tree passed, and you did not

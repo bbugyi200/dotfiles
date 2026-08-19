@@ -71,18 +71,7 @@ Use flake instead when a rerun on the same tree passed.
 Run `sase bead task-type show ci` for the full field list, validators, and body
 template.
 
-##### 1.2.1.3 `feature` — Feature
-
-File one when you discovered a product or capability idea that is outside the current
-task or epic. State the proposal and why it is out of scope for the work you were doing.
-Do not file one for in-scope follow-up that belongs on the current epic.
-
-- Required fields: `proposal`, `why_out_of_scope`
-
-Run `sase bead task-type show feature` for the full field list, validators, and body
-template.
-
-##### 1.2.1.4 `flake` — Flaky test
+##### 1.2.1.3 `flake` — Flaky test
 
 File one when a test or lint failed, a rerun on the same tree passed, and you did not
 cause the failure. Record the fail rate and whether it reproduces serially. Use ci
@@ -94,7 +83,7 @@ instead when the failure is confirmed and reproducible.
 Run `sase bead task-type show flake` for the full field list, validators, and body
 template.
 
-##### 1.2.1.5 `memory` — Memory
+##### 1.2.1.4 `memory` — Memory
 
 File one when a sase memory file or skill contains out-of-date information that should
 be updated. Closing still requires explicit user permission plus `sase memory init`.
