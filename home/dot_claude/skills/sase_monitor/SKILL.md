@@ -30,8 +30,19 @@ sase monitor start \
   --command 'just check-full' \
   --reason 'Verify the refactor before replying to the user' \
   --timeout 45m \
+  --start-status TESTING \
+  --stop-status TESTED \
   --next 'Fix anything just check-full reported, then reply to the user.'
 ```
+
+## Status Labels
+
+Both `-s/--start-status` and `-S/--stop-status` are required. Use present tense while
+the command runs and past tense when it finishes (`TESTING` → `TESTED`, `SLEEPING` →
+`SLEPT`, `DEPLOYING` → `DEPLOYED`). Each label is at most 20 characters; longer values
+are truncated with a trailing `…`. The pair determines the row color, so reusing one
+pair across related monitors makes them read as one lane. `TESTING` / `TESTED` is the
+pair for `just check` and `just check-full`.
 
 ## Hazards
 
@@ -57,7 +68,7 @@ sase monitor start \
 ## Sleep Or Wait
 
 Use `sleep` as the monitored command when you need to wait for CI, a deploy, a rate
-limit, or a scheduled time. Custom statuses make the wait clear in agent lists:
+limit, or a scheduled time. Pair the wait with labels that name what is being waited on:
 
 ```bash
 sase monitor start \
@@ -81,7 +92,9 @@ command, reason, runtime, exit state, and retained output for later inspection:
 sase monitor start \
   --command './collect-diagnostics.sh' \
   --reason 'Collect diagnostics for later inspection' \
-  --timeout 20m
+  --timeout 20m \
+  --start-status COLLECTING \
+  --stop-status COLLECTED
 ```
 
 ## Useful Flags
