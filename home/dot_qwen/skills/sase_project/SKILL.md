@@ -1,9 +1,10 @@
 ---
 name: sase_project
-description:
-  Inspect and manage SASE projects with `sase project` (list, show, enable, disable,
-  alias). Use when you need the set of enabled projects, one project's lifecycle record,
-  or machine-readable project data — e.g. to fan out one agent per enabled project.
+description: >-
+  Inspect and manage SASE projects with `sase project` (list, show, current, set-
+  current, enable, disable, alias). Use when you need the set of enabled projects, the
+  current project, one project's lifecycle record, or machine-readable project data —
+  e.g. to fan out one agent per enabled project.
 ---
 
 Before doing anything else, run this command to record that you are using this skill:
@@ -12,8 +13,8 @@ Before doing anything else, run this command to record that you are using this s
 sase skill use sase_project --reason "<one-line reason for using this skill>"
 ```
 
-Use this skill to inspect project lifecycle records, manage project state and aliases,
-or select projects for a multi-project workflow.
+Use this skill to inspect project lifecycle records, the current project, manage project
+state and aliases, or select projects for a multi-project workflow.
 
 ## Inspect Projects
 
@@ -23,9 +24,13 @@ or select projects for a multi-project workflow.
   `effective_project_name`, `state`, and `launchable`.
 - `sase project show <project>` shows one project's state, aliases, workspace, active
   claims, launchability, and warnings. Add `--json` for machine-readable data.
+- `sase project current` prints the current project derived from the VCS xprompt MRU
+  head, colored with that project's accent. Add `--json` for machine-readable data.
 
 ## Manage Projects
 
+- `sase project set-current <project>` promotes an enabled, launchable project to the
+  VCS xprompt MRU head — the same write a launch on that project performs.
 - `sase project enable <project>` enables a project.
 - `sase project disable <project>` disables a project. It refuses projects with live
   work unless `--force` is passed.

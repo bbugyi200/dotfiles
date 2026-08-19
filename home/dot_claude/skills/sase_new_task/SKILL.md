@@ -48,7 +48,8 @@ Use this skill before creating any task bead.
    shows the current set), add `--task-type <slug>` to the search first: a semantic
    duplicate almost always shares the same type. Broaden to an all-types search only
    when the same-type search comes up empty, since a report can legitimately cross
-   types.
+   types. A search may also surface feature-flag task beads; that is harmless. Do not
+   create a flag through this skill — run `sase flag new <key>` instead.
 
    A semantic duplicate has the same underlying defect/root cause or desired
    remediation, not merely the same subsystem or a similar symptom. Before corroborating
@@ -132,6 +133,8 @@ Use this skill before creating any task bead.
 
    `task_type` is immutable once set, so pick the closest match rather than the first
    plausible one. Bare `-T task` is an error; every new task must use a catalog slug.
+   Feature flags are not created here: `sase flag new <key>` is the only door, and
+   `task(flag)` is not agent-creatable.
 
    When the search or the sweep surfaced beads that are related but are not duplicates —
    an adjacent defect, a shared root file, a bead whose fix could collide — record one
