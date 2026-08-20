@@ -226,7 +226,7 @@ llm_provider:
       small_worker: codex/gpt-5.5@high | grok/grok-4.6
       xsmall_worker: codex/gpt-5.5@medium | grok/grok-4.6
       medium: codex/gpt-5.5@xhigh | claude/sonnet@xhigh | 2 grok/grok-4.6@xhigh
-      small: claude/sonnet@high | codex/gpt-5.5@high | 3 grok/grok-4.6@high
+      small: claude/sonnet@high | codex/gpt-5.5@high | 2 grok/grok-4.6@high
     custom:
       research_a:
         model: "codex/gpt-5.6-sol@xhigh || grok/grok-4.6@xhigh"
