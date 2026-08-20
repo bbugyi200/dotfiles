@@ -57,10 +57,10 @@ Use this skill before creating any task bead.
    close reason declares it retired and forbids `+1`. Retired umbrellas are tracking
    patterns that intentionally stop accepting corroboration. Do not `+1` or reopen them.
    Route the report to step 7 instead, create a node-specific task bead named for the
-   failing node ID, and add a related-context note:
+   failing node ID, and add a typed related artifact link:
 
    ```bash
-   sase bead note <new-task-id> "RELATED: <retired-task-id> — <how it bears on this task>"
+   sase artifact link add bead:<new-task-id> related bead:<retired-task-id> "<how it bears on this task>"
    ```
 
    For any other duplicate, record independent reproduction or impact evidence and any
@@ -138,10 +138,10 @@ Use this skill before creating any task bead.
 
    When the search or the sweep surfaced beads that are related but are not duplicates —
    an adjacent defect, a shared root file, a bead whose fix could collide — record one
-   note per bead on the new task so its worker inherits that context:
+   typed related link per bead on the new task so its worker inherits that context:
 
    ```bash
-   sase bead note <task-id> "RELATED: <bead-id> — <how it bears on this task>"
+   sase artifact link add bead:<task-id> related bead:<bead-id> "<how it bears on this task>"
    ```
 
    Omit `--ref` and the dependency command when they do not apply.

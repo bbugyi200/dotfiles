@@ -1,10 +1,11 @@
 ---
 name: sase_artifact_file
 description:
-  Create and read SASE artifact files with `sase artifact` (create, list, show, path,
-  open, doctor). Use when you must register a file you produced as a durable artifact,
-  discover artifacts an earlier agent left behind, or resolve an artifact reference
-  someone handed you to a concrete path.
+  Create, read, and link SASE artifact files with `sase artifact` (create, list, show,
+  read, path, open, link, doctor). Use when you must register a file you produced as a
+  durable artifact, discover artifacts an earlier agent left behind, consume an artifact
+  as context, resolve an artifact reference to a concrete path, or record why two
+  artifacts are related.
 ---
 
 Before doing anything else, run this command to record that you are using this skill:
@@ -20,8 +21,8 @@ indexed artifact.
 The canonical command group is `sase artifact`. `sase artifact-file` remains a
 compatibility alias, and bare `sase artifact` defaults to `sase artifact list`. Only
 `create` requires an agent run (`SASE_AGENT=1` and `SASE_ARTIFACTS_DIR`); the read
-subcommands (`doctor`, `list`, `open`, `path`, `show`, `stats`) work anywhere. The
-lifecycle subcommands (`prune`, `reclaim`, `trash`) are operator tools — see
+subcommands (`doctor`, `list`, `open`, `path`, `read`, `show`, `stats`) work anywhere.
+The lifecycle subcommands (`prune`, `reclaim`, `trash`) are operator tools — see
 [Retention](#retention-what-survives-and-what-does-not) before touching them.
 
 This skill covers the persistent artifact-file index. Canonical committed prompts and
@@ -193,15 +194,18 @@ unless the user asked for it.
 
 ## Resolve a Reference You Were Handed
 
-`show`, `path`, and `open` accept any artifact reference — `file:`, `stitch:`, `patch:`,
-`bead:`, `agent:`, and document kinds such as `plan:`, `research:`, and `designs:` —
-plus `#L`, `#page=`, and `#t=` fragments. Historical `commit:`, `chat:`, `bug:`, and
-`plans:` aliases remain readable for compatibility. A bare `default:<hash>` or
-`explicit:<hash>` id is accepted as sugar for `file:<id>`.
+`show`, `read`, `path`, and `open` accept any artifact reference — `file:`, `stitch:`,
+`patch:`, `bead:`, `agent:`, and document kinds such as `plan:`, `research:`, and
+`designs:` — plus `#L`, `#page=`, and `#t=` fragments. Historical `commit:`, `chat:`,
+`bug:`, and `plans:` aliases remain readable for compatibility. A bare `default:<hash>`
+or `explicit:<hash>` id is accepted as sugar for `file:<id>`.
 
 ```bash
 # Full metadata plus a resolution report (add -j for JSON).
 sase artifact show file:explicit:0123456789abcdef01234567
+
+# Read one artifact as context and record why you needed it.
+sase artifact read plan:202607/artifact_read_cli.md "Need the design constraints"
 
 # Exactly one absolute path on stdout — use this to compose with other tools.
 sase artifact path plan:202607/artifact_read_cli.md
@@ -212,12 +216,33 @@ sase artifact open file:default:0123456789abcdef01234567
 
 `show` also reports consumption from the ledger. In JSON mode the `consumption` field is
 an object with the full summary, or `null` when the reference has never been consumed.
+Prefer `sase artifact read <ref> "<reason>"` over `path` plus a silent file open when
+you are consuming an artifact as context: `read` strips managed Links and Referenced By
+blocks before printing, records an audit row, and writes a `read` artifact link when the
+`artifact_links` beta flag is enabled inside an agent run.
 
 `path` exits 0 on success, 1 for a missing, ambiguous, or malformed reference
 (candidates are listed on stderr), and 2 for kinds with no filesystem identity
 (`commit:`, `bug:`) — use `show` for those. `open` pages text through `bat`, renders
 images inline when kitty graphics are available, plays video with a bounded `mpv`, falls
 back to `xdg-open`, and opens `bug:` references in a browser.
+
+## Link Artifacts
+
+Use `sase artifact link` to record why two durable artifacts are related. Links take
+bare refs without the prompt-time `@` sigil:
+
+```bash
+sase artifact link add bead:<task-id> related bead:<other-bead-id> "<why>"
+sase artifact link add plan:202608/design.md implements bead:<task-id> "<why>"
+sase artifact link list bead:<task-id> -d both
+sase artifact link rm plan:202608/design.md bead:<task-id> -R implements
+```
+
+Relation slugs are closed: `cites`, `read`, `related`, `supersedes`, `implements`, and
+`derives-from`. `blocks` and `depends-on` are reserved for `sase bead dep`. `link add`,
+`link rm`, and `migrate-notes --apply` require the `artifact_links` feature flag;
+`link list` can still inspect existing rows.
 
 ## Check Index Health
 

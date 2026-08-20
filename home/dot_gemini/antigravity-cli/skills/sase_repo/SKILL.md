@@ -34,6 +34,11 @@ for subsequent reads and writes. Never locate or clone a linked repo, sidecar, d
 SASE project, or unlinked GitHub repo another way. Pass `-w <workspace_num>` only when
 running outside the workspace whose repo clone you need.
 
+Use `sase repo open` when you need to modify a repository or explore a repo tree. Use
+`sase artifact read <ref> "<reason>"` when you need one artifact as recorded context;
+that path prints the artifact content, strips managed link tables, and records the read
+instead of silently opening files.
+
 ## Researching External GitHub Projects
 
 Open an unlinked GitHub project as an external repo before studying its files or
