@@ -1,10 +1,12 @@
-description: Reference a recent MacBook screenshot uploaded to Apollo as an inline @image.
+description:
+  Reference a recent MacBook screenshot uploaded to Apollo as an inline @image.
 
 input:
   - name: n
     type: int
     default: 1
-    description: Which screenshot to fetch, counting back from the newest (1 = most recent).
+    description:
+      Which screenshot to fetch, counting back from the newest (1 = most recent).
 
 steps:
   - name: fetch
@@ -35,4 +37,4 @@ steps:
 
   - name: inject
     prompt_part: |
-      @{{ fetch.local_path }}
+      @file:{{ fetch.local_path }}
