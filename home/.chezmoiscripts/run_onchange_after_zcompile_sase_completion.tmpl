@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# _sase: {{ include "dot_zfunc/_sase" | sha256sum }}
+
+set -euo pipefail
+
+target="${HOME}/.zfunc/_sase"
+compiled="${target}.zwc"
+
+if [[ ! -f "${target}" ]]; then
+  echo "SASE zsh completion not installed; skipping zcompile."
+  exit 0
+fi
+
+if ! command -v zsh >/dev/null 2>&1; then
+  echo "zsh not found; skipping SASE completion zcompile."
+  exit 0
+fi
+
+if [[ -f "${compiled}" && "${compiled}" -nt "${target}" ]]; then
+  echo "SASE zsh completion bytecode is current."
+  exit 0
+fi
+
+zsh -fc 'zcompile -U "$1"' zcompile-sase-completion "${target}"
+echo "SASE zsh completion bytecode refreshed."

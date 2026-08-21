@@ -1,0 +1,9 @@
+{
+  "digest": "45dbc2da4e080013",
+  "owner": "chezmoi",
+  "schema_version": 1,
+  "shell": "bash",
+  "target": "/home/bryan/.local/share/bash-completion/completions/sase",
+  "timestamp": "2026-08-21T11:08:36Z",
+  "version": "0.16.0"
+}
