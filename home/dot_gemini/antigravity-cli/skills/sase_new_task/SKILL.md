@@ -28,8 +28,8 @@ Use this skill before creating any task bead.
    ```
 
 3. Form a candidate title and scope, then gather reproducible evidence. If a file
-   materially supports the report, use `/sase_artifact_file` to register it and retain
-   the canonical artifact reference.
+   materially supports the report, read `sase_artifacts.md` with `/sase_memory_read`,
+   register it with `sase artifact create`, and retain the canonical artifact reference.
 
 4. Search existing task beads for prior reports, then show plausible matches:
 

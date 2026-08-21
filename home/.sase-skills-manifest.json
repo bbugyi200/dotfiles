@@ -1,5 +1,1113 @@
 {
-  "deployed_at": "2026-08-20T15:09:44.704444Z",
-  "source_commit": "45711984b473e4a27f4636485d666b58f7337461",
-  "xprompt_set_sha256": "af3c30ca1736703a6be354954d6c6349011e8e57efc3054b367b16964ac36d05"
+  "deployed_at": "2026-08-21T14:21:57.675954Z",
+  "managed_files": [
+    {
+      "home_path": ".gemini/antigravity-cli/skills/bob_query/SKILL.md",
+      "provider": "agy",
+      "skill_name": "bob_query",
+      "source_path": "dot_gemini/antigravity-cli/skills/bob_query/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".gemini/antigravity-cli/skills/sase_agents_status/SKILL.md",
+      "provider": "agy",
+      "skill_name": "sase_agents_status",
+      "source_path": "dot_gemini/antigravity-cli/skills/sase_agents_status/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".gemini/antigravity-cli/skills/sase_changespecs/SKILL.md",
+      "provider": "agy",
+      "skill_name": "sase_changespecs",
+      "source_path": "dot_gemini/antigravity-cli/skills/sase_changespecs/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".gemini/antigravity-cli/skills/sase_chats/SKILL.md",
+      "provider": "agy",
+      "skill_name": "sase_chats",
+      "source_path": "dot_gemini/antigravity-cli/skills/sase_chats/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".gemini/antigravity-cli/skills/sase_final/SKILL.md",
+      "provider": "agy",
+      "skill_name": "sase_final",
+      "source_path": "dot_gemini/antigravity-cli/skills/sase_final/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".gemini/antigravity-cli/skills/sase_gate/SKILL.md",
+      "provider": "agy",
+      "skill_name": "sase_gate",
+      "source_path": "dot_gemini/antigravity-cli/skills/sase_gate/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".gemini/antigravity-cli/skills/sase_git_commit/SKILL.md",
+      "provider": "agy",
+      "skill_name": "sase_git_commit",
+      "source_path": "dot_gemini/antigravity-cli/skills/sase_git_commit/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".gemini/antigravity-cli/skills/sase_gmail/SKILL.md",
+      "provider": "agy",
+      "skill_name": "sase_gmail",
+      "source_path": "dot_gemini/antigravity-cli/skills/sase_gmail/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".gemini/antigravity-cli/skills/sase_memory_read/SKILL.md",
+      "provider": "agy",
+      "skill_name": "sase_memory_read",
+      "source_path": "dot_gemini/antigravity-cli/skills/sase_memory_read/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".gemini/antigravity-cli/skills/sase_monitor/SKILL.md",
+      "provider": "agy",
+      "skill_name": "sase_monitor",
+      "source_path": "dot_gemini/antigravity-cli/skills/sase_monitor/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".gemini/antigravity-cli/skills/sase_new_task/SKILL.md",
+      "provider": "agy",
+      "skill_name": "sase_new_task",
+      "source_path": "dot_gemini/antigravity-cli/skills/sase_new_task/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".gemini/antigravity-cli/skills/sase_notify/SKILL.md",
+      "provider": "agy",
+      "skill_name": "sase_notify",
+      "source_path": "dot_gemini/antigravity-cli/skills/sase_notify/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".gemini/antigravity-cli/skills/sase_patches/SKILL.md",
+      "provider": "agy",
+      "skill_name": "sase_patches",
+      "source_path": "dot_gemini/antigravity-cli/skills/sase_patches/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".gemini/antigravity-cli/skills/sase_pipe/SKILL.md",
+      "provider": "agy",
+      "skill_name": "sase_pipe",
+      "source_path": "dot_gemini/antigravity-cli/skills/sase_pipe/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".gemini/antigravity-cli/skills/sase_plan/SKILL.md",
+      "provider": "agy",
+      "skill_name": "sase_plan",
+      "source_path": "dot_gemini/antigravity-cli/skills/sase_plan/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".gemini/antigravity-cli/skills/sase_project/SKILL.md",
+      "provider": "agy",
+      "skill_name": "sase_project",
+      "source_path": "dot_gemini/antigravity-cli/skills/sase_project/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".gemini/antigravity-cli/skills/sase_questions/SKILL.md",
+      "provider": "agy",
+      "skill_name": "sase_questions",
+      "source_path": "dot_gemini/antigravity-cli/skills/sase_questions/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".gemini/antigravity-cli/skills/sase_repo/SKILL.md",
+      "provider": "agy",
+      "skill_name": "sase_repo",
+      "source_path": "dot_gemini/antigravity-cli/skills/sase_repo/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".gemini/antigravity-cli/skills/sase_run/SKILL.md",
+      "provider": "agy",
+      "skill_name": "sase_run",
+      "source_path": "dot_gemini/antigravity-cli/skills/sase_run/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".gemini/antigravity-cli/skills/sase_var/SKILL.md",
+      "provider": "agy",
+      "skill_name": "sase_var",
+      "source_path": "dot_gemini/antigravity-cli/skills/sase_var/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".claude/skills/bob_query/SKILL.md",
+      "provider": "claude",
+      "skill_name": "bob_query",
+      "source_path": "dot_claude/skills/bob_query/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".claude/skills/sase_agents_status/SKILL.md",
+      "provider": "claude",
+      "skill_name": "sase_agents_status",
+      "source_path": "dot_claude/skills/sase_agents_status/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".claude/skills/sase_artifact_file/SKILL.md",
+      "provider": "claude",
+      "skill_name": "sase_artifact_file",
+      "source_path": "dot_claude/skills/sase_artifact_file/SKILL.md",
+      "state": "retired"
+    },
+    {
+      "home_path": ".claude/skills/sase_changespecs/SKILL.md",
+      "provider": "claude",
+      "skill_name": "sase_changespecs",
+      "source_path": "dot_claude/skills/sase_changespecs/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".claude/skills/sase_chats/SKILL.md",
+      "provider": "claude",
+      "skill_name": "sase_chats",
+      "source_path": "dot_claude/skills/sase_chats/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".claude/skills/sase_final/SKILL.md",
+      "provider": "claude",
+      "skill_name": "sase_final",
+      "source_path": "dot_claude/skills/sase_final/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".claude/skills/sase_gate/SKILL.md",
+      "provider": "claude",
+      "skill_name": "sase_gate",
+      "source_path": "dot_claude/skills/sase_gate/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".claude/skills/sase_git_commit/SKILL.md",
+      "provider": "claude",
+      "skill_name": "sase_git_commit",
+      "source_path": "dot_claude/skills/sase_git_commit/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".claude/skills/sase_gmail/SKILL.md",
+      "provider": "claude",
+      "skill_name": "sase_gmail",
+      "source_path": "dot_claude/skills/sase_gmail/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".claude/skills/sase_memory_read/SKILL.md",
+      "provider": "claude",
+      "skill_name": "sase_memory_read",
+      "source_path": "dot_claude/skills/sase_memory_read/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".claude/skills/sase_monitor/SKILL.md",
+      "provider": "claude",
+      "skill_name": "sase_monitor",
+      "source_path": "dot_claude/skills/sase_monitor/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".claude/skills/sase_new_task/SKILL.md",
+      "provider": "claude",
+      "skill_name": "sase_new_task",
+      "source_path": "dot_claude/skills/sase_new_task/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".claude/skills/sase_notify/SKILL.md",
+      "provider": "claude",
+      "skill_name": "sase_notify",
+      "source_path": "dot_claude/skills/sase_notify/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".claude/skills/sase_patches/SKILL.md",
+      "provider": "claude",
+      "skill_name": "sase_patches",
+      "source_path": "dot_claude/skills/sase_patches/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".claude/skills/sase_pipe/SKILL.md",
+      "provider": "claude",
+      "skill_name": "sase_pipe",
+      "source_path": "dot_claude/skills/sase_pipe/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".claude/skills/sase_plan/SKILL.md",
+      "provider": "claude",
+      "skill_name": "sase_plan",
+      "source_path": "dot_claude/skills/sase_plan/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".claude/skills/sase_project/SKILL.md",
+      "provider": "claude",
+      "skill_name": "sase_project",
+      "source_path": "dot_claude/skills/sase_project/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".claude/skills/sase_questions/SKILL.md",
+      "provider": "claude",
+      "skill_name": "sase_questions",
+      "source_path": "dot_claude/skills/sase_questions/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".claude/skills/sase_repo/SKILL.md",
+      "provider": "claude",
+      "skill_name": "sase_repo",
+      "source_path": "dot_claude/skills/sase_repo/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".claude/skills/sase_run/SKILL.md",
+      "provider": "claude",
+      "skill_name": "sase_run",
+      "source_path": "dot_claude/skills/sase_run/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".claude/skills/sase_var/SKILL.md",
+      "provider": "claude",
+      "skill_name": "sase_var",
+      "source_path": "dot_claude/skills/sase_var/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".codex/skills/bob_query/SKILL.md",
+      "provider": "codex",
+      "skill_name": "bob_query",
+      "source_path": "dot_codex/skills/bob_query/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".codex/skills/sase_agents_status/SKILL.md",
+      "provider": "codex",
+      "skill_name": "sase_agents_status",
+      "source_path": "dot_codex/skills/sase_agents_status/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".codex/skills/sase_artifact_file/SKILL.md",
+      "provider": "codex",
+      "skill_name": "sase_artifact_file",
+      "source_path": "dot_codex/skills/sase_artifact_file/SKILL.md",
+      "state": "retired"
+    },
+    {
+      "home_path": ".codex/skills/sase_changespecs/SKILL.md",
+      "provider": "codex",
+      "skill_name": "sase_changespecs",
+      "source_path": "dot_codex/skills/sase_changespecs/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".codex/skills/sase_chats/SKILL.md",
+      "provider": "codex",
+      "skill_name": "sase_chats",
+      "source_path": "dot_codex/skills/sase_chats/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".codex/skills/sase_final/SKILL.md",
+      "provider": "codex",
+      "skill_name": "sase_final",
+      "source_path": "dot_codex/skills/sase_final/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".codex/skills/sase_gate/SKILL.md",
+      "provider": "codex",
+      "skill_name": "sase_gate",
+      "source_path": "dot_codex/skills/sase_gate/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".codex/skills/sase_git_commit/SKILL.md",
+      "provider": "codex",
+      "skill_name": "sase_git_commit",
+      "source_path": "dot_codex/skills/sase_git_commit/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".codex/skills/sase_gmail/SKILL.md",
+      "provider": "codex",
+      "skill_name": "sase_gmail",
+      "source_path": "dot_codex/skills/sase_gmail/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".codex/skills/sase_memory_read/SKILL.md",
+      "provider": "codex",
+      "skill_name": "sase_memory_read",
+      "source_path": "dot_codex/skills/sase_memory_read/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".codex/skills/sase_monitor/SKILL.md",
+      "provider": "codex",
+      "skill_name": "sase_monitor",
+      "source_path": "dot_codex/skills/sase_monitor/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".codex/skills/sase_new_task/SKILL.md",
+      "provider": "codex",
+      "skill_name": "sase_new_task",
+      "source_path": "dot_codex/skills/sase_new_task/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".codex/skills/sase_notify/SKILL.md",
+      "provider": "codex",
+      "skill_name": "sase_notify",
+      "source_path": "dot_codex/skills/sase_notify/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".codex/skills/sase_patches/SKILL.md",
+      "provider": "codex",
+      "skill_name": "sase_patches",
+      "source_path": "dot_codex/skills/sase_patches/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".codex/skills/sase_pipe/SKILL.md",
+      "provider": "codex",
+      "skill_name": "sase_pipe",
+      "source_path": "dot_codex/skills/sase_pipe/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".codex/skills/sase_plan/SKILL.md",
+      "provider": "codex",
+      "skill_name": "sase_plan",
+      "source_path": "dot_codex/skills/sase_plan/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".codex/skills/sase_project/SKILL.md",
+      "provider": "codex",
+      "skill_name": "sase_project",
+      "source_path": "dot_codex/skills/sase_project/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".codex/skills/sase_questions/SKILL.md",
+      "provider": "codex",
+      "skill_name": "sase_questions",
+      "source_path": "dot_codex/skills/sase_questions/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".codex/skills/sase_repo/SKILL.md",
+      "provider": "codex",
+      "skill_name": "sase_repo",
+      "source_path": "dot_codex/skills/sase_repo/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".codex/skills/sase_run/SKILL.md",
+      "provider": "codex",
+      "skill_name": "sase_run",
+      "source_path": "dot_codex/skills/sase_run/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".codex/skills/sase_var/SKILL.md",
+      "provider": "codex",
+      "skill_name": "sase_var",
+      "source_path": "dot_codex/skills/sase_var/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/muse/skills/sase_artifact_file/SKILL.md",
+      "provider": "config/muse",
+      "skill_name": "sase_artifact_file",
+      "source_path": "dot_config/muse/skills/sase_artifact_file/SKILL.md",
+      "state": "retired"
+    },
+    {
+      "home_path": ".config/opencode/skills/sase_artifact_file/SKILL.md",
+      "provider": "config/opencode",
+      "skill_name": "sase_artifact_file",
+      "source_path": "dot_config/opencode/skills/sase_artifact_file/SKILL.md",
+      "state": "retired"
+    },
+    {
+      "home_path": ".gemini/antigravity-cli/skills/sase_artifact_file/SKILL.md",
+      "provider": "gemini/antigravity-cli",
+      "skill_name": "sase_artifact_file",
+      "source_path": "dot_gemini/antigravity-cli/skills/sase_artifact_file/SKILL.md",
+      "state": "retired"
+    },
+    {
+      "home_path": ".gemini/jetski/skills/sase_agents_status/SKILL.md",
+      "provider": "gemini/jetski",
+      "skill_name": "sase_agents_status",
+      "source_path": "dot_gemini/jetski/skills/sase_agents_status/SKILL.md",
+      "state": "retired"
+    },
+    {
+      "home_path": ".gemini/jetski/skills/sase_changespecs/SKILL.md",
+      "provider": "gemini/jetski",
+      "skill_name": "sase_changespecs",
+      "source_path": "dot_gemini/jetski/skills/sase_changespecs/SKILL.md",
+      "state": "retired"
+    },
+    {
+      "home_path": ".gemini/jetski/skills/sase_chats/SKILL.md",
+      "provider": "gemini/jetski",
+      "skill_name": "sase_chats",
+      "source_path": "dot_gemini/jetski/skills/sase_chats/SKILL.md",
+      "state": "retired"
+    },
+    {
+      "home_path": ".gemini/jetski/skills/sase_git_commit/SKILL.md",
+      "provider": "gemini/jetski",
+      "skill_name": "sase_git_commit",
+      "source_path": "dot_gemini/jetski/skills/sase_git_commit/SKILL.md",
+      "state": "retired"
+    },
+    {
+      "home_path": ".gemini/jetski/skills/sase_gmail/SKILL.md",
+      "provider": "gemini/jetski",
+      "skill_name": "sase_gmail",
+      "source_path": "dot_gemini/jetski/skills/sase_gmail/SKILL.md",
+      "state": "retired"
+    },
+    {
+      "home_path": ".gemini/jetski/skills/sase_hg_commit/SKILL.md",
+      "provider": "gemini/jetski",
+      "skill_name": "sase_hg_commit",
+      "source_path": "dot_gemini/jetski/skills/sase_hg_commit/SKILL.md",
+      "state": "retired"
+    },
+    {
+      "home_path": ".gemini/jetski/skills/sase_memory_read/SKILL.md",
+      "provider": "gemini/jetski",
+      "skill_name": "sase_memory_read",
+      "source_path": "dot_gemini/jetski/skills/sase_memory_read/SKILL.md",
+      "state": "retired"
+    },
+    {
+      "home_path": ".gemini/jetski/skills/sase_notify/SKILL.md",
+      "provider": "gemini/jetski",
+      "skill_name": "sase_notify",
+      "source_path": "dot_gemini/jetski/skills/sase_notify/SKILL.md",
+      "state": "retired"
+    },
+    {
+      "home_path": ".gemini/jetski/skills/sase_plan/SKILL.md",
+      "provider": "gemini/jetski",
+      "skill_name": "sase_plan",
+      "source_path": "dot_gemini/jetski/skills/sase_plan/SKILL.md",
+      "state": "retired"
+    },
+    {
+      "home_path": ".gemini/jetski/skills/sase_questions/SKILL.md",
+      "provider": "gemini/jetski",
+      "skill_name": "sase_questions",
+      "source_path": "dot_gemini/jetski/skills/sase_questions/SKILL.md",
+      "state": "retired"
+    },
+    {
+      "home_path": ".gemini/jetski/skills/sase_var/SKILL.md",
+      "provider": "gemini/jetski",
+      "skill_name": "sase_var",
+      "source_path": "dot_gemini/jetski/skills/sase_var/SKILL.md",
+      "state": "retired"
+    },
+    {
+      "home_path": ".grok/skills/bob_query/SKILL.md",
+      "provider": "grok",
+      "skill_name": "bob_query",
+      "source_path": "dot_grok/skills/bob_query/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".grok/skills/sase_agents_status/SKILL.md",
+      "provider": "grok",
+      "skill_name": "sase_agents_status",
+      "source_path": "dot_grok/skills/sase_agents_status/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".grok/skills/sase_artifact_file/SKILL.md",
+      "provider": "grok",
+      "skill_name": "sase_artifact_file",
+      "source_path": "dot_grok/skills/sase_artifact_file/SKILL.md",
+      "state": "retired"
+    },
+    {
+      "home_path": ".grok/skills/sase_changespecs/SKILL.md",
+      "provider": "grok",
+      "skill_name": "sase_changespecs",
+      "source_path": "dot_grok/skills/sase_changespecs/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".grok/skills/sase_chats/SKILL.md",
+      "provider": "grok",
+      "skill_name": "sase_chats",
+      "source_path": "dot_grok/skills/sase_chats/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".grok/skills/sase_final/SKILL.md",
+      "provider": "grok",
+      "skill_name": "sase_final",
+      "source_path": "dot_grok/skills/sase_final/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".grok/skills/sase_gate/SKILL.md",
+      "provider": "grok",
+      "skill_name": "sase_gate",
+      "source_path": "dot_grok/skills/sase_gate/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".grok/skills/sase_git_commit/SKILL.md",
+      "provider": "grok",
+      "skill_name": "sase_git_commit",
+      "source_path": "dot_grok/skills/sase_git_commit/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".grok/skills/sase_gmail/SKILL.md",
+      "provider": "grok",
+      "skill_name": "sase_gmail",
+      "source_path": "dot_grok/skills/sase_gmail/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".grok/skills/sase_memory_read/SKILL.md",
+      "provider": "grok",
+      "skill_name": "sase_memory_read",
+      "source_path": "dot_grok/skills/sase_memory_read/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".grok/skills/sase_monitor/SKILL.md",
+      "provider": "grok",
+      "skill_name": "sase_monitor",
+      "source_path": "dot_grok/skills/sase_monitor/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".grok/skills/sase_new_task/SKILL.md",
+      "provider": "grok",
+      "skill_name": "sase_new_task",
+      "source_path": "dot_grok/skills/sase_new_task/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".grok/skills/sase_notify/SKILL.md",
+      "provider": "grok",
+      "skill_name": "sase_notify",
+      "source_path": "dot_grok/skills/sase_notify/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".grok/skills/sase_patches/SKILL.md",
+      "provider": "grok",
+      "skill_name": "sase_patches",
+      "source_path": "dot_grok/skills/sase_patches/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".grok/skills/sase_pipe/SKILL.md",
+      "provider": "grok",
+      "skill_name": "sase_pipe",
+      "source_path": "dot_grok/skills/sase_pipe/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".grok/skills/sase_plan/SKILL.md",
+      "provider": "grok",
+      "skill_name": "sase_plan",
+      "source_path": "dot_grok/skills/sase_plan/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".grok/skills/sase_project/SKILL.md",
+      "provider": "grok",
+      "skill_name": "sase_project",
+      "source_path": "dot_grok/skills/sase_project/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".grok/skills/sase_questions/SKILL.md",
+      "provider": "grok",
+      "skill_name": "sase_questions",
+      "source_path": "dot_grok/skills/sase_questions/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".grok/skills/sase_repo/SKILL.md",
+      "provider": "grok",
+      "skill_name": "sase_repo",
+      "source_path": "dot_grok/skills/sase_repo/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".grok/skills/sase_run/SKILL.md",
+      "provider": "grok",
+      "skill_name": "sase_run",
+      "source_path": "dot_grok/skills/sase_run/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".grok/skills/sase_var/SKILL.md",
+      "provider": "grok",
+      "skill_name": "sase_var",
+      "source_path": "dot_grok/skills/sase_var/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/muse/skills/bob_query/SKILL.md",
+      "provider": "muse",
+      "skill_name": "bob_query",
+      "source_path": "dot_config/muse/skills/bob_query/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/muse/skills/sase_agents_status/SKILL.md",
+      "provider": "muse",
+      "skill_name": "sase_agents_status",
+      "source_path": "dot_config/muse/skills/sase_agents_status/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/muse/skills/sase_changespecs/SKILL.md",
+      "provider": "muse",
+      "skill_name": "sase_changespecs",
+      "source_path": "dot_config/muse/skills/sase_changespecs/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/muse/skills/sase_chats/SKILL.md",
+      "provider": "muse",
+      "skill_name": "sase_chats",
+      "source_path": "dot_config/muse/skills/sase_chats/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/muse/skills/sase_final/SKILL.md",
+      "provider": "muse",
+      "skill_name": "sase_final",
+      "source_path": "dot_config/muse/skills/sase_final/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/muse/skills/sase_gate/SKILL.md",
+      "provider": "muse",
+      "skill_name": "sase_gate",
+      "source_path": "dot_config/muse/skills/sase_gate/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/muse/skills/sase_git_commit/SKILL.md",
+      "provider": "muse",
+      "skill_name": "sase_git_commit",
+      "source_path": "dot_config/muse/skills/sase_git_commit/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/muse/skills/sase_gmail/SKILL.md",
+      "provider": "muse",
+      "skill_name": "sase_gmail",
+      "source_path": "dot_config/muse/skills/sase_gmail/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/muse/skills/sase_memory_read/SKILL.md",
+      "provider": "muse",
+      "skill_name": "sase_memory_read",
+      "source_path": "dot_config/muse/skills/sase_memory_read/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/muse/skills/sase_monitor/SKILL.md",
+      "provider": "muse",
+      "skill_name": "sase_monitor",
+      "source_path": "dot_config/muse/skills/sase_monitor/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/muse/skills/sase_new_task/SKILL.md",
+      "provider": "muse",
+      "skill_name": "sase_new_task",
+      "source_path": "dot_config/muse/skills/sase_new_task/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/muse/skills/sase_notify/SKILL.md",
+      "provider": "muse",
+      "skill_name": "sase_notify",
+      "source_path": "dot_config/muse/skills/sase_notify/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/muse/skills/sase_patches/SKILL.md",
+      "provider": "muse",
+      "skill_name": "sase_patches",
+      "source_path": "dot_config/muse/skills/sase_patches/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/muse/skills/sase_pipe/SKILL.md",
+      "provider": "muse",
+      "skill_name": "sase_pipe",
+      "source_path": "dot_config/muse/skills/sase_pipe/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/muse/skills/sase_plan/SKILL.md",
+      "provider": "muse",
+      "skill_name": "sase_plan",
+      "source_path": "dot_config/muse/skills/sase_plan/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/muse/skills/sase_project/SKILL.md",
+      "provider": "muse",
+      "skill_name": "sase_project",
+      "source_path": "dot_config/muse/skills/sase_project/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/muse/skills/sase_questions/SKILL.md",
+      "provider": "muse",
+      "skill_name": "sase_questions",
+      "source_path": "dot_config/muse/skills/sase_questions/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/muse/skills/sase_repo/SKILL.md",
+      "provider": "muse",
+      "skill_name": "sase_repo",
+      "source_path": "dot_config/muse/skills/sase_repo/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/muse/skills/sase_run/SKILL.md",
+      "provider": "muse",
+      "skill_name": "sase_run",
+      "source_path": "dot_config/muse/skills/sase_run/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/muse/skills/sase_var/SKILL.md",
+      "provider": "muse",
+      "skill_name": "sase_var",
+      "source_path": "dot_config/muse/skills/sase_var/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/opencode/skills/bob_query/SKILL.md",
+      "provider": "opencode",
+      "skill_name": "bob_query",
+      "source_path": "dot_config/opencode/skills/bob_query/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/opencode/skills/sase_agents_status/SKILL.md",
+      "provider": "opencode",
+      "skill_name": "sase_agents_status",
+      "source_path": "dot_config/opencode/skills/sase_agents_status/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/opencode/skills/sase_changespecs/SKILL.md",
+      "provider": "opencode",
+      "skill_name": "sase_changespecs",
+      "source_path": "dot_config/opencode/skills/sase_changespecs/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/opencode/skills/sase_chats/SKILL.md",
+      "provider": "opencode",
+      "skill_name": "sase_chats",
+      "source_path": "dot_config/opencode/skills/sase_chats/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/opencode/skills/sase_final/SKILL.md",
+      "provider": "opencode",
+      "skill_name": "sase_final",
+      "source_path": "dot_config/opencode/skills/sase_final/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/opencode/skills/sase_gate/SKILL.md",
+      "provider": "opencode",
+      "skill_name": "sase_gate",
+      "source_path": "dot_config/opencode/skills/sase_gate/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/opencode/skills/sase_git_commit/SKILL.md",
+      "provider": "opencode",
+      "skill_name": "sase_git_commit",
+      "source_path": "dot_config/opencode/skills/sase_git_commit/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/opencode/skills/sase_gmail/SKILL.md",
+      "provider": "opencode",
+      "skill_name": "sase_gmail",
+      "source_path": "dot_config/opencode/skills/sase_gmail/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/opencode/skills/sase_memory_read/SKILL.md",
+      "provider": "opencode",
+      "skill_name": "sase_memory_read",
+      "source_path": "dot_config/opencode/skills/sase_memory_read/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/opencode/skills/sase_monitor/SKILL.md",
+      "provider": "opencode",
+      "skill_name": "sase_monitor",
+      "source_path": "dot_config/opencode/skills/sase_monitor/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/opencode/skills/sase_new_task/SKILL.md",
+      "provider": "opencode",
+      "skill_name": "sase_new_task",
+      "source_path": "dot_config/opencode/skills/sase_new_task/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/opencode/skills/sase_notify/SKILL.md",
+      "provider": "opencode",
+      "skill_name": "sase_notify",
+      "source_path": "dot_config/opencode/skills/sase_notify/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/opencode/skills/sase_patches/SKILL.md",
+      "provider": "opencode",
+      "skill_name": "sase_patches",
+      "source_path": "dot_config/opencode/skills/sase_patches/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/opencode/skills/sase_pipe/SKILL.md",
+      "provider": "opencode",
+      "skill_name": "sase_pipe",
+      "source_path": "dot_config/opencode/skills/sase_pipe/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/opencode/skills/sase_plan/SKILL.md",
+      "provider": "opencode",
+      "skill_name": "sase_plan",
+      "source_path": "dot_config/opencode/skills/sase_plan/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/opencode/skills/sase_project/SKILL.md",
+      "provider": "opencode",
+      "skill_name": "sase_project",
+      "source_path": "dot_config/opencode/skills/sase_project/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/opencode/skills/sase_questions/SKILL.md",
+      "provider": "opencode",
+      "skill_name": "sase_questions",
+      "source_path": "dot_config/opencode/skills/sase_questions/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/opencode/skills/sase_repo/SKILL.md",
+      "provider": "opencode",
+      "skill_name": "sase_repo",
+      "source_path": "dot_config/opencode/skills/sase_repo/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/opencode/skills/sase_run/SKILL.md",
+      "provider": "opencode",
+      "skill_name": "sase_run",
+      "source_path": "dot_config/opencode/skills/sase_run/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/opencode/skills/sase_var/SKILL.md",
+      "provider": "opencode",
+      "skill_name": "sase_var",
+      "source_path": "dot_config/opencode/skills/sase_var/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".qwen/skills/bob_query/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "bob_query",
+      "source_path": "dot_qwen/skills/bob_query/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".qwen/skills/sase_agents_status/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "sase_agents_status",
+      "source_path": "dot_qwen/skills/sase_agents_status/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".qwen/skills/sase_artifact_file/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "sase_artifact_file",
+      "source_path": "dot_qwen/skills/sase_artifact_file/SKILL.md",
+      "state": "retired"
+    },
+    {
+      "home_path": ".qwen/skills/sase_changespecs/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "sase_changespecs",
+      "source_path": "dot_qwen/skills/sase_changespecs/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".qwen/skills/sase_chats/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "sase_chats",
+      "source_path": "dot_qwen/skills/sase_chats/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".qwen/skills/sase_final/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "sase_final",
+      "source_path": "dot_qwen/skills/sase_final/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".qwen/skills/sase_gate/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "sase_gate",
+      "source_path": "dot_qwen/skills/sase_gate/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".qwen/skills/sase_git_commit/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "sase_git_commit",
+      "source_path": "dot_qwen/skills/sase_git_commit/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".qwen/skills/sase_gmail/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "sase_gmail",
+      "source_path": "dot_qwen/skills/sase_gmail/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".qwen/skills/sase_memory_read/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "sase_memory_read",
+      "source_path": "dot_qwen/skills/sase_memory_read/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".qwen/skills/sase_monitor/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "sase_monitor",
+      "source_path": "dot_qwen/skills/sase_monitor/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".qwen/skills/sase_new_task/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "sase_new_task",
+      "source_path": "dot_qwen/skills/sase_new_task/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".qwen/skills/sase_notify/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "sase_notify",
+      "source_path": "dot_qwen/skills/sase_notify/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".qwen/skills/sase_patches/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "sase_patches",
+      "source_path": "dot_qwen/skills/sase_patches/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".qwen/skills/sase_pipe/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "sase_pipe",
+      "source_path": "dot_qwen/skills/sase_pipe/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".qwen/skills/sase_plan/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "sase_plan",
+      "source_path": "dot_qwen/skills/sase_plan/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".qwen/skills/sase_project/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "sase_project",
+      "source_path": "dot_qwen/skills/sase_project/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".qwen/skills/sase_questions/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "sase_questions",
+      "source_path": "dot_qwen/skills/sase_questions/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".qwen/skills/sase_repo/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "sase_repo",
+      "source_path": "dot_qwen/skills/sase_repo/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".qwen/skills/sase_run/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "sase_run",
+      "source_path": "dot_qwen/skills/sase_run/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".qwen/skills/sase_var/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "sase_var",
+      "source_path": "dot_qwen/skills/sase_var/SKILL.md",
+      "state": "active"
+    }
+  ],
+  "source_commit": "460565038503857e73d508362c2446baca1f9dfc",
+  "xprompt_set_sha256": "f280badd349ac8f841b4c328efda872266d4e509c273e425cf84c77a0fd7b1bb"
 }

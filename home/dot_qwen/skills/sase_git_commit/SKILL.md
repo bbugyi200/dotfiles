@@ -2,8 +2,9 @@
 name: sase_git_commit
 description:
   Commit changes using sase stitch create for git-based VCS (bare git and GitHub). This
-  is the ONLY way you should EVER commit to git repos. NEVER invoke this skill unless
-  the user explicitly asks you to commit or a post-completion finalizer triggers it.
+  is the ONLY way you should EVER commit to git repos manually. NEVER invoke this skill
+  unless the user explicitly asks you to commit or a post-completion finalizer triggers
+  it.
 ---
 
 Before doing anything else, run this command to record that you are using this skill:
