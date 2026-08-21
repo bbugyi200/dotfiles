@@ -107,34 +107,28 @@ axe:
             source: projects
     ci_watch:
       description: |-
-        Watch GitHub Actions health across SASE repos and drive fixes or releases
+        Watch GitHub Actions health across SASE repos and submit guarded releases
 
         Runs every five minutes. The single chop owns its own actstat config so unrelated orgs are never swept,
-        classifies high-cadence repos from terminal job evidence instead of blanket in-flight state, and files at
-        most one debounced LaunchApproval gate per tick for a durable CI-fix agent the user approves or rejects.
-        Gates are suppressed while a `ci_fix` hood agent is live, while any gate is still pending, or once the same
-        failing-job fingerprint has already been gated; the gate prompt's `%w(runners=0)` delays an approved fixer
-        until the machine is idle. The chop also guards release merges because no SASE repo has branch protection,
-        publishes a durable current release report, and links release notifications directly to that report.
+        classifies high-cadence repos from terminal job evidence instead of blanket in-flight state, and sends one
+        rich SASE notification per active failing-job incident. Its only GitHub mutation is a guarded squash merge
+        for an eligible release-please PR when live mode and `merge_enabled` are both explicit. It never creates
+        gates, launch requests, repair agents, or Axe proposals, and every notification links to the combined
+        CI WATCH report when the report publishes successfully.
       interval: 300
       chop_timeout: "120s"
       chops:
         ci_watch:
           script: bugyi_chop_ci_watch
           description: |-
-            Sweep actstat once, file non-overlapping CI-fix gates, and merge ready release PRs
+            Sweep actstat once, notify on CI incidents, and merge ready release-please PRs
 
-            Terminal job failures file one sha-independent, deduplicated LaunchApproval gate after the same failing
-            job fingerprint survives the debounce window (suppressed while a `ci_fix` hood agent is live, while a
-            gate is already pending, or once that fingerprint's episode is already gated; one new gate per tick).
-            The gate prompt's `%w(runners=0)` keeps an approved fixer from competing with interactive work. Green
-            branches with fully green release PRs merge deterministically in dependency order, capped per tick.
-            Repos with no Actions report no_ci, while everything unknown fails closed. Every tick publishes the
-            current release ledger report, and merge or blocked-release notifications open that live report in ACE.
-            The whole chop is also inhibited while any SASE agent holds a runner slot, so it only sweeps, gates, or
-            merges on an otherwise idle machine.
-          inhibit_if:
-            agent_runners: { max: 0 }
+            Terminal job failures send one sha-independent, deduplicated SASE notification per repository incident
+            with workflow, job, conclusion, step, URL, failing SHA, and unsettled-current-HEAD evidence. Green or
+            non-red observations clear the incident so a recurrence is announced again. Green branches with fully
+            green release-please PRs merge deterministically in dependency order, capped at one merge per tick.
+            Repos with no Actions report no_ci, while unknown, pending, stale, or malformed evidence fails closed.
+            The chop may only call actstat, bounded GitHub reads, guarded `gh pr merge`, and `sase notify create`.
           env:
             ACTSTAT_CONFIG: /home/bryan/.config/sase/actstat-ci-watch.yml
           vars:
@@ -142,14 +136,7 @@ axe:
             gh_bin: gh
             sase_bin: sase
             repos: [sase-org/sase, sase-org/sase-core, sase-org/sase-github, sase-org/sase-telegram, sase-org/sase-nvim]
-            release_repositories:
-              sase-org/sase: release-please
-              sase-org/sase-core: release-plz
-              sase-org/sase-github: release-please
-              sase-org/sase-telegram: release-please
-            merge_order: [sase-core, sase-github, sase-telegram, sase]
+            release_repositories: [sase-org/sase, sase-org/sase-github, sase-org/sase-telegram]
+            merge_order: [sase-github, sase-telegram, sase]
             max_merges_per_tick: 1
-            max_fix_proposals_per_tick: 1
-            red_debounce_ticks: 2
-            fix_enabled: true
             merge_enabled: true
