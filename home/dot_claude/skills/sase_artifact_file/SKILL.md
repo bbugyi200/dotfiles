@@ -218,8 +218,9 @@ sase artifact open file:default:0123456789abcdef01234567
 an object with the full summary, or `null` when the reference has never been consumed.
 Prefer `sase artifact read <ref> "<reason>"` over `path` plus a silent file open when
 you are consuming an artifact as context: `read` strips managed Links and Referenced By
-blocks before printing, records an audit row, and writes a `read` artifact link when the
-`artifact_links` beta flag is enabled inside an agent run.
+blocks before printing, records an audit row, and writes a `read` artifact link when
+inside a SASE agent run with an identity. Outside an agent run, `read` still prints the
+artifact and records the audit row, but warns that no graph edge was recorded.
 
 `path` exits 0 on success, 1 for a missing, ambiguous, or malformed reference
 (candidates are listed on stderr), and 2 for kinds with no filesystem identity
@@ -241,8 +242,8 @@ sase artifact link rm plan:202608/design.md bead:<task-id> -R implements
 
 Relation slugs are closed: `cites`, `read`, `related`, `supersedes`, `implements`, and
 `derives-from`. `blocks` and `depends-on` are reserved for `sase bead dep`. `link add`,
-`link rm`, and `migrate-notes --apply` require the `artifact_links` feature flag;
-`link list` can still inspect existing rows.
+`link rm`, and `migrate-notes --apply` write the graph directly; `link list` inspects
+existing rows.
 
 ## Check Index Health
 
