@@ -281,8 +281,6 @@ xprompts:
       (last but not least) beautiful!"
   codex3: "gpt-5.3-codex"
   codex: "gpt-5.6-sol"
-  foo: |-
-    foo bar baz
   gh_dotfiles: "#gh:dotfiles"
   gh_sase: "#gh:sase"
   if_so_plan: |-
