@@ -2,7 +2,7 @@
 name: sase_final
 description:
   Submit the current turn's SASE finalizer declaration. Use this as the last normal
-  action when beta finalizer instructions ask for `/sase_final`.
+  action when finalizer instructions ask for `/sase_final`.
 ---
 
 Use this skill only when the current SASE turn's instructions ask you to finish with
