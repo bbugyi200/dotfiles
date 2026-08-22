@@ -32,6 +32,7 @@ sase monitor start \
   --timeout 45m \
   --start-status TESTING \
   --stop-status TESTED \
+  --model '@small' \
   --next 'Fix anything just check-full reported, then reply to the user.'
 ```
 
@@ -61,7 +62,8 @@ pair for `just check` and `just check-full`.
   is preserved forever.
 - `--reason` and `--next` text reaches the follow-up literally. A next action like
   `--next '#commit ...'` or `--next '%model:opus ...'` will not route or expand
-  anything, but writing `#412` or a directive name in prose is safe.
+  anything, but writing `#412` or a directive name in prose is safe. Use `-m/--model` to
+  select the follow-up agent's model; `%model` text inside `--next` stays literal.
 - Do not poll, sleep, or wait after `sase monitor start`; the starting agent is handed
   off and killed when running inside an agent.
 
@@ -106,6 +108,10 @@ sase monitor start \
   no `--agent` is needed there either; outside an agent, pass it explicitly. (`--lane`
   still works as a deprecated alias.)
 - `--label TEXT` controls the short row label shown in monitor lists.
+- `-m, --model MODEL` — model or alias for the follow-up agent (`opus`, `opus@high`,
+  `sonnet`, `codex/gpt-5`). Requires `--next`. Default: inherit the starter's model and
+  reasoning effort. `%model` text inside `--next` stays literal; `--model` controls
+  routing.
 - `--tail-lines N` controls how many output lines are included when `--next-output tail`
   is used for the follow-up prompt.
 - `--idle-timeout DURATION` kills a command that produces no bytes for that duration.
@@ -131,7 +137,9 @@ When `--next` is set, the follow-up agent receives the previous conversation thr
 `#fork`, the original reason, the requested next action, and a command-run breakdown:
 outcome, exit code, elapsed time, selected output policy, and the path to the retained
 captured log. The reason, next action, table fields, and embedded output are wrapped as
-literal prompt text; only the follow-up's routing prefix remains live.
+literal prompt text; only the follow-up's routing prefix remains live. Omit `--model` to
+inherit the starter's model and reasoning effort; pass `--model` to replace that
+inherited routing.
 
 With `--next-output tail`, the retained tail is fenced and labeled as untrusted command
 output. With `--next-output file`, the follow-up gets the log path instead of embedded
