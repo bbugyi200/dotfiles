@@ -147,6 +147,8 @@ ace:
     sac: "SASE Admin Center"
     sact: |-
       the "$1" tab of the "#[sac]" panel
+    sat: |-
+      the `$1` sase agent
     sc: |-
       sase config
     scr: |-
