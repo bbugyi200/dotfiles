@@ -40,17 +40,16 @@ way than by using `/sase_repo`!
 
 #### 1.1.2 SASE Final Declaration
 
-Before any normal response that ends this SASE provider turn, use your `/sase_final`
-skill as the last action. This includes a final answer, an incomplete-status response,
-an "I will wait" response, or any reply that intends to resume in a later turn. It will
-call `sase final context`, inspect any selected finalizers and repository obligations,
-and submit one atomic declaration with `sase final submit` when the host requires one.
+Before your final response in this normal SASE turn, use your `/sase_final` skill as the
+last action. It will call `sase final context`, inspect any selected finalizers and
+repository obligations, and submit one atomic declaration with `sase final submit` when
+the host requires one.
 
 After a successful `sase final submit`, do not make more file or repository changes in
 this turn. If the declaration command reports validation errors, repair the manifest and
-resubmit before returning when possible. Only a successfully executed plan, monitor,
-pipe, or questions handoff is exempt, because those commands terminate the runner
-mechanically. Intending to resume later is not an exemption.
+resubmit before returning when possible. Intentional handoff commands such as plan,
+monitor, pipe, and questions terminate the runner mechanically and do not need a final
+declaration.
 
 ### 1.2 Task Bead Types (task_types)
 
