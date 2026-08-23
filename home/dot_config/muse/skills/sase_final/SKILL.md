@@ -12,8 +12,15 @@ Use this skill only when the current SASE turn's instructions ask you to finish 
 
 - Run this after all ordinary work, edits, and verification for the turn are complete.
 - Do not mutate files or repositories after a successful declaration submit.
+- A `commit` action in the manifest is declarative: the host's `builtin@commit`
+  finalizer runs `sase stitch create`. Do not invoke `/sase_git_commit` after reading a
+  required final context.
 - If context says no payloads are required, return after reading it.
-- If submit reports validation errors, repair the manifest and resubmit when possible.
+- If submit reports `stale_final_context`, rerun `sase final context -f json` and
+  rebuild the manifest from the refreshed template, or abandon the manifest if the
+  refreshed context no longer requires one.
+- If submit reports other validation errors, repair the manifest and resubmit when
+  possible.
 - Intentional handoffs through plan, monitor, pipe, or questions terminate the runner
   mechanically and do not need this skill.
 
@@ -32,7 +39,9 @@ Use this skill only when the current SASE turn's instructions ask you to finish 
    - `commit` with a valid Conventional Commit `message`, or
    - `refuse` with a nonblank `reason`.
 
-   Use only the `repo_id` values from the context. Do not submit absolute paths.
+   Use only the `repo_id` values from the context. Do not submit absolute paths. A
+   `commit` decision authorizes the host finalizer to commit; it is not an instruction
+   to run any commit skill manually.
 
 4. Submit the manifest:
 

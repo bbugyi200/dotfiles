@@ -3,8 +3,9 @@ name: sase_git_commit
 description:
   Commit changes using sase stitch create for git-based VCS (bare git and GitHub). This
   is the ONLY way you should EVER commit to git repos manually. NEVER invoke this skill
-  unless the user explicitly asks you to commit or a post-completion finalizer triggers
-  it.
+  unless the user explicitly asks you to commit or the host explicitly instructs you to
+  invoke `/sase_git_commit`; the provider-neutral `/sase_final` flow is not such an
+  instruction.
 ---
 
 Before doing anything else, run this command to record that you are using this skill:
@@ -15,6 +16,11 @@ sase skill use sase_git_commit --reason "<one-line reason for using this skill>"
 
 Commit changes via the `sase_git_commit` wrapper. The wrapper records skill invocation
 evidence, then delegates to `sase stitch create`.
+
+Only use this skill for an explicit manual commit request or an explicit host
+instruction naming `/sase_git_commit`. A `commit` action in a `/sase_final` manifest is
+declarative; `builtin@commit` executes the corresponding `sase stitch create` after the
+host accepts the declaration.
 
 ## Instructions
 
