@@ -64,7 +64,9 @@ axe:
             `tests` trees with line limits `1000`, `850`, and `700`.
 
             The `toobig-` clan inhibit guard prevents overlapping split-file swarms. Each scan emits a sequential clan
-            of content-deduped `%auto #split_file:<path>` proposals, so large files are handled one at a time.
+            of `%auto #split_file:<path>` proposals with no dedupe key; each member's `%if` predicate rechecks the
+            700-line floor immediately before admission, so a file that shrank below it while queued is skipped
+            without allocating an agent, and large files are still handled one at a time.
           run_every: 60m
           inhibit_if:
             agent_clan: { name_prefix: toobig- }
