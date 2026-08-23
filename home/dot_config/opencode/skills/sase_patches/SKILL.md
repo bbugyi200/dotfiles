@@ -165,13 +165,13 @@ releases remain readable until migrated via `sase patch migrate-extension`.
 
 ## Safe Modification Rules
 
-- Do not manually edit `STITCHES` or `TIMESTAMPS`; they are managed by `sase commit` and
-  lifecycle operations.
+- Do not manually edit `STITCHES` or `TIMESTAMPS`; they are managed by
+  `sase stitch create` and lifecycle operations.
 - Do not set `PARENT` to a VCS ref like `origin/main`, `origin/master`, or `p4head`.
   `PARENT` must be another Patch name, or omitted.
 - Prefer `sase patch ref add` and `sase patch ref rm` over direct `REFS:` edits.
-- Prefer `sase commit`, `sase revert <name>`, and `sase restore <name>` over direct
-  `.sase` surgery for tracked workflow changes.
+- Prefer `sase stitch create`, `sase revert <name>`, and `sase restore <name>` over
+  direct `.sase` surgery for tracked workflow changes.
 - If you must edit a `.sase` file directly, preserve two blank lines between Patches and
   2-space indentation for multiline fields.
 
@@ -187,7 +187,7 @@ releases remain readable until migrated via `sase patch migrate-extension`.
 ## Other Useful Forms
 
 - `sase ace` — interactive Patch browser and agent control surface.
-- `sase commit` — make real commits, proposals, or PRs and update `STITCHES`
+- `sase stitch create` — make real commits, proposals, or PRs and update `STITCHES`
   automatically.
 - `sase revert <name>` / `sase restore <name>` — lifecycle-level destructive/recovery
   operations.

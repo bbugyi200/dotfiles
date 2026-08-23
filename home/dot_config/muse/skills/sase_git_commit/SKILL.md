@@ -106,7 +106,8 @@ host accepts the declaration.
      (repeatable). Everything else that changed, including untracked files, is
      committed. A path that has no pending change is an error, so the commit fails
      loudly rather than quietly committing a mistyped path.
-   - `-B`: Do not auto-close your assigned task bead; use it for mid-flight commits.
+   - `-B`: Do not auto-close your assigned in-progress bead; use it for mid-flight
+     commits.
    - `--name`: Branch name (only needed for `create_pull_request` method).
 
    The `$SASE_COMMIT_METHOD` environment variable is read automatically to determine the
@@ -117,9 +118,9 @@ host accepts the declaration.
    Exit codes:
    - `0`: Commit succeeded.
    - `1`: Commit failed with a printed reason. Fix the cause and re-run the same
-     command. A successful commit auto-closes an `in_progress` task bead in this repo;
-     phase and plan beads are never auto-closed, and agents still close those
-     themselves. Re-runs stay safe because re-closing is a no-op.
+     command. A successful commit auto-closes the assigned `in_progress` bead in this
+     repo. Re-runs stay safe when the bead is already closed, but failed lifecycle
+     validation must be resolved explicitly.
    - `2`: A rebase is paused for a real conflict. Do not re-run the original command
      while the rebase is paused; use the recovery flow below.
 

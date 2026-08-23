@@ -34,4 +34,4 @@ machine-readable output shape.
 
 Legacy `COMMITS:` sections are read as stitches. New Patch sections use `STITCHES:`. Use
 "commit" only for real Git/Mercurial commits, SHAs, VCS logs, commit statistics, the
-`sase commit` command, and the act of committing.
+`sase stitch create` command, and the act of committing.
