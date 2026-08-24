@@ -153,6 +153,8 @@ ace:
       sase config
     scr: |-
       sidecar repo
+    scrt: |-
+      the $1.md file in the $2 sidecar repo
     sctx: |-
       the `SASE CONTEXT` section
     smo: |-
