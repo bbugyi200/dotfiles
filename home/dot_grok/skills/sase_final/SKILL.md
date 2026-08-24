@@ -18,9 +18,12 @@ monitor, pipe, or questions handoff is exempt.
 - A `commit` action in the manifest is declarative: the host's `builtin@commit`
   finalizer runs `sase stitch create`. Do not invoke `/sase_git_commit` after reading a
   required final context.
-- A `refuse` decision needs a substantive reason about the _changes_. Missing
-  conversational context is not a valid reason. In a recovery turn, build the commit
-  message from the host's evidence brief rather than assuming no work happened.
+- SASE agents work in ephemeral numbered workspace clones, so uncommitted work is lost
+  work. The host commits your turn's work by default and does not need the user to ask.
+  Deferral is a safety valve for a tree that must not be committed, not the polite
+  default.
+- In a recovery turn, build the commit message from the host's evidence brief rather
+  than assuming no work happened.
 - If context says no payloads are required, return after reading it.
 - If submit reports `stale_final_context`, rerun `sase final context -f json` and
   rebuild the manifest from the refreshed template, or abandon the manifest if the
@@ -41,13 +44,23 @@ monitor, pipe, or questions handoff is exempt.
 2. If `submission_required` is false, stop here and return.
 
 3. Build one manifest from `manifest_template`. For a `commit` payload, every repository
-   in `context.obligations` with `kind: repository` needs exactly one decision:
-   - `commit` with a valid Conventional Commit `message`, or
-   - `refuse` with a nonblank `reason`.
+   in `context.obligations` with `kind: repository` needs a `commit` decision with a
+   valid Conventional Commit `message`.
 
-   Use only the `repo_id` values from the context. Do not submit absolute paths. A
+   Use only the `repo_id` values from the context. Do not submit absolute paths. Keep
+   `action: "commit"` and write a message that describes the work in that repository. A
    `commit` decision authorizes the host finalizer to commit; it is not an instruction
    to run any commit skill manually.
+
+   Read the `commit_declaration` object in the context when present. Its
+   `repository_evidence` lists model-visible provenance for the dirty paths: paths
+   written by this run, paths already dirty at run start, and protected paths.
+
+   Only add a typed `deferrals` entry when the repository tree itself must not be
+   committed. Legal reasons are `protected_paths`, `foreign_work`, `unsafe_content`, and
+   `belongs_to_another_turn`; each deferral must name the affected `repo_id` and
+   `paths`. The host adjudicates deferrals at submit time and rejects deferrals whose
+   evidence points back to this turn's own work.
 
 4. Submit the manifest:
 
