@@ -12,6 +12,12 @@ monitor, pipe, or questions handoff is exempt.
 
 ## Rules
 
+- Every repository you changed during this turn is yours to commit. This includes the
+  primary workspace checkout and every linked, sidecar, or external repo you opened with
+  `/sase_repo` and then edited. Give each one a `commit` decision; `action: "commit"` is
+  the only legal repository action. A repository not being the main repo, not being the
+  focus of the turn, or being outside a host prompt scoped to one repository's commit is
+  not a reason to leave your own work uncommitted.
 - Run this after all ordinary work, edits, and verification for the turn are complete,
   immediately before the normal response that ends the provider turn.
 - Do not mutate files or repositories after a successful declaration submit.
@@ -44,8 +50,9 @@ monitor, pipe, or questions handoff is exempt.
 2. If `submission_required` is false, stop here and return.
 
 3. Build one manifest from `manifest_template`. For a `commit` payload, every repository
-   in `context.obligations` with `kind: repository` needs a `commit` decision with a
-   valid Conventional Commit `message`.
+   in `context.obligations` with `kind: repository` needs exactly one repository
+   decision, and the only legal `action` is `commit` with a valid Conventional Commit
+   `message`.
 
    Use only the `repo_id` values from the context. Do not submit absolute paths. Keep
    `action: "commit"` and write a message that describes the work in that repository. A
@@ -58,9 +65,16 @@ monitor, pipe, or questions handoff is exempt.
 
    Only add a typed `deferrals` entry when the repository tree itself must not be
    committed. Legal reasons are `protected_paths`, `foreign_work`, `unsafe_content`, and
-   `belongs_to_another_turn`; each deferral must name the affected `repo_id` and
-   `paths`. The host adjudicates deferrals at submit time and rejects deferrals whose
-   evidence points back to this turn's own work.
+   `belongs_to_another_turn`. Each deferral is an object in `payload.deferrals`
+   alongside `payload.repositories`, and must name the affected `repo_id`, `reason`, and
+   explicit `paths`. The host adjudicates deferrals at submit time using
+   `src/sase/finalizers/declaration_deferrals.py` and rejects deferrals whose evidence
+   points back to this turn's own work. A deferral is a claim about authorship or
+   safety, not a way to skip work.
+
+   If `finalizer_baseline.json` shows a repository with empty `fingerprints`, nothing
+   was dirty when it was opened, so every dirty path in that repository is your own
+   work. Commit it. Do not read a sparse or empty baseline as permission to skip.
 
 4. Submit the manifest:
 

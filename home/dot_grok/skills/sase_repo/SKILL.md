@@ -39,6 +39,17 @@ Use `sase repo open` when you need to modify a repository or explore a repo tree
 that path prints the artifact content, strips managed link tables, and records the read
 instead of silently opening files.
 
+## Commit Obligation For Opened Repositories
+
+If you modify a repository opened with this skill, that repository becomes part of this
+turn's final declaration. `/sase_final` will surface it as a repository obligation, and
+it needs a `commit` decision exactly like the primary workspace checkout.
+
+Long-running turns may open a repo early and only see its dirty obligation much later.
+If you do not recognize the paths, check `sase repo log` and the run's tool-call
+history; do not treat "not the main repo" or "I do not recognize it" as a reason to
+decline your own changes.
+
 ## Researching External GitHub Projects
 
 Open an unlinked GitHub project as an external repo before studying its files or
