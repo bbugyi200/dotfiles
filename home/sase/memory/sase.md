@@ -1,7 +1,6 @@
 ---
 type: core
 parent: AGENTS.md
-priority: 10
 ---
 
 # SASE = Structured Agentic Software Engineering
