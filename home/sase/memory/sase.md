@@ -37,6 +37,10 @@ skill as the last action. This includes a final answer, an incomplete-status res
 an "I will wait" response, or any reply that intends to resume in a later turn. It will
 call `sase final context`, inspect any selected finalizers and repository obligations,
 and submit one atomic declaration with `sase final submit` when the host requires one.
+The declaration must cover every repository you changed this turn, including linked,
+sidecar, or external repos opened through `/sase_repo`. A host prompt scoped to one
+repository's commit or conflict repair does not narrow that obligation for any other
+repository you changed.
 
 After a successful `sase final submit`, do not make more file or repository changes in
 this turn. If the declaration command reports validation errors, repair the manifest and

@@ -63,8 +63,8 @@ memory.
 - Type: `core`
 - Description: No description set.
 - Parent: `AGENTS.md`
-- Lines: 45
-- Approx. tokens: 572
+- Lines: 49
+- Approx. tokens: 641
 
 ### `sase/memory/obsidian.md`
 
@@ -79,8 +79,8 @@ memory.
 - Total notes: 2
 - Core notes: 1
 - Reference notes: 1
-- Total lines: 64
-- Total approx. tokens: 737
+- Total lines: 68
+- Total approx. tokens: 806
 
 ## Commands
 
