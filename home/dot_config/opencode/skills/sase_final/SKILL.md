@@ -14,8 +14,8 @@ monitor, pipe, or questions handoff is exempt.
 
 - Every repository you changed during this turn is yours to commit. This includes the
   primary workspace checkout and every linked, sidecar, or external repo you opened with
-  `/sase_repo` and then edited. Give each one a `commit` decision; `action: "commit"` is
-  the only legal repository action. A repository not being the main repo, not being the
+  `/sase_repo` and then edited. Give each one a `commit` decision; the only legal
+  repository action is `commit`. A repository not being the main repo, not being the
   focus of the turn, or being outside a host prompt scoped to one repository's commit is
   not a reason to leave your own work uncommitted.
 - Run this after all ordinary work, edits, and verification for the turn are complete,
