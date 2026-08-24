@@ -7,7 +7,7 @@ edit to the canonical note under `sase/memory/`, then you MUST run `sase memory 
 regenerate `AGENTS.md`, the provider instruction shims, and the memory README. Do NOT
 ask for separate permission to initialize sase memory in that case.
 
-## 1. Tier 1 (short-term) Memory
+## 1. Tier 1 (core) Memory
 
 The following memories contain core (always loaded) context:
 
@@ -52,7 +52,7 @@ resubmit before returning when possible. Only a successfully executed plan, moni
 pipe, or questions handoff is exempt, because those commands terminate the runner
 mechanically. Intending to resume later is not an exemption.
 
-## 2. Tier 2 (long-term) Memory
+## 2. Tier 2 (reference) Memory
 
 The below files contain detailed reference material. When working in their domain, you
 MUST use your `/sase_memory_read` skill to review their contents. Do not read canonical

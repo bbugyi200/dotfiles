@@ -1,5 +1,5 @@
 ---
-type: short
+type: core
 parent: AGENTS.md
 ---
 
