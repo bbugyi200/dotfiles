@@ -67,10 +67,16 @@ monitor, pipe, or questions handoff is exempt.
    committed. Legal reasons are `protected_paths`, `foreign_work`, `unsafe_content`, and
    `belongs_to_another_turn`. Each deferral is an object in `payload.deferrals`
    alongside `payload.repositories`, and must name the affected `repo_id`, `reason`, and
-   explicit `paths`. The host adjudicates deferrals at submit time using
-   `src/sase/finalizers/declaration_deferrals.py` and rejects deferrals whose evidence
-   points back to this turn's own work. A deferral is a claim about authorship or
-   safety, not a way to skip work.
+   explicit `paths`. The host adjudicates every deferral at submit time and rejects one
+   whose evidence points back to this turn's own work, naming the counter-evidence so
+   you can repair the manifest and resubmit a commit. A deferral is a claim about
+   authorship or safety, not a way to skip work. An upheld deferral leaves that
+   repository's tree dirty on purpose and completes the run as `deferred`; someone has
+   to finish the commit by hand afterward.
+
+   When the turn has exactly one finalizer instance and one repository needing a
+   decision, `sase final defer <repo-id> <reason>` submits that deferral for you instead
+   of hand-writing the manifest. Anything wider still goes through `sase final submit`.
 
    If `finalizer_baseline.json` shows a repository with empty `fingerprints`, nothing
    was dirty when it was opened, so every dirty path in that repository is your own
