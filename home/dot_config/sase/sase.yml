@@ -154,7 +154,7 @@ ace:
     scr: |-
       sidecar repo
     scrt: |-
-      the $1.md file in the $2 sidecar repo
+      the $1 sidecar repo
     sctx: |-
       the `SASE CONTEXT` section
     smo: |-
