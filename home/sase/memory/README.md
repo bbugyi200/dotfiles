@@ -43,7 +43,7 @@ when relevant.
   literal block scalars; Tier 2 sections render those blocks verbatim, while single-line
   surfaces collapse them.
 
-What a memory _is_ and how it _renders_ are independent axes. Kind — note, web, or
+What a memory *is* and how it *renders* are independent axes. Kind — note, web, or
 strand — is what the memory is; `type:` on a note or a web descriptor declares only how
 it renders, core or reference. A strand inherits no `type:` of its own and never inlines
 into `AGENTS.md`, no matter what tier its web renders at.
