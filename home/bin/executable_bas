@@ -87,4 +87,9 @@ remote_cmd+=' [ -x "$__bas_sh" ] || __bas_sh=/bin/bash;'
 remote_cmd+=' case "$__bas_sh" in *zsh) set -- -lic ;; *) set -- -lc ;; esac;'
 remote_cmd+=" exec \"\$__bas_sh\" \"\$@\" $(single_quote "${inner}")"
 
-autossh -M 0 -X -Y -t "${host}" "${remote_cmd}"
+# Server-alive probes make SSH exit promptly when the connection stops
+# responding, so the existing autossh wrapper can restart it.
+autossh -M 0 -X -Y -t \
+  -o ServerAliveInterval=5 \
+  -o ServerAliveCountMax=2 \
+  "${host}" "${remote_cmd}"

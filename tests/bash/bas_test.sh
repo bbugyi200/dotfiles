@@ -26,7 +26,7 @@ function set_up() {
   # argument) verbatim, then exit successfully without connecting anywhere.
   cat >"${FAKE_BIN}/autossh" <<'EOF'
 #!/bin/bash
-printf '%s\n' "$*" >"${ARGS_FILE}"
+printf '%s\n' "$@" >"${ARGS_FILE}"
 printf '%s' "${@: -1}" >"${REMOTE_CMD_FILE}"
 exit 0
 EOF
@@ -51,6 +51,10 @@ function remote_cmd() {
 
 function autossh_args() {
   cat "${ARGS_FILE}"
+}
+
+function autossh_args_before_remote() {
+  sed '$d' "${ARGS_FILE}"
 }
 
 function test_default_command_is_tm_sase() {
@@ -112,12 +116,20 @@ function test_wrapper_refreshes_tmux_environment_before_exec() {
   assert_contains "fi; exec tm sase" "${cmd}"
 }
 
-function test_host_and_tty_are_forwarded_to_autossh() {
+function test_keepalive_tty_and_host_are_forwarded_to_autossh_before_remote_command() {
   run_bas myhost
 
-  # A TTY is allocated (-t) so the remote interactive shell behaves correctly,
-  # and the host is forwarded.
-  assert_contains "-t myhost" "$(autossh_args)"
+  # A TTY is allocated (-t) so the remote interactive shell behaves correctly.
+  # Server-alive probes make the SSH child exit promptly after an established
+  # connection stops responding, giving autossh a chance to restart it.
+  assert_same "$(printf '%s\n' \
+    -M 0 \
+    -X \
+    -Y \
+    -t \
+    -o ServerAliveInterval=5 \
+    -o ServerAliveCountMax=2 \
+    myhost)" "$(autossh_args_before_remote)"
 }
 
 # Helper: run bas for HOST and echo the captured remote command.
