@@ -78,6 +78,8 @@ ace:
     drep: "Describe this repo."
     epic: |-
       the sase-$1 epic bead
+    ev: |-
+      environment variable
     fe: |-
       for example
     fex: |-
