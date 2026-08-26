@@ -345,6 +345,8 @@ xprompts:
       {{ prompt }}
   research: |
     Write this research to a new markdown file under the $(sase repo path research --ensure)/$(date +%Y%m)/ directory.
+  review_research_comments: |-
+    Review the $1.md file in the research sidecar repo for context and inspiration before planning. Make sure you also review the annotations I left on this research file, which can be found in the ~/bob/ref/chat/$1.md file.
   tale: |-
     #plan %a:tale
   # keep-sorted end
