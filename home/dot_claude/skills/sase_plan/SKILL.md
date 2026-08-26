@@ -7,6 +7,9 @@ description:
 Use this skill when you need to plan before implementing. This replaces Claude's native
 plan mode, which is disabled.
 
+SASE derives your plan's links from the artifacts you read this turn; use
+`sase artifact read` for context you actually used.
+
 ## Instructions
 
 1. **Explore and understand** the problem thoroughly. Before choosing a plan or phase
