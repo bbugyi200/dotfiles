@@ -102,7 +102,8 @@ ace:
     gh: "GitHub"
     gha: "GitHub Actions"
     git: "(see recent, related git commits)"
-    gpti: "Can you use GPT image to generate a$1? Write the image to a new file in the $2."
+    gpti:
+      "Can you use GPT image to generate a$1? Write the image to a new file in the $2."
     gsn: "`sase ace` snapshot"
     gsna: "(see the `sase ace` snapshot below)"
     gsnn: "in the below #[gsn]"
@@ -120,8 +121,9 @@ ace:
     keyyy: |-
       the new `$1` / `$2` keymaps
     logp:
-      "This issue is occurring on another machine that uses the ../sase-google plugin. I've saved a `sase logs` logpack
-      to the ~/tmp/$1/ directory to help you figure this out."
+      "This issue is occurring on another machine that uses the ../sase-google plugin.
+      I've saved a `sase logs` logpack to the ~/tmp/$1/ directory to help you figure
+      this out."
     ma: |-
       model alias
     mf: |-
@@ -182,7 +184,9 @@ ace:
     research:
       icon: "∴"
       color: "#5FD7AF"
-      description: "Research swarm agents from #research_swarm that ship durable reports instead of code changes."
+      description:
+        "Research swarm agents from #research_swarm that ship durable reports instead of
+        code changes."
 
 axe:
   lumberjacks:
@@ -248,7 +252,9 @@ llm_provider:
         bucket: researchers
     buckets:
       researchers:
-        description: "Research-swarm model roles: primary researcher, second-opinion researcher, lead/consolidator."
+        description:
+          "Research-swarm model roles: primary researcher, second-opinion researcher,
+          lead/consolidator."
 
 xprompts:
   # keep-sorted start
@@ -279,12 +285,13 @@ xprompts:
          important in ranked order.
   bea:
     snippet: true
-    content: "I want you to lead the design on this one. Just make sure it looks beautiful!"
+    content:
+      "I want you to lead the design on this one. Just make sure it looks beautiful!"
   beau:
     snippet: true
     content:
-      "I want you to lead the design on this one. Make sure you design this feature so it is intuitive, reliable, and
-      (last but not least) beautiful!"
+      "I want you to lead the design on this one. Make sure you design this feature so
+      it is intuitive, reliable, and (last but not least) beautiful!"
   codex3: "gpt-5.3-codex"
   codex: "gpt-5.6-sol"
   gh_dotfiles: "#gh:dotfiles"
@@ -346,7 +353,8 @@ xprompts:
   research: |
     Write this research to a new markdown file under the $(sase repo path research --ensure)/$(date +%Y%m)/ directory.
   review_research_comments: |-
-    Review the $1.md file in the research sidecar repo for context and inspiration before planning. Make sure you also review the annotations I left on this research file, which can be found in the ~/bob/ref/chat/$1.md file.
+    Review the $1.md file in the research sidecar repo for context and inspiration before planning. Make sure you also
+    review the annotations I left on this research file, which can be found in the ~/bob/ref/chat/$1.md file.
   tale: |-
     #plan %a:tale
   # keep-sorted end
