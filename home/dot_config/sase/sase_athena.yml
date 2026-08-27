@@ -113,7 +113,7 @@ axe:
 
         Runs every five minutes. The single chop owns its own actstat config so unrelated orgs are never swept,
         classifies high-cadence repos from terminal job evidence instead of blanket in-flight state, and sends one
-        rich SASE notification per active failing-job incident. Its only GitHub mutation is a guarded squash merge
+        rich SASE notification per active failing-job incident. Its only GitHub mutation is a guarded merge
         for an eligible release-please PR when live mode and `merge_enabled` are both explicit. It never creates
         gates, launch requests, repair agents, or Axe proposals, and every notification links to the combined
         CI WATCH report when the report publishes successfully.
@@ -142,3 +142,7 @@ axe:
             merge_order: [sase-github, sase-telegram, sase]
             max_merges_per_tick: 1
             merge_enabled: true
+            merge_method: merge
+            gating_workflows: ["Master Gate"]
+            heavy_workflows: ["Full CI"]
+            heavy_max_age_hours: 6
