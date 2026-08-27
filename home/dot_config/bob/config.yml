@@ -38,3 +38,6 @@ properties:
         value: lowest
         min_days: 91
         max_days: 365
+
+highlights:
+  pre_scan_command: bob_xlib_pull

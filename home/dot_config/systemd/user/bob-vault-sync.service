@@ -1,0 +1,16 @@
+[Unit]
+Description=Bob vault sync
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+Environment=HOME=/home/bryan
+Environment=BOB_DIR=/home/bryan/bob
+Environment=PATH=/home/bryan/.cargo/bin:/home/bryan/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/bryan/bin/bob_vault_sync_watch
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

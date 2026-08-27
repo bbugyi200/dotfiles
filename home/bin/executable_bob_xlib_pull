@@ -1,0 +1,61 @@
+#!/bin/sh
+
+case "$(uname -s)" in
+Darwin)
+  ;;
+*)
+  exit 0
+  ;;
+esac
+
+expand_home() {
+  case "$1" in
+  "~")
+    printf '%s\n' "$HOME"
+    ;;
+  "~/"*)
+    printf '%s\n' "$HOME/${1#\~/}"
+    ;;
+  *)
+    printf '%s\n' "$1"
+    ;;
+  esac
+}
+
+bob_dir=$(expand_home "${BOB_DIR:-"$HOME/bob"}")
+xlib_dir=${BOB_HIGHLIGHTS_XLIB_DIR:-xlib}
+
+case "$xlib_dir" in
+/*)
+  dest_dir=$xlib_dir
+  ;;
+"~" | "~/"*)
+  dest_dir=$(expand_home "$xlib_dir")
+  ;;
+*)
+  dest_dir=$bob_dir/$xlib_dir
+  ;;
+esac
+
+lock_dir=${TMPDIR:-/tmp}/bob_xlib_pull.lock
+if ! mkdir "$lock_dir" 2>/dev/null; then
+  exit 0
+fi
+
+cleanup() {
+  rmdir "$lock_dir" 2>/dev/null || true
+}
+trap 'cleanup' 0
+trap 'cleanup; exit 129' 1
+trap 'cleanup; exit 130' 2
+trap 'cleanup; exit 131' 3
+trap 'cleanup; exit 143' 15
+
+ssh_opts='-o BatchMode=yes -o ConnectTimeout=5'
+if ! ssh $ssh_opts home true >/dev/null 2>&1; then
+  exit 0
+fi
+
+mkdir -p "$dest_dir" || exit 1
+rsync -a --remove-source-files -e "ssh $ssh_opts" home:bob/xlib/ "$dest_dir/"
+ssh $ssh_opts home 'find ~/bob/xlib -mindepth 1 -type d -empty -delete' >/dev/null 2>&1 || true

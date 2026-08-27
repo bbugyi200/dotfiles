@@ -33,9 +33,44 @@ if [ ! -d "$lib_dir" ]; then
   exit 0
 fi
 
-recent_file=$(find "$lib_dir" -type f -mtime 0 -print | sed -n '1p')
-if [ -z "$recent_file" ]; then
-  exit 0
+pre_scan_command_configured() {
+  if [ "${BOB_HIGHLIGHTS_PRE_SCAN_COMMAND+x}" ]; then
+    [ -n "$BOB_HIGHLIGHTS_PRE_SCAN_COMMAND" ]
+    return
+  fi
+
+  if [ -n "${BOB_CONFIG_FILE:-}" ]; then
+    config_file=$(expand_home "$BOB_CONFIG_FILE")
+  elif [ -n "${XDG_CONFIG_HOME:-}" ]; then
+    config_file=$(expand_home "$XDG_CONFIG_HOME")/bob/config.yml
+  else
+    config_file=$HOME/.config/bob/config.yml
+  fi
+
+  [ -f "$config_file" ] || return 1
+  awk '
+    /^[[:space:]]*#/ || /^[[:space:]]*$/ { next }
+    /^[^[:space:]][^:]*:/ {
+      in_highlights = ($0 ~ /^highlights:[[:space:]]*($|#)/)
+    }
+    in_highlights && /^[[:space:]]+pre_scan_command:[[:space:]]*/ {
+      value = $0
+      sub(/^[[:space:]]+pre_scan_command:[[:space:]]*/, "", value)
+      sub(/[[:space:]]+#.*/, "", value)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+      if (value != "" && value != "null" && value != "\"\"" && value != "''") {
+        found = 1
+      }
+    }
+    END { exit found ? 0 : 1 }
+  ' "$config_file"
+}
+
+if ! pre_scan_command_configured; then
+  recent_file=$(find "$lib_dir" -type f -mtime 0 -print | sed -n '1p')
+  if [ -z "$recent_file" ]; then
+    exit 0
+  fi
 fi
 
 lock_dir=${TMPDIR:-/tmp}/maybe_bob_highlights_sync.lock

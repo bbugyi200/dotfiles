@@ -1,0 +1,13 @@
+#!/bin/sh
+
+export HOME=${HOME:-/home/bryan}
+export BOB_DIR=${BOB_DIR:-"$HOME/bob"}
+export PATH="$HOME/.cargo/bin:$HOME/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}"
+
+while true; do
+  inotifywait -q -r -t 15 -e modify,create,delete,move \
+    --exclude '(/\.git/|/\.obsidian/workspace|/\.trash/|/\.sase/|/old_lib/|/lit_review/|/_conflicts/)' \
+    "$BOB_DIR" >/dev/null 2>&1
+  sleep 5
+  bob vault-sync -q
+done

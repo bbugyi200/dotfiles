@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.bbugyi.bob-vault-sync</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/bbugyi/.cargo/bin/bob</string>
+    <string>vault-sync</string>
+    <string>-q</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/bbugyi/bob</string>
+
+  <key>StartInterval</key>
+  <integer>15</integer>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key>
+    <string>/Users/bbugyi</string>
+    <key>PATH</key>
+    <string>/Users/bbugyi/.cargo/bin:/Users/bbugyi/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>/var/tmp/com.bbugyi.bob-vault-sync.out</string>
+
+  <key>StandardErrorPath</key>
+  <string>/var/tmp/com.bbugyi.bob-vault-sync.err</string>
+</dict>
+</plist>
