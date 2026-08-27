@@ -51,11 +51,19 @@ trap 'cleanup; exit 130' 2
 trap 'cleanup; exit 131' 3
 trap 'cleanup; exit 143' 15
 
-ssh_opts='-o BatchMode=yes -o ConnectTimeout=5'
-if ! ssh $ssh_opts home true >/dev/null 2>&1; then
+ssh_opts='-o BatchMode=yes -o ConnectTimeout=5 -o ConnectionAttempts=1'
+source_host=
+for candidate in home xhome; do
+  if ssh $ssh_opts "$candidate" true >/dev/null 2>&1; then
+    source_host=$candidate
+    break
+  fi
+done
+
+if [ -z "$source_host" ]; then
   exit 0
 fi
 
 mkdir -p "$dest_dir" || exit 1
-rsync -a --remove-source-files -e "ssh $ssh_opts" home:bob/xlib/ "$dest_dir/"
-ssh $ssh_opts home 'find ~/bob/xlib -mindepth 1 -type d -empty -delete' >/dev/null 2>&1 || true
+rsync -a --remove-source-files -e "ssh $ssh_opts" "$source_host":bob/xlib/ "$dest_dir/"
+ssh $ssh_opts "$source_host" 'find ~/bob/xlib -mindepth 1 -type d -empty -delete' >/dev/null 2>&1 || true

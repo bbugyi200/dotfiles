@@ -40,4 +40,4 @@ properties:
         max_days: 365
 
 highlights:
-  pre_scan_command: bob_xlib_pull
+  pre_scan_command: PATH="$HOME/bin:$PATH" bob_xlib_pull
