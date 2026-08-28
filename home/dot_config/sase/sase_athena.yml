@@ -142,7 +142,19 @@ axe:
             merge_order: [sase-github, sase-telegram, sase]
             max_merges_per_tick: 1
             merge_enabled: true
-            merge_method: merge
-            gating_workflows: ["Master Gate"]
-            heavy_workflows: ["Full CI"]
-            heavy_max_age_hours: 6
+            merge_method:
+              sase-org/sase: merge
+              sase-org/sase-github: squash
+              sase-org/sase-telegram: squash
+            gating_workflows:
+              sase-org/sase: ["Master Gate"]
+              sase-org/sase-github: []
+              sase-org/sase-telegram: []
+            heavy_workflows:
+              sase-org/sase: ["Full CI"]
+              sase-org/sase-github: []
+              sase-org/sase-telegram: []
+            heavy_max_age_hours:
+              sase-org/sase: 6
+              sase-org/sase-github: 6
+              sase-org/sase-telegram: 6
