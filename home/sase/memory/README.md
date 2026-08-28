@@ -74,8 +74,8 @@ into `AGENTS.md`, no matter what tier its web renders at.
 - Type: `core`
 - Description: No description set.
 - Parent: `AGENTS.md`
-- Lines: 75
-- Approx. tokens: 1026
+- Lines: 70
+- Approx. tokens: 911
 
 ### `sase/memory/obsidian.md`
 
@@ -90,8 +90,8 @@ into `AGENTS.md`, no matter what tier its web renders at.
 - Total notes: 2
 - Core notes: 1
 - Reference notes: 1
-- Total lines: 94
-- Total approx. tokens: 1191
+- Total lines: 89
+- Total approx. tokens: 1076
 
 ## Commands
 
