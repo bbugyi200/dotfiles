@@ -133,6 +133,11 @@ axe:
             The chop may only call actstat, bounded GitHub reads, guarded `gh pr merge`, and `sase notify create`.
           env:
             ACTSTAT_CONFIG: /home/bryan/.config/sase/actstat-ci-watch.yml
+            # gh 2.98+ colorizes JSON even on pipes when CLICOLOR=1; force
+            # machine-readable output so ci_watch can parse metadata and PRs.
+            GH_FORCE_TTY: "0"
+            NO_COLOR: "1"
+            CLICOLOR: "0"
           vars:
             actstat_bin: /home/bryan/.cargo/bin/actstat
             gh_bin: gh
