@@ -1,6 +1,6 @@
 # athena - Bryan Bugyi's Home Server
 
-## 1. Tier 1 (core) Memory
+## 1. Core Memory
 
 The following memories contain core (always loaded) context:
 
@@ -61,7 +61,7 @@ successfully executed plan, monitor, pipe, or questions handoff is exempt, becau
 commands terminate the runner mechanically. Intending to resume later is not an
 exemption.
 
-## 2. Tier 2 (reference) Memory
+## 2. Reference Memory
 
 The below files contain detailed reference material. When working in their domain, you
 MUST use your `/sase_memory_read` skill to review their contents. Do not read canonical
