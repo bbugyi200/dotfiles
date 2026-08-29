@@ -112,6 +112,4 @@ inherits no `type:` of its own and never inlines into `AGENTS.md`.
   strands the same way.
 - `sase memory web list` / `sase memory web show <web>` inspect discovered memory webs
   and one web's strand index.
-- `sase memory write` proposes a new reference memory note for review.
-- `sase memory review` reviews pending memory proposals.
 - `sase memory log` summarizes audited reference-memory reads.
