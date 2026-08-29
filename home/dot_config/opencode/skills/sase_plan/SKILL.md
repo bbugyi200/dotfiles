@@ -58,7 +58,8 @@ SASE derives your plan's links from the artifacts you read this turn; use
    Submission consumes the scratch plan into SASE's durable plan archive, writes a
    handoff marker, and sends `SIGTERM` to the current agent runner process group. The
    runner treats that signal as an intentional handoff: it creates the tier-specific
-   `PlanApproval` or `EpicApproval` gate, waits mechanically for a terminal response,
-   and continues with feedback or the approved follow-up. Do not expect the current
-   provider turn to return normally after a successful proposal, and do not poll
-   response files yourself.
+   `PlanApproval` or `EpicApproval` gate shell and ends this agent; the shell owns
+   review settlement and launches the feedback replanner or approved tale coder. `%auto`
+   remains synchronous and continues in this process without a detached agent. Do not
+   expect the current provider turn to return normally after a successful manual
+   proposal, and do not poll response files yourself.

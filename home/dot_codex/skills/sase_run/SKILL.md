@@ -36,9 +36,10 @@ Then submit it:
 sase launch request -f launch_request.json -o json
 ```
 
-The command creates a durable pending `LaunchApproval` and waits mechanically for its
-terminal response. It does not spawn an agent unless the approver accepts the request
-and host dispatch succeeds.
+The command creates a durable pending `LaunchApproval` gate shell, prints its
+descriptor, hands this agent's family lane to that gate shell, and then this turn ends.
+It does not spawn an agent unless the approver accepts the request and host dispatch
+succeeds.
 
 The pending request lives in SASE's neutral `interaction_requests/launch/<request-id>/`
 layout. Every terminal option uses the bundle's hash-verified command; do not write the
@@ -160,30 +161,24 @@ declaration instead.
 
 ## Handle The Outcome
 
-The command returns only after approval, rejection, feedback, dispatch failure,
-cancellation, or timeout. Read its single JSON result; do not poll request files
-yourself.
+Inside a running agent, `sase launch request` does not return a terminal approval
+outcome. The gate shell owns the pending decision while this requester is gone.
 
-Approved responses look like:
-
-```json
-{
-  "status": "approved",
-  "selected_option_ids": ["approve"],
-  "message": "Launch approved and dispatched 1 agent"
-}
-```
-
-Rejected or feedback responses use `status` values `rejected` and `feedback`. A host
-dispatch failure uses `dispatch_failed` and includes the failure detail in `message`.
+The creation descriptor looks like:
 
 ```json
 {
-  "status": "feedback",
-  "selected_option_ids": ["feedback"],
-  "message": "Launch rejected with feedback"
+  "request_id": "launch-123",
+  "notification_id": "notification-123",
+  "response_dir": "/path/to/interaction_requests/launch/launch-123",
+  "gate_shell": {
+    "gate_id": "launch-123",
+    "member_agent_name": "agent--gate",
+    "state": "pending"
+  }
 }
 ```
 
-If rejected, do not spawn anyway. Use the feedback to revise the request or continue
-without launching.
+If approved, the gate's approved command dispatches the requested launch. If rejected,
+cancelled, timed out, or dispatch fails, the gate shell records that terminal state and
+no requester process is kept alive waiting for it.

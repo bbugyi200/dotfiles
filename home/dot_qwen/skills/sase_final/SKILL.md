@@ -16,8 +16,8 @@ monitor, pipe, or questions handoff is exempt.
   primary workspace checkout and every linked, sidecar, or external repo you opened with
   `/sase_repo` and then edited. Give each one a `commit` decision; the only legal
   repository action is `commit`. A repository not being the main repo, not being the
-  focus of the turn, or being outside a host prompt scoped to one repository's commit is
-  not a reason to leave your own work uncommitted.
+  focus of the turn, or being outside a host prompt scoped to one repository's commit or
+  conflict repair is not a reason to leave your own work uncommitted.
 - Run this after all ordinary work, edits, and verification for the turn are complete,
   immediately before the normal response that ends the provider turn.
 - Do not mutate files or repositories after a successful declaration submit.

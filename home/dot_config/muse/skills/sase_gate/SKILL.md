@@ -264,34 +264,98 @@ For larger commands, set a resource's `source` to a script you authored instead 
 embedding `content`; use exactly one of `source` or `content`. Keep command resources
 narrowly scoped to the action shown to the user.
 
-## Create And Wait
+## Declare The `shell` Block
 
-Create the durable gate and save its stable descriptor:
+A gate you create from inside an agent should almost always be a **gate shell**: a
+named, non-LLM member of your agent family that publishes the decision, outlives you,
+runs the commands the reviewer selects, and hands their typed outcome to the next family
+member. Add a `shell` block to make your gate one:
 
-```bash
-sase gate create < gate-request.json > gate-descriptor.json
+```json
+{
+  "shell": {
+    "pending_status": "CONFIRM",
+    "settled_status": "CONFIRMED",
+    "workspace": "inherit",
+    "next": {
+      "prompt": "Verify the reclaimed space and close the tracking bead.",
+      "output": ["results"],
+      "fork": "family"
+    },
+    "branches": {
+      "reject": { "prompt": null }
+    }
+  }
+}
 ```
 
-Read `request_id` and `kind` from that descriptor, then wait mechanically:
+| Field            | Meaning                                                      | Default                            |
+| ---------------- | ------------------------------------------------------------ | ---------------------------------- |
+| `suffix`         | Family suffix for the gate-shell member                      | allocated: `--gate`, `--gate-0`, … |
+| `pending_status` | Row status while awaiting a human (≤20 chars)                | `GATE`                             |
+| `settled_status` | Row status after settling                                    | `GATED`                            |
+| `accent`         | Pin the status-pair colour (`#RRGGBB`) instead of hashing it | hashed                             |
+| `workspace`      | `inherit` \| `release`                                       | `inherit`                          |
+| `next.prompt`    | Literal "Your next action" text; `null` = no follow-up       | `null`                             |
+| `next.output`    | `none` \| `results` \| `tail` \| `file`, or a list           | `["results"]`                      |
+| `next.fork`      | `family` \| `shell` \| `none`                                | `family`                           |
+| `next.model`     | Model/alias for the follow-up agent                          | inherit yours                      |
+| `branches.<key>` | Override, keyed by `+`-joined option ids in query order      | —                                  |
+
+`branches` is one keyed map, not a separate mechanism for the unanswered axis: the same
+map also takes the reserved keys `timeout`, `stopped`, and `failed` for when no branch
+was selected. An absent key means no follow-up for that outcome — exactly the example
+above, which reads no differently after a reject than a monitor does after it stops.
+
+`next.output: "results"` is the default for a reason: every selected option's command
+already returns `result_schema`-validated JSON, which is strictly better data to hand
+the follow-up than a raw stdout tail. Use `tail` only for a chatty command whose text
+output itself matters, and compose the two freely. There is no templating: the composed
+prompt's only instruction is the literal `next.prompt` text under "Your next action";
+everything else — the decision, the branches, the reviewer's note, the results — is
+fenced, labelled, untrusted data, exactly like a monitor's output. Never rely on
+interpolating anything into `next.prompt` yourself.
+
+Every existing built-in gate keys its `next` by branch because each outcome needs a
+different next step:
+
+| Branch           | `next`                              |
+| ---------------- | ----------------------------------- |
+| `approve+commit` | implementation prompt, `fork: none` |
+| `feedback`       | replan prompt, `fork: family`       |
+| `reject`         | `null` — the family simply ends     |
+
+Write your own `next` and `branches.<key>.{prompt,output,fork,model,status,accent}` the
+same way: one outcome, one follow-up policy.
+
+## Create The Gate Shell, Then Stop
+
+Create the durable gate:
 
 ```bash
-sase gate wait --id <request-id> --kind custom --json
+sase gate create --shell \
+  --next 'Verify the reclaimed space and close the tracking bead.' \
+  --next-output results --next-fork family \
+  < gate-request.json > gate-descriptor.json
 ```
 
-`sase gate wait` honors the request timeout. Its optional `--timeout` can shorten that
-deadline. If the rest of your work does not depend on the answer, proceed detached after
-creation instead of waiting; keep the descriptor as the durable handoff.
+`--shell`, `--shell-status`, `--shell-stop-status`, `--next`, `--next-fork`,
+`--next-model`, and `--next-output` are CLI shortcuts for the same `shell`/`next`
+fields; everything is also expressible in the JSON request body, which is what keeps
+this skill declarative.
 
-## Handle The Result
+**Print the descriptor, then stop. Do not wait, poll, or keep working.** Creating a gate
+shell ends your turn: the runner hands off to the gate shell and kills your process
+immediately after the descriptor prints. There is nothing after this for you to do —
+`sase gate wait` is rejected outright for a shell gate under an agent runner, with a
+message pointing back at `--shell`, because waiting is exactly the blocking behaviour a
+gate shell exists to remove. (It still works for non-agent scripts and tests answering a
+non-shell gate.) The reviewer's decision and its command results reach the _next_ family
+member automatically, composed into their prompt's labelled sections per the `next`
+policy above. Never poll bundle files directly. Never run bundle commands by hand.
 
-The wait result has `status` (`answered`, `cancelled`, or `timeout`),
-`selected_option_ids`, `feedback`, and `response_path`. An answered result lists the
-selected options in query order. For the example, `["restart", "verify"]` runs both
-group members, `["restart"]` runs only the restart command, and `["reject"]` takes the
-singleton rejection branch. Respect cancellation and timeout as terminal outcomes; do
-not run the proposed action through another path.
-
-Never poll bundle files directly. Never run bundle commands by hand. Creation hashes
-every owned command and the shared executor verifies and runs the selected commands.
-Automatic resolution is forbidden for custom gates: never enable `auto` or use an
-automatic-resolution path to bypass the user's decision.
+If your gate resolves via `"auto": true` before creation even returns, none of this
+costs you a hand-off: creation settles it synchronously and your own process continues
+as the successor in-process, at the price of one agent, exactly as today. Automatic
+resolution is forbidden for custom gates that exist to get a _human_ decision: never
+enable `auto` to bypass the reviewer's choice yourself.
