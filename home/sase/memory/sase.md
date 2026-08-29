@@ -47,10 +47,13 @@ GitHub-API/`gh` file-content reads — counts as reading that repo: open it with
 instead. Web tools remain appropriate only for content a checkout does not contain, such
 as blog posts, docs sites, and GitHub issue/PR discussions.
 
-**IMPORTANT**: The `sase artifact read <ref> "<reason>"` command MUST be used to read
-artifacts (so the reads are audited) from sidecar repos. Do NOT read sidecar artifact
-files directly or locate, clone, or web-fetch another repo's contents any other way than
-by using `/sase_repo` or `sase artifact read`!
+IMPORTANT REMINDERS:
+
+- Do NOT locate, clone, or web-fetch another repo's contents any other way than by using
+  `/sase_repo` or `sase artifact read`!
+- The `sase artifact read <ref> "<reason>"` command MUST be used to read artifacts (so
+  the reads are audited) from sidecar repos. Do NOT read sidecar artifact files
+  directly.
 
 ## SASE Final Declaration
 
