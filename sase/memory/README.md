@@ -9,10 +9,11 @@ always-loaded notes from detailed reference notes that agents read only when rel
 
 - Non-README Markdown files live directly under `sase/memory/` and use YAML frontmatter
   for `type`, `parent`, and `description`.
-- `type: short` notes are Tier 1 context. `sase memory init` inlines them into
-  `AGENTS.md`, then copies that exact content to each provider instruction shim.
-- `type: long` notes are detailed reference material for Tier 2. They require a
-  `description` and are fetched explicitly with audited `sase memory read` calls.
+- `type: short` notes are core memory. `sase memory init` inlines them into `AGENTS.md`,
+  then copies that exact content to each provider instruction shim.
+- `type: long` notes are reference memory: detailed material that is never inlined. They
+  require a `description` and are fetched explicitly with audited `sase memory read`
+  calls.
 - `sase/memory/sase.md` is generated from SASE configuration and captures linked
   repositories plus workspace rules.
 - `sase/memory/README.md` is generated from the notes themselves, including the
