@@ -8,3 +8,6 @@ tags
 {{ if ne .chezmoi.hostname "Kellys-MBP" }}
 .config/sase/sase_kellys_mbp.yml
 {{ end }}
+{{ if ne .chezmoi.hostname "apollo" }}
+.config/sase/sase_apollo.yml
+{{ end }}
