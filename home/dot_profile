@@ -120,6 +120,16 @@ export SASE_CORE_BACKEND="${SASE_CORE_BACKEND:-rust}"
 export SASE_TMPDIR="${HOME}"/tmp/sase
 export SHELLCHECK_OPTS="-e SC1090 -e SC1091 -e SC1117 -e SC2001 -e SC2016 -e SC2046 -e SC2059 -e SC2129 -e SC2155 -e SC2162"
 export SHV_SHELL_HISTORY_ROOT="${HOME}"/Sync/var/logs/shell-history
+# tmux keeps its server socket in $TMUX_TMPDIR/tmux-$UID/ (default: /tmp). Both
+# platforms sweep /tmp on a timer -- macOS runs /usr/libexec/tmp_cleaner daily
+# and systemd-tmpfiles cleans /tmp on Linux -- and neither skips a live tmux
+# socket. A long-lived server therefore outlives its own socket file: already
+# attached clients keep working, but every NEW `tmux` invocation fails with
+# "error connecting to .../default (No such file or directory)". That breaks
+# status-line commands (`tm-sessions` -> `tmux ls`) and every run-shell key
+# binding (e.g. `tmux_ai_window`). Keep the socket under $HOME instead, where
+# no periodic cleaner touches it.
+mkdir -p "${HOME}"/tmp/tmux && export TMUX_TMPDIR="${HOME}"/tmp/tmux
 export VISUAL=nvim # sensible-editor checks this first; keep consistent with EDITOR
 export WORKON_HOME=~/.virtualenvs
 export XDG_CONFIG_HOME="$HOME"/.config
