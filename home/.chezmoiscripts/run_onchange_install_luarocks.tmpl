@@ -6,47 +6,78 @@ source ~/.local/share/chezmoi/lib/chezmoi_utils.sh
 
 LUAROCKS_VERSION=3.11.1
 
-# Install luarocks.
-function install_luarocks() {
-  chez::log "INSTALLING LUAROCKS VERSION %s" "$LUAROCKS_VERSION"
+# Install a Lua 5.1 interpreter (and its headers), which the luarocks build
+# needs in order to configure itself against Lua 5.1 -- the version Neovim
+# embeds and the one our rocks are installed for.
+function install_lua51() {
+  # The interpreter names that `./configure --lua-version=5.1` searches $PATH
+  # for, checked the same way configure checks them.
+  local lua_bin
+  for lua_bin in lua5.1 lua51 lua-5.1 lua-51 luajit lua; do
+    command -v "$lua_bin" &>/dev/null || continue
+    if [[ "$("$lua_bin" -e 'print(_VERSION:match(" (5%.[1234])$"))' 2>/dev/null)" == "5.1" ]]; then
+      return 0
+    fi
+  done
 
-  local build_dir="$(chez::build_dir_root)"/luarocks
-  mkdir -p "$build_dir"
-  pushd "$build_dir" &>/dev/null || exit
-
-  # Download and install luarocks.
-  wget https://luarocks.org/releases/luarocks-$LUAROCKS_VERSION.tar.gz
-  tar zxpf luarocks-$LUAROCKS_VERSION.tar.gz
-  cd luarocks-$LUAROCKS_VERSION || return 1
-  ./configure --lua-version=5.1
-  make && sudo make install
-
-  popd &>/dev/null || exit
+  chez::log "INSTALLING LUA 5.1 (REQUIRED TO BUILD LUAROCKS)"
+  if command -v apt-get &>/dev/null; then
+    sudo apt-get update && sudo apt-get install -y lua5.1 liblua5.1-0-dev
+  elif command -v brew &>/dev/null; then
+    brew install luajit
+  else
+    chez::log "NO LUA 5.1 INTERPRETER FOUND AND NO KNOWN PACKAGE MANAGER TO INSTALL ONE"
+    return 1
+  fi
 }
 
-# Uses luaroacks to install the required rocks.
+# Install luarocks.
+function install_luarocks() {
+  install_lua51 || return 1
+
+  chez::log "INSTALLING LUAROCKS VERSION %s" "$LUAROCKS_VERSION"
+
+  # Build from a clean directory so a failed run cannot leave a half-configured
+  # source tree (or a pile of wget's .tar.gz.N duplicates) behind.
+  local build_dir="$(chez::build_dir_root)"/luarocks
+  rm -rf "$build_dir"
+  mkdir -p "$build_dir"
+  pushd "$build_dir" &>/dev/null || return 1
+
+  # Download and install luarocks.
+  local rc=0
+  local tarball=luarocks-$LUAROCKS_VERSION.tar.gz
+  wget -O "$tarball" https://luarocks.org/releases/"$tarball" &&
+    tar zxpf "$tarball" &&
+    cd luarocks-$LUAROCKS_VERSION &&
+    ./configure --lua-version=5.1 &&
+    make &&
+    sudo make install || rc=1
+
+  popd &>/dev/null || return 1
+  return "$rc"
+}
+
+# Uses luarocks to install the required rocks.
 function install_rocks() {
+  local rc=0
   rm -rf "$HOME"/.luarocks
-  chez::log "INSTALLING ROCK: busted"
-  luarocks install --local busted
 
-  chez::log "INSTALLING ROCK: nlua"
-  luarocks install --local nlua
+  local rock
+  for rock in busted nlua llscheck luacheck luacov; do
+    chez::log "INSTALLING ROCK: %s" "$rock"
+    luarocks install --local "$rock" || rc=1
+  done
 
-  chez::log "INSTALLING ROCK: llscheck"
-  luarocks install --local llscheck
-
-  chez::log "INSTALLING ROCK: luacheck"
-  luarocks install --local luacheck
-
-  chez::log "INSTALLING ROCK: luacov"
-  luarocks install --local luacov
+  return "$rc"
 }
 
 # Installs luarocks and then installs the required rocks.
 function install_luarocks_and_rocks() {
   if ! command -v luarocks &>/dev/null; then
-    install_luarocks
+    # Bail out instead of running every `luarocks install` against a luarocks
+    # that was never built (which wipes ~/.luarocks and then fails with 127).
+    install_luarocks || return 1
   fi
   install_rocks
 }
