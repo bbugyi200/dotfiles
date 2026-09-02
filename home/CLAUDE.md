@@ -67,6 +67,5 @@ The below files contain detailed reference material. When working in their domai
 MUST use your `/sase_memory_read` skill to review their contents. Do not read canonical
 memory files directly.
 
-### 2.1 `sase/memory/obsidian.md`
-
-Obsidian vault, notes workflow, and obsidian-headless/ob usage.
+1. **`sase/memory/obsidian.md`** - Obsidian vault, notes workflow, and
+   obsidian-headless/ob usage.

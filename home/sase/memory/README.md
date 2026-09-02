@@ -41,8 +41,9 @@ when relevant.
   ties broken by path. The generated `sase/memory/sase.md` note uses `priority: 10`.
 - `description`: required for reference notes and used in generated agent instructions
   and this README. Reference-note descriptions may be Markdown blocks authored as YAML
-  literal block scalars; reference sections render those blocks verbatim, while
-  single-line surfaces collapse them.
+  literal block scalars. Generated agent instructions collapse top-level reference
+  descriptions to one paragraph and reject multi-block descriptions; audited
+  child-reference reads still render block descriptions verbatim.
 - `link_reference`: `explicit` (default), `implicit`, or `none` — which `[[...]]` links
   in the body are detected. The legacy `closure: mentions` / `closure: none`
   web-descriptor keys are still accepted as aliases.
