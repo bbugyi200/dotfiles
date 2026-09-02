@@ -14,14 +14,14 @@ that render into this file. A note's kind — flat note or memory web — and a 
 
 - **Core memory** (`type: core`) is inlined here and into every provider instruction
   shim, so it is always in your context and is paid for on every turn.
-- **Reference memory** (`type: reference`) is not inlined. Only its one-line description
-  is listed here; read the body on demand with your `/sase_memory_read` skill, never by
-  opening the file directly.
 - **Memory webs** are keyed collections: a flat descriptor note (`sase/memory/<web>.md`)
   plus a sibling directory of strand files (`sase/memory/<web>/<slug>.md`). A web's
   descriptor is always inlined here; a strand body never is — read strands on demand
   with your `/sase_memory_read` skill (`sase memory read <web>:<keyword>`, for example
   `glossary:stitch`).
+- **Reference memory** (`type: reference`) is not inlined. Only its one-line description
+  is listed here; read the body on demand with your `/sase_memory_read` skill, never by
+  opening the file directly.
 
 Memory files are not ordinary files: before you create, edit, or delete any of them — or
 propose a plan that would — use your `/sase_memory_write` skill.
@@ -67,5 +67,6 @@ The below files contain detailed reference material. When working in their domai
 MUST use your `/sase_memory_read` skill to review their contents. Do not read canonical
 memory files directly.
 
-1. **`sase/memory/obsidian.md`** - Obsidian vault, notes workflow, and
-   obsidian-headless/ob usage.
+### 2.1 `sase/memory/obsidian.md`
+
+Obsidian vault, notes workflow, and obsidian-headless/ob usage.
