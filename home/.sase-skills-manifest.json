@@ -1,5 +1,5 @@
 {
-  "deployed_at": "2026-08-29T11:42:11.632950Z",
+  "deployed_at": "2026-09-02T11:27:57.719115Z",
   "managed_files": [
     {
       "home_path": ".gemini/antigravity-cli/skills/bob_query/SKILL.md",
@@ -62,6 +62,13 @@
       "provider": "agy",
       "skill_name": "sase_memory_read",
       "source_path": "dot_gemini/antigravity-cli/skills/sase_memory_read/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".gemini/antigravity-cli/skills/sase_memory_write/SKILL.md",
+      "provider": "agy",
+      "skill_name": "sase_memory_write",
+      "source_path": "dot_gemini/antigravity-cli/skills/sase_memory_write/SKILL.md",
       "state": "active"
     },
     {
@@ -212,6 +219,13 @@
       "state": "active"
     },
     {
+      "home_path": ".claude/skills/sase_memory_write/SKILL.md",
+      "provider": "claude",
+      "skill_name": "sase_memory_write",
+      "source_path": "dot_claude/skills/sase_memory_write/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".claude/skills/sase_monitor/SKILL.md",
       "provider": "claude",
       "skill_name": "sase_monitor",
@@ -356,6 +370,13 @@
       "provider": "codex",
       "skill_name": "sase_memory_read",
       "source_path": "dot_codex/skills/sase_memory_read/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".codex/skills/sase_memory_write/SKILL.md",
+      "provider": "codex",
+      "skill_name": "sase_memory_write",
+      "source_path": "dot_codex/skills/sase_memory_write/SKILL.md",
       "state": "active"
     },
     {
@@ -604,6 +625,13 @@
       "state": "active"
     },
     {
+      "home_path": ".grok/skills/sase_memory_write/SKILL.md",
+      "provider": "grok",
+      "skill_name": "sase_memory_write",
+      "source_path": "dot_grok/skills/sase_memory_write/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".grok/skills/sase_monitor/SKILL.md",
       "provider": "grok",
       "skill_name": "sase_monitor",
@@ -744,6 +772,13 @@
       "state": "active"
     },
     {
+      "home_path": ".config/muse/skills/sase_memory_write/SKILL.md",
+      "provider": "muse",
+      "skill_name": "sase_memory_write",
+      "source_path": "dot_config/muse/skills/sase_memory_write/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".config/muse/skills/sase_monitor/SKILL.md",
       "provider": "muse",
       "skill_name": "sase_monitor",
@@ -881,6 +916,13 @@
       "provider": "opencode",
       "skill_name": "sase_memory_read",
       "source_path": "dot_config/opencode/skills/sase_memory_read/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/opencode/skills/sase_memory_write/SKILL.md",
+      "provider": "opencode",
+      "skill_name": "sase_memory_write",
+      "source_path": "dot_config/opencode/skills/sase_memory_write/SKILL.md",
       "state": "active"
     },
     {
@@ -1031,6 +1073,13 @@
       "state": "active"
     },
     {
+      "home_path": ".qwen/skills/sase_memory_write/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "sase_memory_write",
+      "source_path": "dot_qwen/skills/sase_memory_write/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".qwen/skills/sase_monitor/SKILL.md",
       "provider": "qwen",
       "skill_name": "sase_monitor",
@@ -1108,6 +1157,6 @@
       "state": "active"
     }
   ],
-  "source_commit": "02cbef7afe26c4b861e2a6b8320e60738b200d1a",
-  "xprompt_set_sha256": "c899eaf4a0fbab01ded87caba51e025a0d2e58c7cbfd68b8fd83e44c6b07ced5"
+  "source_commit": "ae7ca2226f473252824141f78ae1f21151b53df0",
+  "xprompt_set_sha256": "1cbf8269e0ee4cdb8da6a03e3001bda0eeef17f7f38fe0f4854f594a12313e1c"
 }

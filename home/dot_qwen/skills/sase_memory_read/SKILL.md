@@ -9,14 +9,14 @@ description:
 Use this skill when project instructions or a prompt require reading SASE reference
 memory.
 
-Memory has two independent axes. **Kind** — note, web, or strand — is what the memory
-is: a flat note, a keyword-addressed web of small strand files (such as the bundled
-`glossary` web), or one strand inside a web. **Rendering** — `core` or `reference`, set
-by `type:` frontmatter — is how it reaches an agent: core renders always-loaded,
-reference is read on demand. The axes are independent: a web's own descriptor can render
-at either tier, but a strand's body is never inlined into always-loaded instructions, no
-matter what tier its web renders at. Legacy `type: short` and `type: long` values are
-still accepted and mean core and reference respectively.
+A memory's **kind** — note, web, or strand — decides how it reaches an agent. A flat
+note declares `type: core` (inlined into generated agent instructions, always loaded) or
+`type: reference` (named with its description only, read on demand through this
+command); legacy `type: short` and `type: long` still parse and mean the same two
+things. A web is a keyword-addressed collection of small strand files (the bundled
+`glossary` web is one): its descriptor declares no `type:` and always inlines into the
+generated Memory Webs section, while a strand's body never inlines and is always read on
+demand.
 
 Core memory cannot be read with this command because it is already in context.
 
@@ -28,9 +28,12 @@ batch, resolved together before anything is printed or logged:
 - a `web:keyword` strand reference, e.g. `glossary:stitch`, resolved by canonical
   keyword, alias, or an unambiguous prefix
 
-A web whose descriptor sets `closure: mentions` (`glossary` is one) additionally walks
-the recursive closure of strands each requested strand's body mentions; `-d/--depth N`
-caps the recursion (`-d 0` prints only the requested strands; the default is unlimited).
+A note or strand can link other memory as `[[target]]`, listed under a numbered
+`## Linked References` section, or `![[target]]`, rendered inline in the body. A web
+whose descriptor sets `link_reference: implicit` (`glossary` is one) additionally treats
+every strand its body mentions as such a link. `-d/--depth N` caps how far inline links
+recurse (`-d 0` prints only the requested selectors and lists every link as a reference;
+the default is unlimited).
 
 ## Rules
 
