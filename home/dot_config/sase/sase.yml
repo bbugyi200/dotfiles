@@ -206,7 +206,7 @@ axe:
       env:
         SASE_TELEGRAM_BOT_USERNAME: sase_athena_bot
         SASE_TELEGRAM_BOT_CHAT_ID: "8990449281"
-        SASE_TELEGRAM_BOT_TOKEN: { pass: telegram_sase_bot_token }
+        # token now read from ~/.sase/telegram_bot_token (mode 600) so the 5s tick never touches gpg-agent
       chops:
         tg_inbound:
           script: sase_chop_tg_inbound
