@@ -1,3 +1,6 @@
 id:
   username: bbugyi200
   machine_name: apollo
+
+memory:
+  h1_title: "apollo - Bryan Bugyi's Rendezvous Server"
