@@ -41,8 +41,19 @@ when relevant.
   ties broken by path. The generated `sase/memory/sase.md` note uses `priority: 10`.
 - `description`: required for reference notes and used in generated agent instructions
   and this README. Reference-note descriptions may be Markdown blocks authored as YAML
-  literal block scalars; reference sections render those blocks verbatim, while
-  single-line surfaces collapse them.
+  literal block scalars. Generated agent instructions collapse top-level reference
+  descriptions to one paragraph and reject multi-block descriptions; audited
+  child-reference reads still render block descriptions verbatim.
+- `link_reference`: `explicit` (default), `implicit`, or `none` — which `[[...]]` links
+  in the body are detected. The legacy `closure: mentions` / `closure: none`
+  web-descriptor keys are still accepted as aliases.
+- `link_rendering`: `reference` (default) or `inline` — whether a detected link lists in
+  a `## Linked References` section or expands inline. A strand's value overrides its web
+  descriptor's, which overrides the default.
+- `metadata`: optional free-form mapping on descriptors and strands. A strand declares
+  supersession with `status: superseded` or `status: superseded-in-part` plus
+  `superseded_by` (a memory-link target or a list of them); any other `status` is
+  ignored.
 
 A memory web descriptor must not declare `type:` or `parent:`; both are stripped on init
 if present. A web's kind decides its placement — its descriptor is always inlined into
@@ -57,6 +68,12 @@ strand inherits no `type:` of its own and never inlines into `AGENTS.md`.
   automatically.
 - Reference notes parented under another reference note are reachable through that
   parent for validation.
+- `[[target]]` in a note or strand body authors a link, listed under a
+  `## Linked References` section on `sase memory show`/`read`; `![[target]]` forces that
+  link to expand inline instead. `target` is a `web:keyword` strand reference, a
+  `web/slug` strand reference, a `note.md` flat note, or a bare token resolved against
+  the source's own web, then a note stem, then a web slug. Links inside code fences or
+  inline code are never scanned.
 
 ### Canonical And Legacy Roots
 
