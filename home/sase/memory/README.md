@@ -103,14 +103,23 @@ strand inherits no `type:` of its own and never inlines into `AGENTS.md`.
 - Lines: 19
 - Approx. tokens: 165
 
+### `sase/memory/tailnet.md`
+
+- Type: `reference`
+- Parent: `AGENTS.md`
+- Description: Tailnet machines (athena, apollo, mac) - Tailscale SSH access, users, and
+  the chezmoi-managed ~/.ssh/config convention.
+- Lines: 36
+- Approx. tokens: 418
+
 ## Statistics
 
-- Total notes: 2
+- Total notes: 3
 - Core notes: 1
-- Reference notes: 1
+- Reference notes: 2
 - Web descriptor notes: 0
-- Total lines: 81
-- Total approx. tokens: 965
+- Total lines: 117
+- Total approx. tokens: 1383
 
 ## Commands
 
