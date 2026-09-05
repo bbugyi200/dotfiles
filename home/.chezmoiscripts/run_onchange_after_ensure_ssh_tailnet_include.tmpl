@@ -1,0 +1,26 @@
+{{ if or (eq .chezmoi.hostname "athena") (eq .chezmoi.hostname "apollo") (eq .chezmoi.hostname "Kellys-MBP") -}}
+#!/bin/bash
+
+# tailnet.conf: {{ include "private_dot_ssh/private_tailnet.conf" | sha256sum }}
+#
+# Ensure ~/.ssh/config Include's the chezmoi-managed tailnet host blocks.
+set -euo pipefail
+
+config="${HOME}/.ssh/config"
+mkdir -p "${HOME}/.ssh"
+chmod 700 "${HOME}/.ssh"
+if [[ ! -f "${config}" ]]; then
+  printf 'Include tailnet.conf\n' >"${config}"
+  chmod 600 "${config}"
+  echo "Created ${config} with tailnet Include."
+elif ! grep -qE '^[[:space:]]*Include[[:space:]]+tailnet\.conf([[:space:]]|$)' "${config}"; then
+  tmp="$(mktemp)"
+  printf 'Include tailnet.conf\n\n' >"${tmp}"
+  cat "${config}" >>"${tmp}"
+  cat "${tmp}" >"${config}"
+  rm -f "${tmp}"
+  echo "Prepended tailnet Include to ${config}."
+else
+  echo "Tailnet Include already present in ${config}."
+fi
+{{ end -}}
