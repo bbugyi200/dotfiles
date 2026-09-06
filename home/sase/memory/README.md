@@ -99,9 +99,9 @@ strand inherits no `type:` of its own and never inlines into `AGENTS.md`.
 
 - Type: `reference`
 - Parent: `AGENTS.md`
-- Description: Obsidian vault, notes workflow, and obsidian-headless/ob usage.
-- Lines: 19
-- Approx. tokens: 165
+- Description: Bob vault note conventions, git sync, and recovery runbooks.
+- Lines: 29
+- Approx. tokens: 379
 
 ### `sase/memory/tailnet.md`
 
@@ -118,8 +118,8 @@ strand inherits no `type:` of its own and never inlines into `AGENTS.md`.
 - Core notes: 1
 - Reference notes: 2
 - Web descriptor notes: 0
-- Total lines: 117
-- Total approx. tokens: 1383
+- Total lines: 127
+- Total approx. tokens: 1597
 
 ## Commands
 
