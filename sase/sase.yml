@@ -1,2 +1,3 @@
 commit_hooks:
   after: "chezmoi update -a --force"
+is_sase_managed: true

@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "relations": [
+    {
+      "schema_version": 2,
+      "slug": "cites",
+      "inverse": "cited-by",
+      "directed": true,
+      "written_by": "prompt_ref",
+      "direction_note": "The citing agent is the source; the cited artifact is the target.",
+      "positive_example": "agent:sase-tj.land cites plan:202608/artifact_link_durability_and_derivation.md",
+      "negative_example": "plan:202608/artifact_link_durability_and_derivation.md cites agent:sase-tj.land",
+      "recommended_source_kinds": [
+        "agent"
+      ],
+      "recommended_target_kinds": [
+        "plan",
+        "research"
+      ]
+    },
+    {
+      "schema_version": 2,
+      "slug": "read",
+      "inverse": "read-by",
+      "directed": true,
+      "written_by": "read",
+      "direction_note": "The reading agent is the source; the artifact it read is the target.",
+      "positive_example": "agent:sase-tj.land read research:202608/artifact_link_derivation.md",
+      "negative_example": "research:202608/artifact_link_derivation.md read agent:sase-tj.land",
+      "recommended_source_kinds": [
+        "agent"
+      ],
+      "recommended_target_kinds": []
+    },
+    {
+      "schema_version": 2,
+      "slug": "related",
+      "inverse": "related",
+      "directed": false,
+      "written_by": "cli",
+      "direction_note": "Undirected: the same fact either way, so source and target are interchangeable.",
+      "positive_example": "plan:202608/a.md related plan:202608/b.md",
+      "negative_example": "plan:202608/a.md related bead:sase-tw (imprecise -- prefer `implements` when a plan implements a bead's requirements)",
+      "recommended_source_kinds": [],
+      "recommended_target_kinds": []
+    },
+    {
+      "schema_version": 2,
+      "slug": "supersedes",
+      "inverse": "superseded-by",
+      "directed": true,
+      "written_by": "cli",
+      "direction_note": "The replacement artifact is the source; the artifact it replaces is the target.",
+      "positive_example": "plan:202608/v2_design.md supersedes plan:202608/v1_design.md",
+      "negative_example": "plan:202608/v1_design.md supersedes plan:202608/v2_design.md",
+      "recommended_source_kinds": [],
+      "recommended_target_kinds": []
+    },
+    {
+      "schema_version": 2,
+      "slug": "implements",
+      "inverse": "implemented-by",
+      "directed": true,
+      "written_by": "cli",
+      "direction_note": "A plan implements a bead's requirements: the plan is the source, the bead is the target.",
+      "positive_example": "plan:202608/artifact_link_durability_and_derivation.md implements bead:sase-tw",
+      "negative_example": "bead:sase-tw implements plan:202608/artifact_link_durability_and_derivation.md",
+      "recommended_source_kinds": [
+        "plan"
+      ],
+      "recommended_target_kinds": [
+        "bead"
+      ]
+    },
+    {
+      "schema_version": 2,
+      "slug": "derives-from",
+      "inverse": "derived-into",
+      "directed": true,
+      "written_by": "cli",
+      "direction_note": "The derived artifact is the source; the artifact it was derived from is the target.",
+      "positive_example": "research:202608/artifact_link_derivation.md derives-from research:202608/artifact_link_derivation__a.md",
+      "negative_example": "research:202608/artifact_link_derivation__a.md derives-from research:202608/artifact_link_derivation.md",
+      "recommended_source_kinds": [
+        "plan",
+        "research"
+      ],
+      "recommended_target_kinds": [
+        "plan",
+        "research"
+      ]
+    },
+    {
+      "schema_version": 2,
+      "slug": "produced-by",
+      "inverse": "produced",
+      "directed": true,
+      "written_by": "projection",
+      "direction_note": "The stitch is the source; the agent that produced it is the target.",
+      "positive_example": "stitch:sase@0123456789abcdef0123456789abcdef01234567 produced-by agent:sase-tj.land",
+      "negative_example": "agent:sase-tj.land produced-by stitch:sase@0123456789abcdef0123456789abcdef01234567",
+      "recommended_source_kinds": [
+        "stitch"
+      ],
+      "recommended_target_kinds": [
+        "agent"
+      ]
+    },
+    {
+      "schema_version": 2,
+      "slug": "launched",
+      "inverse": "launched-by",
+      "directed": true,
+      "written_by": "projection",
+      "direction_note": "The chop is the source; the agent it launched is the target.",
+      "positive_example": "chop:refresh_docs/refresh_docs launched agent:sase-tj.land",
+      "negative_example": "agent:sase-tj.land launched chop:refresh_docs/refresh_docs",
+      "recommended_source_kinds": [
+        "chop"
+      ],
+      "recommended_target_kinds": [
+        "agent"
+      ]
+    }
+  ],
+  "reserved": [
+    {
+      "slug": "blocks",
+      "pointer": "sase bead dep"
+    },
+    {
+      "slug": "depends-on",
+      "pointer": "sase bead dep"
+    }
+  ]
+}

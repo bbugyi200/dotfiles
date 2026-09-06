@@ -177,9 +177,6 @@ releases remain readable until migrated via `sase patch migrate-extension`.
 
 ## Compatibility Notes
 
-- `sase changespec ...` remains an alias for `sase patch ...`.
-- `-c`/`--changespec` remains an alias for `--patch` where Patch-targeting commands
-  accept it.
 - Legacy `COMMITS:` sections are still readable; new sections use `STITCHES:`.
 - Legacy `CL:` fields are readable during the compatibility window; new and touched
   records use `PR:`.

@@ -1,0 +1,231 @@
+{
+  "types": [
+    {
+      "task_type": "bug",
+      "label": "Bug",
+      "summary": "A defect an agent found while doing unrelated work, not an external tracker bug.",
+      "when_to_use": "File one when you found a defect while doing unrelated work and it is not an external tracker issue. Record where it lives, how to reproduce it, and who it hurts; one independent reproduction separates it from a misreading. Do not use this for a flake, a confirmed CI failure, or a GitHub-mirrored bug.",
+      "glyph": "⨯",
+      "accent_color": "#FF5F5F",
+      "agent_creatable": true,
+      "fields": [
+        {
+          "name": "location",
+          "label": "Location",
+          "type": "string",
+          "required": true,
+          "role": [
+            "data",
+            "template"
+          ],
+          "help": "File, symbol, or other locator for the defect"
+        },
+        {
+          "name": "repro",
+          "label": "Repro",
+          "type": "string",
+          "required": true,
+          "role": [
+            "template"
+          ],
+          "help": "Steps or command that reproduce the defect"
+        },
+        {
+          "name": "impact",
+          "label": "Impact",
+          "type": "string",
+          "required": false,
+          "role": [
+            "template"
+          ],
+          "help": "Who or what the defect breaks, and how badly"
+        }
+      ],
+      "body_template": "## Bug\n\n- **Location:** `{{ location }}`\n\n{{ repro }}\n\n{{ impact }}\n",
+      "triage": {
+        "min_plus_ones": 1
+      },
+      "source": "builtin",
+      "package": "sase",
+      "digest": "d7a5c9f46756d566c0c277ab62306d375397522ef5bf82db26a771bea938dda6"
+    },
+    {
+      "task_type": "ci",
+      "label": "CI failure",
+      "summary": "A confirmed true test or lint failure you did not cause, not a flake.",
+      "when_to_use": "File one when a test or lint failed and you confirmed it is a true failure, not a flake. Record the pytest node ID, the failing SHA if known, and why this is not intermittent. Use flake instead when a rerun on the same tree passed.",
+      "glyph": "⚙",
+      "accent_color": "#D7D700",
+      "agent_creatable": true,
+      "fields": [
+        {
+          "name": "node_id",
+          "label": "Test node ID",
+          "type": "string",
+          "required": true,
+          "role": [
+            "data",
+            "template"
+          ],
+          "help": "The pytest node ID, e.g. tests/foo.py::test_bar"
+        },
+        {
+          "name": "sha",
+          "label": "SHA",
+          "type": "string",
+          "required": false,
+          "role": [
+            "data"
+          ],
+          "help": "Commit SHA where the failure was observed"
+        },
+        {
+          "name": "why_not_flake",
+          "label": "Why not a flake",
+          "type": "string",
+          "required": true,
+          "role": [
+            "template"
+          ],
+          "help": "Why this is a confirmed true failure rather than a flake"
+        }
+      ],
+      "body_template": "## CI failure\n\n- **Node:** `{{ node_id }}`\n\n{{ why_not_flake }}\n",
+      "triage": {
+        "min_plus_ones": 0
+      },
+      "source": "builtin",
+      "package": "sase",
+      "digest": "7bb84890e8db43abd920cf3af5952ab7a95dd432e66e38018d547e6c1993bd33"
+    },
+    {
+      "task_type": "feature",
+      "label": "Feature",
+      "summary": "An out-of-scope product or tooling idea that should not become a wish list.",
+      "when_to_use": "File one when you discovered a product or capability idea that is outside the current task or epic. State the proposal and why it is out of scope for the work you were doing. Do not file one for in-scope follow-up that belongs on the current epic.",
+      "create_refusal": "Agents never create this type with `sase bead create` or `/sase_new_task` where it is not agent-creatable. Do not refile the idea under another type: record it as a `PROPOSED FOLLOW-UP:` note on the bead you are working, or raise it with the project owner.",
+      "glyph": "✦",
+      "accent_color": "#5FD75F",
+      "agent_creatable": true,
+      "fields": [
+        {
+          "name": "proposal",
+          "label": "Proposal",
+          "type": "string",
+          "required": true,
+          "role": [
+            "template"
+          ],
+          "help": "What should exist that is outside the current work"
+        },
+        {
+          "name": "why_out_of_scope",
+          "label": "Why out of scope",
+          "type": "string",
+          "required": true,
+          "role": [
+            "template"
+          ],
+          "help": "Why this does not belong on the current task or epic"
+        }
+      ],
+      "body_template": "## Feature proposal\n\n{{ proposal }}\n\n{{ why_out_of_scope }}\n",
+      "triage": {
+        "min_plus_ones": 0
+      },
+      "source": "builtin",
+      "package": "sase",
+      "digest": "4b065df3f621cb1dec1e93f80b8b45b4525ec720aac1f252f5d2b7d196d07507"
+    },
+    {
+      "task_type": "flake",
+      "label": "Flaky test",
+      "summary": "A test that fails and then passes on an unchanged tree.",
+      "when_to_use": "File one when a test or lint failed, a rerun on the same tree passed, and you did not cause the failure. Record the fail rate and whether it reproduces serially. Use ci instead when the failure is confirmed and reproducible.",
+      "glyph": "≈",
+      "accent_color": "#00D7D7",
+      "agent_creatable": true,
+      "fields": [
+        {
+          "name": "node_id",
+          "label": "Test node ID",
+          "type": "string",
+          "required": true,
+          "role": [
+            "data",
+            "template"
+          ],
+          "help": "The pytest node ID, e.g. tests/foo.py::test_bar",
+          "pattern": "\\S+::\\S+"
+        },
+        {
+          "name": "repro_cmd",
+          "label": "Repro command",
+          "type": "string",
+          "required": false,
+          "role": [
+            "data",
+            "template"
+          ],
+          "help": "Command that reproduced the intermittent failure"
+        },
+        {
+          "name": "evidence",
+          "label": "Evidence",
+          "type": "string",
+          "required": true,
+          "role": [
+            "template"
+          ],
+          "help": "Fail/pass observations, fail rate, and serial vs parallel"
+        }
+      ],
+      "body_template": "## Flake report\n\n- **Test:** `{{ node_id }}`\n- **Repro:** `{{ repro_cmd }}`\n\n{{ evidence }}\n",
+      "triage": {
+        "min_plus_ones": 3
+      },
+      "source": "builtin",
+      "package": "sase",
+      "digest": "b5b410e11c62c945193bbc0594705ce9979b1627d3416b53c230f8311fa54cd1"
+    },
+    {
+      "task_type": "memory",
+      "label": "Memory",
+      "summary": "A sase memory note or skill that is out of date.",
+      "when_to_use": "File one when a sase memory file or skill contains out-of-date information that should be updated. Closing still requires explicit user permission plus `sase memory init`. Record the memory path and the proposed change.",
+      "glyph": "▤",
+      "accent_color": "#8787FF",
+      "agent_creatable": true,
+      "fields": [
+        {
+          "name": "path",
+          "label": "Path",
+          "type": "string",
+          "required": true,
+          "role": [
+            "data",
+            "template"
+          ],
+          "help": "Memory note path relative to memory/, e.g. sase_beads.md"
+        },
+        {
+          "name": "proposed_change",
+          "label": "Proposed change",
+          "type": "string",
+          "required": true,
+          "role": [
+            "template"
+          ],
+          "help": "The correction the memory note should receive"
+        }
+      ],
+      "body_template": "## Memory update\n\n- **Path:** `{{ path }}`\n\n{{ proposed_change }}\n",
+      "triage": {
+        "min_plus_ones": 0
+      },
+      "source": "builtin",
+      "package": "sase",
+      "digest": "37366acc1543cf5793a8c8d9c2cdca3f9583ee1f30b8ca9fce3936bc88da52be"
+    }
+  ]
+}

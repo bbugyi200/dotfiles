@@ -234,11 +234,9 @@ llm_provider:
   default_effort: xhigh
   model_aliases:
     builtin:
-      medium_worker: codex/gpt-5.5@xhigh | grok/grok-4.6
-      small_worker: codex/gpt-5.5@high | grok/grok-4.6
-      xsmall_worker: codex/gpt-5.5@medium | grok/grok-4.6
       medium: codex/gpt-5.5@xhigh | claude/sonnet@xhigh | 2 grok/grok-4.6@xhigh
       small: claude/sonnet@high | codex/gpt-5.5@high | 2 grok/grok-4.6@high
+      xsmall: codex/gpt-5.5@medium | grok/grok-4.6
     custom:
       research_a:
         model: "codex/gpt-5.6-sol@xhigh || grok/grok-4.6@xhigh"

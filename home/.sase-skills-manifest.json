@@ -1,5 +1,5 @@
 {
-  "deployed_at": "2026-09-02T10:24:50.344725Z",
+  "deployed_at": "2026-09-06T14:44:01.411867Z",
   "managed_files": [
     {
       "home_path": ".gemini/antigravity-cli/skills/bob_query/SKILL.md",
@@ -20,7 +20,7 @@
       "provider": "agy",
       "skill_name": "sase_changespecs",
       "source_path": "dot_gemini/antigravity-cli/skills/sase_changespecs/SKILL.md",
-      "state": "active"
+      "state": "retired"
     },
     {
       "home_path": ".gemini/antigravity-cli/skills/sase_chats/SKILL.md",
@@ -174,7 +174,7 @@
       "provider": "claude",
       "skill_name": "sase_changespecs",
       "source_path": "dot_claude/skills/sase_changespecs/SKILL.md",
-      "state": "active"
+      "state": "retired"
     },
     {
       "home_path": ".claude/skills/sase_chats/SKILL.md",
@@ -328,7 +328,7 @@
       "provider": "codex",
       "skill_name": "sase_changespecs",
       "source_path": "dot_codex/skills/sase_changespecs/SKILL.md",
-      "state": "active"
+      "state": "retired"
     },
     {
       "home_path": ".codex/skills/sase_chats/SKILL.md",
@@ -580,7 +580,7 @@
       "provider": "grok",
       "skill_name": "sase_changespecs",
       "source_path": "dot_grok/skills/sase_changespecs/SKILL.md",
-      "state": "active"
+      "state": "retired"
     },
     {
       "home_path": ".grok/skills/sase_chats/SKILL.md",
@@ -727,7 +727,7 @@
       "provider": "muse",
       "skill_name": "sase_changespecs",
       "source_path": "dot_config/muse/skills/sase_changespecs/SKILL.md",
-      "state": "active"
+      "state": "retired"
     },
     {
       "home_path": ".config/muse/skills/sase_chats/SKILL.md",
@@ -874,7 +874,7 @@
       "provider": "opencode",
       "skill_name": "sase_changespecs",
       "source_path": "dot_config/opencode/skills/sase_changespecs/SKILL.md",
-      "state": "active"
+      "state": "retired"
     },
     {
       "home_path": ".config/opencode/skills/sase_chats/SKILL.md",
@@ -1028,7 +1028,7 @@
       "provider": "qwen",
       "skill_name": "sase_changespecs",
       "source_path": "dot_qwen/skills/sase_changespecs/SKILL.md",
-      "state": "active"
+      "state": "retired"
     },
     {
       "home_path": ".qwen/skills/sase_chats/SKILL.md",
@@ -1157,6 +1157,6 @@
       "state": "active"
     }
   ],
-  "source_commit": "ae7ca2226f473252824141f78ae1f21151b53df0",
-  "xprompt_set_sha256": "1cbf8269e0ee4cdb8da6a03e3001bda0eeef17f7f38fe0f4854f594a12313e1c"
+  "source_commit": "caa7917ac966141b5cd6757e89ca245710e95950",
+  "xprompt_set_sha256": "795134034023e4188d208e6d0cbb42a8020ea24fe438c2221fbc4e91f47b37de"
 }
