@@ -34,7 +34,7 @@ printf '\n>>> Copying from bbc to this machine...\n'
 scp "bbc:${LATEST}" ~/tmp/sase/
 
 if [[ $IS_REMOTE = true ]]; then
-  DEST_HOST=xhome
+  DEST_HOST=athena
 else
   DEST_HOST=home
 fi

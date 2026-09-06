@@ -18,8 +18,8 @@ printf ">>> Copying from bbc to this machine...\n"
 scp -r bbc:~/.sase/logs/pack/"${LOG_PACK_BASE_DIR}" ~/tmp/
 
 if [[ $IS_REMOTE = true ]]; then
-  printf "\n>>> Copying from this machine to xhome...\n"
-  scp -r ~/tmp/"${LOG_PACK_BASE_DIR}"/ xhome:~/tmp/
+  printf "\n>>> Copying from this machine to athena...\n"
+  scp -r ~/tmp/"${LOG_PACK_BASE_DIR}"/ athena:~/tmp/
 else
   printf "\n>>> Copying from this machine to home...\n"
   scp -r ~/tmp/"${LOG_PACK_BASE_DIR}"/ home:~/tmp/
