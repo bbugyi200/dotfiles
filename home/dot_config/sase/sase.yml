@@ -329,24 +329,6 @@ xprompts:
   rchat:
     snippet: true
     content: "Review recent, related sase agent chats for context."
-  research/image: |
-    Can you use GPT image to generate an infographic that illustrates the main points made in this research markdown
-    file? Write the image to a new file in the same directory.
-  research/more: |
-    Can you help me improve this research markdown file by doing your own research and filling in any gaps missed by the
-    previous agent? Preserve the existing file path unless I explicitly ask for a new file, and follow
-    $(sase repo path research --ensure)/README.md conventions when present.
-  research/prompt:
-    input:
-      prompt: text
-    content: |
-      Can you help me do some research on the below prompt? Investigate prior art, propose a few alternative solutions,
-      and end your analysis with a recommended solution. #research
-
-      ## THE PROMPT
-      {{ prompt }}
-  research: |
-    Write this research to a new markdown file under the $(sase repo path research --ensure)/$(date +%Y%m)/ directory.
   review_research_comments: |-
     Review the $1.md file in the research sidecar repo for context and inspiration before planning. Make sure you also
     review the annotations I left on this research file, which can be found in the ~/bob/ref/chat/$1.md file.
