@@ -164,12 +164,39 @@ and finalize:
    - Prefer the upstream version when uncertain — it's the more recent change.
    - NEVER leave conflict markers in any file.
 3. **Stage resolved files**: Run `git add <file>` for each.
-4. **Continue the rebase/merge**: Run `git -c core.editor=true rebase --continue` (or
+4. **Verify the staged resolution**: Work in the checkout holding the paused operation
+   and verify the integrated content affected by the repair, including relevant
+   automatically merged content. Consult the target repository's applicable instructions
+   and locally defined verification commands, then run the checks they require in the
+   working directory they specify. A mandatory all-changes gate remains mandatory,
+   including for JSON or Markdown repairs.
+
+   Confirm that the selected command definition and working directory belong to the
+   target repository's verification procedure. Do not substitute a parent,
+   launch-workspace, or sibling repository's gate just because the target has none;
+   account for task runners discovering ancestor configuration. A command outside the
+   repository is appropriate only when applicable instructions explicitly delegate
+   verification there and it actually checks this target content.
+
+   If there is no applicable gate, validate the resolved files directly. For structured
+   data, check parsing plus relevant schema or invariants; for JSON artifact-link
+   indexes, preserve distinct records and counts, detect duplicate identities, and
+   maintain required ordering. For prose, review that intended content from both sides
+   survives. Verify that no unresolved entries or conflict markers remain. Parse success
+   alone is insufficient, but do not invent a full test suite to repair a document.
+
+   A required gate that fails or cannot run because of missing tools or dependencies is
+   a verification failure, not an absent gate. Fix and stage changes relevant to this
+   repair; do not sweep unrelated or foreign edits into the resolution. Briefly report
+   the repository, the checks performed and their results, or why no applicable gate
+   exists and which direct checks were used.
+
+5. **Continue the rebase/merge**: Run `git -c core.editor=true rebase --continue` (or
    `git merge --continue` for a non-rebase merge). If this produces more conflicts,
-   repeat steps 1–4 until clean.
-5. **Verify the working tree is clean**: `git status` should show "nothing to commit,
+   repeat steps 1–5 until clean.
+6. **Verify the working tree is clean**: `git status` should show "nothing to commit,
    working tree clean".
-6. **Finalize the sase stitch create**: Run `sase_git_commit --resume`. This replays the
+7. **Finalize the sase stitch create**: Run `sase_git_commit --resume`. This replays the
    post-commit bookkeeping (push, Patch row, STITCHES entry, result marker) and exits 0
    on success.
 
