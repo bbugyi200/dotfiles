@@ -75,6 +75,8 @@ ace:
     di: "the $1 directory"
     dir: |-
       the `%$1` directive
+    dor: |-
+      Can you do some research with the goal of helping me decide the best way to implement this? End your analysis with a recommended solution.
     drep: "Describe this repo."
     epic: |-
       the sase-$1 epic bead
