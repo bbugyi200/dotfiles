@@ -138,7 +138,7 @@ ace:
     piw: "prompt input widget"
     prp: "plan review panel"
     rctx: |-
-      Review $1 for context and inspiration.
+      Review $1 for context and inspiration$2.
     rep: "the ../sase-$1 repo"
     repic: |-
       Make sure you review #[epic] for related work first and leave notes on the appropriate epic/phase bead(s) if necessary.
