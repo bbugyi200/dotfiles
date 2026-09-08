@@ -112,11 +112,11 @@ axe:
         Watch GitHub Actions health across SASE repos and submit guarded releases
 
         Runs every five minutes. The single chop owns its own actstat config so unrelated orgs are never swept,
-        classifies high-cadence repos from terminal job evidence instead of blanket in-flight state, and sends one
-        rich SASE notification per active failing-job incident. Its only GitHub mutation is a guarded merge
-        for an eligible release-please PR when live mode and `merge_enabled` are both explicit. It never creates
-        gates, launch requests, repair agents, or Axe proposals, and every notification links to the combined
-        CI WATCH report when the report publishes successfully.
+        classifies high-cadence repos from terminal job evidence instead of blanket in-flight state, and collapses
+        concurrent failing-job incidents into one SASE notification that quietly +1s as the announced repo set
+        changes. Its only GitHub mutation is a guarded merge for an eligible release-please PR when live mode and
+        `merge_enabled` are both explicit. It never creates gates, launch requests, repair agents, or Axe proposals,
+        and every notification links to the combined CI WATCH report when the report publishes successfully.
       interval: 300
       chop_timeout: "120s"
       chops:
@@ -125,12 +125,16 @@ axe:
           description: |-
             Sweep actstat once, notify on CI incidents, and merge ready release-please PRs
 
-            Terminal job failures send one sha-independent, deduplicated SASE notification per repository incident
-            with workflow, job, conclusion, step, URL, failing SHA, and unsettled-current-HEAD evidence. Green or
-            non-red observations clear the incident so a recurrence is announced again. Green branches with fully
-            green release-please PRs merge deterministically in dependency order, capped at one merge per tick.
-            Repos with no Actions report no_ci, while unknown, pending, stale, or malformed evidence fails closed.
-            The chop may only call actstat, bounded GitHub reads, guarded `gh pr merge`, and `sase notify create`.
+            Terminal job failures collapse into one incident-combination SASE notification covering every repo
+            currently announced as failing, with workflow, job, conclusion, step, URL, failing SHA, and
+            unsettled-current-HEAD evidence per repo. Fingerprint churn, recoveries, and re-failures within the
+            announced set append a quiet +1 to that notification instead of a new one; a repo outside the announced
+            set going red rolls the incident into a new notification and supersedes the old one with a +1
+            breadcrumb. All-green clears the incident with a resolution +1, so a later recurrence is announced
+            again. Green branches with fully green release-please PRs merge deterministically in dependency order,
+            capped at one merge per tick. Repos with no Actions report no_ci, while unknown, pending, stale, or
+            malformed evidence fails closed. The chop may only call actstat, bounded GitHub reads, guarded
+            `gh pr merge`, and `sase notify create`/`sase notify +1`.
           env:
             ACTSTAT_CONFIG: /home/bryan/.config/sase/actstat-ci-watch.yml
             # gh 2.98+ colorizes JSON even on pipes when CLICOLOR=1; force
