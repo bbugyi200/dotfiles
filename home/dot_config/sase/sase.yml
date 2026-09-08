@@ -137,6 +137,7 @@ ace:
       the "$1" panel
     piw: "prompt input widget"
     prp: "plan review panel"
+    r: "%w(runners=$1)"
     rctx: |-
       Review $1 for context and inspiration$2.
     rep: "the ../sase-$1 repo"
