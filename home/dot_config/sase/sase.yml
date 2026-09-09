@@ -82,6 +82,8 @@ ace:
       the sase-$1 epic bead
     ev: |-
       environment variable
+    exed: |-
+      external editors (via LSP support)
     fe: |-
       for example
     fex: |-

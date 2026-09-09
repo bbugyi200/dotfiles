@@ -69,7 +69,7 @@ axe:
             without allocating an agent, and large files are still handled one at a time.
           run_every: 60m
           inhibit_if:
-            agent_clan: { name_prefix: toobig- }
+            agent_clan: {name_prefix: toobig-}
           for_each:
             source: projects
             names: [sase]
@@ -167,3 +167,11 @@ axe:
               sase-org/sase: 6
               sase-org/sase-github: 6
               sase-org/sase-telegram: 6
+dispatch:
+  machines:
+    apollo:
+      provider: builtin@tailnet
+      endpoint: https://apollo.tail297af1.ts.net
+      credential_ref: fleet:apollo
+      installation_pin: sase_inst_v1_8d5ff66aeed36f2e8ec3edf4e7016b8f8eb7b64dfb9d9306aa3865c6642c42f1
+      connection_kind: gateway
