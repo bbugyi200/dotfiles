@@ -139,6 +139,8 @@ ace:
     prp: "plan review panel"
     q: |-
       %q:
+    qp: |-
+      %q(p=$1)
     r: "%q:$1"
     rctx: |-
       Review $1 for context and inspiration$2.
