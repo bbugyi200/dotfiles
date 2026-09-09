@@ -184,7 +184,7 @@ ace:
     xm: |-
       xprompt memory
     xp: |-
-      xprompt property
+      the `$1` xprompt
     xs: "xprompt skill"
     xw: "xprompt workflow"
     # keep-sorted end
