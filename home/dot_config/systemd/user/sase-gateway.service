@@ -1,0 +1,13 @@
+[Unit]
+Description=SASE gateway
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/share/uv/tools/sase/bin/sase_gateway --bind 127.0.0.1:7629 --sase-home %h/.sase
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

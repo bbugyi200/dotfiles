@@ -11,6 +11,9 @@ tags
 {{ if ne .chezmoi.hostname "apollo" }}
 .config/sase/sase_apollo.yml
 {{ end }}
+{{ if and (ne .chezmoi.hostname "athena") (ne .chezmoi.hostname "apollo") }}
+.config/systemd/user/sase-gateway.service
+{{ end }}
 {{ if and (ne .chezmoi.hostname "athena") (ne .chezmoi.hostname "apollo") (ne .chezmoi.hostname "Kellys-MBP") }}
 .ssh/tailnet.conf
 {{ end }}
