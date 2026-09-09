@@ -28,7 +28,7 @@ Runner-slot rows include `runner_slots_in_use` and `runner_slot_holders`, which 
 the agents keeping them parked.
 
 Every live runner-slot waiter is reported as `QUEUED`, whether its threshold comes from
-the global cap or an authored `%wait(runners=N)`. `runner_slot_queue_position` and
+the global cap or an authored `%queue(runners=N)`. `runner_slot_queue_position` and
 `runner_slot_queue_size` cover the same waiters in capacity-aware display order:
 eligible waiters first, then parked waiters by nearest-opening threshold, with priority
 and request FIFO preserved inside each group. Use the position on `QUEUED` rows when
