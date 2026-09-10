@@ -1,0 +1,78 @@
+#!/bin/bash
+
+##############################################################################
+#  Print the 1-minute load average, formatted for the tmux status line.      #
+#                                                                            #
+#  The output carries its own leading space and parentheses -- " (20.71)" -- #
+#  so tmux.conf can append `#(tmux_load_avg)` directly after `#(hostname)`   #
+#  and render `athena (20.71)`. On ANY failure (uptime missing, uptime       #
+#  erroring, output that does not parse) this prints nothing, so the status  #
+#  line degrades to a bare `athena` rather than an empty `athena ()`.        #
+#                                                                            #
+#  tmux runs this every `status-interval` (2s), so it deliberately does not  #
+#  source ~/lib/bugyi.sh and forks `uptime` exactly once.                    #
+#                                                                            #
+#  The `uptime` wording differs by platform and both are matched here:       #
+#    Linux: `... 3 users,  load average: 20.71, 24.19, 24.33`                #
+#    macOS: `... 4 users, load averages: 3.36 3.26 2.94`                     #
+##############################################################################
+
+set -e
+
+function usage() {
+  cat <<EOM
+usage: $(basename "$0") [-h]
+
+Print the 1-minute load average, parsed from \`uptime\`, decorated for the tmux
+status line as " (<load>)". Prints nothing when the load average cannot be read,
+so the status line falls back to showing just the hostname.
+
+Optional Arguments
+------------------
+-h | --help
+    View this help message.
+
+Examples
+--------
+tmux_load_avg     # ' (20.71)'
+EOM
+}
+
+function run() {
+  while [[ -n "$1" ]]; do
+    case $1 in
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    *)
+      printf 'error: unrecognized argument: %s\n\n' "$1" >&2
+      usage >&2
+      exit 2
+      ;;
+    esac
+    shift
+  done
+
+  local load
+  load="$(one_minute_load)" || exit 0
+
+  printf ' (%s)' "${load}"
+}
+
+# Echo the 1-minute load average, or return non-zero if it cannot be determined.
+#
+# LC_ALL=C stops `uptime` from rendering the number with a locale-specific
+# decimal separator; the comma substitution below is a second guard for any
+# platform that ignores it.
+function one_minute_load() {
+  local uptime_out
+  uptime_out="$(LC_ALL=C uptime 2> /dev/null)" || return 1
+
+  [[ "${uptime_out}" =~ load[[:space:]]+averages?:[[:space:]]*([0-9]+([.,][0-9]+)?) ]] \
+    || return 1
+
+  printf '%s' "${BASH_REMATCH[1]/,/.}"
+}
+
+run "$@"
