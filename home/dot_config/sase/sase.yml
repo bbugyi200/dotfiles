@@ -179,6 +179,8 @@ ace:
       TODO: $1
     tx: |-
       the `#$1` xprompt
+    uw: |-
+      usage window
     w: "%w"
     x: "xprompt"
     xm: |-
