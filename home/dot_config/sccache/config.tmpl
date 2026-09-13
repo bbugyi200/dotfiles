@@ -1,0 +1,5 @@
+{{ if eq .chezmoi.hostname "athena" -}}
+[cache.disk]
+dir = "/mnt/poseidon/sccache"
+size = 42949672960
+{{- end }}

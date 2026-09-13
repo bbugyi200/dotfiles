@@ -1,0 +1,12 @@
+[Unit]
+Description=Watch Poseidon Cargo cache pressure
+After=default.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/bin/poseidon-cache-watch
+Nice=10
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=default.target

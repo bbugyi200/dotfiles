@@ -1,0 +1,29 @@
+#!/bin/bash
+
+##############################################################################
+# Athena rustc wrapper. Cargo's build.rustc-wrapper points here so ordinary  #
+# and maturin builds reuse a 40 GiB sccache on Poseidon when that volume is  #
+# present and below the pressure floor. Missing or pressured storage must    #
+# run the real compiler uncached — never a fallback cache on /.              #
+##############################################################################
+
+set -euo pipefail
+
+_here="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=../lib/poseidon_cache.sh
+source "${_here}/../lib/poseidon_cache.sh"
+
+if [[ $# -lt 1 ]]; then
+  printf 'usage: sase-rustc-wrapper COMPILER [args...]\n' >&2
+  exit 2
+fi
+
+compiler="$1"
+shift
+
+if poseidon_should_cache && command -v sccache >/dev/null 2>&1; then
+  normalize_sccache_env
+  exec sccache "$compiler" "$@"
+fi
+
+exec "$compiler" "$@"

@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Poseidon Cargo cache watcher every five minutes
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+AccuracySec=30s
+Persistent=true
+Unit=poseidon-cache-watch.service
+
+[Install]
+WantedBy=timers.target

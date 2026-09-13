@@ -1,0 +1,513 @@
+#!/bin/bash
+
+##############################################################################
+# Athena Poseidon Cargo-cache watcher. Cheap filesystem checks every five    #
+# minutes; directory totals at most hourly. Alerts go to the local SASE      #
+# inbox on state transitions only. Never deletes build output.               #
+##############################################################################
+
+set -euo pipefail
+
+_here="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=../lib/poseidon_cache.sh
+source "${_here}/../lib/poseidon_cache.sh"
+
+STATE_DIR="${POSEIDON_WATCH_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/poseidon-cache-watch}"
+STATE_FILE="${STATE_DIR}/state"
+LOCK_FILE="${STATE_DIR}/lock"
+SCRATCH_ROOT="${POSEIDON_SCRATCH_ROOT:-${SASE_TMPDIR:-$HOME/.cache/sase/tmp}}"
+HOURLY_SECONDS="${POSEIDON_HOURLY_SECONDS:-3600}"
+DU_TIMEOUT="${POSEIDON_DU_TIMEOUT:-120}"
+NOTIFY_SENDER="poseidon-cache-watch"
+
+usage() {
+  cat <<'EOM'
+usage: poseidon-cache-watch [-h] [--setup]
+
+Watch Poseidon compiler-cache pressure and related Athena storage signals.
+
+Optional Arguments
+------------------
+-h | --help
+    View this help message.
+
+--setup
+    Send one clearly marked setup notification to the local SASE inbox, then
+    run a normal check.
+EOM
+}
+
+json_list() {
+  python3 -c 'import json,sys; print(json.dumps(sys.argv[1:]))' "$@"
+}
+
+state_get() {
+  local key="$1"
+  local default="${2-}"
+  local value=""
+  if [[ -f "$STATE_FILE" ]]; then
+    value="$(awk -F= -v key="$key" '
+      $1==key { print substr($0, index($0, "=")+1); exit }
+    ' "$STATE_FILE")"
+  fi
+  if [[ -n "$value" ]]; then
+    printf '%s\n' "$value"
+  else
+    printf '%s\n' "$default"
+  fi
+}
+
+state_set_many() {
+  local tmp
+  tmp="$(mktemp "${STATE_DIR}/state.XXXXXX")"
+  if [[ -f "$STATE_FILE" ]]; then
+    cat "$STATE_FILE" >"$tmp"
+  fi
+  local pair key value
+  for pair in "$@"; do
+    key="${pair%%=*}"
+    value="${pair#*=}"
+    if grep -q "^${key}=" "$tmp" 2>/dev/null; then
+      awk -F= -v key="$key" -v value="$value" '
+        $1==key { print key "=" value; next }
+        { print }
+      ' "$tmp" >"${tmp}.new"
+      mv "${tmp}.new" "$tmp"
+    else
+      printf '%s=%s\n' "$key" "$value" >>"$tmp"
+    fi
+  done
+  mv "$tmp" "$STATE_FILE"
+}
+
+send_notification() {
+  local key="$1"
+  local icon="$2"
+  shift 2
+  local notes_json payload
+  notes_json="$(json_list "$@")"
+  payload="$(printf '{"sender":"%s","icon":"%s","notes":%s,"tags":["poseidon","storage"]}' \
+    "$NOTIFY_SENDER" "$icon" "$notes_json")"
+  if [[ -n "${POSEIDON_NOTIFY_CMD-}" ]]; then
+    printf '%s\n' "$payload" | env POSEIDON_NOTIFY_KEY="$key" $POSEIDON_NOTIFY_CMD
+    return
+  fi
+  if ! command -v sase >/dev/null 2>&1; then
+    printf 'poseidon-cache-watch: sase not on PATH; notification %s not delivered\n' "$key" >&2
+    return 1
+  fi
+  if ! printf '%s\n' "$payload" | sase notify create -s "$NOTIFY_SENDER"; then
+    printf 'poseidon-cache-watch: failed to deliver notification %s\n' "$key" >&2
+    return 1
+  fi
+}
+
+transition() {
+  local name="$1"
+  local desired="$2"
+  local icon="$3"
+  shift 3
+  local delivered
+  delivered="$(state_get "delivered_${name}" "ok")"
+  if [[ "$desired" == "$delivered" ]]; then
+    return 0
+  fi
+  if send_notification "$name" "$icon" "$@"; then
+    state_set_many "delivered_${name}=${desired}" "level_${name}=${desired}"
+  else
+    return 1
+  fi
+}
+
+poseidon_pressure_raw() {
+  local avail used_pct
+  read -r avail used_pct <<<"$(poseidon_df_fields)"
+  if [[ -z "$avail" || -z "$used_pct" ]]; then
+    printf 'inspect\n'
+    return
+  fi
+  if ((used_pct >= POSEIDON_CRITICAL_USED_PCT)); then
+    printf 'critical\n'
+  elif ((used_pct >= POSEIDON_BYPASS_USED_PCT || avail < POSEIDON_MIN_AVAIL_BYTES)); then
+    printf 'bypass\n'
+  elif ((used_pct >= POSEIDON_WARN_USED_PCT)); then
+    printf 'warn\n'
+  else
+    printf 'ok\n'
+  fi
+}
+
+poseidon_pressure_hysteresis() {
+  local raw="$1"
+  local delivered="$2"
+  local avail used_pct
+  read -r avail used_pct <<<"$(poseidon_df_fields)"
+  case "$raw" in
+    critical) printf 'critical\n' ; return ;;
+    bypass)
+      if [[ "$delivered" == "critical" ]]; then
+        printf 'critical\n'
+      else
+        printf 'bypass\n'
+      fi
+      return
+      ;;
+    warn)
+      if [[ "$delivered" == "critical" || "$delivered" == "bypass" ]]; then
+        printf '%s\n' "$delivered"
+      else
+        printf 'warn\n'
+      fi
+      return
+      ;;
+  esac
+  if [[ "$delivered" == "ok" || "$delivered" == "" ]]; then
+    printf 'ok\n'
+    return
+  fi
+  if ((used_pct < POSEIDON_RECOVERY_USED_PCT && avail > POSEIDON_RECOVERY_AVAIL_BYTES)); then
+    printf 'ok\n'
+  else
+    printf '%s\n' "$delivered"
+  fi
+}
+
+old_target_status() {
+  if [[ -L "$POSEIDON_OLD_TARGET" ]]; then
+    printf 'symlink\n'
+    return
+  fi
+  if [[ ! -d "$POSEIDON_OLD_TARGET" ]]; then
+    printf 'missing\n'
+    return
+  fi
+  if [[ -n "$(find "$POSEIDON_OLD_TARGET" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]]; then
+    printf 'nonempty\n'
+    return
+  fi
+  if [[ -w "$POSEIDON_OLD_TARGET" ]]; then
+    printf 'writable\n'
+    return
+  fi
+  printf 'ok\n'
+}
+
+sccache_config_status() {
+  local conf="${POSEIDON_SCCACHE_CONF}"
+  local dir size
+  if [[ ! -f "$conf" ]]; then
+    printf 'missing\n'
+    return
+  fi
+  dir="$(awk -F= '/^dir[ \t]*=/ {gsub(/[ "]+/, "", $2); print $2; exit}' "$conf")"
+  size="$(awk -F= '/^size[ \t]*=/ {gsub(/[ "]+/, "", $2); print $2; exit}' "$conf")"
+  if [[ "$dir" != "$POSEIDON_SCCACHE_DIR" || "$size" != "$POSEIDON_SCCACHE_SIZE" ]]; then
+    printf 'drift\n'
+    return
+  fi
+  printf 'ok\n'
+}
+
+scratch_bytes() {
+  if [[ -n "${POSEIDON_FAKE_SCRATCH_BYTES-}" ]]; then
+    printf '%s\n' "$POSEIDON_FAKE_SCRATCH_BYTES"
+    return 0
+  fi
+  if [[ ! -d "$SCRATCH_ROOT" ]]; then
+    printf '0\n'
+    return 0
+  fi
+  timeout "$DU_TIMEOUT" "$DU_BIN" -sb "$SCRATCH_ROOT" 2>/dev/null | awk '{print $1}'
+}
+
+smart_prom_value() {
+  local metric="$1"
+  local disk="$2"
+  local file="$3"
+  awk -v metric="$metric" -v disk="$disk" '
+    $0 ~ "^" metric "\\{" && $0 ~ "disk=\"" disk "\"" {
+      print $NF
+      exit
+    }
+  ' "$file"
+}
+
+smart_status() {
+  local file="$POSEIDON_SMART_PROM"
+  local now mtime age disk realloc runtime uncorrectable healthy run_ts
+  now="$(poseidon_now)"
+  if [[ ! -f "$file" ]]; then
+    printf 'missing\n'
+    return
+  fi
+  mtime="$("$STAT_BIN" -c '%Y' "$file")"
+  age=$((now - mtime))
+  if ((age > POSEIDON_SMART_STALE_SECONDS)); then
+    printf 'stale\n'
+    return
+  fi
+  disk="${POSEIDON_SMART_DISK}"
+  if [[ -z "$disk" ]]; then
+    local source pk
+    source="$("$FINDMNT_BIN" -M "$POSEIDON_MOUNT" -n -o SOURCE 2>/dev/null || true)"
+    if [[ -n "$source" ]] && command -v lsblk >/dev/null 2>&1; then
+      pk="$(lsblk -no PKNAME "$source" 2>/dev/null || true)"
+      if [[ -n "$pk" ]]; then
+        disk="/dev/${pk}"
+      fi
+    fi
+  fi
+  if [[ -z "$disk" ]]; then
+    printf 'inspect\n'
+    return
+  fi
+  realloc="$(smart_prom_value smartmon_reallocated_sector_ct_raw_value "$disk" "$file")"
+  runtime="$(smart_prom_value smartmon_runtime_bad_block_raw_value "$disk" "$file")"
+  uncorrectable="$(smart_prom_value smartmon_offline_uncorrectable_raw_value "$disk" "$file")"
+  healthy="$(smart_prom_value smartmon_device_smart_healthy "$disk" "$file")"
+  run_ts="$(smart_prom_value smartmon_smartctl_run "$disk" "$file")"
+  if [[ -n "$run_ts" ]]; then
+    run_ts="${run_ts%%.*}"
+    if ((now - run_ts > POSEIDON_SMART_STALE_SECONDS)); then
+      printf 'stale\n'
+      return
+    fi
+  fi
+  realloc="${realloc:-0}"
+  runtime="${runtime:-0}"
+  uncorrectable="${uncorrectable:-0}"
+  realloc="${realloc%%.*}"
+  runtime="${runtime%%.*}"
+  uncorrectable="${uncorrectable%%.*}"
+  if [[ -n "$healthy" && "$healthy" != "1" ]]; then
+    printf 'unhealthy\n'
+    return
+  fi
+  if ((realloc > POSEIDON_SMART_BASELINE_REALLOC || runtime > POSEIDON_SMART_BASELINE_RUNTIME || uncorrectable > POSEIDON_SMART_BASELINE_UNCORRECTABLE)); then
+    printf 'worse\n'
+    return
+  fi
+  printf 'ok\n'
+}
+
+maybe_hourly_scratch() {
+  local last now bytes
+  last="$(state_get last_hourly_du 0)"
+  now="$(poseidon_now)"
+  if ((now - last < HOURLY_SECONDS)); then
+    return 0
+  fi
+  bytes="$(scratch_bytes || true)"
+  if [[ -z "$bytes" ]]; then
+    transition inspect error "⚠️" \
+      "Poseidon watcher could not measure managed scratch under ${SCRATCH_ROOT}." \
+      "Do not treat a missing measurement as an empty healthy volume."
+    return 0
+  fi
+  local prev ticks
+  prev="$(state_get scratch_last_bytes 0)"
+  ticks="$(state_get scratch_over_ticks 0)"
+  if ((bytes > POSEIDON_SCRATCH_SOFT_BYTES)); then
+    if ((prev > POSEIDON_SCRATCH_SOFT_BYTES && bytes >= prev)); then
+      ticks=$((ticks + 1))
+    else
+      ticks=1
+    fi
+  else
+    ticks=0
+  fi
+  state_set_many "last_hourly_du=${now}" "scratch_last_bytes=${bytes}" "scratch_over_ticks=${ticks}"
+  if ((ticks >= 2)); then
+    transition scratch stale "⚠️" \
+      "Managed SASE scratch is ${bytes} bytes, above the 16 GiB soft target, with no reaper progress across two hourly checks." \
+      "Inspect stale or ineligible entries under ${SCRATCH_ROOT}. Soft cleanup is not a hard size cap."
+  else
+    transition scratch ok "✅" \
+      "Managed SASE scratch is no longer stuck above its soft target."
+  fi
+}
+
+check_poseidon() {
+  local delivered raw desired avail used_pct
+  delivered="$(state_get delivered_poseidon ok)"
+  if ! poseidon_mount_ok; then
+    transition poseidon_mount error "⚠️" \
+      "Poseidon is missing, has the wrong UUID, or is a symlink/redirection." \
+      "Expected mount ${POSEIDON_MOUNT} UUID ${POSEIDON_UUID}. Compiler cache writes are bypassed."
+    return
+  fi
+  transition poseidon_mount ok "✅" \
+    "Poseidon mount ${POSEIDON_MOUNT} (${POSEIDON_UUID}) is present again."
+  read -r avail used_pct <<<"$(poseidon_df_fields)"
+  raw="$(poseidon_pressure_raw)"
+  if [[ "$raw" == "inspect" ]]; then
+    transition inspect error "⚠️" \
+      "Poseidon watcher could not read capacity for ${POSEIDON_MOUNT}."
+    return
+  fi
+  desired="$(poseidon_pressure_hysteresis "$raw" "$delivered")"
+  case "$desired" in
+    warn)
+      transition poseidon warn "⚠️" \
+        "Poseidon is ${used_pct}% used with ${avail} bytes free." \
+        "Compiler cache is at ${POSEIDON_SCCACHE_DIR} with a ${POSEIDON_SCCACHE_SIZE}-byte LRU budget. This is not a filesystem quota."
+      ;;
+    bypass)
+      transition poseidon bypass "⚠️" \
+        "Poseidon is ${used_pct}% used with ${avail} bytes free (80% or 32 GiB floor)." \
+        "New compiler-cache requests bypass sccache. Running builds are left alone."
+      ;;
+    critical)
+      transition poseidon critical "🚨" \
+        "Poseidon is ${used_pct}% used with ${avail} bytes free." \
+        "Inspect unexpected raw output or other disk use. sccache cannot clean arbitrary target directories."
+      ;;
+    ok)
+      transition poseidon ok "✅" \
+        "Poseidon pressure recovered below 70% used and above 48 GiB free (${avail} bytes free, ${used_pct}% used)."
+      ;;
+  esac
+}
+
+check_old_target() {
+  local status
+  status="$(old_target_status)"
+  case "$status" in
+    ok)
+      transition old_target ok "✅" "Retired Poseidon cargo-target is empty and not writable."
+      ;;
+    writable)
+      transition old_target writable "⚠️" \
+        "${POSEIDON_OLD_TARGET} is writable. Stale target-dir overrides can refill Poseidon."
+      ;;
+    nonempty)
+      transition old_target nonempty "⚠️" \
+        "${POSEIDON_OLD_TARGET} has contents. Identify and migrate that writer before changing permissions."
+      ;;
+    symlink)
+      transition old_target symlink "⚠️" \
+        "${POSEIDON_OLD_TARGET} is a symlink, not a real directory on Poseidon."
+      ;;
+    missing)
+      transition old_target missing "⚠️" \
+        "${POSEIDON_OLD_TARGET} is missing; the retired destination cannot be enforced."
+      ;;
+  esac
+}
+
+check_sccache() {
+  local status
+  status="$(sccache_config_status)"
+  case "$status" in
+    ok)
+      transition sccache ok "✅" "Managed sccache config matches the 40 GiB Poseidon disk backend."
+      ;;
+    missing)
+      transition sccache missing "⚠️" \
+        "Managed sccache config ${POSEIDON_SCCACHE_CONF} is missing."
+      ;;
+    drift)
+      transition sccache drift "⚠️" \
+        "sccache dir/size drifted from ${POSEIDON_SCCACHE_DIR} / ${POSEIDON_SCCACHE_SIZE}, or socket ${POSEIDON_SCCACHE_SOCK} is not the managed one."
+      ;;
+  esac
+}
+
+check_root() {
+  local avail delivered
+  avail="$(root_df_avail)"
+  delivered="$(state_get delivered_root ok)"
+  if [[ -z "$avail" ]]; then
+    transition inspect error "⚠️" "Could not read root-filesystem free space."
+    return
+  fi
+  if ((avail < POSEIDON_MIN_AVAIL_BYTES)); then
+    transition root low "⚠️" \
+      "Root filesystem has ${avail} bytes free, below the 32 GiB floor." \
+      "Managed scratch is a separate soft-retention concern from Poseidon."
+  elif [[ "$delivered" != "ok" ]] && ((avail > POSEIDON_RECOVERY_AVAIL_BYTES)); then
+    transition root ok "✅" \
+      "Root filesystem recovered above 48 GiB free (${avail} bytes)."
+  elif [[ "$delivered" != "ok" ]]; then
+    :
+  else
+    state_set_many "delivered_root=ok" "level_root=ok"
+  fi
+}
+
+check_smart() {
+  local status
+  status="$(smart_status)"
+  case "$status" in
+    ok)
+      transition smart ok "✅" "Poseidon SMART counters are at the confirmed baseline."
+      ;;
+    worse)
+      transition smart worse "⚠️" \
+        "Poseidon SMART reallocated or runtime bad-block counts increased past the baseline of 41, or uncorrectable errors appeared."
+      ;;
+    unhealthy)
+      transition smart unhealthy "⚠️" "Poseidon SMART health is no longer PASSED."
+      ;;
+    stale)
+      transition smart stale "⚠️" \
+        "SMART collector output is stale or missing at ${POSEIDON_SMART_PROM}."
+      ;;
+    missing)
+      transition smart missing "⚠️" \
+        "SMART collector output is missing at ${POSEIDON_SMART_PROM}."
+      ;;
+    inspect)
+      transition smart inspect "⚠️" \
+        "Could not map Poseidon to a SMART disk series. Device names can change; identify by mount UUID."
+      ;;
+  esac
+}
+
+run_checks() {
+  mkdir -p "$STATE_DIR"
+  exec 9>"$LOCK_FILE"
+  if ! flock -n 9; then
+    exit 0
+  fi
+  check_poseidon
+  check_old_target
+  check_sccache
+  check_root
+  maybe_hourly_scratch
+  check_smart
+}
+
+setup_notification() {
+  send_notification setup "📦" \
+    "SETUP: Poseidon Cargo-cache watcher is enabled on Athena." \
+    "Compiler cache is ${POSEIDON_SCCACHE_DIR} (40 GiB LRU budget). Ordinary Cargo intermediates use ~/.cache/sase/tmp/build-targets. This is a setup notice, not a pressure alert."
+}
+
+main() {
+  local setup=0
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -h | --help)
+        usage
+        exit 0
+        ;;
+      --setup)
+        setup=1
+        shift
+        ;;
+      *)
+        printf 'unknown argument: %s\n' "$1" >&2
+        usage >&2
+        exit 2
+        ;;
+    esac
+  done
+  mkdir -p "$STATE_DIR"
+  if ((setup)); then
+    setup_notification || true
+  fi
+  run_checks
+}
+
+main "$@"
