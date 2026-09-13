@@ -1,16 +1,21 @@
 #!/bin/bash
 
 ##############################################################################
-#  Print the 1-minute load average, formatted for the tmux status line.      #
+#  Print load and RAM usage, formatted for the tmux status line.             #
 #                                                                            #
-#  The output carries its own leading space and parentheses -- " (20.71)" -- #
-#  so tmux.conf can append `#(tmux_load_avg)` directly after `#(hostname)`   #
-#  and render `athena (20.71)`. On ANY failure (uptime missing, uptime       #
-#  erroring, output that does not parse) this prints nothing, so the status  #
-#  line degrades to a bare `athena` rather than an empty `athena ()`.        #
+#  The output carries its own leading space and parentheses --               #
+#  " (20.71/63%)" -- so tmux.conf can append `#(tmux_load_avg)` directly    #
+#  after `#(hostname)` and render `athena (20.71/63%)`. The first value is  #
+#  uptime's 1-minute load average, not CPU utilization. The second value is #
+#  current physical RAM usage, rounded to a whole percent. Only memory gets #
+#  a percent sign. If memory cannot be read, the status keeps the old load  #
+#  only form: " (20.71)". On ANY load failure (uptime missing, uptime       #
+#  erroring, output that does not parse) this prints nothing, so the status #
+#  line degrades to a bare `athena` rather than an empty `athena ()`.       #
 #                                                                            #
 #  tmux runs this every `status-interval` (2s), so it deliberately does not  #
-#  source ~/lib/bugyi.sh and forks `uptime` exactly once.                    #
+#  source ~/lib/bugyi.sh. Linux forks only `uptime`; macOS forks `uptime`,  #
+#  `vm_stat`, and `sysctl`.                                                 #
 #                                                                            #
 #  The `uptime` wording differs by platform and both are matched here:       #
 #    Linux: `... 3 users,  load average: 20.71, 24.19, 24.33`                #
@@ -24,8 +29,10 @@ function usage() {
 usage: $(basename "$0") [-h]
 
 Print the 1-minute load average, parsed from \`uptime\`, decorated for the tmux
-status line as " (<load>)". Prints nothing when the load average cannot be read,
-so the status line falls back to showing just the hostname.
+status line with current physical RAM usage as " (<load>/<memory>%)". Prints the
+load-only form, " (<load>)", when memory cannot be read. Prints nothing when the
+load average cannot be read, so the status line falls back to showing just the
+hostname.
 
 Optional Arguments
 ------------------
@@ -34,13 +41,14 @@ Optional Arguments
 
 Examples
 --------
-tmux_load_avg     # ' (20.71)'
+tmux_load_avg     # ' (20.71/63%)'
+tmux_load_avg     # ' (20.71)' when memory is unavailable
 EOM
 }
 
 function run() {
-  while [[ -n "$1" ]]; do
-    case $1 in
+  if [[ -n "$1" ]]; then
+    case "$1" in
     -h | --help)
       usage
       exit 0
@@ -51,13 +59,17 @@ function run() {
       exit 2
       ;;
     esac
-    shift
-  done
+  fi
 
   local load
   load="$(one_minute_load)" || exit 0
 
-  printf ' (%s)' "${load}"
+  local memory
+  if memory="$(memory_percent 2> /dev/null)" && [[ -n "${memory}" ]]; then
+    printf ' (%s/%s%%)' "${load}" "${memory}"
+  else
+    printf ' (%s)' "${load}"
+  fi
 }
 
 # Echo the 1-minute load average, or return non-zero if it cannot be determined.
@@ -75,4 +87,141 @@ function one_minute_load() {
   printf '%s' "${BASH_REMATCH[1]/,/.}"
 }
 
-run "$@"
+function memory_percent() {
+  case "${OSTYPE:-}" in
+  linux*)
+    linux_memory_percent
+    ;;
+  darwin*)
+    darwin_memory_percent
+    ;;
+  *)
+    return 1
+    ;;
+  esac
+}
+
+function linux_memory_percent() {
+  linux_memory_percent_from_file /proc/meminfo
+}
+
+function linux_memory_percent_from_file() {
+  local meminfo_path="$1"
+
+  linux_memory_percent_from_meminfo 2> /dev/null < "${meminfo_path}"
+}
+
+function linux_memory_percent_from_meminfo() {
+  local key value rest
+  local mem_total=''
+  local mem_available=''
+
+  while IFS=' :' read -r key value rest; do
+    case "${key}" in
+    MemTotal)
+      mem_total="${value}"
+      ;;
+    MemAvailable)
+      mem_available="${value}"
+      ;;
+    esac
+
+    [[ -n "${mem_total}" && -n "${mem_available}" ]] && break
+  done
+
+  mem_total="$(parse_uint "${mem_total}")" || return 1
+  mem_available="$(parse_uint "${mem_available}")" || return 1
+
+  ((mem_total > 0)) || return 1
+  ((mem_available <= mem_total)) || return 1
+
+  # Linux MemAvailable estimates RAM available to new applications without
+  # swapping, accounting for reclaimable cache and kernel reserves. Memory use
+  # here is physical RAM minus that availability estimate, excluding swap.
+  round_half_up_percent "$((mem_total - mem_available))" "${mem_total}"
+}
+
+function darwin_memory_percent() {
+  local vm_stat_out physical_bytes
+
+  vm_stat_out="$(LC_ALL=C vm_stat 2> /dev/null)" || return 1
+  physical_bytes="$(LC_ALL=C sysctl -n hw.memsize 2> /dev/null)" || return 1
+
+  darwin_memory_percent_from_vm_stat "${physical_bytes}" <<< "${vm_stat_out}"
+}
+
+function darwin_memory_percent_from_vm_stat() {
+  local physical_bytes
+  physical_bytes="$(parse_uint "$1")" || return 1
+  ((physical_bytes > 0)) || return 1
+
+  local line
+  local page_size=''
+  local anonymous=''
+  local purgeable=''
+  local wired=''
+  local compressor=''
+
+  while IFS= read -r line; do
+    if [[ -z "${page_size}" \
+      && "${line}" =~ page[[:space:]]+size[[:space:]]+of[[:space:]]+([0-9]+)[[:space:]]+bytes ]]; then
+      page_size="${BASH_REMATCH[1]}"
+      continue
+    fi
+
+    if [[ "${line}" =~ ^Anonymous[[:space:]]+pages:[[:space:]]*([0-9]+)\.?[[:space:]]*$ ]]; then
+      anonymous="${BASH_REMATCH[1]}"
+    elif [[ "${line}" =~ ^Pages[[:space:]]+purgeable:[[:space:]]*([0-9]+)\.?[[:space:]]*$ ]]; then
+      purgeable="${BASH_REMATCH[1]}"
+    elif [[ "${line}" =~ ^Pages[[:space:]]+wired[[:space:]]+down:[[:space:]]*([0-9]+)\.?[[:space:]]*$ ]]; then
+      wired="${BASH_REMATCH[1]}"
+    elif [[ "${line}" =~ ^Pages[[:space:]]+occupied[[:space:]]+by[[:space:]]+compressor:[[:space:]]*([0-9]+)\.?[[:space:]]*$ ]]; then
+      compressor="${BASH_REMATCH[1]}"
+    elif [[ "${line}" =~ ^Pages[[:space:]]+used[[:space:]]+by[[:space:]]+VM[[:space:]]+compressor:[[:space:]]*([0-9]+)\.?[[:space:]]*$ ]]; then
+      compressor="${BASH_REMATCH[1]}"
+    fi
+  done
+
+  page_size="$(parse_uint "${page_size}")" || return 1
+  anonymous="$(parse_uint "${anonymous}")" || return 1
+  purgeable="$(parse_uint "${purgeable}")" || return 1
+  wired="$(parse_uint "${wired}")" || return 1
+  compressor="$(parse_uint "${compressor}")" || return 1
+
+  ((page_size > 0)) || return 1
+  ((purgeable <= anonymous)) || return 1
+
+  # macOS memory use is resident, non-purgeable anonymous memory plus wired RAM
+  # and RAM occupied by compressed pages. This excludes file-backed cache,
+  # purgeable anonymous pages, swap, and logical pages stored in the compressor.
+  local used_pages used_bytes
+  used_pages="$((anonymous - purgeable + wired + compressor))"
+  used_bytes="$((used_pages * page_size))"
+
+  ((used_bytes <= physical_bytes)) || return 1
+
+  round_half_up_percent "${used_bytes}" "${physical_bytes}"
+}
+
+function parse_uint() {
+  local raw="$1"
+
+  [[ "${raw}" =~ ^[[:space:]]*([0-9]+)[[:space:]]*$ ]] || return 1
+
+  printf '%s' "$((10#${BASH_REMATCH[1]}))"
+}
+
+function round_half_up_percent() {
+  local used="$1"
+  local total="$2"
+
+  ((total > 0)) || return 1
+  ((used >= 0)) || return 1
+  ((used <= total)) || return 1
+
+  printf '%s' "$(((200 * used + total) / (2 * total)))"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  run "$@"
+fi
