@@ -14,6 +14,8 @@ function set_up() {
   SCCACHE_CALLS="${TEST_TMP}/sccache_calls.txt"
   mkdir -p "${FAKE_BIN}" "${TEST_TMP}/poseidon/sccache"
   chmod +x "${WRAPPER}"
+  ln -s /usr/bin/dirname "${FAKE_BIN}/dirname"
+  ln -s /usr/bin/pwd "${FAKE_BIN}/pwd"
 
   cat >"${FAKE_BIN}/rustc" <<EOF
 #!/bin/bash
@@ -40,12 +42,12 @@ function tear_down() {
 
 function run_wrapper() {
   WRAPPER_RC=0
-  PATH="${FAKE_BIN}:${PATH}" \
+  PATH="${WRAPPER_PATH:-${FAKE_BIN}:${PATH}}" \
     POSEIDON_MOUNT="${TEST_TMP}/poseidon" \
     POSEIDON_SCCACHE_DIR="${TEST_TMP}/poseidon/sccache" \
     POSEIDON_SCCACHE_CONF="${TEST_TMP}/sccache.conf" \
     POSEIDON_SCCACHE_SOCK="${TEST_TMP}/poseidon/sccache/sccache.sock" \
-    bash "${WRAPPER}" "${FAKE_BIN}/rustc" --crate-name demo src/lib.rs || WRAPPER_RC=$?
+    /bin/bash "${WRAPPER}" "${FAKE_BIN}/rustc" --crate-name demo src/lib.rs || WRAPPER_RC=$?
 }
 
 function test_runs_real_compiler_when_mount_is_missing() {
@@ -129,6 +131,7 @@ function test_falls_back_when_sccache_is_missing() {
     POSEIDON_FAKE_UUID=e0d96fde-be60-4f3b-bed7-3e9700060fdb \
     POSEIDON_FAKE_AVAIL=200000000000 \
     POSEIDON_FAKE_USED_PCT=1 \
+    WRAPPER_PATH="${FAKE_BIN}" \
     run_wrapper
   assert_same "0" "${WRAPPER_RC}"
   assert_file_exists "${COMPILER_CALLS}"
