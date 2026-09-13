@@ -1,21 +1,26 @@
 #!/bin/bash
 
 ##############################################################################
-#  Print load and RAM usage, formatted for the tmux status line.             #
+#  Print CPU and memory pressure, formatted for the tmux status line.        #
 #                                                                            #
-#  The output carries its own leading space and parentheses --               #
-#  " (20.71/63%)" -- so tmux.conf can append `#(tmux_load_avg)` directly    #
-#  after `#(hostname)` and render `athena (20.71/63%)`. The first value is  #
-#  uptime's 1-minute load average, not CPU utilization. The second value is #
-#  current physical RAM usage, rounded to a whole percent. Only memory gets #
-#  a percent sign. If memory cannot be read, the status keeps the old load  #
-#  only form: " (20.71)". On ANY load failure (uptime missing, uptime       #
-#  erroring, output that does not parse) this prints nothing, so the status #
-#  line degrades to a bare `athena` rather than an empty `athena ()`.       #
+#  The output carries its own leading space and tmux style markup --         #
+#  " #[fg=#828bb8]cpu #[default]40% #[fg=#828bb8]mem #[default]65%#[default]"#
+#  -- so tmux.conf can append `#(tmux_load_avg)` directly after              #
+#  `#(hostname)` and render `athena cpu 40% mem 65%` with the labels dimmed  #
+#  and the numbers colored by pressure. `cpu` is uptime's 1-minute load      #
+#  average divided by the number of online logical CPUs, rounded to a whole #
+#  percent; it is load per core, not an instantaneous utilization sample,   #
+#  and it may exceed 100% when more tasks are runnable than there are       #
+#  cores. `mem` is current physical RAM usage, rounded to a whole percent.  #
+#  Each metric is independent: a missing CPU count does not hide memory,    #
+#  and a memory failure does not hide CPU. A healthy value inherits the     #
+#  status line's color; `cpu` turns yellow at 80% and red at 100%; `mem`    #
+#  turns yellow at 85% and red at 95%. With neither metric available this   #
+#  prints nothing, so the status line degrades to a bare `athena`.          #
 #                                                                            #
 #  tmux runs this every `status-interval` (2s), so it deliberately does not  #
 #  source ~/lib/bugyi.sh. Linux forks only `uptime`; macOS forks `uptime`,  #
-#  `vm_stat`, and `sysctl`.                                                 #
+#  one combined `sysctl`, and `vm_stat`.                                    #
 #                                                                            #
 #  The `uptime` wording differs by platform and both are matched here:       #
 #    Linux: `... 3 users,  load average: 20.71, 24.19, 24.33`                #
@@ -24,15 +29,28 @@
 
 set -e
 
+readonly STYLE_LABEL='fg=#828bb8'
+readonly STYLE_WARN='fg=#ffc777'
+readonly STYLE_CRIT='fg=#ff757f'
+readonly STYLE_HEALTHY='default'
+
+readonly CPU_WARN_THRESHOLD=80
+readonly CPU_CRIT_THRESHOLD=100
+readonly MEM_WARN_THRESHOLD=85
+readonly MEM_CRIT_THRESHOLD=95
+
 function usage() {
   cat <<EOM
 usage: $(basename "$0") [-h]
 
-Print the 1-minute load average, parsed from \`uptime\`, decorated for the tmux
-status line with current physical RAM usage as " (<load>/<memory>%)". Prints the
-load-only form, " (<load>)", when memory cannot be read. Prints nothing when the
-load average cannot be read, so the status line falls back to showing just the
-hostname.
+Print CPU and memory pressure, decorated for the tmux status line as tmux
+style markup: " #[fg=#828bb8]cpu #[default]40% #[fg=#828bb8]mem #[default]65%#[default]".
+\`cpu\` is the 1-minute load average (from \`uptime\`) divided by the number of
+online logical CPUs, rounded to a whole percent; it may exceed 100%. \`mem\` is
+current physical RAM usage, rounded to a whole percent. Each metric is shown
+only when it can be measured; with neither available this prints nothing.
+Healthy values use the status line's default color. \`cpu\` turns yellow at
+80% and red at 100%. \`mem\` turns yellow at 85% and red at 95%.
 
 Optional Arguments
 ------------------
@@ -41,8 +59,8 @@ Optional Arguments
 
 Examples
 --------
-tmux_load_avg     # ' (20.71/63%)'
-tmux_load_avg     # ' (20.71)' when memory is unavailable
+tmux_load_avg     # ' #[fg=#828bb8]cpu #[default]40% #[fg=#828bb8]mem #[default]65%#[default]'
+tmux_load_avg     # ' #[fg=#828bb8]mem #[default]65%#[default]' when CPU is unavailable
 EOM
 }
 
@@ -61,14 +79,67 @@ function run() {
     esac
   fi
 
-  local load
-  load="$(one_minute_load)" || exit 0
+  local cpu='' mem=''
 
-  local memory
-  if memory="$(memory_percent 2> /dev/null)" && [[ -n "${memory}" ]]; then
-    printf ' (%s/%s%%)' "${load}" "${memory}"
-  else
-    printf ' (%s)' "${load}"
+  case "${OSTYPE:-}" in
+  linux*)
+    collect_linux_metrics
+    ;;
+  darwin*)
+    collect_darwin_metrics
+    ;;
+  *)
+    ;;
+  esac
+
+  render_segment "${cpu}" "${mem}"
+}
+
+# Populates the `cpu` and `mem` variables from the caller's scope (`run`'s
+# locals), since command substitution would drop assignments made in a
+# subshell.
+function collect_linux_metrics() {
+  local load
+  load="$(one_minute_load)" || load=''
+
+  local cpus
+  cpus="$(linux_cpu_count)" || cpus=''
+
+  if [[ -n "${load}" && -n "${cpus}" ]]; then
+    cpu="$(cpu_percent_from_load "${load}" "${cpus}")" || cpu=''
+  fi
+
+  mem="$(linux_memory_percent 2> /dev/null)" || mem=''
+}
+
+# Populates the `cpu` and `mem` variables from the caller's scope, mirroring
+# `collect_linux_metrics`.
+function collect_darwin_metrics() {
+  local load
+  load="$(one_minute_load)" || load=''
+
+  local sysctl_out
+  if ! sysctl_out="$(LC_ALL=C sysctl -n hw.logicalcpu hw.memsize 2> /dev/null)"; then
+    return 0
+  fi
+
+  local cpu_count_line mem_size_line
+  {
+    IFS= read -r cpu_count_line
+    IFS= read -r mem_size_line
+  } <<< "${sysctl_out}"
+
+  local cpus
+  if [[ -n "${load}" ]] && parse_uint "${cpu_count_line}" && cpus="${REPLY}" && ((cpus > 0)); then
+    cpu="$(cpu_percent_from_load "${load}" "${cpus}")" || cpu=''
+  fi
+
+  local mem_bytes
+  if parse_uint "${mem_size_line}" && mem_bytes="${REPLY}" && ((mem_bytes > 0)); then
+    local vm_stat_out
+    if vm_stat_out="$(LC_ALL=C vm_stat 2> /dev/null)"; then
+      mem="$(darwin_memory_percent_from_vm_stat "${mem_bytes}" <<< "${vm_stat_out}")" || mem=''
+    fi
   fi
 }
 
@@ -81,24 +152,100 @@ function one_minute_load() {
   local uptime_out
   uptime_out="$(LC_ALL=C uptime 2> /dev/null)" || return 1
 
+  parse_uptime_load "${uptime_out}"
+}
+
+function parse_uptime_load() {
+  local uptime_out="$1"
+
   [[ "${uptime_out}" =~ load[[:space:]]+averages?:[[:space:]]*([0-9]+([.,][0-9]+)?) ]] \
     || return 1
 
   printf '%s' "${BASH_REMATCH[1]/,/.}"
 }
 
-function memory_percent() {
-  case "${OSTYPE:-}" in
-  linux*)
-    linux_memory_percent
-    ;;
-  darwin*)
-    darwin_memory_percent
-    ;;
-  *)
-    return 1
-    ;;
-  esac
+# Convert a dot-decimal load string (e.g. "25.56") to integer hundredths
+# (e.g. 2556), without floating point. Rejects overlong integer parts so the
+# arithmetic below cannot overflow.
+function load_to_hundredths() {
+  local load="$1"
+
+  [[ "${load}" =~ ^([0-9]+)(\.([0-9]+))?$ ]] || return 1
+
+  local int_part="${BASH_REMATCH[1]}"
+  local frac_part="${BASH_REMATCH[3]}"
+
+  ((${#int_part} <= 6)) || return 1
+
+  frac_part="${frac_part:0:2}"
+  while ((${#frac_part} < 2)); do
+    frac_part="${frac_part}0"
+  done
+
+  REPLY="$((10#${int_part} * 100 + 10#${frac_part}))"
+}
+
+# CPU percent is the half-up rounded `100 * load / cpus`, computed as
+# `(2 * hundredths + cpus) / (2 * cpus)` since `hundredths` is already
+# `100 * load`. May exceed 100.
+function cpu_percent_from_load() {
+  local load="$1" cpus="$2"
+
+  load_to_hundredths "${load}" || return 1
+  local hundredths="${REPLY}"
+
+  parse_uint "${cpus}" || return 1
+  cpus="${REPLY}"
+  ((cpus > 0)) || return 1
+
+  printf '%s' "$(((2 * hundredths + cpus) / (2 * cpus)))"
+}
+
+function linux_cpu_count() {
+  linux_cpu_count_from_file /sys/devices/system/cpu/online
+}
+
+function linux_cpu_count_from_file() {
+  local path="$1"
+
+  local online_line
+  IFS= read -r online_line 2> /dev/null < "${path}" || return 1
+
+  linux_cpu_count_from_online "${online_line}"
+}
+
+# Count logical CPUs from a comma-separated list of `N` or `N-M` decimal
+# items, e.g. `0-63` or `0-3,8-11`. Rejects empty input, non-digits,
+# reversed ranges, and dangling `-` or `,`.
+function linux_cpu_count_from_online() {
+  local line="$1"
+
+  [[ -n "${line}" ]] || return 1
+  [[ "${line}" =~ ^[0-9,-]+$ ]] || return 1
+  [[ "${line}" != *,,* && "${line}" != ,* && "${line}" != *, ]] || return 1
+  [[ "${line}" != *--* && "${line}" != -* && "${line}" != *- ]] || return 1
+
+  local IFS=','
+  local items
+  read -ra items <<< "${line}"
+  local item total=0
+
+  for item in "${items[@]}"; do
+    if [[ "${item}" =~ ^([0-9]+)-([0-9]+)$ ]]; then
+      local lo hi
+      lo="$((10#${BASH_REMATCH[1]}))"
+      hi="$((10#${BASH_REMATCH[2]}))"
+      ((hi >= lo)) || return 1
+      total=$((total + hi - lo + 1))
+    elif [[ "${item}" =~ ^[0-9]+$ ]]; then
+      total=$((total + 1))
+    else
+      return 1
+    fi
+  done
+
+  ((total > 0)) || return 1
+  printf '%s' "${total}"
 }
 
 function linux_memory_percent() {
@@ -129,8 +276,10 @@ function linux_memory_percent_from_meminfo() {
     [[ -n "${mem_total}" && -n "${mem_available}" ]] && break
   done
 
-  mem_total="$(parse_uint "${mem_total}")" || return 1
-  mem_available="$(parse_uint "${mem_available}")" || return 1
+  parse_uint "${mem_total}" || return 1
+  mem_total="${REPLY}"
+  parse_uint "${mem_available}" || return 1
+  mem_available="${REPLY}"
 
   ((mem_total > 0)) || return 1
   ((mem_available <= mem_total)) || return 1
@@ -141,18 +290,9 @@ function linux_memory_percent_from_meminfo() {
   round_half_up_percent "$((mem_total - mem_available))" "${mem_total}"
 }
 
-function darwin_memory_percent() {
-  local vm_stat_out physical_bytes
-
-  vm_stat_out="$(LC_ALL=C vm_stat 2> /dev/null)" || return 1
-  physical_bytes="$(LC_ALL=C sysctl -n hw.memsize 2> /dev/null)" || return 1
-
-  darwin_memory_percent_from_vm_stat "${physical_bytes}" <<< "${vm_stat_out}"
-}
-
 function darwin_memory_percent_from_vm_stat() {
-  local physical_bytes
-  physical_bytes="$(parse_uint "$1")" || return 1
+  parse_uint "$1" || return 1
+  local physical_bytes="${REPLY}"
   ((physical_bytes > 0)) || return 1
 
   local line
@@ -182,11 +322,16 @@ function darwin_memory_percent_from_vm_stat() {
     fi
   done
 
-  page_size="$(parse_uint "${page_size}")" || return 1
-  anonymous="$(parse_uint "${anonymous}")" || return 1
-  purgeable="$(parse_uint "${purgeable}")" || return 1
-  wired="$(parse_uint "${wired}")" || return 1
-  compressor="$(parse_uint "${compressor}")" || return 1
+  parse_uint "${page_size}" || return 1
+  page_size="${REPLY}"
+  parse_uint "${anonymous}" || return 1
+  anonymous="${REPLY}"
+  parse_uint "${purgeable}" || return 1
+  purgeable="${REPLY}"
+  parse_uint "${wired}" || return 1
+  wired="${REPLY}"
+  parse_uint "${compressor}" || return 1
+  compressor="${REPLY}"
 
   ((page_size > 0)) || return 1
   ((purgeable <= anonymous)) || return 1
@@ -203,12 +348,14 @@ function darwin_memory_percent_from_vm_stat() {
   round_half_up_percent "${used_bytes}" "${physical_bytes}"
 }
 
+# Sets REPLY to the parsed value rather than printing it, since this is
+# called many times per run and printing would fork a subshell per call.
 function parse_uint() {
   local raw="$1"
 
   [[ "${raw}" =~ ^[[:space:]]*([0-9]+)[[:space:]]*$ ]] || return 1
 
-  printf '%s' "$((10#${BASH_REMATCH[1]}))"
+  REPLY="$((10#${BASH_REMATCH[1]}))"
 }
 
 function round_half_up_percent() {
@@ -220,6 +367,49 @@ function round_half_up_percent() {
   ((used <= total)) || return 1
 
   printf '%s' "$(((200 * used + total) / (2 * total)))"
+}
+
+# Style for a metric value at the given thresholds: healthy below `warn`,
+# warning from `warn` through `crit - 1`, critical at `crit` and above. Sets
+# REPLY rather than printing, to avoid forking a subshell per call.
+function level_style() {
+  local value="$1" warn="$2" crit="$3"
+
+  if ((value >= crit)); then
+    REPLY="${STYLE_CRIT}"
+  elif ((value >= warn)); then
+    REPLY="${STYLE_WARN}"
+  else
+    REPLY="${STYLE_HEALTHY}"
+  fi
+}
+
+# Pure formatter: given the cpu and mem integer percents (or empty strings
+# when unavailable), render the tmux status markup. Prints nothing when both
+# are empty.
+function render_segment() {
+  local cpu="$1" mem="$2"
+  local parts=''
+
+  if [[ -n "${cpu}" ]]; then
+    level_style "${cpu}" "${CPU_WARN_THRESHOLD}" "${CPU_CRIT_THRESHOLD}"
+    parts="#[${STYLE_LABEL}]cpu #[${REPLY}]${cpu}%"
+  fi
+
+  if [[ -n "${mem}" ]]; then
+    level_style "${mem}" "${MEM_WARN_THRESHOLD}" "${MEM_CRIT_THRESHOLD}"
+    local mem_part="#[${STYLE_LABEL}]mem #[${REPLY}]${mem}%"
+
+    if [[ -n "${parts}" ]]; then
+      parts="${parts} ${mem_part}"
+    else
+      parts="${mem_part}"
+    fi
+  fi
+
+  [[ -n "${parts}" ]] || return 0
+
+  printf ' %s#[default]' "${parts}"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
