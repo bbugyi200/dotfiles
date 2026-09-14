@@ -1,0 +1,216 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ -z "${SASE_AGENT:-}" ]]; then
+  exit 0
+fi
+
+payload="$(cat || true)"
+if [[ -z "${payload}" ]]; then
+  exit 0
+fi
+
+if ! command -v python3 >/dev/null 2>&1; then
+  exit 0
+fi
+
+CLAUDE_HOOK_PAYLOAD="${payload}" python3 - <<'PY'
+from __future__ import annotations
+
+import json
+import os
+import re
+import shlex
+import sys
+
+DENIED = frozenset({"doas", "pkexec", "sudo"})
+REDIRECTS = frozenset({">", ">>", "<", "<<", "<<<", "<>", ">&", "<&", ">|", "&>"})
+SEPARATORS = frozenset({"\n", ";", "&", "&&", "||", "|", "|&", "(", ")", "{", "}"})
+ASSIGNMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
+
+
+def _payload_command() -> str | None:
+    try:
+        event = json.loads(os.environ.get("CLAUDE_HOOK_PAYLOAD", ""))
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(event, dict):
+        return None
+    tool_name = event.get("tool_name") or event.get("toolName")
+    if tool_name not in (None, "Bash"):
+        return None
+    tool_input = event.get("tool_input") or event.get("toolInput") or {}
+    if isinstance(tool_input, dict):
+        command = tool_input.get("command")
+    elif isinstance(tool_input, str):
+        command = tool_input
+    else:
+        command = None
+    return command if isinstance(command, str) else None
+
+
+def _tokens(command: str) -> list[str]:
+    lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|(){}<>\n")
+    lexer.whitespace_split = True
+    lexer.whitespace = " \t\r"
+    lexer.commenters = ""
+    return list(lexer)
+
+
+def _basename(word: str) -> str:
+    return word.rsplit("/", 1)[-1]
+
+
+def _is_assignment(word: str) -> bool:
+    return ASSIGNMENT_RE.match(word) is not None
+
+
+def _skip_redirect(words: list[str], index: int) -> int:
+    token = words[index]
+    if (
+        token.isdigit()
+        and index + 1 < len(words)
+        and words[index + 1] in REDIRECTS
+    ):
+        return min(index + 3, len(words))
+    if token in REDIRECTS or re.match(r"^[0-9]*(?:>|>>|<|<>|>&|<&|>\|)$", token):
+        return min(index + 2, len(words))
+    if re.match(r"^[0-9]*(?:>|>>|<|<>|>&|<&|>\|).+", token):
+        return index + 1
+    return index
+
+
+def _next_command_word(words: list[str], index: int) -> int | None:
+    while index < len(words):
+        skipped = _skip_redirect(words, index)
+        if skipped != index:
+            index = skipped
+            continue
+        word = words[index]
+        if _is_assignment(word) or word in {"!", "time"}:
+            index += 1
+            continue
+        return index
+    return None
+
+
+def _sase_sudo_front_door(words: list[str], index: int) -> bool:
+    return (
+        _basename(words[index]) == "sase"
+        and index + 1 < len(words)
+        and words[index + 1] == "sudo"
+    )
+
+
+def _env_payload_starts_denied(words: list[str], index: int) -> bool:
+    index += 1
+    while index < len(words):
+        word = words[index]
+        if word in {"-u", "--unset", "-S", "--split-string"}:
+            index += 2
+            continue
+        if word.startswith("--unset=") or word.startswith("--split-string="):
+            index += 1
+            continue
+        if word.startswith("-"):
+            index += 1
+            continue
+        if _is_assignment(word):
+            index += 1
+            continue
+        break
+    return _words_start_denied(words, index)
+
+
+def _command_payload_starts_denied(words: list[str], index: int) -> bool:
+    index += 1
+    inspect_only = False
+    while index < len(words) and words[index].startswith("-"):
+        option = words[index]
+        if "v" in option or "V" in option:
+            inspect_only = True
+        index += 1
+    if inspect_only:
+        return False
+    return _words_start_denied(words, index)
+
+
+def _exec_payload_starts_denied(words: list[str], index: int) -> bool:
+    index += 1
+    while index < len(words) and words[index].startswith("-"):
+        option = words[index]
+        index += 1
+        if option == "-a" and index < len(words):
+            index += 1
+    return _words_start_denied(words, index)
+
+
+def _words_start_denied(words: list[str], index: int) -> bool:
+    command_index = _next_command_word(words, index)
+    if command_index is None:
+        return False
+    if _sase_sudo_front_door(words, command_index):
+        return False
+    command = _basename(words[command_index])
+    if command in DENIED:
+        return True
+    if command == "env":
+        return _env_payload_starts_denied(words, command_index)
+    if command == "command":
+        return _command_payload_starts_denied(words, command_index)
+    if command == "exec":
+        return _exec_payload_starts_denied(words, command_index)
+    return False
+
+
+def _simple_commands(tokens: list[str]) -> list[list[str]]:
+    commands: list[list[str]] = []
+    current: list[str] = []
+    for token in tokens:
+        if token in SEPARATORS:
+            if current:
+                commands.append(current)
+                current = []
+            continue
+        if token in {"if", "then", "else", "elif", "do", "while", "until"}:
+            if current:
+                commands.append(current)
+                current = []
+            continue
+        if token in {"fi", "done", "esac"}:
+            if current:
+                commands.append(current)
+                current = []
+            continue
+        current.append(token)
+    if current:
+        commands.append(current)
+    return commands
+
+
+def _uses_raw_privilege(command: str) -> bool:
+    try:
+        tokens = _tokens(command)
+    except ValueError:
+        return False
+    return any(_words_start_denied(words, 0) for words in _simple_commands(tokens))
+
+
+command = _payload_command()
+if command and _uses_raw_privilege(command):
+    json.dump(
+        {
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "deny",
+                "permissionDecisionReason": (
+                    "SASE agents must not run raw sudo, doas, or pkexec from Bash. "
+                    "Use the /sase_sudo skill to submit a reviewed "
+                    "`sase sudo request` instead."
+                ),
+            }
+        },
+        sys.stdout,
+        separators=(",", ":"),
+    )
+PY
