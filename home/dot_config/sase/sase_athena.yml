@@ -87,7 +87,7 @@ axe:
         The current chop fans out across enabled projects and checkpoints only after the documentation agents succeed,
         which keeps failed refreshes eligible for a later tick.
       interval: 60
-      wait_runners: 0
+      wait_runners: 1
       chops:
         refresh_docs:
           script: sase_chop_refresh_docs
