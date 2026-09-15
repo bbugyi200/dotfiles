@@ -8,6 +8,16 @@ function chez::build_dir_root() {
   echo "$HOME"/tmp/chezmoi_build
 }
 
+# Returns true when stdin has a TTY.
+function chez::has_tty() {
+  [[ -t 0 ]]
+}
+
+# Returns true when sudo can run without prompting, or can prompt on a TTY.
+function chez::can_sudo() {
+  sudo -n true &>/dev/null || chez::has_tty
+}
+
 # Log message to stdout.
 #
 # Arguments:
@@ -24,4 +34,19 @@ function chez::log() {
   fi
 
   printf "\n${COLOR_PURPLE}>>> %s${COLOR_RESET}\n" "$msg"
+}
+
+# Exit from an install script, soft-failing non-interactive chezmoi applies.
+function chez::exit_install() {
+  local rc="$1"
+  if [[ "$rc" -eq 0 ]]; then
+    exit 0
+  fi
+
+  if chez::has_tty; then
+    exit "$rc"
+  fi
+
+  chez::log "WARNING: install failed or was skipped during a non-interactive chezmoi apply. It will retry on the next scheduled re-run. To force an earlier interactive retry, run: chezmoi state delete-bucket --bucket=scriptState && chezmoi apply"
+  exit 0
 }

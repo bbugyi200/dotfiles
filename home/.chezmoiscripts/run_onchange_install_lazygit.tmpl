@@ -2,10 +2,63 @@
 #!/bin/bash
 
 # Install / update lazygit on Linux machines weekly (WEEK#{{ output "date" "+%V" | trim }})
-LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | \grep -Po '"tag_name": *"v\K[^"]*')
-curl -Lo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/download/v${LAZYGIT_VERSION}/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz"
-tar xf lazygit.tar.gz lazygit
-sudo install lazygit -D -t /usr/local/bin/
+
+source ~/.local/share/chezmoi/lib/chezmoi_utils.sh
+
+function latest_lazygit_version() {
+  local release_json
+  if ! release_json="$(curl -fsSL "https://api.github.com/repos/jesseduffield/lazygit/releases/latest")"; then
+    chez::log "FAILED TO FETCH LATEST LAZYGIT RELEASE FROM GITHUB API" >&2
+    return 1
+  fi
+
+  local version
+  version="$(printf '%s\n' "$release_json" | \grep -Po '"tag_name": *"v\K[^"]*' | head -n 1)"
+  if [[ -z "$version" ]]; then
+    chez::log "FAILED TO PARSE LATEST LAZYGIT RELEASE VERSION" >&2
+    return 1
+  fi
+
+  printf '%s\n' "$version"
+}
+
+function log_shadowed_lazygit() {
+  if [[ -x "$HOME"/.local/bin/lazygit && -x /usr/local/bin/lazygit ]]; then
+    chez::log "/usr/local/bin/lazygit is now shadowed by ~/.local/bin/lazygit and can be removed with a reviewed /sase_sudo request"
+  fi
+}
+
+function install_lazygit() {
+  local latest_version
+  latest_version="$(latest_lazygit_version)" || return 1
+
+  if command -v lazygit &>/dev/null && lazygit --version 2>/dev/null | \grep -Fq "$latest_version"; then
+    chez::log "LATEST LAZYGIT VERSION ALREADY INSTALLED: %s" "$latest_version"
+    log_shadowed_lazygit
+    return 0
+  fi
+
+  local build_dir="$(chez::build_dir_root)"/lazygit
+  rm -rf "$build_dir"
+  mkdir -p "$build_dir"
+  pushd "$build_dir" &>/dev/null || return 1
+
+  local rc=0
+  local tarball="lazygit_${latest_version}_Linux_x86_64.tar.gz"
+  chez::log "INSTALLING LAZYGIT VERSION %s" "$latest_version"
+  curl -fLo "$tarball" "https://github.com/jesseduffield/lazygit/releases/download/v${latest_version}/${tarball}" &&
+    tar xf "$tarball" lazygit &&
+    install -D lazygit "$HOME"/.local/bin/lazygit || rc=1
+
+  popd &>/dev/null || return 1
+  if [[ "$rc" -eq 0 ]]; then
+    log_shadowed_lazygit
+  fi
+  return "$rc"
+}
+
+install_lazygit
+chez::exit_install "$?"
 
 # vim: ft=bash
 {{- end -}}
