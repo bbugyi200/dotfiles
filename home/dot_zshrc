@@ -16,7 +16,7 @@ source_if_exists "${HOME}/.zshrc.pre.local"
 if type brew &>/dev/null; then
   FPATH=$(brew --prefix)/share/zsh/site-functions:$FPATH
 fi
-fpath=("${HOME}/.zfunc" $fpath)
+fpath=("${HOME}/.zfunc" ${fpath:#${HOME}/.zfunc})
 
 ###############
 #  Oh-My-Zsh  #
@@ -38,6 +38,14 @@ fi
 
 ZSH_DISABLE_COMPFIX="true" # disable warning messages whenever I use 'su' to login as root
 source $ZSH/oh-my-zsh.sh
+
+# oh-my-zsh prepends its own completion directories while loading. Put the
+# managed directory back first so lazy autoload resolves ~/.zfunc/_sase even
+# when an older framework copy of the same function is also present. If the
+# framework compinit already registered _sase, discard that autoload so the
+# later compinit block binds the managed file.
+fpath=("${HOME}/.zfunc" ${fpath:#${HOME}/.zfunc})
+unfunction _sase 2>/dev/null || true
 
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=242'
 

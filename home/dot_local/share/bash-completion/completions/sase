@@ -233,7 +233,7 @@ _sase_subs() {
     /gate) _sase_reply='act answer cancel create list show wait' ;;
     /init) _sase_reply='config machine memory repo skills' ;;
     /launch) _sase_reply='approve reject request' ;;
-    /machine) _sase_reply='add agent attention bootstrap discover init list remove rename repair status' ;;
+    /machine) _sase_reply='add agent attention bootstrap discover init list remove rename repair show status' ;;
     /machine/agent) _sase_reply='fork retry stop' ;;
     /machine/attention) _sase_reply='answer approve' ;;
     /memory) _sase_reply='agent-docs init list log read show web' ;;
@@ -475,7 +475,7 @@ _sase_opts() {
     /logs) _sase_reply='-h --help' ;;
     /lsp) _sase_reply='-h --help -V --version' ;;
     /machine) _sase_reply='-h --help' ;;
-    /machine/add) _sase_reply='-h --help -B --bootstrap-file -c --candidate -j --json -p --provider -t --timeout' ;;
+    /machine/add) _sase_reply='-h --help -B --bootstrap-file -c --candidate -j --json -p --provider -S --ssh-target -t --timeout' ;;
     /machine/agent) _sase_reply='-h --help' ;;
     /machine/agent/fork) _sase_reply='-h --help -j --json -t --timeout -Q --request-path -R --result-path' ;;
     /machine/agent/retry) _sase_reply='-h --help -j --json -t --timeout -Q --request-path -R --result-path' ;;
@@ -490,6 +490,7 @@ _sase_opts() {
     /machine/remove) _sase_reply='-h --help -j --json -y --yes' ;;
     /machine/rename) _sase_reply='-h --help -j --json' ;;
     /machine/repair) _sase_reply='-h --help -B --bootstrap-file -j --json -t --timeout' ;;
+    /machine/show) _sase_reply='-h --help -j --json' ;;
     /machine/status) _sase_reply='-h --help -j --json -t --timeout' ;;
     /memory) _sase_reply='-h --help' ;;
     /memory/agent-docs) _sase_reply='-h --help' ;;
@@ -750,6 +751,7 @@ _sase_pos() {
     /machine/remove) _sase_reply=value ;;
     /machine/rename) _sase_reply=value ;;
     /machine/repair) _sase_reply=value ;;
+    /machine/show) _sase_reply=value ;;
     /machine/status) _sase_reply=value ;;
     /memory/read) _sase_reply='kind:memory' ;;
     /memory/show) _sase_reply='kind:memory' ;;
@@ -1090,6 +1092,7 @@ _sase_child() {
     '/machine|remove') _sase_reply=/machine/remove ;;
     '/machine|rename') _sase_reply=/machine/rename ;;
     '/machine|repair') _sase_reply=/machine/repair ;;
+    '/machine|show') _sase_reply=/machine/show ;;
     '/machine|status') _sase_reply=/machine/status ;;
     '/machine/agent|fork') _sase_reply=/machine/agent/fork ;;
     '/machine/agent|retry') _sase_reply=/machine/agent/retry ;;
@@ -1535,6 +1538,7 @@ _sase_optval() {
     '/machine/add|-B'|'/machine/add|--bootstrap-file') _sase_reply=value ;;
     '/machine/add|-c'|'/machine/add|--candidate') _sase_reply=value ;;
     '/machine/add|-p'|'/machine/add|--provider') _sase_reply=value ;;
+    '/machine/add|-S'|'/machine/add|--ssh-target') _sase_reply=value ;;
     '/machine/add|-t'|'/machine/add|--timeout') _sase_reply=value ;;
     '/machine/agent/fork|-t'|'/machine/agent/fork|--timeout') _sase_reply=value ;;
     '/machine/agent/fork|-Q'|'/machine/agent/fork|--request-path') _sase_reply=value ;;

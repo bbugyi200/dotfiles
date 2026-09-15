@@ -26,7 +26,6 @@ __sase_cache_policy() {
 }
 
 __sase_candidate_lines() {
-  emulate -L zsh
   local kind=$1
   local policy
   zstyle -s ":completion:${curcontext}:" cache-policy policy ||
@@ -43,8 +42,12 @@ __sase_candidate_lines() {
 # per-keystroke pressure from tools like zsh-autosuggestions. The prefix is
 # never passed to the fast path: the full kind is fetched once and cached,
 # and `_describe` filters locally so one cached fetch serves a whole word.
+#
+# These helpers run inside zsh's completion system. Do not reset shell options
+# around compsys calls here: `_main_complete` establishes option state such as
+# `extendedglob`, and helpers like `_describe`, `compadd`, and `_alternative`
+# rely on that environment while still restoring the user's interactive state.
 __sase_candidates() {
-  emulate -L zsh
   local kind=$1
   local -a lines entries
   local line value desc
@@ -96,7 +99,6 @@ __sase_run_prompt_fragment() {
 }
 
 __sase_run_prompt_embedded() {
-  emulate -L zsh
   local kind=$1 marker=$2 fragment=$3 base=$4
   local -a lines values
   local line value
@@ -115,7 +117,6 @@ __sase_run_prompt_embedded() {
 # editor buffer was drafted in), `#name`-style xprompt references, and
 # embedded `#xprompt`, `%directive`, or `@artifact-reference` fragments.
 __sase_run_prompt() {
-  emulate -L zsh
   if __sase_run_prompt_fragment; then
     __sase_run_prompt_embedded $reply && return
   fi
@@ -3016,6 +3017,7 @@ _sase_machine() {
         'remove:Remove a configured machine alias'
         'rename:Rename a viewer-local machine alias'
         'repair:Repair a quarantined or mismatched enrollment'
+        'show:Show one configured machine alias without network IO'
         'status:Run an authenticated hello check'
       )
       _describe -t commands 'sase machine commands' commands && ret=0
@@ -3032,6 +3034,7 @@ _sase_machine() {
         (remove) _sase_machine_remove && ret=0 ;;
         (rename) _sase_machine_rename && ret=0 ;;
         (repair) _sase_machine_repair && ret=0 ;;
+        (show) _sase_machine_show && ret=0 ;;
         (status) _sase_machine_status && ret=0 ;;
       esac
       ;;
@@ -3047,6 +3050,7 @@ _sase_machine_add() {
     '(-c --candidate)'{-c,--candidate}'[Use a discovered candidate key formatted as…]:candidate:' \
     '(-j --json)'{-j,--json}'[Emit a schema-versioned JSON result]' \
     '(-p --provider)'{-p,--provider}'[Dispatch provider ref to store with the alias]:provider:' \
+    '(-S --ssh-target)'{-S,--ssh-target}'[SSH destination used for terminal handoffs; defaults to…]:ssh_target:' \
     '(-t --timeout)'{-t,--timeout}'[Per-request gateway timeout in seconds]:timeout:' \
     '1:ALIAS:' \
     '2::ENDPOINT:'
@@ -3230,6 +3234,14 @@ _sase_machine_repair() {
     '(-B --bootstrap-file)'{-B,--bootstrap-file}'[Read the enrollment bundle from PATH instead of prompting]:bootstrap_file:' \
     '(-j --json)'{-j,--json}'[Emit a schema-versioned JSON result]' \
     '(-t --timeout)'{-t,--timeout}'[Per-request gateway timeout in seconds]:timeout:' \
+    '1:ALIAS:'
+}
+_sase_machine_show() {
+  local context state state_line
+  typeset -A opt_args
+  _arguments -C -s -S \
+    '(-h --help)'{-h,--help}'[show this help message and exit]' \
+    '(-j --json)'{-j,--json}'[Emit a schema-versioned JSON result]' \
     '1:ALIAS:'
 }
 _sase_machine_status() {

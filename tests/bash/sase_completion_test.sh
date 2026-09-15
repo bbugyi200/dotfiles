@@ -60,6 +60,64 @@ function render_hook() {
     execute-template <"${HOOK_TEMPLATE}" >"${TEST_TMP}/zcompile-hook.sh"
 }
 
+function write_completion_startup_fragment() {
+  {
+    awk '
+      /#  Startup Completion Scripts \/ Setup  #/ { capture = 1 }
+      capture { print }
+      /ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE=/ { exit }
+    ' "${REPO_ROOT}/home/dot_zshrc"
+    grep -F 'autoload -U +X compinit && compinit -u' \
+      "${REPO_ROOT}/home/dot_zshrc"
+  } >"${TEST_TMP}/zsh-completion-startup.zsh"
+}
+
+function write_oh_my_zsh_fixture() {
+  mkdir -p \
+    "${TEST_HOME}/.cache" \
+    "${TEST_HOME}/.oh-my-zsh/custom/completions" \
+    "${TEST_HOME}/.zfunc"
+
+  cat >"${TEST_HOME}/.oh-my-zsh/oh-my-zsh.sh" <<'ZSH'
+ZSH_CUSTOM="${ZSH_CUSTOM:-${ZSH}/custom}"
+fpath=("${ZSH_CUSTOM}/completions" $fpath)
+autoload -Uz compinit
+compinit -u -D
+ZSH
+}
+
+function write_sase_completion_fixtures() {
+  cat >"${TEST_HOME}/.zfunc/_sase" <<'ZSH'
+#compdef sase
+# Managed fixture: current grammar includes root --print-command.
+_arguments '--print-command[print command]' '-p[print command]' '1: :((show\:Show))'
+ZSH
+
+  if [[ "${1}" == "with-conflict" ]]; then
+    cat >"${TEST_HOME}/.oh-my-zsh/custom/completions/_sase" <<'ZSH'
+#compdef sase
+# Framework fixture: older grammar intentionally lacks root --print-command.
+_arguments '1: :((show\:Old))'
+ZSH
+  fi
+}
+
+function run_zsh_completion_startup_probe() {
+  local conflict_mode="${1}"
+
+  write_completion_startup_fragment
+  write_oh_my_zsh_fixture
+  write_sase_completion_fixtures "${conflict_mode}"
+
+  HOME="${TEST_HOME}" ZDOTDIR="${TEST_HOME}" zsh -f -c '
+    source "$1"
+    print -r -- "comp=${_comps[sase]:-UNSET}"
+    autoload +X _sase
+    print -r -- "source=${functions_source[_sase]:-UNSET}"
+    print -r -- "first=${fpath[1]:-UNSET}"
+  ' startup-probe "${TEST_TMP}/zsh-completion-startup.zsh"
+}
+
 function test_apply_writes_completion_targets_and_metadata() {
   require_chezmoi || return 0
 
@@ -120,33 +178,22 @@ function test_hook_zcompiles_only_when_needed() {
   )"
 }
 
-function test_zfunc_precedes_oh_my_zsh_compinit() {
-  fpath_line="$(
-    grep -n -F 'fpath=("${HOME}/.zfunc" $fpath)' \
-      "${REPO_ROOT}/home/dot_zshrc" | cut -d: -f1
-  )"
-  oh_my_zsh_line="$(
-    grep -n -F 'source $ZSH/oh-my-zsh.sh' \
-      "${REPO_ROOT}/home/dot_zshrc" | cut -d: -f1
-  )"
-  explicit_compinit_line="$(
-    grep -n -F 'autoload -U +X compinit && compinit -u' \
-      "${REPO_ROOT}/home/dot_zshrc" | cut -d: -f1
-  )"
+function test_zsh_startup_loads_managed_sase_completion_with_framework_conflict() {
+  require_zsh || return 0
 
-  assert_same "" "$(grep -F 'fpath+=~/.zfunc' "${REPO_ROOT}/home/dot_zshrc" || true)"
-  assert_same "before" "$(
-    if [[ "${fpath_line}" -lt "${oh_my_zsh_line}" ]]; then
-      printf 'before'
-    else
-      printf 'after'
-    fi
-  )"
-  assert_same "before" "$(
-    if [[ "${fpath_line}" -lt "${explicit_compinit_line}" ]]; then
-      printf 'before'
-    else
-      printf 'after'
-    fi
-  )"
+  output="$(run_zsh_completion_startup_probe with-conflict)"
+
+  assert_contains "comp=_sase" "${output}"
+  assert_contains "source=${TEST_HOME}/.zfunc/_sase" "${output}"
+  assert_contains "first=${TEST_HOME}/.zfunc" "${output}"
+}
+
+function test_zsh_startup_loads_managed_sase_completion_without_conflict() {
+  require_zsh || return 0
+
+  output="$(run_zsh_completion_startup_probe without-conflict)"
+
+  assert_contains "comp=_sase" "${output}"
+  assert_contains "source=${TEST_HOME}/.zfunc/_sase" "${output}"
+  assert_contains "first=${TEST_HOME}/.zfunc" "${output}"
 }
