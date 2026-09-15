@@ -25,7 +25,7 @@ alias sam='sase memory'
 alias sad='sase daemon'
 alias sap='sase plugin'
 alias sat='sase telemetry'
-sbd() { echo "❯ sase bead $*" && sase bead "$@"; }
+alias sbd='sase -p bead'
 alias sax='sase xprompt'
 
 # ---------- cookie Aliases / Functions ----------
