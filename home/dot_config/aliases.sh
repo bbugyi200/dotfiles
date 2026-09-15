@@ -26,6 +26,7 @@ alias sad='sase daemon'
 alias sap='sase plugin'
 alias sat='sase telemetry'
 alias sbd='sase -p bead'
+alias sbds='sase -p bead show'
 alias sax='sase xprompt'
 
 # ---------- cookie Aliases / Functions ----------
