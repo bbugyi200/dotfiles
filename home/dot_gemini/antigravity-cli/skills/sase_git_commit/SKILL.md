@@ -96,6 +96,11 @@ host accepts the declaration.
    sase_git_commit -M .sase/commit_message.md
    ```
 
+   If `$SASE_BEAD_ID` is set, the command must also declare the assigned-bead action:
+   use `-B keep` for intermediate work, or `-B close` only after the entire assigned
+   bead scope is complete and verified. `-B close` closes the bead after the commit or
+   PR lands; proposals must use `-B keep`.
+
    Flags:
    - `-M`: Path to file containing the commit message. The file is deleted only after a
      successful commit. If the command fails, retry with the same `-M` path; do not
@@ -106,8 +111,9 @@ host accepts the declaration.
      (repeatable). Everything else that changed, including untracked files, is
      committed. A path that has no pending change is an error, so the commit fails
      loudly rather than quietly committing a mistyped path.
-   - `-B`: Do not auto-close your assigned in-progress bead; use it for mid-flight
-     commits.
+   - `-B {keep,close}` / `--bead-action {keep,close}`: Required when `$SASE_BEAD_ID` is
+     set. `keep` leaves the assigned bead unchanged; `close` closes it after a
+     successful commit or PR and is invalid for proposals.
    - `--name`: Branch name (only needed for `create_pull_request` method).
 
    The `$SASE_COMMIT_METHOD` environment variable is read automatically to determine the
@@ -118,9 +124,8 @@ host accepts the declaration.
    Exit codes:
    - `0`: Commit succeeded.
    - `1`: Commit failed with a printed reason. Fix the cause and re-run the same
-     command. A successful commit auto-closes the assigned `in_progress` bead in this
-     repo. Re-runs stay safe when the bead is already closed, but failed lifecycle
-     validation must be resolved explicitly.
+     command. If `-B close` was requested, failed lifecycle validation or close
+     publication must be resolved explicitly.
    - `2`: A rebase is paused for a real conflict. Do not re-run the original command
      while the rebase is paused; use the recovery flow below.
 
@@ -198,7 +203,9 @@ and finalize:
    working tree clean".
 7. **Finalize the sase stitch create**: Run `sase_git_commit --resume`. This replays the
    post-commit bookkeeping (push, Patch row, STITCHES entry, result marker) and exits 0
-   on success.
+   on success. If a legacy checkpoint says it has an assigned bead but no saved action,
+   resume with the missing decision, e.g. `sase_git_commit --resume -B keep` or
+   `sase_git_commit --resume -B close`.
 
 ```bash
 sase_git_commit --resume

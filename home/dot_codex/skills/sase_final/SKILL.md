@@ -39,6 +39,19 @@ monitor, pipe, or questions handoff is exempt.
 - Successfully executed handoffs through plan, monitor, pipe, or questions terminate the
   runner mechanically and do not need this skill.
 
+## Prepared Monitor Completion
+
+`sase final prepare <manifest>` publishes a prepared host-completion intent reference
+for monitor workflows. It does not submit a final declaration, commit, or end the turn.
+Bind the returned ref to a verification monitor explicitly, for example:
+
+```bash
+sase monitor start -p verify -f <ref> -r 'Verify before host completion' -- just check
+```
+
+The `verify` profile only supplies labels and evidence defaults; the `-f/--completion`
+ref is what authorizes a successful monitor result to hand completion back to the host.
+
 ## Steps
 
 1. Get the current host-issued context:
@@ -62,6 +75,13 @@ monitor, pipe, or questions handoff is exempt.
    Read the `commit_declaration` object in the context when present. Its
    `repository_evidence` lists model-visible provenance for the dirty paths: paths
    written by this run, paths already dirty at run start, and protected paths.
+
+   If the context has `assigned_bead` or the manifest template includes `bead_action`,
+   every commit repository decision must replace the placeholder with `"keep"` or
+   `"close"`. Use `"keep"` for intermediate commits, proposals, deferrals,
+   linked/sidecar repositories, or any case where the assigned bead is not fully
+   complete. Use `"close"` only for the primary repository decision after the whole
+   assigned bead scope is complete and verified.
 
    Only add a typed `deferrals` entry when the repository tree itself must not be
    committed. Legal reasons are `protected_paths`, `foreign_work`, `unsafe_content`, and

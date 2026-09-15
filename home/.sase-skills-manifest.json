@@ -1,5 +1,5 @@
 {
-  "deployed_at": "2026-09-09T08:56:17.635668Z",
+  "deployed_at": "2026-09-15T18:36:06.611996Z",
   "managed_files": [
     {
       "home_path": ".gemini/antigravity-cli/skills/bob_query/SKILL.md",
@@ -139,6 +139,13 @@
       "provider": "agy",
       "skill_name": "sase_run",
       "source_path": "dot_gemini/antigravity-cli/skills/sase_run/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".gemini/antigravity-cli/skills/sase_sudo/SKILL.md",
+      "provider": "agy",
+      "skill_name": "sase_sudo",
+      "source_path": "dot_gemini/antigravity-cli/skills/sase_sudo/SKILL.md",
       "state": "active"
     },
     {
@@ -296,6 +303,13 @@
       "state": "active"
     },
     {
+      "home_path": ".claude/skills/sase_sudo/SKILL.md",
+      "provider": "claude",
+      "skill_name": "sase_sudo",
+      "source_path": "dot_claude/skills/sase_sudo/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".claude/skills/sase_var/SKILL.md",
       "provider": "claude",
       "skill_name": "sase_var",
@@ -447,6 +461,13 @@
       "provider": "codex",
       "skill_name": "sase_run",
       "source_path": "dot_codex/skills/sase_run/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".codex/skills/sase_sudo/SKILL.md",
+      "provider": "codex",
+      "skill_name": "sase_sudo",
+      "source_path": "dot_codex/skills/sase_sudo/SKILL.md",
       "state": "active"
     },
     {
@@ -702,6 +723,13 @@
       "state": "active"
     },
     {
+      "home_path": ".grok/skills/sase_sudo/SKILL.md",
+      "provider": "grok",
+      "skill_name": "sase_sudo",
+      "source_path": "dot_grok/skills/sase_sudo/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".grok/skills/sase_var/SKILL.md",
       "provider": "grok",
       "skill_name": "sase_var",
@@ -849,6 +877,13 @@
       "state": "active"
     },
     {
+      "home_path": ".config/muse/skills/sase_sudo/SKILL.md",
+      "provider": "muse",
+      "skill_name": "sase_sudo",
+      "source_path": "dot_config/muse/skills/sase_sudo/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".config/muse/skills/sase_var/SKILL.md",
       "provider": "muse",
       "skill_name": "sase_var",
@@ -993,6 +1028,13 @@
       "provider": "opencode",
       "skill_name": "sase_run",
       "source_path": "dot_config/opencode/skills/sase_run/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/opencode/skills/sase_sudo/SKILL.md",
+      "provider": "opencode",
+      "skill_name": "sase_sudo",
+      "source_path": "dot_config/opencode/skills/sase_sudo/SKILL.md",
       "state": "active"
     },
     {
@@ -1150,6 +1192,13 @@
       "state": "active"
     },
     {
+      "home_path": ".qwen/skills/sase_sudo/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "sase_sudo",
+      "source_path": "dot_qwen/skills/sase_sudo/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".qwen/skills/sase_var/SKILL.md",
       "provider": "qwen",
       "skill_name": "sase_var",
@@ -1157,6 +1206,6 @@
       "state": "active"
     }
   ],
-  "source_commit": "986feca08f4d83f1f91847d883b2ab0b3ecd9383",
-  "xprompt_set_sha256": "cdf8ada60e0e4aa3ee19d3646d9d40b833d5188de01c4278104030ed74faf3ae"
+  "source_commit": "af3e58017a93f329580159b0221e30d18e0ae76f",
+  "xprompt_set_sha256": "95df26cf11c53c33aca8650075315049b142f013ccac98e43f31313e065b38d6"
 }

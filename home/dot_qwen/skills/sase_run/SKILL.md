@@ -23,10 +23,15 @@ Write a JSON request file:
 ```json
 {
   "schema_version": 1,
-  "prompt": "%i(reviewer, family=parent)\nReview the proposed implementation and report issues.",
-  "reason": "Need a reviewer family member before continuing.",
+  "prompt": "#git:sase\n%i(reviewer)\nReview the proposed implementation and report issues.",
+  "reason": "Need a reviewer helper before continuing.",
   "approval": "required",
-  "max_slots": 1
+  "max_slots": 1,
+  "requester_continuation": {
+    "mode": "resume_requester",
+    "checkpoint": "Inspect the launch result, then continue the current assignment.",
+    "required": true
+  }
 }
 ```
 
@@ -121,6 +126,37 @@ prompt must show prompt syntax literally (docs, demos, tests):
 Always preflight with `sase xprompt expand '<prompt>'`: it must succeed and report only
 the directives and references you intended.
 
+## Requester Continuation
+
+Agent-origin launch requests default to
+`requester_continuation.mode = "resume_requester"`. The gate shell resumes this
+requester after `approve`, `reject`, `timeout`, or gate `failed` settlements and passes
+along the gate decision, reviewer feedback, dispatch status, typed launch results,
+assignment bead, workspace identity, family identity, and checkpoint. A user stop
+(`stopped`) is terminal and must not resurrect the family.
+
+Set `checkpoint` to the exact point the resumed requester should pick up from. On
+rejection, timeout, or approval dispatch failure, the resumed requester should report or
+revise deliberately; it must not silently re-request the same refused launch.
+
+Use an explicit terminal handoff only when the requested launch is meant to take over:
+
+```json
+{
+  "requester_continuation": {
+    "mode": "terminal_handoff",
+    "checkpoint": "The approved helper owns the next action.",
+    "required": false
+  }
+}
+```
+
+If the requested prompt itself targets the requester's family lane, for example
+`%i(reviewer, family=parent)`, either choose `terminal_handoff` or target a different
+family. A default requester continuation and a requested same-family successor are two
+different owners for one sequential family lane, so the launch request is rejected
+before approval.
+
 ## Sequential Family Members
 
 To attach the approved launch to an existing family, put the family directive in the
@@ -180,5 +216,6 @@ The creation descriptor looks like:
 ```
 
 If approved, the gate's approved command dispatches the requested launch. If rejected,
-cancelled, timed out, or dispatch fails, the gate shell records that terminal state and
-no requester process is kept alive waiting for it.
+timed out, or dispatch fails, the gate shell records that terminal state and resumes the
+requester according to the durable requester-continuation contract. If cancelled, the
+gate shell records the stop without launching a follow-up requester.
