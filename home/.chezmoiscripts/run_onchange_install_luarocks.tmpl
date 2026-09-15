@@ -5,6 +5,7 @@
 source ~/.local/share/chezmoi/lib/chezmoi_utils.sh
 
 LUAROCKS_VERSION=3.11.1
+LUAROCKS_LUA_VERSION=5.1
 
 # Install a Lua 5.1 interpreter (and its headers), which the luarocks build
 # needs in order to configure itself against Lua 5.1 -- the version Neovim
@@ -67,16 +68,42 @@ function install_luarocks() {
 
 # Uses luarocks to install the required rocks.
 function install_rocks() {
-  local rc=0
-  rm -rf "$HOME"/.luarocks
+  local -a failed_rocks=()
+  local -a failed_statuses=()
 
   local rock
+  local rock_rc
   for rock in busted nlua llscheck luacheck luacov; do
     chez::log "INSTALLING ROCK: %s" "$rock"
-    luarocks install --local "$rock" || rc=1
+    luarocks --lua-version="$LUAROCKS_LUA_VERSION" install --local "$rock"
+    rock_rc=$?
+    if [[ "$rock_rc" -eq 0 ]]; then
+      continue
+    fi
+
+    failed_rocks+=("$rock")
+    failed_statuses+=("$rock_rc")
+    printf 'LuaRocks install failed for %s (exit status %s).\n' \
+      "$rock" "$rock_rc" >&2
   done
 
-  return "$rc"
+  if [[ "${#failed_rocks[@]}" -eq 0 ]]; then
+    return 0
+  fi
+
+  printf '\nLuaRocks failed to install required rocks in %s/.luarocks:\n' \
+    "$HOME" >&2
+
+  local idx
+  for idx in "${!failed_rocks[@]}"; do
+    printf '  - %s (exit status %s). Retry: luarocks --lua-version=%s install --local %s\n' \
+      "${failed_rocks[$idx]}" \
+      "${failed_statuses[$idx]}" \
+      "$LUAROCKS_LUA_VERSION" \
+      "${failed_rocks[$idx]}" >&2
+  done
+
+  return 1
 }
 
 # Installs luarocks and then installs the required rocks.
