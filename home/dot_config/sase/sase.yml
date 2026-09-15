@@ -33,7 +33,7 @@ ace:
     # keep-sorted start
     ac: |-
       agent clan
-    ace: "`sase ace`"
+    ace: "`sase tui`"
     af: |-
       agent family
     aif: |-
@@ -110,11 +110,11 @@ ace:
     git: "(see recent, related git commits)"
     gpti:
       "Can you use GPT image to generate a$1? Write the image to a new file in the $2."
-    gsn: "`sase ace` snapshot"
-    gsna: "(see the `sase ace` snapshot below)"
+    gsn: "`sase tui` snapshot"
+    gsna: "(see the `sase tui` snapshot below)"
     gsnn: "in the below #[gsn]"
-    gta: 'the "$1" tab of the `sase ace` TUI'
-    gtu: "the `sase ace` TUI"
+    gta: 'the "$1" tab in sase''s TUI'
+    gtu: "sase's TUI"
     h: "http://"
     help: "Can you help me $1?"
     helpp: "Can you now help me $1?"
@@ -237,7 +237,7 @@ axe:
           description: |-
             Send unread notifications to Telegram
 
-            Reads the same SASE notification store used by ACE, formats unread non-silent notifications for Telegram,
+            Reads the same SASE notification store used by sase's TUI, formats unread non-silent notifications for Telegram,
             and sends messages, PDFs, or generated images to the configured chat.
 
             The fast cadence keeps approval requests and completion notices visible without a daemon. Delivery state and

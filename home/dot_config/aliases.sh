@@ -13,9 +13,9 @@
 # shellcheck disable=SC2230
 
 # ---------- sase ----------
-alias ace='sase ace'
-acei() { install_sase_github "$@" && sase ace --restart-axe; }
-aceii() { install_sase_google "$@" && sase ace --restart-axe; }
+alias ace='sase tui'
+acei() { install_sase_github "$@" && sase tui --restart-axe; }
+aceii() { install_sase_google "$@" && sase tui --restart-axe; }
 alias axe='sase axe'
 alias commit='sase commit'
 alias gsl='get_sase_logs'

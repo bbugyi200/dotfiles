@@ -135,11 +135,11 @@ function M.get_markdown_snippets()
 			hidden = true,
 		}, { t("Use @" .. editor_tool_name .. " on #{buffer}{watch} to ") }),
 		-- SNIPPET: ace
-		s({ trig = "ace", desc = "`sase ace`" }, { t("`sase ace`") }),
+		s({ trig = "ace", desc = "`sase tui`" }, { t("`sase tui`") }),
 		-- SNIPPET: agentm
 		s(
 			{ trig = "agentm", desc = "agent metadata panel" },
-			{ t('the agent metadata panel on the "Agents" tab of the `sase ace` TUI') }
+			{ t('the agent metadata panel on the "Agents" tab in sase\'s TUI') }
 		),
 		-- SNIPPET: axe
 		s({ trig = "axe", desc = "`sase axe`" }, { t("`sase axe`") }),
@@ -263,16 +263,16 @@ function M.get_markdown_snippets()
 		-- SNIPPET: git
 		s({ trig = "git", desc = "git commits" }, { t("(see recent, related git commits)") }),
 		-- SNIPPET: gsn
-		s({ trig = "gsn", desc = "`sase ace` snapshot" }, { t("`sase ace` snapshot") }),
+		s({ trig = "gsn", desc = "`sase tui` snapshot" }, { t("`sase tui` snapshot") }),
 		-- SNIPPET: gsna
-		s({ trig = "gsna", desc = "`sase ace` snapshot (in parens)" }, { t("(see the `sase ace` snapshot below)") }),
+		s({ trig = "gsna", desc = "`sase tui` snapshot (in parens)" }, { t("(see the `sase tui` snapshot below)") }),
 		-- SNIPPET: gta
 		s(
-			{ trig = "gta", desc = "the <tab> tab of the `sase ace` TUI" },
-			{ t('the "'), i(1, "CLs"), t('" tab of the `sase ace` TUI') }
+			{ trig = "gta", desc = "the <tab> tab in sase's TUI" },
+			{ t('the "'), i(1, "CLs"), t("\" tab in sase's TUI") }
 		),
 		-- SNIPPET: gtu
-		s({ trig = "gtu", desc = "the `sase ace` TUI" }, { t("the `sase ace` TUI") }),
+		s({ trig = "gtu", desc = "sase's TUI" }, { t("sase's TUI") }),
 		-- SNIPPET: help
 		s({ trig = "help", desc = "Can you help me...?" }, { t("Can you help me "), i(1), t("?") }),
 		-- SNIPPET: helpp
