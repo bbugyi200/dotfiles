@@ -196,7 +196,9 @@ function command_not_found_handler() {
 function cmd_exists() { command -v "$1" &>/dev/null; }
 
 # pyenv
-export PATH="/home/bryan/.pyenv/bin:$PATH"
+if [[ -d "${HOME}/.pyenv/bin" ]]; then
+  export PATH="$(insert_path "${PATH}" "${HOME}/.pyenv/bin")"
+fi
 if cmd_exists pyenv && [[ -z "${VIRTUAL_ENV}" ]]; then
   eval "$(pyenv init --path)"
   eval "$(pyenv init -)"
@@ -305,7 +307,9 @@ command -v rc-service &>/dev/null && compdef rcst=rc-service
 cmd_exists direnv && eval "$(direnv hook zsh)"
 
 # setup broot
-cmd_exists broot && source /home/bryan/.config/broot/launcher/bash/br
+if cmd_exists broot; then
+  source_if_exists "${XDG_CONFIG_HOME:-${HOME}/.config}/broot/launcher/bash/br"
+fi
 
 # setup zoxide
 cmd_exists zoxide && eval "$(zoxide init zsh)"
