@@ -59,6 +59,6 @@ so far, continuously numbered — the same `## Your next action` shape a gate sh
 composes. Do not create a question gate shell yourself with `/sase_gate`;
 `sase questions` already does this for you.
 
-Do not poll question request or response files. ACE, mobile, and Telegram submit the
-complete validated form through the same write-once gate command, and the gate shell's
-settlement observes the terminal response mechanically.
+Do not poll question request or response files. sase's TUI, mobile, and Telegram submit
+the complete validated form through the same write-once gate command, and the gate
+shell's settlement observes the terminal response mechanically.

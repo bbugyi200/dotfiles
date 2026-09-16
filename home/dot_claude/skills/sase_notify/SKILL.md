@@ -64,7 +64,7 @@ typed projections of command-backed interaction gates. Their `action_data` inclu
 stable request identifiers and owned paths; rich definitions and reviewed content stay
 in the neutral `interaction_requests/<kind>/<request-id>/request.json` bundle. Inspect
 those identifiers when they help answer the user's question, but do not write
-`response.json`, invoke bundle commands, or mutate a pending action by hand. ACE,
+`response.json`, invoke bundle commands, or mutate a pending action by hand. sase's TUI,
 mobile, Telegram, and the typed CLI commands resolve and execute the same validated
 gate. Use `/sase_gate` to author a custom gate that proposes commands for user
 confirmation.

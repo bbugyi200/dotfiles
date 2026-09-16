@@ -183,7 +183,7 @@ releases remain readable until migrated via `sase patch migrate-extension`.
 
 ## Other Useful Forms
 
-- `sase ace` — interactive Patch browser and agent control surface.
+- `sase tui` — interactive Patch browser and agent control surface.
 - `sase stitch create` — make real commits, proposals, or PRs and update `STITCHES`
   automatically.
 - `sase revert <name>` / `sase restore <name>` — lifecycle-level destructive/recovery

@@ -23,7 +23,7 @@ This prints a stable-shape JSON array to stdout. Each row has: `name`, `project`
 `model`, `provider`, `workspace_num`, `status`, `duration_seconds`, `started_at`,
 `approve`, `prompt_snippet`, `artifacts_dir`, wait and runner slot context,
 `parent_agent_name`, and `agent_family`. Clan members appear as their own agent rows;
-the clan container itself is an ACE projection rather than a running process.
+the clan container itself is a projection in sase's TUI rather than a running process.
 Runner-slot rows include `runner_slots_in_use` and `runner_slot_holders`, which identify
 the agents keeping them parked.
 

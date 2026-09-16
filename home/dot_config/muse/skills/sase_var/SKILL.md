@@ -90,7 +90,7 @@ stores `a=b=c`. `--json` composes with assignment, `--value`, and `--value-file`
 - Output variables are for small handoff values, not report bodies; store a report as an
   artifact file and publish its path instead.
 - Do not store secrets. Output variables are persisted in `agent_meta.json` and shown in
-  ACE and the Telegram completion message.
+  sase's TUI and the Telegram completion message.
 
 ## Stopping a `%repeat` / `%r` chain with `STOP`
 
