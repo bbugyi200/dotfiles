@@ -1,9 +1,9 @@
 {
-  "digest": "74917a249afb422b",
+  "digest": "40701bc579c5d8c2",
   "owner": "chezmoi",
   "schema_version": 1,
   "shell": "zsh",
   "target": "~/.zfunc/_sase",
-  "timestamp": "2026-09-16T01:50:16Z",
+  "timestamp": "2026-09-16T03:49:26Z",
   "version": "0.17.1"
 }

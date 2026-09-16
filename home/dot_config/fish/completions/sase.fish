@@ -1363,7 +1363,7 @@ complete -c sase -n '__sase_cmd /axe' -a 'job' -d 'Inspect and run jobs (bare jo
 complete -c sase -n '__sase_cmd /axe' -a 'maintenance' -d 'Manage axe maintenance mode'
 complete -c sase -n '__sase_cmd /axe' -a 'restart' -d 'Restart the axe orchestrator and verify fresh worker…'
 complete -c sase -n '__sase_cmd /axe' -a 'routine' -d 'Routine management commands'
-complete -c sase -n '__sase_cmd /axe' -a 'start' -d 'Start the axe orchestrator (spawns all lumberjacks)'
+complete -c sase -n '__sase_cmd /axe' -a 'start' -d 'Start the axe orchestrator (spawns all routines)'
 complete -c sase -n '__sase_cmd /axe' -a 'status' -d 'Show a read-only, whole-system AXE health snapshot'
 complete -c sase -n '__sase_cmd /axe' -a 'stop' -d 'Stop the running axe orchestrator'
 complete -c sase -n '__sase_cmd /axe' -s 'h' -l 'help' -d 'show this help message and exit'

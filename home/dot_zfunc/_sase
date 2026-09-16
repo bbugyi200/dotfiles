@@ -1276,7 +1276,7 @@ _sase_axe() {
         'maintenance:Manage axe maintenance mode'
         'restart:Restart the axe orchestrator and verify fresh worker…'
         'routine:Routine management commands'
-        'start:Start the axe orchestrator (spawns all lumberjacks)'
+        'start:Start the axe orchestrator (spawns all routines)'
         'status:Show a read-only, whole-system AXE health snapshot'
         'stop:Stop the running axe orchestrator'
       )
