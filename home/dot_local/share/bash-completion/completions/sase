@@ -195,7 +195,7 @@ _sase_complete_value() {
 _sase_subs() {
   _sase_reply=
   case "$1" in
-    /) _sase_reply='ace agent agent-cli artifact axe bead chat comments completion config core disk doctor editor file file-history file-hook final flag gate init launch logs lsp machine memory migrate mobile monitor notify pager patch path pipe plan plugin proc project prompt questions repo repro restore revert revive-log run skill snippet stitch sudo telemetry tmux-agent update usage validate var version workspace xprompt' ;;
+    /) _sase_reply='agent agent-cli artifact axe bead chat comments completion config core disk doctor editor file file-history file-hook final flag gate init launch logs lsp machine memory migrate mobile monitor notify pager patch path pipe plan plugin proc project prompt questions repo repro restore revert revive-log run skill snippet stitch sudo telemetry tmux-agent tui update usage validate var version workspace xprompt' ;;
     /agent) _sase_reply='archive artifacts drain index kill list names persist-cleanup persist-directive prompts restart revert search show sync tribe wait' ;;
     /agent/archive) _sase_reply='rebuild-index verify' ;;
     /agent/artifacts) _sase_reply=layout ;;
@@ -210,11 +210,11 @@ _sase_subs() {
     /artifact/link/relation) _sase_reply='list show' ;;
     /artifact/pane) _sase_reply=show ;;
     /artifact/trash) _sase_reply='list purge restore' ;;
-    /axe) _sase_reply='chop ensure lumberjack maintenance restart start status stop' ;;
-    /axe/chop) _sase_reply='doctor list run' ;;
+    /axe) _sase_reply='ensure job maintenance restart routine start status stop' ;;
     /axe/ensure) _sase_reply='install uninstall' ;;
-    /axe/lumberjack) _sase_reply='list run status' ;;
+    /axe/job) _sase_reply='doctor list run' ;;
     /axe/maintenance) _sase_reply='enter exit status' ;;
+    /axe/routine) _sase_reply='list run status' ;;
     /bead) _sase_reply='+1 apply-status blocked close create dep doctor epic-symbols history init list note onboard open pages ready ref resolve-conflicts rm search show snooze stats sync sync-external task-type update work' ;;
     /bead/dep) _sase_reply='add list rm tree' ;;
     /bead/pages) _sase_reply='refresh url' ;;
@@ -272,7 +272,6 @@ _sase_opts() {
   _sase_reply=
   case "$1" in
     /) _sase_reply='-h --help -H --full-help -F --disable-feature -f --enable-feature -p --print-command' ;;
-    /ace) _sase_reply='-h --help -m --model-tier -M --model-size -p --profile -r --refresh-interval -R --restart-axe -s --sanity-refresh-interval -t --tab -T --tmux -x --no-axe -v --vcs-provider' ;;
     /agent) _sase_reply='-h --help' ;;
     /agent/archive) _sase_reply='-h --help' ;;
     /agent/archive/rebuild-index) _sase_reply='-h --help' ;;
@@ -345,22 +344,22 @@ _sase_opts() {
     /artifact/trash/purge) _sase_reply='-h --help -a --all -j --json' ;;
     /artifact/trash/restore) _sase_reply='-h --help -j --json' ;;
     /axe) _sase_reply='-h --help -v --vcs-provider' ;;
-    /axe/chop) _sase_reply='-h --help' ;;
-    /axe/chop/doctor) _sase_reply='-h --help -j --json -v --verbose' ;;
-    /axe/chop/list) _sase_reply='-h --help -a --available -j --json -v --verbose' ;;
-    /axe/chop/run) _sase_reply='-h --help -V --chop-verbose -n --dry-run -f --force -L --lumberjack' ;;
     /axe/ensure) _sase_reply='-h --help' ;;
     /axe/ensure/install) _sase_reply='-h --help' ;;
     /axe/ensure/uninstall) _sase_reply='-h --help' ;;
-    /axe/lumberjack) _sase_reply='-h --help' ;;
-    /axe/lumberjack/list) _sase_reply='-h --help -v --verbose' ;;
-    /axe/lumberjack/run) _sase_reply='-h --help -q --query -H --max-hook-runners -A --max-agent-runners -z --zombie-timeout' ;;
-    /axe/lumberjack/status) _sase_reply='-h --help' ;;
+    /axe/job) _sase_reply='-h --help' ;;
+    /axe/job/doctor) _sase_reply='-h --help -j --json -v --verbose' ;;
+    /axe/job/list) _sase_reply='-h --help -a --available -j --json -v --verbose' ;;
+    /axe/job/run) _sase_reply='-h --help -V --job-verbose -n --dry-run -f --force -L --routine' ;;
     /axe/maintenance) _sase_reply='-h --help' ;;
     /axe/maintenance/enter) _sase_reply='-h --help -r --reason' ;;
     /axe/maintenance/exit) _sase_reply='-h --help' ;;
     /axe/maintenance/status) _sase_reply='-h --help' ;;
     /axe/restart) _sase_reply='-h --help -j --json -A --max-agent-runners -H --max-hook-runners -q --query -t --verify-timeout -z --zombie-timeout' ;;
+    /axe/routine) _sase_reply='-h --help' ;;
+    /axe/routine/list) _sase_reply='-h --help -v --verbose' ;;
+    /axe/routine/run) _sase_reply='-h --help -q --query -H --max-hook-runners -A --max-agent-runners -z --zombie-timeout' ;;
+    /axe/routine/status) _sase_reply='-h --help' ;;
     /axe/start) _sase_reply='-h --help -H --max-hook-runners -A --max-agent-runners -q --query -z --zombie-timeout' ;;
     /axe/status) _sase_reply='-h --help -j --json' ;;
     /axe/stop) _sase_reply='-h --help -f --force' ;;
@@ -645,6 +644,7 @@ _sase_opts() {
     /telemetry/snapshot) _sase_reply='-h --help -f --format -s --subsystem' ;;
     /telemetry/status) _sase_reply='-h --help' ;;
     /tmux-agent) _sase_reply='-h --help -c --dir -e --effort -j --json -l --list -n --dry-run -r --refresh -s --safe -v --verbose' ;;
+    /tui) _sase_reply='-h --help -m --model-tier -M --model-size -p --profile -r --refresh-interval -R --restart-axe -s --sanity-refresh-interval -t --tab -T --tmux -x --no-axe -v --vcs-provider' ;;
     /update) _sase_reply='-h --help -j --json -n --dry-run -q --quiet -t --to -y --yes' ;;
     /usage) _sase_reply='-h --help' ;;
     /usage/list) _sase_reply='-h --help -j --json -P --plain -p --provider -v --verbose' ;;
@@ -657,7 +657,7 @@ _sase_opts() {
     /version) _sase_reply='-h --help -j --json -v --verbose' ;;
     /workspace) _sase_reply='-h --help' ;;
     /workspace/cleanup) _sase_reply='-h --help -p --project -s --stale -i --include-shares -n --dry-run' ;;
-    /workspace/compact) _sase_reply='-h --help -p --project -n --dry-run' ;;
+    /workspace/compact) _sase_reply='-h --help -p --project -n --dry-run -j --json' ;;
     /workspace/list) _sase_reply='-h --help -a --all -j --json -p --project' ;;
     /workspace/migrate) _sase_reply='-h --help -p --project -t --to -s --symlink-transition -f --finalize -n --dry-run' ;;
     /workspace/path) _sase_reply='-h --help -p --project' ;;
@@ -675,7 +675,6 @@ _sase_opts() {
 _sase_pos() {
   _sase_reply=
   case "$1" in
-    /ace) _sase_reply=value ;;
     /agent/drain) _sase_reply=value ;;
     /agent/persist-directive) _sase_reply=value ;;
     /agent/prompts/show) _sase_reply=value ;;
@@ -698,8 +697,8 @@ _sase_pos() {
     /artifact/read) _sase_reply='kind:artifact' ;;
     /artifact/show) _sase_reply='kind:artifact' ;;
     /artifact/trash/restore) _sase_reply='kind:artifact' ;;
-    /axe/chop/run) _sase_reply=value ;;
-    /axe/lumberjack/run) _sase_reply=value ;;
+    /axe/job/run) _sase_reply=value ;;
+    /axe/routine/run) _sase_reply=value ;;
     '/bead/+1') _sase_reply='kind:bead' ;;
     /bead/apply-status) _sase_reply='kind:bead' ;;
     /bead/close) _sase_reply='kind:bead' ;;
@@ -831,6 +830,7 @@ _sase_pos() {
     /sudo/answer) _sase_reply=value ;;
     /sudo/show) _sase_reply=value ;;
     /tmux-agent) _sase_reply=value ;;
+    /tui) _sase_reply=value ;;
     /var/get) _sase_reply=value ;;
     /var/set) _sase_reply=value ;;
     /workspace/compact) _sase_reply=value ;;
@@ -845,7 +845,6 @@ _sase_pos() {
 _sase_child() {
   _sase_reply=
   case "$1|$2" in
-    '/|ace') _sase_reply=/ace ;;
     '/|agent') _sase_reply=/agent ;;
     '/|agent-cli') _sase_reply=/agent-cli ;;
     '/|artifact') _sase_reply=/artifact ;;
@@ -897,6 +896,7 @@ _sase_child() {
     '/|sudo') _sase_reply=/sudo ;;
     '/|telemetry') _sase_reply=/telemetry ;;
     '/|tmux-agent') _sase_reply=/tmux-agent ;;
+    '/|tui') _sase_reply=/tui ;;
     '/|update') _sase_reply=/update ;;
     '/|usage') _sase_reply=/usage ;;
     '/|validate') _sase_reply=/validate ;;
@@ -972,25 +972,25 @@ _sase_child() {
     '/artifact/trash|list') _sase_reply=/artifact/trash/list ;;
     '/artifact/trash|purge') _sase_reply=/artifact/trash/purge ;;
     '/artifact/trash|restore') _sase_reply=/artifact/trash/restore ;;
-    '/axe|chop') _sase_reply=/axe/chop ;;
     '/axe|ensure') _sase_reply=/axe/ensure ;;
-    '/axe|lumberjack') _sase_reply=/axe/lumberjack ;;
+    '/axe|job') _sase_reply=/axe/job ;;
     '/axe|maintenance') _sase_reply=/axe/maintenance ;;
     '/axe|restart') _sase_reply=/axe/restart ;;
+    '/axe|routine') _sase_reply=/axe/routine ;;
     '/axe|start') _sase_reply=/axe/start ;;
     '/axe|status') _sase_reply=/axe/status ;;
     '/axe|stop') _sase_reply=/axe/stop ;;
-    '/axe/chop|doctor') _sase_reply=/axe/chop/doctor ;;
-    '/axe/chop|list') _sase_reply=/axe/chop/list ;;
-    '/axe/chop|run') _sase_reply=/axe/chop/run ;;
     '/axe/ensure|install') _sase_reply=/axe/ensure/install ;;
     '/axe/ensure|uninstall') _sase_reply=/axe/ensure/uninstall ;;
-    '/axe/lumberjack|list') _sase_reply=/axe/lumberjack/list ;;
-    '/axe/lumberjack|run') _sase_reply=/axe/lumberjack/run ;;
-    '/axe/lumberjack|status') _sase_reply=/axe/lumberjack/status ;;
+    '/axe/job|doctor') _sase_reply=/axe/job/doctor ;;
+    '/axe/job|list') _sase_reply=/axe/job/list ;;
+    '/axe/job|run') _sase_reply=/axe/job/run ;;
     '/axe/maintenance|enter') _sase_reply=/axe/maintenance/enter ;;
     '/axe/maintenance|exit') _sase_reply=/axe/maintenance/exit ;;
     '/axe/maintenance|status') _sase_reply=/axe/maintenance/status ;;
+    '/axe/routine|list') _sase_reply=/axe/routine/list ;;
+    '/axe/routine|run') _sase_reply=/axe/routine/run ;;
+    '/axe/routine|status') _sase_reply=/axe/routine/status ;;
     '/bead|+1') _sase_reply='/bead/+1' ;;
     '/bead|apply-status') _sase_reply=/bead/apply-status ;;
     '/bead|blocked') _sase_reply=/bead/blocked ;;
@@ -1250,13 +1250,6 @@ _sase_optval() {
   case "$1|$2" in
     '/|-F'|'/|--disable-feature') _sase_reply='kind:flag' ;;
     '/|-f'|'/|--enable-feature') _sase_reply='kind:flag' ;;
-    '/ace|-m'|'/ace|--model-tier') _sase_reply='choices:large small' ;;
-    '/ace|-M'|'/ace|--model-size') _sase_reply='choices:big little' ;;
-    '/ace|-p'|'/ace|--profile') _sase_reply=value ;;
-    '/ace|-r'|'/ace|--refresh-interval') _sase_reply=value ;;
-    '/ace|-s'|'/ace|--sanity-refresh-interval') _sase_reply=value ;;
-    '/ace|-t'|'/ace|--tab') _sase_reply='choices:artifacts agents axe' ;;
-    '/ace|-v'|'/ace|--vcs-provider') _sase_reply='choices:git hg auto' ;;
     '/agent/artifacts/layout/migrate|-i'|'/agent/artifacts/layout/migrate|--index-path') _sase_reply=value ;;
     '/agent/artifacts/layout/migrate|-l'|'/agent/artifacts/layout/migrate|--limit') _sase_reply=value ;;
     '/agent/artifacts/layout/migrate|-m'|'/agent/artifacts/layout/migrate|--manifest') _sase_reply=value ;;
@@ -1349,17 +1342,17 @@ _sase_optval() {
     '/artifact/stats|-t'|'/artifact/stats|--top') _sase_reply=value ;;
     '/artifact/trash/list|-l'|'/artifact/trash/list|--limit') _sase_reply=value ;;
     '/axe|-v'|'/axe|--vcs-provider') _sase_reply='choices:git hg auto' ;;
-    '/axe/chop/run|-L'|'/axe/chop/run|--lumberjack') _sase_reply=value ;;
-    '/axe/lumberjack/run|-q'|'/axe/lumberjack/run|--query') _sase_reply=value ;;
-    '/axe/lumberjack/run|-H'|'/axe/lumberjack/run|--max-hook-runners') _sase_reply=value ;;
-    '/axe/lumberjack/run|-A'|'/axe/lumberjack/run|--max-agent-runners') _sase_reply=value ;;
-    '/axe/lumberjack/run|-z'|'/axe/lumberjack/run|--zombie-timeout') _sase_reply=value ;;
+    '/axe/job/run|-L'|'/axe/job/run|--routine') _sase_reply=value ;;
     '/axe/maintenance/enter|-r'|'/axe/maintenance/enter|--reason') _sase_reply=value ;;
     '/axe/restart|-A'|'/axe/restart|--max-agent-runners') _sase_reply=value ;;
     '/axe/restart|-H'|'/axe/restart|--max-hook-runners') _sase_reply=value ;;
     '/axe/restart|-q'|'/axe/restart|--query') _sase_reply=value ;;
     '/axe/restart|-t'|'/axe/restart|--verify-timeout') _sase_reply=value ;;
     '/axe/restart|-z'|'/axe/restart|--zombie-timeout') _sase_reply=value ;;
+    '/axe/routine/run|-q'|'/axe/routine/run|--query') _sase_reply=value ;;
+    '/axe/routine/run|-H'|'/axe/routine/run|--max-hook-runners') _sase_reply=value ;;
+    '/axe/routine/run|-A'|'/axe/routine/run|--max-agent-runners') _sase_reply=value ;;
+    '/axe/routine/run|-z'|'/axe/routine/run|--zombie-timeout') _sase_reply=value ;;
     '/axe/start|-H'|'/axe/start|--max-hook-runners') _sase_reply=value ;;
     '/axe/start|-A'|'/axe/start|--max-agent-runners') _sase_reply=value ;;
     '/axe/start|-q'|'/axe/start|--query') _sase_reply=value ;;
@@ -1841,6 +1834,13 @@ _sase_optval() {
     '/telemetry/snapshot|-s'|'/telemetry/snapshot|--subsystem') _sase_reply=value ;;
     '/tmux-agent|-c'|'/tmux-agent|--dir') _sase_reply=value ;;
     '/tmux-agent|-e'|'/tmux-agent|--effort') _sase_reply='choices:off none minimal low medium high xhigh max' ;;
+    '/tui|-m'|'/tui|--model-tier') _sase_reply='choices:large small' ;;
+    '/tui|-M'|'/tui|--model-size') _sase_reply='choices:big little' ;;
+    '/tui|-p'|'/tui|--profile') _sase_reply=value ;;
+    '/tui|-r'|'/tui|--refresh-interval') _sase_reply=value ;;
+    '/tui|-s'|'/tui|--sanity-refresh-interval') _sase_reply=value ;;
+    '/tui|-t'|'/tui|--tab') _sase_reply='choices:artifacts agents axe' ;;
+    '/tui|-v'|'/tui|--vcs-provider') _sase_reply='choices:git hg auto' ;;
     '/update|-t'|'/update|--to') _sase_reply='choices:dev pypi' ;;
     '/usage/list|-p'|'/usage/list|--provider') _sase_reply='kind:provider' ;;
     '/usage/refresh|-p'|'/usage/refresh|--provider') _sase_reply='kind:provider' ;;

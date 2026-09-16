@@ -41,7 +41,7 @@ telegram:
       timeout: 90s
 
 axe:
-  lumberjacks:
+  routines:
     run_every:
       description: |-
         Propose scheduled maintenance for configured projects once a minute
@@ -50,11 +50,11 @@ axe:
         audit lane. Use this lane for chores controlled mainly by `run_every` and AXE inhibit guards, not for
         commit-threshold reviews or documentation refreshes.
 
-        The current chop targets only `sase` and is guarded by the `toobig-` clan prefix, so a previous split-file swarm
+        The current job targets only `sase` and is guarded by the `toobig-` clan prefix, so a previous split-file swarm
         must clear before another scan can propose work.
       interval: 60
       wait_runners: 3
-      chops:
+      jobs:
         toobig_split:
           script: bugyi_chop_toobig_split
           description: |-
@@ -81,23 +81,23 @@ axe:
         Refresh project documentation after meaningful repository drift
 
         Runs every 60 seconds so each project target can let `git.commits_since` decide when documentation has drifted
-        enough to refresh. Documentation-only proposal chops belong here; quality audits and file-splitting maintenance
+        enough to refresh. Documentation-only proposal jobs belong here; quality audits and file-splitting maintenance
         stay in their own lanes.
 
-        The current chop fans out across enabled projects and checkpoints only after the documentation agents succeed,
+        The current job fans out across enabled projects and checkpoints only after the documentation agents succeed,
         which keeps failed refreshes eligible for a later tick.
       interval: 60
       wait_runners: 1
-      chops:
+      jobs:
         refresh_docs:
-          script: sase_chop_refresh_docs
+          script: sase_job_refresh_docs
           description: |-
             Refresh documentation for enabled projects after meaningful repository drift
 
-            Runs `sase_chop_refresh_docs` every three hours for each enabled project, but only after
+            Runs `sase_job_refresh_docs` every three hours for each enabled project, but only after
             `git.commits_since` reports 100 commits since the last successful refresh.
 
-            The chop emits an update proposal followed by a polish proposal that waits on the update.
+            The job emits an update proposal followed by a polish proposal that waits on the update.
             `checkpoint: on_action_success` keeps the commit window open until the documentation refresh actually lands.
           run_every: 3h
           trigger:
@@ -111,15 +111,15 @@ axe:
       description: |-
         Watch GitHub Actions health across SASE repos and submit guarded releases
 
-        Runs every five minutes. The single chop owns its own actstat config so unrelated orgs are never swept,
+        Runs every five minutes. The single job owns its own actstat config so unrelated orgs are never swept,
         classifies high-cadence repos from terminal job evidence instead of blanket in-flight state, and collapses
         concurrent failing-job incidents into one SASE notification that quietly +1s as the announced repo set
         changes. Its only GitHub mutation is a guarded merge for an eligible release-please PR when live mode and
         `merge_enabled` are both explicit. It never creates gates, launch requests, repair agents, or Axe proposals,
         and every notification links to the combined CI WATCH report when the report publishes successfully.
       interval: 300
-      chop_timeout: "120s"
-      chops:
+      job_timeout: "120s"
+      jobs:
         ci_watch:
           script: bugyi_chop_ci_watch
           description: |-
@@ -133,7 +133,7 @@ axe:
             breadcrumb. All-green clears the incident with a resolution +1, so a later recurrence is announced
             again. Green branches with fully green release-please PRs merge deterministically in dependency order,
             capped at one merge per tick. Repos with no Actions report no_ci, while unknown, pending, stale, or
-            malformed evidence fails closed. The chop may only call actstat, bounded GitHub reads, guarded
+            malformed evidence fails closed. The job may only call actstat, bounded GitHub reads, guarded
             `gh pr merge`, and `sase notify create`/`sase notify +1`.
           env:
             ACTSTAT_CONFIG: /home/bryan/.config/sase/actstat-ci-watch.yml

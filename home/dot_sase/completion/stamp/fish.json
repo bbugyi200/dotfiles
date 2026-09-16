@@ -1,9 +1,9 @@
 {
-  "digest": "dbf80f87a179983e",
+  "digest": "74917a249afb422b",
   "owner": "chezmoi",
   "schema_version": 1,
   "shell": "fish",
   "target": "~/.config/fish/completions/sase.fish",
-  "timestamp": "2026-09-15T14:57:00Z",
+  "timestamp": "2026-09-16T01:50:16Z",
   "version": "0.17.1"
 }
