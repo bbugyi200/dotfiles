@@ -41,10 +41,20 @@ Then submit it:
 sase launch request -f launch_request.json -o json
 ```
 
+Run this command in the foreground and wait for the process to exit on its own. Never
+invoke it with a yield window, a background flag, or any early-return timeout: an early
+return with no descriptor does not mean the request was created, it means you stopped
+watching before the CLI made its first durable write, and nothing was created.
+
 The command creates a durable pending `LaunchApproval` gate shell, prints its
-descriptor, hands this agent's family lane to that gate shell, and then this turn ends.
-It does not spawn an agent unless the approver accepts the request and host dispatch
-succeeds.
+descriptor, hands this agent's family lane to that gate shell, and then this turn ends
+by killing this process right after the descriptor prints. Seeing that descriptor is how
+you know the request was created; the kill that follows is not a signal you can observe,
+so never treat an early or empty tool result as that signal. If the tool call ever
+returns something other than the descriptor — an error, or output you did not expect —
+your turn has NOT ended; read it and report it instead of assuming the handoff already
+happened. It does not spawn an agent unless the approver accepts the request and host
+dispatch succeeds.
 
 The pending request lives in SASE's neutral `interaction_requests/launch/<request-id>/`
 layout. Every terminal option uses the bundle's hash-verified command; do not write the

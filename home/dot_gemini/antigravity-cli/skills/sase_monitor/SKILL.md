@@ -53,8 +53,12 @@ the row color, so reusing one pair across related monitors makes them read as on
   it is actually alive. A non-zero exit means the supervisor never acknowledged startup
   — you are still running and nothing was handed off. Read the error and either retry or
   run the command inline instead of assuming a monitor exists.
-- The command runs under the shell (`sh -c` on Unix). Quote paths, variables, and nested
-  commands exactly as you would in a shell script.
+- The command after `--` is preserved argument-for-argument. Pass one quoted string
+  (`-- 'just install && just check'`) and it runs verbatim as the shell command under
+  the host's `/bin/sh -c`; pass several bare words (`-- just check-full`) and they are
+  rejoined for you. Do not wrap the command in `bash -c '...'` or `sh -c '...'` — the
+  host already runs it under a shell, so the wrapper is redundant and is the leading
+  cause of monitor command misquoting (`sase monitor start` warns if you do it anyway).
 - Only one monitor can be active per agent. An identical replay returns the existing
   monitor; a different request errors until the active monitor settles.
 - Do not monitor interactive or TTY-requiring commands. Use monitors for batch commands,

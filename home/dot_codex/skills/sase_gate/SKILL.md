@@ -344,15 +344,25 @@ sase gate create --shell \
 fields; everything is also expressible in the JSON request body, which is what keeps
 this skill declarative.
 
+Run this command in the foreground and wait for the process to exit on its own. Never
+invoke it with a yield window, a background flag, or any early-return timeout: an early
+return with no descriptor does not mean the handoff happened, it means you stopped
+watching before the CLI made its first durable write, and nothing was created.
+
 **Print the descriptor, then stop. Do not wait, poll, or keep working.** Creating a gate
 shell ends your turn: the runner hands off to the gate shell and kills your process
-immediately after the descriptor prints. There is nothing after this for you to do —
-`sase gate wait` is rejected outright for a shell gate under an agent runner, with a
-message pointing back at `--shell`, because waiting is exactly the blocking behaviour a
-gate shell exists to remove. (It still works for non-agent scripts and tests answering a
-non-shell gate.) The reviewer's decision and its command results reach the _next_ family
-member automatically, composed into their prompt's labelled sections per the `next`
-policy above. Never poll bundle files directly. Never run bundle commands by hand.
+immediately after the descriptor prints. Seeing the descriptor is how you know creation
+succeeded; the kill that follows is not a signal you can observe, so never treat an
+early or empty tool result as that signal. If the tool call ever returns something other
+than the descriptor — an error, or output you did not expect — your turn has NOT ended;
+read it and report it instead of assuming the handoff already happened. There is nothing
+after this for you to do — `sase gate wait` is rejected outright for a shell gate under
+an agent runner, with a message pointing back at `--shell`, because waiting is exactly
+the blocking behaviour a gate shell exists to remove. (It still works for non-agent
+scripts and tests answering a non-shell gate.) The reviewer's decision and its command
+results reach the _next_ family member automatically, composed into their prompt's
+labelled sections per the `next` policy above. Never poll bundle files directly. Never
+run bundle commands by hand.
 
 If your gate resolves via `"auto": true` before creation even returns, none of this
 costs you a hand-off: creation settles it synchronously and your own process continues
