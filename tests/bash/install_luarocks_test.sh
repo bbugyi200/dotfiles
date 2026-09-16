@@ -11,15 +11,17 @@ function set_up() {
   test_tmp="$(mktemp -d)"
   test_home="${test_tmp}/home"
   fake_bin="${test_tmp}/bin"
+  sys_bin="${test_tmp}/sysbin"
   calls_file="${test_tmp}/calls.txt"
   failures_file="${test_tmp}/failures.txt"
   stdout_file="${test_tmp}/stdout.txt"
   stderr_file="${test_tmp}/stderr.txt"
 
-  mkdir -p "${fake_bin}" "${test_home}/.local/share/chezmoi/lib" \
+  mkdir -p "${fake_bin}" "${sys_bin}" "${test_home}/.local/share/chezmoi/lib" \
     "${test_home}/.luarocks"
   touch "${calls_file}" "${failures_file}"
   write_chezmoi_utils
+  write_host_stubs
 }
 
 function tear_down() {
@@ -27,25 +29,36 @@ function tear_down() {
 }
 
 function write_chezmoi_utils() {
-  cat >"${test_home}/.local/share/chezmoi/lib/chezmoi_utils.sh" <<'EOF'
-#!/bin/bash
+  # Use the real helpers so the test tracks the installer's actual contract.
+  cp "${PWD}/lib/chezmoi_utils.sh" \
+    "${test_home}/.local/share/chezmoi/lib/chezmoi_utils.sh"
+  cat >>"${test_home}/.local/share/chezmoi/lib/chezmoi_utils.sh" <<'EOF'
 
-function chez::build_dir_root() {
-  printf '%s\n' "${HOME}/tmp/chezmoi_build"
-}
-
-function chez::log() {
-  local msg
-  if [[ "$#" -eq 1 ]]; then
-    msg="$1"
-    shift
-  else
-    msg="$(printf "$@")"
-  fi
-
-  printf '>>> %s\n' "$msg"
+# Test override: model an interactive apply unless FAKE_HAS_TTY=0.
+function chez::has_tty() {
+  [[ "${FAKE_HAS_TTY:-1}" == 1 ]]
 }
 EOF
+}
+
+function write_host_stubs() {
+  cat >"${fake_bin}/lua5.1" <<'EOF'
+#!/bin/bash
+printf '5.1\n'
+EOF
+  chmod +x "${fake_bin}/lua5.1"
+
+  cat >"${fake_bin}/sudo" <<'EOF'
+#!/bin/bash
+printf 'sudo %s\n' "$*" >>"${CALLS_FILE}"
+exit 1
+EOF
+  chmod +x "${fake_bin}/sudo"
+
+  local tool
+  for tool in bash mkdir rm; do
+    ln -s "$(command -v "${tool}")" "${sys_bin}/${tool}"
+  done
 }
 
 function write_luarocks_stub() {
@@ -100,10 +113,11 @@ function clear_failures() {
 }
 
 function run_installer() {
-  PATH="${fake_bin}:/usr/bin:/bin" \
+  PATH="${fake_bin}:${sys_bin}" \
     HOME="${test_home}" \
     CALLS_FILE="${calls_file}" \
     FAKE_LUAROCKS_FAILURES="${failures_file}" \
+    FAKE_HAS_TTY="${FAKE_HAS_TTY:-1}" \
     bash "${INSTALL_SCRIPT}" >"${stdout_file}" 2>"${stderr_file}"
 }
 
@@ -224,4 +238,17 @@ function test_bootstrap_failure_stops_before_rock_installs_and_preserves_tree() 
   assert_contains "fake bootstrap download failure" "$(stderr_text)"
   assert_same "" "$(install_attempts)"
   assert_tree_sentinel_survives
+}
+
+function test_non_interactive_failure_soft_exits_with_summary() {
+  write_luarocks_stub
+  fail_rock busted 37
+
+  local rc
+  if FAKE_HAS_TTY=0 run_installer; then rc=0; else rc=$?; fi
+
+  assert_same "0" "${rc}"
+  assert_contains "- busted (exit status 37)." "$(final_summary)"
+  assert_contains "non-interactive chezmoi apply" "$(stdout_text)"
+  assert_not_contains "sudo" "$(calls_text)"
 }

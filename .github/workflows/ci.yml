@@ -113,6 +113,13 @@ jobs:
           bash "$RUNNER_TEMP/bashunit-install.sh" "$HOME/bin"
           echo "$HOME/bin" >> "$GITHUB_PATH"
 
+      - name: Install chezmoi
+        run: |
+          curl -fsLS https://get.chezmoi.io -o "$RUNNER_TEMP/chezmoi-install.sh"
+          sh "$RUNNER_TEMP/chezmoi-install.sh" -b "$HOME/bin"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+          "$HOME/bin/chezmoi" --version
+
       - uses: extractions/setup-just@v2
 
       - uses: astral-sh/setup-uv@v4
