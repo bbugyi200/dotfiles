@@ -142,6 +142,13 @@ if [[ "${PROBE_BLOCK_HOST:-}" == "${host}" ]]; then
 fi
 
 case "$(probe_mode)" in
+real)
+  # Execute the actual SSH payload with Linux's find against an isolated host home.
+  HOME="${TEST_TMP}/remote homes/${host}" /bin/sh -c "${cmd}"
+  probe_status=$?
+  log "probe-end|${host}|real|status=${probe_status}"
+  exit "${probe_status}"
+  ;;
 pending)
   log "probe-end|${host}|pending"
   printf 'pending\n'
@@ -344,6 +351,75 @@ function rsync_ssh() {
 
 function lock_path() {
   printf '%s/bob_xlib_pull.lock\n' "${RUN_TMPDIR}"
+}
+
+function use_real_remote_probes() {
+  local find_bin
+  find_bin="$(command -v gfind || command -v find)"
+  if [[ "$("${find_bin}" --version 2>/dev/null)" != *"GNU findutils"* ]]; then
+    bashunit::skip "GNU find is required to exercise the Linux remote probe"
+  fi
+  ln -s "${find_bin}" "${FAKE_BIN}/find"
+  ATHENA_PROBE="real"
+  APOLLO_PROBE="real"
+  mkdir -p "${TEST_TMP}/remote homes/athena" "${TEST_TMP}/remote homes/apollo"
+}
+
+function test_real_remote_probe_skips_missing_and_empty_queues() {
+  use_real_remote_probes
+  mkdir -p "${TEST_TMP}/remote homes/apollo/bob/xlib"
+
+  run_xlib_pull
+
+  assert_same "0" "${RUN_RC}"
+  assert_empty "$(stderr_text)"
+  assert_same "2" "$(event_count "probe-start|")"
+  assert_not_contains "rsync-start" "$(events)"
+  assert_not_contains "cleanup|" "$(events)"
+}
+
+function test_real_remote_probe_skips_queues_containing_only_directories() {
+  use_real_remote_probes
+  mkdir -p "${TEST_TMP}/remote homes/athena/bob/xlib/nested/bundle.textbundle" \
+    "${TEST_TMP}/remote homes/apollo/bob/xlib/empty"
+
+  run_xlib_pull
+
+  assert_same "0" "${RUN_RC}"
+  assert_empty "$(stderr_text)"
+  assert_not_contains "rsync-start" "$(events)"
+  assert_not_contains "cleanup|" "$(events)"
+}
+
+function test_real_remote_probe_pulls_nested_and_hidden_files_from_both_hosts() {
+  use_real_remote_probes
+  local athena_src="${TEST_TMP}/remote homes/athena/bob/xlib"
+  local apollo_src="${TEST_TMP}/remote homes/apollo/bob/xlib"
+  mkdir -p "${athena_src}/bundle.textbundle" "${apollo_src}"
+  printf 'textbundle\n' >"${athena_src}/bundle.textbundle/text.txt"
+  touch "${apollo_src}/.hidden file"
+
+  run_xlib_pull
+
+  assert_same "0" "${RUN_RC}"
+  assert_empty "$(stderr_text)"
+  assert_same "1" "$(event_count "rsync-start|athena|")"
+  assert_same "1" "$(event_count "rsync-start|apollo|")"
+  assert_not_contains "rsync-overlap" "$(events)"
+}
+
+function test_real_remote_probe_treats_a_dangling_symlink_as_pending() {
+  use_real_remote_probes
+  local athena_src="${TEST_TMP}/remote homes/athena/bob/xlib"
+  mkdir -p "${athena_src}"
+  ln -s nonexistent "${athena_src}/dangling link"
+
+  run_xlib_pull
+
+  assert_same "0" "${RUN_RC}"
+  assert_empty "$(stderr_text)"
+  assert_same "1" "$(event_count "rsync-start|athena|")"
+  assert_not_contains "rsync-start|apollo|" "$(events)"
 }
 
 function test_non_macos_exits_without_network_work() {

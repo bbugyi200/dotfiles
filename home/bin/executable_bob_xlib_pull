@@ -56,7 +56,7 @@ if [ ! -d "$src" ]; then
   printf "%s\n" empty
   exit 0
 fi
-probe_result=$(find "$src" -mindepth 1 ! -type d -printf "%s\n" pending -quit) || exit $?
+probe_result=$(find "$src" -mindepth 1 ! -type d -printf "pending\n" -quit) || exit $?
 if [ "$probe_result" = pending ]; then
   printf "%s\n" pending
 else
