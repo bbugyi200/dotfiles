@@ -172,7 +172,7 @@ ace:
     smo: |-
       sase monitor
     ss: |-
-      /sase_
+      the $1 screenshot
     tab: |-
       the "$1" tab
     td: |-
