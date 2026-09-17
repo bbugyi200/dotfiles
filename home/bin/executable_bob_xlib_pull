@@ -42,28 +42,197 @@ if ! mkdir "$lock_dir" 2>/dev/null; then
   exit 0
 fi
 
-cleanup() {
-  rmdir "$lock_dir" 2>/dev/null || true
-}
-trap 'cleanup' 0
-trap 'cleanup; exit 129' 1
-trap 'cleanup; exit 130' 2
-trap 'cleanup; exit 131' 3
-trap 'cleanup; exit 143' 15
+state_dir=
+athena_probe_pid=
+apollo_probe_pid=
+current_pid=
+athena_control_path=
+apollo_control_path=
+result=0
 
-ssh_opts='-o BatchMode=yes -o ConnectTimeout=5 -o ConnectionAttempts=1'
-source_host=
-for candidate in athena apollo; do
-  if ssh $ssh_opts "$candidate" true >/dev/null 2>&1; then
-    source_host=$candidate
-    break
-  fi
-done
-
-if [ -z "$source_host" ]; then
+ssh_opts='-o BatchMode=yes -o ConnectTimeout=5 -o ConnectionAttempts=1 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 -o ControlMaster=auto -o ControlPersist=60'
+probe_remote='src=$HOME/bob/xlib
+if [ ! -d "$src" ]; then
+  printf "%s\n" empty
   exit 0
 fi
+probe_result=$(find "$src" -mindepth 1 ! -type d -printf "%s\n" pending -quit) || exit $?
+if [ "$probe_result" = pending ]; then
+  printf "%s\n" pending
+else
+  printf "%s\n" empty
+fi'
+cleanup_remote='find "$HOME/bob/xlib" -mindepth 1 -type d -empty -delete'
 
-mkdir -p "$dest_dir" || exit 1
-rsync -a --remove-source-files -e "ssh $ssh_opts" "$source_host":bob/xlib/ "$dest_dir/"
-ssh $ssh_opts "$source_host" 'find ~/bob/xlib -mindepth 1 -type d -empty -delete' >/dev/null 2>&1 || true
+stop_children() {
+  for child_pid in $current_pid $athena_probe_pid $apollo_probe_pid; do
+    if [ -n "$child_pid" ]; then
+      kill "$child_pid" 2>/dev/null || true
+    fi
+  done
+
+  for child_pid in $current_pid $athena_probe_pid $apollo_probe_pid; do
+    if [ -n "$child_pid" ]; then
+      wait "$child_pid" 2>/dev/null || true
+    fi
+  done
+}
+
+close_masters() {
+  if [ -n "$athena_control_path" ]; then
+    ssh -n -S "$athena_control_path" -O exit athena >/dev/null 2>&1 || true
+  fi
+  if [ -n "$apollo_control_path" ]; then
+    ssh -n -S "$apollo_control_path" -O exit apollo >/dev/null 2>&1 || true
+  fi
+}
+
+cleanup() {
+  saved_status=$?
+  trap - 0 1 2 3 15
+  stop_children
+  close_masters
+  if [ -n "$state_dir" ]; then
+    rm -rf "$state_dir"
+  fi
+  rmdir "$lock_dir" 2>/dev/null || true
+  return "$saved_status"
+}
+
+on_signal() {
+  signal_status=$1
+  cleanup
+  exit "$signal_status"
+}
+
+trap 'cleanup' 0
+trap 'on_signal 129' 1
+trap 'on_signal 130' 2
+trap 'on_signal 131' 3
+trap 'on_signal 143' 15
+
+state_dir=$(mktemp -d /tmp/bob_xlib_pull.XXXXXX) || exit 1
+athena_control_path=$state_dir/athena.ctl
+apollo_control_path=$state_dir/apollo.ctl
+
+run_probe() {
+  probe_host=$1
+  probe_control_path=$2
+  probe_out=$3
+  probe_err=$4
+
+  exec ssh -n $ssh_opts -S "$probe_control_path" "$probe_host" "$probe_remote" \
+    >"$probe_out" 2>"$probe_err"
+}
+
+wait_for_child() {
+  waited_pid=$1
+
+  wait "$waited_pid"
+  child_status=$?
+  if [ "$child_status" -ge 128 ] && kill -0 "$waited_pid" 2>/dev/null; then
+    on_signal "$child_status"
+  fi
+  return "$child_status"
+}
+
+run_waited() {
+  "$@" &
+  current_pid=$!
+  wait_for_child "$current_pid"
+  waited_status=$?
+  current_pid=
+  return "$waited_status"
+}
+
+report_probe_failure() {
+  failed_host=$1
+  failed_status=$2
+  failed_err=$3
+
+  printf 'bob_xlib_pull: %s probe failed (exit %s).\n' \
+    "$failed_host" "$failed_status" >&2
+  if [ -s "$failed_err" ]; then
+    sed "s/^/bob_xlib_pull: $failed_host: /" "$failed_err" >&2
+  fi
+}
+
+transfer_host() {
+  transfer_host_name=$1
+  transfer_control_path=$2
+
+  if ! mkdir -p "$dest_dir"; then
+    printf 'bob_xlib_pull: cannot create destination: %s\n' "$dest_dir" >&2
+    return 1
+  fi
+
+  rsync_ssh="ssh $ssh_opts -S $transfer_control_path"
+  if ! run_waited rsync -a --remove-source-files --ignore-existing \
+    -e "$rsync_ssh" "${transfer_host_name}:bob/xlib/" "$dest_dir/"; then
+    printf 'bob_xlib_pull: %s transfer failed.\n' "$transfer_host_name" >&2
+    return 1
+  fi
+
+  run_waited ssh -n $ssh_opts -S "$transfer_control_path" \
+    "$transfer_host_name" "$cleanup_remote" >/dev/null 2>&1 || true
+}
+
+handle_host() {
+  host_name=$1
+  probe_pid=$2
+  control_path=$3
+  out_file=$4
+  err_file=$5
+
+  wait_for_child "$probe_pid"
+  probe_status=$?
+
+  case "$host_name" in
+  athena)
+    athena_probe_pid=
+    ;;
+  apollo)
+    apollo_probe_pid=
+    ;;
+  esac
+
+  if [ "$probe_status" -eq 255 ]; then
+    return 0
+  fi
+  if [ "$probe_status" -ne 0 ]; then
+    report_probe_failure "$host_name" "$probe_status" "$err_file"
+    result=1
+    return 0
+  fi
+
+  probe_output=$(sed -n '1p' "$out_file" 2>/dev/null || true)
+  case "$probe_output" in
+  pending)
+    if ! transfer_host "$host_name" "$control_path"; then
+      result=1
+    fi
+    ;;
+  empty)
+    ;;
+  *)
+    printf 'bob_xlib_pull: %s probe returned unexpected output: %s\n' \
+      "$host_name" "$probe_output" >&2
+    result=1
+    ;;
+  esac
+}
+
+athena_out=$state_dir/athena.out
+athena_err=$state_dir/athena.err
+apollo_out=$state_dir/apollo.out
+apollo_err=$state_dir/apollo.err
+
+run_probe athena "$athena_control_path" "$athena_out" "$athena_err" &
+athena_probe_pid=$!
+run_probe apollo "$apollo_control_path" "$apollo_out" "$apollo_err" &
+apollo_probe_pid=$!
+
+handle_host athena "$athena_probe_pid" "$athena_control_path" "$athena_out" "$athena_err"
+handle_host apollo "$apollo_probe_pid" "$apollo_control_path" "$apollo_out" "$apollo_err"
+
+exit "$result"
