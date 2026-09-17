@@ -13,21 +13,20 @@
 # shellcheck disable=SC2230
 
 # ---------- sase ----------
-alias ace='sase tui'
+alias ace='sase -p tui'
 acei() { install_sase_github "$@" && sase tui --restart-axe; }
 aceii() { install_sase_google "$@" && sase tui --restart-axe; }
-alias axe='sase axe'
-alias commit='sase commit'
+alias axe='sase -p axe'
+alias commit='sase -p commit'
 alias gsl='get_sase_logs'
 alias gsp='get_sase_profile'
-alias run='sase run'
-alias sam='sase memory'
-alias sad='sase daemon'
-alias sap='sase plugin'
-alias sat='sase telemetry'
+alias run='sase -p run'
+alias sam='sase -p memory'
+alias sap='sase -p plugin'
+alias sat='sase -p telemetry'
 alias sbd='sase -p bead'
 alias sbds='sase -p bead show'
-alias sax='sase xprompt'
+alias sax='sase -p xprompt'
 
 # ---------- cookie Aliases / Functions ----------
 # def marker: COOKIE
