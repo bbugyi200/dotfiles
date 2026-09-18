@@ -27,7 +27,12 @@ sase repo open dotdrop -r "Port the launcher fix requested by the user"
 sase repo open gh:pallets/click -r "Study upstream option parsing"
 ```
 
-Bare `owner/repo` is shorthand for `gh:owner/repo`.
+Bare `owner/repo` is shorthand for `gh:owner/repo`. Prefer the configured repository
+name when one exists. If a supported provider ref or another registered SASE project
+corresponds to a configured linked repo in the current host project, `sase repo open`
+prints the linked checkout path on stdout and explains the automatic redirect on stderr.
+A preexisting external checkout is left untouched; continue in the linked path printed
+on stdout unless you intentionally need to recover work from that external copy.
 
 The command prints the prepared path to stdout. Use that printed path as the only path
 for subsequent reads and writes. Never locate or clone a linked repo, sidecar, different
