@@ -18,9 +18,9 @@ if ! command -v zsh >/dev/null 2>&1; then
 fi
 
 if [[ -f "${compiled}" && "${compiled}" -nt "${target}" ]]; then
-  echo "SASE zsh completion bytecode is current."
+  echo "SASE zsh completion loader bytecode is current."
   exit 0
 fi
 
 zsh -fc 'zcompile -U "$1"' zcompile-sase-completion "${target}"
-echo "SASE zsh completion bytecode refreshed."
+echo "SASE zsh completion loader bytecode refreshed."
