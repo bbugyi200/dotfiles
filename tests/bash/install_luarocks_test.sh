@@ -42,12 +42,6 @@ EOF
 }
 
 function write_host_stubs() {
-  cat >"${fake_bin}/lua5.1" <<'EOF'
-#!/bin/bash
-printf '5.1\n'
-EOF
-  chmod +x "${fake_bin}/lua5.1"
-
   cat >"${fake_bin}/sudo" <<'EOF'
 #!/bin/bash
 printf 'sudo %s\n' "$*" >>"${CALLS_FILE}"
@@ -59,6 +53,28 @@ EOF
   for tool in bash mkdir rm; do
     ln -s "$(command -v "${tool}")" "${sys_bin}/${tool}"
   done
+}
+
+function write_lua51_stub() {
+  cat >"${fake_bin}/lua5.1" <<'EOF'
+#!/bin/bash
+printf '5.1\n'
+EOF
+  chmod +x "${fake_bin}/lua5.1"
+}
+
+function write_brew_stub() {
+  local brew_rc="${1:-0}"
+  cat >"${fake_bin}/brew" <<EOF
+#!/bin/bash
+printf 'brew %s\n' "\$*" >>"\${CALLS_FILE}"
+if [[ "\$1" != "install" || "\$2" != "luajit" ]]; then
+  printf 'unexpected brew arguments: %s\n' "\$*" >&2
+  exit 64
+fi
+exit ${brew_rc}
+EOF
+  chmod +x "${fake_bin}/brew"
 }
 
 function write_luarocks_stub() {
@@ -141,6 +157,10 @@ function required_attempts() {
   printf 'install:%s\n' "${REQUIRED_ROCKS[@]}"
 }
 
+function brew_and_install_calls() {
+  grep -E '^(brew |install:)' "${calls_file}" || true
+}
+
 function final_summary() {
   sed -n '/LuaRocks failed to install required rocks/,$p' "${stderr_file}"
 }
@@ -164,6 +184,7 @@ function assert_tree_sentinel_survives() {
 }
 
 function test_all_five_installs_succeed_in_order() {
+  write_lua51_stub
   write_luarocks_stub
 
   local rc
@@ -176,6 +197,7 @@ function test_all_five_installs_succeed_in_order() {
 }
 
 function test_busted_failure_survives_later_luacov_success() {
+  write_lua51_stub
   write_luarocks_stub
   fail_rock busted 37
 
@@ -191,6 +213,7 @@ function test_busted_failure_survives_later_luacov_success() {
 }
 
 function test_multiple_failures_are_summarized_once_and_all_installs_are_attempted() {
+  write_lua51_stub
   write_luarocks_stub
   fail_rock busted 37
   fail_rock luacov 42
@@ -208,6 +231,7 @@ function test_multiple_failures_are_summarized_once_and_all_installs_are_attempt
 }
 
 function test_existing_tree_survives_failure_and_successful_retry() {
+  write_lua51_stub
   write_luarocks_stub
   write_tree_sentinel
   fail_rock busted 37
@@ -228,6 +252,7 @@ function test_existing_tree_survives_failure_and_successful_retry() {
 }
 
 function test_bootstrap_failure_stops_before_rock_installs_and_preserves_tree() {
+  write_lua51_stub
   write_bootstrap_failure_stubs
   write_tree_sentinel
 
@@ -241,6 +266,7 @@ function test_bootstrap_failure_stops_before_rock_installs_and_preserves_tree() 
 }
 
 function test_non_interactive_failure_soft_exits_with_summary() {
+  write_lua51_stub
   write_luarocks_stub
   fail_rock busted 37
 
@@ -251,4 +277,32 @@ function test_non_interactive_failure_soft_exits_with_summary() {
   assert_contains "- busted (exit status 37)." "$(final_summary)"
   assert_contains "non-interactive chezmoi apply" "$(stdout_text)"
   assert_not_contains "sudo" "$(calls_text)"
+}
+
+function test_existing_luarocks_provisions_lua51_via_brew_before_rocks() {
+  write_luarocks_stub
+  write_brew_stub 0
+
+  local rc expected
+  if run_installer; then rc=0; else rc=$?; fi
+  expected="$(printf 'brew install luajit\n%s' "$(required_attempts)")"
+
+  assert_same "0" "${rc}"
+  assert_same "${expected}" "$(brew_and_install_calls)"
+  assert_contains "INSTALLING LUA 5.1" "$(stdout_text)"
+  assert_same "" "$(stderr_text)"
+}
+
+function test_lua51_provision_failure_skips_rock_installs() {
+  write_luarocks_stub
+  write_brew_stub 1
+
+  local rc
+  if run_installer; then rc=0; else rc=$?; fi
+
+  assert_same "1" "${rc}"
+  assert_contains "brew install luajit" "$(calls_text)"
+  assert_same "" "$(install_attempts)"
+  assert_not_contains "LuaRocks install failed for" "$(stderr_text)"
+  assert_not_contains "LuaRocks failed to install required rocks" "$(stderr_text)"
 }

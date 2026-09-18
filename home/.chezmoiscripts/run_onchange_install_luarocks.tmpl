@@ -7,9 +7,9 @@ source ~/.local/share/chezmoi/lib/chezmoi_utils.sh
 LUAROCKS_VERSION=3.11.1
 LUAROCKS_LUA_VERSION=5.1
 
-# Install a Lua 5.1 interpreter (and its headers), which the luarocks build
-# needs in order to configure itself against Lua 5.1 -- the version Neovim
-# embeds and the one our rocks are installed for.
+# Install a Lua 5.1 interpreter (and its headers). Lua 5.1 rocks and the
+# luarocks source build both need one -- Neovim embeds 5.1, and that is the
+# version our rocks are installed for.
 function install_lua51() {
   # The interpreter names that `./configure --lua-version=5.1` searches $PATH
   # for, checked the same way configure checks them.
@@ -21,7 +21,7 @@ function install_lua51() {
     fi
   done
 
-  chez::log "INSTALLING LUA 5.1 (REQUIRED TO BUILD LUAROCKS)"
+  chez::log "INSTALLING LUA 5.1 (REQUIRED FOR LUAROCKS 5.1 ROCKS)"
   if command -v apt-get &>/dev/null; then
     if ! chez::can_sudo; then
       chez::log "WARNING: LUA 5.1 INSTALL NEEDS SUDO, BUT SUDO CANNOT RUN WITHOUT PROMPTING IN THIS CONTEXT"
@@ -36,10 +36,8 @@ function install_lua51() {
   fi
 }
 
-# Install luarocks.
+# Install luarocks. Lua 5.1 is provisioned by install_luarocks_and_rocks.
 function install_luarocks() {
-  install_lua51 || return 1
-
   chez::log "INSTALLING LUAROCKS VERSION %s" "$LUAROCKS_VERSION"
 
   # Build from a clean directory so a failed run cannot leave a half-configured
@@ -108,6 +106,7 @@ function install_rocks() {
 
 # Installs luarocks and then installs the required rocks.
 function install_luarocks_and_rocks() {
+  install_lua51 || return 1
   if ! command -v luarocks &>/dev/null; then
     # Bail out instead of running every `luarocks install` against a luarocks
     # that was never built (which wipes ~/.luarocks and then fails with 127).
