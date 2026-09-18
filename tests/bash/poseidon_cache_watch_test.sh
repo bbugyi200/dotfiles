@@ -51,15 +51,18 @@ function run_watch() {
     POSEIDON_SCCACHE_DIR="${TEST_TMP}/poseidon/sccache" \
     POSEIDON_SCCACHE_CONF="${TEST_TMP}/sccache.conf" \
     POSEIDON_SCCACHE_SOCK="${TEST_TMP}/poseidon/sccache/sccache.sock" \
-    POSEIDON_SCRATCH_ROOT="${TEST_TMP}/scratch" \
     POSEIDON_SMART_PROM="${TEST_TMP}/smart.prom" \
     POSEIDON_SMART_DISK="/dev/sdc" \
     POSEIDON_FAKE_MOUNTED=1 \
     POSEIDON_FAKE_UUID=e0d96fde-be60-4f3b-bed7-3e9700060fdb \
-    POSEIDON_FAKE_ROOT_AVAIL=200000000000 \
-    POSEIDON_FAKE_SCRATCH_BYTES="${POSEIDON_FAKE_SCRATCH_BYTES:-1000}" \
-    POSEIDON_HOURLY_SECONDS="${POSEIDON_HOURLY_SECONDS:-0}" \
+    POSEIDON_FAKE_ROOT_AVAIL="${POSEIDON_FAKE_ROOT_AVAIL:-200000000000}" \
     bash "${WATCH}" "$@"
+}
+
+function notify_log() {
+  if [[ -f "${NOTIFY_LOG}" ]]; then
+    cat "${NOTIFY_LOG}"
+  fi
 }
 
 function test_healthy_poseidon_is_quiet() {
@@ -122,14 +125,72 @@ function test_old_target_writable_is_reported() {
   assert_contains "writable" "$(cat "${NOTIFY_LOG}")"
 }
 
-function test_scratch_warns_after_two_hourly_checks_without_progress() {
+function test_scratch_soft_target_does_not_notify() {
   chmod 0555 "${TEST_TMP}/poseidon/cargo-target"
+  cat >"${STATE_DIR}/state" <<'EOF'
+delivered_scratch=stale
+level_scratch=stale
+scratch_last_bytes=20000000000
+scratch_over_ticks=2
+last_hourly_du=1
+EOF
   POSEIDON_FAKE_AVAIL=200000000000 POSEIDON_FAKE_USED_PCT=1 \
-    POSEIDON_FAKE_SCRATCH_BYTES=20000000000 \
-    POSEIDON_FAKE_NOW=1000 run_watch
+    POSEIDON_FAKE_SCRATCH_BYTES=20000000000 run_watch
+  assert_not_contains "soft target" "$(notify_log)"
+  assert_not_contains "KEY=scratch" "$(notify_log)"
+  assert_not_contains "reaper progress" "$(notify_log)"
   : >"${NOTIFY_LOG}"
   POSEIDON_FAKE_AVAIL=200000000000 POSEIDON_FAKE_USED_PCT=1 \
-    POSEIDON_FAKE_SCRATCH_BYTES=20000000000 \
-    POSEIDON_FAKE_NOW=2000 run_watch
-  assert_contains "soft target" "$(cat "${NOTIFY_LOG}")"
+    POSEIDON_FAKE_SCRATCH_BYTES=30000000000 run_watch
+  assert_not_contains "soft target" "$(notify_log)"
+  assert_not_contains "KEY=scratch" "$(notify_log)"
+  assert_not_contains "recovered" "$(notify_log)"
+  : >"${NOTIFY_LOG}"
+  POSEIDON_FAKE_AVAIL=200000000000 POSEIDON_FAKE_USED_PCT=1 \
+    POSEIDON_FAKE_SCRATCH_BYTES=25000000000 run_watch
+  assert_not_contains "soft target" "$(notify_log)"
+  assert_not_contains "KEY=scratch" "$(notify_log)"
+  assert_not_contains "recovered" "$(notify_log)"
+  assert_contains "delivered_scratch=stale" "$(cat "${STATE_DIR}/state")"
+  assert_contains "level_scratch=stale" "$(cat "${STATE_DIR}/state")"
+}
+
+function test_root_low_space_alerts_once() {
+  chmod 0555 "${TEST_TMP}/poseidon/cargo-target"
+  POSEIDON_FAKE_AVAIL=200000000000 POSEIDON_FAKE_USED_PCT=1 \
+    POSEIDON_FAKE_ROOT_AVAIL=30000000000 run_watch
+  assert_contains "below the 32 GiB floor" "$(notify_log)"
+  : >"${NOTIFY_LOG}"
+  POSEIDON_FAKE_AVAIL=200000000000 POSEIDON_FAKE_USED_PCT=1 \
+    POSEIDON_FAKE_ROOT_AVAIL=30000000000 run_watch
+  if [[ -s "${NOTIFY_LOG}" ]]; then
+    assert_not_contains "32 GiB floor" "$(notify_log)"
+  fi
+}
+
+function test_root_hysteresis_does_not_recover_early() {
+  chmod 0555 "${TEST_TMP}/poseidon/cargo-target"
+  POSEIDON_FAKE_AVAIL=200000000000 POSEIDON_FAKE_USED_PCT=1 \
+    POSEIDON_FAKE_ROOT_AVAIL=30000000000 run_watch
+  assert_contains "below the 32 GiB floor" "$(notify_log)"
+  : >"${NOTIFY_LOG}"
+  POSEIDON_FAKE_AVAIL=200000000000 POSEIDON_FAKE_USED_PCT=1 \
+    POSEIDON_FAKE_ROOT_AVAIL=40000000000 run_watch
+  assert_not_contains "recovered" "$(notify_log)"
+}
+
+function test_root_recovers_only_after_alert() {
+  chmod 0555 "${TEST_TMP}/poseidon/cargo-target"
+  POSEIDON_FAKE_AVAIL=200000000000 POSEIDON_FAKE_USED_PCT=1 \
+    POSEIDON_FAKE_ROOT_AVAIL=60000000000 run_watch
+  if [[ -f "${NOTIFY_LOG}" ]]; then
+    assert_not_contains "recovered" "$(notify_log)"
+  fi
+  POSEIDON_FAKE_AVAIL=200000000000 POSEIDON_FAKE_USED_PCT=1 \
+    POSEIDON_FAKE_ROOT_AVAIL=30000000000 run_watch
+  assert_contains "below the 32 GiB floor" "$(notify_log)"
+  : >"${NOTIFY_LOG}"
+  POSEIDON_FAKE_AVAIL=200000000000 POSEIDON_FAKE_USED_PCT=1 \
+    POSEIDON_FAKE_ROOT_AVAIL=60000000000 run_watch
+  assert_contains "recovered above 48 GiB" "$(notify_log)"
 }

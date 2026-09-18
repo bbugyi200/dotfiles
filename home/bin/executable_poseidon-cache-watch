@@ -2,8 +2,8 @@
 
 ##############################################################################
 # Athena Poseidon Cargo-cache watcher. Cheap filesystem checks every five    #
-# minutes; directory totals at most hourly. Alerts go to the local SASE      #
-# inbox on state transitions only. Never deletes build output.               #
+# minutes. Alerts go to the local SASE inbox on state transitions only.      #
+# Never deletes build output.                                                #
 ##############################################################################
 
 set -euo pipefail
@@ -15,9 +15,6 @@ source "${_here}/../lib/poseidon_cache.sh"
 STATE_DIR="${POSEIDON_WATCH_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/poseidon-cache-watch}"
 STATE_FILE="${STATE_DIR}/state"
 LOCK_FILE="${STATE_DIR}/lock"
-SCRATCH_ROOT="${POSEIDON_SCRATCH_ROOT:-${SASE_TMPDIR:-$HOME/.cache/sase/tmp}}"
-HOURLY_SECONDS="${POSEIDON_HOURLY_SECONDS:-3600}"
-DU_TIMEOUT="${POSEIDON_DU_TIMEOUT:-120}"
 NOTIFY_SENDER="poseidon-cache-watch"
 
 usage() {
@@ -208,18 +205,6 @@ sccache_config_status() {
   printf 'ok\n'
 }
 
-scratch_bytes() {
-  if [[ -n "${POSEIDON_FAKE_SCRATCH_BYTES-}" ]]; then
-    printf '%s\n' "$POSEIDON_FAKE_SCRATCH_BYTES"
-    return 0
-  fi
-  if [[ ! -d "$SCRATCH_ROOT" ]]; then
-    printf '0\n'
-    return 0
-  fi
-  timeout "$DU_TIMEOUT" "$DU_BIN" -sb "$SCRATCH_ROOT" 2>/dev/null | awk '{print $1}'
-}
-
 smart_prom_value() {
   local metric="$1"
   local disk="$2"
@@ -288,43 +273,6 @@ smart_status() {
     return
   fi
   printf 'ok\n'
-}
-
-maybe_hourly_scratch() {
-  local last now bytes
-  last="$(state_get last_hourly_du 0)"
-  now="$(poseidon_now)"
-  if ((now - last < HOURLY_SECONDS)); then
-    return 0
-  fi
-  bytes="$(scratch_bytes || true)"
-  if [[ -z "$bytes" ]]; then
-    transition inspect error "⚠️" \
-      "Poseidon watcher could not measure managed scratch under ${SCRATCH_ROOT}." \
-      "Do not treat a missing measurement as an empty healthy volume."
-    return 0
-  fi
-  local prev ticks
-  prev="$(state_get scratch_last_bytes 0)"
-  ticks="$(state_get scratch_over_ticks 0)"
-  if ((bytes > POSEIDON_SCRATCH_SOFT_BYTES)); then
-    if ((prev > POSEIDON_SCRATCH_SOFT_BYTES && bytes >= prev)); then
-      ticks=$((ticks + 1))
-    else
-      ticks=1
-    fi
-  else
-    ticks=0
-  fi
-  state_set_many "last_hourly_du=${now}" "scratch_last_bytes=${bytes}" "scratch_over_ticks=${ticks}"
-  if ((ticks >= 2)); then
-    transition scratch stale "⚠️" \
-      "Managed SASE scratch is ${bytes} bytes, above the 16 GiB soft target, with no reaper progress across two hourly checks." \
-      "Inspect stale or ineligible entries under ${SCRATCH_ROOT}. Soft cleanup is not a hard size cap."
-  else
-    transition scratch ok "✅" \
-      "Managed SASE scratch is no longer stuck above its soft target."
-  fi
 }
 
 check_poseidon() {
@@ -474,7 +422,6 @@ run_checks() {
   check_old_target
   check_sccache
   check_root
-  maybe_hourly_scratch
   check_smart
 }
 

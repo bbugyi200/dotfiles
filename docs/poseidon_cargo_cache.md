@@ -5,6 +5,11 @@ intermediates in SASE's managed temp tree. The 40 GiB sccache size is an LRU bud
 a filesystem quota. SASE's managed-temp reaper is a **soft** retention policy: it is not
 a hard cap and does not prove a build is idle.
 
+Exceeding that managed-temp soft target is not independently alertable. SASE owns age-
+and liveness-safe cleanup of `~/.cache/sase/tmp`. The Poseidon watcher reports actual
+root-filesystem free-space pressure instead of treating a large scratch tree as a stuck
+reaper.
+
 ## Effective paths
 
 | Output                       | Location                                                                          |
@@ -69,8 +74,11 @@ SASE launches always assign a fresh target and a matching build-dir. An explicit
 1. Confirm Poseidon UUID and `df` available bytes (ordinary-user view).
 2. Check whether `/mnt/poseidon/cargo-target` is writable or nonempty.
 3. Check sccache dir/size/socket against the managed config.
-4. Check managed scratch under `$SASE_TMPDIR` (`~/.cache/sase/tmp`) separately. Growth
-   there is a soft-retention issue, not something sccache can purge.
+4. Check managed scratch under `$SASE_TMPDIR` (`~/.cache/sase/tmp`) separately if you
+   are investigating disk use. Growth there is a SASE soft-retention issue, not an
+   independent watcher alert and not something sccache can purge. The watcher notifies
+   when root-filesystem free space falls below 32 GiB, with recovery only after it
+   climbs back above 48 GiB.
 
 ## Rollback
 
