@@ -6,7 +6,7 @@ __sase_loader_run() {
   IFS=: read -r -a dirs <<< "${PATH}"
   for dir in "${dirs[@]}"; do
     cmd="${dir}/sase"
-    if [[ -x ${cmd} && ${cmd} != */sase_[0-9]*/.venv/bin/sase ]]; then
+    if [[ -x "${cmd}" && "${cmd}" != */sase_[0-9]*/.venv/bin/sase ]]; then
       command "${cmd}" "$@"
       return $?
     fi
@@ -20,7 +20,7 @@ __sase_loader_source() {
   local loader="${BASH_SOURCE[0]:-${0}}"
   local grammar
   grammar="$(__sase_loader_run completion ensure bash --loader-path "${loader}" --owner 'chezmoi' 2>/dev/null)" || return 1
-  [[ -n ${grammar} && -r ${grammar} ]] || return 1
+  [[ -n "${grammar}" && -r "${grammar}" ]] || return 1
   # shellcheck source=/dev/null
   source "${grammar}"
 }

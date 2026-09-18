@@ -2,10 +2,10 @@
 
 function __sase_loader_run
     for dir in $PATH
-        set -l cmd $dir/sase
-        if test -x $cmd
-            if not string match -qr '/sase_[0-9]+/\.venv/bin/sase$' $cmd
-                command $cmd $argv
+        set -l cmd "$dir/sase"
+        if test -x "$cmd"
+            if not string match -qr '/sase_[0-9]+/\.venv/bin/sase$' -- "$cmd"
+                command "$cmd" $argv
                 return $status
             end
         end
