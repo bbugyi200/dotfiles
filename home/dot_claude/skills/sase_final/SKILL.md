@@ -18,6 +18,13 @@ monitor, pipe, or questions handoff is exempt.
   repository action is `commit`. A repository not being the main repo, not being the
   focus of the turn, or being outside a host prompt scoped to one repository's commit or
   conflict repair is not a reason to leave your own work uncommitted.
+- Every dirty ACE or pager screenshot golden belongs in that repository's commit, even
+  when the visible screenshot change appears unrelated to your authored source work.
+  Inspect unrelated golden updates instead of silently discarding or deferring them. If
+  they are genuinely unrelated, end the Conventional Commit message with the exact
+  trailer `UNRELATED_SCREENSHOT_UPDATES=<reason>`, replacing `<reason>` with a concrete
+  explanation. No trailer is required when the screenshot changes are part of the work
+  described by the commit.
 - Run this after all ordinary work, edits, and verification for the turn are complete,
   immediately before the normal response that ends the provider turn.
 - Do not mutate files or repositories after a successful declaration submit.
