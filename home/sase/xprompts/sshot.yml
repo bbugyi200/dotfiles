@@ -1,5 +1,5 @@
 description:
-  Reference a recent MacBook screenshot uploaded to Apollo as an inline @image.
+  Reference a recent MacBook screenshot (local, apollo, or athena) as an inline @image.
 
 input:
   - name: n
@@ -13,26 +13,7 @@ steps:
     hidden: true
     bash: |
       n="{{ n }}"
-      if [ "$n" -lt 1 ]; then
-        echo "ERROR: n must be >= 1 (got '$n')" >&2
-        exit 1
-      fi
-
-      # Ask Apollo for the nth most recent supported image (newest first). The
-      # globs and ~ are expanded by the remote shell; n is a validated integer.
-      basename=$(ssh apollo "cd ~/tmp/screenshots 2>/dev/null && ls -1t -- *.png 2>/dev/null | sed -n '${n}p'")
-      if [ -z "$basename" ]; then
-        echo "ERROR: no screenshot #$n found on apollo (~/tmp/screenshots)" >&2
-        exit 1
-      fi
-
-      mkdir -p ~/tmp/screenshots
-      if ! scp -pq "apollo:~/tmp/screenshots/$basename" ~/tmp/screenshots/"$basename" >&2; then
-        echo "ERROR: failed to copy '$basename' from apollo" >&2
-        exit 1
-      fi
-
-      echo "local_path=$HOME/tmp/screenshots/$basename"
+      sshot_fetch "$n"
     output: { local_path: path }
 
   - name: inject

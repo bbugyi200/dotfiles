@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+#
+# Resolve the nth newest MacBook screenshot by basename across the local
+# ~/tmp/screenshots directory plus apollo and athena. Print local_path=... for
+# the #sshot xprompt. Failed remote listings are empty, not fatal.
+
+set -euo pipefail
+
+SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=8 -o ConnectionAttempts=1)
+screenshot_dir="$HOME/tmp/screenshots"
+
+n="${1:-}"
+if [[ -z "$n" || ! "$n" =~ ^[0-9]+$ || "$n" -lt 1 ]]; then
+	echo "ERROR: n must be >= 1 (got '${n:-}')" >&2
+	exit 1
+fi
+
+current_host="$(hostname -s 2>/dev/null || hostname)"
+
+list_local() {
+	local path
+	shopt -s nullglob
+	for path in "${screenshot_dir}"/*.png; do
+		printf '%s\n' "$(basename "$path")"
+	done
+	shopt -u nullglob
+}
+
+list_remote() {
+	local host="$1"
+	if [[ "$host" == "$current_host" ]]; then
+		return 0
+	fi
+	ssh "${SSH_OPTS[@]}" "$host" \
+		"cd ~/tmp/screenshots 2>/dev/null && ls -1 -- *.png 2>/dev/null" \
+		2>/dev/null || true
+}
+
+declare -A have=()
+declare -A sources=()
+names=()
+
+add_name() {
+	local source="$1"
+	local name="$2"
+	[[ -z "$name" ]] && return 0
+	[[ "$name" == *.png ]] || return 0
+	if [[ -z "${have[$name]:-}" ]]; then
+		have[$name]=1
+		names+=("$name")
+	fi
+	sources[$name]+="${source} "
+}
+
+while IFS= read -r name; do
+	add_name local "$name"
+done < <(list_local)
+
+while IFS= read -r name; do
+	add_name apollo "$name"
+done < <(list_remote apollo)
+
+while IFS= read -r name; do
+	add_name athena "$name"
+done < <(list_remote athena)
+
+if [[ ${#names[@]} -eq 0 ]]; then
+	echo "ERROR: no screenshot #$n found (local/apollo/athena ~/tmp/screenshots)" >&2
+	exit 1
+fi
+
+mapfile -t sorted < <(printf '%s\n' "${names[@]}" | sort -r)
+if [[ "$n" -gt ${#sorted[@]} ]]; then
+	echo "ERROR: no screenshot #$n found (local/apollo/athena ~/tmp/screenshots)" >&2
+	exit 1
+fi
+
+basename="${sorted[$((n - 1))]}"
+local_path="${screenshot_dir}/${basename}"
+
+mkdir -p "$screenshot_dir"
+
+if [[ -s "$local_path" ]]; then
+	echo "local_path=${local_path}"
+	exit 0
+fi
+
+tried=()
+for source in ${sources[$basename]}; do
+	case "$source" in
+	local | mac) continue ;;
+	esac
+	tried+=("$source")
+	if scp "${SSH_OPTS[@]}" -pq "${source}:~/tmp/screenshots/${basename}" "$local_path" >&2; then
+		echo "local_path=${local_path}"
+		exit 0
+	fi
+done
+
+echo "ERROR: failed to copy '${basename}' from ${tried[*]:-any host}" >&2
+exit 1

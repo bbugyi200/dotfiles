@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 #
 # Capture an interactively-selected screen region on the MacBook and upload it
-# to Apollo, the shared rendezvous host. SASE prompts on Athena later fetch the
-# most recent uploads with the `#sshot` xprompt.
-#
-# The MacBook never SSHes into Athena directly; it only pushes to Apollo.
+# to both tailnet Linux hosts (apollo and athena) in parallel. SASE prompts
+# later fetch the most recent uploads with the `#sshot` xprompt.
 
 set -euo pipefail
+
+SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=8 -o ConnectionAttempts=1)
+SCREENCAPTURE_BIN="${SCREENCAPTURE_BIN:-/usr/sbin/screencapture}"
 
 # Copy a string to the macOS clipboard. Returns nonzero if pbcopy is missing or
 # the copy fails, so the caller can decide how to degrade.
@@ -43,6 +44,12 @@ notify_upload_finished() {
 end run' "$subtitle" "$message"
 }
 
+upload_to_host() {
+	local host="$1"
+	ssh "${SSH_OPTS[@]}" "$host" "mkdir -p ~/${remote_dir}"
+	scp "${SSH_OPTS[@]}" -p "$local_path" "${host}:~/${remote_path}"
+}
+
 screenshot_dir="$HOME/tmp/screenshots"
 remote_dir="tmp/screenshots"
 
@@ -51,6 +58,7 @@ mkdir -p "$screenshot_dir"
 timestamp="$(date +"%Y%m%d_%H%M%S")"
 basename="${timestamp}.png"
 local_path="${screenshot_dir}/${basename}"
+remote_path="${remote_dir}/${basename}"
 
 capture_region="${1:-}"
 if [[ $# -gt 1 ]]; then
@@ -68,9 +76,9 @@ fi
 # capture, so we also check for an empty/missing output file below. Tolerate a
 # nonzero exit so the cleanup-and-fail path runs regardless under `set -e`.
 if [[ -n "$capture_region" ]]; then
-	/usr/sbin/screencapture -R "$capture_region" -t png "$local_path" || true
+	"$SCREENCAPTURE_BIN" -R "$capture_region" -t png "$local_path" || true
 else
-	/usr/sbin/screencapture -i -t png "$local_path" || true
+	"$SCREENCAPTURE_BIN" -i -t png "$local_path" || true
 fi
 
 if [[ ! -s "$local_path" ]]; then
@@ -80,13 +88,35 @@ if [[ ! -s "$local_path" ]]; then
 	exit 1
 fi
 
-ssh apollo "mkdir -p ~/${remote_dir}"
+apollo_status=0
+athena_status=0
+upload_to_host apollo &
+apollo_pid=$!
+upload_to_host athena &
+athena_pid=$!
+wait "$apollo_pid" || apollo_status=$?
+wait "$athena_pid" || athena_status=$?
 
-remote_path="${remote_dir}/${basename}"
-scp -p "$local_path" "apollo:~/${remote_path}"
+ok_hosts=()
+fail_hosts=()
+if [[ "$apollo_status" -eq 0 ]]; then
+	ok_hosts+=(apollo)
+else
+	fail_hosts+=(apollo)
+	echo "macscrot: warning: upload to apollo failed (exit ${apollo_status})" >&2
+fi
+if [[ "$athena_status" -eq 0 ]]; then
+	ok_hosts+=(athena)
+else
+	fail_hosts+=(athena)
+	echo "macscrot: warning: upload to athena failed (exit ${athena_status})" >&2
+fi
 
-# Upload succeeded. Copy the user-facing path to the clipboard and surface a
-# notification. Neither side effect should turn a good upload into a failure.
+if [[ ${#ok_hosts[@]} -eq 0 ]]; then
+	echo "macscrot: upload failed on apollo and athena" >&2
+	exit 1
+fi
+
 clipboard_path="~/tmp/screenshots/${basename}"
 
 clipboard_ok=1
@@ -95,18 +125,36 @@ if ! copy_to_clipboard "$clipboard_path"; then
 	echo "macscrot: warning: could not copy path to clipboard" >&2
 fi
 
+subtitle=""
+case "${ok_hosts[*]}" in
+"apollo athena")
+	subtitle="Apollo + Athena"
+	;;
+apollo)
+	subtitle="Apollo"
+	;;
+athena)
+	subtitle="Athena"
+	;;
+esac
+
 if [[ "$clipboard_ok" -eq 1 ]]; then
 	notification_message="Path copied: ${clipboard_path}"
 else
 	notification_message="Upload succeeded; clipboard copy failed"
 fi
+if [[ ${#fail_hosts[@]} -gt 0 ]]; then
+	notification_message="${notification_message}; ${fail_hosts[*]} failed"
+fi
 
-if ! notify_upload_finished "Apollo" "$notification_message"; then
+if ! notify_upload_finished "$subtitle" "$notification_message"; then
 	echo "macscrot: warning: could not show notification" >&2
 fi
 
 echo "local:  ${local_path}"
-echo "apollo: ~/${remote_path}"
+for host in "${ok_hosts[@]}"; do
+	echo "${host}: ~/${remote_path}"
+done
 if [[ "$clipboard_ok" -eq 1 ]]; then
 	echo "clipboard: ${clipboard_path}"
 fi

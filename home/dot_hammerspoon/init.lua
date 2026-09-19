@@ -35,7 +35,7 @@ local function runMacscrot(region)
 		:start()
 end
 
--- Capture a selected screen region and upload it to Apollo via ~/bin/macscrot.
+-- Capture a selected screen region and upload it to Apollo and Athena via ~/bin/macscrot.
 -- The selector preloads the last confirmed rectangle, then macscrot owns
 -- capture, upload, clipboard, and success notification behavior.
 hs.hotkey.bind({ "ctrl", "alt", "shift" }, "s", nil, function()
