@@ -175,3 +175,13 @@ dispatch:
       credential_ref: fleet:apollo
       installation_pin: sase_inst_v1_8d5ff66aeed36f2e8ec3edf4e7016b8f8eb7b64dfb9d9306aa3865c6642c42f1
       connection_kind: gateway
+
+# Host-owned service procs for this machine. Core/plugin defaults keep gateway
+# and plugin procs off; the athena overlay is the only place telegram_receiver
+# may be enabled (Telegram allows one getUpdates consumer per bot).
+service:
+  procs:
+    gateway:
+      enabled: true
+    telegram_receiver:
+      enabled: true

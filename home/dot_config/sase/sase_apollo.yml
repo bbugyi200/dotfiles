@@ -4,3 +4,11 @@ id:
 
 memory:
   h1_title: "apollo - Bryan Bugyi's Rendezvous Server"
+
+# Host-owned service procs for this machine. Do not enable telegram_receiver
+# here: Telegram allows one getUpdates consumer per bot, and the receiver runs
+# on athena only.
+service:
+  procs:
+    gateway:
+      enabled: true
