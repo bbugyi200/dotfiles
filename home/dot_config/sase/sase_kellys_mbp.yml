@@ -2,5 +2,13 @@ id:
   username: bbugyi200
   machine_name: kellys_mbp
 
+ace:
+  notification_rules:
+    - name: mbp-chime
+      description:
+        "kellys_mbp is the only machine running the TUI locally, so it is the only one
+        where a sound file beats the terminal bell."
+      sound: /System/Library/Sounds/Glass.aiff
+
 memory:
   h1_title: "kellys_mbp - Kelly's MacBook Pro"

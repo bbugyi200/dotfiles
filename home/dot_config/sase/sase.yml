@@ -205,6 +205,17 @@ ace:
         "Research swarm agents from #research_swarm that ship durable reports instead of
         code changes."
 
+  notification_rules:
+    - name: quiet-task-beads
+      description:
+        "Task-bead triage is too noisy to announce right now; the rows still land in the
+        Beads tab and the unread indicator. Remove this rule once the triage-volume fix
+        is in."
+      match:
+        tab: beads
+      toast: false
+      sound: none
+
 axe:
   routines:
     telegram:
