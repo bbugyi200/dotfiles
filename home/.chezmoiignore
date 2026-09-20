@@ -5,7 +5,7 @@ tags
 {{ if ne .chezmoi.hostname "athena" }}
 .config/sase/sase_athena.yml
 {{ end }}
-{{ if ne .chezmoi.hostname "Kellys-MBP" }}
+{{ if ne .chezmoi.hostname "Kellys-MacBook-Pro" }}
 .config/sase/sase_kellys_mbp.yml
 {{ end }}
 {{ if ne .chezmoi.hostname "apollo" }}
@@ -20,6 +20,6 @@ bin/poseidon-cache-watch
 bin/sase-rustc-wrapper
 lib/poseidon_cache.sh
 {{ end }}
-{{ if and (ne .chezmoi.hostname "athena") (ne .chezmoi.hostname "apollo") (ne .chezmoi.hostname "Kellys-MBP") }}
+{{ if and (ne .chezmoi.hostname "athena") (ne .chezmoi.hostname "apollo") (ne .chezmoi.hostname "Kellys-MacBook-Pro") }}
 .ssh/tailnet.conf
 {{ end }}

@@ -27,7 +27,7 @@ function test_apollo_ignores_poseidon_files() {
 
 function test_mac_ignores_poseidon_files() {
   local rendered
-  rendered="$(render_ignore Kellys-MBP)"
+  rendered="$(render_ignore Kellys-MacBook-Pro)"
   assert_contains ".cargo/config.toml" "${rendered}"
   assert_contains "bin/poseidon-cache-watch" "${rendered}"
 }
@@ -43,7 +43,7 @@ function test_cargo_config_renders_only_on_athena() {
   local athena apollo mac
   athena="$(render_cargo athena)"
   apollo="$(render_cargo apollo)"
-  mac="$(render_cargo Kellys-MBP)"
+  mac="$(render_cargo Kellys-MacBook-Pro)"
   assert_contains "build-dir" "${athena}"
   assert_contains "cargo-{workspace-path-hash}" "${athena}"
   assert_contains "sase-rustc-wrapper" "${athena}"

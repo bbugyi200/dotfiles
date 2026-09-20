@@ -112,10 +112,11 @@
       "inverse": "launched-by",
       "directed": true,
       "written_by": "projection",
-      "direction_note": "The chop is the source; the agent it launched is the target.",
-      "positive_example": "chop:refresh_docs/refresh_docs launched agent:sase-tj.land",
-      "negative_example": "agent:sase-tj.land launched chop:refresh_docs/refresh_docs",
+      "direction_note": "The job is the source; the agent it launched is the target.",
+      "positive_example": "job:refresh_docs/refresh_docs launched agent:sase-tj.land",
+      "negative_example": "agent:sase-tj.land launched job:refresh_docs/refresh_docs",
       "recommended_source_kinds": [
+        "job",
         "chop"
       ],
       "recommended_target_kinds": [
