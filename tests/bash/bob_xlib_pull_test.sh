@@ -4,9 +4,9 @@
 # Regression tests for `bob_xlib_pull`.                                        #
 #                                                                               #
 # The live command talks to the Mac's tailnet peers and mutates xlib intake, so #
-# the main harness stubs `uname`, `ssh`, and `rsync`.  The stubs log observable #
-# behavior, support deterministic probe barriers, and keep all state under a    #
-# throwaway test directory.                                                     #
+# the main harness stubs `uname`, `ssh`, `rsync`, and `bob`.  The stubs log     #
+# observable behavior, support deterministic probe barriers, and keep all state #
+# under a throwaway test directory.                                             #
 #################################################################################
 
 SCRIPT="${PWD}/home/bin/executable_bob_xlib_pull"
@@ -20,6 +20,7 @@ function set_up() {
   STDERR_FILE="${TEST_TMP}/stderr.log"
   RUN_TMPDIR="${TEST_TMP}/run tmp"
   RUN_BOB_DIR="${TEST_HOME}/bob"
+  RUN_PATH="${FAKE_BIN}:${PATH}"
   RUN_XLIB_DIR="xlib"
   FAKE_UNAME="Darwin"
   ATHENA_PROBE="empty"
@@ -29,6 +30,9 @@ function set_up() {
   RSYNC_BLOCK_HOST=""
   RSYNC_DELAY="0"
   RSYNC_FAIL_HOST=""
+  BOB_HIGHLIGHTS_IN_PRE_SCAN_HOOK=""
+  BOB_SCAN_BLOCK="0"
+  BOB_SCAN_EXIT="0"
 
   mkdir -p "${FAKE_BIN}" "${TEST_HOME}" "${RUN_TMPDIR}"
   : >"${EVENT_LOG}"
@@ -38,6 +42,7 @@ function set_up() {
   write_uname_stub
   write_ssh_stub
   write_rsync_stub
+  write_bob_stub
 }
 
 function tear_down() {
@@ -248,12 +253,29 @@ EOF
   chmod +x "${FAKE_BIN}/rsync"
 }
 
+function write_bob_stub() {
+  cat >"${FAKE_BIN}/bob" <<'EOF'
+#!/bin/bash
+printf 'bob-scan|%s\n' "$*" >>"${EVENT_LOG}"
+touch "${TEST_TMP}/scan_started"
+
+if [[ "${BOB_SCAN_BLOCK:-0}" == "1" ]]; then
+  while [[ ! -e "${TEST_TMP}/release_scan" ]]; do
+    sleep 0.05
+  done
+fi
+
+exit "${BOB_SCAN_EXIT:-0}"
+EOF
+  chmod +x "${FAKE_BIN}/bob"
+}
+
 function run_xlib_pull() {
   local rc=0
 
   env \
     HOME="${TEST_HOME}" \
-    PATH="${FAKE_BIN}:${PATH}" \
+    PATH="${RUN_PATH}" \
     TMPDIR="${RUN_TMPDIR}" \
     BOB_DIR="${RUN_BOB_DIR}" \
     BOB_HIGHLIGHTS_XLIB_DIR="${RUN_XLIB_DIR}" \
@@ -265,6 +287,9 @@ function run_xlib_pull() {
     RSYNC_BLOCK_HOST="${RSYNC_BLOCK_HOST}" \
     RSYNC_DELAY="${RSYNC_DELAY}" \
     RSYNC_FAIL_HOST="${RSYNC_FAIL_HOST}" \
+    BOB_HIGHLIGHTS_IN_PRE_SCAN_HOOK="${BOB_HIGHLIGHTS_IN_PRE_SCAN_HOOK}" \
+    BOB_SCAN_BLOCK="${BOB_SCAN_BLOCK}" \
+    BOB_SCAN_EXIT="${BOB_SCAN_EXIT}" \
     /bin/sh "${SCRIPT}" >"${STDOUT_FILE}" 2>"${STDERR_FILE}" || rc=$?
 
   RUN_RC="${rc}"
@@ -273,7 +298,7 @@ function run_xlib_pull() {
 function start_xlib_pull() {
   env \
     HOME="${TEST_HOME}" \
-    PATH="${FAKE_BIN}:${PATH}" \
+    PATH="${RUN_PATH}" \
     TMPDIR="${RUN_TMPDIR}" \
     BOB_DIR="${RUN_BOB_DIR}" \
     BOB_HIGHLIGHTS_XLIB_DIR="${RUN_XLIB_DIR}" \
@@ -285,6 +310,9 @@ function start_xlib_pull() {
     RSYNC_BLOCK_HOST="${RSYNC_BLOCK_HOST}" \
     RSYNC_DELAY="${RSYNC_DELAY}" \
     RSYNC_FAIL_HOST="${RSYNC_FAIL_HOST}" \
+    BOB_HIGHLIGHTS_IN_PRE_SCAN_HOOK="${BOB_HIGHLIGHTS_IN_PRE_SCAN_HOOK}" \
+    BOB_SCAN_BLOCK="${BOB_SCAN_BLOCK}" \
+    BOB_SCAN_EXIT="${BOB_SCAN_EXIT}" \
     /bin/sh "${SCRIPT}" >"${STDOUT_FILE}" 2>"${STDERR_FILE}" &
   SCRIPT_PID=$!
 }
@@ -351,6 +379,21 @@ function rsync_ssh() {
 
 function lock_path() {
   printf '%s/bob_xlib_pull.lock\n' "${RUN_TMPDIR}"
+}
+
+# Shared with maybe_bob_highlights_sync, which serializes scans through it.
+function scan_lock_path() {
+  printf '%s/maybe_bob_highlights_sync.lock\n' "${RUN_TMPDIR}"
+}
+
+function scan_event() {
+  printf 'bob-scan|highlights --no-hooks scan -w\n'
+}
+
+# Line number of the first logged event containing the needle, or empty.
+function event_line() {
+  local needle="$1"
+  grep -n -F -m 1 "${needle}" "${EVENT_LOG}" 2>/dev/null | cut -d: -f1
 }
 
 function use_real_remote_probes() {
@@ -734,4 +777,157 @@ function test_real_rsync_file_directory_collision_retains_source_data() {
   else
     assert_same "23" "${rc}"
   fi
+}
+
+function test_successful_pull_runs_one_no_hooks_scan_after_the_transfers() {
+  ATHENA_PROBE="pending"
+  APOLLO_PROBE="pending"
+
+  run_xlib_pull
+
+  assert_same "0" "${RUN_RC}"
+  assert_empty "$(stderr_text)"
+  assert_same "1" "$(event_count "bob-scan|")"
+  assert_same "1" "$(event_count "$(scan_event)")"
+  assert_greater_than "$(event_line "rsync-end|athena")" "$(event_line "bob-scan|")"
+  assert_greater_than "$(event_line "rsync-end|apollo")" "$(event_line "bob-scan|")"
+  assert_directory_not_exists "$(scan_lock_path)"
+  assert_directory_not_exists "$(lock_path)"
+}
+
+function test_empty_queues_still_run_the_scan() {
+  ATHENA_PROBE="empty"
+  APOLLO_PROBE="missing"
+
+  run_xlib_pull
+
+  assert_same "0" "${RUN_RC}"
+  assert_empty "$(stderr_text)"
+  assert_not_contains "rsync-start" "$(events)"
+  assert_same "1" "$(event_count "$(scan_event)")"
+}
+
+function test_unreachable_hosts_still_run_the_scan() {
+  ATHENA_PROBE="unreachable"
+  APOLLO_PROBE="unreachable"
+
+  run_xlib_pull
+
+  assert_same "0" "${RUN_RC}"
+  assert_same "1" "$(event_count "$(scan_event)")"
+}
+
+function test_transfer_failure_still_scans_and_fails_the_run() {
+  ATHENA_PROBE="pending"
+  APOLLO_PROBE="empty"
+  RSYNC_FAIL_HOST="athena"
+
+  run_xlib_pull
+
+  assert_same "1" "${RUN_RC}"
+  assert_contains "athena transfer failed" "$(stderr_text)"
+  assert_same "1" "$(event_count "$(scan_event)")"
+}
+
+function test_pre_scan_hook_marker_pulls_but_skips_the_scan() {
+  ATHENA_PROBE="pending"
+  BOB_HIGHLIGHTS_IN_PRE_SCAN_HOOK="1"
+
+  run_xlib_pull
+
+  assert_same "0" "${RUN_RC}"
+  assert_empty "$(stderr_text)"
+  assert_contains "rsync-end|athena" "$(events)"
+  assert_not_contains "bob-scan" "$(events)"
+  assert_directory_not_exists "$(scan_lock_path)"
+}
+
+function test_held_scan_lock_suppresses_the_scan_and_stays_in_place() {
+  ATHENA_PROBE="pending"
+  mkdir -p "$(scan_lock_path)"
+
+  run_xlib_pull
+
+  assert_same "0" "${RUN_RC}"
+  assert_empty "$(stderr_text)"
+  assert_contains "rsync-end|athena" "$(events)"
+  assert_not_contains "bob-scan" "$(events)"
+  assert_directory_exists "$(scan_lock_path)"
+}
+
+function test_scan_failure_sets_a_nonzero_exit_and_reports_the_status() {
+  BOB_SCAN_EXIT="7"
+
+  run_xlib_pull
+
+  assert_same "1" "${RUN_RC}"
+  assert_contains "highlights scan failed (exit 7)" "$(stderr_text)"
+  assert_directory_not_exists "$(scan_lock_path)"
+  assert_directory_not_exists "$(lock_path)"
+}
+
+function test_non_macos_run_never_scans() {
+  FAKE_UNAME="Linux"
+  ATHENA_PROBE="pending"
+  APOLLO_PROBE="pending"
+
+  run_xlib_pull
+
+  assert_same "0" "${RUN_RC}"
+  assert_not_contains "bob-scan" "$(events)"
+  assert_directory_not_exists "$(scan_lock_path)"
+}
+
+function test_bob_falls_back_to_the_cargo_bin_when_missing_from_path() {
+  rm -f "${FAKE_BIN}/bob"
+  RUN_PATH="${FAKE_BIN}:/usr/bin:/bin"
+  mkdir -p "${TEST_HOME}/.cargo/bin"
+  cat >"${TEST_HOME}/.cargo/bin/bob" <<'EOF'
+#!/bin/sh
+printf 'cargo-bob|%s\n' "$*" >>"${EVENT_LOG}"
+EOF
+  chmod +x "${TEST_HOME}/.cargo/bin/bob"
+
+  run_xlib_pull
+
+  assert_same "0" "${RUN_RC}"
+  assert_empty "$(stderr_text)"
+  assert_same "1" "$(event_count "cargo-bob|highlights --no-hooks scan -w")"
+}
+
+function test_missing_bob_reports_the_lookup_path_and_fails_without_scanning() {
+  rm -f "${FAKE_BIN}/bob"
+  RUN_PATH="${FAKE_BIN}:/usr/bin:/bin"
+
+  run_xlib_pull
+
+  assert_same "1" "${RUN_RC}"
+  assert_contains "bob_xlib_pull: bob command not found: ${TEST_HOME}/.cargo/bin/bob" \
+    "$(stderr_text)"
+  assert_not_contains "bob-scan" "$(events)"
+  assert_directory_not_exists "$(scan_lock_path)"
+  assert_directory_not_exists "$(lock_path)"
+}
+
+function test_signal_during_scan_reaps_worker_and_releases_both_locks() {
+  BOB_SCAN_BLOCK="1"
+
+  start_xlib_pull
+  wait_for_file "${TEST_TMP}/scan_started"
+
+  assert_directory_exists "$(scan_lock_path)"
+
+  kill -TERM "${SCRIPT_PID}"
+  wait_for_script
+
+  assert_same "143" "${RUN_RC}"
+  assert_directory_not_exists "$(scan_lock_path)"
+  assert_directory_not_exists "$(lock_path)"
+
+  BOB_SCAN_BLOCK="0"
+  : >"${EVENT_LOG}"
+  run_xlib_pull
+
+  assert_same "0" "${RUN_RC}"
+  assert_same "1" "$(event_count "$(scan_event)")"
 }

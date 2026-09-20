@@ -42,6 +42,10 @@ if ! mkdir "$lock_dir" 2>/dev/null; then
   exit 0
 fi
 
+# Same lock directory as maybe_bob_highlights_sync, so a pull-triggered scan
+# never overlaps the cron-triggered one.
+scan_lock_dir=${TMPDIR:-/tmp}/maybe_bob_highlights_sync.lock
+scan_lock_held=
 state_dir=
 athena_probe_pid=
 apollo_probe_pid=
@@ -94,6 +98,9 @@ cleanup() {
   close_masters
   if [ -n "$state_dir" ]; then
     rm -rf "$state_dir"
+  fi
+  if [ -n "$scan_lock_held" ]; then
+    rmdir "$scan_lock_dir" 2>/dev/null || true
   fi
   rmdir "$lock_dir" 2>/dev/null || true
   return "$saved_status"
@@ -222,6 +229,39 @@ handle_host() {
   esac
 }
 
+run_scan() {
+  # bob exports this marker to its pre-scan hook: it is already scanning, and an
+  # inner scan would just duplicate that work.
+  if [ -n "${BOB_HIGHLIGHTS_IN_PRE_SCAN_HOOK:-}" ]; then
+    return 0
+  fi
+
+  # Another scan (usually the cron job) holds the lock; it will pick up our files.
+  if ! mkdir "$scan_lock_dir" 2>/dev/null; then
+    return 0
+  fi
+  scan_lock_held=1
+
+  if command -v bob >/dev/null 2>&1; then
+    bob_bin=$(command -v bob)
+  else
+    bob_bin=$HOME/.cargo/bin/bob
+    if [ ! -x "$bob_bin" ]; then
+      printf 'bob_xlib_pull: bob command not found: %s\n' "$bob_bin" >&2
+      result=1
+      return 0
+    fi
+  fi
+
+  run_waited "$bob_bin" highlights --no-hooks scan -w
+  scan_status=$?
+  if [ "$scan_status" -ne 0 ]; then
+    printf 'bob_xlib_pull: highlights scan failed (exit %s).\n' \
+      "$scan_status" >&2
+    result=1
+  fi
+}
+
 athena_out=$state_dir/athena.out
 athena_err=$state_dir/athena.err
 apollo_out=$state_dir/apollo.out
@@ -234,5 +274,9 @@ apollo_probe_pid=$!
 
 handle_host athena "$athena_probe_pid" "$athena_control_path" "$athena_out" "$athena_err"
 handle_host apollo "$apollo_probe_pid" "$apollo_control_path" "$apollo_out" "$apollo_err"
+
+# Scan even when both queues were empty or a transfer failed: xlib/ can still
+# hold files left over from an earlier run.
+run_scan
 
 exit "$result"

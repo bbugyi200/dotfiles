@@ -33,9 +33,9 @@ if [ ! -d "$lib_dir" ]; then
   exit 0
 fi
 
-pre_scan_command_configured() {
-  if [ "${BOB_HIGHLIGHTS_PRE_SCAN_COMMAND+x}" ]; then
-    [ -n "$BOB_HIGHLIGHTS_PRE_SCAN_COMMAND" ]
+pre_scan_hook_configured() {
+  if [ "${BOB_HIGHLIGHTS_PRE_SCAN_HOOK+x}" ]; then
+    [ -n "$BOB_HIGHLIGHTS_PRE_SCAN_HOOK" ]
     return
   fi
 
@@ -53,9 +53,9 @@ pre_scan_command_configured() {
     /^[^[:space:]][^:]*:/ {
       in_highlights = ($0 ~ /^highlights:[[:space:]]*($|#)/)
     }
-    in_highlights && /^[[:space:]]+pre_scan_command:[[:space:]]*/ {
+    in_highlights && /^[[:space:]]+pre_scan_hook:[[:space:]]*/ {
       value = $0
-      sub(/^[[:space:]]+pre_scan_command:[[:space:]]*/, "", value)
+      sub(/^[[:space:]]+pre_scan_hook:[[:space:]]*/, "", value)
       sub(/[[:space:]]+#.*/, "", value)
       gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
       if (value != "" && value != "null" && value != "\"\"" && value != "''") {
@@ -66,13 +66,14 @@ pre_scan_command_configured() {
   ' "$config_file"
 }
 
-if ! pre_scan_command_configured; then
+if ! pre_scan_hook_configured; then
   recent_file=$(find "$lib_dir" -type f -mtime 0 -print | sed -n '1p')
   if [ -z "$recent_file" ]; then
     exit 0
   fi
 fi
 
+# bob_xlib_pull takes this same lock directory before it runs its own scan.
 lock_dir=${TMPDIR:-/tmp}/maybe_bob_highlights_sync.lock
 if ! mkdir "$lock_dir" 2>/dev/null; then
   exit 0
