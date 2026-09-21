@@ -230,6 +230,8 @@ axe:
         avoids `run_every` delays so acknowledgements are checked on every tick.
       interval: 5
       env:
+        # Mirrored in `service.procs.telegram_receiver.env` in sase_athena.yml;
+        # keep the two in sync (the service host does not inherit routine env).
         SASE_TELEGRAM_BOT_USERNAME: sase_athena_bot
         SASE_TELEGRAM_BOT_CHAT_ID: "8990449281"
         # token now read from ~/.sase/telegram_bot_token (mode 600) so the 5s tick never touches gpg-agent

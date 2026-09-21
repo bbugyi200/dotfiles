@@ -185,3 +185,9 @@ service:
       enabled: true
     telegram_receiver:
       enabled: true
+      # The service host does not inherit AXE routine `env:`, so the receiver
+      # needs its own copy of the bot identity. Keep in sync with
+      # `axe.routines.telegram.env` in sase.yml.
+      env:
+        SASE_TELEGRAM_BOT_USERNAME: sase_athena_bot
+        SASE_TELEGRAM_BOT_CHAT_ID: "8990449281"
