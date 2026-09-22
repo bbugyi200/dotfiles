@@ -167,6 +167,8 @@ ace:
       sase config
     scr: |-
       sidecar repo
+    scrr: |-
+      #[scrt(research)]
     scrt: |-
       the $1 sidecar repo
     sctx: |-
