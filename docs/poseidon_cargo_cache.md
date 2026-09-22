@@ -32,6 +32,16 @@ dir and the build-dir and rebuilding the same pair. Changing only `CARGO_TARGET_
 `CARGO_BUILD_BUILD_DIR` is a different `rustc --out-dir`, so it is a miss, not a cargo
 no-op. Linked bins, cdylibs, and proc macros stay uncached.
 
+sccache cannot cache incremental compilation, so the wrapper splits incremental units by
+emit kind. A unit carrying `-C incremental` (either `-C incremental=X` or
+`-Cincremental=X`) with a metadata-only `--emit=` list (no `link`, as `cargo check` and
+`cargo clippy` produce) runs incrementally straight through the real compiler, bypassing
+sccache; this covers `clippy-driver` invocations too. Any other incremental unit has the
+flag stripped and continues through the Poseidon/sccache path, so incremental test
+builds never poison the cache. Units without an incremental flag are unchanged. Cargo no
+longer sets `incremental = false`; incremental is controlled by `CARGO_INCREMENTAL`
+(sase launches set it from `managed_tmp.agent_cargo_incremental`).
+
 ```bash
 # sccache stats (same config/socket as builds)
 SCCACHE_CONF="$HOME/.config/sccache/config" \
@@ -53,10 +63,16 @@ systemctl status prometheus-node-exporter-smartmon.timer
 Uncached compile, full debug, incremental on:
 
 ```bash
-RUSTC_WRAPPER='' CARGO_INCREMENTAL=1 \
+CARGO_INCREMENTAL=1 \
   CARGO_PROFILE_DEV_DEBUG=2 CARGO_PROFILE_TEST_DEBUG=2 \
   cargo test
 ```
+
+`CARGO_INCREMENTAL=1` stays on through the wrapper for metadata-only units, which run
+incrementally direct. Codegen units are stripped before sccache and the wrapper forces
+`CARGO_INCREMENTAL=0` on the sccache leg, because sccache refuses every invocation (even
+`rustc -vV` probes) when it is `1`. Set `RUSTC_WRAPPER=''` as well only to bypass the
+wrapper entirely.
 
 A `CARGO_TARGET_DIR` override relocates final artifacts only. Intermediates still follow
 `build.build-dir` unless you also set `CARGO_BUILD_BUILD_DIR`. To move a whole tree:

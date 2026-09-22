@@ -1,6 +1,5 @@
 {{ if eq .chezmoi.hostname "athena" -}}
 [build]
 build-dir = "{{ .chezmoi.homeDir }}/.cache/sase/tmp/build-targets/cargo-{workspace-path-hash}"
-incremental = false
 rustc-wrapper = "{{ .chezmoi.homeDir }}/bin/sase-rustc-wrapper"
 {{- end }}

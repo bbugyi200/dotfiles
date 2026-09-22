@@ -5,6 +5,19 @@
 # and maturin builds reuse a 40 GiB sccache on Poseidon when that volume is  #
 # present and below the pressure floor. Missing or pressured storage must    #
 # run the real compiler uncached — never a fallback cache on /.              #
+#                                                                            #
+# Incremental split: units carrying `-C incremental` (either `-C            #
+# incremental=X` or `-Cincremental=X`) are divided by emit kind. Metadata-   #
+# only units (`--emit=` without `link`, as cargo check/clippy produce) run   #
+# incrementally straight through the real compiler, bypassing sccache,      #
+# which cannot cache incremental codegen anyway. Codegen units (`link` in   #
+# `--emit=`, or no `--emit` flag) have the incremental flag stripped before #
+# continuing through the Poseidon/sccache path below. Units without an      #
+# incremental flag are unchanged.                                            #
+#                                                                            #
+# sccache also refuses every invocation (even `rustc -vV` probes) when      #
+# CARGO_INCREMENTAL=1 is exported, so the sccache leg below forces it off.  #
+# The direct metadata path above keeps the caller's environment.             #
 ##############################################################################
 
 set -euo pipefail
@@ -21,8 +34,65 @@ fi
 compiler="$1"
 shift
 
+_has_incremental=0
+_emit_seen=0
+_emit_has_link=0
+_prev=""
+for _arg in "$@"; do
+  if [[ "${_arg}" == -Cincremental* ]]; then
+    _has_incremental=1
+  elif [[ "${_prev}" == "-C" && "${_arg}" == incremental* ]]; then
+    _has_incremental=1
+  fi
+  if [[ "${_arg}" == --emit=* ]]; then
+    _emit_seen=1
+    _emit_list="${_arg#--emit=}"
+    if [[ ",${_emit_list}," == *,link,* ]]; then
+      _emit_has_link=1
+    fi
+  elif [[ "${_prev}" == "--emit" ]]; then
+    _emit_seen=1
+    if [[ ",${_arg}," == *,link,* ]]; then
+      _emit_has_link=1
+    fi
+  fi
+  _prev="${_arg}"
+done
+
+if [[ "${_has_incremental}" == "1" ]]; then
+  if [[ "${_emit_seen}" == "1" && "${_emit_has_link}" == "0" ]]; then
+    # Metadata-only incremental unit (cargo check / clippy): run the real
+    # compiler directly, keeping incremental. The compiler may be
+    # clippy-driver (optionally followed by a rustc path arg); exec the
+    # whole command unchanged and skip sccache.
+    exec "$compiler" "$@"
+  fi
+  # Codegen incremental unit (or no --emit flag): strip the incremental
+  # flag so sccache sees a non-incremental invocation it can cache.
+  _args=("$@")
+  _filtered=()
+  _i=0
+  while [[ "${_i}" -lt "${#_args[@]}" ]]; do
+    _arg="${_args[${_i}]}"
+    if [[ "${_arg}" == -Cincremental* ]]; then
+      _i=$((_i + 1))
+      continue
+    fi
+    if [[ "${_arg}" == "-C" && "${_args[$((_i + 1))]:-}" == incremental* ]]; then
+      _i=$((_i + 2))
+      continue
+    fi
+    _filtered+=("${_arg}")
+    _i=$((_i + 1))
+  done
+  set -- "${_filtered[@]}"
+fi
+
 if poseidon_should_cache && command -v sccache >/dev/null 2>&1; then
   normalize_sccache_env
+  # sccache errors on any invocation when CARGO_INCREMENTAL=1 is exported,
+  # so the cache leg runs non-incremental (flags were stripped above).
+  export CARGO_INCREMENTAL=0
   exec sccache "$compiler" "$@"
 fi
 

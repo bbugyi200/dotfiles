@@ -5,6 +5,11 @@ id:
 memory:
   h1_title: "athena - Bryan Bugyi's Home Server"
 
+# Incremental check/clippy through the athena rustc wrapper: launched agents
+# get CARGO_INCREMENTAL=1 and metadata-only units run incrementally direct.
+managed_tmp:
+  agent_cargo_incremental: true
+
 llm_provider:
   provider: codex
   model_aliases:
