@@ -37,7 +37,8 @@ on stdout unless you intentionally need to recover work from that external copy.
 The command prints the prepared path to stdout. Use that printed path as the only path
 for subsequent reads and writes. Never locate or clone a linked repo, sidecar, different
 SASE project, or unlinked GitHub repo another way. Pass `-w <workspace_num>` only when
-running outside the workspace whose repo clone you need.
+running outside the workspace whose repo clone you need. When the opened repo has an
+`AGENTS.md`, the command names it on stderr; read it before editing in that repo.
 
 Use `sase repo open` when you need to modify a repository or explore a repo tree. Use
 `sase artifact read <ref> "<reason>"` when you need one artifact as recorded context;
