@@ -55,9 +55,8 @@ by using `/sase_repo` or `sase artifact read`!
 ## SASE Final Declaration
 
 Before any normal response that ends this SASE provider turn, use your `/sase_final`
-skill as the last action. This includes a final answer and an incomplete-status
-response; an unfinished turn still declares so its work is committed. Never end a turn
-to wait for a command or to resume later: nothing can wake you, so hand long commands to
-`/sase_monitor` before starting them. Only a successfully executed plan, monitor, pipe,
-or questions handoff is exempt, because those commands terminate the runner
-mechanically.
+skill as the last action. This includes a final answer, an incomplete-status response,
+an "I will wait" response, or any reply that intends to resume in a later turn. Only a
+successfully executed plan, monitor, pipe, or questions handoff is exempt, because those
+commands terminate the runner mechanically. Intending to resume later is not an
+exemption.
