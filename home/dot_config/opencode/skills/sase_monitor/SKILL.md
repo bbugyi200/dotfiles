@@ -21,6 +21,17 @@ and conversation.
 Provider-native monitor, background-execution, and scheduled wake-up tools do not work
 in SASE's single-turn agent model. Use `sase monitor start` instead.
 
+## Decide Before You Start
+
+Choose a command's place before starting it. Run it inline when it fits within your
+provider's synchronous limit (as your SASE provider instructions state it) and waits on
+nothing external. Start it with a monitor when it can outlast that limit, or when it
+waits on CI, a deploy, a release, or a rate limit. For final verification, prefer
+prepared monitor completion; see `/sase_final`.
+
+Never cancel, kill, or rerun an in-flight command to move it to a monitor. Let it
+finish, read its result, and only then decide what runs next.
+
 ## Canonical Invocation
 
 Run a long verification command and hand the result to a follow-up agent:

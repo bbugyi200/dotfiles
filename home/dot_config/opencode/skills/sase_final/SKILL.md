@@ -6,12 +6,17 @@ description:
 ---
 
 Use this skill whenever the current SASE turn is about to end with a normal response. It
-is mandatory for final answers, incomplete-status responses, "I will wait" responses,
-and replies that intend to resume in a later turn. Only a successfully executed plan,
-monitor, pipe, or questions handoff is exempt.
+is mandatory for final answers and incomplete-status responses; an unfinished turn still
+declares so its work is committed. Never use it to wait for a command or to resume
+later. Only a successfully executed plan, monitor, pipe, or questions handoff is exempt.
 
 ## Rules
 
+- Never end a turn to wait for a command or promise to resume later. Nothing can wake
+  you; hand long commands to `/sase_monitor` before starting them.
+- Never submit a declaration while a command you started is still running. SASE stops
+  the provider process shortly after your final declaration, killing anything still
+  running — let the command finish and read its result first.
 - Every repository you changed during this turn is yours to commit. This includes the
   primary workspace checkout and every linked, sidecar, or external repo you opened with
   `/sase_repo` and then edited. Give each one a `commit` decision; the only legal
@@ -50,14 +55,43 @@ monitor, pipe, or questions handoff is exempt.
 
 `sase final prepare <manifest>` publishes a prepared host-completion intent reference
 for monitor workflows. It does not submit a final declaration, commit, or end the turn.
-Bind the returned ref to a verification monitor explicitly, for example:
+Use it for final verification so passing work lands with no further turn.
 
-```bash
-sase monitor start -p verify -f <ref> -r 'Verify before host completion' -- just check
-```
+1. Run `just fix` first so the verification monitor does not fail on avoidable
+   formatting.
+2. Get the host-issued context (`sase final context -f json`) and build one wrapper
+   object from its `manifest_template`. The wrapper carries `success_message`, a
+   `verification` command, and the `declaration`. The verification command may be an
+   argv list or a shell string (see `src/sase/finalizers/prepare.py`); for the standard
+   gate it is:
 
-The `verify` profile only supplies labels and evidence defaults; the `-f/--completion`
-ref is what authorizes a successful monitor result to hand completion back to the host.
+   ```json
+   { "verification": { "command": ["just", "check"] } }
+   ```
+
+   When the assigned bead is done, set `bead_action: "close"` on the primary repository
+   decision; use `"keep"` for intermediate work. See "Steps" below and
+   `docs/monitors.md` ("Prepared host completion") for the full wrapper shape.
+
+3. Publish the intent and keep the returned ref:
+
+   ```bash
+   sase final prepare <wrapper> -j
+   ```
+
+4. Bind the ref to the matching verification monitor:
+
+   ```bash
+   sase monitor start -p verify -f <ref> -r 'Verify before host completion' -- just check
+   ```
+
+The monitored argv must exactly match the intent's verification command or binding fails
+and no monitor is created. The `verify` profile only supplies labels and evidence
+defaults; the `-f/--completion` ref is what authorizes a successful monitor result to
+hand completion back to the host. On green the host commits, closes the bead when
+`bead_action` is `"close"`, and runs no successor. On red — a failed or timed-out
+command, stale repository state, or another eligibility failure — the intent is
+invalidated and one ordinary recovery successor launches instead.
 
 ## Steps
 
