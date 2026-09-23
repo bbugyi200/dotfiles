@@ -36,12 +36,15 @@ sase monitor start \
 ```
 
 `sase tool run check` runs the same `just check` and also records a ToolRun (compact
-output for agents; the follow-up can read it with `sase tool show RUN`). If `sase tool`
-is unavailable, use the raw `just check` and note `sase update` as the remedy.
+output for agents; the follow-up can read it with `sase tool show RUN`). Under
+`-p verify`, plain `-- just check` is upgraded to that named run automatically, so
+agents need not remember the wrapper — spelling it out works identically. If `sase tool`
+itself is unavailable, run `SASE_TOOL_BYPASS='<why>' just check` raw instead.
 
 When the current prompt, the user, or the assigned bead explicitly names
 `just check-full` (typically to repair a CI failure), use the same `verify` profile and
-`TESTING` / `TESTED` pair with `-- sase tool run check-full` — never run it inline.
+`TESTING` / `TESTED` pair with `-- just check-full` (upgraded automatically) or
+`-- sase tool run check-full` — never run it inline.
 
 ## Status Labels
 

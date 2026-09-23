@@ -23,7 +23,7 @@ Write a JSON request file:
 ```json
 {
   "schema_version": 1,
-  "prompt": "#git:sase\n%i(reviewer)\nReview the proposed implementation and report issues.",
+  "prompt": "+sase\n%i(reviewer)\nReview the proposed implementation and report issues.",
   "reason": "Need a reviewer helper before continuing.",
   "approval": "required",
   "max_slots": 1,
@@ -75,11 +75,12 @@ determine where the agent runs and which changes it sees.
 Prompts that are not family attachments should normally start with a VCS workspace
 reference:
 
-- `#gh:<ref>` (GitHub), `#git:<ref>` (bare git), or another ref registered by an
-  installed workspace plugin.
-- `<ref>` is usually a project name (`#gh:sase`). Use a Patch name (`#gh:my_change`)
-  only when the agent must continue that existing PR branch, or `#gh:@agent` to target
-  the Patch created by the named agent.
+- `+<project>` (a project tag, e.g. `+sase`), `#gh:<ref>` (GitHub), `#git:<ref>` (bare
+  git), or another ref registered by an installed workspace plugin.
+- `<project>` is a project name, key, or alias, matched case-insensitively. Use a Patch
+  name (`#gh:my_change`) only when the agent must continue that existing PR branch, or
+  `#gh:@agent` to target the Patch created by the named agent. Patches, `owner/repo`,
+  `@agent`, and new projects keep their `#gh:`/`#git:` spelling.
 - A prompt with no workspace reference defaults to `#git:home`, which is usually wrong
   for repo work.
 - Family-attach launches (`%i(suffix, family=parent)`) inherit the parent's workspace
