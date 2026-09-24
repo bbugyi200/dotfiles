@@ -49,8 +49,11 @@ sase monitor start \
 `sase tool run check` runs the same `just check` and also records a ToolRun (compact
 output for agents; the follow-up can read it with `sase tool show RUN`). Under
 `-p verify`, plain `-- just check` is upgraded to that named run automatically, so
-agents need not remember the wrapper — spelling it out works identically. If `sase tool`
-itself is unavailable, run `SASE_TOOL_BYPASS='<why>' just check` raw instead.
+agents need not remember the wrapper — spelling it out works identically. The start
+reserves that run up front and prints its id (`Tool run`, also in the `--json` envelope
+as `tool_run_id`) before the turn ends, so the id is usable even though the command is
+still starting. If `sase tool` itself is unavailable, run
+`SASE_TOOL_BYPASS='<why>' just check` raw instead.
 
 When the current prompt, the user, or the assigned bead explicitly names
 `just check-full` (typically to repair a CI failure), use the same `verify` profile and
@@ -176,6 +179,10 @@ sase monitor start \
   acknowledged.
 - `sase monitor stop <id>` stops a running monitor. Stopped monitors do not launch their
   recorded follow-up agent.
+- The reserved ToolRun id is an equivalent handle: `sase tool show RUN -F` streams the
+  run live until it settles, `sase tool wait RUN` blocks for its exit code, and
+  `sase tool stop RUN` stops it through the monitor (suppressing the follow-up by
+  design). These work from any shell, including after the starting turn ended.
 
 ## Follow-Up Context
 
