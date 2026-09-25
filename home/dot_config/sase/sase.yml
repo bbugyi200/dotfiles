@@ -123,7 +123,7 @@ ace:
     gtu: "sase's TUI"
     h: "http://"
     hard: |-
-      think hard about
+      think hard about $1
     help: "Can you help me $1?"
     helpp: "Can you now help me $1?"
     im: "IMPORTANT: "
