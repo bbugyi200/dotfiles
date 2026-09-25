@@ -122,6 +122,8 @@ ace:
     gta: 'the "$1" tab in sase''s TUI'
     gtu: "sase's TUI"
     h: "http://"
+    hard: |-
+      think hard about
     help: "Can you help me $1?"
     helpp: "Can you now help me $1?"
     im: "IMPORTANT: "
