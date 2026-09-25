@@ -51,6 +51,8 @@ ace:
       #[atr] panel
     awe: "agent/workflow entry"
     axe: "`sase axe`"
+    bd: |-
+      the sase-$1 bead
     can: "Can you $1?"
     cb: |-
       ```$1
