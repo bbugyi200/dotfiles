@@ -34,8 +34,6 @@ ace:
     ac: |-
       agent clan
     ace: "`sase tui`"
-    af: |-
-      agent family
     aif: |-
       agent instruction file
     al: |-
@@ -45,6 +43,8 @@ ace:
       agent metadata panel
     artt: |-
       the "$1" sub-tab of the "Artifacts" tab
+    as: |-
+      agent session
     atr: |-
       agent tribe
     atrp: |-
