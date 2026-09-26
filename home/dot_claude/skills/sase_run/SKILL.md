@@ -47,7 +47,7 @@ return with no descriptor does not mean the request was created, it means you st
 watching before the CLI made its first durable write, and nothing was created.
 
 The command creates a durable pending `LaunchApproval` gate shell, prints its
-descriptor, hands this agent's family lane to that gate shell, and then this turn ends
+descriptor, hands this agent's session lane to that gate shell, and then this turn ends
 by killing this process right after the descriptor prints. Seeing that descriptor is how
 you know the request was created; the kill that follows is not a signal you can observe,
 so never treat an early or empty tool result as that signal. If the tool call ever
@@ -72,8 +72,8 @@ determine where the agent runs and which changes it sees.
 
 ### VCS Workspace xprompt
 
-Prompts that are not family attachments should normally start with a VCS workspace
-reference:
+Prompts that are not agent-session attachments should normally start with a VCS
+workspace reference:
 
 - `+<project>` (a project tag, e.g. `+sase`), `#gh:<ref>` (GitHub), `#git:<ref>` (bare
   git), or another ref registered by an installed workspace plugin.
@@ -83,7 +83,7 @@ reference:
   `@agent`, and new projects keep their `#gh:`/`#git:` spelling.
 - A prompt with no workspace reference defaults to `#git:home`, which is usually wrong
   for repo work.
-- Family-attach launches (`%i(suffix, family=parent)`) inherit the parent's workspace
+- Session-attach launches (`%i(suffix, session=parent)`) inherit the parent's workspace
   and Patch; do not add a workspace reference to them.
 
 ### Wait Directive
@@ -143,8 +143,8 @@ Agent-origin launch requests default to
 `requester_continuation.mode = "resume_requester"`. The gate shell resumes this
 requester after `approve`, `reject`, `timeout`, or gate `failed` settlements and passes
 along the gate decision, reviewer feedback, dispatch status, typed launch results,
-assignment bead, workspace identity, family identity, and checkpoint. A user stop
-(`stopped`) is terminal and must not resurrect the family.
+assignment bead, workspace identity, agent session identity, and checkpoint. A user stop
+(`stopped`) is terminal and must not resurrect the agent session.
 
 Set `checkpoint` to the exact point the resumed requester should pick up from. On
 rejection, timeout, or approval dispatch failure, the resumed requester should report or
@@ -162,24 +162,24 @@ Use an explicit terminal handoff only when the requested launch is meant to take
 }
 ```
 
-If the requested prompt itself targets the requester's family lane, for example
-`%i(reviewer, family=parent)`, either choose `terminal_handoff` or target a different
-family. A default requester continuation and a requested same-family successor are two
-different owners for one sequential family lane, so the launch request is rejected
-before approval.
+If the requested prompt itself targets the requester's session lane, for example
+`%i(reviewer, session=parent)`, either choose `terminal_handoff` or target a different
+agent session. A default requester continuation and a requested same-session successor
+are two different owners for one sequential session lane, so the launch request is
+rejected before approval.
 
-## Sequential Family Members
+## Sequential Session Members
 
-To attach the approved launch to an existing family, put the family directive in the
-requested prompt:
+To attach the approved launch to an existing agent session, put the session directive in
+the requested prompt:
 
 ```text
-%i(reviewer, family=parent)
+%i(reviewer, session=parent)
 Review the current result and report whether it is ready.
 ```
 
-Use `%i(@, family=parent)` only when the next free feedback suffix is acceptable. Use a
-concrete suffix such as `%i(tester, family=parent)` when the role matters.
+Use `%i(@, session=parent)` only when the next free feedback suffix is acceptable. Use a
+concrete suffix such as `%i(tester, session=parent)` when the role matters.
 
 ## Parallel Clan Members
 
@@ -202,7 +202,7 @@ the request.
 
 Use `%clan(review, tribe=quality)` (or `%c(review, tribe=quality)`) when the clan should
 appear in a tribe. Use `%id(worker, tribe=quality)` for an explicitly named standalone
-agent or `#tribe:quality` for an auto-named one. The `clan=`, `family=`, and `tribe=`
+agent or `#tribe:quality` for an auto-named one. The `clan=`, `session=`, and `tribe=`
 identity keywords are mutually exclusive; move a clan's tribe into its `%clan`
 declaration instead.
 

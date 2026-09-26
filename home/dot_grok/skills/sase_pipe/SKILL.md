@@ -1,8 +1,8 @@
 ---
 name: sase_pipe
 description: >-
-  Hand this agent's turn to a fresh successor in the same agent family: this turn ends
-  and the next family member starts immediately with the prompt you write, in the same
+  Hand this agent's turn to a fresh successor in the same agent session: this turn ends
+  and the next session member starts immediately with the prompt you write, in the same
   workspace, optionally on a different model or with a clean context window. Use ONLY
   when the user explicitly asks you to pipe or hand off work to another agent. Not for
   running or waiting on a command (`/sase_monitor`), and not for launching helper agents
@@ -12,9 +12,12 @@ description: >-
 ## Core Rule
 
 Use this skill only when the user explicitly asks you to pipe or hand off work to
-another agent. `sase pipe` kills the calling agent once it starts the hand-off, so this
-turn will not return normally. Write everything the successor needs inside the piped
-prompt itself, not in a reply you plan to send afterward — there is no afterward.
+another agent. `sase pipe` kills the calling agent only after it writes its handoff
+marker, so run the pipe command in the foreground until it exits. If your tool yields or
+backgrounds its session, keep polling that same session; never end your turn while it is
+still running. Write everything the successor needs inside the piped prompt itself, not
+in a reply you plan to send afterward — after a successful handoff, there is no
+afterward.
 
 ## Canonical Invocation
 
@@ -43,8 +46,8 @@ Do not pipe for:
 - `-j, --json` — print a machine-readable hand-off summary instead of the rich one.
 - `-m, --model MODEL` — model or alias for the successor (`opus`, `opus@high`, `sonnet`,
   `codex/gpt-5`). Default: inherit this agent's model.
-- `-n, --name TOKEN` — successor role token: `review` yields `<family>--review`.
-  Default: the next free numbered family member.
+- `-n, --name TOKEN` — successor role token: `review` yields `<session>--review`.
+  Default: the next free numbered session member.
 - `-r, --reason TEXT` — one-line reason, recorded on the successor and shown in agent
   lists.
 
@@ -58,4 +61,5 @@ Do not pipe for:
   continue or retry, not assume a successor exists.
 - Chains are bounded by the `max_agent_pipe_chain` config field; a piped successor that
   pipes again can eventually be refused once the bound is reached.
-- Do not keep working, poll, or wait after running this command.
+- After a successful handoff, do not keep working, poll, or wait. If your tool yielded
+  before that handoff completed, follow the Core Rule and keep polling the same session.

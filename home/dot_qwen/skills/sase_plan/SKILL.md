@@ -60,6 +60,8 @@ SASE derives your plan's links from the artifacts you read this turn; use
    runner treats that signal as an intentional handoff: it creates the tier-specific
    `PlanApproval` or `EpicApproval` gate shell and ends this agent; the shell owns
    review settlement and launches the feedback replanner or approved tale coder. `%auto`
-   remains synchronous and continues in this process without a detached agent. Do not
-   expect the current provider turn to return normally after a successful manual
-   proposal, and do not poll response files yourself.
+   remains synchronous and continues in this process without a detached agent. The
+   proposal command itself must run until it completes the marker write, which can take
+   up to a minute. If your tool yields or backgrounds its session, keep polling that
+   same session until it exits; an early or empty result does not mean a proposal
+   happened. Once it succeeds, do not poll response files yourself.

@@ -12,11 +12,15 @@ agent turn, or when you need a timed sleep/wait before more work can happen.
 
 ## Core Rule
 
-`sase monitor start` hands the command to a detached monitor supervisor and then kills
-the current agent. The current provider turn will not return normally. Do not poll,
-sleep, or wait for the monitored command yourself after starting it; put any
-continuation work in `--next` so a follow-up agent can resume from the same workspace
-and conversation.
+Never wait for the **monitored command** yourself. Put any continuation work in `--next`
+so a follow-up agent can resume from the same workspace and conversation.
+
+The `sase monitor start` command itself must run to completion. It may take up to a
+minute to create and acknowledge the detached supervisor, then writes its handoff marker
+and kills the current agent. If your command tool yields or backgrounds that start
+command before it exits, keep waiting on the same session until it reports an exit code.
+Never end your turn while `sase monitor start` is still running; an early or empty
+result means only that you stopped observing before the handoff happened.
 
 Provider-native monitor, background-execution, and scheduled wake-up tools do not work
 in SASE's single-turn agent model. Use `sase monitor start` instead.
@@ -95,8 +99,10 @@ the row color, so reusing one pair across related monitors makes them read as on
   `--next '#commit ...'` or `--next '%model:opus ...'` will not route or expand
   anything, but writing `#412` or a directive name in prose is safe. Use `-m/--model` to
   select the follow-up agent's model; `%model` text inside `--next` stays literal.
-- Do not poll, sleep, or wait after `sase monitor start`; the starting agent is handed
-  off and killed when running inside an agent.
+- Do not poll, sleep, or wait for the monitored command after `sase monitor start`
+  exits; the starting agent is then handed off and killed when running inside an agent.
+  Until the start command exits, keep polling that same command session if your tool
+  yielded it.
 
 ## Sleep Or Wait
 
@@ -137,7 +143,7 @@ sase monitor start \
 - `-p, --profile verify` supplies `TESTING` / `TESTED` labels and `--next-output auto`
   for verification commands. It does not authorize host completion by itself.
 - `--agent NAME` targets a specific agent. Inside an agent, the current agent is the
-  default -- including inside an epic phase lane and inside a promoted agent family, so
+  default -- including inside an epic phase lane and inside a promoted agent session, so
   no `--agent` is needed there either; outside an agent, pass it explicitly. (`--lane`
   still works as a deprecated alias.)
 - `--label TEXT` controls the short row label shown in monitor lists.
@@ -187,13 +193,13 @@ sase monitor start \
 ## Follow-Up Context
 
 When `--next` is set, the follow-up agent receives the previous conversation through
-`#fork:<family>` — the whole family's transcript, not just the monitor's own turn, the
-same shared shell substrate that gate shells fork through — plus the original reason,
-the requested next action, and a command-run breakdown: outcome, exit code, elapsed
-time, selected output policy, and the path to the retained captured log. The reason,
-next action, table fields, and embedded output are wrapped as literal prompt text; only
-the follow-up's routing prefix remains live. Omit `--model` to inherit the starter's
-model and reasoning effort; pass `--model` to replace that inherited routing.
+`#fork:<agent session>` — the whole agent session's transcript, not just the monitor's
+own turn, the same shared shell substrate that gate shells fork through — plus the
+original reason, the requested next action, and a command-run breakdown: outcome, exit
+code, elapsed time, selected output policy, and the path to the retained captured log.
+The reason, next action, table fields, and embedded output are wrapped as literal prompt
+text; only the follow-up's routing prefix remains live. Omit `--model` to inherit the
+starter's model and reasoning effort; pass `--model` to replace that inherited routing.
 
 With `--next-output auto`, completed runs use facts and refs, failed runs prefer
 diagnostic refs, and timeouts include a bounded raw tail. With `--next-output tail`, the

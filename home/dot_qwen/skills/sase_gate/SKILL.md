@@ -267,9 +267,9 @@ narrowly scoped to the action shown to the user.
 ## Declare The `shell` Block
 
 A gate you create from inside an agent should almost always be a **gate shell**: a
-named, non-LLM member of your agent family that publishes the decision, outlives you,
-runs the commands the reviewer selects, and hands their typed outcome to the next family
-member. Add a `shell` block to make your gate one:
+named, non-LLM member of your agent session that publishes the decision, outlives you,
+runs the commands the reviewer selects, and hands their typed outcome to the next
+session member. Add a `shell` block to make your gate one:
 
 ```json
 {
@@ -280,7 +280,7 @@ member. Add a `shell` block to make your gate one:
     "next": {
       "prompt": "Verify the reclaimed space and close the tracking bead.",
       "output": ["results"],
-      "fork": "family"
+      "fork": "session"
     },
     "branches": {
       "reject": { "prompt": null }
@@ -291,14 +291,14 @@ member. Add a `shell` block to make your gate one:
 
 | Field            | Meaning                                                      | Default                            |
 | ---------------- | ------------------------------------------------------------ | ---------------------------------- |
-| `suffix`         | Family suffix for the gate-shell member                      | allocated: `--gate`, `--gate-0`, … |
+| `suffix`         | Session suffix for the gate-shell member                     | allocated: `--gate`, `--gate-0`, … |
 | `pending_status` | Row status while awaiting a human (≤20 chars)                | `GATE`                             |
 | `settled_status` | Row status after settling                                    | `GATED`                            |
 | `accent`         | Pin the status-pair colour (`#RRGGBB`) instead of hashing it | hashed                             |
 | `workspace`      | `inherit` \| `release`                                       | `inherit`                          |
 | `next.prompt`    | Literal "Your next action" text; `null` = no follow-up       | `null`                             |
 | `next.output`    | `none` \| `results` \| `tail` \| `file`, or a list           | `["results"]`                      |
-| `next.fork`      | `family` \| `shell` \| `none`                                | `family`                           |
+| `next.fork`      | `session` \| `shell` \| `none`                               | `session`                          |
 | `next.model`     | Model/alias for the follow-up agent                          | inherit yours                      |
 | `branches.<key>` | Override, keyed by `+`-joined option ids in query order      | —                                  |
 
@@ -322,8 +322,8 @@ different next step:
 | Branch           | `next`                              |
 | ---------------- | ----------------------------------- |
 | `approve+commit` | implementation prompt, `fork: none` |
-| `feedback`       | replan prompt, `fork: family`       |
-| `reject`         | `null` — the family simply ends     |
+| `feedback`       | replan prompt, `fork: session`      |
+| `reject`         | `null` — the session simply ends    |
 
 Write your own `next` and `branches.<key>.{prompt,output,fork,model,status,accent}` the
 same way: one outcome, one follow-up policy.
@@ -335,7 +335,7 @@ Create the durable gate:
 ```bash
 sase gate create --shell \
   --next 'Verify the reclaimed space and close the tracking bead.' \
-  --next-output results --next-fork family \
+  --next-output results --next-fork session \
   < gate-request.json > gate-descriptor.json
 ```
 
@@ -360,7 +360,7 @@ after this for you to do — `sase gate wait` is rejected outright for a shell g
 an agent runner, with a message pointing back at `--shell`, because waiting is exactly
 the blocking behaviour a gate shell exists to remove. (It still works for non-agent
 scripts and tests answering a non-shell gate.) The reviewer's decision and its command
-results reach the _next_ family member automatically, composed into their prompt's
+results reach the _next_ session member automatically, composed into their prompt's
 labelled sections per the `next` policy above. Never poll bundle files directly. Never
 run bundle commands by hand.
 

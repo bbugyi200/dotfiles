@@ -22,10 +22,10 @@ sase agent list -j
 This prints a stable-shape JSON array to stdout. Each row has: `name`, `project`, `pid`,
 `model`, `provider`, `workspace_num`, `status`, `duration_seconds`, `started_at`,
 `approve`, `prompt_snippet`, `artifacts_dir`, wait and runner slot context,
-`parent_agent_name`, and `agent_family`. Clan members appear as their own agent rows;
-the clan container itself is a projection in sase's TUI rather than a running process.
-Runner-slot rows include `runner_slots_in_use` and `runner_slot_holders`, which identify
-the agents keeping them parked.
+`parent_agent_name`, `agent_session`, and `agent_session_role`. Clan members appear as
+their own agent rows; the clan container itself is a projection in sase's TUI rather
+than a running process. Runner-slot rows include `runner_slots_in_use` and
+`runner_slot_holders`, which identify the agents keeping them parked.
 
 Every live runner-slot waiter is reported as `QUEUED`, whether its threshold comes from
 the global cap or an authored `%queue(capacity=N)`. `runner_slot_queue_position` and
