@@ -103,6 +103,15 @@ hand completion back to the host. On green the host commits, closes the bead whe
 command, stale repository state, or another eligibility failure — the intent is
 invalidated and one ordinary recovery successor launches instead.
 
+The wrapper accepts an explicit opt-in `"accept": "no-new"` alongside the default
+`"pass"`. Use `no-new` only when the verification is a named tool run whose
+all-KNOWN/FLAKY nonzero exit should still complete: the host re-observes each obligated
+checkout at the precommit boundary and completes only when a covering, unexpired verdict
+receipt for that exact ToolRun still holds, otherwise it withholds all commits and
+launches recovery with the typed reason. Default `pass` behavior is unchanged and gains
+no receipt requirement. Commits record receipt provenance when a covering receipt
+authorized them and `unverified` otherwise.
+
 ## Steps
 
 1. Get the current host-issued context:

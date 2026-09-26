@@ -64,6 +64,13 @@ When the current prompt, the user, or the assigned bead explicitly names
 `TESTING` / `TESTED` pair with `-- just check-full` (upgraded automatically) or
 `-- sase tool run check-full` — never run it inline.
 
+A `verify` monitor bound to a prepared intent with `accept: no-new` may complete host
+finalization even when the named verification exits nonzero, but only when every failure
+item is KNOWN or FLAKY and a covering, unexpired verdict receipt for that exact ToolRun
+still holds at the host's precommit recheck. Anything else — NEW/UNKNOWN items, drift,
+expiry, invalidation, or the wrong run — withholds all commits and launches ordinary
+recovery. Default `pass` monitors are unchanged.
+
 ## Status Labels
 
 Use `-p/--profile verify` for verification commands; it supplies `TESTING` / `TESTED`
