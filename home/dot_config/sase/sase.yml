@@ -194,6 +194,8 @@ ace:
     uw: |-
       usage window
     w: "%w"
+    wb: |-
+      %wait(bead=$1)
     x: "xprompt"
     xm: |-
       xprompt memory
