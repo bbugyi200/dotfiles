@@ -34,6 +34,8 @@ ace:
     ac: |-
       agent clan
     ace: "`sase tui`"
+    adj: |-
+      Make any adjustments to the requirements you think are warranted, but clearly call these out.
     aif: |-
       agent instruction file
     al: |-
