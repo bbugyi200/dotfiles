@@ -161,6 +161,8 @@ ace:
       Make sure you review #[epic] for related work first and leave notes on the appropriate epic/phase bead(s) if necessary.
     res: |-
       Can you do some research to help me $1?
+    rs: |-
+      #research_swarm:: $1
     s: |-
       sase
     sa: "sase agent"
