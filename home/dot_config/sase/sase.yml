@@ -35,7 +35,7 @@ ace:
       agent clan
     ace: "`sase tui`"
     adj: |-
-      Make any adjustments to the requirements you think are warranted, but clearly call these out.
+      Make any adjustments to the requirements you think are warranted, but clearly call these out$1.
     aif: |-
       agent instruction file
     al: |-
