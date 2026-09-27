@@ -54,7 +54,7 @@ ace:
     awe: "agent/workflow entry"
     axe: "`sase axe`"
     bd: |-
-      the sase-$1 bead
+      the #{project}-$1 bead
     can: "Can you $1?"
     cb: |-
       ```$1
@@ -85,7 +85,7 @@ ace:
       Can you do some research with the goal of helping me decide the best way to implement this? Also, critique this plan in general. Is this a good idea? Would you take a different approach? Make any adjustments to the requirements that you think are justified but clearly call these out. End your analysis with a recommended solution.
     drep: "Describe this repo."
     epic: |-
-      the sase-$1 epic bead
+      the #{project}-$1 epic bead
     ev: |-
       environment variable
     exed: |-
