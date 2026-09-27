@@ -163,6 +163,8 @@ ace:
       Can you do some research to help me $1?
     rs: |-
       #research_swarm:: $1
+    rsa: |-
+      #research_swarm(gemini=true,grok=true,muse=true,image=true):: $1
     s: |-
       sase
     sa: "sase agent"
