@@ -264,16 +264,16 @@ For larger commands, set a resource's `source` to a script you authored instead 
 embedding `content`; use exactly one of `source` or `content`. Keep command resources
 narrowly scoped to the action shown to the user.
 
-## Declare The `shell` Block
+## Declare The `turn` Block
 
-A gate you create from inside an agent should almost always be a **gate shell**: a
-named, non-LLM member of your agent session that publishes the decision, outlives you,
-runs the commands the reviewer selects, and hands their typed outcome to the next
-session member. Add a `shell` block to make your gate one:
+A gate you create from inside an agent should almost always be a **gate turn**: a named,
+non-LLM member of your agent session that publishes the decision, outlives you, runs the
+commands the reviewer selects, and hands their typed outcome to the next session member.
+Add a `turn` block to make your gate one:
 
 ```json
 {
-  "shell": {
+  "turn": {
     "pending_status": "CONFIRM",
     "settled_status": "CONFIRMED",
     "workspace": "inherit",
@@ -291,14 +291,14 @@ session member. Add a `shell` block to make your gate one:
 
 | Field            | Meaning                                                      | Default                            |
 | ---------------- | ------------------------------------------------------------ | ---------------------------------- |
-| `suffix`         | Session suffix for the gate-shell member                     | allocated: `--gate`, `--gate-0`, … |
+| `suffix`         | Session suffix for the gate-turn member                      | allocated: `--gate`, `--gate-0`, … |
 | `pending_status` | Row status while awaiting a human (≤20 chars)                | `GATE`                             |
 | `settled_status` | Row status after settling                                    | `GATED`                            |
 | `accent`         | Pin the status-pair colour (`#RRGGBB`) instead of hashing it | hashed                             |
 | `workspace`      | `inherit` \| `release`                                       | `inherit`                          |
 | `next.prompt`    | Literal "Your next action" text; `null` = no follow-up       | `null`                             |
 | `next.output`    | `none` \| `results` \| `tail` \| `file`, or a list           | `["results"]`                      |
-| `next.fork`      | `session` \| `shell` \| `none`                               | `session`                          |
+| `next.fork`      | `session` \| `turn` \| `none`                                | `session`                          |
 | `next.model`     | Model/alias for the follow-up agent                          | inherit yours                      |
 | `branches.<key>` | Override, keyed by `+`-joined option ids in query order      | —                                  |
 
@@ -328,21 +328,21 @@ different next step:
 Write your own `next` and `branches.<key>.{prompt,output,fork,model,status,accent}` the
 same way: one outcome, one follow-up policy.
 
-## Create The Gate Shell, Then Stop
+## Create The Gate Turn, Then Stop
 
 Create the durable gate:
 
 ```bash
-sase gate create --shell \
+sase gate create --turn \
   --next 'Verify the reclaimed space and close the tracking bead.' \
   --next-output results --next-fork session \
   < gate-request.json > gate-descriptor.json
 ```
 
-`--shell`, `--shell-status`, `--shell-stop-status`, `--next`, `--next-fork`,
-`--next-model`, and `--next-output` are CLI shortcuts for the same `shell`/`next`
-fields; everything is also expressible in the JSON request body, which is what keeps
-this skill declarative.
+`--turn`, `--turn-status`, `--turn-stop-status`, `--next`, `--next-fork`,
+`--next-model`, and `--next-output` are CLI shortcuts for the same `turn`/`next` fields;
+everything is also expressible in the JSON request body, which is what keeps this skill
+declarative.
 
 Run this command in the foreground and wait for the process to exit on its own. Never
 invoke it with a yield window, a background flag, or any early-return timeout: an early
@@ -350,16 +350,16 @@ return with no descriptor does not mean the handoff happened, it means you stopp
 watching before the CLI made its first durable write, and nothing was created.
 
 **Print the descriptor, then stop. Do not wait, poll, or keep working.** Creating a gate
-shell ends your turn: the runner hands off to the gate shell and kills your process
+turn ends your turn: the runner hands off to the gate turn and kills your process
 immediately after the descriptor prints. Seeing the descriptor is how you know creation
 succeeded; the kill that follows is not a signal you can observe, so never treat an
 early or empty tool result as that signal. If the tool call ever returns something other
 than the descriptor — an error, or output you did not expect — your turn has NOT ended;
 read it and report it instead of assuming the handoff already happened. There is nothing
-after this for you to do — `sase gate wait` is rejected outright for a shell gate under
-an agent runner, with a message pointing back at `--shell`, because waiting is exactly
-the blocking behaviour a gate shell exists to remove. (It still works for non-agent
-scripts and tests answering a non-shell gate.) The reviewer's decision and its command
+after this for you to do — `sase gate wait` is rejected outright for a turn gate under
+an agent runner, with a message pointing back at `--turn`, because waiting is exactly
+the blocking behaviour a gate turn exists to remove. (It still works for non-agent
+scripts and tests answering a non-turn gate.) The reviewer's decision and its command
 results reach the _next_ session member automatically, composed into their prompt's
 labelled sections per the `next` policy above. Never poll bundle files directly. Never
 run bundle commands by hand.

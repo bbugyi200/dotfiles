@@ -46,15 +46,15 @@ invoke it with a yield window, a background flag, or any early-return timeout: a
 return with no descriptor does not mean the request was created, it means you stopped
 watching before the CLI made its first durable write, and nothing was created.
 
-The command creates a durable pending `LaunchApproval` gate shell, prints its
-descriptor, hands this agent's session lane to that gate shell, and then this turn ends
-by killing this process right after the descriptor prints. Seeing that descriptor is how
-you know the request was created; the kill that follows is not a signal you can observe,
-so never treat an early or empty tool result as that signal. If the tool call ever
-returns something other than the descriptor — an error, or output you did not expect —
-your turn has NOT ended; read it and report it instead of assuming the handoff already
-happened. It does not spawn an agent unless the approver accepts the request and host
-dispatch succeeds.
+The command creates a durable pending `LaunchApproval` gate turn, prints its descriptor,
+hands this agent's session lane to that gate turn, and then this turn ends by killing
+this process right after the descriptor prints. Seeing that descriptor is how you know
+the request was created; the kill that follows is not a signal you can observe, so never
+treat an early or empty tool result as that signal. If the tool call ever returns
+something other than the descriptor — an error, or output you did not expect — your turn
+has NOT ended; read it and report it instead of assuming the handoff already happened.
+It does not spawn an agent unless the approver accepts the request and host dispatch
+succeeds.
 
 The pending request lives in SASE's neutral `interaction_requests/launch/<request-id>/`
 layout. Every terminal option uses the bundle's hash-verified command; do not write the
@@ -140,10 +140,10 @@ the directives and references you intended.
 ## Requester Continuation
 
 Agent-origin launch requests default to
-`requester_continuation.mode = "resume_requester"`. The gate shell resumes this
-requester after `approve`, `reject`, `timeout`, or gate `failed` settlements and passes
-along the gate decision, reviewer feedback, dispatch status, typed launch results,
-assignment bead, workspace identity, agent session identity, and checkpoint. A user stop
+`requester_continuation.mode = "resume_requester"`. The gate turn resumes this requester
+after `approve`, `reject`, `timeout`, or gate `failed` settlements and passes along the
+gate decision, reviewer feedback, dispatch status, typed launch results, assignment
+bead, workspace identity, agent session identity, and checkpoint. A user stop
 (`stopped`) is terminal and must not resurrect the agent session.
 
 Set `checkpoint` to the exact point the resumed requester should pick up from. On
@@ -209,7 +209,7 @@ declaration instead.
 ## Handle The Outcome
 
 Inside a running agent, `sase launch request` does not return a terminal approval
-outcome. The gate shell owns the pending decision while this requester is gone.
+outcome. The gate turn owns the pending decision while this requester is gone.
 
 The creation descriptor looks like:
 
@@ -218,7 +218,7 @@ The creation descriptor looks like:
   "request_id": "launch-123",
   "notification_id": "notification-123",
   "response_dir": "/path/to/interaction_requests/launch/launch-123",
-  "gate_shell": {
+  "gate_turn": {
     "gate_id": "launch-123",
     "member_agent_name": "agent--gate",
     "state": "pending"
@@ -227,6 +227,6 @@ The creation descriptor looks like:
 ```
 
 If approved, the gate's approved command dispatches the requested launch. If rejected,
-timed out, or dispatch fails, the gate shell records that terminal state and resumes the
+timed out, or dispatch fails, the gate turn records that terminal state and resumes the
 requester according to the durable requester-continuation contract. If cancelled, the
-gate shell records the stop without launching a follow-up requester.
+gate turn records the stop without launching a follow-up requester.

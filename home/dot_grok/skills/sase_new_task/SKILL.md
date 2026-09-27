@@ -126,10 +126,15 @@ Use this skill before creating any task bead.
    quoting):
 
    ```bash
-   sase bead create -T "task(<slug>)" -t "<title>" -d @<path> --size <size> -f <field>=<value> --ref <artifact-ref>
+   sase bead create -T "task(<slug>)" -t "<title>" -w "<why this bead was filed>" -d @<path> --size <size> -f <field>=<value> --ref <artifact-ref>
    sase bead dep add <task-id> <blocking-bead-id>
    sase bead update <task-id> --status ready
    ```
+
+   `-w/--reason` is required on every create: one or two sentences explaining why the
+   bead was filed, not a restatement of its title. `@<path>` reads it from a file, blank
+   or over-2000-character reasons are rejected before mutation, and `-d/--description`
+   stays optional and separate.
 
    `task_type` is immutable once set, so pick the closest match rather than the first
    plausible one. Bare `-T task` is an error; every new task must use a catalog slug.

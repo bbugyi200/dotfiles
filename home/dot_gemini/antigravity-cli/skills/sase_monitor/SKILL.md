@@ -201,7 +201,7 @@ sase monitor start \
 
 When `--next` is set, the follow-up agent receives the previous conversation through
 `#fork:<agent session>` — the whole agent session's transcript, not just the monitor's
-own turn, the same shared shell substrate that gate shells fork through — plus the
+own turn, the same shared turn substrate that gate turns fork through — plus the
 original reason, the requested next action, and a command-run breakdown: outcome, exit
 code, elapsed time, selected output policy, and the path to the retained captured log.
 The reason, next action, table fields, and embedded output are wrapped as literal prompt
