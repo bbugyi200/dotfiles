@@ -173,6 +173,8 @@ ace:
     sac: "SASE Admin Center"
     sact: |-
       the "$1" tab of the "#[sac]" panel
+    saf: |-
+      The `$1` sase agent just failed. Is there something that we can/should fix here? #if_so_plan Think hard about this.
     sat: |-
       the `$1` sase agent
     sc: |-
