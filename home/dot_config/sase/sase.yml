@@ -201,7 +201,7 @@ ace:
       usage window
     w: "%w"
     wb: |-
-      %wait(bead=$1)
+      %wait(bead=#{project}-$1)
     x: "xprompt"
     xm: |-
       xprompt memory
