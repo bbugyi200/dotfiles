@@ -13,7 +13,7 @@ local function format_seconds(seconds)
 	return string.format("%s%d:%02d", sign, math.floor(seconds / 60), seconds % 60)
 end
 
-function M.presentation(remaining_seconds)
+function M.presentation(remaining_seconds, flash_on)
 	if remaining_seconds == nil then
 		return {
 			title = "NO POMODORO",
@@ -24,7 +24,7 @@ function M.presentation(remaining_seconds)
 	if remaining_seconds <= -M.OVERDUE_WARNING_AFTER_SECONDS then
 		return {
 			title = "OVERDUE POMODORO",
-			appearance = "overdue_warning",
+			appearance = flash_on and "overdue_warning_flash" or "overdue_warning",
 		}
 	end
 

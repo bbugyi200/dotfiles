@@ -192,7 +192,7 @@ local function make_hs(env)
 	return hs
 end
 
-local function default_presentation(remaining_seconds)
+local function default_presentation(remaining_seconds, flash_on)
 	if remaining_seconds == nil then
 		return {
 			title = "NO POMODORO",
@@ -202,7 +202,7 @@ local function default_presentation(remaining_seconds)
 	if remaining_seconds <= -600 then
 		return {
 			title = "OVERDUE POMODORO",
-			appearance = "overdue_warning",
+			appearance = flash_on and "overdue_warning_flash" or "overdue_warning",
 		}
 	end
 	if remaining_seconds < 0 then
@@ -294,6 +294,7 @@ describe("Hammerspoon init", function()
 		assert.is_not_nil(runtime.syncTimer)
 		assert.is_not_nil(runtime.wakeWatcher)
 		assert.is_true(runtime.tickTimer.started)
+		assert.equals(0.5, runtime.tickTimer.interval)
 		assert.is_true(runtime.syncTimer.started)
 		assert.is_true(runtime.wakeWatcher.started)
 		assert.equals(2, #env.hotkeys)
@@ -347,6 +348,80 @@ describe("Hammerspoon init", function()
 		assert.not_equals(old_wake_watcher, runtime.wakeWatcher)
 	end)
 
+	it("flashes overdue warnings with constant text and font metrics", function()
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+
+		local runtime = _G.BobPomodoroCountdown
+		runtime.state = {
+			rawOutput = "0900-0915 Test task",
+			status = "active",
+			endEpoch = os.time() - 601,
+			lastSyncEpoch = os.time(),
+		}
+		for _ = 1, 4 do
+			runtime.tickTimer.callback()
+		end
+
+		local warning_calls = {}
+		for _, call in ipairs(env.styled_text_calls) do
+			if call.text:find("OVERDUE POMODORO", 1, true) then
+				table.insert(warning_calls, call)
+			end
+		end
+		assert.equals(4, #warning_calls)
+		local first_text = warning_calls[1].text
+		local first_font = warning_calls[1].attributes.font
+		assert.equals("\194\160OVERDUE POMODORO\194\160", first_text)
+		for index, call in ipairs(warning_calls) do
+			assert.equals(first_text, call.text)
+			assert.equals(first_font.name, call.attributes.font.name)
+			assert.equals(first_font.size, call.attributes.font.size)
+			if index % 2 == 1 then
+				assert.are.same({ hex = "#ffffff", alpha = 1 }, call.attributes.color)
+				assert.are.same({ hex = "#ff453a", alpha = 1 }, call.attributes.backgroundColor)
+			else
+				assert.are.same({ hex = "#ff453a", alpha = 1 }, call.attributes.color)
+				assert.is_nil(call.attributes.backgroundColor)
+			end
+		end
+	end)
+
+	it("does not animate countdown, recently overdue, or missing states", function()
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+
+		local runtime = _G.BobPomodoroCountdown
+		local states = {
+			{ status = "active", endEpoch = os.time() + 300 },
+			{ status = "overdue", endEpoch = os.time() - 1 },
+			{ status = "missing" },
+		}
+		for _, state in ipairs(states) do
+			runtime.state = {
+				rawOutput = "Pomodoro state",
+				status = state.status,
+				endEpoch = state.endEpoch,
+				lastSyncEpoch = os.time(),
+			}
+			local first_call = #env.menu_title_calls + 1
+			runtime.tickTimer.callback()
+			runtime.tickTimer.callback()
+			local first_title = env.menu_title_calls[first_call].title
+			local second_title = env.menu_title_calls[first_call + 1].title
+			local function title_text(title)
+				return type(title) == "table" and title.text or title
+			end
+			assert.equals(title_text(first_title), title_text(second_title))
+			for index = first_call, first_call + 1 do
+				local title = env.menu_title_calls[index].title
+				if type(title) == "table" then
+					assert.is_nil(title.attributes.backgroundColor)
+				end
+			end
+		end
+	end)
+
 	it("validates converted bold fonts before styled Pomodoro warning renders", function()
 		local ok, error_message, env = load_init_with()
 		assert.is_true(ok, error_message)
@@ -358,6 +433,7 @@ describe("Hammerspoon init", function()
 			lastSyncEpoch = os.time(),
 		}
 		runtime.tickTimer.callback()
+		runtime.tickTimer.callback()
 		runtime.state = {
 			rawOutput = "0900-0915 Test task",
 			status = "active",
@@ -365,16 +441,27 @@ describe("Hammerspoon init", function()
 			lastSyncEpoch = os.time(),
 		}
 		runtime.tickTimer.callback()
+		runtime.tickTimer.callback()
 
 		assert.equals(1, env.valid_font_calls[".SFNS-Bold"])
 		assert.is_true((env.valid_font_calls["Helvetica-Bold"] or 0) >= 1)
 
 		local missing_call = nil
 		local overdue_warning_call = nil
+		local saw_warning_flash = false
+		local saw_warning_steady = false
 		for _, call in ipairs(env.styled_text_calls) do
 			if call.text == "NO POMODORO" then
 				missing_call = call
-			elseif call.text == "OVERDUE POMODORO" then
+			elseif call.text == "\194\160OVERDUE POMODORO\194\160" then
+				if call.attributes.backgroundColor then
+					saw_warning_flash = true
+					assert.are.same({ hex = "#ffffff", alpha = 1 }, call.attributes.color)
+					assert.are.same({ hex = "#ff453a", alpha = 1 }, call.attributes.backgroundColor)
+				else
+					saw_warning_steady = true
+					assert.are.same({ hex = "#ff453a", alpha = 1 }, call.attributes.color)
+				end
 				overdue_warning_call = call
 			end
 
@@ -388,6 +475,11 @@ describe("Hammerspoon init", function()
 		assert.is_not_nil(missing_call)
 		assert.are.same({ hex = "#30d158", alpha = 1 }, missing_call.attributes.color)
 		assert.is_not_nil(overdue_warning_call)
-		assert.are.same({ hex = "#ff453a", alpha = 1 }, overdue_warning_call.attributes.color)
+		assert.is_true(saw_warning_flash)
+		assert.is_true(saw_warning_steady)
+		assert.are.same(
+			{ hex = "#ff453a", alpha = 1 },
+			overdue_warning_call.attributes.backgroundColor or overdue_warning_call.attributes.color
+		)
 	end)
 end)

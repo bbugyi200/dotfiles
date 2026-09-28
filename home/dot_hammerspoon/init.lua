@@ -50,6 +50,8 @@ end
 
 local bobPomodoroRuntime = BobPomodoroCountdown
 local unpackArgs = table.unpack or unpack
+local BOB_POMODORO_TICK_INTERVAL = 0.5 -- Also the overdue warning flash half-period.
+local bobPomodoroWarningFlashOn = false
 
 local function stopBobPomodoroRuntimeObject(name, object)
 	if not object then
@@ -218,12 +220,15 @@ local function resolveBobPomodoroBoldMenuBarFont()
 	return nil
 end
 
-local function bobPomodoroTitleAttributes(color, font)
+local function bobPomodoroTitleAttributes(color, font, backgroundColor)
 	local attributes = {
 		color = color,
 	}
 	if font then
 		attributes.font = font
+	end
+	if backgroundColor then
+		attributes.backgroundColor = backgroundColor
 	end
 	return attributes
 end
@@ -235,6 +240,12 @@ local bobPomodoroMissingTitleAttributes =
 
 local bobPomodoroOverdueWarningTitleAttributes =
 	bobPomodoroTitleAttributes({ hex = "#ff453a", alpha = 1 }, bobPomodoroBoldMenuBarFont)
+local bobPomodoroOverdueWarningFlashTitleAttributes = bobPomodoroTitleAttributes(
+	{ hex = "#ffffff", alpha = 1 },
+	bobPomodoroBoldMenuBarFont,
+	{ hex = "#ff453a", alpha = 1 }
+)
+local bobPomodoroNoBreakSpace = "\194\160"
 
 local function bobPomodoroMenuTitle(presentation)
 	if presentation.appearance == "normal" then
@@ -247,7 +258,16 @@ local function bobPomodoroMenuTitle(presentation)
 		return hs.styledtext.new(presentation.title, bobPomodoroMissingTitleAttributes)
 	end
 	if presentation.appearance == "overdue_warning" then
-		return hs.styledtext.new(presentation.title, bobPomodoroOverdueWarningTitleAttributes)
+		return hs.styledtext.new(
+			bobPomodoroNoBreakSpace .. presentation.title .. bobPomodoroNoBreakSpace,
+			bobPomodoroOverdueWarningTitleAttributes
+		)
+	end
+	if presentation.appearance == "overdue_warning_flash" then
+		return hs.styledtext.new(
+			bobPomodoroNoBreakSpace .. presentation.title .. bobPomodoroNoBreakSpace,
+			bobPomodoroOverdueWarningFlashTitleAttributes
+		)
 	end
 
 	return presentation.title
@@ -303,7 +323,7 @@ local function renderBobPomodoroMenu()
 		syncBobPomodoro()
 	end
 
-	local presentation = PomodoroCountdown.presentation(remaining)
+	local presentation = PomodoroCountdown.presentation(remaining, bobPomodoroWarningFlashOn)
 	menuBarItem:setTitle(bobPomodoroMenuTitle(presentation))
 	menuBarItem:returnToMenuBar()
 end
@@ -387,8 +407,16 @@ syncBobPomodoro = function()
 end
 
 hideBobPomodoroMenu()
-bobPomodoroRuntime.tickTimer =
-	hs.timer.new(1, guardedBobPomodoroCallback("render timer", renderBobPomodoroMenu), true):start()
+bobPomodoroRuntime.tickTimer = hs.timer
+	.new(
+		BOB_POMODORO_TICK_INTERVAL,
+		guardedBobPomodoroCallback("render timer", function()
+			bobPomodoroWarningFlashOn = not bobPomodoroWarningFlashOn
+			renderBobPomodoroMenu()
+		end),
+		true
+	)
+	:start()
 bobPomodoroRuntime.syncTimer = hs.timer.new(15, guardedBobPomodoroCallback("sync timer", syncBobPomodoro), true):start()
 bobPomodoroRuntime.wakeWatcher =
 	hs.caffeinate.watcher.new(guardedBobPomodoroCallback("wake watcher", function(eventType)
