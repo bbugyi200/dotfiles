@@ -31,7 +31,7 @@ axe:
         The current job targets only `sase` and is guarded by the `toobig-` clan prefix, so a previous split-file swarm
         must clear before another scan can propose work.
       interval: 60
-      wait_runners: 3
+      wait_runners: 5
       jobs:
         toobig_split:
           script: bugyi_chop_toobig_split
