@@ -36,6 +36,10 @@ prepared monitor completion; see `/sase_final`.
 Never cancel, kill, or rerun an in-flight command to move it to a monitor. Let it
 finish, read its result, and only then decide what runs next.
 
+`sase tool run` enforces this for catalog tools declared `long` or `unbounded`: when the
+provider's ceiling cannot fit the tool, it refuses before starting and prints the
+monitor command to use, while short tools such as this repo's `check` still run inline.
+
 ## Canonical Invocation
 
 Run a long verification command and hand the result to a follow-up agent:
