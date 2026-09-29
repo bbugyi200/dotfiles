@@ -363,6 +363,34 @@ xprompts:
   review_research_comments: |-
     Review the $1.md file in the research sidecar repo for context and inspiration before planning. Make sure you also
     review the annotations I left on this research file, which can be found in the ~/bob/ref/chat/$1.md file.
+  split_epic:
+    description: Split the <file_count> largest files of a particular <lang> into separate
+      files, each <=<max_line_count> lines long.
+    input:
+      file_count:
+        type: int
+        default: 10
+        description: The number of phases to create (one for each file that will be split).
+      lang:
+        type: word
+        default: Rust
+        description: The language of the files that will be split.
+      max_line_count:
+        type: int
+        default: 1500
+        description: The maximum number of lines that each file should be allowed to have.
+    content: |-
+      Can you help me identify the k10 largest Rust files in this repository and then create an
+      epic plan using your /sase_plan skill with one phase of large size per file (so 10 large
+      phases)?
+
+      - Each phase should depend on the previous so these agents run in a sequence. Each agent
+        should be tasked with splitting a single Rust file into multiple files, with the goal
+        of keeping each file <=1500 lines in length.
+      - Recommend an approach to splitting each file but make it clear to these agents that
+        they are responsible for planning the final split. In particular they may need to
+        adjust their approach based on how the file they were assigned looks when that agent
+        actually runs.
   tale: |-
     #plan %a:tale
   # keep-sorted end
