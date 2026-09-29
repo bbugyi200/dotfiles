@@ -47,7 +47,7 @@ axe:
             without allocating an agent, and large files are still handled one at a time.
           run_every: 60m
           inhibit_if:
-            agent_clan: {name_prefix: toobig-}
+            agent_clan: { name_prefix: toobig- }
           for_each:
             source: projects
             names: [sase]
@@ -124,8 +124,16 @@ axe:
             actstat_bin: /home/bryan/.cargo/bin/actstat
             gh_bin: gh
             sase_bin: sase
-            repos: [sase-org/sase, sase-org/sase-core, sase-org/sase-github, sase-org/sase-telegram, sase-org/sase-nvim]
-            release_repositories: [sase-org/sase, sase-org/sase-github, sase-org/sase-telegram]
+            repos:
+              [
+                sase-org/sase,
+                sase-org/sase-core,
+                sase-org/sase-github,
+                sase-org/sase-telegram,
+                sase-org/sase-nvim,
+              ]
+            release_repositories:
+              [sase-org/sase, sase-org/sase-github, sase-org/sase-telegram]
             merge_order: [sase-github, sase-telegram, sase]
             max_merges_per_tick: 1
             merge_enabled: true
@@ -167,5 +175,5 @@ service:
       # needs its own copy of the bot identity. Keep in sync with
       # `axe.routines.telegram.env` in sase.yml.
       env:
-        SASE_TELEGRAM_BOT_USERNAME: sase_athena_bot
+        SASE_TELEGRAM_BOT_USERNAME: sase_athena2_bot
         SASE_TELEGRAM_BOT_CHAT_ID: "8990449281"
