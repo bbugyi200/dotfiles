@@ -129,6 +129,8 @@ ace:
     help: "Can you help me $1?"
     helpp: "Can you now help me $1?"
     im: "IMPORTANT: "
+    imp: |-
+      Can you help me implement this?
     iow: |-
       in other words
     jya: "Justify your answer."
