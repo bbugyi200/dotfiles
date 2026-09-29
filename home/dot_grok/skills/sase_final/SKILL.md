@@ -174,4 +174,7 @@ authorized them and `unverified` otherwise.
    sase final submit -
    ```
 
-5. Treat a successful submit as the final action of the normal turn.
+5. Treat a successful submit as the final action of the normal turn. The host commits
+   the declared repositories after the turn ends, so they stay dirty and `git log` is
+   unchanged: choose `bead_action` from the work's completeness, never from whether
+   commits are visible yet.

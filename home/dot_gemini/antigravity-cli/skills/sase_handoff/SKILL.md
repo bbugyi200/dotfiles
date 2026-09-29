@@ -1,22 +1,22 @@
 ---
-name: sase_pipe
+name: sase_handoff
 description: >-
   Hand this agent's turn to a fresh successor in the same agent session: this turn ends
   and the next session member starts immediately with the prompt you write, in the same
   workspace, optionally on a different model or with a clean context window. Use ONLY
-  when the user explicitly asks you to pipe or hand off work to another agent. Not for
+  when the user explicitly asks you to hand off (or pipe) work to another agent. Not for
   running or waiting on a command (`/sase_monitor`), and not for launching helper agents
   (`/sase_run`).
 ---
 
 ## Core Rule
 
-Use this skill only when the user explicitly asks you to pipe or hand off work to
+Use this skill only when the user explicitly asks you to hand off (or pipe) work to
 another agent. `sase pipe` kills the calling agent only after it writes its handoff
-marker, so run the pipe command in the foreground until it exits. If your tool yields or
+marker, so run `sase pipe` in the foreground until it exits. If your tool yields or
 backgrounds its session, keep polling that same session; never end your turn while it is
-still running. Write everything the successor needs inside the piped prompt itself, not
-in a reply you plan to send afterward — after a successful handoff, there is no
+still running. Write everything the successor needs inside the handoff prompt itself,
+not in a reply you plan to send afterward — after a successful handoff, there is no
 afterward.
 
 ## Canonical Invocation
@@ -25,7 +25,7 @@ afterward.
 sase pipe 'implement the approved plan' --reason 'hand off to a coding pass' --model opus
 ```
 
-## When To Pipe
+## When To Hand Off
 
 - The remaining work needs a different model or effort than this turn is running.
 - This context window is spent, and the rest of the work is fully self-contained in the
@@ -33,7 +33,7 @@ sase pipe 'implement the approved plan' --reason 'hand off to a coding pass' --m
 - The next step is a distinct role that deserves its own agent row and its own reply,
   not more of this turn.
 
-Do not pipe for:
+Do not hand off for:
 
 - A long-running or blocking command — use `/sase_monitor` instead.
 - Parallel helpers or reviewers running alongside this agent — use `/sase_run` instead.
@@ -53,13 +53,13 @@ Do not pipe for:
 
 ## Hazards
 
-- The piped prompt is re-parsed by the successor: `%` directives and `#` references in
+- The handoff prompt is re-parsed by the successor: `%` directives and `#` references in
   it are live. Fence any literal `%` or `#` syntax you do not want expanded.
 - The successor runs in the same workspace with the same uncommitted changes and the
-  same Patch, so the piped prompt needs no workspace reference.
+  same Patch, so the handoff prompt needs no workspace reference.
 - A non-zero exit means nothing was handed off — this agent is still running and should
   continue or retry, not assume a successor exists.
-- Chains are bounded by the `max_agent_pipe_chain` config field; a piped successor that
-  pipes again can eventually be refused once the bound is reached.
+- Chains are bounded by the `max_agent_pipe_chain` config field; a successor that hands
+  off again can eventually be refused once the bound is reached.
 - After a successful handoff, do not keep working, poll, or wait. If your tool yielded
   before that handoff completed, follow the Core Rule and keep polling the same session.

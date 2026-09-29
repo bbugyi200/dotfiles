@@ -1,5 +1,5 @@
 {
-  "deployed_at": "2026-09-27T10:36:08.232888Z",
+  "deployed_at": "2026-09-29T22:19:40.068617Z",
   "managed_files": [
     {
       "home_path": ".gemini/antigravity-cli/skills/bob_query/SKILL.md",
@@ -58,6 +58,13 @@
       "state": "active"
     },
     {
+      "home_path": ".gemini/antigravity-cli/skills/sase_handoff/SKILL.md",
+      "provider": "agy",
+      "skill_name": "sase_handoff",
+      "source_path": "dot_gemini/antigravity-cli/skills/sase_handoff/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".gemini/antigravity-cli/skills/sase_memory_read/SKILL.md",
       "provider": "agy",
       "skill_name": "sase_memory_read",
@@ -104,7 +111,7 @@
       "provider": "agy",
       "skill_name": "sase_pipe",
       "source_path": "dot_gemini/antigravity-cli/skills/sase_pipe/SKILL.md",
-      "state": "active"
+      "state": "retired"
     },
     {
       "home_path": ".gemini/antigravity-cli/skills/sase_plan/SKILL.md",
@@ -219,6 +226,13 @@
       "state": "active"
     },
     {
+      "home_path": ".claude/skills/sase_handoff/SKILL.md",
+      "provider": "claude",
+      "skill_name": "sase_handoff",
+      "source_path": "dot_claude/skills/sase_handoff/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".claude/skills/sase_memory_read/SKILL.md",
       "provider": "claude",
       "skill_name": "sase_memory_read",
@@ -265,7 +279,7 @@
       "provider": "claude",
       "skill_name": "sase_pipe",
       "source_path": "dot_claude/skills/sase_pipe/SKILL.md",
-      "state": "active"
+      "state": "retired"
     },
     {
       "home_path": ".claude/skills/sase_plan/SKILL.md",
@@ -380,6 +394,13 @@
       "state": "active"
     },
     {
+      "home_path": ".codex/skills/sase_handoff/SKILL.md",
+      "provider": "codex",
+      "skill_name": "sase_handoff",
+      "source_path": "dot_codex/skills/sase_handoff/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".codex/skills/sase_memory_read/SKILL.md",
       "provider": "codex",
       "skill_name": "sase_memory_read",
@@ -426,7 +447,7 @@
       "provider": "codex",
       "skill_name": "sase_pipe",
       "source_path": "dot_codex/skills/sase_pipe/SKILL.md",
-      "state": "active"
+      "state": "retired"
     },
     {
       "home_path": ".codex/skills/sase_plan/SKILL.md",
@@ -639,6 +660,13 @@
       "state": "active"
     },
     {
+      "home_path": ".grok/skills/sase_handoff/SKILL.md",
+      "provider": "grok",
+      "skill_name": "sase_handoff",
+      "source_path": "dot_grok/skills/sase_handoff/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".grok/skills/sase_memory_read/SKILL.md",
       "provider": "grok",
       "skill_name": "sase_memory_read",
@@ -685,7 +713,7 @@
       "provider": "grok",
       "skill_name": "sase_pipe",
       "source_path": "dot_grok/skills/sase_pipe/SKILL.md",
-      "state": "active"
+      "state": "retired"
     },
     {
       "home_path": ".grok/skills/sase_plan/SKILL.md",
@@ -793,6 +821,13 @@
       "state": "active"
     },
     {
+      "home_path": ".config/muse/skills/sase_handoff/SKILL.md",
+      "provider": "muse",
+      "skill_name": "sase_handoff",
+      "source_path": "dot_config/muse/skills/sase_handoff/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".config/muse/skills/sase_memory_read/SKILL.md",
       "provider": "muse",
       "skill_name": "sase_memory_read",
@@ -839,7 +874,7 @@
       "provider": "muse",
       "skill_name": "sase_pipe",
       "source_path": "dot_config/muse/skills/sase_pipe/SKILL.md",
-      "state": "active"
+      "state": "retired"
     },
     {
       "home_path": ".config/muse/skills/sase_plan/SKILL.md",
@@ -947,6 +982,13 @@
       "state": "active"
     },
     {
+      "home_path": ".config/opencode/skills/sase_handoff/SKILL.md",
+      "provider": "opencode",
+      "skill_name": "sase_handoff",
+      "source_path": "dot_config/opencode/skills/sase_handoff/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".config/opencode/skills/sase_memory_read/SKILL.md",
       "provider": "opencode",
       "skill_name": "sase_memory_read",
@@ -993,7 +1035,7 @@
       "provider": "opencode",
       "skill_name": "sase_pipe",
       "source_path": "dot_config/opencode/skills/sase_pipe/SKILL.md",
-      "state": "active"
+      "state": "retired"
     },
     {
       "home_path": ".config/opencode/skills/sase_plan/SKILL.md",
@@ -1108,6 +1150,13 @@
       "state": "active"
     },
     {
+      "home_path": ".qwen/skills/sase_handoff/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "sase_handoff",
+      "source_path": "dot_qwen/skills/sase_handoff/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".qwen/skills/sase_memory_read/SKILL.md",
       "provider": "qwen",
       "skill_name": "sase_memory_read",
@@ -1154,7 +1203,7 @@
       "provider": "qwen",
       "skill_name": "sase_pipe",
       "source_path": "dot_qwen/skills/sase_pipe/SKILL.md",
-      "state": "active"
+      "state": "retired"
     },
     {
       "home_path": ".qwen/skills/sase_plan/SKILL.md",
@@ -1206,6 +1255,6 @@
       "state": "active"
     }
   ],
-  "source_commit": "ee40b14447ef159ea655a736c4363e9709f8b490",
-  "xprompt_set_sha256": "1b0ab7dd4c0c4811bd9b0959c7bbc6198d6af00f34d74371f35e3aa131b5eac4"
+  "source_commit": "aa61902a9efc64ccbc9149dbdb17ca5185231d5c",
+  "xprompt_set_sha256": "c7c84868e1c272a6320a92495595950f4abb4fff7e11b2cf2abcf922253416c5"
 }
