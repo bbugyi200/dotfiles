@@ -133,6 +133,8 @@ ace:
       Can you help me implement this?
     iow: |-
       in other words
+    isfix: |-
+      Is this something we can/should fix?
     jya: "Justify your answer."
     key: "the `$1` keymap"
     keyy: "a new `$1` keymap"
