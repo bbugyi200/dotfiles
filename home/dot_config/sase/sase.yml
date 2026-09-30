@@ -384,13 +384,13 @@ xprompts:
         default: 1500
         description: The maximum number of lines that each file should be allowed to have.
     content: |-
-      Can you help me identify the k10 largest Rust files in this repository and then create an
-      epic plan using your /sase_plan skill with one phase of large size per file (so 10 large
+      Can you help me identify the {{ file_count }} largest {{ lang }} files in this repository and then create an
+      epic plan using your /sase_plan skill with one phase of large size per file (so {{ file_count }} large
       phases)?
 
       - Each phase should depend on the previous so these agents run in a sequence. Each agent
-        should be tasked with splitting a single Rust file into multiple files, with the goal
-        of keeping each file <=1500 lines in length.
+        should be tasked with splitting a single {{ lang }} file into multiple files, with the goal
+        of keeping each file <={{ max_line_count }} lines in length.
       - Recommend an approach to splitting each file but make it clear to these agents that
         they are responsible for planning the final split. In particular they may need to
         adjust their approach based on how the file they were assigned looks when that agent
