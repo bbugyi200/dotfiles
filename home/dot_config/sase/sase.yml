@@ -214,6 +214,8 @@ ace:
     xp: |-
       the `#$1` xprompt
     xs: "xprompt skill"
+    xsw: |-
+      xprompt swarm
     xw: "xprompt workflow"
     # keep-sorted end
   # Tribes assigned by my own xprompts, not by sase itself. sase bundles
