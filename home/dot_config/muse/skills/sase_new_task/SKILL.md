@@ -64,10 +64,12 @@ Use this skill before creating any task bead.
    ```
 
    For any other duplicate, record independent reproduction or impact evidence and any
-   artifact refs:
+   artifact refs. When the evidence is a file — a screenshot, log, or trace — attach a
+   snapshot of it inline so the bytes outlive the source file:
 
    ```bash
    sase bead +1 <task-id> --note "<independent reproduction and impact>" --ref <artifact-ref>
+   sase bead +1 <task-id> -n "repro on current master @./repro.png"
    ```
 
    If the duplicate bead is closed, read the command output before moving on. When it
