@@ -69,7 +69,8 @@ gkeep:
 plan:
   max_themes: 3 # distinct open Pomodoro names besides the exempt ones
   max_links: 10 # distinct open Task Links outside exempt entries
-  max_now: 15 # legacy weekly cap, ignored (see docs/plan.md)
+  max_pending: 10 # [/] In Progress lane soft cap, shown as PENDING
+  max_next: 15 # [*] Next lane soft cap (docs/plan.md)
   max_ready: 100 # soft limit for dashboard READY tasks, excluding Today
   strict: false # refuse #NAME captures that would create a theme past max_themes
   exempt: [GTD] # open entries that never count as themes
