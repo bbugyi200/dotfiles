@@ -95,6 +95,13 @@ same wrapper file to `sase final submit <wrapper>`; it submits the wrapper's
 `declaration` unchanged. Never rebuild the manifest from `manifest_template`, which
 drops the message you wrote (the unedited placeholder message is rejected).
 
+If the verification run escalates (`sase tool run` exits `124` with an escalation block)
+instead of settling, finish it with
+`sase monitor start -J <run-id> -p verify -n '<what the follow-up should do with the result>'`
+using the exact run id from the block — not by rerunning the check under a prepared `-f`
+monitor. The escalated run keeps its id, so the follow-up observes the same run the
+intent's verification command started.
+
 The monitored argv must exactly match the intent's verification command or binding fails
 and no monitor is created. The `verify` profile only supplies labels and evidence
 defaults; the `-f/--completion` ref is what authorizes a successful monitor result to

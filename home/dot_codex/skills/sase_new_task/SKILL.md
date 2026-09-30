@@ -72,6 +72,11 @@ Use this skill before creating any task bead.
    sase bead +1 <task-id> -n "repro on current master @./repro.png"
    ```
 
+   Attached files get an automatic audience decision: clean workspace files go public,
+   everything uncertain stays private. Pass `-K/--private` for anything sensitive, and
+   never pass `-W/--public` as an agent. Filenames and note prose stay as public as the
+   bead even when the bytes stay private.
+
    If the duplicate bead is closed, read the command output before moving on. When it
    says the reopen was withheld because the report's observation window started before
    the close, do not reflexively retry with an override. Use

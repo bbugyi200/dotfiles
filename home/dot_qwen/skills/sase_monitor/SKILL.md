@@ -36,9 +36,13 @@ prepared monitor completion; see `/sase_final`.
 Never cancel, kill, or rerun an in-flight command to move it to a monitor. Let it
 finish, read its result, and only then decide what runs next.
 
-`sase tool run` enforces this for catalog tools declared `long` or `unbounded`: when the
-provider's ceiling cannot fit the tool, it refuses before starting and prints the
-monitor command to use, while short tools such as this repo's `check` still run inline.
+`sase tool run` handles the ceiling itself: start it inline, and when it escalates (exit
+`124` with an escalation block naming the still-running run), join the printed run with
+`sase monitor start -J RUN ...` and end the turn — never wrap it in `timeout` and never
+route it to a monitor up front. `sase tool run` also enforces the ceiling for catalog
+tools declared `long` or `unbounded`: when the provider's ceiling cannot fit the tool,
+it refuses before starting and prints the monitor command to use, while short tools such
+as this repo's `check` still run inline.
 
 ## Canonical Invocation
 
@@ -67,6 +71,16 @@ When the current prompt, the user, or the assigned bead explicitly names
 `just check-full` (typically to repair a CI failure), use the same `verify` profile and
 `TESTING` / `TESTED` pair with `-- just check-full` (upgraded automatically) or
 `-- sase tool run check-full` — never run it inline.
+
+When a `sase tool run` you started inline escalates instead of settling, hand the same
+run to a monitor and end the turn (nothing reruns):
+
+```bash
+sase monitor start -J <run-id> -p verify -n '<what the follow-up should do with the result>'
+```
+
+Use the exact run id and join command from the escalation block. The run keeps going
+under that id; the follow-up reads it with `sase tool show RUN` or `sase tool wait RUN`.
 
 A `verify` monitor bound to a prepared intent with `accept: no-new` may complete host
 finalization even when the named verification exits nonzero, but only when every failure
