@@ -53,3 +53,16 @@ gkeep:
   # device_id: 3f9c0a1b2c3d4e5f # optional hex; default derived from email
   # target: gkeep_inbox.md # optional; vault-relative
   # timeout_secs: 300 # optional adapter timeout
+
+# Today's plan budget (`bob plan`, capture, tmux, Obsidian) and the weekly #now
+# cap; see `docs/plan.md` in bob-cli. The block is optional: a missing block
+# means these defaults. Caps are integers >= 1; the lists hold non-empty
+# strings. Invalid values fall back to the defaults with a warning everywhere
+# except `bob plan`, which exits 2.
+plan:
+  max_themes: 3 # distinct open Pomodoro names besides the exempt ones
+  max_links: 10 # distinct open Task Links outside exempt entries
+  max_now: 15 # open #now tasks visible today (see docs/plan.md)
+  strict: false # refuse #NAME captures that would create a theme past max_themes
+  exempt: [GTD] # open entries that never count as themes
+  inventory_labels: [LATER, MISC, NEW FEATURES, SASE] # open names that are storage, not themes
