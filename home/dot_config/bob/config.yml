@@ -61,6 +61,16 @@ gkeep:
   # target: gkeep_inbox.md # optional; vault-relative
   # timeout_secs: 300 # optional adapter timeout
 
+# Daily review cadence (`bob freshness list`, ledger-tools walk tiers, nav
+# refresh row); see `docs/freshness.md` §2 in bob-cli. The block is optional:
+# a missing block means these defaults. Invalid values are a config error for
+# `bob freshness` (exit 2); ledger-tools falls back to defaults marked invalid.
+freshness:
+  interval: 7 # Ready backlog review cadence
+  pending_interval: 1 # [/] lane daily review; false = not walked
+  next_interval: 1 # [*] lane daily review; false = not walked
+  # rotten_daily_budget: 15 # counts upkeep outside the lanes; never hides tasks
+
 # Today's plan budget (`bob plan`, capture, tmux, Obsidian) and the NEXT/PENDING/READY
 # lane caps; see `docs/plan.md` in bob-cli. The block is optional: a missing block
 # means these defaults. Caps are integers >= 1; the lists hold non-empty
