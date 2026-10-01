@@ -128,6 +128,8 @@ ace:
       think hard about $1
     help: "Can you help me $1?"
     helpp: "Can you now help me $1?"
+    hi: |-
+      I made some annotations using the Highlights app (on my mac) which can be found in the `~/bob/ref/$1` file.
     im: "IMPORTANT: "
     imp: |-
       Can you help me implement this?
