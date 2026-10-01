@@ -21,11 +21,18 @@ properties:
   - name: priority
     values: priority
     schedules: scheduled
+    # Ctrl+Enter on `scheduled` takes the recommended roll. Each level allows `rolls`
+    # same-level rolls (read from the task's Schedule Log); the next recommended roll
+    # decays the task one level (P2 → P3), and past the last level it cancels it.
+    # `decay: false` makes Ctrl+Enter a plain same-level roll that never decays.
+    # decay:
+    #   rolls: 1
     levels:
       - label: P1
         value: high
         min_days: 2
         max_days: 7
+        # rolls: 3   # optional: this level's own roll limit
       - label: P2
         value: medium
         min_days: 8
