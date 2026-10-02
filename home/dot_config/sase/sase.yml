@@ -130,6 +130,8 @@ ace:
     helpp: "Can you now help me $1?"
     hi: |-
       I made some annotations using the Highlights app (on my mac) which can be found in the `~/bob/ref/$1` file.
+    iagree: |-
+      I agree with all of the recommendations made in that research file.
     im: "IMPORTANT: "
     imp: |-
       Can you help me implement this?
