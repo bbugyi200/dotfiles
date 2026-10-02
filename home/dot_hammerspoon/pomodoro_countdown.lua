@@ -4,11 +4,13 @@ M.OVERDUE_WARNING_AFTER_SECONDS = 10 * 60
 M.MAX_THEME_CODEPOINTS = 24
 M.UNTITLED_THEME = "UNTITLED"
 M.NO_POMODORO_TITLE = "NO POMODORO"
+M.ICON = "🍅"
 
 local EM_DASH = "—"
 local ELLIPSIS = "…"
 local ARROW = " → "
 local SEPARATOR = " · "
+local GAP = " "
 
 local function trim(text)
 	local result = tostring(text or "")
@@ -103,13 +105,47 @@ function M.format_stop_time(end_hour, end_minute)
 	return string.format("%02d:%02d", end_hour, end_minute)
 end
 
+function M.duration_minutes(start_hour, start_minute, end_hour, end_minute)
+	if type(start_hour) ~= "number" or type(start_minute) ~= "number" then
+		return nil
+	end
+	if type(end_hour) ~= "number" or type(end_minute) ~= "number" then
+		return nil
+	end
+	local start_total = start_hour * 60 + start_minute
+	local end_total = end_hour * 60 + end_minute
+	local diff = (end_total - start_total) % 1440
+	if diff == 0 then
+		return nil
+	end
+	return diff
+end
+
+function M.format_duration(minutes)
+	if type(minutes) ~= "number" then
+		return nil
+	end
+	if minutes ~= minutes then
+		return nil
+	end
+	local floored = math.floor(minutes)
+	if floored < 1 then
+		return nil
+	end
+	return string.format("%dm", floored)
+end
+
 function M.presentation(remaining_seconds, flash_on, context)
 	if remaining_seconds == nil then
 		return {
-			title = M.NO_POMODORO_TITLE,
+			title = M.ICON .. GAP .. M.NO_POMODORO_TITLE,
 			appearance = "missing",
 			status = M.NO_POMODORO_TITLE,
+			duration = nil,
+			icon = M.ICON,
 			segments = {
+				{ text = M.ICON, role = "icon" },
+				{ text = GAP, role = "gap" },
 				{ text = M.NO_POMODORO_TITLE, role = "missing" },
 			},
 		}
@@ -133,6 +169,15 @@ function M.presentation(remaining_seconds, flash_on, context)
 
 	local display_theme = M.shorten_theme(full_theme)
 
+	local duration = nil
+	if type(context) == "table" then
+		if type(context.duration) == "string" and context.duration ~= "" then
+			duration = context.duration
+		elseif context.durationMinutes ~= nil then
+			duration = M.format_duration(context.durationMinutes)
+		end
+	end
+
 	local status_text
 	local appearance
 	if remaining_seconds <= -M.OVERDUE_WARNING_AFTER_SECONDS then
@@ -146,20 +191,37 @@ function M.presentation(remaining_seconds, flash_on, context)
 		appearance = "normal"
 	end
 
+	local segments = {
+		{ text = M.ICON, role = "icon" },
+		{ text = GAP, role = "gap" },
+		{ text = display_theme, role = "theme" },
+	}
+	if duration ~= nil then
+		table.insert(segments, { text = GAP, role = "gap" })
+		table.insert(segments, { text = "(" .. duration .. ")", role = "duration" })
+	end
+	if remaining_seconds < 0 or duration == nil then
+		table.insert(segments, { text = ARROW, role = "arrow" })
+		table.insert(segments, { text = stop, role = "stop" })
+	end
+	table.insert(segments, { text = SEPARATOR, role = "separator" })
+	table.insert(segments, { text = status_text, role = "status" })
+
+	local parts = {}
+	for _, segment in ipairs(segments) do
+		table.insert(parts, segment.text)
+	end
+
 	return {
-		title = display_theme .. ARROW .. stop .. SEPARATOR .. status_text,
+		title = table.concat(parts),
 		appearance = appearance,
 		status = status_text,
 		theme = display_theme,
 		fullTheme = full_theme,
 		stop = stop,
-		segments = {
-			{ text = display_theme, role = "theme" },
-			{ text = ARROW, role = "arrow" },
-			{ text = stop, role = "stop" },
-			{ text = SEPARATOR, role = "separator" },
-			{ text = status_text, role = "status" },
-		},
+		duration = duration,
+		icon = M.ICON,
+		segments = segments,
 	}
 end
 

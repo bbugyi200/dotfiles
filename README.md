@@ -29,29 +29,40 @@ Never leave both production hotkeys active during rollback.
 
 ## Pomodoro menu bar
 
-Hammerspoon shows the current Bob Pomodoro as one status item in the fixed order **theme
-→ stop time · status**. The arrow names the session's scheduled endpoint, not the
-current clock. The stop time is zero-padded 24-hour `HH:MM`, matching the ledger
-convention.
+Hammerspoon shows the current Bob Pomodoro as one status item in the fixed order **🍅
+theme (duration) · status**, with `→ stop time` inserted once overdue. The 🍅 is the
+item's constant anchor in every visible state, including `NO POMODORO`. While running,
+the duration names the session's scheduled length; the stop time returns once the
+session is overdue, when the scheduled endpoint is the useful fact. The stop time is
+zero-padded 24-hour `HH:MM`, matching the ledger convention.
 
-| State                         | Example title                 |
-| ----------------------------- | ----------------------------- |
-| Running                       | `DEEP WORK → 10:15 · 12:34`   |
-| At the stop time              | `DEEP WORK → 10:15 · 00:00`   |
-| Recently overdue              | `DEEP WORK → 10:15 · +00:01`  |
-| Last second before escalation | `DEEP WORK → 10:15 · +09:59`  |
-| Ten minutes overdue and later | `DEEP WORK → 10:15 · OVERDUE` |
-| Session without a name        | `UNTITLED → 10:15 · 12:34`    |
-| No current session            | `NO POMODORO`                 |
+| State                               | Example title                          |
+| ----------------------------------- | -------------------------------------- |
+| Running                             | `🍅 DEEP WORK (50m) · 12:34`           |
+| At the stop time                    | `🍅 DEEP WORK (50m) · 00:00`           |
+| Recently overdue                    | `🍅 DEEP WORK (50m) → 10:15 · +00:01`  |
+| Last second before escalation       | `🍅 DEEP WORK (50m) → 10:15 · +09:59`  |
+| Ten minutes overdue and later       | `🍅 DEEP WORK (50m) → 10:15 · OVERDUE` |
+| Session without a name              | `🍅 UNTITLED (50m) · 12:34`            |
+| Duration unknown (degenerate range) | `🍅 DEEP WORK → 10:15 · 12:34`         |
+| No current session                  | `🍅 NO POMODORO`                       |
+
+The duration is the scheduled session length in whole minutes (`5m`, `25m`, `50m`,
+`90m`, `120m`), derived from the ledger range with midnight wrap (`2330-0020` → `50m`).
+A zero-length range or invalid input means unknown: the duration is omitted and the
+running title falls back to `→ HH:MM`, so every current-session title keeps at least one
+time anchor plus the status.
 
 Long themes are bounded to 24 Unicode code points including the final ellipsis; the full
-theme stays in the tooltip and dropdown. The tooltip leads with the full theme and
-`Stops at HH:MM`, and the dropdown keeps the full context plus the raw `bob pomodoro`
-line and `Last sync` details. At and after ten minutes overdue, only the `OVERDUE` badge
-flashes between red text and white-on-red. The menu polls `bob pomodoro --show-stale`
-every 15 seconds, refreshes on wake and unlock, offers a manual Refresh item, and
-re-syncs once when crossing zero. An empty result shows `NO POMODORO`; command or parse
-failures hide the item.
+theme stays in the tooltip and dropdown. The tooltip leads with `full theme (duration)`
+and `Stops at HH:MM`, and the dropdown first item is `full theme (duration) → HH:MM`;
+without a known duration they stay as `full theme` and `full theme → HH:MM`. The tooltip
+and dropdown carry no tomato and keep the raw `bob pomodoro` line and `Last sync`
+details. At and after ten minutes overdue, only the `OVERDUE` badge flashes between red
+text and white-on-red. The menu polls `bob pomodoro --show-stale` every 15 seconds,
+refreshes on wake and unlock, offers a manual Refresh item, and re-syncs once when
+crossing zero. An empty result shows `🍅 NO POMODORO`; command or parse failures hide
+the item.
 
 ## Deleting things under `/tmp`
 

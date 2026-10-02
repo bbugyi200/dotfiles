@@ -494,22 +494,67 @@ describe("Hammerspoon init", function()
 		assert.equals("DEEP WORK", runtime.state.fullTheme)
 		assert.equals("10:15", runtime.state.stopTime)
 		assert.equals("0950-1015", runtime.state.range)
+		assert.equals("25m", runtime.state.duration)
+		assert.equals(25, runtime.state.durationMinutes)
+		assert.equals(9, runtime.state.startHour)
+		assert.equals(50, runtime.state.startMinute)
 
 		assert.is_true(#env.tasks >= 1)
 		assert.is_true(task_command_text(env.tasks[1]):find("--show-stale", 1, true) ~= nil)
 
 		local title = title_text(runtime.menu.title)
+		assert.is_true(title:find("🍅", 1, true) ~= nil)
 		assert.is_true(title:find("DEEP WORK", 1, true) ~= nil)
-		assert.is_true(title:find("10:15", 1, true) ~= nil)
+		assert.is_true(title:find("(25m)", 1, true) ~= nil)
+		assert.is_nil(title:find("10:15", 1, true))
 
-		assert.is_true(runtime.menu.tooltip:find("DEEP WORK", 1, true) ~= nil)
+		assert.is_true(runtime.menu.tooltip:find("DEEP WORK (25m)", 1, true) == 1)
 		assert.is_true(runtime.menu.tooltip:find("Stops at 10:15", 1, true) ~= nil)
 		assert.is_true(runtime.menu.tooltip:find(runtime.state.rawOutput, 1, true) ~= nil)
 
-		assert.equals("DEEP WORK → 10:15", runtime.menu.menu[1].title)
+		assert.equals("DEEP WORK (25m) → 10:15", runtime.menu.menu[1].title)
 		assert.equals(runtime.state.rawOutput, runtime.menu.menu[2].title)
 		assert.is_true(runtime.menu.menu[3].title:find("Last sync", 1, true) ~= nil)
 		assert.is_not_nil(menu_refresh_fn(runtime.menu))
+	end)
+
+	it("renders the same state without the stop before the end and with it after", function()
+		local restore_clock, fixed = freeze_clock()
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+
+		local runtime = _G.BobPomodoroCountdown
+		runtime.state = {
+			rawOutput = "[<13m] 0950-1015 — DEEP WORK",
+			status = "active",
+			taskText = "— DEEP WORK",
+			fullTheme = "DEEP WORK",
+			displayTheme = "DEEP WORK",
+			stopTime = "10:15",
+			startHour = 9,
+			startMinute = 50,
+			endHour = 10,
+			endMinute = 15,
+			durationMinutes = 25,
+			duration = "25m",
+			endEpoch = fixed + 60,
+			lastSyncEpoch = fixed,
+		}
+		runtime.tickTimer.callback()
+		local running_title = title_text(env.menu_title_calls[#env.menu_title_calls].title)
+		assert.is_true(running_title:find("(25m)", 1, true) ~= nil)
+		assert.is_nil(running_title:find("10:15", 1, true))
+
+		runtime.state.endEpoch = fixed - 1
+		runtime.state.status = "overdue"
+		runtime.state.zeroSyncRequested = true
+		env.task_completion = { exit_code = 0, stdout = "[OVERDUE by 0m] 0950-1015 — DEEP WORK", stderr = "" }
+		runtime.tickTimer.callback()
+		restore_clock()
+		local overdue_title = title_text(env.menu_title_calls[#env.menu_title_calls].title)
+		assert.is_true(overdue_title:find("(25m)", 1, true) ~= nil)
+		assert.is_true(overdue_title:find("→", 1, true) ~= nil)
+		assert.is_true(overdue_title:find("10:15", 1, true) ~= nil)
 	end)
 
 	it("delivers a stale-overdue payload with theme, stop time, and OVERDUE status", function()
@@ -528,11 +573,13 @@ describe("Hammerspoon init", function()
 		assert.equals("DEEP WORK", runtime.state.fullTheme)
 		assert.equals("09:15", runtime.state.stopTime)
 		assert.equals("overdue", runtime.state.status)
+		assert.equals("15m", runtime.state.duration)
 
 		assert.is_true(task_command_text(env.tasks[1]):find("--show-stale", 1, true) ~= nil)
 
 		local title = title_text(runtime.menu.title)
 		assert.is_true(title:find("DEEP WORK", 1, true) ~= nil)
+		assert.is_true(title:find("(15m)", 1, true) ~= nil)
 		assert.is_true(title:find("09:15", 1, true) ~= nil)
 		assert.is_true(title:find("OVERDUE", 1, true) ~= nil)
 		assert.is_nil(title:find("OVERDUE POMODORO", 1, true))
@@ -553,6 +600,8 @@ describe("Hammerspoon init", function()
 			stopTime = "09:15",
 			endHour = 9,
 			endMinute = 15,
+			durationMinutes = 15,
+			duration = "15m",
 			endEpoch = fixed - 901,
 			lastSyncEpoch = fixed,
 		}
@@ -568,26 +617,31 @@ describe("Hammerspoon init", function()
 
 		local first_spans = assert(title_spans(first_title))
 		local second_spans = assert(title_spans(second_title))
-		assert.equals(5, #first_spans)
-		assert.equals(5, #second_spans)
-		assert.equals("DEEP WORK", first_spans[1].text)
-		assert.equals(" → ", first_spans[2].text)
-		assert.equals("09:15", first_spans[3].text)
-		assert.equals(" · ", first_spans[4].text)
+		assert.equals(9, #first_spans)
+		assert.equals(9, #second_spans)
+		assert.equals("🍅", first_spans[1].text)
+		assert.equals(" ", first_spans[2].text)
+		assert.equals("DEEP WORK", first_spans[3].text)
+		assert.equals(" ", first_spans[4].text)
+		assert.equals("(15m)", first_spans[5].text)
+		assert.equals(" → ", first_spans[6].text)
+		assert.equals("09:15", first_spans[7].text)
+		assert.equals(" · ", first_spans[8].text)
 
-		local badge_text = first_spans[5].text
-		assert.equals(second_spans[5].text, badge_text)
+		local badge_text = first_spans[9].text
+		assert.equals(second_spans[9].text, badge_text)
 		assert.is_true(badge_text:find("OVERDUE", 1, true) ~= nil)
 		assert.is_nil(badge_text:find("POMODORO", 1, true))
 		assert.equals("\194\160OVERDUE\194\160", badge_text)
 
-		for index = 1, 4 do
+		for index = 1, 8 do
 			assert.are.same(first_spans[index].attributes, second_spans[index].attributes)
 			assert.is_nil(first_spans[index].attributes.backgroundColor)
 		end
+		assert.are.same({ list = "System", name = "secondaryLabelColor" }, first_spans[5].attributes.color)
 
-		local first_badge = first_spans[5].attributes
-		local second_badge = second_spans[5].attributes
+		local first_badge = first_spans[9].attributes
+		local second_badge = second_spans[9].attributes
 		assert.equals(first_badge.font.name, second_badge.font.name)
 		assert.equals(first_badge.font.size, second_badge.font.size)
 		assert.is_false(
@@ -604,8 +658,8 @@ describe("Hammerspoon init", function()
 		assert.are.same({ hex = "#ff453a", alpha = 1 }, flash.backgroundColor)
 
 		local context_color = { list = "System", name = "labelColor", alpha = 1 }
-		assert.are.same(context_color, first_spans[1].attributes.color)
 		assert.are.same(context_color, first_spans[3].attributes.color)
+		assert.are.same(context_color, first_spans[7].attributes.color)
 	end)
 
 	it("does not animate countdown, recently overdue, or missing states", function()
@@ -736,6 +790,8 @@ describe("Hammerspoon init", function()
 			stopTime = "10:15",
 			endHour = 10,
 			endMinute = 15,
+			durationMinutes = 25,
+			duration = "25m",
 			endEpoch = fixed + 60,
 			lastSyncEpoch = fixed,
 		}
@@ -745,8 +801,9 @@ describe("Hammerspoon init", function()
 
 		local title = env.menu_title_calls[#env.menu_title_calls].title
 		assert.equals("string", type(title))
+		assert.is_true(title:find("🍅", 1, true) ~= nil)
 		assert.is_true(title:find("DEEP WORK", 1, true) ~= nil)
-		assert.is_true(title:find("10:15", 1, true) ~= nil)
+		assert.is_true(title:find("(25m)", 1, true) ~= nil)
 	end)
 
 	it("replaces displayed context on rename and retime", function()
@@ -772,13 +829,14 @@ describe("Hammerspoon init", function()
 		local runtime = _G.BobPomodoroCountdown
 		assert.equals("FOCUS TIME", runtime.state.fullTheme)
 		assert.equals("10:20", runtime.state.stopTime)
+		assert.equals("20m", runtime.state.duration)
 		local title = title_text(runtime.menu.title)
 		assert.is_true(title:find("FOCUS TIME", 1, true) ~= nil)
-		assert.is_true(title:find("10:20", 1, true) ~= nil)
+		assert.is_true(title:find("(20m)", 1, true) ~= nil)
 		assert.is_nil(title:find("DEEP WORK", 1, true))
-		assert.is_true(runtime.menu.tooltip:find("FOCUS TIME", 1, true) ~= nil)
+		assert.is_true(runtime.menu.tooltip:find("FOCUS TIME (20m)", 1, true) ~= nil)
 		assert.is_true(runtime.menu.tooltip:find("Stops at 10:20", 1, true) ~= nil)
-		assert.equals("FOCUS TIME → 10:20", runtime.menu.menu[1].title)
+		assert.equals("FOCUS TIME (20m) → 10:20", runtime.menu.menu[1].title)
 	end)
 
 	it("clears old context on empty success and recovers on later valid output", function()
@@ -800,11 +858,13 @@ describe("Hammerspoon init", function()
 		assert.equals("missing", runtime.state.status)
 		assert.is_nil(runtime.state.fullTheme)
 		assert.is_nil(runtime.state.stopTime)
-		assert.equals("NO POMODORO", title_text(runtime.menu.title))
+		assert.is_nil(runtime.state.duration)
+		assert.equals("🍅 NO POMODORO", title_text(runtime.menu.title))
 		assert.equals("No current Pomodoro", runtime.menu.tooltip)
 		assert.equals("No current Pomodoro", runtime.menu.menu[1].title)
 		assert.is_nil(runtime.menu.tooltip:find("DEEP WORK", 1, true))
 		assert.is_nil(runtime.menu.tooltip:find("Stops at", 1, true))
+		assert.is_nil(runtime.menu.tooltip:find("(25m)", 1, true))
 
 		env.task_completion = {
 			exit_code = 0,
