@@ -1059,7 +1059,7 @@ describe("Hammerspoon init", function()
 	end)
 end)
 
-describe("Hammerspoon init Pomodoro countdown gradient", function()
+describe("Hammerspoon init Pomodoro countdown colors", function()
 	after_each(function()
 		if active_env then
 			active_env.restore()
@@ -1093,23 +1093,11 @@ describe("Hammerspoon init Pomodoro countdown gradient", function()
 		return title_text(title), assert(title_spans(title))
 	end
 
-	local GRADIENT = {
-		"#E3413B",
-		"#D85100",
-		"#C16400",
-		"#AB7100",
-		"#927C00",
-		"#768500",
-		"#4E8C00",
-		"#009123",
-		"#008F5B",
-		"#008D81",
-	}
 	local ALERT_COLOR = "#E3413B"
 	local MISSING_COLOR = "#009123"
 	local BADGE_TEXT_COLOR = "#FFFFFF"
 
-	it("paints the running countdown from one palette with bold mono digits", function()
+	it("paints the running countdown in the system foreground with bold mono digits", function()
 		local restore_clock, fixed = freeze_clock()
 		local ok, error_message, env = load_init_with()
 		assert.is_true(ok, error_message)
@@ -1124,7 +1112,7 @@ describe("Hammerspoon init Pomodoro countdown gradient", function()
 		assert.equals("DEEP WORK (50m) · 🍅 50:00", text)
 		assert.equals(7, #spans)
 		assert.equals("50:00", spans[7].text)
-		assert.are.same({ hex = "#008D81", alpha = 1 }, spans[7].attributes.color)
+		assert.are.same(LABEL_COLOR, spans[7].attributes.color)
 		assert.equals("Menlo-Bold", spans[7].attributes.font.name)
 		assert.equals(".AppleSystemUIFont", spans[3].attributes.font.name)
 
@@ -1194,12 +1182,12 @@ describe("Hammerspoon init Pomodoro countdown gradient", function()
 			assert.are.same(snapshots[1].fonts, snapshots[index].fonts)
 		end
 		assert.equals("DEEP WORK (50m) · 🍅 50:00", snapshots[1].text)
-		assert.are.same({ hex = GRADIENT[10], alpha = 1 }, snapshots[1].colors[#snapshots[1].colors])
+		assert.are.same(LABEL_COLOR, snapshots[1].colors[#snapshots[1].colors])
 		assert.equals("Menlo-Bold", snapshots[1].fonts[#snapshots[1].fonts].name)
 		assert.equals(0, env.host_calls)
 	end)
 
-	it("falls back to neutral countdown text without a numeric duration", function()
+	it("paints unknown durations in the system foreground", function()
 		local restore_clock, fixed = freeze_clock()
 		local ok, error_message, env = load_init_with()
 		assert.is_true(ok, error_message)
@@ -1219,7 +1207,7 @@ describe("Hammerspoon init Pomodoro countdown gradient", function()
 		assert.equals(0, env.host_calls)
 	end)
 
-	it("paints overdue countdowns and badges from the vetted band", function()
+	it("paints overdue countdowns and badges in alert red", function()
 		local restore_clock, fixed = freeze_clock()
 		local ok, error_message, env = load_init_with()
 		assert.is_true(ok, error_message)
@@ -1264,7 +1252,7 @@ describe("Hammerspoon init Pomodoro countdown gradient", function()
 		assert.are.same({ hex = ALERT_COLOR, alpha = 1 }, flash.attributes.backgroundColor)
 	end)
 
-	it("paints the missing state from the vetted band", function()
+	it("paints the missing state in green", function()
 		local restore_clock, fixed = freeze_clock()
 		local ok, error_message, env = load_init_with()
 		assert.is_true(ok, error_message)
@@ -1302,7 +1290,7 @@ describe("Hammerspoon init Pomodoro countdown gradient", function()
 		runtime.tickTimer.callback()
 		local running_text, running_spans = last_spans(env)
 		assert.equals("DEEP WORK (50m) · 🍅 50:00", running_text)
-		assert.are.same({ hex = GRADIENT[10], alpha = 1 }, running_spans[#running_spans].attributes.color)
+		assert.are.same(LABEL_COLOR, running_spans[#running_spans].attributes.color)
 		assert.equals("Menlo-Regular", running_spans[#running_spans].attributes.font.name)
 
 		runtime.state = running_state(fixed, 60, nil)
@@ -1326,7 +1314,7 @@ describe("Hammerspoon init Pomodoro countdown gradient", function()
 		assert.equals(calls_after_load, env.valid_font_calls["Menlo-Bold"])
 	end)
 
-	it("carries durationMinutes from sync into gradient selection without an extra request", function()
+	it("carries durationMinutes from sync without an extra request", function()
 		local restore_clock = freeze_clock_at(today_at(9, 50))
 		local ok, error_message, env = load_init_with({
 			task_completion = {
@@ -1346,7 +1334,7 @@ describe("Hammerspoon init Pomodoro countdown gradient", function()
 		runtime.tickTimer.callback()
 		local full_text, full_spans = last_spans(env)
 		assert.equals("DEEP WORK (25m) · 🍅 25:00", full_text)
-		assert.are.same({ hex = "#008D81", alpha = 1 }, full_spans[#full_spans].attributes.color)
+		assert.are.same(LABEL_COLOR, full_spans[#full_spans].attributes.color)
 
 		runtime.state.endEpoch = runtime.state.endEpoch - 150
 		runtime.tickTimer.callback()
@@ -1354,10 +1342,10 @@ describe("Hammerspoon init Pomodoro countdown gradient", function()
 		assert.equals(tasks_before, #env.tasks)
 		local boundary_text, boundary_spans = last_spans(env)
 		assert.equals("DEEP WORK (25m) · 🍅 22:30", boundary_text)
-		assert.are.same({ hex = "#008F5B", alpha = 1 }, boundary_spans[#boundary_spans].attributes.color)
+		assert.are.same(LABEL_COLOR, boundary_spans[#boundary_spans].attributes.color)
 	end)
 
-	it("updates the gradient denominator on retime while rename-only keeps the color", function()
+	it("keeps the countdown color on retime and rename", function()
 		local restore_clock = freeze_clock_at(today_at(10, 10))
 		local ok, error_message, env = load_init_with({
 			task_completion = {
@@ -1373,7 +1361,7 @@ describe("Hammerspoon init Pomodoro countdown gradient", function()
 		runtime.tickTimer.callback()
 		local _, first_spans = last_spans(env)
 		assert.equals(25, runtime.state.durationMinutes)
-		assert.are.same({ hex = "#D85100", alpha = 1 }, first_spans[#first_spans].attributes.color)
+		assert.are.same(LABEL_COLOR, first_spans[#first_spans].attributes.color)
 
 		env.task_completion = {
 			exit_code = 0,
@@ -1385,7 +1373,7 @@ describe("Hammerspoon init Pomodoro countdown gradient", function()
 		assert.equals("20m", runtime.state.duration)
 		local retime_text, retime_spans = last_spans(env)
 		assert.is_true(retime_text:find("FOCUS TIME (20m) · 🍅 10:00", 1, true) ~= nil)
-		assert.are.same({ hex = "#927C00", alpha = 1 }, retime_spans[#retime_spans].attributes.color)
+		assert.are.same(LABEL_COLOR, retime_spans[#retime_spans].attributes.color)
 
 		env.task_completion = {
 			exit_code = 0,
@@ -1399,21 +1387,17 @@ describe("Hammerspoon init Pomodoro countdown gradient", function()
 		assert.are.same(retime_spans[#retime_spans].attributes.color, rename_spans[#rename_spans].attributes.color)
 	end)
 
-	it("audits every painted color against the vetted set", function()
+	it("audits every painted color against the fixed set", function()
 		local restore_clock, fixed = freeze_clock()
 		local ok, error_message, env = load_init_with()
 		assert.is_true(ok, error_message)
 
 		local runtime = _G.BobPomodoroCountdown
 		local vetted = {}
-		for _, hex in ipairs(GRADIENT) do
-			vetted[hex] = true
-		end
 		vetted[ALERT_COLOR] = true
 		vetted[MISSING_COLOR] = true
 		vetted[BADGE_TEXT_COLOR] = true
 
-		local seen_stops = {}
 		local function audit_current_title()
 			local title = env.menu_title_calls[#env.menu_title_calls].title
 			local spans = assert(title_spans(title))
@@ -1430,13 +1414,6 @@ describe("Hammerspoon init Pomodoro countdown gradient", function()
 							"badge text outside alert background"
 						)
 					end
-					if GRADIENT[10] == color.hex or vetted[color.hex] then
-						for bucket = 1, 10 do
-							if GRADIENT[bucket] == color.hex then
-								seen_stops[bucket] = true
-							end
-						end
-					end
 				else
 					assert.are.same(LABEL_COLOR, color)
 				end
@@ -1447,9 +1424,8 @@ describe("Hammerspoon init Pomodoro countdown gradient", function()
 			end
 		end
 
-		local remaining_by_bucket = { 300, 600, 900, 1200, 1500, 1800, 2100, 2400, 2700, 3000 }
-		for bucket = 1, 10 do
-			runtime.state = running_state(fixed, remaining_by_bucket[bucket], 50)
+		for _, remaining in ipairs({ 3000, 1500, 300, 0 }) do
+			runtime.state = running_state(fixed, remaining, 50)
 			runtime.tickTimer.callback()
 			audit_current_title()
 		end
@@ -1495,9 +1471,6 @@ describe("Hammerspoon init Pomodoro countdown gradient", function()
 		restore_clock()
 		audit_current_title()
 
-		for bucket = 1, 10 do
-			assert.is_true(seen_stops[bucket] == true, "bucket " .. bucket .. " never painted")
-		end
 		assert.equals(0, env.host_calls)
 	end)
 

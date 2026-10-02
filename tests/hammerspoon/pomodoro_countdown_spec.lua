@@ -4,19 +4,6 @@ local countdown = require("pomodoro_countdown")
 
 local CONTEXT = { theme = "DEEP WORK", stop = "10:15", durationMinutes = 50 }
 
-local GRADIENT = {
-	"#E3413B",
-	"#D85100",
-	"#C16400",
-	"#AB7100",
-	"#927C00",
-	"#768500",
-	"#4E8C00",
-	"#009123",
-	"#008F5B",
-	"#008D81",
-}
-
 local function assert_presentation(remaining_seconds, flash_on, context, expected_title, expected_appearance)
 	local presentation = countdown.presentation(remaining_seconds, flash_on, context)
 	assert.equals(expected_title, presentation.title)
@@ -211,127 +198,6 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 		end
 	end)
 
-	it("selects gradient buckets from exact equal tenths of the scheduled duration", function()
-		-- 50-minute session: 3000 seconds, one bucket per 300 seconds.
-		assert.equals(10, countdown.gradient_bucket(3000, 50))
-		assert.equals(10, countdown.gradient_bucket(2701, 50))
-		assert.equals(9, countdown.gradient_bucket(2700, 50))
-		assert.equals(9, countdown.gradient_bucket(2401, 50))
-		assert.equals(8, countdown.gradient_bucket(2400, 50))
-		assert.equals(8, countdown.gradient_bucket(2101, 50))
-		assert.equals(7, countdown.gradient_bucket(2100, 50))
-		assert.equals(7, countdown.gradient_bucket(1801, 50))
-		assert.equals(6, countdown.gradient_bucket(1800, 50))
-		assert.equals(6, countdown.gradient_bucket(1501, 50))
-		assert.equals(5, countdown.gradient_bucket(1500, 50))
-		assert.equals(5, countdown.gradient_bucket(1201, 50))
-		assert.equals(4, countdown.gradient_bucket(1200, 50))
-		assert.equals(4, countdown.gradient_bucket(901, 50))
-		assert.equals(3, countdown.gradient_bucket(900, 50))
-		assert.equals(3, countdown.gradient_bucket(601, 50))
-		assert.equals(2, countdown.gradient_bucket(600, 50))
-		assert.equals(2, countdown.gradient_bucket(301, 50))
-		assert.equals(1, countdown.gradient_bucket(300, 50))
-		assert.equals(1, countdown.gradient_bucket(299, 50))
-		assert.equals(1, countdown.gradient_bucket(1, 50))
-		assert.equals(1, countdown.gradient_bucket(0, 50))
-	end)
-
-	it("checks one second above, on, and below every 50-minute boundary", function()
-		local boundaries = { 2700, 2400, 2100, 1800, 1500, 1200, 900, 600, 300 }
-		local above_buckets = { 10, 9, 8, 7, 6, 5, 4, 3, 2 }
-		local on_buckets = { 9, 8, 7, 6, 5, 4, 3, 2, 1 }
-		for index, boundary in ipairs(boundaries) do
-			assert.equals(above_buckets[index], countdown.gradient_bucket(boundary + 1, 50))
-			assert.equals(on_buckets[index], countdown.gradient_bucket(boundary, 50))
-			if boundary > 300 then
-				assert.equals(on_buckets[index], countdown.gradient_bucket(boundary - 1, 50))
-			else
-				assert.equals(1, countdown.gradient_bucket(boundary - 1, 50))
-			end
-		end
-	end)
-
-	it("walks the 50-minute color sequence every five minutes", function()
-		local remaining_values = { 3000, 2700, 2400, 2100, 1800, 1500, 1200, 900, 600, 300 }
-		for index, remaining in ipairs(remaining_values) do
-			assert.equals(11 - index, countdown.gradient_bucket(remaining, 50))
-		end
-	end)
-
-	it("walks the 25-minute color sequence every two and a half minutes", function()
-		local remaining_values = { 1500, 1350, 1200, 1050, 900, 750, 600, 450, 300, 150 }
-		for index, remaining in ipairs(remaining_values) do
-			assert.equals(11 - index, countdown.gradient_bucket(remaining, 25))
-		end
-		assert.equals(1, countdown.gradient_bucket(0, 25))
-	end)
-
-	it("clamps time above the scheduled duration and handles zero and subsecond values", function()
-		assert.equals(10, countdown.gradient_bucket(6000, 50))
-		assert.equals(10, countdown.gradient_bucket(3001, 50))
-		assert.equals(10, countdown.gradient_bucket(3000.5, 50))
-		assert.equals(1, countdown.gradient_bucket(0.5, 50))
-		assert.equals(1, countdown.gradient_bucket(0.001, 50))
-	end)
-
-	it("selects the same bucket for equivalent fractions across session lengths", function()
-		for _, minutes in ipairs({ 5, 25, 50, 120 }) do
-			local total = minutes * 60
-			assert.equals(10, countdown.gradient_bucket(total, minutes))
-			assert.equals(5, countdown.gradient_bucket(total / 2, minutes))
-			assert.equals(1, countdown.gradient_bucket(0, minutes))
-			assert.equals(9, countdown.gradient_bucket(total * 0.85, minutes))
-			assert.equals(10, countdown.gradient_bucket(total * 0.91, minutes))
-		end
-	end)
-
-	it("returns nil for unavailable gradient inputs without throwing", function()
-		local nan = 0 / 0
-		local infinity = math.huge
-		local cases = {
-			{ remaining = nil, duration = 50 },
-			{ remaining = "754", duration = 50 },
-			{ remaining = nan, duration = 50 },
-			{ remaining = infinity, duration = 50 },
-			{ remaining = -infinity, duration = 50 },
-			{ remaining = -1, duration = 50 },
-			{ remaining = -599, duration = 50 },
-			{ remaining = 754, duration = nil },
-			{ remaining = 754, duration = "50" },
-			{ remaining = 754, duration = 0 },
-			{ remaining = 754, duration = -5 },
-			{ remaining = 754, duration = nan },
-			{ remaining = 754, duration = infinity },
-			{ remaining = 754, duration = -infinity },
-		}
-		for _, case in ipairs(cases) do
-			local ok, bucket = pcall(countdown.gradient_bucket, case.remaining, case.duration)
-			assert.is_true(ok)
-			assert.is_nil(bucket)
-		end
-	end)
-
-	it("exposes one appearance-independent ten-stop gradient", function()
-		assert.are.same(GRADIENT, countdown.GRADIENT_COLORS)
-		for bucket = 1, 10 do
-			assert.equals(GRADIENT[bucket], countdown.gradient_color(bucket))
-			assert.equals(GRADIENT[bucket], countdown.gradient_color(bucket, true))
-			assert.equals(GRADIENT[bucket], countdown.gradient_color(bucket, false))
-		end
-		assert.is_nil(countdown.gradient_color(0, true))
-		assert.is_nil(countdown.gradient_color(11, true))
-		assert.is_nil(countdown.gradient_color(1.5, true))
-		assert.is_nil(countdown.gradient_color("3", true))
-		assert.is_nil(countdown.gradient_color(nil, true))
-		local seen = {}
-		for bucket = 1, 10 do
-			local hex = countdown.gradient_color(bucket)
-			assert.is_nil(seen[hex])
-			seen[hex] = true
-		end
-	end)
-
 	it("meets the menu-bar legibility contract", function()
 		local function hex_channels(hex)
 			return tonumber(hex:sub(2, 3), 16), tonumber(hex:sub(4, 5), 16), tonumber(hex:sub(6, 7), 16)
@@ -364,46 +230,36 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 
 		local light_reference = "#E6E6E6"
 		local dark_reference = "#2E2E2E"
-		local vetted = {}
-		for bucket = 1, 10 do
-			table.insert(vetted, countdown.GRADIENT_COLORS[bucket])
-		end
-		table.insert(vetted, countdown.ALERT_COLOR)
-		table.insert(vetted, countdown.MISSING_COLOR)
-		for _, hex in ipairs(vetted) do
+		for _, hex in ipairs({ countdown.ALERT_COLOR, countdown.MISSING_COLOR }) do
 			assert.is_true(contrast_ratio(hex, light_reference) >= 3.0, hex .. " below 3:1 on the light bar")
 			assert.is_true(contrast_ratio(hex, dark_reference) >= 3.0, hex .. " below 3:1 on the dark bar")
 		end
 
-		for bucket = 1, 10 do
-			local luminance = relative_luminance(countdown.GRADIENT_COLORS[bucket])
-			assert.is_true(luminance >= 0.19 and luminance <= 0.22, "stop " .. bucket .. " outside 0.19-0.22")
-			local red, green, blue = hex_channels(countdown.GRADIENT_COLORS[bucket])
-			assert.is_false(blue > red and blue > green, "stop " .. bucket .. " is blue-dominant")
-		end
-
 		assert.is_true(contrast_ratio(countdown.BADGE_TEXT_COLOR, countdown.ALERT_COLOR) >= 3.0)
-		assert.equals(countdown.gradient_color(1), countdown.ALERT_COLOR)
 
 		assert.is_true(contrast_ratio("#65C3ED", light_reference) < 3.0)
 		assert.is_true(contrast_ratio("#006381", dark_reference) < 3.0)
 		assert.is_true(contrast_ratio("#30d158", light_reference) < 3.0)
 	end)
 
-	it("attaches the gradient bucket only to running presentations with numeric duration", function()
+	it("leaves every presentation without a bucket", function()
 		local running =
 			countdown.presentation(3000, false, { theme = "DEEP WORK", stop = "10:15", durationMinutes = 50 })
-		assert.equals(10, running.bucket)
+		assert.is_nil(running.bucket)
 		assert.equals(50, running.durationMinutes)
+		assert.equals("DEEP WORK (50m) · 🍅 50:00", running.title)
 
 		local zero = countdown.presentation(0, false, CONTEXT)
-		assert.equals(1, zero.bucket)
+		assert.is_nil(zero.bucket)
 
 		local overdue = countdown.presentation(-1, false, CONTEXT)
 		assert.is_nil(overdue.bucket)
 
 		local warning = countdown.presentation(-600, false, CONTEXT)
 		assert.is_nil(warning.bucket)
+
+		local warning_flash = countdown.presentation(-600, true, CONTEXT)
+		assert.is_nil(warning_flash.bucket)
 
 		local string_only =
 			countdown.presentation(754, false, { theme = "DEEP WORK", stop = "10:15", duration = "50m" })

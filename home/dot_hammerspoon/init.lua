@@ -277,16 +277,6 @@ local bobPomodoroOverdueWarningFlashTitleAttributes = bobPomodoroTitleAttributes
 	{ hex = PomodoroCountdown.ALERT_COLOR, alpha = 1 }
 )
 
--- Cached per-bucket gradient attributes (bold monospaced digits only). Built
--- once per config load from the pure palette in pomodoro_countdown; selection
--- never mutates the shared context attributes above.
-local bobPomodoroGradientTitleAttributes = {}
-for bucket = 1, 10 do
-	local hex = PomodoroCountdown.gradient_color(bucket)
-	bobPomodoroGradientTitleAttributes[bucket] =
-		bobPomodoroTitleAttributes({ hex = hex, alpha = 1 }, bobPomodoroCountdownFont)
-end
-
 local bobPomodoroNoBreakSpace = "\194\160"
 
 local function bobPomodoroSegmentText(segments, role)
@@ -367,12 +357,7 @@ local function bobPomodoroMenuTitle(presentation)
 				attributes = bobPomodoroContextTitleAttributes
 			elseif segment.role == "status" then
 				if appearance == "normal" then
-					local bucket = presentation.bucket
-					if type(bucket) == "number" and bucket >= 1 and bucket <= 10 then
-						attributes = bobPomodoroGradientTitleAttributes[bucket]
-					else
-						attributes = bobPomodoroCountdownTitleAttributes
-					end
+					attributes = bobPomodoroCountdownTitleAttributes
 				elseif appearance == "overdue" then
 					attributes = bobPomodoroOverdueCountdownTitleAttributes
 				elseif appearance == "overdue_warning" then

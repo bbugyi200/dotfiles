@@ -12,24 +12,6 @@ local ARROW = " → "
 local SEPARATOR = " · "
 local GAP = " "
 
--- One appearance-independent ten-stop countdown palette for the menu bar.
--- Hue order inspired by SASE's usage indicator; values derived for menu-bar
--- legibility (isoluminant ≈ 0.205, OKLCH 27°→185°, chroma ≤ 0.20, no blue);
--- the legibility contract is enforced in the spec.
--- Bucket 1 is nearly exhausted (red); bucket 10 is a fresh session (teal).
-M.GRADIENT_COLORS = {
-	"#E3413B",
-	"#D85100",
-	"#C16400",
-	"#AB7100",
-	"#927C00",
-	"#768500",
-	"#4E8C00",
-	"#009123",
-	"#008F5B",
-	"#008D81",
-}
-
 M.ALERT_COLOR = "#E3413B"
 M.MISSING_COLOR = "#009123"
 M.BADGE_TEXT_COLOR = "#FFFFFF"
@@ -158,53 +140,6 @@ function M.format_duration(minutes)
 	return string.format("%dm", floored)
 end
 
---- Return the 1-10 gradient bucket for remaining seconds and duration minutes.
--- Uses exact equal tenths of the scheduled duration: bucket 10 is above 90%
--- through 100%, bucket 1 is zero through 10%. Time above the scheduled
--- duration clamps to bucket 10. Returns nil for unavailable inputs
--- (missing/nonnumeric/nonfinite duration, nonpositive duration, or
--- nonfinite/nonnumeric remaining) and for negative remaining, which the
--- overdue alert path owns.
-function M.gradient_bucket(remaining_seconds, duration_minutes)
-	if not is_finite_number(remaining_seconds) then
-		return nil
-	end
-	if not is_finite_number(duration_minutes) then
-		return nil
-	end
-	if duration_minutes <= 0 then
-		return nil
-	end
-	if remaining_seconds < 0 then
-		return nil
-	end
-	local total = duration_minutes * 60
-	if not is_finite_number(total) or total <= 0 then
-		return nil
-	end
-	local clamped = remaining_seconds
-	if clamped < 0 then
-		clamped = 0
-	end
-	if clamped > total then
-		clamped = total
-	end
-	return math.max(1, math.min(10, math.ceil(10 * clamped / total)))
-end
-
---- Return the hex color for a 1-10 gradient bucket. Any extra argument is
--- ignored so a stray appearance flag cannot change the result. Returns nil
--- for out-of-range or nonnumeric buckets.
-function M.gradient_color(bucket)
-	if type(bucket) ~= "number" or bucket ~= math.floor(bucket) then
-		return nil
-	end
-	if bucket < 1 or bucket > 10 then
-		return nil
-	end
-	return M.GRADIENT_COLORS[bucket]
-end
-
 function M.presentation(remaining_seconds, flash_on, context)
 	if remaining_seconds == nil then
 		return {
@@ -265,11 +200,6 @@ function M.presentation(remaining_seconds, flash_on, context)
 		appearance = "normal"
 	end
 
-	local bucket = nil
-	if appearance == "normal" then
-		bucket = M.gradient_bucket(remaining_seconds, duration_minutes)
-	end
-
 	local segments = {
 		{ text = display_theme, role = "theme" },
 	}
@@ -300,7 +230,6 @@ function M.presentation(remaining_seconds, flash_on, context)
 		stop = stop,
 		duration = duration,
 		durationMinutes = duration_minutes,
-		bucket = bucket,
 		icon = M.ICON,
 		segments = segments,
 	}
