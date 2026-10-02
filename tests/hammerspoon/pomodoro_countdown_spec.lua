@@ -4,30 +4,17 @@ local countdown = require("pomodoro_countdown")
 
 local CONTEXT = { theme = "DEEP WORK", stop = "10:15", durationMinutes = 50 }
 
-local DARK_GRADIENT = {
-	"#FF5F6D",
-	"#FF805F",
-	"#FFA552",
-	"#EBC04F",
-	"#CED44C",
-	"#AADC64",
-	"#78DB8D",
-	"#4CD4B0",
-	"#48CCD0",
-	"#65C3ED",
-}
-
-local LIGHT_GRADIENT = {
-	"#A22534",
-	"#A03620",
-	"#8C480E",
-	"#775800",
-	"#5F6500",
-	"#456C1B",
-	"#206F3C",
-	"#006E56",
-	"#006C6C",
-	"#006381",
+local GRADIENT = {
+	"#E3413B",
+	"#D85100",
+	"#C16400",
+	"#AB7100",
+	"#927C00",
+	"#768500",
+	"#4E8C00",
+	"#009123",
+	"#008F5B",
+	"#008D81",
 }
 
 local function assert_presentation(remaining_seconds, flash_on, context, expected_title, expected_appearance)
@@ -325,19 +312,82 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 		end
 	end)
 
-	it("exposes all ten hex colors for both appearances", function()
-		assert.are.same(DARK_GRADIENT, countdown.GRADIENT_DARK_COLORS)
-		assert.are.same(LIGHT_GRADIENT, countdown.GRADIENT_LIGHT_COLORS)
+	it("exposes one appearance-independent ten-stop gradient", function()
+		assert.are.same(GRADIENT, countdown.GRADIENT_COLORS)
 		for bucket = 1, 10 do
-			assert.equals(DARK_GRADIENT[bucket], countdown.gradient_color(bucket, true))
-			assert.equals(LIGHT_GRADIENT[bucket], countdown.gradient_color(bucket, false))
-			assert.equals(LIGHT_GRADIENT[bucket], countdown.gradient_color(bucket, nil))
+			assert.equals(GRADIENT[bucket], countdown.gradient_color(bucket))
+			assert.equals(GRADIENT[bucket], countdown.gradient_color(bucket, true))
+			assert.equals(GRADIENT[bucket], countdown.gradient_color(bucket, false))
 		end
 		assert.is_nil(countdown.gradient_color(0, true))
 		assert.is_nil(countdown.gradient_color(11, true))
 		assert.is_nil(countdown.gradient_color(1.5, true))
 		assert.is_nil(countdown.gradient_color("3", true))
 		assert.is_nil(countdown.gradient_color(nil, true))
+		local seen = {}
+		for bucket = 1, 10 do
+			local hex = countdown.gradient_color(bucket)
+			assert.is_nil(seen[hex])
+			seen[hex] = true
+		end
+	end)
+
+	it("meets the menu-bar legibility contract", function()
+		local function hex_channels(hex)
+			return tonumber(hex:sub(2, 3), 16), tonumber(hex:sub(4, 5), 16), tonumber(hex:sub(6, 7), 16)
+		end
+
+		local function srgb_to_linear(channel)
+			local value = channel / 255
+			if value <= 0.03928 then
+				return value / 12.92
+			end
+			return ((value + 0.055) / 1.055) ^ 2.4
+		end
+
+		local function relative_luminance(hex)
+			local red, green, blue = hex_channels(hex)
+			return 0.2126 * srgb_to_linear(red) + 0.7152 * srgb_to_linear(green) + 0.0722 * srgb_to_linear(blue)
+		end
+
+		local function contrast_ratio(first, second)
+			local first_luminance = relative_luminance(first)
+			local second_luminance = relative_luminance(second)
+			if first_luminance < second_luminance then
+				first_luminance, second_luminance = second_luminance, first_luminance
+			end
+			return (first_luminance + 0.05) / (second_luminance + 0.05)
+		end
+
+		assert.equals(21, math.floor(contrast_ratio("#FFFFFF", "#000000") * 100 + 0.5) / 100)
+		assert.equals(1, contrast_ratio("#E3413B", "#E3413B"))
+
+		local light_reference = "#E6E6E6"
+		local dark_reference = "#2E2E2E"
+		local vetted = {}
+		for bucket = 1, 10 do
+			table.insert(vetted, countdown.GRADIENT_COLORS[bucket])
+		end
+		table.insert(vetted, countdown.ALERT_COLOR)
+		table.insert(vetted, countdown.MISSING_COLOR)
+		for _, hex in ipairs(vetted) do
+			assert.is_true(contrast_ratio(hex, light_reference) >= 3.0, hex .. " below 3:1 on the light bar")
+			assert.is_true(contrast_ratio(hex, dark_reference) >= 3.0, hex .. " below 3:1 on the dark bar")
+		end
+
+		for bucket = 1, 10 do
+			local luminance = relative_luminance(countdown.GRADIENT_COLORS[bucket])
+			assert.is_true(luminance >= 0.19 and luminance <= 0.22, "stop " .. bucket .. " outside 0.19-0.22")
+			local red, green, blue = hex_channels(countdown.GRADIENT_COLORS[bucket])
+			assert.is_false(blue > red and blue > green, "stop " .. bucket .. " is blue-dominant")
+		end
+
+		assert.is_true(contrast_ratio(countdown.BADGE_TEXT_COLOR, countdown.ALERT_COLOR) >= 3.0)
+		assert.equals(countdown.gradient_color(1), countdown.ALERT_COLOR)
+
+		assert.is_true(contrast_ratio("#65C3ED", light_reference) < 3.0)
+		assert.is_true(contrast_ratio("#006381", dark_reference) < 3.0)
+		assert.is_true(contrast_ratio("#30d158", light_reference) < 3.0)
 	end)
 
 	it("attaches the gradient bucket only to running presentations with numeric duration", function()

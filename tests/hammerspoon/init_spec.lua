@@ -134,6 +134,9 @@ local function make_styledtext(env)
 		end,
 		validFont = function(name)
 			env.valid_font_calls[name] = (env.valid_font_calls[name] or 0) + 1
+			if env.invalid_fonts and env.invalid_fonts[name] then
+				return false
+			end
 			return name ~= ".SFNS-Bold"
 		end,
 		new = function(text, attributes)
@@ -226,6 +229,7 @@ local function make_hs(env)
 
 	hs.host = {
 		interfaceStyle = function()
+			env.host_calls = (env.host_calls or 0) + 1
 			if env.host_error then
 				error(env.host_error)
 			end
@@ -272,6 +276,8 @@ local function setup_hammerspoon_init_environment(options)
 		task_completion = options.task_completion,
 		reload_calls = 0,
 		fail_styling = false,
+		host_calls = 0,
+		invalid_fonts = options.invalid_fonts,
 	}
 
 	_G.hs = make_hs(env)
@@ -662,9 +668,9 @@ describe("Hammerspoon init", function()
 			steady, flash = second_badge, first_badge
 		end
 		assert.is_nil(steady.backgroundColor)
-		assert.are.same({ hex = "#ff453a", alpha = 1 }, steady.color)
-		assert.are.same({ hex = "#ffffff", alpha = 1 }, flash.color)
-		assert.are.same({ hex = "#ff453a", alpha = 1 }, flash.backgroundColor)
+		assert.are.same({ hex = "#E3413B", alpha = 1 }, steady.color)
+		assert.are.same({ hex = "#FFFFFF", alpha = 1 }, flash.color)
+		assert.are.same({ hex = "#E3413B", alpha = 1 }, flash.backgroundColor)
 
 		local context_color = { list = "System", name = "labelColor", alpha = 1 }
 		assert.are.same(context_color, first_spans[1].attributes.color)
@@ -752,6 +758,7 @@ describe("Hammerspoon init", function()
 		assert.equals(1, env.valid_font_calls[".SFNS-Bold"])
 		assert.is_true((env.valid_font_calls["Helvetica-Bold"] or 0) >= 1)
 		assert.is_true((env.valid_font_calls["Menlo-Regular"] or 0) >= 1)
+		assert.is_true((env.valid_font_calls["Menlo-Bold"] or 0) >= 1)
 
 		local missing_call = nil
 		local saw_warning_flash = false
@@ -762,11 +769,11 @@ describe("Hammerspoon init", function()
 			elseif call.text == "\194\160OVERDUE\194\160" or call.text == "OVERDUE" then
 				if call.attributes.backgroundColor then
 					saw_warning_flash = true
-					assert.are.same({ hex = "#ffffff", alpha = 1 }, call.attributes.color)
-					assert.are.same({ hex = "#ff453a", alpha = 1 }, call.attributes.backgroundColor)
+					assert.are.same({ hex = "#FFFFFF", alpha = 1 }, call.attributes.color)
+					assert.are.same({ hex = "#E3413B", alpha = 1 }, call.attributes.backgroundColor)
 				elseif call.text == "\194\160OVERDUE\194\160" then
 					saw_warning_steady = true
-					assert.are.same({ hex = "#ff453a", alpha = 1 }, call.attributes.color)
+					assert.are.same({ hex = "#E3413B", alpha = 1 }, call.attributes.color)
 				end
 			end
 
@@ -780,7 +787,7 @@ describe("Hammerspoon init", function()
 		end
 
 		assert.is_not_nil(missing_call)
-		assert.are.same({ hex = "#30d158", alpha = 1 }, missing_call.attributes.color)
+		assert.are.same({ hex = "#009123", alpha = 1 }, missing_call.attributes.color)
 		assert.is_true(saw_warning_flash)
 		assert.is_true(saw_warning_steady)
 	end)
@@ -1086,7 +1093,23 @@ describe("Hammerspoon init Pomodoro countdown gradient", function()
 		return title_text(title), assert(title_spans(title))
 	end
 
-	it("paints the running countdown with the dark palette and keeps context spans neutral", function()
+	local GRADIENT = {
+		"#E3413B",
+		"#D85100",
+		"#C16400",
+		"#AB7100",
+		"#927C00",
+		"#768500",
+		"#4E8C00",
+		"#009123",
+		"#008F5B",
+		"#008D81",
+	}
+	local ALERT_COLOR = "#E3413B"
+	local MISSING_COLOR = "#009123"
+	local BADGE_TEXT_COLOR = "#FFFFFF"
+
+	it("paints the running countdown from one palette with bold mono digits", function()
 		local restore_clock, fixed = freeze_clock()
 		local ok, error_message, env = load_init_with()
 		assert.is_true(ok, error_message)
@@ -1101,8 +1124,8 @@ describe("Hammerspoon init Pomodoro countdown gradient", function()
 		assert.equals("DEEP WORK (50m) · 🍅 50:00", text)
 		assert.equals(7, #spans)
 		assert.equals("50:00", spans[7].text)
-		assert.are.same({ hex = "#65C3ED", alpha = 1 }, spans[7].attributes.color)
-		assert.equals("Menlo-Regular", spans[7].attributes.font.name)
+		assert.are.same({ hex = "#008D81", alpha = 1 }, spans[7].attributes.color)
+		assert.equals("Menlo-Bold", spans[7].attributes.font.name)
 		assert.equals(".AppleSystemUIFont", spans[3].attributes.font.name)
 
 		assert.are.same(LABEL_COLOR, spans[1].attributes.color)
@@ -1111,31 +1134,10 @@ describe("Hammerspoon init Pomodoro countdown gradient", function()
 		for _, span in ipairs(spans) do
 			assert.is_nil(span.attributes.backgroundColor)
 		end
+		assert.equals(0, env.host_calls)
 	end)
 
-	it("paints the running countdown with the light palette on nil and Light styles", function()
-		local restore_clock, fixed = freeze_clock()
-		local ok, error_message, env = load_init_with()
-		assert.is_true(ok, error_message)
-
-		local runtime = _G.BobPomodoroCountdown
-		runtime.state = running_state(fixed, 3000, 50)
-
-		env.interface_style = nil
-		runtime.tickTimer.callback()
-		local default_text, default_spans = last_spans(env)
-		assert.equals("DEEP WORK (50m) · 🍅 50:00", default_text)
-		assert.are.same({ hex = "#006381", alpha = 1 }, default_spans[7].attributes.color)
-
-		env.interface_style = "Light"
-		runtime.tickTimer.callback()
-		restore_clock()
-		local light_text, light_spans = last_spans(env)
-		assert.equals(default_text, light_text)
-		assert.are.same({ hex = "#006381", alpha = 1 }, light_spans[7].attributes.color)
-	end)
-
-	it("falls back to neutral countdown text for unknown appearance inputs", function()
+	it("ignores the system appearance, a missing host module, and host errors", function()
 		local restore_clock, fixed = freeze_clock()
 		local ok, error_message, env = load_init_with()
 		assert.is_true(ok, error_message)
@@ -1144,25 +1146,57 @@ describe("Hammerspoon init Pomodoro countdown gradient", function()
 		runtime.state = running_state(fixed, 3000, 50)
 		local hs_host = _G.hs.host
 
+		local snapshots = {}
+		local function snapshot()
+			local text, spans = last_spans(env)
+			local colors = {}
+			local fonts = {}
+			local texts = {}
+			for index, span in ipairs(spans) do
+				texts[index] = span.text
+				colors[index] = span.attributes.color
+				fonts[index] = span.attributes.font
+			end
+			return { text = text, count = #spans, texts = texts, colors = colors, fonts = fonts }
+		end
+
+		env.interface_style = "Dark"
+		runtime.tickTimer.callback()
+		table.insert(snapshots, snapshot())
+
+		env.interface_style = nil
+		runtime.tickTimer.callback()
+		table.insert(snapshots, snapshot())
+
+		env.interface_style = "Light"
+		runtime.tickTimer.callback()
+		table.insert(snapshots, snapshot())
+
 		env.interface_style = "Solarized"
 		runtime.tickTimer.callback()
-		local unknown_text, unknown_spans = last_spans(env)
-		assert.equals("DEEP WORK (50m) · 🍅 50:00", unknown_text)
-		assert.are.same(LABEL_COLOR, unknown_spans[7].attributes.color)
+		table.insert(snapshots, snapshot())
 
 		_G.hs.host = nil
 		runtime.tickTimer.callback()
-		local absent_text, absent_spans = last_spans(env)
-		assert.equals("DEEP WORK (50m) · 🍅 50:00", absent_text)
-		assert.are.same(LABEL_COLOR, absent_spans[7].attributes.color)
+		table.insert(snapshots, snapshot())
 
 		_G.hs.host = hs_host
 		env.host_error = "boom"
 		runtime.tickTimer.callback()
 		restore_clock()
-		local error_text, error_spans = last_spans(env)
-		assert.equals("DEEP WORK (50m) · 🍅 50:00", error_text)
-		assert.are.same(LABEL_COLOR, error_spans[7].attributes.color)
+		table.insert(snapshots, snapshot())
+
+		for index = 2, #snapshots do
+			assert.equals(snapshots[1].text, snapshots[index].text)
+			assert.equals(snapshots[1].count, snapshots[index].count)
+			assert.are.same(snapshots[1].texts, snapshots[index].texts)
+			assert.are.same(snapshots[1].colors, snapshots[index].colors)
+			assert.are.same(snapshots[1].fonts, snapshots[index].fonts)
+		end
+		assert.equals("DEEP WORK (50m) · 🍅 50:00", snapshots[1].text)
+		assert.are.same({ hex = GRADIENT[10], alpha = 1 }, snapshots[1].colors[#snapshots[1].colors])
+		assert.equals("Menlo-Bold", snapshots[1].fonts[#snapshots[1].fonts].name)
+		assert.equals(0, env.host_calls)
 	end)
 
 	it("falls back to neutral countdown text without a numeric duration", function()
@@ -1181,33 +1215,115 @@ describe("Hammerspoon init Pomodoro countdown gradient", function()
 		local text, spans = last_spans(env)
 		assert.equals("DEEP WORK → 10:15 · 🍅 01:00", text)
 		assert.are.same(LABEL_COLOR, spans[#spans].attributes.color)
+		assert.equals("Menlo-Bold", spans[#spans].attributes.font.name)
+		assert.equals(0, env.host_calls)
 	end)
 
-	it("switches palettes between ticks without changing text, layout, or fonts", function()
+	it("paints overdue countdowns and badges from the vetted band", function()
 		local restore_clock, fixed = freeze_clock()
 		local ok, error_message, env = load_init_with()
 		assert.is_true(ok, error_message)
 
 		local runtime = _G.BobPomodoroCountdown
-		runtime.state = running_state(fixed, 2700, 50)
-
-		env.interface_style = "Dark"
+		runtime.state = running_state(fixed, -1, 15)
+		runtime.state.status = "overdue"
+		runtime.state.zeroSyncRequested = true
+		runtime.state.endEpoch = fixed - 1
 		runtime.tickTimer.callback()
-		local dark_text, dark_spans = last_spans(env)
+		local _, overdue_spans = last_spans(env)
+		assert.are.same({ hex = ALERT_COLOR, alpha = 1 }, overdue_spans[#overdue_spans].attributes.color)
+		assert.equals("Menlo-Bold", overdue_spans[#overdue_spans].attributes.font.name)
 
-		env.interface_style = "Light"
+		runtime.state = {
+			rawOutput = "[OVERDUE by 15m] 0900-0915 — DEEP WORK",
+			status = "overdue",
+			taskText = "— DEEP WORK",
+			fullTheme = "DEEP WORK",
+			displayTheme = "DEEP WORK",
+			stopTime = "09:15",
+			endHour = 9,
+			endMinute = 15,
+			durationMinutes = 15,
+			duration = "15m",
+			endEpoch = fixed - 901,
+			lastSyncEpoch = fixed,
+		}
+		runtime.tickTimer.callback()
+		local _, steady_spans = last_spans(env)
 		runtime.tickTimer.callback()
 		restore_clock()
-		local light_text, light_spans = last_spans(env)
+		local _, flash_spans = last_spans(env)
 
-		assert.equals(dark_text, light_text)
-		assert.equals(#dark_spans, #light_spans)
-		for index, span in ipairs(dark_spans) do
-			assert.equals(span.text, light_spans[index].text)
-			assert.are.same(span.attributes.font, light_spans[index].attributes.font)
+		local steady, flash = steady_spans[#steady_spans], flash_spans[#flash_spans]
+		if steady.attributes.backgroundColor ~= nil then
+			steady, flash = flash, steady
 		end
-		assert.are.same({ hex = "#48CCD0", alpha = 1 }, dark_spans[#dark_spans].attributes.color)
-		assert.are.same({ hex = "#006C6C", alpha = 1 }, light_spans[#light_spans].attributes.color)
+		assert.is_nil(steady.attributes.backgroundColor)
+		assert.are.same({ hex = ALERT_COLOR, alpha = 1 }, steady.attributes.color)
+		assert.are.same({ hex = BADGE_TEXT_COLOR, alpha = 1 }, flash.attributes.color)
+		assert.are.same({ hex = ALERT_COLOR, alpha = 1 }, flash.attributes.backgroundColor)
+	end)
+
+	it("paints the missing state from the vetted band", function()
+		local restore_clock, fixed = freeze_clock()
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+
+		local runtime = _G.BobPomodoroCountdown
+		runtime.state = {
+			rawOutput = "No current Pomodoro",
+			status = "missing",
+			lastSyncEpoch = fixed,
+		}
+		runtime.tickTimer.callback()
+		restore_clock()
+
+		local text, spans = last_spans(env)
+		assert.equals("🍅 NO POMODORO", text)
+		local missing_span = nil
+		for _, span in ipairs(spans) do
+			if span.text == "NO POMODORO" then
+				missing_span = span
+			end
+		end
+		assert.is_not_nil(missing_span)
+		assert.are.same({ hex = MISSING_COLOR, alpha = 1 }, missing_span.attributes.color)
+	end)
+
+	it("falls back to regular mono when Menlo-Bold is unavailable", function()
+		local restore_clock, fixed = freeze_clock()
+		local ok, error_message, env = load_init_with({ invalid_fonts = { ["Menlo-Bold"] = true } })
+		assert.is_true(ok, error_message)
+		assert.equals(1, env.valid_font_calls["Menlo-Bold"])
+		local calls_after_load = env.valid_font_calls["Menlo-Bold"]
+
+		local runtime = _G.BobPomodoroCountdown
+		runtime.state = running_state(fixed, 3000, 50)
+		runtime.tickTimer.callback()
+		local running_text, running_spans = last_spans(env)
+		assert.equals("DEEP WORK (50m) · 🍅 50:00", running_text)
+		assert.are.same({ hex = GRADIENT[10], alpha = 1 }, running_spans[#running_spans].attributes.color)
+		assert.equals("Menlo-Regular", running_spans[#running_spans].attributes.font.name)
+
+		runtime.state = running_state(fixed, 60, nil)
+		runtime.state.duration = nil
+		runtime.state.durationMinutes = nil
+		runtime.tickTimer.callback()
+		local _, neutral_spans = last_spans(env)
+		assert.are.same(LABEL_COLOR, neutral_spans[#neutral_spans].attributes.color)
+		assert.equals("Menlo-Regular", neutral_spans[#neutral_spans].attributes.font.name)
+
+		runtime.state = running_state(fixed, -1, 15)
+		runtime.state.status = "overdue"
+		runtime.state.zeroSyncRequested = true
+		runtime.state.endEpoch = fixed - 1
+		runtime.tickTimer.callback()
+		restore_clock()
+		local _, overdue_spans = last_spans(env)
+		assert.are.same({ hex = ALERT_COLOR, alpha = 1 }, overdue_spans[#overdue_spans].attributes.color)
+		assert.equals("Menlo-Regular", overdue_spans[#overdue_spans].attributes.font.name)
+
+		assert.equals(calls_after_load, env.valid_font_calls["Menlo-Bold"])
 	end)
 
 	it("carries durationMinutes from sync into gradient selection without an extra request", function()
@@ -1230,7 +1346,7 @@ describe("Hammerspoon init Pomodoro countdown gradient", function()
 		runtime.tickTimer.callback()
 		local full_text, full_spans = last_spans(env)
 		assert.equals("DEEP WORK (25m) · 🍅 25:00", full_text)
-		assert.are.same({ hex = "#65C3ED", alpha = 1 }, full_spans[#full_spans].attributes.color)
+		assert.are.same({ hex = "#008D81", alpha = 1 }, full_spans[#full_spans].attributes.color)
 
 		runtime.state.endEpoch = runtime.state.endEpoch - 150
 		runtime.tickTimer.callback()
@@ -1238,7 +1354,7 @@ describe("Hammerspoon init Pomodoro countdown gradient", function()
 		assert.equals(tasks_before, #env.tasks)
 		local boundary_text, boundary_spans = last_spans(env)
 		assert.equals("DEEP WORK (25m) · 🍅 22:30", boundary_text)
-		assert.are.same({ hex = "#48CCD0", alpha = 1 }, boundary_spans[#boundary_spans].attributes.color)
+		assert.are.same({ hex = "#008F5B", alpha = 1 }, boundary_spans[#boundary_spans].attributes.color)
 	end)
 
 	it("updates the gradient denominator on retime while rename-only keeps the color", function()
@@ -1257,7 +1373,7 @@ describe("Hammerspoon init Pomodoro countdown gradient", function()
 		runtime.tickTimer.callback()
 		local _, first_spans = last_spans(env)
 		assert.equals(25, runtime.state.durationMinutes)
-		assert.are.same({ hex = "#FF805F", alpha = 1 }, first_spans[#first_spans].attributes.color)
+		assert.are.same({ hex = "#D85100", alpha = 1 }, first_spans[#first_spans].attributes.color)
 
 		env.task_completion = {
 			exit_code = 0,
@@ -1269,7 +1385,7 @@ describe("Hammerspoon init Pomodoro countdown gradient", function()
 		assert.equals("20m", runtime.state.duration)
 		local retime_text, retime_spans = last_spans(env)
 		assert.is_true(retime_text:find("FOCUS TIME (20m) · 🍅 10:00", 1, true) ~= nil)
-		assert.are.same({ hex = "#CED44C", alpha = 1 }, retime_spans[#retime_spans].attributes.color)
+		assert.are.same({ hex = "#927C00", alpha = 1 }, retime_spans[#retime_spans].attributes.color)
 
 		env.task_completion = {
 			exit_code = 0,
@@ -1281,6 +1397,108 @@ describe("Hammerspoon init Pomodoro countdown gradient", function()
 		local rename_text, rename_spans = last_spans(env)
 		assert.is_true(rename_text:find("DEEP REST (20m) · 🍅 10:00", 1, true) ~= nil)
 		assert.are.same(retime_spans[#retime_spans].attributes.color, rename_spans[#rename_spans].attributes.color)
+	end)
+
+	it("audits every painted color against the vetted set", function()
+		local restore_clock, fixed = freeze_clock()
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+
+		local runtime = _G.BobPomodoroCountdown
+		local vetted = {}
+		for _, hex in ipairs(GRADIENT) do
+			vetted[hex] = true
+		end
+		vetted[ALERT_COLOR] = true
+		vetted[MISSING_COLOR] = true
+		vetted[BADGE_TEXT_COLOR] = true
+
+		local seen_stops = {}
+		local function audit_current_title()
+			local title = env.menu_title_calls[#env.menu_title_calls].title
+			local spans = assert(title_spans(title))
+			for _, span in ipairs(spans) do
+				local attributes = assert(span.attributes)
+				local color = attributes.color
+				if color.hex then
+					assert.equals(1, color.alpha)
+					assert.is_true(vetted[color.hex] == true, "unvetted foreground " .. color.hex)
+					if color.hex == BADGE_TEXT_COLOR then
+						assert.are.same(
+							{ hex = ALERT_COLOR, alpha = 1 },
+							attributes.backgroundColor,
+							"badge text outside alert background"
+						)
+					end
+					if GRADIENT[10] == color.hex or vetted[color.hex] then
+						for bucket = 1, 10 do
+							if GRADIENT[bucket] == color.hex then
+								seen_stops[bucket] = true
+							end
+						end
+					end
+				else
+					assert.are.same(LABEL_COLOR, color)
+				end
+				local background = attributes.backgroundColor
+				if background ~= nil then
+					assert.are.same({ hex = ALERT_COLOR, alpha = 1 }, background)
+				end
+			end
+		end
+
+		local remaining_by_bucket = { 300, 600, 900, 1200, 1500, 1800, 2100, 2400, 2700, 3000 }
+		for bucket = 1, 10 do
+			runtime.state = running_state(fixed, remaining_by_bucket[bucket], 50)
+			runtime.tickTimer.callback()
+			audit_current_title()
+		end
+
+		runtime.state = running_state(fixed, 60, nil)
+		runtime.state.duration = nil
+		runtime.state.durationMinutes = nil
+		runtime.tickTimer.callback()
+		audit_current_title()
+
+		runtime.state = running_state(fixed, -1, 15)
+		runtime.state.status = "overdue"
+		runtime.state.zeroSyncRequested = true
+		runtime.state.endEpoch = fixed - 1
+		runtime.tickTimer.callback()
+		audit_current_title()
+
+		runtime.state = {
+			rawOutput = "[OVERDUE by 15m] 0900-0915 — DEEP WORK",
+			status = "overdue",
+			taskText = "— DEEP WORK",
+			fullTheme = "DEEP WORK",
+			displayTheme = "DEEP WORK",
+			stopTime = "09:15",
+			endHour = 9,
+			endMinute = 15,
+			durationMinutes = 15,
+			duration = "15m",
+			endEpoch = fixed - 901,
+			lastSyncEpoch = fixed,
+		}
+		runtime.tickTimer.callback()
+		audit_current_title()
+		runtime.tickTimer.callback()
+		audit_current_title()
+
+		runtime.state = {
+			rawOutput = "No current Pomodoro",
+			status = "missing",
+			lastSyncEpoch = fixed,
+		}
+		runtime.tickTimer.callback()
+		restore_clock()
+		audit_current_title()
+
+		for bucket = 1, 10 do
+			assert.is_true(seen_stops[bucket] == true, "bucket " .. bucket .. " never painted")
+		end
+		assert.equals(0, env.host_calls)
 	end)
 
 	it("leaves complete plain titles with the relocated tomato when styling fails", function()

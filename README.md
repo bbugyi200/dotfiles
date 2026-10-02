@@ -55,21 +55,28 @@ zero-length range or invalid input means unknown: the duration is omitted and th
 running title falls back to `→ HH:MM`, so every current-session title keeps at least one
 time anchor plus the status.
 
-The running countdown digits carry a ten-color time-relative gradient, from blue (fresh)
-toward red (nearly exhausted), based on the fraction of scheduled time remaining — not
-fixed minute thresholds, so five minutes left is the last tenth of a 50-minute session
-but half of a 10-minute one. Exact tenths decide the bucket: above 90% through 100% is
-bucket 10, above 80% through 90% is bucket 9, down to zero through 10% in bucket 1, with
-time above the scheduled duration clamped to bucket 10. A 50-minute session changes
-color every five minutes (`50:00` blue, `45:00` cyan, `40:00` teal, down to `05:00`
-red); a 25-minute session changes every 2:30. Both dark and light menu-bar appearances
-have their own ten hex stops; when the duration or the appearance information is
-unavailable, the countdown stays in the neutral system foreground with all text and
-fonts intact. The palette is copied from SASE's usage indicator
-(`src/sase/ace/tui/widgets/_usage_indicator_palette.py`); the SASE contrast measurements
-apply to its opaque TUI badge surfaces, not the translucent macOS menu bar. The overdue
-states keep their existing fixed-red `+MM:SS` and flashing `OVERDUE` alerts, which take
-priority over the gradient.
+The running countdown digits carry one ten-color time-relative gradient that reads on
+any menu bar, from teal (fresh) through green, gold, and orange to red (nearly
+exhausted) with no blue, based on the fraction of scheduled time remaining — not fixed
+minute thresholds, so five minutes left is the last tenth of a 50-minute session but
+half of a 10-minute one. One palette has to serve both light and dark bars because the
+menu bar follows the wallpaper behind it, not the system Light/Dark setting, and
+Hammerspoon offers no signal for what the bar is actually drawing. Exact tenths decide
+the bucket: above 90% through 100% is bucket 10, above 80% through 90% is bucket 9, down
+to zero through 10% in bucket 1, with time above the scheduled duration clamped to
+bucket 10. A 50-minute session changes color every five minutes (`50:00` teal, `45:00`
+sea green, `40:00` green, down to `05:00` red); a 25-minute session changes every 2:30.
+The digits render in a bold monospaced face so the color carries enough ink at menu-bar
+size, falling back to the regular monospaced face when bold is unavailable. Every stop
+holds at least 3:1 contrast against both a light-bar reference (`#E6E6E6`) and a
+dark-bar reference (`#2E2E2E`) at matched luminance, with white badge text at 4.13:1 on
+the alert red. The overdue `+MM:SS` and steady/flashing `OVERDUE` badge reuse that alert
+red (`#E3413B`), and `NO POMODORO` reuses the gradient green (`#009123`), so the whole
+item draws from one family. When the duration is unknown the countdown stays in the
+neutral system foreground in the same bold monospaced face. The overdue alerts take
+priority over the gradient. A mid-tone wallpaper directly under a transparent menu bar
+can undercut any fixed color, including the system's own labels; turning on
+Accessibility › Display › Reduce transparency restores a uniform surface.
 
 Long themes are bounded to 24 Unicode code points including the final ellipsis; the full
 theme stays in the tooltip and dropdown. The tooltip leads with `full theme (duration)`

@@ -12,36 +12,27 @@ local ARROW = " → "
 local SEPARATOR = " · "
 local GAP = " "
 
--- Ten-color running-countdown palette copied from SASE's usage indicator
--- (src/sase/ace/tui/widgets/_usage_indicator_palette.py at revision
--- 34079430e3bf2fd34bd3451631cbdbcd370514d2). Hammerspoon must not import
--- SASE or read its checkout at runtime, so the hex values live here.
--- Bucket 1 is nearly exhausted (red); bucket 10 is a fresh session (blue).
-M.GRADIENT_DARK_COLORS = {
-	"#FF5F6D",
-	"#FF805F",
-	"#FFA552",
-	"#EBC04F",
-	"#CED44C",
-	"#AADC64",
-	"#78DB8D",
-	"#4CD4B0",
-	"#48CCD0",
-	"#65C3ED",
+-- One appearance-independent ten-stop countdown palette for the menu bar.
+-- Hue order inspired by SASE's usage indicator; values derived for menu-bar
+-- legibility (isoluminant ≈ 0.205, OKLCH 27°→185°, chroma ≤ 0.20, no blue);
+-- the legibility contract is enforced in the spec.
+-- Bucket 1 is nearly exhausted (red); bucket 10 is a fresh session (teal).
+M.GRADIENT_COLORS = {
+	"#E3413B",
+	"#D85100",
+	"#C16400",
+	"#AB7100",
+	"#927C00",
+	"#768500",
+	"#4E8C00",
+	"#009123",
+	"#008F5B",
+	"#008D81",
 }
 
-M.GRADIENT_LIGHT_COLORS = {
-	"#A22534",
-	"#A03620",
-	"#8C480E",
-	"#775800",
-	"#5F6500",
-	"#456C1B",
-	"#206F3C",
-	"#006E56",
-	"#006C6C",
-	"#006381",
-}
+M.ALERT_COLOR = "#E3413B"
+M.MISSING_COLOR = "#009123"
+M.BADGE_TEXT_COLOR = "#FFFFFF"
 
 local function is_finite_number(value)
 	return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
@@ -201,20 +192,17 @@ function M.gradient_bucket(remaining_seconds, duration_minutes)
 	return math.max(1, math.min(10, math.ceil(10 * clamped / total)))
 end
 
---- Return the hex color for a 1-10 gradient bucket. `dark` selects the dark
--- appearance palette; any other value selects the light palette. Returns nil
+--- Return the hex color for a 1-10 gradient bucket. Any extra argument is
+-- ignored so a stray appearance flag cannot change the result. Returns nil
 -- for out-of-range or nonnumeric buckets.
-function M.gradient_color(bucket, dark)
+function M.gradient_color(bucket)
 	if type(bucket) ~= "number" or bucket ~= math.floor(bucket) then
 		return nil
 	end
 	if bucket < 1 or bucket > 10 then
 		return nil
 	end
-	if dark then
-		return M.GRADIENT_DARK_COLORS[bucket]
-	end
-	return M.GRADIENT_LIGHT_COLORS[bucket]
+	return M.GRADIENT_COLORS[bucket]
 end
 
 function M.presentation(remaining_seconds, flash_on, context)
