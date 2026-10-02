@@ -180,10 +180,8 @@ end
 
 local bobPomodoroMenuBarFont = hs.styledtext.defaultFonts.menuBar
 
-local bobPomodoroOverdueTitleAttributes = {
-	color = { hex = "#ff453a", alpha = 1 },
-	font = bobPomodoroMenuBarFont,
-}
+local bobPomodoroContextForeground = { list = "System", name = "labelColor", alpha = 1 }
+local bobPomodoroOverdueForeground = { hex = "#ff453a", alpha = 1 }
 
 local function validBobPomodoroFont(font)
 	if type(font) ~= "table" or type(font.name) ~= "string" or font.name == "" then
@@ -233,10 +231,33 @@ local function bobPomodoroTitleAttributes(color, font, backgroundColor)
 	return attributes
 end
 
+local function resolveBobPomodoroMonoMenuBarFont()
+	for _, fallbackName in ipairs({ "Menlo-Regular", "Menlo", "Monaco" }) do
+		local fallbackFont = validBobPomodoroFont(bobPomodoroFontWithMenuBarSize(fallbackName))
+		if fallbackFont then
+			return fallbackFont
+		end
+	end
+
+	return nil
+end
+
 local bobPomodoroBoldMenuBarFont = resolveBobPomodoroBoldMenuBarFont()
+local bobPomodoroMonoMenuBarFont = resolveBobPomodoroMonoMenuBarFont() or bobPomodoroMenuBarFont
 
 local bobPomodoroMissingTitleAttributes =
 	bobPomodoroTitleAttributes({ hex = "#30d158", alpha = 1 }, bobPomodoroBoldMenuBarFont)
+
+local bobPomodoroThemeTitleAttributes =
+	bobPomodoroTitleAttributes(bobPomodoroContextForeground, bobPomodoroBoldMenuBarFont or bobPomodoroMenuBarFont)
+local bobPomodoroContextTitleAttributes =
+	bobPomodoroTitleAttributes(bobPomodoroContextForeground, bobPomodoroMenuBarFont)
+local bobPomodoroStopTitleAttributes =
+	bobPomodoroTitleAttributes(bobPomodoroContextForeground, bobPomodoroMonoMenuBarFont)
+local bobPomodoroCountdownTitleAttributes =
+	bobPomodoroTitleAttributes(bobPomodoroContextForeground, bobPomodoroMonoMenuBarFont)
+local bobPomodoroOverdueCountdownTitleAttributes =
+	bobPomodoroTitleAttributes(bobPomodoroOverdueForeground, bobPomodoroMonoMenuBarFont)
 
 local bobPomodoroOverdueWarningTitleAttributes =
 	bobPomodoroTitleAttributes({ hex = "#ff453a", alpha = 1 }, bobPomodoroBoldMenuBarFont)
@@ -247,29 +268,64 @@ local bobPomodoroOverdueWarningFlashTitleAttributes = bobPomodoroTitleAttributes
 )
 local bobPomodoroNoBreakSpace = "\194\160"
 
+local function bobPomodoroSegmentText(segments, role)
+	if type(segments) ~= "table" then
+		return nil
+	end
+	for _, segment in ipairs(segments) do
+		if type(segment) == "table" and segment.role == role then
+			return tostring(segment.text or "")
+		end
+	end
+	return nil
+end
+
 local function bobPomodoroMenuTitle(presentation)
-	if presentation.appearance == "normal" then
-		return presentation.title
-	end
-	if presentation.appearance == "overdue" then
-		return hs.styledtext.new(presentation.title, bobPomodoroOverdueTitleAttributes)
-	end
-	if presentation.appearance == "missing" then
-		return hs.styledtext.new(presentation.title, bobPomodoroMissingTitleAttributes)
-	end
-	if presentation.appearance == "overdue_warning" then
-		return hs.styledtext.new(
-			bobPomodoroNoBreakSpace .. presentation.title .. bobPomodoroNoBreakSpace,
-			bobPomodoroOverdueWarningTitleAttributes
-		)
-	end
-	if presentation.appearance == "overdue_warning_flash" then
-		return hs.styledtext.new(
-			bobPomodoroNoBreakSpace .. presentation.title .. bobPomodoroNoBreakSpace,
-			bobPomodoroOverdueWarningFlashTitleAttributes
-		)
+	if type(presentation) ~= "table" or type(presentation.title) ~= "string" then
+		return ""
 	end
 
+	if presentation.appearance == "missing" then
+		local ok, styled = pcall(hs.styledtext.new, presentation.title, bobPomodoroMissingTitleAttributes)
+		if ok and styled ~= nil then
+			return styled
+		end
+		return presentation.title
+	end
+
+	local ok, composed = pcall(function()
+		local themeText = bobPomodoroSegmentText(presentation.segments, "theme")
+		local arrowText = bobPomodoroSegmentText(presentation.segments, "arrow") or " → "
+		local stopText = bobPomodoroSegmentText(presentation.segments, "stop")
+		local separatorText = bobPomodoroSegmentText(presentation.segments, "separator") or " · "
+		local statusText = bobPomodoroSegmentText(presentation.segments, "status")
+		assert(themeText ~= nil, "missing theme segment")
+		assert(stopText ~= nil, "missing stop segment")
+		assert(statusText ~= nil, "missing status segment")
+
+		local statusAttributes = bobPomodoroCountdownTitleAttributes
+		if presentation.appearance == "overdue" then
+			statusAttributes = bobPomodoroOverdueCountdownTitleAttributes
+		elseif presentation.appearance == "overdue_warning" then
+			statusText = bobPomodoroNoBreakSpace .. statusText .. bobPomodoroNoBreakSpace
+			statusAttributes = bobPomodoroOverdueWarningTitleAttributes
+		elseif presentation.appearance == "overdue_warning_flash" then
+			statusText = bobPomodoroNoBreakSpace .. statusText .. bobPomodoroNoBreakSpace
+			statusAttributes = bobPomodoroOverdueWarningFlashTitleAttributes
+		elseif presentation.appearance ~= "normal" then
+			error("unknown appearance: " .. tostring(presentation.appearance))
+		end
+
+		return hs.styledtext.new(themeText, bobPomodoroThemeTitleAttributes)
+			.. hs.styledtext.new(arrowText, bobPomodoroContextTitleAttributes)
+			.. hs.styledtext.new(stopText, bobPomodoroStopTitleAttributes)
+			.. hs.styledtext.new(separatorText, bobPomodoroContextTitleAttributes)
+			.. hs.styledtext.new(statusText, statusAttributes)
+	end)
+
+	if ok and composed ~= nil then
+		return composed
+	end
 	return presentation.title
 end
 
@@ -287,22 +343,43 @@ local function updateBobPomodoroMenuDetails()
 		return
 	end
 
-	local menu = {
-		{ title = state.rawOutput, disabled = true },
-		{
-			title = "Last sync " .. os.date("%H:%M:%S", state.lastSyncEpoch),
-			disabled = true,
-		},
-		{ title = "-" },
-		{
-			title = "Refresh",
-			fn = function()
-				runBobPomodoroCallback("manual refresh", syncBobPomodoro)
-			end,
-		},
-	}
+	local tooltip = state.rawOutput
+	local menu
+	if state.fullTheme ~= nil and state.stopTime ~= nil then
+		tooltip = state.fullTheme .. "\nStops at " .. state.stopTime .. "\n" .. state.rawOutput
+		menu = {
+			{ title = state.fullTheme .. " → " .. state.stopTime, disabled = true },
+			{ title = state.rawOutput, disabled = true },
+			{
+				title = "Last sync " .. os.date("%H:%M:%S", state.lastSyncEpoch),
+				disabled = true,
+			},
+			{ title = "-" },
+			{
+				title = "Refresh",
+				fn = function()
+					runBobPomodoroCallback("manual refresh", syncBobPomodoro)
+				end,
+			},
+		}
+	else
+		menu = {
+			{ title = state.rawOutput, disabled = true },
+			{
+				title = "Last sync " .. os.date("%H:%M:%S", state.lastSyncEpoch),
+				disabled = true,
+			},
+			{ title = "-" },
+			{
+				title = "Refresh",
+				fn = function()
+					runBobPomodoroCallback("manual refresh", syncBobPomodoro)
+				end,
+			},
+		}
+	end
 
-	menuBarItem:setTooltip(state.rawOutput)
+	menuBarItem:setTooltip(tooltip)
 	menuBarItem:setMenu(menu)
 end
 
@@ -323,7 +400,17 @@ local function renderBobPomodoroMenu()
 		syncBobPomodoro()
 	end
 
-	local presentation = PomodoroCountdown.presentation(remaining, bobPomodoroWarningFlashOn)
+	local context = nil
+	if state.status ~= "missing" then
+		context = {
+			theme = state.fullTheme or state.taskText,
+			stop = state.stopTime,
+			endHour = state.endHour,
+			endMinute = state.endMinute,
+		}
+	end
+
+	local presentation = PomodoroCountdown.presentation(remaining, bobPomodoroWarningFlashOn, context)
 	menuBarItem:setTitle(bobPomodoroMenuTitle(presentation))
 	menuBarItem:returnToMenuBar()
 end
@@ -376,6 +463,9 @@ syncBobPomodoro = function()
 				return
 			end
 
+			parsed.fullTheme = PomodoroCountdown.normalize_theme(parsed.taskText)
+			parsed.displayTheme = PomodoroCountdown.shorten_theme(parsed.fullTheme)
+			parsed.stopTime = PomodoroCountdown.format_stop_time(parsed.endHour, parsed.endMinute)
 			parsed.endEpoch = todayEndEpoch(parsed.endHour, parsed.endMinute)
 			parsed.lastSyncEpoch = os.time()
 			bobPomodoroRuntime.state = parsed

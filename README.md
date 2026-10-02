@@ -27,6 +27,32 @@ chezmoi apply ~/.hammerspoon
 
 Never leave both production hotkeys active during rollback.
 
+## Pomodoro menu bar
+
+Hammerspoon shows the current Bob Pomodoro as one status item in the fixed order **theme
+→ stop time · status**. The arrow names the session's scheduled endpoint, not the
+current clock. The stop time is zero-padded 24-hour `HH:MM`, matching the ledger
+convention.
+
+| State                         | Example title                 |
+| ----------------------------- | ----------------------------- |
+| Running                       | `DEEP WORK → 10:15 · 12:34`   |
+| At the stop time              | `DEEP WORK → 10:15 · 00:00`   |
+| Recently overdue              | `DEEP WORK → 10:15 · +00:01`  |
+| Last second before escalation | `DEEP WORK → 10:15 · +09:59`  |
+| Ten minutes overdue and later | `DEEP WORK → 10:15 · OVERDUE` |
+| Session without a name        | `UNTITLED → 10:15 · 12:34`    |
+| No current session            | `NO POMODORO`                 |
+
+Long themes are bounded to 24 Unicode code points including the final ellipsis; the full
+theme stays in the tooltip and dropdown. The tooltip leads with the full theme and
+`Stops at HH:MM`, and the dropdown keeps the full context plus the raw `bob pomodoro`
+line and `Last sync` details. At and after ten minutes overdue, only the `OVERDUE` badge
+flashes between red text and white-on-red. The menu polls `bob pomodoro --show-stale`
+every 15 seconds, refreshes on wake and unlock, offers a manual Refresh item, and
+re-syncs once when crossing zero. An empty result shows `NO POMODORO`; command or parse
+failures hide the item.
+
 ## Deleting things under `/tmp`
 
 On `athena`, `/tmp` is a **32G tmpfs** — RAM-backed, shared by every numbered sase

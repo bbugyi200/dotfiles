@@ -1,4 +1,5 @@
 local INIT_PATH = "home/dot_hammerspoon/init.lua"
+local COUNTDOWN_PATH = "home/dot_hammerspoon/pomodoro_countdown.lua"
 
 local function make_started_object(kind)
 	return {
@@ -85,6 +86,76 @@ local function make_task(env, command, callback, args)
 	return task
 end
 
+local function make_styledtext(env)
+	local styled_mt = {}
+	styled_mt.__concat = function(a, b)
+		local function parts(value)
+			if type(value) == "string" then
+				return value, { { text = value, attributes = nil } }
+			end
+			if type(value) == "table" and value.is_styledtext then
+				return value.text, value.spans
+			end
+			error("cannot concatenate " .. type(value))
+		end
+
+		local a_text, a_spans = parts(a)
+		local b_text, b_spans = parts(b)
+		local new_spans = {}
+		for _, span in ipairs(a_spans) do
+			table.insert(new_spans, span)
+		end
+		for _, span in ipairs(b_spans) do
+			table.insert(new_spans, span)
+		end
+		local composed = {
+			text = a_text .. b_text,
+			spans = new_spans,
+			is_styledtext = true,
+		}
+		setmetatable(composed, styled_mt)
+		table.insert(env.styled_compositions, { text = composed.text, spans = new_spans })
+		return composed
+	end
+
+	return {
+		defaultFonts = {
+			menuBar = { name = ".AppleSystemUIFont", size = 14 },
+		},
+		fontTraits = {
+			boldFont = "bold",
+		},
+		convertFont = function(font, trait)
+			table.insert(env.convert_font_calls, { font = font, trait = trait })
+			return {
+				name = ".SFNS-Bold",
+				size = font and font.size or nil,
+			}
+		end,
+		validFont = function(name)
+			env.valid_font_calls[name] = (env.valid_font_calls[name] or 0) + 1
+			return name ~= ".SFNS-Bold"
+		end,
+		new = function(text, attributes)
+			if env.fail_styling then
+				error("injected styling failure")
+			end
+			table.insert(env.styled_text_calls, {
+				text = text,
+				attributes = attributes,
+			})
+			local object = {
+				text = text,
+				attributes = attributes,
+				spans = { { text = text, attributes = attributes } },
+				is_styledtext = true,
+			}
+			setmetatable(object, styled_mt)
+			return object
+		end,
+	}
+end
+
 local function make_hs(env)
 	local hs = {}
 
@@ -151,35 +222,7 @@ local function make_hs(env)
 		end,
 	}
 
-	hs.styledtext = {
-		defaultFonts = {
-			menuBar = { name = ".AppleSystemUIFont", size = 14 },
-		},
-		fontTraits = {
-			boldFont = "bold",
-		},
-		convertFont = function(font, trait)
-			table.insert(env.convert_font_calls, { font = font, trait = trait })
-			return {
-				name = ".SFNS-Bold",
-				size = font and font.size or nil,
-			}
-		end,
-		validFont = function(name)
-			env.valid_font_calls[name] = (env.valid_font_calls[name] or 0) + 1
-			return name ~= ".SFNS-Bold"
-		end,
-		new = function(text, attributes)
-			table.insert(env.styled_text_calls, {
-				text = text,
-				attributes = attributes,
-			})
-			return {
-				text = text,
-				attributes = attributes,
-			}
-		end,
-	}
+	hs.styledtext = make_styledtext(env)
 
 	function hs.printf(...)
 		table.insert(env.printf_calls, { ... })
@@ -192,29 +235,9 @@ local function make_hs(env)
 	return hs
 end
 
-local function default_presentation(remaining_seconds, flash_on)
-	if remaining_seconds == nil then
-		return {
-			title = "NO POMODORO",
-			appearance = "missing",
-		}
-	end
-	if remaining_seconds <= -600 then
-		return {
-			title = "OVERDUE POMODORO",
-			appearance = flash_on and "overdue_warning_flash" or "overdue_warning",
-		}
-	end
-	if remaining_seconds < 0 then
-		return {
-			title = "+0:01",
-			appearance = "overdue",
-		}
-	end
-	return {
-		title = "0:01",
-		appearance = "normal",
-	}
+local function load_real_presentation()
+	local chunk = assert(loadfile(COUNTDOWN_PATH))
+	return chunk()
 end
 
 local function setup_hammerspoon_init_environment(options)
@@ -234,17 +257,21 @@ local function setup_hammerspoon_init_environment(options)
 		printf_calls = {},
 		menu_title_calls = {},
 		styled_text_calls = {},
+		styled_compositions = {},
 		convert_font_calls = {},
 		valid_font_calls = {},
 		task_completion = options.task_completion,
 		reload_calls = 0,
+		fail_styling = false,
 	}
 
 	_G.hs = make_hs(env)
 	_G.BobPomodoroCountdown = options.runtime
-	package.loaded.pomodoro_countdown = {
-		presentation = options.presentation or default_presentation,
-	}
+	if options.presentation ~= nil then
+		package.loaded.pomodoro_countdown = { presentation = options.presentation }
+	else
+		package.loaded.pomodoro_countdown = load_real_presentation()
+	end
 	package.loaded.screenshot_region = {
 		pick = function(callback)
 			table.insert(env.screenshot_pick_callbacks, callback)
@@ -272,6 +299,109 @@ local function load_init_with(options)
 	active_env = setup_hammerspoon_init_environment(options)
 	local ok, error_message = xpcall(active_env.load_init, debug.traceback)
 	return ok, error_message, active_env
+end
+
+local function title_text(title)
+	if type(title) == "string" then
+		return title
+	end
+	if type(title) == "table" and type(title.text) == "string" then
+		return title.text
+	end
+	return tostring(title)
+end
+
+local function title_spans(title)
+	if type(title) == "table" and type(title.spans) == "table" then
+		return title.spans
+	end
+	return nil
+end
+
+local function find_span_with_text(spans, needle)
+	for _, span in ipairs(spans) do
+		if type(span.text) == "string" and span.text:find(needle, 1, true) then
+			return span
+		end
+	end
+	return nil
+end
+
+local function freeze_clock()
+	local real_time = os.time
+	local real_date = os.date
+	local fixed = real_time()
+	local original_time = real_time
+	os.time = function(table_value)
+		if table_value == nil then
+			return fixed
+		end
+		return original_time(table_value)
+	end
+	os.date = function(format, time_value)
+		if time_value == nil then
+			return real_date(format, fixed)
+		end
+		return real_date(format, time_value)
+	end
+	return function()
+		os.time = real_time
+		os.date = real_date
+	end, fixed
+end
+
+local function freeze_clock_at(fixed)
+	local real_time = os.time
+	local real_date = os.date
+	local original_time = real_time
+	os.time = function(table_value)
+		if table_value == nil then
+			return fixed
+		end
+		return original_time(table_value)
+	end
+	os.date = function(format, time_value)
+		if time_value == nil then
+			return real_date(format, fixed)
+		end
+		return real_date(format, time_value)
+	end
+	return function()
+		os.time = real_time
+		os.date = real_date
+	end
+end
+
+local function today_at(hour, minute)
+	local day = os.date("*t")
+	day.hour = hour
+	day.min = minute
+	day.sec = 0
+	day.isdst = nil
+	return os.time(day)
+end
+
+local function task_command_text(task)
+	if type(task.args) == "table" then
+		for _, value in ipairs(task.args) do
+			if type(value) == "string" and value:find("bob pomodoro", 1, true) then
+				return value
+			end
+		end
+	end
+	return ""
+end
+
+local function menu_refresh_fn(menu)
+	if type(menu.menu) ~= "table" then
+		return nil
+	end
+	for _, item in ipairs(menu.menu) do
+		if type(item) == "table" and item.title == "Refresh" and type(item.fn) == "function" then
+			return item.fn
+		end
+	end
+	return nil
 end
 
 describe("Hammerspoon init", function()
@@ -348,81 +478,187 @@ describe("Hammerspoon init", function()
 		assert.not_equals(old_wake_watcher, runtime.wakeWatcher)
 	end)
 
-	it("flashes overdue warnings with constant text and font metrics", function()
+	it("delivers a named active payload with full context and keeps --show-stale", function()
+		local restore_clock = freeze_clock_at(today_at(9, 50))
+		local ok, error_message, env = load_init_with({
+			task_completion = {
+				exit_code = 0,
+				stdout = "[<13m] 0950-1015 — DEEP WORK",
+				stderr = "",
+			},
+		})
+		assert.is_true(ok, error_message)
+		restore_clock()
+
+		local runtime = _G.BobPomodoroCountdown
+		assert.equals("DEEP WORK", runtime.state.fullTheme)
+		assert.equals("10:15", runtime.state.stopTime)
+		assert.equals("0950-1015", runtime.state.range)
+
+		assert.is_true(#env.tasks >= 1)
+		assert.is_true(task_command_text(env.tasks[1]):find("--show-stale", 1, true) ~= nil)
+
+		local title = title_text(runtime.menu.title)
+		assert.is_true(title:find("DEEP WORK", 1, true) ~= nil)
+		assert.is_true(title:find("10:15", 1, true) ~= nil)
+
+		assert.is_true(runtime.menu.tooltip:find("DEEP WORK", 1, true) ~= nil)
+		assert.is_true(runtime.menu.tooltip:find("Stops at 10:15", 1, true) ~= nil)
+		assert.is_true(runtime.menu.tooltip:find(runtime.state.rawOutput, 1, true) ~= nil)
+
+		assert.equals("DEEP WORK → 10:15", runtime.menu.menu[1].title)
+		assert.equals(runtime.state.rawOutput, runtime.menu.menu[2].title)
+		assert.is_true(runtime.menu.menu[3].title:find("Last sync", 1, true) ~= nil)
+		assert.is_not_nil(menu_refresh_fn(runtime.menu))
+	end)
+
+	it("delivers a stale-overdue payload with theme, stop time, and OVERDUE status", function()
+		local restore_clock = freeze_clock()
+		local ok, error_message, env = load_init_with({
+			task_completion = {
+				exit_code = 0,
+				stdout = "[OVERDUE by 45m] 0900-0915 — DEEP WORK",
+				stderr = "",
+			},
+		})
+		assert.is_true(ok, error_message)
+		restore_clock()
+
+		local runtime = _G.BobPomodoroCountdown
+		assert.equals("DEEP WORK", runtime.state.fullTheme)
+		assert.equals("09:15", runtime.state.stopTime)
+		assert.equals("overdue", runtime.state.status)
+
+		assert.is_true(task_command_text(env.tasks[1]):find("--show-stale", 1, true) ~= nil)
+
+		local title = title_text(runtime.menu.title)
+		assert.is_true(title:find("DEEP WORK", 1, true) ~= nil)
+		assert.is_true(title:find("09:15", 1, true) ~= nil)
+		assert.is_true(title:find("OVERDUE", 1, true) ~= nil)
+		assert.is_nil(title:find("OVERDUE POMODORO", 1, true))
+	end)
+
+	it("flashes only the OVERDUE badge with constant text and context styling", function()
+		local restore_clock, fixed = freeze_clock()
 		local ok, error_message, env = load_init_with()
 		assert.is_true(ok, error_message)
 
 		local runtime = _G.BobPomodoroCountdown
 		runtime.state = {
-			rawOutput = "0900-0915 Test task",
-			status = "active",
-			endEpoch = os.time() - 601,
-			lastSyncEpoch = os.time(),
+			rawOutput = "[OVERDUE by 15m] 0900-0915 — DEEP WORK",
+			status = "overdue",
+			taskText = "— DEEP WORK",
+			fullTheme = "DEEP WORK",
+			displayTheme = "DEEP WORK",
+			stopTime = "09:15",
+			endHour = 9,
+			endMinute = 15,
+			endEpoch = fixed - 901,
+			lastSyncEpoch = fixed,
 		}
-		for _ = 1, 4 do
-			runtime.tickTimer.callback()
+		local base_calls = #env.menu_title_calls
+		runtime.tickTimer.callback()
+		runtime.tickTimer.callback()
+		restore_clock()
+
+		assert.equals(base_calls + 2, #env.menu_title_calls)
+		local first_title = env.menu_title_calls[base_calls + 1].title
+		local second_title = env.menu_title_calls[base_calls + 2].title
+		assert.equals(title_text(first_title), title_text(second_title))
+
+		local first_spans = assert(title_spans(first_title))
+		local second_spans = assert(title_spans(second_title))
+		assert.equals(5, #first_spans)
+		assert.equals(5, #second_spans)
+		assert.equals("DEEP WORK", first_spans[1].text)
+		assert.equals(" → ", first_spans[2].text)
+		assert.equals("09:15", first_spans[3].text)
+		assert.equals(" · ", first_spans[4].text)
+
+		local badge_text = first_spans[5].text
+		assert.equals(second_spans[5].text, badge_text)
+		assert.is_true(badge_text:find("OVERDUE", 1, true) ~= nil)
+		assert.is_nil(badge_text:find("POMODORO", 1, true))
+		assert.equals("\194\160OVERDUE\194\160", badge_text)
+
+		for index = 1, 4 do
+			assert.are.same(first_spans[index].attributes, second_spans[index].attributes)
+			assert.is_nil(first_spans[index].attributes.backgroundColor)
 		end
 
-		local warning_calls = {}
-		for _, call in ipairs(env.styled_text_calls) do
-			if call.text:find("OVERDUE POMODORO", 1, true) then
-				table.insert(warning_calls, call)
-			end
+		local first_badge = first_spans[5].attributes
+		local second_badge = second_spans[5].attributes
+		assert.equals(first_badge.font.name, second_badge.font.name)
+		assert.equals(first_badge.font.size, second_badge.font.size)
+		assert.is_false(
+			first_badge.color.hex == second_badge.color.hex
+				and first_badge.backgroundColor == second_badge.backgroundColor
+		)
+		local steady, flash = first_badge, second_badge
+		if steady.backgroundColor ~= nil then
+			steady, flash = second_badge, first_badge
 		end
-		assert.equals(4, #warning_calls)
-		local first_text = warning_calls[1].text
-		local first_font = warning_calls[1].attributes.font
-		assert.equals("\194\160OVERDUE POMODORO\194\160", first_text)
-		for index, call in ipairs(warning_calls) do
-			assert.equals(first_text, call.text)
-			assert.equals(first_font.name, call.attributes.font.name)
-			assert.equals(first_font.size, call.attributes.font.size)
-			if index % 2 == 1 then
-				assert.are.same({ hex = "#ffffff", alpha = 1 }, call.attributes.color)
-				assert.are.same({ hex = "#ff453a", alpha = 1 }, call.attributes.backgroundColor)
-			else
-				assert.are.same({ hex = "#ff453a", alpha = 1 }, call.attributes.color)
-				assert.is_nil(call.attributes.backgroundColor)
-			end
-		end
+		assert.is_nil(steady.backgroundColor)
+		assert.are.same({ hex = "#ff453a", alpha = 1 }, steady.color)
+		assert.are.same({ hex = "#ffffff", alpha = 1 }, flash.color)
+		assert.are.same({ hex = "#ff453a", alpha = 1 }, flash.backgroundColor)
+
+		local context_color = { list = "System", name = "labelColor", alpha = 1 }
+		assert.are.same(context_color, first_spans[1].attributes.color)
+		assert.are.same(context_color, first_spans[3].attributes.color)
 	end)
 
 	it("does not animate countdown, recently overdue, or missing states", function()
+		local restore_clock, fixed = freeze_clock()
 		local ok, error_message, env = load_init_with()
 		assert.is_true(ok, error_message)
 
-		local runtime = _G.BobPomodoroCountdown
 		local states = {
-			{ status = "active", endEpoch = os.time() + 300 },
-			{ status = "overdue", endEpoch = os.time() - 1 },
+			{ status = "active", endEpoch = fixed + 300, fullTheme = "DEEP WORK", stopTime = "10:15" },
+			{ status = "overdue", endEpoch = fixed - 1, fullTheme = "DEEP WORK", stopTime = "10:15" },
 			{ status = "missing" },
 		}
+		local runtime = _G.BobPomodoroCountdown
 		for _, state in ipairs(states) do
-			runtime.state = {
-				rawOutput = "Pomodoro state",
-				status = state.status,
-				endEpoch = state.endEpoch,
-				lastSyncEpoch = os.time(),
-			}
+			if state.status == "missing" then
+				runtime.state = {
+					rawOutput = "No current Pomodoro",
+					status = "missing",
+					lastSyncEpoch = fixed,
+				}
+			else
+				runtime.state = {
+					rawOutput = "0900-0915 Test task",
+					status = state.status,
+					taskText = "— DEEP WORK",
+					fullTheme = state.fullTheme,
+					displayTheme = state.fullTheme,
+					stopTime = state.stopTime,
+					endHour = 10,
+					endMinute = 15,
+					endEpoch = state.endEpoch,
+					lastSyncEpoch = fixed,
+				}
+			end
 			local first_call = #env.menu_title_calls + 1
-			runtime.tickTimer.callback()
-			runtime.tickTimer.callback()
+			_G.BobPomodoroCountdown.tickTimer.callback()
+			_G.BobPomodoroCountdown.tickTimer.callback()
 			local first_title = env.menu_title_calls[first_call].title
 			local second_title = env.menu_title_calls[first_call + 1].title
-			local function title_text(title)
-				return type(title) == "table" and title.text or title
-			end
 			assert.equals(title_text(first_title), title_text(second_title))
 			for index = first_call, first_call + 1 do
-				local title = env.menu_title_calls[index].title
-				if type(title) == "table" then
-					assert.is_nil(title.attributes.backgroundColor)
+				local spans = title_spans(env.menu_title_calls[index].title)
+				if spans then
+					for _, span in ipairs(spans) do
+						assert.is_nil(span.attributes.backgroundColor)
+					end
 				end
 			end
 		end
+		restore_clock()
 	end)
 
-	it("validates converted bold fonts before styled Pomodoro warning renders", function()
+	it("validates converted bold fonts and resolves mono fonts once per load", function()
 		local ok, error_message, env = load_init_with()
 		assert.is_true(ok, error_message)
 
@@ -437,7 +673,13 @@ describe("Hammerspoon init", function()
 		runtime.state = {
 			rawOutput = "0900-0915 Test task",
 			status = "active",
-			endEpoch = os.time() - 601,
+			taskText = "— DEEP WORK",
+			fullTheme = "DEEP WORK",
+			displayTheme = "DEEP WORK",
+			stopTime = "09:15",
+			endHour = 9,
+			endMinute = 15,
+			endEpoch = os.time() - 901,
 			lastSyncEpoch = os.time(),
 		}
 		runtime.tickTimer.callback()
@@ -445,41 +687,297 @@ describe("Hammerspoon init", function()
 
 		assert.equals(1, env.valid_font_calls[".SFNS-Bold"])
 		assert.is_true((env.valid_font_calls["Helvetica-Bold"] or 0) >= 1)
+		assert.is_true((env.valid_font_calls["Menlo-Regular"] or 0) >= 1)
 
 		local missing_call = nil
-		local overdue_warning_call = nil
 		local saw_warning_flash = false
 		local saw_warning_steady = false
 		for _, call in ipairs(env.styled_text_calls) do
 			if call.text == "NO POMODORO" then
 				missing_call = call
-			elseif call.text == "\194\160OVERDUE POMODORO\194\160" then
+			elseif call.text == "\194\160OVERDUE\194\160" or call.text == "OVERDUE" then
 				if call.attributes.backgroundColor then
 					saw_warning_flash = true
 					assert.are.same({ hex = "#ffffff", alpha = 1 }, call.attributes.color)
 					assert.are.same({ hex = "#ff453a", alpha = 1 }, call.attributes.backgroundColor)
-				else
+				elseif call.text == "\194\160OVERDUE\194\160" then
 					saw_warning_steady = true
 					assert.are.same({ hex = "#ff453a", alpha = 1 }, call.attributes.color)
 				end
-				overdue_warning_call = call
 			end
 
 			local font = call.attributes and call.attributes.font
 			if font then
 				assert.not_equals(".SFNS-Bold", font.name)
-				assert.is_true((env.valid_font_calls[font.name] or 0) >= 1)
+				if font.name ~= ".AppleSystemUIFont" then
+					assert.is_true((env.valid_font_calls[font.name] or 0) >= 1)
+				end
 			end
 		end
 
 		assert.is_not_nil(missing_call)
 		assert.are.same({ hex = "#30d158", alpha = 1 }, missing_call.attributes.color)
-		assert.is_not_nil(overdue_warning_call)
 		assert.is_true(saw_warning_flash)
 		assert.is_true(saw_warning_steady)
-		assert.are.same(
-			{ hex = "#ff453a", alpha = 1 },
-			overdue_warning_call.attributes.backgroundColor or overdue_warning_call.attributes.color
-		)
+	end)
+
+	it("leaves a complete readable title when styling fails", function()
+		local restore_clock, fixed = freeze_clock()
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+
+		local runtime = _G.BobPomodoroCountdown
+		runtime.state = {
+			rawOutput = "[<13m] 0950-1015 — DEEP WORK",
+			status = "active",
+			taskText = "— DEEP WORK",
+			fullTheme = "DEEP WORK",
+			displayTheme = "DEEP WORK",
+			stopTime = "10:15",
+			endHour = 10,
+			endMinute = 15,
+			endEpoch = fixed + 60,
+			lastSyncEpoch = fixed,
+		}
+		env.fail_styling = true
+		runtime.tickTimer.callback()
+		restore_clock()
+
+		local title = env.menu_title_calls[#env.menu_title_calls].title
+		assert.equals("string", type(title))
+		assert.is_true(title:find("DEEP WORK", 1, true) ~= nil)
+		assert.is_true(title:find("10:15", 1, true) ~= nil)
+	end)
+
+	it("replaces displayed context on rename and retime", function()
+		local restore_clock = freeze_clock_at(today_at(9, 50))
+		local ok, error_message, env = load_init_with({
+			task_completion = {
+				exit_code = 0,
+				stdout = "[<13m] 0950-1015 — DEEP WORK",
+				stderr = "",
+			},
+		})
+		assert.is_true(ok, error_message)
+		assert.equals("DEEP WORK", _G.BobPomodoroCountdown.state.fullTheme)
+
+		env.task_completion = {
+			exit_code = 0,
+			stdout = "[<5m] 1000-1020 — FOCUS TIME",
+			stderr = "",
+		}
+		_G.BobPomodoroCountdown.syncTimer.callback()
+		restore_clock()
+
+		local runtime = _G.BobPomodoroCountdown
+		assert.equals("FOCUS TIME", runtime.state.fullTheme)
+		assert.equals("10:20", runtime.state.stopTime)
+		local title = title_text(runtime.menu.title)
+		assert.is_true(title:find("FOCUS TIME", 1, true) ~= nil)
+		assert.is_true(title:find("10:20", 1, true) ~= nil)
+		assert.is_nil(title:find("DEEP WORK", 1, true))
+		assert.is_true(runtime.menu.tooltip:find("FOCUS TIME", 1, true) ~= nil)
+		assert.is_true(runtime.menu.tooltip:find("Stops at 10:20", 1, true) ~= nil)
+		assert.equals("FOCUS TIME → 10:20", runtime.menu.menu[1].title)
+	end)
+
+	it("clears old context on empty success and recovers on later valid output", function()
+		local restore_clock = freeze_clock_at(today_at(9, 50))
+		local ok, error_message, env = load_init_with({
+			task_completion = {
+				exit_code = 0,
+				stdout = "[<13m] 0950-1015 — DEEP WORK",
+				stderr = "",
+			},
+		})
+		assert.is_true(ok, error_message)
+		assert.equals("DEEP WORK", _G.BobPomodoroCountdown.state.fullTheme)
+
+		env.task_completion = { exit_code = 0, stdout = "   \n", stderr = "" }
+		_G.BobPomodoroCountdown.syncTimer.callback()
+
+		local runtime = _G.BobPomodoroCountdown
+		assert.equals("missing", runtime.state.status)
+		assert.is_nil(runtime.state.fullTheme)
+		assert.is_nil(runtime.state.stopTime)
+		assert.equals("NO POMODORO", title_text(runtime.menu.title))
+		assert.equals("No current Pomodoro", runtime.menu.tooltip)
+		assert.equals("No current Pomodoro", runtime.menu.menu[1].title)
+		assert.is_nil(runtime.menu.tooltip:find("DEEP WORK", 1, true))
+		assert.is_nil(runtime.menu.tooltip:find("Stops at", 1, true))
+
+		env.task_completion = {
+			exit_code = 0,
+			stdout = "[<5m] 1000-1020 — FOCUS TIME",
+			stderr = "",
+		}
+		_G.BobPomodoroCountdown.syncTimer.callback()
+		restore_clock()
+
+		assert.equals("FOCUS TIME", runtime.state.fullTheme)
+		local title = title_text(runtime.menu.title)
+		assert.is_true(title:find("FOCUS TIME", 1, true) ~= nil)
+	end)
+
+	it("hides the menu on malformed output and recovers on later valid output", function()
+		local restore_clock = freeze_clock_at(today_at(9, 50))
+		local ok, error_message = load_init_with({
+			task_completion = {
+				exit_code = 0,
+				stdout = "[<13m] 0950-1015 — DEEP WORK",
+				stderr = "",
+			},
+		})
+		assert.is_true(ok, error_message)
+		local runtime = _G.BobPomodoroCountdown
+		assert.is_not_nil(runtime.state)
+
+		active_env.task_completion = { exit_code = 0, stdout = "not a pomodoro", stderr = "" }
+		runtime.syncTimer.callback()
+		assert.is_nil(runtime.state)
+		assert.is_true(runtime.menu.removed)
+		assert.is_true(#active_env.printf_calls >= 1)
+
+		active_env.task_completion = {
+			exit_code = 0,
+			stdout = "[<5m] 1000-1020 — FOCUS TIME",
+			stderr = "",
+		}
+		runtime.syncTimer.callback()
+		restore_clock()
+		assert.equals("FOCUS TIME", runtime.state.fullTheme)
+	end)
+
+	it("hides the menu on nonzero exit and recovers on later valid output", function()
+		local restore_clock = freeze_clock_at(today_at(9, 50))
+		local ok, error_message = load_init_with({
+			task_completion = {
+				exit_code = 0,
+				stdout = "[<13m] 0950-1015 — DEEP WORK",
+				stderr = "",
+			},
+		})
+		assert.is_true(ok, error_message)
+		local runtime = _G.BobPomodoroCountdown
+
+		active_env.task_completion = { exit_code = 1, stdout = "", stderr = "boom" }
+		runtime.syncTimer.callback()
+		assert.is_nil(runtime.state)
+		assert.is_true(runtime.menu.removed)
+
+		active_env.task_completion = {
+			exit_code = 0,
+			stdout = "[<5m] 1000-1020 — FOCUS TIME",
+			stderr = "",
+		}
+		runtime.syncTimer.callback()
+		restore_clock()
+		assert.equals("FOCUS TIME", runtime.state.fullTheme)
+	end)
+
+	it("starts only one sync task at a time", function()
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+		assert.equals(1, #env.tasks)
+
+		_G.BobPomodoroCountdown.syncTimer.callback()
+		assert.equals(1, #env.tasks)
+	end)
+
+	it("requests one sync when crossing zero", function()
+		local restore_clock, fixed = freeze_clock()
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+		local runtime = _G.BobPomodoroCountdown
+		env.task_completion = {
+			exit_code = 0,
+			stdout = "[OVERDUE by 0m] 0900-0915 — DEEP WORK",
+			stderr = "",
+		}
+
+		runtime.state = {
+			rawOutput = "[<1m] 0900-0915 — DEEP WORK",
+			status = "active",
+			taskText = "— DEEP WORK",
+			fullTheme = "DEEP WORK",
+			displayTheme = "DEEP WORK",
+			stopTime = "09:15",
+			endHour = 9,
+			endMinute = 15,
+			endEpoch = fixed - 1,
+			lastSyncEpoch = fixed,
+			zeroSyncRequested = nil,
+		}
+		runtime.task = nil
+		local tasks_before = #env.tasks
+		local old_state = runtime.state
+		runtime.tickTimer.callback()
+		assert.equals(tasks_before + 1, #env.tasks)
+		assert.is_true(old_state.zeroSyncRequested)
+		assert.equals("overdue", runtime.state.status)
+
+		local tasks_after_first = #env.tasks
+		runtime.tickTimer.callback()
+		assert.equals(tasks_after_first, #env.tasks)
+		restore_clock()
+	end)
+
+	it("syncs on wake and unlock", function()
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+		local runtime = _G.BobPomodoroCountdown
+		runtime.task = nil
+		local tasks_before = #env.tasks
+
+		runtime.wakeWatcher.callback(_G.hs.caffeinate.watcher.systemDidWake)
+		runtime.task = nil
+		runtime.wakeWatcher.callback(_G.hs.caffeinate.watcher.screensDidUnlock)
+		assert.equals(tasks_before + 2, #env.tasks)
+	end)
+
+	it("supports manual refresh from the menu", function()
+		local restore_clock = freeze_clock_at(today_at(9, 50))
+		local ok, error_message, env = load_init_with({
+			task_completion = {
+				exit_code = 0,
+				stdout = "[<13m] 0950-1015 — DEEP WORK",
+				stderr = "",
+			},
+		})
+		assert.is_true(ok, error_message)
+		local runtime = _G.BobPomodoroCountdown
+		local tasks_before = #env.tasks
+		local refresh = menu_refresh_fn(runtime.menu)
+		assert.is_not_nil(refresh)
+		refresh()
+		restore_clock()
+		assert.equals(tasks_before + 1, #env.tasks)
+	end)
+
+	it("rejects stale task callbacks", function()
+		local restore_clock = freeze_clock_at(today_at(9, 50))
+		local ok, error_message, env = load_init_with({
+			task_completion = {
+				exit_code = 0,
+				stdout = "[<13m] 0950-1015 — DEEP WORK",
+				stderr = "",
+			},
+		})
+		assert.is_true(ok, error_message)
+		local runtime = _G.BobPomodoroCountdown
+		local first_task = env.tasks[1]
+		assert.is_not_nil(first_task)
+
+		env.task_completion = {
+			exit_code = 0,
+			stdout = "[<5m] 1000-1020 — FOCUS TIME",
+			stderr = "",
+		}
+		runtime.syncTimer.callback()
+		assert.equals("FOCUS TIME", runtime.state.fullTheme)
+
+		first_task.callback(0, "[<13m] 0950-1015 — DEEP WORK", "")
+		restore_clock()
+		assert.equals("FOCUS TIME", runtime.state.fullTheme)
 	end)
 end)
