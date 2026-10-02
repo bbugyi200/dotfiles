@@ -12,6 +12,41 @@ local ARROW = " → "
 local SEPARATOR = " · "
 local GAP = " "
 
+-- Ten-color running-countdown palette copied from SASE's usage indicator
+-- (src/sase/ace/tui/widgets/_usage_indicator_palette.py at revision
+-- 34079430e3bf2fd34bd3451631cbdbcd370514d2). Hammerspoon must not import
+-- SASE or read its checkout at runtime, so the hex values live here.
+-- Bucket 1 is nearly exhausted (red); bucket 10 is a fresh session (blue).
+M.GRADIENT_DARK_COLORS = {
+	"#FF5F6D",
+	"#FF805F",
+	"#FFA552",
+	"#EBC04F",
+	"#CED44C",
+	"#AADC64",
+	"#78DB8D",
+	"#4CD4B0",
+	"#48CCD0",
+	"#65C3ED",
+}
+
+M.GRADIENT_LIGHT_COLORS = {
+	"#A22534",
+	"#A03620",
+	"#8C480E",
+	"#775800",
+	"#5F6500",
+	"#456C1B",
+	"#206F3C",
+	"#006E56",
+	"#006C6C",
+	"#006381",
+}
+
+local function is_finite_number(value)
+	return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
+end
+
 local function trim(text)
 	local result = tostring(text or "")
 	result = result:gsub("^%s+", "")
@@ -122,10 +157,7 @@ function M.duration_minutes(start_hour, start_minute, end_hour, end_minute)
 end
 
 function M.format_duration(minutes)
-	if type(minutes) ~= "number" then
-		return nil
-	end
-	if minutes ~= minutes then
+	if not is_finite_number(minutes) then
 		return nil
 	end
 	local floored = math.floor(minutes)
@@ -133,6 +165,56 @@ function M.format_duration(minutes)
 		return nil
 	end
 	return string.format("%dm", floored)
+end
+
+--- Return the 1-10 gradient bucket for remaining seconds and duration minutes.
+-- Uses exact equal tenths of the scheduled duration: bucket 10 is above 90%
+-- through 100%, bucket 1 is zero through 10%. Time above the scheduled
+-- duration clamps to bucket 10. Returns nil for unavailable inputs
+-- (missing/nonnumeric/nonfinite duration, nonpositive duration, or
+-- nonfinite/nonnumeric remaining) and for negative remaining, which the
+-- overdue alert path owns.
+function M.gradient_bucket(remaining_seconds, duration_minutes)
+	if not is_finite_number(remaining_seconds) then
+		return nil
+	end
+	if not is_finite_number(duration_minutes) then
+		return nil
+	end
+	if duration_minutes <= 0 then
+		return nil
+	end
+	if remaining_seconds < 0 then
+		return nil
+	end
+	local total = duration_minutes * 60
+	if not is_finite_number(total) or total <= 0 then
+		return nil
+	end
+	local clamped = remaining_seconds
+	if clamped < 0 then
+		clamped = 0
+	end
+	if clamped > total then
+		clamped = total
+	end
+	return math.max(1, math.min(10, math.ceil(10 * clamped / total)))
+end
+
+--- Return the hex color for a 1-10 gradient bucket. `dark` selects the dark
+-- appearance palette; any other value selects the light palette. Returns nil
+-- for out-of-range or nonnumeric buckets.
+function M.gradient_color(bucket, dark)
+	if type(bucket) ~= "number" or bucket ~= math.floor(bucket) then
+		return nil
+	end
+	if bucket < 1 or bucket > 10 then
+		return nil
+	end
+	if dark then
+		return M.GRADIENT_DARK_COLORS[bucket]
+	end
+	return M.GRADIENT_LIGHT_COLORS[bucket]
 end
 
 function M.presentation(remaining_seconds, flash_on, context)
@@ -170,11 +252,15 @@ function M.presentation(remaining_seconds, flash_on, context)
 	local display_theme = M.shorten_theme(full_theme)
 
 	local duration = nil
+	local duration_minutes = nil
 	if type(context) == "table" then
 		if type(context.duration) == "string" and context.duration ~= "" then
 			duration = context.duration
 		elseif context.durationMinutes ~= nil then
 			duration = M.format_duration(context.durationMinutes)
+		end
+		if is_finite_number(context.durationMinutes) then
+			duration_minutes = context.durationMinutes
 		end
 	end
 
@@ -191,9 +277,12 @@ function M.presentation(remaining_seconds, flash_on, context)
 		appearance = "normal"
 	end
 
+	local bucket = nil
+	if appearance == "normal" then
+		bucket = M.gradient_bucket(remaining_seconds, duration_minutes)
+	end
+
 	local segments = {
-		{ text = M.ICON, role = "icon" },
-		{ text = GAP, role = "gap" },
 		{ text = display_theme, role = "theme" },
 	}
 	if duration ~= nil then
@@ -205,6 +294,8 @@ function M.presentation(remaining_seconds, flash_on, context)
 		table.insert(segments, { text = stop, role = "stop" })
 	end
 	table.insert(segments, { text = SEPARATOR, role = "separator" })
+	table.insert(segments, { text = M.ICON, role = "icon" })
+	table.insert(segments, { text = GAP, role = "gap" })
 	table.insert(segments, { text = status_text, role = "status" })
 
 	local parts = {}
@@ -220,6 +311,8 @@ function M.presentation(remaining_seconds, flash_on, context)
 		fullTheme = full_theme,
 		stop = stop,
 		duration = duration,
+		durationMinutes = duration_minutes,
+		bucket = bucket,
 		icon = M.ICON,
 		segments = segments,
 	}

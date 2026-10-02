@@ -224,6 +224,15 @@ local function make_hs(env)
 
 	hs.styledtext = make_styledtext(env)
 
+	hs.host = {
+		interfaceStyle = function()
+			if env.host_error then
+				error(env.host_error)
+			end
+			return env.interface_style
+		end,
+	}
+
 	function hs.printf(...)
 		table.insert(env.printf_calls, { ... })
 	end
@@ -619,14 +628,14 @@ describe("Hammerspoon init", function()
 		local second_spans = assert(title_spans(second_title))
 		assert.equals(9, #first_spans)
 		assert.equals(9, #second_spans)
-		assert.equals("🍅", first_spans[1].text)
+		assert.equals("DEEP WORK", first_spans[1].text)
 		assert.equals(" ", first_spans[2].text)
-		assert.equals("DEEP WORK", first_spans[3].text)
-		assert.equals(" ", first_spans[4].text)
-		assert.equals("(15m)", first_spans[5].text)
-		assert.equals(" → ", first_spans[6].text)
-		assert.equals("09:15", first_spans[7].text)
-		assert.equals(" · ", first_spans[8].text)
+		assert.equals("(15m)", first_spans[3].text)
+		assert.equals(" → ", first_spans[4].text)
+		assert.equals("09:15", first_spans[5].text)
+		assert.equals(" · ", first_spans[6].text)
+		assert.equals("🍅", first_spans[7].text)
+		assert.equals(" ", first_spans[8].text)
 
 		local badge_text = first_spans[9].text
 		assert.equals(second_spans[9].text, badge_text)
@@ -638,7 +647,7 @@ describe("Hammerspoon init", function()
 			assert.are.same(first_spans[index].attributes, second_spans[index].attributes)
 			assert.is_nil(first_spans[index].attributes.backgroundColor)
 		end
-		assert.are.same({ list = "System", name = "secondaryLabelColor" }, first_spans[5].attributes.color)
+		assert.are.same({ list = "System", name = "labelColor", alpha = 1 }, first_spans[3].attributes.color)
 
 		local first_badge = first_spans[9].attributes
 		local second_badge = second_spans[9].attributes
@@ -658,7 +667,8 @@ describe("Hammerspoon init", function()
 		assert.are.same({ hex = "#ff453a", alpha = 1 }, flash.backgroundColor)
 
 		local context_color = { list = "System", name = "labelColor", alpha = 1 }
-		assert.are.same(context_color, first_spans[3].attributes.color)
+		assert.are.same(context_color, first_spans[1].attributes.color)
+		assert.are.same(context_color, first_spans[5].attributes.color)
 		assert.are.same(context_color, first_spans[7].attributes.color)
 	end)
 
@@ -1039,5 +1049,271 @@ describe("Hammerspoon init", function()
 		first_task.callback(0, "[<13m] 0950-1015 — DEEP WORK", "")
 		restore_clock()
 		assert.equals("FOCUS TIME", runtime.state.fullTheme)
+	end)
+end)
+
+describe("Hammerspoon init Pomodoro countdown gradient", function()
+	after_each(function()
+		if active_env then
+			active_env.restore()
+			active_env = nil
+		end
+	end)
+
+	local LABEL_COLOR = { list = "System", name = "labelColor", alpha = 1 }
+
+	local function running_state(fixed, remaining_seconds, minutes)
+		return {
+			rawOutput = "[<13m] 0950-1015 — DEEP WORK",
+			status = "active",
+			taskText = "— DEEP WORK",
+			fullTheme = "DEEP WORK",
+			displayTheme = "DEEP WORK",
+			stopTime = "10:15",
+			startHour = 9,
+			startMinute = 50,
+			endHour = 10,
+			endMinute = 15,
+			durationMinutes = minutes,
+			duration = minutes and (minutes .. "m") or nil,
+			endEpoch = fixed + remaining_seconds,
+			lastSyncEpoch = fixed,
+		}
+	end
+
+	local function last_spans(env)
+		local title = env.menu_title_calls[#env.menu_title_calls].title
+		return title_text(title), assert(title_spans(title))
+	end
+
+	it("paints the running countdown with the dark palette and keeps context spans neutral", function()
+		local restore_clock, fixed = freeze_clock()
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+		env.interface_style = "Dark"
+
+		local runtime = _G.BobPomodoroCountdown
+		runtime.state = running_state(fixed, 3000, 50)
+		runtime.tickTimer.callback()
+		restore_clock()
+
+		local text, spans = last_spans(env)
+		assert.equals("DEEP WORK (50m) · 🍅 50:00", text)
+		assert.equals(7, #spans)
+		assert.equals("50:00", spans[7].text)
+		assert.are.same({ hex = "#65C3ED", alpha = 1 }, spans[7].attributes.color)
+		assert.equals("Menlo-Regular", spans[7].attributes.font.name)
+		assert.equals(".AppleSystemUIFont", spans[3].attributes.font.name)
+
+		assert.are.same(LABEL_COLOR, spans[1].attributes.color)
+		assert.are.same(LABEL_COLOR, spans[3].attributes.color)
+		assert.are.same(LABEL_COLOR, spans[5].attributes.color)
+		for _, span in ipairs(spans) do
+			assert.is_nil(span.attributes.backgroundColor)
+		end
+	end)
+
+	it("paints the running countdown with the light palette on nil and Light styles", function()
+		local restore_clock, fixed = freeze_clock()
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+
+		local runtime = _G.BobPomodoroCountdown
+		runtime.state = running_state(fixed, 3000, 50)
+
+		env.interface_style = nil
+		runtime.tickTimer.callback()
+		local default_text, default_spans = last_spans(env)
+		assert.equals("DEEP WORK (50m) · 🍅 50:00", default_text)
+		assert.are.same({ hex = "#006381", alpha = 1 }, default_spans[7].attributes.color)
+
+		env.interface_style = "Light"
+		runtime.tickTimer.callback()
+		restore_clock()
+		local light_text, light_spans = last_spans(env)
+		assert.equals(default_text, light_text)
+		assert.are.same({ hex = "#006381", alpha = 1 }, light_spans[7].attributes.color)
+	end)
+
+	it("falls back to neutral countdown text for unknown appearance inputs", function()
+		local restore_clock, fixed = freeze_clock()
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+
+		local runtime = _G.BobPomodoroCountdown
+		runtime.state = running_state(fixed, 3000, 50)
+		local hs_host = _G.hs.host
+
+		env.interface_style = "Solarized"
+		runtime.tickTimer.callback()
+		local unknown_text, unknown_spans = last_spans(env)
+		assert.equals("DEEP WORK (50m) · 🍅 50:00", unknown_text)
+		assert.are.same(LABEL_COLOR, unknown_spans[7].attributes.color)
+
+		_G.hs.host = nil
+		runtime.tickTimer.callback()
+		local absent_text, absent_spans = last_spans(env)
+		assert.equals("DEEP WORK (50m) · 🍅 50:00", absent_text)
+		assert.are.same(LABEL_COLOR, absent_spans[7].attributes.color)
+
+		_G.hs.host = hs_host
+		env.host_error = "boom"
+		runtime.tickTimer.callback()
+		restore_clock()
+		local error_text, error_spans = last_spans(env)
+		assert.equals("DEEP WORK (50m) · 🍅 50:00", error_text)
+		assert.are.same(LABEL_COLOR, error_spans[7].attributes.color)
+	end)
+
+	it("falls back to neutral countdown text without a numeric duration", function()
+		local restore_clock, fixed = freeze_clock()
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+		env.interface_style = "Dark"
+
+		local runtime = _G.BobPomodoroCountdown
+		runtime.state = running_state(fixed, 60, nil)
+		runtime.state.duration = nil
+		runtime.state.durationMinutes = nil
+		runtime.tickTimer.callback()
+		restore_clock()
+
+		local text, spans = last_spans(env)
+		assert.equals("DEEP WORK → 10:15 · 🍅 01:00", text)
+		assert.are.same(LABEL_COLOR, spans[#spans].attributes.color)
+	end)
+
+	it("switches palettes between ticks without changing text, layout, or fonts", function()
+		local restore_clock, fixed = freeze_clock()
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+
+		local runtime = _G.BobPomodoroCountdown
+		runtime.state = running_state(fixed, 2700, 50)
+
+		env.interface_style = "Dark"
+		runtime.tickTimer.callback()
+		local dark_text, dark_spans = last_spans(env)
+
+		env.interface_style = "Light"
+		runtime.tickTimer.callback()
+		restore_clock()
+		local light_text, light_spans = last_spans(env)
+
+		assert.equals(dark_text, light_text)
+		assert.equals(#dark_spans, #light_spans)
+		for index, span in ipairs(dark_spans) do
+			assert.equals(span.text, light_spans[index].text)
+			assert.are.same(span.attributes.font, light_spans[index].attributes.font)
+		end
+		assert.are.same({ hex = "#48CCD0", alpha = 1 }, dark_spans[#dark_spans].attributes.color)
+		assert.are.same({ hex = "#006C6C", alpha = 1 }, light_spans[#light_spans].attributes.color)
+	end)
+
+	it("carries durationMinutes from sync into gradient selection without an extra request", function()
+		local restore_clock = freeze_clock_at(today_at(9, 50))
+		local ok, error_message, env = load_init_with({
+			task_completion = {
+				exit_code = 0,
+				stdout = "[<13m] 0950-1015 — DEEP WORK",
+				stderr = "",
+			},
+		})
+		assert.is_true(ok, error_message)
+		env.interface_style = "Dark"
+
+		local runtime = _G.BobPomodoroCountdown
+		assert.equals(25, runtime.state.durationMinutes)
+		assert.equals("25m", runtime.state.duration)
+
+		local tasks_before = #env.tasks
+		runtime.tickTimer.callback()
+		local full_text, full_spans = last_spans(env)
+		assert.equals("DEEP WORK (25m) · 🍅 25:00", full_text)
+		assert.are.same({ hex = "#65C3ED", alpha = 1 }, full_spans[#full_spans].attributes.color)
+
+		runtime.state.endEpoch = runtime.state.endEpoch - 150
+		runtime.tickTimer.callback()
+		restore_clock()
+		assert.equals(tasks_before, #env.tasks)
+		local boundary_text, boundary_spans = last_spans(env)
+		assert.equals("DEEP WORK (25m) · 🍅 22:30", boundary_text)
+		assert.are.same({ hex = "#48CCD0", alpha = 1 }, boundary_spans[#boundary_spans].attributes.color)
+	end)
+
+	it("updates the gradient denominator on retime while rename-only keeps the color", function()
+		local restore_clock = freeze_clock_at(today_at(10, 10))
+		local ok, error_message, env = load_init_with({
+			task_completion = {
+				exit_code = 0,
+				stdout = "[<13m] 0950-1015 — DEEP WORK",
+				stderr = "",
+			},
+		})
+		assert.is_true(ok, error_message)
+		env.interface_style = "Dark"
+
+		local runtime = _G.BobPomodoroCountdown
+		runtime.tickTimer.callback()
+		local _, first_spans = last_spans(env)
+		assert.equals(25, runtime.state.durationMinutes)
+		assert.are.same({ hex = "#FF805F", alpha = 1 }, first_spans[#first_spans].attributes.color)
+
+		env.task_completion = {
+			exit_code = 0,
+			stdout = "[<5m] 1000-1020 — FOCUS TIME",
+			stderr = "",
+		}
+		runtime.syncTimer.callback()
+		assert.equals(20, runtime.state.durationMinutes)
+		assert.equals("20m", runtime.state.duration)
+		local retime_text, retime_spans = last_spans(env)
+		assert.is_true(retime_text:find("FOCUS TIME (20m) · 🍅 10:00", 1, true) ~= nil)
+		assert.are.same({ hex = "#CED44C", alpha = 1 }, retime_spans[#retime_spans].attributes.color)
+
+		env.task_completion = {
+			exit_code = 0,
+			stdout = "[<5m] 1000-1020 — DEEP REST",
+			stderr = "",
+		}
+		runtime.syncTimer.callback()
+		restore_clock()
+		local rename_text, rename_spans = last_spans(env)
+		assert.is_true(rename_text:find("DEEP REST (20m) · 🍅 10:00", 1, true) ~= nil)
+		assert.are.same(retime_spans[#retime_spans].attributes.color, rename_spans[#rename_spans].attributes.color)
+	end)
+
+	it("leaves complete plain titles with the relocated tomato when styling fails", function()
+		local restore_clock, fixed = freeze_clock()
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+
+		local runtime = _G.BobPomodoroCountdown
+		env.fail_styling = true
+
+		runtime.state = running_state(fixed, 60, 25)
+		runtime.tickTimer.callback()
+		local running_title = env.menu_title_calls[#env.menu_title_calls].title
+		assert.equals("string", type(running_title))
+		assert.equals("DEEP WORK (25m) · 🍅 01:00", running_title)
+
+		runtime.state = running_state(fixed, -1, 25)
+		runtime.state.status = "overdue"
+		runtime.state.zeroSyncRequested = true
+		runtime.tickTimer.callback()
+		local overdue_title = env.menu_title_calls[#env.menu_title_calls].title
+		assert.equals("string", type(overdue_title))
+		assert.equals("DEEP WORK (25m) → 10:15 · 🍅 +00:01", overdue_title)
+
+		runtime.state = {
+			rawOutput = "No current Pomodoro",
+			status = "missing",
+			lastSyncEpoch = fixed,
+		}
+		runtime.tickTimer.callback()
+		restore_clock()
+		local missing_title = env.menu_title_calls[#env.menu_title_calls].title
+		assert.equals("string", type(missing_title))
+		assert.equals("🍅 NO POMODORO", missing_title)
 	end)
 end)

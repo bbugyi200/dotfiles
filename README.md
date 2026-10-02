@@ -29,29 +29,47 @@ Never leave both production hotkeys active during rollback.
 
 ## Pomodoro menu bar
 
-Hammerspoon shows the current Bob Pomodoro as one status item in the fixed order **🍅
-theme (duration) · status**, with `→ stop time` inserted once overdue. The 🍅 is the
-item's constant anchor in every visible state, including `NO POMODORO`. While running,
-the duration names the session's scheduled length; the stop time returns once the
-session is overdue, when the scheduled endpoint is the useful fact. The stop time is
-zero-padded 24-hour `HH:MM`, matching the ledger convention.
+Hammerspoon shows the current Bob Pomodoro as one status item in the fixed order **theme
+(duration) · 🍅 status**, with `→ stop time` inserted once overdue. The 🍅 sits
+immediately before the countdown, separated by exactly one ordinary space, so it
+identifies the digits to its right. The 🍅 is also the item's constant anchor in
+`NO POMODORO`. While running, the duration names the session's scheduled length; the
+stop time returns once the session is overdue, when the scheduled endpoint is the useful
+fact. The stop time is zero-padded 24-hour `HH:MM`, matching the ledger convention.
 
 | State                               | Example title                          |
 | ----------------------------------- | -------------------------------------- |
-| Running                             | `🍅 DEEP WORK (50m) · 12:34`           |
-| At the stop time                    | `🍅 DEEP WORK (50m) · 00:00`           |
-| Recently overdue                    | `🍅 DEEP WORK (50m) → 10:15 · +00:01`  |
-| Last second before escalation       | `🍅 DEEP WORK (50m) → 10:15 · +09:59`  |
-| Ten minutes overdue and later       | `🍅 DEEP WORK (50m) → 10:15 · OVERDUE` |
-| Session without a name              | `🍅 UNTITLED (50m) · 12:34`            |
-| Duration unknown (degenerate range) | `🍅 DEEP WORK → 10:15 · 12:34`         |
+| Running                             | `DEEP WORK (50m) · 🍅 12:34`           |
+| At the stop time                    | `DEEP WORK (50m) · 🍅 00:00`           |
+| Recently overdue                    | `DEEP WORK (50m) → 10:15 · 🍅 +00:01`  |
+| Last second before escalation       | `DEEP WORK (50m) → 10:15 · 🍅 +09:59`  |
+| Ten minutes overdue and later       | `DEEP WORK (50m) → 10:15 · 🍅 OVERDUE` |
+| Session without a name              | `UNTITLED (50m) · 🍅 12:34`            |
+| Duration unknown (degenerate range) | `DEEP WORK → 10:15 · 🍅 12:34`         |
 | No current session                  | `🍅 NO POMODORO`                       |
 
 The duration is the scheduled session length in whole minutes (`5m`, `25m`, `50m`,
 `90m`, `120m`), derived from the ledger range with midnight wrap (`2330-0020` → `50m`).
-A zero-length range or invalid input means unknown: the duration is omitted and the
+It renders in the ordinary menu-bar foreground, matching the surrounding context. A
+zero-length range or invalid input means unknown: the duration is omitted and the
 running title falls back to `→ HH:MM`, so every current-session title keeps at least one
 time anchor plus the status.
+
+The running countdown digits carry a ten-color time-relative gradient, from blue (fresh)
+toward red (nearly exhausted), based on the fraction of scheduled time remaining — not
+fixed minute thresholds, so five minutes left is the last tenth of a 50-minute session
+but half of a 10-minute one. Exact tenths decide the bucket: above 90% through 100% is
+bucket 10, above 80% through 90% is bucket 9, down to zero through 10% in bucket 1, with
+time above the scheduled duration clamped to bucket 10. A 50-minute session changes
+color every five minutes (`50:00` blue, `45:00` cyan, `40:00` teal, down to `05:00`
+red); a 25-minute session changes every 2:30. Both dark and light menu-bar appearances
+have their own ten hex stops; when the duration or the appearance information is
+unavailable, the countdown stays in the neutral system foreground with all text and
+fonts intact. The palette is copied from SASE's usage indicator
+(`src/sase/ace/tui/widgets/_usage_indicator_palette.py`); the SASE contrast measurements
+apply to its opaque TUI badge surfaces, not the translucent macOS menu bar. The overdue
+states keep their existing fixed-red `+MM:SS` and flashing `OVERDUE` alerts, which take
+priority over the gradient.
 
 Long themes are bounded to 24 Unicode code points including the final ellipsis; the full
 theme stays in the tooltip and dropdown. The tooltip leads with `full theme (duration)`

@@ -248,8 +248,6 @@ local bobPomodoroBoldMenuBarFont = resolveBobPomodoroBoldMenuBarFont()
 local bobPomodoroMonoMenuBarFont = resolveBobPomodoroMonoMenuBarFont() or bobPomodoroMenuBarFont
 
 local bobPomodoroIconTitleAttributes = bobPomodoroTitleAttributes(bobPomodoroContextForeground, bobPomodoroMenuBarFont)
-local bobPomodoroDurationTitleAttributes =
-	bobPomodoroTitleAttributes({ list = "System", name = "secondaryLabelColor" }, bobPomodoroMenuBarFont)
 
 local bobPomodoroMissingTitleAttributes =
 	bobPomodoroTitleAttributes({ hex = "#30d158", alpha = 1 }, bobPomodoroBoldMenuBarFont)
@@ -272,6 +270,42 @@ local bobPomodoroOverdueWarningFlashTitleAttributes = bobPomodoroTitleAttributes
 	bobPomodoroBoldMenuBarFont,
 	{ hex = "#ff453a", alpha = 1 }
 )
+
+-- Cached per-bucket gradient attributes (monospaced digits only). Built once
+-- per config load from the pure palette in pomodoro_countdown; selection never
+-- mutates the shared context attributes above.
+local bobPomodoroGradientDarkTitleAttributes = {}
+local bobPomodoroGradientLightTitleAttributes = {}
+for bucket = 1, 10 do
+	local dark_hex = PomodoroCountdown.gradient_color(bucket, true)
+	local light_hex = PomodoroCountdown.gradient_color(bucket, false)
+	bobPomodoroGradientDarkTitleAttributes[bucket] =
+		bobPomodoroTitleAttributes({ hex = dark_hex, alpha = 1 }, bobPomodoroMonoMenuBarFont)
+	bobPomodoroGradientLightTitleAttributes[bucket] =
+		bobPomodoroTitleAttributes({ hex = light_hex, alpha = 1 }, bobPomodoroMonoMenuBarFont)
+end
+
+-- Resolve the menu-bar interface style via hs.host.interfaceStyle().
+-- Returns true for dark, false for light/default (nil or "Light"), and nil
+-- for unknown (missing API, exception, or unrecognized value). Callers use
+-- neutral countdown text when the result is nil.
+local function resolveBobPomodoroInterfaceDark()
+	if type(hs.host) ~= "table" or type(hs.host.interfaceStyle) ~= "function" then
+		return nil
+	end
+	local ok, style = pcall(hs.host.interfaceStyle)
+	if not ok then
+		return nil
+	end
+	if style == "Dark" then
+		return true
+	end
+	if style == nil or style == "Light" then
+		return false
+	end
+	return nil
+end
+
 local bobPomodoroNoBreakSpace = "\194\160"
 
 local function bobPomodoroSegmentText(segments, role)
@@ -329,6 +363,16 @@ local function bobPomodoroMenuTitle(presentation)
 			assert(has_status, "missing status segment")
 		end
 
+		-- Resolve the interface style once per render so appearance switches
+		-- take effect without a reload. Unknown styles fall back to neutral
+		-- countdown text while keeping the styled context title.
+		local interface_dark = nil
+		local has_interface_style = false
+		if appearance == "normal" and type(presentation.bucket) == "number" then
+			interface_dark = resolveBobPomodoroInterfaceDark()
+			has_interface_style = interface_dark ~= nil
+		end
+
 		local composed_title = nil
 		for _, segment in ipairs(presentation.segments) do
 			if type(segment) ~= "table" or type(segment.text) ~= "string" then
@@ -343,7 +387,7 @@ local function bobPomodoroMenuTitle(presentation)
 			elseif segment.role == "theme" then
 				attributes = bobPomodoroThemeTitleAttributes
 			elseif segment.role == "duration" then
-				attributes = bobPomodoroDurationTitleAttributes
+				attributes = bobPomodoroContextTitleAttributes
 			elseif segment.role == "arrow" then
 				attributes = bobPomodoroContextTitleAttributes
 			elseif segment.role == "stop" then
@@ -352,7 +396,16 @@ local function bobPomodoroMenuTitle(presentation)
 				attributes = bobPomodoroContextTitleAttributes
 			elseif segment.role == "status" then
 				if appearance == "normal" then
-					attributes = bobPomodoroCountdownTitleAttributes
+					local bucket = presentation.bucket
+					if type(bucket) == "number" and bucket >= 1 and bucket <= 10 and has_interface_style then
+						if interface_dark then
+							attributes = bobPomodoroGradientDarkTitleAttributes[bucket]
+						else
+							attributes = bobPomodoroGradientLightTitleAttributes[bucket]
+						end
+					else
+						attributes = bobPomodoroCountdownTitleAttributes
+					end
 				elseif appearance == "overdue" then
 					attributes = bobPomodoroOverdueCountdownTitleAttributes
 				elseif appearance == "overdue_warning" then
@@ -473,6 +526,7 @@ local function renderBobPomodoroMenu()
 			endHour = state.endHour,
 			endMinute = state.endMinute,
 			duration = state.duration,
+			durationMinutes = state.durationMinutes,
 		}
 	end
 
