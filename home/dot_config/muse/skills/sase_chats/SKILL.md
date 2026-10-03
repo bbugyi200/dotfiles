@@ -128,5 +128,5 @@ question is narrower:
 ## Not for continuing a conversation
 
 This skill is read-only. To continue a prior conversation in a new agent, use
-`#fork:<name>` or `#fork_by_chat:<basename>` xprompts — they remain the right tool for
+`#fork:<name>` or `#fork_by_chat:<basename>` macros — they remain the right tool for
 that.

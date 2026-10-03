@@ -66,11 +66,11 @@ segment. Set `max_slots` at least to the segment count; otherwise the request fa
 
 ## Compose The Requested Prompt
 
-The requested prompt is a full sase prompt: `%` directives and `#` xprompt references
-all work. Before submitting, think hard about the workspace and wait choices below; they
+The requested prompt is a full sase prompt: `%` directives and `#` macro references all
+work. Before submitting, think hard about the workspace and wait choices below; they
 determine where the agent runs and which changes it sees.
 
-### VCS Workspace xprompt
+### VCS Workspace macro
 
 Prompts that are not agent-session attachments should normally start with a VCS
 workspace reference:
@@ -106,13 +106,13 @@ into that tribe after the waiting launch. Think hard about whether you need it:
   `@tribe → name` with its status badge, while a wait with no qualifying launch yet
   appears as `@tribe (next launch)`.
 
-### Other xprompts
+### Other macros
 
 `#name` / `#name(args)` references expand reusable templates and multi-step workflows:
 they can inject prompt text, run python/bash steps, set environment variables, and split
 work across multiple agents. Rollover workflows `#commit`, `#propose`, and `#pr(<name>)`
 control how the launched agent's changes land. Discover what is available with
-`sase xprompt list`; preview a prompt's expansion with `sase xprompt expand '<prompt>'`.
+`sase macro list`; preview a prompt's expansion with `sase macro expand '<prompt>'`.
 
 `#fork:<agent>` continues from one agent's chat. `#fork:<clan>` injects every clan
 member's sanitized prompts plus reply outcome, model, launch time, size statistics, and
@@ -128,13 +128,12 @@ re-targets the workspace; a stray `%m` mention fails the launch after approval. 
 prompt must show prompt syntax literally (docs, demos, tests):
 
 - Put the literal syntax in a fenced code block; fenced content is never parsed.
-- Or enclose a prose region between `%xprompts_enabled:false` and
-  `%xprompts_enabled:true` marker lines; the markers are stripped before the launched
-  agent sees the prompt.
+- Or enclose a prose region between `%macros_enabled:false` and `%macros_enabled:true`
+  marker lines; the markers are stripped before the launched agent sees the prompt.
 - Otherwise name the syntax in words ("the model directive") instead of writing the
   token.
 
-Always preflight with `sase xprompt expand '<prompt>'`: it must succeed and report only
+Always preflight with `sase macro expand '<prompt>'`: it must succeed and report only
 the directives and references you intended.
 
 ## Requester Continuation

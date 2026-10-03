@@ -59,7 +59,7 @@ marker fields as active blockers.
 ## Retrying an agent
 
 For ordinary retries, locate the source with `sase agent list -a -j` or
-`sase agent show <name>`, prefer `<artifacts_dir>/raw_xprompt.md` as the prompt source,
+`sase agent show <name>`, prefer `<artifacts_dir>/raw_prompt.md` as the prompt source,
 allocate a fresh name with `sase.agent.names.allocate_retry_name("<name>")`, then
 rewrite the prompt through
 `sase.agent.retry_prompt.rewrite_retry_prompt_name(raw_prompt, retry_name)` before

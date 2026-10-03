@@ -24,13 +24,13 @@ state and aliases, or select projects for a multi-project workflow.
   `effective_project_name`, `state`, and `launchable`.
 - `sase project show <project>` shows one project's state, aliases, workspace, active
   claims, launchability, and warnings. Add `--json` for machine-readable data.
-- `sase project current` prints the current project derived from the VCS xprompt MRU
-  head, colored with that project's accent. Add `--json` for machine-readable data.
+- `sase project current` prints the current project derived from the VCS macro MRU head,
+  colored with that project's accent. Add `--json` for machine-readable data.
 
 ## Manage Projects
 
 - `sase project set-current <project>` promotes an enabled, launchable project to the
-  VCS xprompt MRU head — the same write a launch on that project performs.
+  VCS macro MRU head — the same write a launch on that project performs.
 - `sase project enable <project>` enables a project.
 - `sase project disable <project>` disables a project. It refuses projects with live
   work unless `--force` is passed.
