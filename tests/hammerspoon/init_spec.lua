@@ -787,7 +787,7 @@ describe("Hammerspoon init", function()
 		end
 
 		assert.is_not_nil(missing_call)
-		assert.are.same({ hex = "#009123", alpha = 1 }, missing_call.attributes.color)
+		assert.are.same({ hex = "#30d158", alpha = 1 }, missing_call.attributes.color)
 		assert.is_true(saw_warning_flash)
 		assert.is_true(saw_warning_steady)
 	end)
@@ -876,7 +876,7 @@ describe("Hammerspoon init", function()
 		assert.is_nil(runtime.state.fullTheme)
 		assert.is_nil(runtime.state.stopTime)
 		assert.is_nil(runtime.state.duration)
-		assert.equals("🍅 NO POMODORO", title_text(runtime.menu.title))
+		assert.equals("NO POMODORO", title_text(runtime.menu.title))
 		assert.equals("No current Pomodoro", runtime.menu.tooltip)
 		assert.equals("No current Pomodoro", runtime.menu.menu[1].title)
 		assert.is_nil(runtime.menu.tooltip:find("DEEP WORK", 1, true))
@@ -1094,7 +1094,7 @@ describe("Hammerspoon init Pomodoro countdown colors", function()
 	end
 
 	local ALERT_COLOR = "#E3413B"
-	local MISSING_COLOR = "#009123"
+	local MISSING_COLOR = "#30d158"
 	local BADGE_TEXT_COLOR = "#FFFFFF"
 
 	it("paints the running countdown in the system foreground with bold mono digits", function()
@@ -1267,15 +1267,13 @@ describe("Hammerspoon init Pomodoro countdown colors", function()
 		restore_clock()
 
 		local text, spans = last_spans(env)
-		assert.equals("🍅 NO POMODORO", text)
-		local missing_span = nil
-		for _, span in ipairs(spans) do
-			if span.text == "NO POMODORO" then
-				missing_span = span
-			end
-		end
-		assert.is_not_nil(missing_span)
+		assert.equals("NO POMODORO", text)
+		assert.equals(1, #spans)
+		local missing_span = spans[1]
+		assert.equals("NO POMODORO", missing_span.text)
 		assert.are.same({ hex = MISSING_COLOR, alpha = 1 }, missing_span.attributes.color)
+		assert.is_nil(missing_span.attributes.backgroundColor)
+		assert.is_nil(text:find("🍅", 1, true))
 	end)
 
 	it("falls back to regular mono when Menlo-Bold is unavailable", function()
@@ -1505,6 +1503,6 @@ describe("Hammerspoon init Pomodoro countdown colors", function()
 		restore_clock()
 		local missing_title = env.menu_title_calls[#env.menu_title_calls].title
 		assert.equals("string", type(missing_title))
-		assert.equals("🍅 NO POMODORO", missing_title)
+		assert.equals("NO POMODORO", missing_title)
 	end)
 end)

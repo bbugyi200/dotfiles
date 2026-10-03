@@ -32,10 +32,11 @@ Never leave both production hotkeys active during rollback.
 Hammerspoon shows the current Bob Pomodoro as one status item in the fixed order **theme
 (duration) · 🍅 status**, with `→ stop time` inserted once overdue. The 🍅 sits
 immediately before the countdown, separated by exactly one ordinary space, so it
-identifies the digits to its right. The 🍅 is also the item's constant anchor in
-`NO POMODORO`. While running, the duration names the session's scheduled length; the
-stop time returns once the session is overdue, when the scheduled endpoint is the useful
-fact. The stop time is zero-padded 24-hour `HH:MM`, matching the ledger convention.
+identifies the digits to its right. The 🍅 accompanies current-session countdowns and
+overdue status only; the idle item has no tomato. While running, the duration names the
+session's scheduled length; the stop time returns once the session is overdue, when the
+scheduled endpoint is the useful fact. The stop time is zero-padded 24-hour `HH:MM`,
+matching the ledger convention.
 
 | State                               | Example title                          |
 | ----------------------------------- | -------------------------------------- |
@@ -46,7 +47,7 @@ fact. The stop time is zero-padded 24-hour `HH:MM`, matching the ledger conventi
 | Ten minutes overdue and later       | `DEEP WORK (50m) → 10:15 · 🍅 OVERDUE` |
 | Session without a name              | `UNTITLED (50m) · 🍅 12:34`            |
 | Duration unknown (degenerate range) | `DEEP WORK → 10:15 · 🍅 12:34`         |
-| No current session                  | `🍅 NO POMODORO`                       |
+| No current session                  | `NO POMODORO`                          |
 
 The duration is the scheduled session length in whole minutes (`5m`, `25m`, `50m`,
 `90m`, `120m`), derived from the ledger range with midnight wrap (`2330-0020` → `50m`).
@@ -61,10 +62,11 @@ monospaced face, falling back to the regular monospaced face when bold is unavai
 From the first overdue second through `+09:59`, the `+MM:SS` countdown is alert red
 (`#E3413B`) and does not flash. At and after ten minutes overdue, the status is
 `OVERDUE` and only that badge flashes between red text and white (`#FFFFFF`) on the same
-red. `NO POMODORO` is green (`#009123`). Theme, duration, separator, arrow, stop time,
-and the tomato stay in the ordinary foreground. A mid-tone wallpaper directly under a
-transparent menu bar can undercut any fixed color, including the system's own labels;
-turning on Accessibility › Display › Reduce transparency restores a uniform surface.
+red. `NO POMODORO` is green (`#30d158`) with no tomato. Theme, duration, separator,
+arrow, stop time, and the tomato stay in the ordinary foreground. A mid-tone wallpaper
+directly under a transparent menu bar can undercut any fixed color, including the
+system's own labels; turning on Accessibility › Display › Reduce transparency restores a
+uniform surface.
 
 Long themes are bounded to 24 Unicode code points including the final ellipsis; the full
 theme stays in the tooltip and dropdown. The tooltip leads with `full theme (duration)`
@@ -74,8 +76,8 @@ and dropdown carry no tomato and keep the raw `bob pomodoro` line and `Last sync
 details. At and after ten minutes overdue, only the `OVERDUE` badge flashes between red
 text and white-on-red. The menu polls `bob pomodoro --show-stale` every 15 seconds,
 refreshes on wake and unlock, offers a manual Refresh item, and re-syncs once when
-crossing zero. An empty result shows `🍅 NO POMODORO`; command or parse failures hide
-the item.
+crossing zero. An empty result shows `NO POMODORO`; command or parse failures hide the
+item.
 
 ## Deleting things under `/tmp`
 

@@ -107,12 +107,18 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 		assert_presentation(0, true, CONTEXT, "DEEP WORK (50m) · 🍅 00:00", "normal")
 		assert_presentation(-1, true, CONTEXT, "DEEP WORK (50m) → 10:15 · 🍅 +00:01", "overdue")
 		assert_presentation(-599, true, CONTEXT, "DEEP WORK (50m) → 10:15 · 🍅 +09:59", "overdue")
-		assert_presentation(nil, true, CONTEXT, "🍅 NO POMODORO", "missing")
+		assert_presentation(nil, true, CONTEXT, "NO POMODORO", "missing")
 	end)
 
 	it("uses the missing presentation only without a live countdown", function()
-		assert_presentation(nil, false, nil, "🍅 NO POMODORO", "missing")
-		assert_presentation(nil, false, CONTEXT, "🍅 NO POMODORO", "missing")
+		local absent = assert_presentation(nil, false, nil, "NO POMODORO", "missing")
+		local stale = assert_presentation(nil, false, CONTEXT, "NO POMODORO", "missing")
+		for _, presentation in ipairs({ absent, stale }) do
+			assert.are.same({ { text = "NO POMODORO", role = "missing" } }, presentation.segments)
+			assert.equals(concat_segments(presentation.segments), presentation.title)
+			assert.is_nil(presentation.icon)
+			assert.is_nil(presentation.title:find("🍅", 1, true))
+		end
 	end)
 
 	it("keeps theme, duration, stop time, and status in every current-session state", function()
@@ -174,10 +180,10 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 
 		local missing = countdown.presentation(nil, false, CONTEXT)
 		assert.are.same({
-			{ text = "🍅", role = "icon" },
-			{ text = " ", role = "gap" },
 			{ text = "NO POMODORO", role = "missing" },
 		}, missing.segments)
+		assert.equals("NO POMODORO", missing.title)
+		assert.is_nil(missing.icon)
 	end)
 
 	it("keeps exactly one ordinary space between the tomato and the countdown", function()
@@ -198,7 +204,7 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 		end
 	end)
 
-	it("meets the menu-bar legibility contract", function()
+	it("meets the alert contrast contract", function()
 		local function hex_channels(hex)
 			return tonumber(hex:sub(2, 3), 16), tonumber(hex:sub(4, 5), 16), tonumber(hex:sub(6, 7), 16)
 		end
@@ -230,16 +236,21 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 
 		local light_reference = "#E6E6E6"
 		local dark_reference = "#2E2E2E"
-		for _, hex in ipairs({ countdown.ALERT_COLOR, countdown.MISSING_COLOR }) do
-			assert.is_true(contrast_ratio(hex, light_reference) >= 3.0, hex .. " below 3:1 on the light bar")
-			assert.is_true(contrast_ratio(hex, dark_reference) >= 3.0, hex .. " below 3:1 on the dark bar")
-		end
+		assert.is_true(
+			contrast_ratio(countdown.ALERT_COLOR, light_reference) >= 3.0,
+			countdown.ALERT_COLOR .. " below 3:1 on the light bar"
+		)
+		assert.is_true(
+			contrast_ratio(countdown.ALERT_COLOR, dark_reference) >= 3.0,
+			countdown.ALERT_COLOR .. " below 3:1 on the dark bar"
+		)
 
 		assert.is_true(contrast_ratio(countdown.BADGE_TEXT_COLOR, countdown.ALERT_COLOR) >= 3.0)
 
+		assert.equals("#30d158", countdown.MISSING_COLOR)
+
 		assert.is_true(contrast_ratio("#65C3ED", light_reference) < 3.0)
 		assert.is_true(contrast_ratio("#006381", dark_reference) < 3.0)
-		assert.is_true(contrast_ratio("#30d158", light_reference) < 3.0)
 	end)
 
 	it("leaves every presentation without a bucket", function()
@@ -339,8 +350,11 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 		end
 		for _, flash in ipairs({ false, true }) do
 			local missing = countdown.presentation(nil, flash, CONTEXT)
-			assert.are.same({ text = "🍅", role = "icon" }, missing.segments[1])
+			assert.are.same({ { text = "NO POMODORO", role = "missing" } }, missing.segments)
 			assert.equals(concat_segments(missing.segments), missing.title)
+			assert.equals("NO POMODORO", missing.title)
+			assert.is_nil(missing.icon)
+			assert.is_nil(missing.title:find("🍅", 1, true))
 		end
 	end)
 

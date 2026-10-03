@@ -13,7 +13,7 @@ local SEPARATOR = " · "
 local GAP = " "
 
 M.ALERT_COLOR = "#E3413B"
-M.MISSING_COLOR = "#009123"
+M.MISSING_COLOR = "#30d158"
 M.BADGE_TEXT_COLOR = "#FFFFFF"
 
 local function is_finite_number(value)
@@ -143,14 +143,11 @@ end
 function M.presentation(remaining_seconds, flash_on, context)
 	if remaining_seconds == nil then
 		return {
-			title = M.ICON .. GAP .. M.NO_POMODORO_TITLE,
+			title = M.NO_POMODORO_TITLE,
 			appearance = "missing",
 			status = M.NO_POMODORO_TITLE,
 			duration = nil,
-			icon = M.ICON,
 			segments = {
-				{ text = M.ICON, role = "icon" },
-				{ text = GAP, role = "gap" },
 				{ text = M.NO_POMODORO_TITLE, role = "missing" },
 			},
 		}
