@@ -70,7 +70,7 @@ freshness:
   pending_interval: 1 # [/] lane daily review; false = not walked
   next_interval: 1 # [*] lane daily review; false = not walked
   project_interval: 1 # Bryan's ^prj review cadence (personal setting, not a built-in default)
-  reference_interval: 3 # Bryan's ^ref review cadence (personal setting, not a built-in default)
+  reference_interval: 7 # Bryan's ^ref review cadence (personal setting, not a built-in default)
   # rotten_daily_budget: 15 # counts upkeep outside the lanes; never hides tasks
 
 # Today's plan budget (`bob plan`, capture, tmux, Obsidian) and the NEXT/PENDING/READY
