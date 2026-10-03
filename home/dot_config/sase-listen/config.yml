@@ -1,0 +1,11 @@
+# sase-listen config, managed by chezmoi (rollout sase-1e3.12)
+narrator: gemini
+engines:
+  gemini:
+    api_key_command: pass show gemini_cli_api_key
+feed:
+  dir: /home/bryan/.local/share/sase-listen/feed
+  base_url: https://apollo.tail297af1.ts.net:8443
+  token_command: pass show sase_listen_feed_token
+  title: SASE Listen
+  auto_publish: true
