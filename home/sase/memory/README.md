@@ -101,7 +101,7 @@ strand inherits no `type:` of its own and never inlines into `AGENTS.md`.
 - Parent: `AGENTS.md`
 - Description: Bob vault note conventions, git sync, and recovery runbooks.
 - Lines: 29
-- Approx. tokens: 379
+- Approx. tokens: 378
 
 ### `sase/memory/tailnet.md`
 
@@ -119,7 +119,7 @@ strand inherits no `type:` of its own and never inlines into `AGENTS.md`.
 - Reference notes: 2
 - Web descriptor notes: 0
 - Total lines: 128
-- Total approx. tokens: 1617
+- Total approx. tokens: 1616
 
 ## Commands
 
