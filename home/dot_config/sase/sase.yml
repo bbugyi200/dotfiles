@@ -375,6 +375,10 @@ xprompts:
     description: Split the <file_count> largest files of a particular <lang> into separate
       files, each <=<max_line_count> lines long.
     input:
+      repo:
+        type: line
+        default: this repository
+        description: The name of the repo that contains the files to be split.
       file_count:
         type: int
         default: 10
@@ -388,7 +392,7 @@ xprompts:
         default: 1500
         description: The maximum number of lines that each file should be allowed to have.
     content: |-
-      Can you help me identify the {{ file_count }} largest {{ lang }} files in this repository and then create an
+      Can you help me identify the {{ file_count }} largest {{ lang }} files in {{ repo }} and then create an
       epic plan using your /sase_plan skill with one phase of large size per file (so {{ file_count }} large
       phases)?
 
