@@ -112,6 +112,6 @@ if [ "$status" -eq 0 ]; then
   exit 0
 fi
 
-printf 'maybe_bob_highlights_sync: bob highlights-ref scan failed with status %s\n' "$status" >&2
+printf 'maybe_bob_highlights_sync: bob highlights scan failed with status %s\n' "$status" >&2
 cat "$scan_output" >&2
 exit "$status"

@@ -1,7 +1,7 @@
 #!/bin/sh
 
 if command -v bob >/dev/null 2>&1; then
-  exec bob tmux-pomodoro "$@"
+  exec bob pomodoro tmux "$@"
 fi
 
-exec "$HOME/.cargo/bin/bob" tmux-pomodoro "$@"
+exec "$HOME/.cargo/bin/bob" pomodoro tmux "$@"
