@@ -50,8 +50,8 @@ end
 
 local bobPomodoroRuntime = BobPomodoroCountdown
 local unpackArgs = table.unpack or unpack
-local BOB_POMODORO_TICK_INTERVAL = 0.5 -- Also the overdue warning flash half-period.
-local bobPomodoroWarningFlashOn = false
+local BOB_POMODORO_TICK_INTERVAL = 0.5 -- Flash half-period for the OVERDUE badge and the NO POMODORO reminder.
+local bobPomodoroFlashOn = false
 
 local function stopBobPomodoroRuntimeObject(name, object)
 	if not object then
@@ -257,6 +257,11 @@ local bobPomodoroIconTitleAttributes = bobPomodoroTitleAttributes(bobPomodoroCon
 
 local bobPomodoroMissingTitleAttributes =
 	bobPomodoroTitleAttributes({ hex = PomodoroCountdown.MISSING_COLOR, alpha = 1 }, bobPomodoroBoldMenuBarFont)
+local bobPomodoroMissingFlashTitleAttributes = bobPomodoroTitleAttributes(
+	{ hex = PomodoroCountdown.MISSING_BADGE_TEXT_COLOR, alpha = 1 },
+	bobPomodoroBoldMenuBarFont,
+	{ hex = PomodoroCountdown.MISSING_COLOR, alpha = 1 }
+)
 
 local bobPomodoroThemeTitleAttributes =
 	bobPomodoroTitleAttributes(bobPomodoroContextForeground, bobPomodoroBoldMenuBarFont or bobPomodoroMenuBarFont)
@@ -302,7 +307,7 @@ local function bobPomodoroMenuTitle(presentation)
 		end
 
 		local appearance = presentation.appearance
-		local is_missing = appearance == "missing"
+		local is_missing = appearance == "missing" or appearance == "missing_flash"
 		if
 			not is_missing
 			and appearance ~= "normal"
@@ -370,7 +375,14 @@ local function bobPomodoroMenuTitle(presentation)
 					error("unknown appearance: " .. tostring(appearance))
 				end
 			elseif segment.role == "missing" then
-				attributes = bobPomodoroMissingTitleAttributes
+				text = bobPomodoroNoBreakSpace .. text .. bobPomodoroNoBreakSpace
+				if appearance == "missing_flash" then
+					attributes = bobPomodoroMissingFlashTitleAttributes
+				elseif appearance == "missing" then
+					attributes = bobPomodoroMissingTitleAttributes
+				else
+					error("unknown appearance: " .. tostring(appearance))
+				end
 			else
 				error("unknown segment role: " .. tostring(segment.role))
 			end
@@ -396,6 +408,18 @@ local function bobPomodoroMenuTitle(presentation)
 end
 
 local syncBobPomodoro
+
+local function bobPomodoroMissingShownEpoch(previousState, now)
+	if
+		type(previousState) == "table"
+		and previousState.status == "missing"
+		and type(previousState.missingShownEpoch) == "number"
+		and previousState.missingShownEpoch <= now
+	then
+		return previousState.missingShownEpoch
+	end
+	return now
+end
 
 local function hideBobPomodoroMenu()
 	bobPomodoroRuntime.state = nil
@@ -480,9 +504,11 @@ local function renderBobPomodoroMenu()
 			duration = state.duration,
 			durationMinutes = state.durationMinutes,
 		}
+	elseif type(state.missingShownEpoch) == "number" then
+		context = { missingShownSeconds = os.time() - state.missingShownEpoch }
 	end
 
-	local presentation = PomodoroCountdown.presentation(remaining, bobPomodoroWarningFlashOn, context)
+	local presentation = PomodoroCountdown.presentation(remaining, bobPomodoroFlashOn, context)
 	menuBarItem:setTitle(bobPomodoroMenuTitle(presentation))
 	menuBarItem:returnToMenuBar()
 end
@@ -518,10 +544,13 @@ syncBobPomodoro = function()
 
 			local output = trimText(stdOut)
 			if output == "" then
+				local now = os.time()
+				local previousState = bobPomodoroRuntime.state
 				bobPomodoroRuntime.state = {
 					rawOutput = "No current Pomodoro",
 					status = "missing",
-					lastSyncEpoch = os.time(),
+					lastSyncEpoch = now,
+					missingShownEpoch = bobPomodoroMissingShownEpoch(previousState, now),
 				}
 				updateBobPomodoroMenuDetails()
 				renderBobPomodoroMenu()
@@ -580,7 +609,7 @@ bobPomodoroRuntime.tickTimer = hs.timer
 	.new(
 		BOB_POMODORO_TICK_INTERVAL,
 		guardedBobPomodoroCallback("render timer", function()
-			bobPomodoroWarningFlashOn = not bobPomodoroWarningFlashOn
+			bobPomodoroFlashOn = not bobPomodoroFlashOn
 			renderBobPomodoroMenu()
 		end),
 		true
@@ -594,6 +623,10 @@ bobPomodoroRuntime.wakeWatcher =
 			or eventType == hs.caffeinate.watcher.screensDidWake
 			or eventType == hs.caffeinate.watcher.screensDidUnlock
 		then
+			local state = bobPomodoroRuntime.state
+			if type(state) == "table" and state.status == "missing" then
+				state.missingShownEpoch = os.time()
+			end
 			syncBobPomodoro()
 		end
 	end))

@@ -102,12 +102,69 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 		end
 	end)
 
-	it("ignores the flash phase outside the overdue warning state", function()
+	it("ignores the flash phase outside the overdue warning and missing reminder states", function()
 		assert_presentation(601, true, CONTEXT, "DEEP WORK (50m) · 🍅 10:01", "normal")
 		assert_presentation(0, true, CONTEXT, "DEEP WORK (50m) · 🍅 00:00", "normal")
 		assert_presentation(-1, true, CONTEXT, "DEEP WORK (50m) → 10:15 · 🍅 +00:01", "overdue")
 		assert_presentation(-599, true, CONTEXT, "DEEP WORK (50m) → 10:15 · 🍅 +09:59", "overdue")
 		assert_presentation(nil, true, CONTEXT, "NO POMODORO", "missing")
+	end)
+
+	it("exports the missing reminder constants", function()
+		assert.equals(600, countdown.MISSING_REMINDER_EVERY_SECONDS)
+		assert.equals(60, countdown.MISSING_REMINDER_FOR_SECONDS)
+		assert.equals("#062E14", countdown.MISSING_BADGE_TEXT_COLOR)
+	end)
+
+	it("activates the missing reminder only inside each 60-second window", function()
+		for _, shown in ipairs({ 0, 1, 59, 59.5, 600, 659, 1200 }) do
+			assert.is_true(countdown.missing_reminder_active(shown), tostring(shown) .. " should be active")
+		end
+		for _, shown in ipairs({ 60, 61, 599, 660, 1199 }) do
+			assert.is_false(countdown.missing_reminder_active(shown), tostring(shown) .. " should be inactive")
+		end
+		assert.is_false(countdown.missing_reminder_active(-1))
+		assert.is_false(countdown.missing_reminder_active(nil))
+		assert.is_false(countdown.missing_reminder_active("0"))
+		assert.is_false(countdown.missing_reminder_active(0 / 0))
+		assert.is_false(countdown.missing_reminder_active(math.huge))
+		assert.is_false(countdown.missing_reminder_active(-math.huge))
+	end)
+
+	it("flashes the missing presentation only during a reminder window with flash_on", function()
+		local function assert_missing(remaining, flash_on, context, appearance)
+			local presentation = assert_presentation(remaining, flash_on, context, "NO POMODORO", appearance)
+			assert.are.same({ { text = "NO POMODORO", role = "missing" } }, presentation.segments)
+			assert.is_nil(presentation.icon)
+			assert.is_nil(presentation.title:find("🍅", 1, true))
+			assert.equals("NO POMODORO", presentation.status)
+			assert.is_nil(presentation.duration)
+			return presentation
+		end
+
+		assert_missing(nil, true, { missingShownSeconds = 0 }, "missing_flash")
+		assert_missing(nil, true, { missingShownSeconds = 600 }, "missing_flash")
+		assert_missing(nil, false, { missingShownSeconds = 0 }, "missing")
+		assert_missing(nil, false, { missingShownSeconds = 600 }, "missing")
+		assert_missing(nil, true, { missingShownSeconds = 60 }, "missing")
+		assert_missing(nil, true, { missingShownSeconds = 599 }, "missing")
+		assert_missing(nil, true, nil, "missing")
+		assert_missing(nil, true, CONTEXT, "missing")
+
+		local session_context = {
+			theme = "DEEP WORK",
+			stop = "10:15",
+			durationMinutes = 50,
+			missingShownSeconds = 0,
+		}
+		assert_presentation(754, true, session_context, "DEEP WORK (50m) · 🍅 12:34", "normal")
+		assert_presentation(
+			-600,
+			true,
+			session_context,
+			"DEEP WORK (50m) → 10:15 · 🍅 OVERDUE",
+			"overdue_warning_flash"
+		)
 	end)
 
 	it("uses the missing presentation only without a live countdown", function()
@@ -248,6 +305,9 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 		assert.is_true(contrast_ratio(countdown.BADGE_TEXT_COLOR, countdown.ALERT_COLOR) >= 3.0)
 
 		assert.equals("#30d158", countdown.MISSING_COLOR)
+		assert.equals("#062E14", countdown.MISSING_BADGE_TEXT_COLOR)
+		assert.is_true(contrast_ratio(countdown.MISSING_BADGE_TEXT_COLOR, countdown.MISSING_COLOR) >= 7.0)
+		assert.is_true(contrast_ratio("#FFFFFF", countdown.MISSING_COLOR) < 3.0)
 
 		assert.is_true(contrast_ratio("#65C3ED", light_reference) < 3.0)
 		assert.is_true(contrast_ratio("#006381", dark_reference) < 3.0)

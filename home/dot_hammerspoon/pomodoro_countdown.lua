@@ -1,6 +1,8 @@
 local M = {}
 
 M.OVERDUE_WARNING_AFTER_SECONDS = 10 * 60
+M.MISSING_REMINDER_EVERY_SECONDS = 10 * 60
+M.MISSING_REMINDER_FOR_SECONDS = 60
 M.MAX_THEME_CODEPOINTS = 24
 M.UNTITLED_THEME = "UNTITLED"
 M.NO_POMODORO_TITLE = "NO POMODORO"
@@ -15,6 +17,7 @@ local GAP = " "
 M.ALERT_COLOR = "#E3413B"
 M.MISSING_COLOR = "#30d158"
 M.BADGE_TEXT_COLOR = "#FFFFFF"
+M.MISSING_BADGE_TEXT_COLOR = "#062E14"
 
 local function is_finite_number(value)
 	return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
@@ -140,11 +143,22 @@ function M.format_duration(minutes)
 	return string.format("%dm", floored)
 end
 
+function M.missing_reminder_active(shown_seconds)
+	if not is_finite_number(shown_seconds) or shown_seconds < 0 then
+		return false
+	end
+	return shown_seconds % M.MISSING_REMINDER_EVERY_SECONDS < M.MISSING_REMINDER_FOR_SECONDS
+end
+
 function M.presentation(remaining_seconds, flash_on, context)
 	if remaining_seconds == nil then
+		local appearance = "missing"
+		if type(context) == "table" and flash_on and M.missing_reminder_active(context.missingShownSeconds) then
+			appearance = "missing_flash"
+		end
 		return {
 			title = M.NO_POMODORO_TITLE,
-			appearance = "missing",
+			appearance = appearance,
 			status = M.NO_POMODORO_TITLE,
 			duration = nil,
 			segments = {

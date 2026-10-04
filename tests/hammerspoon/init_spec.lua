@@ -695,6 +695,7 @@ describe("Hammerspoon init", function()
 					rawOutput = "No current Pomodoro",
 					status = "missing",
 					lastSyncEpoch = fixed,
+					missingShownEpoch = fixed - 60,
 				}
 			else
 				runtime.state = {
@@ -737,6 +738,7 @@ describe("Hammerspoon init", function()
 			rawOutput = "No current Pomodoro",
 			status = "missing",
 			lastSyncEpoch = os.time(),
+			missingShownEpoch = os.time(),
 		}
 		runtime.tickTimer.callback()
 		runtime.tickTimer.callback()
@@ -761,11 +763,20 @@ describe("Hammerspoon init", function()
 		assert.is_true((env.valid_font_calls["Menlo-Bold"] or 0) >= 1)
 
 		local missing_call = nil
+		local saw_missing_flash = false
 		local saw_warning_flash = false
 		local saw_warning_steady = false
 		for _, call in ipairs(env.styled_text_calls) do
-			if call.text == "NO POMODORO" then
-				missing_call = call
+			if call.text == "\194\160NO POMODORO\194\160" then
+				if call.attributes.backgroundColor then
+					saw_missing_flash = true
+					assert.are.same({ hex = "#062E14", alpha = 1 }, call.attributes.color)
+					assert.are.same({ hex = "#30d158", alpha = 1 }, call.attributes.backgroundColor)
+					assert.not_equals(".SFNS-Bold", call.attributes.font.name)
+					assert.is_true((env.valid_font_calls[call.attributes.font.name] or 0) >= 1)
+				else
+					missing_call = call
+				end
 			elseif call.text == "\194\160OVERDUE\194\160" or call.text == "OVERDUE" then
 				if call.attributes.backgroundColor then
 					saw_warning_flash = true
@@ -788,6 +799,7 @@ describe("Hammerspoon init", function()
 
 		assert.is_not_nil(missing_call)
 		assert.are.same({ hex = "#30d158", alpha = 1 }, missing_call.attributes.color)
+		assert.is_true(saw_missing_flash)
 		assert.is_true(saw_warning_flash)
 		assert.is_true(saw_warning_steady)
 	end)
@@ -876,7 +888,7 @@ describe("Hammerspoon init", function()
 		assert.is_nil(runtime.state.fullTheme)
 		assert.is_nil(runtime.state.stopTime)
 		assert.is_nil(runtime.state.duration)
-		assert.equals("NO POMODORO", title_text(runtime.menu.title))
+		assert.equals("\194\160NO POMODORO\194\160", title_text(runtime.menu.title))
 		assert.equals("No current Pomodoro", runtime.menu.tooltip)
 		assert.equals("No current Pomodoro", runtime.menu.menu[1].title)
 		assert.is_nil(runtime.menu.tooltip:find("DEEP WORK", 1, true))
@@ -1012,6 +1024,218 @@ describe("Hammerspoon init", function()
 		assert.equals(tasks_before + 2, #env.tasks)
 	end)
 
+	it("anchors missing reminder time on first idle sync and carries it forward", function()
+		local T0 = os.time()
+		local restore_clock = freeze_clock_at(T0)
+		local ok, error_message, env = load_init_with({
+			task_completion = { exit_code = 0, stdout = "", stderr = "" },
+		})
+		assert.is_true(ok, error_message)
+		local runtime = _G.BobPomodoroCountdown
+		assert.equals(T0, runtime.state.missingShownEpoch)
+		assert.equals(T0, runtime.state.lastSyncEpoch)
+
+		restore_clock()
+		restore_clock = freeze_clock_at(T0 + 15)
+		runtime.task = nil
+		runtime.syncTimer.callback()
+		assert.equals(T0, runtime.state.missingShownEpoch)
+		assert.equals(T0 + 15, runtime.state.lastSyncEpoch)
+
+		restore_clock()
+		restore_clock = freeze_clock_at(T0 + 615)
+		runtime.task = nil
+		runtime.syncTimer.callback()
+		assert.equals(T0, runtime.state.missingShownEpoch)
+		assert.equals(T0 + 615, runtime.state.lastSyncEpoch)
+
+		restore_clock()
+		restore_clock = freeze_clock_at(today_at(9, 50))
+		env.task_completion = {
+			exit_code = 0,
+			stdout = "[<13m] 0950-1015 — DEEP WORK",
+			stderr = "",
+		}
+		runtime.task = nil
+		runtime.syncTimer.callback()
+		assert.is_nil(runtime.state.missingShownEpoch)
+
+		restore_clock()
+		local T1 = T0 + 800
+		restore_clock = freeze_clock_at(T1)
+		env.task_completion = { exit_code = 0, stdout = "", stderr = "" }
+		runtime.task = nil
+		runtime.syncTimer.callback()
+		assert.equals(T1, runtime.state.missingShownEpoch)
+
+		restore_clock()
+		restore_clock = freeze_clock_at(T1 + 10)
+		env.task_completion = { exit_code = 1, stdout = "", stderr = "boom" }
+		runtime.task = nil
+		runtime.syncTimer.callback()
+		assert.is_nil(runtime.state)
+
+		restore_clock()
+		local T2 = T1 + 20
+		restore_clock = freeze_clock_at(T2)
+		env.task_completion = { exit_code = 0, stdout = "", stderr = "" }
+		runtime.task = nil
+		runtime.syncTimer.callback()
+		assert.equals(T2, runtime.state.missingShownEpoch)
+
+		restore_clock()
+		local now = T2 + 50
+		restore_clock = freeze_clock_at(now)
+		runtime.state.missingShownEpoch = now + 100
+		runtime.task = nil
+		runtime.syncTimer.callback()
+		assert.equals(now, runtime.state.missingShownEpoch)
+		restore_clock()
+	end)
+
+	it("re-anchors the missing reminder on wake and unlock", function()
+		local fixed = today_at(9, 50)
+		local restore_clock = freeze_clock_at(fixed)
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+
+		local runtime = _G.BobPomodoroCountdown
+		env.task_completion = { exit_code = 0, stdout = "", stderr = "" }
+		for _, eventType in ipairs({
+			_G.hs.caffeinate.watcher.systemDidWake,
+			_G.hs.caffeinate.watcher.screensDidWake,
+			_G.hs.caffeinate.watcher.screensDidUnlock,
+		}) do
+			runtime.state = {
+				rawOutput = "No current Pomodoro",
+				status = "missing",
+				lastSyncEpoch = fixed - 300,
+				missingShownEpoch = fixed - 300,
+			}
+			runtime.task = nil
+			runtime.wakeWatcher.callback(eventType)
+			assert.equals(fixed, runtime.state.missingShownEpoch)
+		end
+
+		local session_state = {
+			rawOutput = "[<13m] 0950-1015 — DEEP WORK",
+			status = "active",
+			taskText = "— DEEP WORK",
+			fullTheme = "DEEP WORK",
+			displayTheme = "DEEP WORK",
+			stopTime = "10:15",
+			endHour = 10,
+			endMinute = 15,
+			endEpoch = fixed + 60,
+			lastSyncEpoch = fixed,
+		}
+		runtime.state = session_state
+		runtime.task = nil
+		env.task_completion = {
+			exit_code = 0,
+			stdout = "[<13m] 0950-1015 — DEEP WORK",
+			stderr = "",
+		}
+		runtime.wakeWatcher.callback(_G.hs.caffeinate.watcher.systemDidWake)
+		assert.is_nil(session_state.missingShownEpoch)
+		assert.is_nil(runtime.state.missingShownEpoch)
+		restore_clock()
+	end)
+
+	it("flashes the missing reminder inside the window with constant padded width", function()
+		local restore_clock, fixed = freeze_clock()
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+
+		local runtime = _G.BobPomodoroCountdown
+		local padded = "\194\160NO POMODORO\194\160"
+		local function is_pill(span)
+			return span.attributes.color.hex == "#062E14"
+				and span.attributes.backgroundColor
+				and span.attributes.backgroundColor.hex == "#30d158"
+		end
+		local function is_steady(span)
+			return span.attributes.color.hex == "#30d158" and span.attributes.backgroundColor == nil
+		end
+
+		for _, epoch in ipairs({ fixed, fixed - 59, fixed - 600 }) do
+			runtime.state = {
+				rawOutput = "No current Pomodoro",
+				status = "missing",
+				lastSyncEpoch = fixed,
+				missingShownEpoch = epoch,
+			}
+			local first_call = #env.menu_title_calls + 1
+			runtime.tickTimer.callback()
+			runtime.tickTimer.callback()
+			runtime.tickTimer.callback()
+			runtime.tickTimer.callback()
+
+			local titles = {}
+			for index = first_call, first_call + 3 do
+				local title = env.menu_title_calls[index].title
+				assert.equals(padded, title_text(title))
+				local spans = assert(title_spans(title))
+				assert.equals(1, #spans)
+				assert.equals(padded, spans[1].text)
+				table.insert(titles, spans[1])
+			end
+
+			local font_name = titles[1].attributes.font.name
+			local font_size = titles[1].attributes.font.size
+			for index = 1, 4 do
+				assert.equals(font_name, titles[index].attributes.font.name)
+				assert.equals(font_size, titles[index].attributes.font.size)
+			end
+			assert.is_true(is_pill(titles[1]) or is_steady(titles[1]))
+			for index = 2, 4 do
+				if is_pill(titles[index - 1]) then
+					assert.is_true(is_steady(titles[index]))
+				else
+					assert.is_true(is_pill(titles[index]))
+				end
+			end
+		end
+		restore_clock()
+	end)
+
+	it("keeps the missing reminder steady outside the window at constant padded width", function()
+		local restore_clock, fixed = freeze_clock()
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+
+		local runtime = _G.BobPomodoroCountdown
+		local padded = "\194\160NO POMODORO\194\160"
+		local cases = {
+			{ missingShownEpoch = fixed - 60 },
+			{ missingShownEpoch = fixed - 599 },
+			{ missingShownEpoch = fixed - 660 },
+			{},
+		}
+		for _, case in ipairs(cases) do
+			runtime.state = {
+				rawOutput = "No current Pomodoro",
+				status = "missing",
+				lastSyncEpoch = fixed,
+				missingShownEpoch = case.missingShownEpoch,
+			}
+			local first_call = #env.menu_title_calls + 1
+			runtime.tickTimer.callback()
+			runtime.tickTimer.callback()
+			local first_title = env.menu_title_calls[first_call].title
+			local second_title = env.menu_title_calls[first_call + 1].title
+			assert.equals(title_text(first_title), title_text(second_title))
+			assert.equals(padded, title_text(first_title))
+			for _, title in ipairs({ first_title, second_title }) do
+				local spans = assert(title_spans(title))
+				assert.equals(1, #spans)
+				assert.equals(padded, spans[1].text)
+				assert.is_nil(spans[1].attributes.backgroundColor)
+			end
+		end
+		restore_clock()
+	end)
+
 	it("supports manual refresh from the menu", function()
 		local restore_clock = freeze_clock_at(today_at(9, 50))
 		local ok, error_message, env = load_init_with({
@@ -1096,6 +1320,7 @@ describe("Hammerspoon init Pomodoro countdown colors", function()
 	local ALERT_COLOR = "#E3413B"
 	local MISSING_COLOR = "#30d158"
 	local BADGE_TEXT_COLOR = "#FFFFFF"
+	local MISSING_BADGE_TEXT_COLOR = "#062E14"
 
 	it("paints the running countdown in the system foreground with bold mono digits", function()
 		local restore_clock, fixed = freeze_clock()
@@ -1262,15 +1487,16 @@ describe("Hammerspoon init Pomodoro countdown colors", function()
 			rawOutput = "No current Pomodoro",
 			status = "missing",
 			lastSyncEpoch = fixed,
+			missingShownEpoch = fixed - 60,
 		}
 		runtime.tickTimer.callback()
 		restore_clock()
 
 		local text, spans = last_spans(env)
-		assert.equals("NO POMODORO", text)
+		assert.equals("\194\160NO POMODORO\194\160", text)
 		assert.equals(1, #spans)
 		local missing_span = spans[1]
-		assert.equals("NO POMODORO", missing_span.text)
+		assert.equals("\194\160NO POMODORO\194\160", missing_span.text)
 		assert.are.same({ hex = MISSING_COLOR, alpha = 1 }, missing_span.attributes.color)
 		assert.is_nil(missing_span.attributes.backgroundColor)
 		assert.is_nil(text:find("🍅", 1, true))
@@ -1395,6 +1621,7 @@ describe("Hammerspoon init Pomodoro countdown colors", function()
 		vetted[ALERT_COLOR] = true
 		vetted[MISSING_COLOR] = true
 		vetted[BADGE_TEXT_COLOR] = true
+		vetted[MISSING_BADGE_TEXT_COLOR] = true
 
 		local function audit_current_title()
 			local title = env.menu_title_calls[#env.menu_title_calls].title
@@ -1411,13 +1638,22 @@ describe("Hammerspoon init Pomodoro countdown colors", function()
 							attributes.backgroundColor,
 							"badge text outside alert background"
 						)
+					elseif color.hex == MISSING_BADGE_TEXT_COLOR then
+						assert.are.same(
+							{ hex = MISSING_COLOR, alpha = 1 },
+							attributes.backgroundColor,
+							"missing badge text outside missing background"
+						)
 					end
 				else
 					assert.are.same(LABEL_COLOR, color)
 				end
 				local background = attributes.backgroundColor
 				if background ~= nil then
-					assert.are.same({ hex = ALERT_COLOR, alpha = 1 }, background)
+					assert.is_true(
+						(background.hex == ALERT_COLOR or background.hex == MISSING_COLOR) and background.alpha == 1,
+						"unexpected background " .. tostring(background.hex)
+					)
 				end
 			end
 		end
@@ -1464,7 +1700,19 @@ describe("Hammerspoon init Pomodoro countdown colors", function()
 			rawOutput = "No current Pomodoro",
 			status = "missing",
 			lastSyncEpoch = fixed,
+			missingShownEpoch = fixed - 60,
 		}
+		runtime.tickTimer.callback()
+		audit_current_title()
+
+		runtime.state = {
+			rawOutput = "No current Pomodoro",
+			status = "missing",
+			lastSyncEpoch = fixed,
+			missingShownEpoch = fixed,
+		}
+		runtime.tickTimer.callback()
+		audit_current_title()
 		runtime.tickTimer.callback()
 		restore_clock()
 		audit_current_title()
@@ -1500,9 +1748,20 @@ describe("Hammerspoon init Pomodoro countdown colors", function()
 			lastSyncEpoch = fixed,
 		}
 		runtime.tickTimer.callback()
-		restore_clock()
 		local missing_title = env.menu_title_calls[#env.menu_title_calls].title
 		assert.equals("string", type(missing_title))
 		assert.equals("NO POMODORO", missing_title)
+
+		runtime.state = {
+			rawOutput = "No current Pomodoro",
+			status = "missing",
+			lastSyncEpoch = fixed,
+			missingShownEpoch = fixed,
+		}
+		runtime.tickTimer.callback()
+		restore_clock()
+		local flashing_missing_title = env.menu_title_calls[#env.menu_title_calls].title
+		assert.equals("string", type(flashing_missing_title))
+		assert.equals("NO POMODORO", flashing_missing_title)
 	end)
 end)
