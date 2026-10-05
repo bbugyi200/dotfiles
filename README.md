@@ -94,8 +94,10 @@ padded to a fixed width so the item never changes size between ticks or tiers. T
 uses Menlo regular; the glyph uses the default menu bar face, and nothing is bold. The
 tooltip names the score and the last round-trip time. Opening the item shows the tier, a
 20-cell history strip, the score over its span, the last ping, and a Network Settings
-shortcut. The dropdown shows a snapshot taken when it opens, stays open while the title
-keeps updating, and shows fresh details when reopened.
+shortcut that opens System Settings → Network. If the shortcut cannot open Settings, it
+shows a brief alert naming the manual fallback and logs the failure. The dropdown shows
+a snapshot taken when it opens, stays open while the title keeps updating, and shows
+fresh details when reopened.
 
 One ping stream feeds both this item and the tmux status bar. Hammerspoon is the
 preferred producer: it pings 8.8.8.8 every 2 s, and both displays render the same shared

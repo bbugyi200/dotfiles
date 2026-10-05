@@ -12,6 +12,10 @@ local PingWindow = require("ping_window")
 local M = {}
 
 M.NETWORK_SETTINGS_URL = "x-apple.systempreferences:com.apple.Network-Settings.extension"
+-- Bundle ID for macOS System Settings. This deep link has no "://" delimiter, so
+-- hs.urlevent.openURL rejects it before contacting macOS; openURLWithBundle
+-- passes the URL to NSURL/NSWorkspace without that check.
+M.SYSTEM_SETTINGS_BUNDLE_ID = "com.apple.systempreferences"
 M.TMP_SUFFIX = ".tmp.hammerspoon"
 M.TASK_TIMEOUT_TICKS = 3
 
@@ -246,6 +250,23 @@ local function row_text(row)
 	return table.concat(parts)
 end
 
+local function open_network_settings()
+	local ok, result = xpcall(function()
+		return hs.urlevent.openURLWithBundle(M.NETWORK_SETTINGS_URL, M.SYSTEM_SETTINGS_BUNDLE_ID)
+	end, debug.traceback)
+	if not ok then
+		log_message("network settings failed: %s (%s)", M.NETWORK_SETTINGS_URL, result)
+		hs.alert.show("Network Settings could not be opened — open System Settings → Network manually")
+		return false
+	end
+	if result ~= true then
+		log_message("network settings failed: %s returned %s", M.NETWORK_SETTINGS_URL, tostring(result))
+		hs.alert.show("Network Settings could not be opened — open System Settings → Network manually")
+		return false
+	end
+	return true
+end
+
 local function build_menu_items()
 	local now = runtime.nowFn()
 	local state = read_state_file(runtime.statePath)
@@ -261,12 +282,7 @@ local function build_menu_items()
 			table.insert(items, {
 				title = row_text(row),
 				fn = function()
-					local ok, error_message = xpcall(function()
-						hs.urlevent.openURL(M.NETWORK_SETTINGS_URL)
-					end, debug.traceback)
-					if not ok then
-						log_message("network settings failed: %s", error_message)
-					end
+					open_network_settings()
 				end,
 			})
 		else

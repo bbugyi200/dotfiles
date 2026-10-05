@@ -6,6 +6,7 @@ local FIGURE_SPACE = "\226\128\135" -- U+2007
 
 local PING_ARGS = { "-n", "-q", "-c", "1", "-t", "1", "8.8.8.8" }
 local NETWORK_SETTINGS_URL = "x-apple.systempreferences:com.apple.Network-Settings.extension"
+local SYSTEM_SETTINGS_BUNDLE_ID = "com.apple.systempreferences"
 
 local SUCCESS_TRANSCRIPT = table.concat({
 	"PING 8.8.8.8 (8.8.8.8): 56 data bytes",
@@ -230,8 +231,25 @@ local function make_hs(env)
 	}
 
 	hs.urlevent = {
+		openURLWithBundle = function(url, bundle)
+			table.insert(env.opened_bundle_urls, { url = url, bundle = bundle })
+			if env.open_bundle_throw ~= nil then
+				error(env.open_bundle_throw)
+			end
+			if env.open_bundle_result ~= nil then
+				return env.open_bundle_result
+			end
+			return true
+		end,
 		openURL = function(url)
-			table.insert(env.opened_urls, url)
+			error("openURL must not be used for Network Settings: " .. tostring(url))
+		end,
+	}
+
+	hs.alert = {
+		show = function(message)
+			table.insert(env.alerts, message)
+			return true
 		end,
 	}
 
@@ -261,7 +279,10 @@ local function setup(options)
 		styled_compositions = {},
 		convert_font_calls = {},
 		valid_font_calls = {},
-		opened_urls = {},
+		opened_bundle_urls = {},
+		alerts = {},
+		open_bundle_result = options.open_bundle_result,
+		open_bundle_throw = options.open_bundle_throw,
 		fs_attribute_calls = {},
 		mkdir_calls = {},
 		now = options.now or 1759680002,
@@ -361,6 +382,30 @@ local function logged_message(env, needle)
 		end
 	end
 	return false
+end
+
+local function count_logs(env, needle)
+	local count = 0
+	for _, call in ipairs(env.printf_calls) do
+		for _, part in ipairs(call) do
+			if tostring(part):find(needle, 1, true) then
+				count = count + 1
+				break
+			end
+		end
+	end
+	return count
+end
+
+local function network_settings_item(env, indicator)
+	local menu = env.menus[1]
+	local items = menu.menu_builder()
+	for i = #items, 1, -1 do
+		if items[i].title == "Network Settings…" then
+			return items[i]
+		end
+	end
+	error("Network Settings item not found")
 end
 
 describe("Hammerspoon ping indicator startup", function()
@@ -642,7 +687,75 @@ describe("Hammerspoon ping indicator dropdown", function()
 		assert.equals("function", type(items[8].fn))
 
 		items[8].fn()
-		assert.same({ NETWORK_SETTINGS_URL }, env.opened_urls)
+		assert.equals(1, #env.opened_bundle_urls)
+		assert.equals(NETWORK_SETTINGS_URL, env.opened_bundle_urls[1].url)
+		assert.equals(SYSTEM_SETTINGS_BUNDLE_ID, env.opened_bundle_urls[1].bundle)
+		assert.equals(SYSTEM_SETTINGS_BUNDLE_ID, indicator.SYSTEM_SETTINGS_BUNDLE_ID)
+		assert.equals(0, count_logs(env, "network settings failed"))
+		assert.equals(0, #env.alerts)
+	end)
+
+	it("reports a false launch return with one log and one alert", function()
+		local indicator
+		env, indicator = setup({ open_bundle_result = false })
+		start_indicator(env, indicator)
+		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
+
+		network_settings_item(env, indicator).fn()
+
+		assert.equals(1, #env.opened_bundle_urls)
+		assert.equals(1, count_logs(env, "network settings failed"))
+		assert.is_true(logged_message(env, NETWORK_SETTINGS_URL))
+		assert.equals(1, #env.alerts)
+		assert.is_true(env.alerts[1]:find("Network Settings", 1, true) ~= nil)
+	end)
+
+	it("contains a launch exception with one log and one alert", function()
+		local indicator
+		env, indicator = setup({ open_bundle_throw = "launch boom" })
+		start_indicator(env, indicator)
+		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
+
+		local item = network_settings_item(env, indicator)
+		assert.has_no.errors(function()
+			item.fn()
+		end)
+
+		assert.equals(1, #env.opened_bundle_urls)
+		assert.equals(1, count_logs(env, "network settings failed"))
+		assert.equals(1, #env.alerts)
+		assert.is_true(env.alerts[1]:find("Network Settings", 1, true) ~= nil)
+	end)
+
+	it("recovers after a failed click and never retries from ticks", function()
+		local indicator
+		env, indicator = setup({ open_bundle_result = false })
+		start_indicator(env, indicator)
+		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
+
+		local menu = env.menus[1]
+		local builder = menu.menu_builder
+		network_settings_item(env, indicator).fn()
+		assert.equals(1, count_logs(env, "network settings failed"))
+		assert.equals(1, #env.alerts)
+
+		env.open_bundle_result = true
+		env.open_bundle_throw = nil
+		network_settings_item(env, indicator).fn()
+		assert.equals(2, #env.opened_bundle_urls)
+		assert.equals(1, count_logs(env, "network settings failed"))
+		assert.equals(1, #env.alerts)
+
+		local titles_before = #env.menu_titles
+		env.now = env.now + 2
+		fire_tick(env)
+		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
+
+		assert.equals(2, #env.opened_bundle_urls)
+		assert.equals(1, menu.set_menu_calls)
+		assert.is_true(menu.menu_builder == builder)
+		assert.is_true(#env.menu_titles > titles_before)
+		assert.is_true(title_text(env.menus[1].title):find("2/2", 1, true) ~= nil)
 	end)
 
 	it("keeps one installed builder across ticks and ping completions so an open dropdown stays open", function()
