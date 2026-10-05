@@ -1158,7 +1158,7 @@ describe("Hammerspoon init", function()
 			return span.attributes.color.hex == "#30d158" and span.attributes.backgroundColor == nil
 		end
 
-		for _, epoch in ipairs({ fixed, fixed - 59, fixed - 600 }) do
+		for _, epoch in ipairs({ fixed, fixed - 59, fixed - 300, fixed - 359, fixed - 600 }) do
 			runtime.state = {
 				rawOutput = "No current Pomodoro",
 				status = "missing",
@@ -1208,6 +1208,8 @@ describe("Hammerspoon init", function()
 		local padded = "\194\160NO POMODORO\194\160"
 		local cases = {
 			{ missingShownEpoch = fixed - 60 },
+			{ missingShownEpoch = fixed - 299 },
+			{ missingShownEpoch = fixed - 360 },
 			{ missingShownEpoch = fixed - 599 },
 			{ missingShownEpoch = fixed - 660 },
 			{},
