@@ -2,6 +2,11 @@
 narrator: gemini
 engines:
   gemini:
+    # Only the tool-specific env var may override the pass-managed key. Generic
+    # GEMINI_API_KEY / GOOGLE_API_KEY exported for other tools must never shadow
+    # it: a stale one on athena broke every research audio render with
+    # HTTP 400 API_KEY_INVALID.
+    api_key_env: [SASE_LISTEN_GEMINI_API_KEY]
     api_key_command: pass show gemini_cli_api_key
 feed:
   host: apollo
