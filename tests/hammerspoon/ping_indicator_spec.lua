@@ -171,6 +171,7 @@ local function make_hs(env)
 				title = nil,
 				tooltip = nil,
 				menu_builder = nil,
+				set_menu_calls = 0,
 				returned = false,
 				removed = false,
 			}
@@ -185,6 +186,7 @@ local function make_hs(env)
 			end
 			function menu:setMenu(builder)
 				self.menu_builder = builder
+				self.set_menu_calls = self.set_menu_calls + 1
 				return self
 			end
 			function menu:removeFromMenuBar()
@@ -586,6 +588,7 @@ describe("Hammerspoon ping indicator producer loop", function()
 		local old_menu = env.menus[1]
 		local old_timer = env.timers[1]
 		local old_task = env.tasks[1]
+		assert.equals(1, old_menu.set_menu_calls)
 
 		start_indicator(env, indicator)
 
@@ -596,6 +599,8 @@ describe("Hammerspoon ping indicator producer loop", function()
 		assert.equals(2, #env.timers)
 		assert.is_true(env.timers[2].started)
 		assert.equals(2, #env.tasks)
+		assert.equals(2, old_menu.set_menu_calls)
+		assert.equals("function", type(old_menu.menu_builder))
 	end)
 end)
 
@@ -638,5 +643,33 @@ describe("Hammerspoon ping indicator dropdown", function()
 
 		items[8].fn()
 		assert.same({ NETWORK_SETTINGS_URL }, env.opened_urls)
+	end)
+
+	it("keeps one installed builder across ticks and ping completions so an open dropdown stays open", function()
+		local indicator
+		env, indicator = setup()
+		start_indicator(env, indicator)
+		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
+
+		local menu = env.menus[1]
+		local builder = menu.menu_builder
+		assert.equals("function", type(builder))
+		assert.equals(1, menu.set_menu_calls)
+		local titles_before = #env.menu_titles
+
+		env.now = env.now + 2
+		fire_tick(env)
+		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
+		env.now = env.now + 2
+		fire_tick(env)
+		complete_latest(env, 2, TIMEOUT_TRANSCRIPT)
+
+		assert.equals(1, menu.set_menu_calls)
+		assert.is_true(menu.menu_builder == builder)
+		assert.is_true(#env.menu_titles > titles_before)
+
+		local items = builder()
+		assert.equals("●●○" .. string.rep("·", 17) .. "  now", items[2].title)
+		assert.is_true(items[3].title:find("2 of 3", 1, true) ~= nil)
 	end)
 end)

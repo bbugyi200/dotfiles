@@ -276,6 +276,15 @@ local function build_menu_items()
 	return items
 end
 
+local function menu_builder()
+	local menu_ok, items = xpcall(build_menu_items, debug.traceback)
+	if not menu_ok then
+		log_message("menu failed: %s", items)
+		return {}
+	end
+	return items
+end
+
 local function render_menu_bar()
 	local menu = runtime.menu
 	if not menu then
@@ -294,15 +303,6 @@ local function render_menu_bar()
 		menu:setTitle(presentation.title)
 	end
 	menu:setTooltip(presentation.tooltip)
-	menu:setMenu(function()
-		local menu_ok, items = xpcall(build_menu_items, debug.traceback)
-		if not menu_ok then
-			log_message("menu failed: %s", items)
-			return {}
-		end
-		return items
-	end)
-	menu:returnToMenuBar()
 end
 
 local function run_guarded(context, callback, ...)
@@ -439,6 +439,13 @@ function M.start(options)
 	runtime.taskSentAt = nil
 
 	runtime.menu = runtime.menu or hs.menubar.new(true, "BobPingIndicator")
+
+	-- Install the lazy builder once per load, never from a render, tick, or
+	-- task path. Calling setMenu while the menu is open empties and detaches
+	-- the open NSMenu (which closes the dropdown), and timers keep firing
+	-- while a menu is open.
+	runtime.menu:setMenu(menu_builder)
+	runtime.menu:returnToMenuBar()
 
 	run_guarded("initial tick", ping_tick)
 	runtime.timer = hs.timer.new(PingWindow.INTERVAL_SECONDS, guarded_callback("tick", ping_tick), true)

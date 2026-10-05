@@ -25,6 +25,7 @@ local function make_menu(env, autosave_name)
 		title = nil,
 		tooltip = nil,
 		menu = nil,
+		set_menu_calls = 0,
 		removed = false,
 		returned = false,
 	}
@@ -42,6 +43,7 @@ local function make_menu(env, autosave_name)
 
 	function menu:setMenu(items)
 		self.menu = items
+		self.set_menu_calls = self.set_menu_calls + 1
 		return self
 	end
 
@@ -418,11 +420,19 @@ local function task_command_text(task)
 	return ""
 end
 
+local function menu_items(menu)
+	if type(menu.menu) == "function" then
+		return menu.menu()
+	end
+	return menu.menu
+end
+
 local function menu_refresh_fn(menu)
-	if type(menu.menu) ~= "table" then
+	local items = menu_items(menu)
+	if type(items) ~= "table" then
 		return nil
 	end
-	for _, item in ipairs(menu.menu) do
+	for _, item in ipairs(items) do
 		if type(item) == "table" and item.title == "Refresh" and type(item.fn) == "function" then
 			return item.fn
 		end
@@ -569,9 +579,9 @@ describe("Hammerspoon init", function()
 		assert.is_true(runtime.menu.tooltip:find("Stops at 10:15", 1, true) ~= nil)
 		assert.is_true(runtime.menu.tooltip:find(runtime.state.rawOutput, 1, true) ~= nil)
 
-		assert.equals("DEEP WORK (25m) → 10:15", runtime.menu.menu[1].title)
-		assert.equals(runtime.state.rawOutput, runtime.menu.menu[2].title)
-		assert.is_true(runtime.menu.menu[3].title:find("Last sync", 1, true) ~= nil)
+		assert.equals("DEEP WORK (25m) → 10:15", menu_items(runtime.menu)[1].title)
+		assert.equals(runtime.state.rawOutput, menu_items(runtime.menu)[2].title)
+		assert.is_true(menu_items(runtime.menu)[3].title:find("Last sync", 1, true) ~= nil)
 		assert.is_not_nil(menu_refresh_fn(runtime.menu))
 	end)
 
@@ -907,7 +917,52 @@ describe("Hammerspoon init", function()
 		assert.is_nil(title:find("DEEP WORK", 1, true))
 		assert.is_true(runtime.menu.tooltip:find("FOCUS TIME (20m)", 1, true) ~= nil)
 		assert.is_true(runtime.menu.tooltip:find("Stops at 10:20", 1, true) ~= nil)
-		assert.equals("FOCUS TIME (20m) → 10:20", runtime.menu.menu[1].title)
+		assert.equals("FOCUS TIME (20m) → 10:20", menu_items(runtime.menu)[1].title)
+	end)
+
+	it("keeps one installed Pomodoro menu builder across syncs, ticks, and hide/recover", function()
+		local restore_clock = freeze_clock_at(today_at(9, 50))
+		local ok, error_message, env = load_init_with({
+			task_completion = {
+				exit_code = 0,
+				stdout = "[<13m] 0950-1015 — DEEP WORK",
+				stderr = "",
+			},
+		})
+		assert.is_true(ok, error_message)
+
+		local runtime = _G.BobPomodoroCountdown
+		assert.equals("function", type(runtime.menu.menu))
+		local builder = runtime.menu.menu
+		assert.equals(1, runtime.menu.set_menu_calls)
+
+		env.task_completion = {
+			exit_code = 0,
+			stdout = "[<5m] 1000-1020 — FOCUS TIME",
+			stderr = "",
+		}
+		_G.BobPomodoroCountdown.syncTimer.callback()
+		_G.BobPomodoroCountdown.tickTimer.callback()
+		_G.BobPomodoroCountdown.wakeWatcher.callback(_G.hs.caffeinate.watcher.systemDidWake)
+
+		active_env.task_completion = { exit_code = 0, stdout = "not a pomodoro", stderr = "" }
+		runtime.syncTimer.callback()
+		assert.is_nil(runtime.state)
+		assert.is_true(runtime.menu.removed)
+		assert.same({}, menu_items(runtime.menu))
+
+		active_env.task_completion = {
+			exit_code = 0,
+			stdout = "[<5m] 1000-1020 — FOCUS TIME",
+			stderr = "",
+		}
+		runtime.syncTimer.callback()
+		restore_clock()
+
+		assert.equals("FOCUS TIME", runtime.state.fullTheme)
+		assert.equals(1, runtime.menu.set_menu_calls)
+		assert.is_true(runtime.menu.menu == builder)
+		assert.equals("FOCUS TIME (20m) → 10:20", menu_items(runtime.menu)[1].title)
 	end)
 
 	it("clears old context on empty success and recovers on later valid output", function()
@@ -932,7 +987,7 @@ describe("Hammerspoon init", function()
 		assert.is_nil(runtime.state.duration)
 		assert.equals("\194\160NO POMODORO\194\160", title_text(runtime.menu.title))
 		assert.equals("No current Pomodoro", runtime.menu.tooltip)
-		assert.equals("No current Pomodoro", runtime.menu.menu[1].title)
+		assert.equals("No current Pomodoro", menu_items(runtime.menu)[1].title)
 		assert.is_nil(runtime.menu.tooltip:find("DEEP WORK", 1, true))
 		assert.is_nil(runtime.menu.tooltip:find("Stops at", 1, true))
 		assert.is_nil(runtime.menu.tooltip:find("(25m)", 1, true))

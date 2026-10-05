@@ -90,7 +90,6 @@ local function clearBobPomodoroMenu(menu)
 
 	menu:setTitle("")
 	menu:setTooltip("")
-	menu:setMenu({})
 	menu:removeFromMenuBar()
 end
 
@@ -427,22 +426,18 @@ local function hideBobPomodoroMenu()
 	clearBobPomodoroMenu(bobPomodoroRuntime.menu)
 end
 
-local function updateBobPomodoroMenuDetails()
-	local menuBarItem = bobPomodoroRuntime.menu
+local function buildBobPomodoroMenuItems()
 	local state = bobPomodoroRuntime.state
-	if not menuBarItem or not state then
-		return
+	if not state then
+		return {}
 	end
 
-	local tooltip = state.rawOutput
-	local menu
 	if state.fullTheme ~= nil and state.stopTime ~= nil then
 		local theme_label = state.fullTheme
 		if state.duration ~= nil and tostring(state.duration) ~= "" then
 			theme_label = theme_label .. " (" .. tostring(state.duration) .. ")"
 		end
-		tooltip = theme_label .. "\nStops at " .. state.stopTime .. "\n" .. state.rawOutput
-		menu = {
+		return {
 			{ title = theme_label .. " → " .. state.stopTime, disabled = true },
 			{ title = state.rawOutput, disabled = true },
 			{
@@ -457,25 +452,40 @@ local function updateBobPomodoroMenuDetails()
 				end,
 			},
 		}
-	else
-		menu = {
-			{ title = state.rawOutput, disabled = true },
-			{
-				title = "Last sync " .. os.date("%H:%M:%S", state.lastSyncEpoch),
-				disabled = true,
-			},
-			{ title = "-" },
-			{
-				title = "Refresh",
-				fn = function()
-					runBobPomodoroCallback("manual refresh", syncBobPomodoro)
-				end,
-			},
-		}
+	end
+	return {
+		{ title = state.rawOutput, disabled = true },
+		{
+			title = "Last sync " .. os.date("%H:%M:%S", state.lastSyncEpoch),
+			disabled = true,
+		},
+		{ title = "-" },
+		{
+			title = "Refresh",
+			fn = function()
+				runBobPomodoroCallback("manual refresh", syncBobPomodoro)
+			end,
+		},
+	}
+end
+
+local function updateBobPomodoroTooltip()
+	local menuBarItem = bobPomodoroRuntime.menu
+	local state = bobPomodoroRuntime.state
+	if not menuBarItem or not state then
+		return
+	end
+
+	local tooltip = state.rawOutput
+	if state.fullTheme ~= nil and state.stopTime ~= nil then
+		local theme_label = state.fullTheme
+		if state.duration ~= nil and tostring(state.duration) ~= "" then
+			theme_label = theme_label .. " (" .. tostring(state.duration) .. ")"
+		end
+		tooltip = theme_label .. "\nStops at " .. state.stopTime .. "\n" .. state.rawOutput
 	end
 
 	menuBarItem:setTooltip(tooltip)
-	menuBarItem:setMenu(menu)
 end
 
 local function renderBobPomodoroMenu()
@@ -553,7 +563,7 @@ syncBobPomodoro = function()
 					lastSyncEpoch = now,
 					missingShownEpoch = bobPomodoroMissingShownEpoch(previousState, now),
 				}
-				updateBobPomodoroMenuDetails()
+				updateBobPomodoroTooltip()
 				renderBobPomodoroMenu()
 				return
 			end
@@ -578,7 +588,7 @@ syncBobPomodoro = function()
 			parsed.duration = PomodoroCountdown.format_duration(parsed.durationMinutes)
 			parsed.lastSyncEpoch = os.time()
 			bobPomodoroRuntime.state = parsed
-			updateBobPomodoroMenuDetails()
+			updateBobPomodoroTooltip()
 			renderBobPomodoroMenu()
 		end),
 		{ "-lc", bobPomodoroCommand }
@@ -605,6 +615,19 @@ syncBobPomodoro = function()
 	end
 end
 
+-- Install the lazy builder once per config load, never from a sync, tick, or
+-- hide path. Calling setMenu while the menu is open empties and detaches the
+-- open NSMenu (which closes the dropdown), and timers keep firing while a menu
+-- is open. Hammerspoon keeps the same NSMenu and delegate across
+-- removeFromMenuBar / returnToMenuBar, so the builder survives hide and show.
+bobPomodoroRuntime.menu:setMenu(function()
+	local ok, items = xpcall(buildBobPomodoroMenuItems, debug.traceback)
+	if not ok then
+		hs.printf("Bob Pomodoro menu failed: %s", items)
+		return {}
+	end
+	return items
+end)
 hideBobPomodoroMenu()
 bobPomodoroRuntime.tickTimer = hs.timer
 	.new(

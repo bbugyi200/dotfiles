@@ -83,7 +83,8 @@ details. At and after ten minutes overdue, only the `OVERDUE` badge flashes betw
 text and white-on-red. The menu polls `bob pomodoro --show-stale` every 15 seconds,
 refreshes on wake and unlock, offers a manual Refresh item, and re-syncs once when
 crossing zero. An empty result shows `NO POMODORO`; command or parse failures hide the
-item.
+item. The dropdown shows a snapshot taken when it opens, stays open while the title
+keeps updating, and shows fresh details when reopened.
 
 ## Internet ping menu bar
 
@@ -93,7 +94,8 @@ padded to a fixed width so the item never changes size between ticks or tiers. T
 uses Menlo regular; the glyph uses the default menu bar face, and nothing is bold. The
 tooltip names the score and the last round-trip time. Opening the item shows the tier, a
 20-cell history strip, the score over its span, the last ping, and a Network Settings
-shortcut.
+shortcut. The dropdown shows a snapshot taken when it opens, stays open while the title
+keeps updating, and shows fresh details when reopened.
 
 One ping stream feeds both this item and the tmux status bar. Hammerspoon is the
 preferred producer: it pings 8.8.8.8 every 2 s, and both displays render the same shared
