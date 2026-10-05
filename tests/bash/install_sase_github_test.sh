@@ -126,13 +126,13 @@ printf 'sase %s\n' "$*" >>"${CALLS_FILE}"
 exit 0
 EOF
 
-  cat >"${FAKE_BIN}/sase-xprompt-lsp" <<'EOF'
+  cat >"${FAKE_BIN}/sase-macro-lsp" <<'EOF'
 #!/bin/bash
 exit 0
 EOF
 
   chmod +x "${FAKE_BIN}/uv" "${FAKE_BIN}/just" "${FAKE_BIN}/cargo" \
-    "${FAKE_BIN}/sase" "${FAKE_BIN}/sase-xprompt-lsp" "${FAKE_BIN}/python3"
+    "${FAKE_BIN}/sase" "${FAKE_BIN}/sase-macro-lsp" "${FAKE_BIN}/python3"
 
   # Provide a fake uv-tool python so probe_uv_tool_health passes on success.
   mkdir -p "${UV_TOOL_DIR}/sase/bin"
