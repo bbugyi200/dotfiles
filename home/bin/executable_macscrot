@@ -2,7 +2,7 @@
 #
 # Capture an interactively-selected screen region on the MacBook and upload it
 # to both tailnet Linux hosts (apollo and athena) in parallel. SASE prompts
-# later fetch the most recent uploads with the `#sshot` xprompt.
+# later fetch the most recent uploads with the `#sshot` macro.
 
 set -euo pipefail
 

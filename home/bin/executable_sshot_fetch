@@ -2,7 +2,7 @@
 #
 # Resolve the nth newest MacBook screenshot by basename across the local
 # ~/tmp/screenshots directory plus apollo and athena. Print local_path=... for
-# the #sshot xprompt. Failed remote listings are empty, not fatal.
+# the #sshot macro. Failed remote listings are empty, not fatal.
 
 set -euo pipefail
 

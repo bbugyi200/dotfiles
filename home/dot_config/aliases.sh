@@ -26,7 +26,7 @@ alias sap='sase -p plugin'
 alias sat='sase -p telemetry'
 alias sbd='sase -p bead'
 alias sbds='sase -p bead show'
-alias sax='sase -p xprompt'
+alias sax='sase -p macro'
 
 # ---------- cookie Aliases / Functions ----------
 # def marker: COOKIE

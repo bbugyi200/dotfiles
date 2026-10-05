@@ -426,9 +426,9 @@ function M.get_markdown_snippets()
 			),
 		}),
 		-- SNIPPET: x
-		s({ trig = "x", desc = "xprompt" }, { t("xprompt") }),
+		s({ trig = "x", desc = "macro" }, { t("macro") }),
 		-- SNIPPET: xw
-		s({ trig = "xw", desc = "xprompt workflow" }, { t("xprompt workflow") }),
+		s({ trig = "xw", desc = "macro workflow" }, { t("macro workflow") }),
 		-- SNIPPET: yolo
 		s(
 			{ trig = "yolo", desc = "I'll let you figure out how to make this work reliablely." },

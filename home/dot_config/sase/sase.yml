@@ -210,23 +210,23 @@ ace:
     tdd: |-
       TODO: $1
     tx: |-
-      the `#$1` xprompt
+      the `#$1` macro
     uw: |-
       usage window
     w: "%w"
     wb: |-
       %wait(bead=#{project}-$1)
-    x: "xprompt"
+    x: "macro"
     xm: |-
-      xprompt memory
+      macro memory
     xp: |-
-      the `#$1` xprompt
-    xs: "xprompt skill"
+      the `#$1` macro
+    xs: "macro skill"
     xsw: |-
-      xprompt swarm
-    xw: "xprompt workflow"
+      macro swarm
+    xw: "macro workflow"
     # keep-sorted end
-  # Tribes assigned by my own xprompts, not by sase itself. sase bundles
+  # Tribes assigned by my own macros, not by sase itself. sase bundles
   # display config only for the tribes its own source can assign (default,
   # epic, job, pinned, review); anything else is mine to configure here.
   tribes:
@@ -296,7 +296,7 @@ llm_provider:
         description:
           "Research-swarm model roles: primary researcher, second-opinion researcher."
 
-xprompts:
+macros:
   # keep-sorted start
   actstat:
     input:
