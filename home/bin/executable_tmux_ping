@@ -1,201 +1,342 @@
 #!/bin/bash
 
-source ~/lib/bugyi.sh
+##############################################################################
+#  Render internet connectivity for the tmux status line from one shared     #
+#  20-sample ping window, pinging only as a fallback.                        #
+#                                                                            #
+#  The preferred producer is Hammerspoon (the Mac menu bar item): while its  #
+#  heartbeat in `$HOME/tmp/tmux_ping_state` is fresh this script only reads  #
+#  and renders, sending no ping and taking no lock. When no fresh            #
+#  Hammerspoon heartbeat exists it falls back to pinging 8.8.8.8 at most     #
+#  once per 2 s across clients (under an `flock` guard), appends the result  #
+#  to the shared window, and renders. tmux therefore keeps working on its    #
+#  own when Hammerspoon is not running.                                      #
+#                                                                            #
+#  State file: `$HOME/tmp/tmux_ping_state`, one LF-terminated line:          #
+#      <heartbeat> <producer> <sampled> <results>                             #
+#  `heartbeat` is the producer's latest write (its claim on the stream),     #
+#  `producer` is `hammerspoon` or `tmux`, `sampled` is when the newest       #
+#  sample was sent (`0` when empty), and `results` is 1-20 `0`/`1` chars,    #
+#  oldest first (`-` when empty). Anything else counts as "no state".        #
+#  Writers write a sibling temp file and rename it over the path, so        #
+#  readers never lock. The old `~/tmp/tmux_ping_results*` files are         #
+#  abandoned: nothing reads or writes them anymore.                         #
+#                                                                            #
+#  Health tiers, checked in this order: stale (empty window, or unsampled   #
+#  for > 6 s), offline (3+ trailing misses), down (newest is a miss),       #
+#  lossy (newest replied but < 90% replied), online (>= 90% replied).        #
+#                                                                            #
+#  Shared ping-stream constants. Mirrored in                                 #
+#  `home/dot_hammerspoon/ping_window.lua`; keep both sides in sync.          #
+#                                                                            #
+#  tmux runs this every `status-interval` (2s), so the reader path forks     #
+#  only `date`, and this deliberately does not source ~/lib/bugyi.sh.       #
+##############################################################################
 
-# Check internet connectivity with a quick ping
-# Returns a running count of last 20 pings for tmux status bar
-# Only runs on macOS
+set -e
 
-export USAGE_GRAMMAR=(
-  "[-v]"
-  "-h"
-)
+# Shared constants (see the header; mirror in ping_window.lua).
+readonly PING_TARGET='8.8.8.8'
+readonly INTERVAL_SECONDS=2
+readonly WINDOW_SIZE=20
+readonly WINDOW_SECONDS=40
+readonly HANDOFF_SECONDS=6
+readonly STALE_SECONDS=6
+readonly OFFLINE_AFTER_FAILURES=3
+readonly STATE_BASENAME='tmux_ping_state'
+readonly STYLE_STALE='fg=#828bb8'
+readonly STYLE_LOSSY='fg=#ffc777'
 
-read -r -d '' DOC <<EOM
-$(usage)
+function usage() {
+  cat <<EOM
+usage: $(basename "$0") [-h]
 
-A utility that tracks internet connectivity by pinging 8.8.8.8 and displaying
-a running count of successful pings out of the last 20 attempts.
-
-Designed to be called repeatedly by tmux status bar every 2 seconds.
+Render internet connectivity for the tmux status line from the shared
+~/tmp/${STATE_BASENAME} window, as tmux style markup ending in "| " (for
+example '#[fg=green]✓#[default] 20/20 | '). While a fresh Hammerspoon
+heartbeat exists this only reads the shared window; otherwise, as a
+fallback, it pings ${PING_TARGET} (at most once per ${INTERVAL_SECONDS} s
+across clients, under an flock guard), appends the sample to the shared
+window, and renders. On non-macOS hosts this prints nothing.
 
 Optional Arguments
 ------------------
 -h | --help
     View this help message.
 
--v | --verbose
-    Enable verbose output. This option can be specified multiple times (e.g. -v, -vv, ...).
-
 Examples
 --------
-# Run once to check connectivity
-tmux_ping
+tmux_ping     # '#[fg=green]✓#[default] 20/20 | '
 EOM
+}
+
+# Parse one state line. Sets STATE_HEARTBEAT, STATE_PRODUCER, STATE_SAMPLED,
+# and STATE_RESULTS (empty for `-`). Returns non-zero for anything the
+# contract calls invalid. Tolerates one trailing newline.
+function parse_state_line() {
+  local line="$1"
+  line="${line%$'\n'}"
+
+  local pattern='^([0-9]+) (hammerspoon|tmux) ([0-9]+) (-|[01]{1,20})$'
+  if [[ "${line}" =~ ${pattern} ]]; then
+    STATE_HEARTBEAT="${BASH_REMATCH[1]}"
+    STATE_PRODUCER="${BASH_REMATCH[2]}"
+    STATE_SAMPLED="${BASH_REMATCH[3]}"
+    if [[ "${BASH_REMATCH[4]}" == '-' ]]; then
+      STATE_RESULTS=''
+    else
+      STATE_RESULTS="${BASH_REMATCH[4]}"
+    fi
+    return 0
+  fi
+
+  return 1
+}
+
+# Read and validate the state file at the given path. Sets the STATE_*
+# globals on success; returns non-zero when the file is missing, empty, or
+# invalid.
+function read_state_file() {
+  local path="$1"
+  local line=''
+
+  IFS= read -r line <"${path}" 2>/dev/null || [[ -n "${line}" ]] || return 1
+
+  parse_state_line "${line}"
+}
+
+# Refresh the CUR_* globals from the state file: CUR_VALID is `1` with
+# CUR_HEARTBEAT, CUR_PRODUCER, CUR_SAMPLED, and CUR_RESULTS set when the
+# file holds valid state, else `0` with the rest empty.
+function refresh_state() {
+  local path="$1"
+
+  CUR_VALID=0
+  CUR_HEARTBEAT=''
+  CUR_PRODUCER=''
+  CUR_SAMPLED=''
+  CUR_RESULTS=''
+
+  if read_state_file "${path}"; then
+    CUR_VALID=1
+    CUR_HEARTBEAT="${STATE_HEARTBEAT}"
+    CUR_PRODUCER="${STATE_PRODUCER}"
+    CUR_SAMPLED="${STATE_SAMPLED}"
+    CUR_RESULTS="${STATE_RESULTS}"
+  fi
+}
+
+# Summarize a results window. Sets SUM_SUCCESSES, SUM_TOTAL,
+# SUM_TRAILING_FAILURES, and SUM_NEWEST_OK (`1` or `0`).
+function summarize() {
+  local results="$1"
+
+  local ones="${results//0/}"
+  SUM_SUCCESSES="${#ones}"
+  SUM_TOTAL="${#results}"
+
+  local rest="${results}"
+  SUM_TRAILING_FAILURES=0
+  while [[ -n "${rest}" && "${rest}" == *0 ]]; do
+    rest="${rest%?}"
+    SUM_TRAILING_FAILURES=$((SUM_TRAILING_FAILURES + 1))
+  done
+
+  SUM_NEWEST_OK=0
+  if [[ -n "${results}" && "${results}" == *1 ]]; then
+    SUM_NEWEST_OK=1
+  fi
+}
+
+# Append one sample (`ok` is `1` for a reply, `0` for a miss) sent at
+# `sent_at` to `results`. When there is no previous window, or
+# `sent_at - prev_sampled > WINDOW_SECONDS`, start a fresh one-sample
+# window so no window spans a sleep or a long pause; otherwise append and
+# trim to WINDOW_SIZE. Sets REPLY.
+function window_append() {
+  local results="$1" ok="$2" sent_at="$3" prev_sampled="$4"
+
+  if [[ -z "${results}" || -z "${prev_sampled}" || "${prev_sampled}" == '0' ]] \
+    || ((sent_at - prev_sampled > WINDOW_SECONDS)); then
+    REPLY="${ok}"
+    return 0
+  fi
+
+  results="${results}${ok}"
+  if ((${#results} > WINDOW_SIZE)); then
+    results="${results:$(( ${#results} - WINDOW_SIZE ))}"
+  fi
+  REPLY="${results}"
+}
+
+# Classify a window into stale, offline, down, lossy, or online. Sets REPLY.
+function classify() {
+  local results="$1" sampled="$2" now="$3"
+
+  if [[ -z "${results}" ]] || ((now - sampled > STALE_SECONDS)); then
+    REPLY='stale'
+    return 0
+  fi
+
+  summarize "${results}"
+
+  if ((SUM_TRAILING_FAILURES >= OFFLINE_AFTER_FAILURES)); then
+    REPLY='offline'
+  elif [[ "${SUM_NEWEST_OK}" == '0' ]]; then
+    REPLY='down'
+  elif ((SUM_SUCCESSES * 10 < SUM_TOTAL * 9)); then
+    REPLY='lossy'
+  else
+    REPLY='online'
+  fi
+}
+
+# Render one window as tmux status markup with no trailing newline. An
+# empty window counts as –.
+function render_state() {
+  local results="$1" sampled="$2" now="$3"
+
+  classify "${results}" "${sampled}" "${now}"
+  local tier="${REPLY}"
+
+  local count='–'
+  if [[ -n "${results}" ]]; then
+    summarize "${results}"
+    count="${SUM_SUCCESSES}/${SUM_TOTAL}"
+  fi
+
+  case "${tier}" in
+  stale)
+    printf '#[%s]◌ %s#[default] | ' "${STYLE_STALE}" "${count}"
+    ;;
+  offline)
+    printf '#[fg=white,bg=red,bold] ✗ %s #[default] | ' "${count}"
+    ;;
+  down)
+    printf '#[fg=red]✗#[default] %s | ' "${count}"
+    ;;
+  lossy)
+    printf '#[%s]✓#[default] %s | ' "${STYLE_LOSSY}" "${count}"
+    ;;
+  online)
+    printf '#[fg=green]✓#[default] %s | ' "${count}"
+    ;;
+  esac
+}
+
+# Send one contract ping. Succeeds on a reply.
+function do_ping() {
+  ping -n -q -c 1 -t 1 "${PING_TARGET}" >/dev/null 2>&1
+}
+
+# Atomically write one state line. Leaves no temp file behind.
+function write_state() {
+  local path="$1" line="$2"
+  local tmp="${path}.tmp.$$"
+
+  if printf '%s\n' "${line}" >"${tmp}"; then
+    if mv "${tmp}" "${path}"; then
+      return 0
+    fi
+  fi
+
+  rm -f "${tmp}"
+  return 1
+}
 
 function run() {
-  parse_cli_args "$@"
+  if [[ -n "$1" ]]; then
+    case "$1" in
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    *)
+      printf 'error: unrecognized argument: %s\n\n' "$1" >&2
+      usage >&2
+      exit 2
+      ;;
+    esac
+  fi
 
-  # Exit early if not on macOS
-  if [[ "$(uname -s)" != "Darwin" ]]; then
+  # Nowhere to render outside macOS; exit quietly before forking anything.
+  case "${OSTYPE:-}" in
+  darwin*) ;;
+  *)
+    exit 0
+    ;;
+  esac
+
+  local now
+  now="$(date +%s)" || exit 0
+
+  local state_file="${HOME}/tmp/${STATE_BASENAME}"
+  local lock_file="${state_file}.lock"
+
+  refresh_state "${state_file}"
+
+  # A fresh Hammerspoon heartbeat owns the stream: render from the shared
+  # window and return without locking or pinging.
+  if [[ "${CUR_VALID}" == '1' && "${CUR_PRODUCER}" == 'hammerspoon' ]] \
+    && ((now - CUR_HEARTBEAT < HANDOFF_SECONDS)); then
+    render_state "${CUR_RESULTS}" "${CUR_SAMPLED}" "${now}"
     exit 0
   fi
 
-  # File to store ping results
-  local ping_file="$HOME/tmp/tmux_ping_results"
-  local lock_file="$ping_file.lock"
-  [[ -d "$(dirname "$ping_file")" ]] || mkdir -p "$(dirname "$ping_file")"
-
-  # Call the helper function to perform ping with file locking
-  ping_with_lock "$ping_file" "$lock_file"
-}
-
-function parse_cli_args() {
-  log::debug "Command-Line Arguments: ($*)"
-
-  eval set -- "$(getopt -o "h,v" -l "help,verbose" -- "$@")"
-
-  VERBOSE=0
-  while [[ -n "$1" ]]; do
-    case $1 in
-    -h | --help)
-      echo "${DOC}"
+  # Fallback pinger: take the cross-client lock without waiting. Without
+  # flock there is nothing to take; continue unlocked.
+  local locked=0
+  if ! mkdir -p "${HOME}/tmp" 2>/dev/null; then
+    render_state "${CUR_RESULTS}" "${CUR_SAMPLED}" "${now}"
+    exit 0
+  fi
+  if command -v flock >/dev/null 2>&1; then
+    if ! exec 9>"${lock_file}"; then
+      render_state "${CUR_RESULTS}" "${CUR_SAMPLED}" "${now}"
       exit 0
-      ;;
-    -v | --verbose)
-      VERBOSE=$((VERBOSE + 1))
-      ;;
-    --)
-      shift
-      break
-      ;;
-    esac
-    shift
-  done
-
-  if [[ "${VERBOSE}" -gt 1 ]]; then
-    PS4='$LINENO: '
-    set -x
+    fi
+    if flock -n 9; then
+      locked=1
+    else
+      # Another client is pinging; render what it has written so far.
+      exec 9>&-
+      render_state "${CUR_RESULTS}" "${CUR_SAMPLED}" "${now}"
+      exit 0
+    fi
   fi
 
-  readonly DOC
-  readonly VERBOSE
+  # Re-read under the lock: another client may have pinged between the
+  # first read and the lock.
+  refresh_state "${state_file}"
+
+  if [[ "${CUR_VALID}" == '1' ]] \
+    && ((now - CUR_SAMPLED < INTERVAL_SECONDS)); then
+    if ((locked == 1)); then
+      exec 9>&-
+    fi
+    render_state "${CUR_RESULTS}" "${CUR_SAMPLED}" "${now}"
+    exit 0
+  fi
+
+  local ok=0
+  if do_ping; then
+    ok=1
+  else
+    ok=0
+  fi
+
+  window_append "${CUR_RESULTS}" "${ok}" "${now}" "${CUR_SAMPLED}"
+  local new_results="${REPLY}"
+
+  write_state "${state_file}" "${now} tmux ${now} ${new_results}" || true
+
+  if ((locked == 1)); then
+    exec 9>&-
+  fi
+  render_state "${new_results}" "${now}" "${now}"
+  exit 0
 }
 
-# Check internet connectivity by pinging.
-function ping_with_lock() {
-  local ping_file="$1"
-  local lock_file="$2"
-
-  # File to store last ping timestamp
-  local timestamp_file="$ping_file.timestamp"
-  # Use file locking to prevent race conditions
-  (
-    # Wait up to 2 seconds for lock
-    start_time=$(date +%s.%N)
-    local seconds_to_wait=2
-    if ! flock -w $seconds_to_wait 200; then
-      local end_time=$(date +%s.%N)
-      local duration=$(echo "$end_time - $start_time" | bc)
-      log::error "Failed to acquire file lock in %d seconds, exiting" "${duration}"
-      exit 1
-    fi
-    local end_time=$(date +%s.%N)
-    local duration=$(echo "$end_time - $start_time" | bc)
-    log::debug "Acquired file lock after $duration seconds"
-
-    # Check if we should perform a new ping based on timestamp
-    local current_time=$(date +%s)
-    local should_ping=true
-    local result=""
-
-    if [[ -f "$timestamp_file" ]]; then
-      local last_ping_time
-      last_ping_time=$(cat "$timestamp_file" 2>/dev/null || echo "0")
-      if [[ "$last_ping_time" =~ ^[0-9]+$ ]] && [[ $((current_time - last_ping_time)) -lt 2 ]]; then
-        should_ping=false
-        log::debug "Skipping ping, last ping was $((current_time - last_ping_time)) seconds ago"
-      fi
-    fi
-
-    if [[ "$should_ping" == "true" ]]; then
-      # Perform ping test
-      if ping -c 1 -W 1 8.8.8.8 >/dev/null 2>&1; then
-        result="1"
-        log::debug "Ping successful"
-      else
-        result="0"
-        log::debug "Ping failed"
-      fi
-
-      # Update timestamp
-      echo -n "$current_time" >"$timestamp_file"
-    fi
-
-    # Read existing results with validation
-    local results=""
-    if [[ -f "$ping_file" ]]; then
-      # Read file and validate content (should only contain 0s and 1s)
-      local file_content
-      file_content=$(cat "$ping_file" 2>/dev/null || echo "")
-      if [[ "$file_content" =~ ^[01]*$ ]]; then
-        results="$file_content"
-      else
-        log::debug "Invalid file content, resetting: '$file_content'"
-        results=""
-      fi
-    fi
-
-    log::debug "Previous results: '$results'"
-
-    # Only update results file if we performed a new ping
-    if [[ -n "$result" ]]; then
-      # Add new result
-      results="$results$result"
-
-      # Keep only last 20 results
-      if [[ ${#results} -gt 20 ]]; then
-        results=${results: -20}
-      fi
-
-      log::debug "Updated results: '$results'"
-
-      # Atomic write: write to temp file then move
-      local temp_file="$ping_file.tmp.$$"
-      if echo -n "$results" >"$temp_file" && mv "$temp_file" "$ping_file"; then
-        log::debug "Successfully wrote results to file"
-      else
-        log::debug "Failed to write results to file"
-        [[ -f "$temp_file" ]] && rm -f "$temp_file"
-        exit 1
-      fi
-    else
-      log::debug "Using existing results (no new ping performed)"
-    fi
-
-    # Count successes
-    local success_count=0
-    for ((i = 0; i < ${#results}; i++)); do
-      if [[ "${results:$i:1}" == "1" ]]; then
-        ((success_count++))
-      fi
-    done
-    local total_count=${#results}
-
-    log::debug "Success count: $success_count/$total_count"
-
-    # Display result with status symbol
-    local symbol
-    if [[ "${results: -1}" == "1" ]]; then
-      symbol="#[fg=green]✓#[default]"
-    else
-      symbol="#[fg=red]✗#[default]"
-    fi
-    echo "$symbol $success_count/$total_count | "
-
-  ) 200>"$lock_file"
-}
-
-if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
   run "$@"
 fi
