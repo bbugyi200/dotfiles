@@ -85,6 +85,52 @@ refreshes on wake and unlock, offers a manual Refresh item, and re-syncs once wh
 crossing zero. An empty result shows `NO POMODORO`; command or parse failures hide the
 item.
 
+## Internet ping menu bar
+
+Hammerspoon shows internet connectivity as one status item beside the Pomodoro item. The
+title is a glyph plus a `successes/total` count over the last 20 pings (`✓ 17/20`),
+padded to a fixed width so the item never changes size between ticks or tiers. The count
+uses Menlo regular; the glyph uses the default menu bar face, and nothing is bold. The
+tooltip names the score and the last round-trip time. Opening the item shows the tier, a
+20-cell history strip, the score over its span, the last ping, and a Network Settings
+shortcut.
+
+One ping stream feeds both this item and the tmux status bar. Hammerspoon is the
+preferred producer: it pings 8.8.8.8 every 2 s, and both displays render the same shared
+20-sample window, so they always agree. `tmux_ping` only reads while a fresh Hammerspoon
+heartbeat exists and falls back to pinging when Hammerspoon is not running, broken, or
+unable to write. Handover is self-healing in both directions: Hammerspoon claims the
+stream by writing its heartbeat and tmux backs off on its next redraw, while tmux
+resumes pinging within about 6 s when Hammerspoon stops. At most one extra ping happens
+during a handover. Nobody pings while the Mac is locked: Hammerspoon stops pinging but
+keeps refreshing its heartbeat, so tmux does not take over either. With Hammerspoon not
+running, tmux keeps working on its own.
+
+| Situation                      | Traffic              |
+| ------------------------------ | -------------------- |
+| Unlocked, tmux client attached | 1 ping / 2 s         |
+| Locked, tmux client attached   | none                 |
+| Unlocked, no tmux client       | 1 ping / 2 s         |
+| Hammerspoon not running        | tmux pings as before |
+| Mac asleep                     | none                 |
+
+Health tiers, checked in this order from the newest sample backward:
+
+| Tier      | Rule                                 | Menu bar              | tmux status            |
+| --------- | ------------------------------------ | --------------------- | ---------------------- |
+| `stale`   | empty window, or no sample for > 6 s | `◌ 17/20` in gray     | `◌ 17/20` in blue-gray |
+| `offline` | 3 or more trailing misses            | white `✗ 0/20` on red | white `✗ 0/20` on red  |
+| `down`    | newest ping missed, under 3 trailing | red `✗ 19/20`         | red `✗ 19/20`          |
+| `lossy`   | newest answered, under 90% answered  | orange `✓ 17/20`      | amber `✓ 17/20`        |
+| `online`  | newest answered, 90%+ answered       | green `✓ 20/20`       | green `✓ 20/20`        |
+
+The shared window lives in `~/tmp/tmux_ping_state`: one LF-terminated line of
+`<heartbeat> <producer> <sampled> <results>`, where `heartbeat` is the producer's latest
+write, `producer` is `hammerspoon` or `tmux`, `sampled` is when the newest sample was
+sent (`0` when empty), and `results` is 1–20 `0` / `1` characters, oldest first (`-`
+when empty). Writers replace the file atomically, so readers never lock. A window older
+than 40 s is dropped on the next sample, so no window spans a sleep or a long pause.
+
 ## Deleting things under `/tmp`
 
 On `athena`, `/tmp` is a **32G tmpfs** — RAM-backed, shared by every numbered sase

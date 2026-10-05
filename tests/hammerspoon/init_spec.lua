@@ -260,7 +260,9 @@ local function setup_hammerspoon_init_environment(options)
 		previous_runtime = _G.BobPomodoroCountdown,
 		previous_pomodoro_module = package.loaded.pomodoro_countdown,
 		previous_screenshot_module = package.loaded.screenshot_region,
+		previous_ping_module = package.loaded.ping_indicator,
 		hotkeys = {},
+		ping_start_calls = {},
 		tasks = {},
 		timers = {},
 		menus = {},
@@ -292,6 +294,14 @@ local function setup_hammerspoon_init_environment(options)
 			table.insert(env.screenshot_pick_callbacks, callback)
 		end,
 	}
+	package.loaded.ping_indicator = {
+		start = function(...)
+			table.insert(env.ping_start_calls, { ... })
+			if options.ping_start_error then
+				error(options.ping_start_error)
+			end
+		end,
+	}
 	env.screenshot_pick_callbacks = {}
 
 	function env.load_init()
@@ -303,6 +313,7 @@ local function setup_hammerspoon_init_environment(options)
 		_G.BobPomodoroCountdown = env.previous_runtime
 		package.loaded.pomodoro_countdown = env.previous_pomodoro_module
 		package.loaded.screenshot_region = env.previous_screenshot_module
+		package.loaded.ping_indicator = env.previous_ping_module
 	end
 
 	return env
@@ -453,6 +464,37 @@ describe("Hammerspoon init", function()
 		local ok, error_message = load_init_with({ runtime = "stale" })
 		assert.is_true(ok, error_message)
 		assert.equals("table", type(_G.BobPomodoroCountdown))
+	end)
+
+	it("starts the ping indicator exactly once", function()
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+		assert.equals(1, #env.ping_start_calls)
+	end)
+
+	it("logs a throwing ping start and still installs the Pomodoro runtime", function()
+		local ok, error_message, env = load_init_with({ ping_start_error = "boom" })
+		assert.is_true(ok, error_message)
+		assert.equals(1, #env.ping_start_calls)
+
+		local logged = false
+		for _, call in ipairs(env.printf_calls) do
+			if tostring(call[1]):find("Bob ping start failed", 1, true) ~= nil then
+				logged = true
+			end
+		end
+		assert.is_true(logged)
+
+		local runtime = _G.BobPomodoroCountdown
+		assert.equals("table", type(runtime))
+		assert.is_not_nil(runtime.menu)
+		assert.is_not_nil(runtime.tickTimer)
+		assert.is_not_nil(runtime.syncTimer)
+		assert.is_not_nil(runtime.wakeWatcher)
+		assert.equals(1, #env.menus)
+		assert.equals(2, #env.timers)
+		assert.equals(1, #env.wake_watchers)
+		assert.equals(1, #env.path_watchers)
 	end)
 
 	it("cleans up retained Pomodoro runtime objects and reuses the menu on reload", function()
