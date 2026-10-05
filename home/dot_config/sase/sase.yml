@@ -141,6 +141,8 @@ ace:
       Is this something we can/should fix?
     jya: "Justify your answer."
     key: "the `$1` keymap"
+    keys: |-
+      the `$1` and `$2` keymaps $3
     keyy: "a new `$1` keymap"
     keyyy: |-
       the new `$1` / `$2` keymaps
