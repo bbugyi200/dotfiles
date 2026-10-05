@@ -199,6 +199,8 @@ ace:
       sase monitor
     ss: |-
       the $1 screenshot
+    st: |-
+      the stacktrace below
     tab: |-
       the "$1" tab
     td: |-
