@@ -113,14 +113,15 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 	it("exports the missing reminder constants", function()
 		assert.equals(300, countdown.MISSING_REMINDER_EVERY_SECONDS)
 		assert.equals(60, countdown.MISSING_REMINDER_FOR_SECONDS)
+		assert.equals(60, countdown.MISSING_REMINDER_FIRST_AFTER_SECONDS)
 		assert.equals("#062E14", countdown.MISSING_BADGE_TEXT_COLOR)
 	end)
 
-	it("activates the missing reminder only inside each 60-second window", function()
-		for _, shown in ipairs({ 0, 1, 59, 59.5, 300, 359, 600, 659, 1200 }) do
+	it("activates the missing reminder only inside the delayed first window and each later 60-second window", function()
+		for _, shown in ipairs({ 60, 61, 119, 119.5, 300, 359, 600, 659, 1200 }) do
 			assert.is_true(countdown.missing_reminder_active(shown), tostring(shown) .. " should be active")
 		end
-		for _, shown in ipairs({ 60, 61, 299, 360, 599, 660, 1199 }) do
+		for _, shown in ipairs({ 0, 1, 59, 59.5, 120, 121, 299, 360, 599, 660, 1199 }) do
 			assert.is_false(countdown.missing_reminder_active(shown), tostring(shown) .. " should be inactive")
 		end
 		assert.is_false(countdown.missing_reminder_active(-1))
@@ -142,12 +143,15 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 			return presentation
 		end
 
-		assert_missing(nil, true, { missingShownSeconds = 0 }, "missing_flash")
+		assert_missing(nil, true, { missingShownSeconds = 60 }, "missing_flash")
+		assert_missing(nil, true, { missingShownSeconds = 119 }, "missing_flash")
 		assert_missing(nil, true, { missingShownSeconds = 300 }, "missing_flash")
 		assert_missing(nil, true, { missingShownSeconds = 600 }, "missing_flash")
-		assert_missing(nil, false, { missingShownSeconds = 0 }, "missing")
+		assert_missing(nil, false, { missingShownSeconds = 60 }, "missing")
 		assert_missing(nil, false, { missingShownSeconds = 600 }, "missing")
-		assert_missing(nil, true, { missingShownSeconds = 60 }, "missing")
+		assert_missing(nil, true, { missingShownSeconds = 0 }, "missing")
+		assert_missing(nil, true, { missingShownSeconds = 59 }, "missing")
+		assert_missing(nil, true, { missingShownSeconds = 120 }, "missing")
 		assert_missing(nil, true, { missingShownSeconds = 299 }, "missing")
 		assert_missing(nil, true, { missingShownSeconds = 599 }, "missing")
 		assert_missing(nil, true, nil, "missing")

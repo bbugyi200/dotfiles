@@ -3,6 +3,7 @@ local M = {}
 M.OVERDUE_WARNING_AFTER_SECONDS = 10 * 60
 M.MISSING_REMINDER_EVERY_SECONDS = 5 * 60
 M.MISSING_REMINDER_FOR_SECONDS = 60
+M.MISSING_REMINDER_FIRST_AFTER_SECONDS = 60
 M.MAX_THEME_CODEPOINTS = 24
 M.UNTITLED_THEME = "UNTITLED"
 M.NO_POMODORO_TITLE = "NO POMODORO"
@@ -146,6 +147,10 @@ end
 function M.missing_reminder_active(shown_seconds)
 	if not is_finite_number(shown_seconds) or shown_seconds < 0 then
 		return false
+	end
+	if shown_seconds < M.MISSING_REMINDER_EVERY_SECONDS then
+		local first = M.MISSING_REMINDER_FIRST_AFTER_SECONDS
+		return shown_seconds >= first and shown_seconds < first + M.MISSING_REMINDER_FOR_SECONDS
 	end
 	return shown_seconds % M.MISSING_REMINDER_EVERY_SECONDS < M.MISSING_REMINDER_FOR_SECONDS
 end

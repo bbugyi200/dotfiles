@@ -62,17 +62,18 @@ monospaced face, falling back to the regular monospaced face when bold is unavai
 From the first overdue second through `+09:59`, the `+MM:SS` countdown is alert red
 (`#E3413B`) and does not flash. At and after ten minutes overdue, the status is
 `OVERDUE` and only that badge flashes between red text and white (`#FFFFFF`) on the same
-red. `NO POMODORO` is green (`#30d158`) with no tomato. It flashes for its first minute
-on screen, then for one minute every five minutes while it stays up: bold green text
-alternates at 1 Hz with a filled pill of dark forest-green `#062E14` on `#30d158`, the
-same cadence as `OVERDUE`. The cycle re-anchors when the label appears (after a session
-ends, after a command or parse failure hides the item, or after a Hammerspoon reload)
-and when the Mac wakes or unlocks while it is showing. Both idle frames pad the text
-with a no-break space on each side so the item never changes width. Theme, duration,
-separator, arrow, stop time, and the tomato stay in the ordinary foreground. A mid-tone
-wallpaper directly under a transparent menu bar can undercut any fixed color, including
-the system's own labels; turning on Accessibility › Display › Reduce transparency
-restores a uniform surface.
+red. `NO POMODORO` is green (`#30d158`) with no tomato. It stays steady for its first
+minute on screen, flashes for its second minute, then flashes for one minute every five
+minutes counted from when it appeared (5:00–6:00, 10:00–11:00, …) while it stays up:
+bold green text alternates at 1 Hz with a filled pill of dark forest-green `#062E14` on
+`#30d158`, the same cadence as `OVERDUE`. The cycle re-anchors when the label appears
+(after a session ends, after a command or parse failure hides the item, or after a
+Hammerspoon reload) and when the Mac wakes or unlocks while it is showing. Both idle
+frames pad the text with a no-break space on each side so the item never changes width.
+Theme, duration, separator, arrow, stop time, and the tomato stay in the ordinary
+foreground. A mid-tone wallpaper directly under a transparent menu bar can undercut any
+fixed color, including the system's own labels; turning on Accessibility › Display ›
+Reduce transparency restores a uniform surface.
 
 Long themes are bounded to 24 Unicode code points including the final ellipsis; the full
 theme stays in the tooltip and dropdown. The tooltip leads with `full theme (duration)`

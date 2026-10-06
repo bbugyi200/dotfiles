@@ -747,7 +747,7 @@ describe("Hammerspoon init", function()
 					rawOutput = "No current Pomodoro",
 					status = "missing",
 					lastSyncEpoch = fixed,
-					missingShownEpoch = fixed - 60,
+					missingShownEpoch = fixed - 120,
 				}
 			else
 				runtime.state = {
@@ -790,7 +790,7 @@ describe("Hammerspoon init", function()
 			rawOutput = "No current Pomodoro",
 			status = "missing",
 			lastSyncEpoch = os.time(),
-			missingShownEpoch = os.time(),
+			missingShownEpoch = os.time() - 60,
 		}
 		runtime.tickTimer.callback()
 		runtime.tickTimer.callback()
@@ -1212,6 +1212,17 @@ describe("Hammerspoon init", function()
 			runtime.task = nil
 			runtime.wakeWatcher.callback(eventType)
 			assert.equals(fixed, runtime.state.missingShownEpoch)
+			local first_call = #env.menu_title_calls + 1
+			runtime.tickTimer.callback()
+			runtime.tickTimer.callback()
+			for index = first_call, first_call + 1 do
+				local title = env.menu_title_calls[index].title
+				assert.equals("\194\160NO POMODORO\194\160", title_text(title))
+				local spans = assert(title_spans(title))
+				assert.equals(1, #spans)
+				assert.equals("\194\160NO POMODORO\194\160", spans[1].text)
+				assert.is_nil(spans[1].attributes.backgroundColor)
+			end
 		end
 
 		local session_state = {
@@ -1255,7 +1266,7 @@ describe("Hammerspoon init", function()
 			return span.attributes.color.hex == "#30d158" and span.attributes.backgroundColor == nil
 		end
 
-		for _, epoch in ipairs({ fixed, fixed - 59, fixed - 300, fixed - 359, fixed - 600 }) do
+		for _, epoch in ipairs({ fixed - 60, fixed - 119, fixed - 300, fixed - 359, fixed - 600 }) do
 			runtime.state = {
 				rawOutput = "No current Pomodoro",
 				status = "missing",
@@ -1304,7 +1315,9 @@ describe("Hammerspoon init", function()
 		local runtime = _G.BobPomodoroCountdown
 		local padded = "\194\160NO POMODORO\194\160"
 		local cases = {
-			{ missingShownEpoch = fixed - 60 },
+			{ missingShownEpoch = fixed },
+			{ missingShownEpoch = fixed - 59 },
+			{ missingShownEpoch = fixed - 120 },
 			{ missingShownEpoch = fixed - 299 },
 			{ missingShownEpoch = fixed - 360 },
 			{ missingShownEpoch = fixed - 599 },
@@ -1586,7 +1599,7 @@ describe("Hammerspoon init Pomodoro countdown colors", function()
 			rawOutput = "No current Pomodoro",
 			status = "missing",
 			lastSyncEpoch = fixed,
-			missingShownEpoch = fixed - 60,
+			missingShownEpoch = fixed - 120,
 		}
 		runtime.tickTimer.callback()
 		restore_clock()
@@ -1799,7 +1812,7 @@ describe("Hammerspoon init Pomodoro countdown colors", function()
 			rawOutput = "No current Pomodoro",
 			status = "missing",
 			lastSyncEpoch = fixed,
-			missingShownEpoch = fixed - 60,
+			missingShownEpoch = fixed - 120,
 		}
 		runtime.tickTimer.callback()
 		audit_current_title()
@@ -1808,7 +1821,7 @@ describe("Hammerspoon init Pomodoro countdown colors", function()
 			rawOutput = "No current Pomodoro",
 			status = "missing",
 			lastSyncEpoch = fixed,
-			missingShownEpoch = fixed,
+			missingShownEpoch = fixed - 60,
 		}
 		runtime.tickTimer.callback()
 		audit_current_title()
@@ -1855,7 +1868,7 @@ describe("Hammerspoon init Pomodoro countdown colors", function()
 			rawOutput = "No current Pomodoro",
 			status = "missing",
 			lastSyncEpoch = fixed,
-			missingShownEpoch = fixed,
+			missingShownEpoch = fixed - 60,
 		}
 		runtime.tickTimer.callback()
 		restore_clock()
