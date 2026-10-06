@@ -1,6 +1,6 @@
 {
-  "deployed_at": "2026-10-03T17:16:23.768271Z",
-  "macro_set_sha256": "cde6557facb45a4f8628e575f06cea93496f597575db74b2d606690ff96d9337",
+  "deployed_at": "2026-10-06T13:01:09.987695Z",
+  "macro_set_sha256": "68c8fc3d65e271ebcceaf0b3eeb8368ce96ffa1969e7674934f7ba35d944c23e",
   "managed_files": [
     {
       "home_path": ".gemini/antigravity-cli/skills/bob_query/SKILL.md",
@@ -1256,5 +1256,5 @@
       "state": "active"
     }
   ],
-  "source_commit": "ad1fee548204ea306831b08303fb7d92851c5a0f"
+  "source_commit": "312f17dc3f3ad83fcd57578c9b243098297768c0"
 }

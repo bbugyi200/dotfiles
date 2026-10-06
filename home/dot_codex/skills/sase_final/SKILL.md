@@ -1,14 +1,17 @@
 ---
 name: sase_final
 description:
-  Submit the current turn's SASE finalizer declaration. Use this as the last action
-  before every normal response that ends a SASE provider turn.
+  Submit the current turn's SASE finalizer declaration. Root agent only — use this as
+  the last action before every normal response that ends a SASE provider turn; helpers
+  return their result to their parent instead.
 ---
 
 Use this skill whenever the current SASE turn is about to end with a normal response. It
 is mandatory for final answers and incomplete-status responses; an unfinished turn still
-declares so its work is committed. Never use it to wait for a command or to resume
-later. Only a successfully executed plan, monitor, pipe, or questions handoff is exempt.
+declares so its work is committed. Root agent only: if you were spawned or forked as a
+helper (a native subagent), do not use this skill — return your result to your parent
+instead. Never use it to wait for a command or to resume later. Only a successfully
+executed plan, monitor, pipe, or questions handoff is exempt.
 
 ## Rules
 
