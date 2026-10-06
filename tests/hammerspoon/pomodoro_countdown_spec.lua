@@ -111,17 +111,63 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 	end)
 
 	it("exports the missing reminder constants", function()
-		assert.equals(300, countdown.MISSING_REMINDER_EVERY_SECONDS)
 		assert.equals(60, countdown.MISSING_REMINDER_FOR_SECONDS)
-		assert.equals(60, countdown.MISSING_REMINDER_FIRST_AFTER_SECONDS)
+		assert.equals(60, countdown.MISSING_REMINDER_WAIT_UNIT_SECONDS)
+		assert.equals("φ", countdown.PHI)
+		assert.is_nil(countdown.MISSING_REMINDER_EVERY_SECONDS)
+		assert.is_nil(countdown.MISSING_REMINDER_FIRST_AFTER_SECONDS)
 		assert.equals("#062E14", countdown.MISSING_BADGE_TEXT_COLOR)
 	end)
 
-	it("activates the missing reminder only inside the delayed first window and each later 60-second window", function()
-		for _, shown in ipairs({ 60, 61, 119, 119.5, 300, 359, 600, 659, 1200 }) do
+	it("schedules Fibonacci rests between fixed one-minute steps", function()
+		local rows = {
+			{ wait = 1, start = 60, stop = 120 },
+			{ wait = 1, start = 180, stop = 240 },
+			{ wait = 2, start = 360, stop = 420 },
+			{ wait = 3, start = 600, stop = 660 },
+			{ wait = 5, start = 960, stop = 1020 },
+			{ wait = 8, start = 1500, stop = 1560 },
+			{ wait = 13, start = 2340, stop = 2400 },
+			{ wait = 21, start = 3660, stop = 3720 },
+			{ wait = 34, start = 5760, stop = 5820 },
+			{ wait = 55, start = 9120, stop = 9180 },
+			{ wait = 89, start = 14520, stop = 14580 },
+			{ wait = 144, start = 23220, stop = 23280 },
+		}
+		for _, row in ipairs(rows) do
+			local step = countdown.missing_reminder_step(row.start)
+			assert.is_true(step.active, tostring(row.start) .. " should be active")
+			assert.equals(row.wait, step.waitMinutes)
+			assert.equals(row.start, step.startSeconds)
+			assert.equals(row.stop, step.endSeconds)
+			assert.is_true(countdown.missing_reminder_step(row.start + 59).active)
+			assert.is_true(countdown.missing_reminder_step(row.start + 59.5).active)
+			assert.is_false(countdown.missing_reminder_step(row.start - 1).active)
+			assert.is_false(countdown.missing_reminder_step(row.start + 60).active)
+		end
+	end)
+
+	it("returns the upcoming step while resting between flashes", function()
+		local cases = {
+			{ shown = 0, wait = 1 },
+			{ shown = 120, wait = 1 },
+			{ shown = 240, wait = 2 },
+			{ shown = 420, wait = 3 },
+			{ shown = 660, wait = 5 },
+			{ shown = 1020, wait = 8 },
+		}
+		for _, case in ipairs(cases) do
+			local step = countdown.missing_reminder_step(case.shown)
+			assert.is_false(step.active, tostring(case.shown) .. " should be inactive")
+			assert.equals(case.wait, step.waitMinutes)
+		end
+	end)
+
+	it("activates the missing reminder only inside each Fibonacci flash step", function()
+		for _, shown in ipairs({ 60, 119, 180, 239, 360, 419, 600, 659, 960, 1500, 2340, 3660 }) do
 			assert.is_true(countdown.missing_reminder_active(shown), tostring(shown) .. " should be active")
 		end
-		for _, shown in ipairs({ 0, 1, 59, 59.5, 120, 121, 299, 360, 599, 660, 1199 }) do
+		for _, shown in ipairs({ 0, 59, 120, 179, 240, 299, 300, 359, 420, 599, 660, 959, 1020, 1499 }) do
 			assert.is_false(countdown.missing_reminder_active(shown), tostring(shown) .. " should be inactive")
 		end
 		assert.is_false(countdown.missing_reminder_active(-1))
@@ -132,10 +178,68 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 		assert.is_false(countdown.missing_reminder_active(-math.huge))
 	end)
 
+	it("previews the next Fibonacci reminder step", function()
+		local function assert_next(shown, expected_start, expected_wait)
+			local step = countdown.next_missing_reminder(shown)
+			assert.is_not_nil(step, tostring(shown) .. " should have a next step")
+			assert.equals(expected_start, step.startSeconds)
+			assert.equals(expected_wait, step.waitMinutes)
+			assert.is_false(step.active)
+		end
+
+		assert_next(0, 60, 1)
+		assert_next(60, 180, 1)
+		assert_next(119, 180, 1)
+		assert_next(240, 360, 2)
+		assert_next(600, 960, 5)
+		assert.is_nil(countdown.next_missing_reminder(-1))
+		assert.is_nil(countdown.next_missing_reminder(nil))
+		assert.is_nil(countdown.next_missing_reminder("0"))
+		assert.is_nil(countdown.next_missing_reminder(0 / 0))
+		assert.is_nil(countdown.next_missing_reminder(math.huge))
+		assert.is_nil(countdown.next_missing_reminder(-math.huge))
+	end)
+
+	it("shows the Fibonacci rest through the whole flash step with the φ suffix", function()
+		local cases = {
+			{ shown = 60, waited = 1, title = "NO POMODORO φ 1m" },
+			{ shown = 180, waited = 1, title = "NO POMODORO φ 1m" },
+			{ shown = 360, waited = 2, title = "NO POMODORO φ 2m" },
+			{ shown = 600, waited = 3, title = "NO POMODORO φ 3m" },
+			{ shown = 960, waited = 5, title = "NO POMODORO φ 5m" },
+			{ shown = 23220, waited = 144, title = "NO POMODORO φ 144m" },
+		}
+		for _, case in ipairs(cases) do
+			for _, flash_on in ipairs({ false, true }) do
+				local expected_appearance = flash_on and "missing_flash" or "missing"
+				local presentation = assert_presentation(
+					nil,
+					flash_on,
+					{ missingShownSeconds = case.shown },
+					case.title,
+					expected_appearance
+				)
+				assert.are.same({
+					{ text = "NO POMODORO", role = "missing" },
+					{ text = " φ ", role = "phi" },
+					{ text = case.waited .. "m", role = "waited" },
+				}, presentation.segments)
+				assert.equals(concat_segments(presentation.segments), presentation.title)
+				assert.equals(case.waited, presentation.waitedMinutes)
+				assert_valid_utf8(presentation.title)
+				assert.is_nil(presentation.icon)
+				assert.is_nil(presentation.title:find("🍅", 1, true))
+				assert.equals("NO POMODORO", presentation.status)
+				assert.is_nil(presentation.duration)
+			end
+		end
+	end)
+
 	it("flashes the missing presentation only during a reminder window with flash_on", function()
 		local function assert_missing(remaining, flash_on, context, appearance)
 			local presentation = assert_presentation(remaining, flash_on, context, "NO POMODORO", appearance)
 			assert.are.same({ { text = "NO POMODORO", role = "missing" } }, presentation.segments)
+			assert.is_nil(presentation.waitedMinutes)
 			assert.is_nil(presentation.icon)
 			assert.is_nil(presentation.title:find("🍅", 1, true))
 			assert.equals("NO POMODORO", presentation.status)
@@ -143,17 +247,16 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 			return presentation
 		end
 
-		assert_missing(nil, true, { missingShownSeconds = 60 }, "missing_flash")
-		assert_missing(nil, true, { missingShownSeconds = 119 }, "missing_flash")
-		assert_missing(nil, true, { missingShownSeconds = 300 }, "missing_flash")
-		assert_missing(nil, true, { missingShownSeconds = 600 }, "missing_flash")
-		assert_missing(nil, false, { missingShownSeconds = 60 }, "missing")
-		assert_missing(nil, false, { missingShownSeconds = 600 }, "missing")
 		assert_missing(nil, true, { missingShownSeconds = 0 }, "missing")
 		assert_missing(nil, true, { missingShownSeconds = 59 }, "missing")
 		assert_missing(nil, true, { missingShownSeconds = 120 }, "missing")
-		assert_missing(nil, true, { missingShownSeconds = 299 }, "missing")
+		assert_missing(nil, true, { missingShownSeconds = 179 }, "missing")
+		assert_missing(nil, true, { missingShownSeconds = 240 }, "missing")
+		assert_missing(nil, true, { missingShownSeconds = 300 }, "missing")
+		assert_missing(nil, true, { missingShownSeconds = 359 }, "missing")
+		assert_missing(nil, true, { missingShownSeconds = 420 }, "missing")
 		assert_missing(nil, true, { missingShownSeconds = 599 }, "missing")
+		assert_missing(nil, true, { missingShownSeconds = 660 }, "missing")
 		assert_missing(nil, true, nil, "missing")
 		assert_missing(nil, true, CONTEXT, "missing")
 

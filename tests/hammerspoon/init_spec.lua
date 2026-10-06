@@ -816,10 +816,11 @@ describe("Hammerspoon init", function()
 
 		local missing_call = nil
 		local saw_missing_flash = false
+		local saw_missing_suffix_flash = false
 		local saw_warning_flash = false
 		local saw_warning_steady = false
 		for _, call in ipairs(env.styled_text_calls) do
-			if call.text == "\194\160NO POMODORO\194\160" then
+			if call.text == "\194\160NO POMODORO" then
 				if call.attributes.backgroundColor then
 					saw_missing_flash = true
 					assert.are.same({ hex = "#062E14", alpha = 1 }, call.attributes.color)
@@ -828,6 +829,15 @@ describe("Hammerspoon init", function()
 					assert.is_true((env.valid_font_calls[call.attributes.font.name] or 0) >= 1)
 				else
 					missing_call = call
+				end
+			elseif call.text == " φ " or call.text == "1m\194\160" then
+				if call.attributes.backgroundColor then
+					saw_missing_suffix_flash = true
+					assert.are.same({ hex = "#062E14", alpha = 1 }, call.attributes.color)
+					assert.are.same({ hex = "#30d158", alpha = 1 }, call.attributes.backgroundColor)
+				else
+					assert.are.same({ hex = "#30d158", alpha = 1 }, call.attributes.color)
+					assert.is_nil(call.attributes.backgroundColor)
 				end
 			elseif call.text == "\194\160OVERDUE\194\160" or call.text == "OVERDUE" then
 				if call.attributes.backgroundColor then
@@ -852,6 +862,7 @@ describe("Hammerspoon init", function()
 		assert.is_not_nil(missing_call)
 		assert.are.same({ hex = "#30d158", alpha = 1 }, missing_call.attributes.color)
 		assert.is_true(saw_missing_flash)
+		assert.is_true(saw_missing_suffix_flash)
 		assert.is_true(saw_warning_flash)
 		assert.is_true(saw_warning_steady)
 	end)
@@ -1256,7 +1267,6 @@ describe("Hammerspoon init", function()
 		assert.is_true(ok, error_message)
 
 		local runtime = _G.BobPomodoroCountdown
-		local padded = "\194\160NO POMODORO\194\160"
 		local function is_pill(span)
 			return span.attributes.color.hex == "#062E14"
 				and span.attributes.backgroundColor
@@ -1266,43 +1276,70 @@ describe("Hammerspoon init", function()
 			return span.attributes.color.hex == "#30d158" and span.attributes.backgroundColor == nil
 		end
 
-		for _, epoch in ipairs({ fixed - 60, fixed - 119, fixed - 300, fixed - 359, fixed - 600 }) do
+		local cases = {
+			{ shown = 60, waited = "1m" },
+			{ shown = 119, waited = "1m" },
+			{ shown = 180, waited = "1m" },
+			{ shown = 239, waited = "1m" },
+			{ shown = 360, waited = "2m" },
+			{ shown = 600, waited = "3m" },
+			{ shown = 960, waited = "5m" },
+		}
+		for _, case in ipairs(cases) do
 			runtime.state = {
 				rawOutput = "No current Pomodoro",
 				status = "missing",
 				lastSyncEpoch = fixed,
-				missingShownEpoch = epoch,
+				missingShownEpoch = fixed - case.shown,
 			}
+			local padded = "\194\160NO POMODORO φ " .. case.waited .. "\194\160"
 			local first_call = #env.menu_title_calls + 1
 			runtime.tickTimer.callback()
 			runtime.tickTimer.callback()
 			runtime.tickTimer.callback()
 			runtime.tickTimer.callback()
 
-			local titles = {}
+			local frames = {}
 			for index = first_call, first_call + 3 do
 				local title = env.menu_title_calls[index].title
 				assert.equals(padded, title_text(title))
 				local spans = assert(title_spans(title))
-				assert.equals(1, #spans)
-				assert.equals(padded, spans[1].text)
-				table.insert(titles, spans[1])
+				assert.equals(3, #spans)
+				assert.equals("\194\160NO POMODORO", spans[1].text)
+				assert.equals(" φ ", spans[2].text)
+				assert.equals(case.waited .. "\194\160", spans[3].text)
+				table.insert(frames, spans)
 			end
 
-			local font_name = titles[1].attributes.font.name
-			local font_size = titles[1].attributes.font.size
-			for index = 1, 4 do
-				assert.equals(font_name, titles[index].attributes.font.name)
-				assert.equals(font_size, titles[index].attributes.font.size)
-			end
-			assert.is_true(is_pill(titles[1]) or is_steady(titles[1]))
-			for index = 2, 4 do
-				if is_pill(titles[index - 1]) then
-					assert.is_true(is_steady(titles[index]))
+			for _, spans in ipairs(frames) do
+				if is_pill(spans[1]) then
+					assert.is_true(is_pill(spans[2]))
+					assert.is_true(is_pill(spans[3]))
 				else
-					assert.is_true(is_pill(titles[index]))
+					assert.is_true(is_steady(spans[1]))
+					assert.is_true(is_steady(spans[2]))
+					assert.is_true(is_steady(spans[3]))
 				end
 			end
+			for index = 2, 4 do
+				if is_pill(frames[index - 1][1]) then
+					assert.is_true(is_steady(frames[index][1]))
+				else
+					assert.is_true(is_pill(frames[index][1]))
+				end
+			end
+
+			for span_index = 1, 3 do
+				local font_name = frames[1][span_index].attributes.font.name
+				local font_size = frames[1][span_index].attributes.font.size
+				for frame_index = 1, 4 do
+					assert.equals(font_name, frames[frame_index][span_index].attributes.font.name)
+					assert.equals(font_size, frames[frame_index][span_index].attributes.font.size)
+				end
+			end
+			assert.are.same(frames[1][1].attributes.font, frames[1][3].attributes.font)
+			assert.equals(".AppleSystemUIFont", frames[1][2].attributes.font.name)
+			assert.not_equals(frames[1][1].attributes.font.name, frames[1][2].attributes.font.name)
 		end
 		restore_clock()
 	end)
@@ -1318,10 +1355,14 @@ describe("Hammerspoon init", function()
 			{ missingShownEpoch = fixed },
 			{ missingShownEpoch = fixed - 59 },
 			{ missingShownEpoch = fixed - 120 },
-			{ missingShownEpoch = fixed - 299 },
-			{ missingShownEpoch = fixed - 360 },
+			{ missingShownEpoch = fixed - 179 },
+			{ missingShownEpoch = fixed - 240 },
+			{ missingShownEpoch = fixed - 300 },
+			{ missingShownEpoch = fixed - 359 },
+			{ missingShownEpoch = fixed - 420 },
 			{ missingShownEpoch = fixed - 599 },
 			{ missingShownEpoch = fixed - 660 },
+			{ missingShownEpoch = fixed - 959 },
 			{},
 		}
 		for _, case in ipairs(cases) do
@@ -1345,6 +1386,73 @@ describe("Hammerspoon init", function()
 				assert.is_nil(spans[1].attributes.backgroundColor)
 			end
 		end
+		restore_clock()
+	end)
+
+	it("gains and loses the φ suffix exactly at step boundaries", function()
+		local restore_clock, fixed = freeze_clock()
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+
+		local runtime = _G.BobPomodoroCountdown
+		local shown_cases = {
+			{ shown = 59, expected = "\194\160NO POMODORO\194\160" },
+			{ shown = 60, expected = "\194\160NO POMODORO φ 1m\194\160" },
+			{ shown = 119, expected = "\194\160NO POMODORO φ 1m\194\160" },
+			{ shown = 120, expected = "\194\160NO POMODORO\194\160" },
+		}
+		for _, case in ipairs(shown_cases) do
+			runtime.state = {
+				rawOutput = "No current Pomodoro",
+				status = "missing",
+				lastSyncEpoch = fixed,
+				missingShownEpoch = fixed - case.shown,
+			}
+			runtime.tickTimer.callback()
+			assert.equals(case.expected, title_text(env.menu_title_calls[#env.menu_title_calls].title))
+		end
+		restore_clock()
+	end)
+
+	it("previews the next Fibonacci reminder in the missing-state dropdown", function()
+		local restore_clock, fixed = freeze_clock()
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+
+		local runtime = _G.BobPomodoroCountdown
+		local function dropdown_titles()
+			return menu_items(runtime.menu)
+		end
+
+		runtime.state = {
+			rawOutput = "No current Pomodoro",
+			status = "missing",
+			lastSyncEpoch = fixed,
+			missingShownEpoch = fixed - 30,
+		}
+		local items = dropdown_titles()
+		assert.equals("No current Pomodoro", items[1].title)
+		assert.equals("Next reminder at " .. os.date("%H:%M", fixed - 30 + 60) .. " · φ 1m", items[2].title)
+		assert.is_true(items[2].disabled)
+		assert.is_not_nil(menu_refresh_fn(runtime.menu))
+
+		runtime.state.missingShownEpoch = fixed - 90
+		items = dropdown_titles()
+		assert.equals("Next reminder at " .. os.date("%H:%M", fixed - 90 + 180) .. " · φ 1m", items[2].title)
+
+		runtime.state.missingShownEpoch = fixed - 250
+		items = dropdown_titles()
+		assert.equals("Next reminder at " .. os.date("%H:%M", fixed - 250 + 360) .. " · φ 2m", items[2].title)
+
+		runtime.state = {
+			rawOutput = "No current Pomodoro",
+			status = "missing",
+			lastSyncEpoch = fixed,
+		}
+		items = dropdown_titles()
+		assert.equals("No current Pomodoro", items[1].title)
+		assert.is_nil(items[2].title:find("Next reminder", 1, true))
+		assert.is_not_nil(menu_refresh_fn(runtime.menu))
 		restore_clock()
 	end)
 
@@ -1874,6 +1982,6 @@ describe("Hammerspoon init Pomodoro countdown colors", function()
 		restore_clock()
 		local flashing_missing_title = env.menu_title_calls[#env.menu_title_calls].title
 		assert.equals("string", type(flashing_missing_title))
-		assert.equals("NO POMODORO", flashing_missing_title)
+		assert.equals("NO POMODORO φ 1m", flashing_missing_title)
 	end)
 end)

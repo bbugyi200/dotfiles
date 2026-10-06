@@ -1,9 +1,9 @@
 local M = {}
 
 M.OVERDUE_WARNING_AFTER_SECONDS = 10 * 60
-M.MISSING_REMINDER_EVERY_SECONDS = 5 * 60
+M.MISSING_REMINDER_WAIT_UNIT_SECONDS = 60
 M.MISSING_REMINDER_FOR_SECONDS = 60
-M.MISSING_REMINDER_FIRST_AFTER_SECONDS = 60
+M.PHI = "φ"
 M.MAX_THEME_CODEPOINTS = 24
 M.UNTITLED_THEME = "UNTITLED"
 M.NO_POMODORO_TITLE = "NO POMODORO"
@@ -144,28 +144,76 @@ function M.format_duration(minutes)
 	return string.format("%dm", floored)
 end
 
-function M.missing_reminder_active(shown_seconds)
+function M.missing_reminder_step(shown_seconds)
 	if not is_finite_number(shown_seconds) or shown_seconds < 0 then
-		return false
+		return nil
 	end
-	if shown_seconds < M.MISSING_REMINDER_EVERY_SECONDS then
-		local first = M.MISSING_REMINDER_FIRST_AFTER_SECONDS
-		return shown_seconds >= first and shown_seconds < first + M.MISSING_REMINDER_FOR_SECONDS
+	local previous, wait_minutes, wait_start = 0, 1, 0
+	while true do
+		local start_seconds = wait_start + wait_minutes * M.MISSING_REMINDER_WAIT_UNIT_SECONDS
+		local end_seconds = start_seconds + M.MISSING_REMINDER_FOR_SECONDS
+		if shown_seconds < end_seconds then
+			return {
+				active = shown_seconds >= start_seconds,
+				waitMinutes = wait_minutes,
+				startSeconds = start_seconds,
+				endSeconds = end_seconds,
+			}
+		end
+		wait_start = end_seconds
+		previous, wait_minutes = wait_minutes, previous + wait_minutes
 	end
-	return shown_seconds % M.MISSING_REMINDER_EVERY_SECONDS < M.MISSING_REMINDER_FOR_SECONDS
+end
+
+function M.missing_reminder_active(shown_seconds)
+	local step = M.missing_reminder_step(shown_seconds)
+	return step ~= nil and step.active
+end
+
+function M.next_missing_reminder(shown_seconds)
+	local step = M.missing_reminder_step(shown_seconds)
+	if step == nil then
+		return nil
+	end
+	if step.active then
+		return M.missing_reminder_step(step.endSeconds)
+	end
+	return step
 end
 
 function M.presentation(remaining_seconds, flash_on, context)
 	if remaining_seconds == nil then
-		local appearance = "missing"
-		if type(context) == "table" and flash_on and M.missing_reminder_active(context.missingShownSeconds) then
-			appearance = "missing_flash"
+		local shown_seconds = nil
+		if type(context) == "table" then
+			shown_seconds = context.missingShownSeconds
+		end
+		local step = M.missing_reminder_step(shown_seconds)
+		if step ~= nil and step.active then
+			local waited = M.format_duration(step.waitMinutes)
+			local segments = {
+				{ text = M.NO_POMODORO_TITLE, role = "missing" },
+				{ text = " " .. M.PHI .. " ", role = "phi" },
+				{ text = waited, role = "waited" },
+			}
+			local parts = {}
+			for _, segment in ipairs(segments) do
+				table.insert(parts, segment.text)
+			end
+			return {
+				title = table.concat(parts),
+				appearance = flash_on and "missing_flash" or "missing",
+				status = M.NO_POMODORO_TITLE,
+				duration = nil,
+				waitedMinutes = step.waitMinutes,
+				segments = segments,
+			}
 		end
 		return {
 			title = M.NO_POMODORO_TITLE,
-			appearance = appearance,
+			appearance = "missing",
 			status = M.NO_POMODORO_TITLE,
 			duration = nil,
+			waitedMinutes = nil,
 			segments = {
 				{ text = M.NO_POMODORO_TITLE, role = "missing" },
 			},

@@ -262,6 +262,13 @@ local bobPomodoroMissingFlashTitleAttributes = bobPomodoroTitleAttributes(
 	bobPomodoroBoldMenuBarFont,
 	{ hex = PomodoroCountdown.MISSING_COLOR, alpha = 1 }
 )
+local bobPomodoroMissingPhiTitleAttributes =
+	bobPomodoroTitleAttributes({ hex = PomodoroCountdown.MISSING_COLOR, alpha = 1 }, bobPomodoroMenuBarFont)
+local bobPomodoroMissingPhiFlashTitleAttributes = bobPomodoroTitleAttributes(
+	{ hex = PomodoroCountdown.MISSING_BADGE_TEXT_COLOR, alpha = 1 },
+	bobPomodoroMenuBarFont,
+	{ hex = PomodoroCountdown.MISSING_COLOR, alpha = 1 }
+)
 
 local bobPomodoroThemeTitleAttributes =
 	bobPomodoroTitleAttributes(bobPomodoroContextForeground, bobPomodoroBoldMenuBarFont or bobPomodoroMenuBarFont)
@@ -340,7 +347,8 @@ local function bobPomodoroMenuTitle(presentation)
 		end
 
 		local composed_title = nil
-		for _, segment in ipairs(presentation.segments) do
+		local segment_count = #presentation.segments
+		for index, segment in ipairs(presentation.segments) do
 			if type(segment) ~= "table" or type(segment.text) ~= "string" then
 				error("invalid segment")
 			end
@@ -375,7 +383,7 @@ local function bobPomodoroMenuTitle(presentation)
 					error("unknown appearance: " .. tostring(appearance))
 				end
 			elseif segment.role == "missing" then
-				text = bobPomodoroNoBreakSpace .. text .. bobPomodoroNoBreakSpace
+				text = bobPomodoroNoBreakSpace .. text
 				if appearance == "missing_flash" then
 					attributes = bobPomodoroMissingFlashTitleAttributes
 				elseif appearance == "missing" then
@@ -383,8 +391,27 @@ local function bobPomodoroMenuTitle(presentation)
 				else
 					error("unknown appearance: " .. tostring(appearance))
 				end
+			elseif segment.role == "phi" then
+				if appearance == "missing_flash" then
+					attributes = bobPomodoroMissingPhiFlashTitleAttributes
+				elseif appearance == "missing" then
+					attributes = bobPomodoroMissingPhiTitleAttributes
+				else
+					error("unknown segment role: " .. tostring(segment.role))
+				end
+			elseif segment.role == "waited" then
+				if appearance == "missing_flash" then
+					attributes = bobPomodoroMissingFlashTitleAttributes
+				elseif appearance == "missing" then
+					attributes = bobPomodoroMissingTitleAttributes
+				else
+					error("unknown segment role: " .. tostring(segment.role))
+				end
 			else
 				error("unknown segment role: " .. tostring(segment.role))
+			end
+			if is_missing and index == segment_count then
+				text = text .. bobPomodoroNoBreakSpace
 			end
 
 			local styled = hs.styledtext.new(text, attributes)
@@ -453,7 +480,7 @@ local function buildBobPomodoroMenuItems()
 			},
 		}
 	end
-	return {
+	local items = {
 		{ title = state.rawOutput, disabled = true },
 		{
 			title = "Last sync " .. os.date("%H:%M:%S", state.lastSyncEpoch),
@@ -467,6 +494,22 @@ local function buildBobPomodoroMenuItems()
 			end,
 		},
 	}
+	if type(state.missingShownEpoch) == "number" then
+		local next_step = PomodoroCountdown.next_missing_reminder(os.time() - state.missingShownEpoch)
+		if next_step ~= nil then
+			local waited = PomodoroCountdown.format_duration(next_step.waitMinutes)
+			if waited ~= nil then
+				local next_title = "Next reminder at "
+					.. os.date("%H:%M", state.missingShownEpoch + next_step.startSeconds)
+					.. " · "
+					.. PomodoroCountdown.PHI
+					.. " "
+					.. waited
+				table.insert(items, 2, { title = next_title, disabled = true })
+			end
+		end
+	end
+	return items
 end
 
 local function updateBobPomodoroTooltip()
