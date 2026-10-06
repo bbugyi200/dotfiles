@@ -149,16 +149,56 @@ bindkey -M vicmd v edit-command-line
 # ulimit -c unlimited  # Enables Core Dumps
 stty -ixon # So as not to be disturbed by Ctrl-S ctrl-Q in terminals.
 
-# Starts ssh-agent automatically
-ssh_agent_pid="$(pgrep -u "${USER}" ssh-agent)"
-if [[ -z "${ssh_agent_pid}" ]] || ! grep -q "Agent pid ${ssh_agent_pid}" ~/.ssh-agent-thing; then
-  if [[ -n "${ssh_agent_pid}" ]]; then
-    echo "Killing old ssh-agent: ${ssh_agent_pid}"
-    kill "${ssh_agent_pid}"
+# --- ssh-agent bootstrap (managed) ---
+# Keep one stable per-user ssh-agent socket so tools that snapshot an
+# interactive shell always inherit a working SSH_AUTH_SOCK. A live agent is
+# never stopped or replaced; concurrent shells serialize on a lock so parallel
+# startups cannot orphan agents. Prints nothing.
+_sase_ensure_ssh_agent() {
+  [[ -n "${HOME:-}" ]] || return 0
+  command -v ssh-agent >/dev/null 2>&1 || return 0
+  command -v ssh-add >/dev/null 2>&1 || return 0
+
+  local sock="${HOME}/.ssh/agent.sock"
+  if [[ ! -d "${HOME}/.ssh" ]]; then
+    mkdir -p -m 0700 "${HOME}/.ssh" 2>/dev/null || return 0
   fi
-  ssh-agent >~/.ssh-agent-thing
-fi
-eval "$(<~/.ssh-agent-thing)" >/dev/null
+
+  local probe_rc
+  SSH_AUTH_SOCK="${sock}" ssh-add -l >/dev/null 2>&1
+  probe_rc=$?
+  if [[ "${probe_rc}" -eq 0 || "${probe_rc}" -eq 1 ]]; then
+    export SSH_AUTH_SOCK="${sock}"
+    unset SSH_AGENT_PID
+    return 0
+  fi
+
+  # The socket is stale. Serialize with other starting shells, re-probe in
+  # case a sibling already repaired it, then bind one agent to the stable path.
+  local lock_fd=""
+  if zmodload zsh/system 2>/dev/null; then
+    zsystem flock -f lock_fd "${sock}.lock" 2>/dev/null || lock_fd=""
+  fi
+
+  SSH_AUTH_SOCK="${sock}" ssh-add -l >/dev/null 2>&1
+  probe_rc=$?
+  if [[ "${probe_rc}" -eq 0 || "${probe_rc}" -eq 1 ]]; then
+    [[ -n "${lock_fd}" ]] && exec {lock_fd}>&- 2>/dev/null
+    export SSH_AUTH_SOCK="${sock}"
+    unset SSH_AGENT_PID
+    return 0
+  fi
+
+  rm -f "${sock}" 2>/dev/null
+  ssh-agent -a "${sock}" >/dev/null 2>&1
+
+  [[ -n "${lock_fd}" ]] && exec {lock_fd}>&- 2>/dev/null
+  export SSH_AUTH_SOCK="${sock}"
+  unset SSH_AGENT_PID
+  return 0
+}
+_sase_ensure_ssh_agent
+# --- end ssh-agent bootstrap ---
 
 # Needed for Eternal Command History
 preexec() { shw.sh &>/dev/null "$1"; }

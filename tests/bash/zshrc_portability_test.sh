@@ -31,3 +31,20 @@ function test_broot_launcher_is_xdg_relative_and_optional() {
   assert_contains 'source_if_exists "${XDG_CONFIG_HOME:-${HOME}/.config}/broot/launcher/bash/br"' "${contents}"
   assert_not_contains "source /home/bryan/.config/broot/launcher/bash/br" "${contents}"
 }
+
+function test_ssh_agent_bootstrap_does_not_use_pgrep_or_agent_thing() {
+  local contents
+  contents="$(zshrc_contents)"
+
+  assert_not_contains "pgrep -u" "${contents}"
+  assert_not_contains ".ssh-agent-thing" "${contents}"
+  assert_not_contains 'kill "${ssh_agent_pid}"' "${contents}"
+}
+
+function test_ssh_agent_bootstrap_uses_stable_socket() {
+  local contents
+  contents="$(zshrc_contents)"
+
+  assert_contains "ssh-agent -a" "${contents}"
+  assert_contains '${HOME}/.ssh/agent.sock' "${contents}"
+}
