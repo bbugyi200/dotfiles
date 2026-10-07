@@ -1,12 +1,19 @@
 {
-  "deployed_at": "2026-10-06T13:01:09.987695Z",
-  "macro_set_sha256": "68c8fc3d65e271ebcceaf0b3eeb8368ce96ffa1969e7674934f7ba35d944c23e",
+  "deployed_at": "2026-10-07T03:53:31.771554Z",
+  "macro_set_sha256": "d3e09faec86c0b19a12915e0b4a05faf30d2bce3671a9f689e71656e3a5e6c1b",
   "managed_files": [
     {
       "home_path": ".gemini/antigravity-cli/skills/bob_query/SKILL.md",
       "provider": "agy",
       "skill_name": "bob_query",
       "source_path": "dot_gemini/antigravity-cli/skills/bob_query/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".gemini/antigravity-cli/skills/bob_ref/SKILL.md",
+      "provider": "agy",
+      "skill_name": "bob_ref",
+      "source_path": "dot_gemini/antigravity-cli/skills/bob_ref/SKILL.md",
       "state": "active"
     },
     {
@@ -168,6 +175,13 @@
       "provider": "claude",
       "skill_name": "bob_query",
       "source_path": "dot_claude/skills/bob_query/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".claude/skills/bob_ref/SKILL.md",
+      "provider": "claude",
+      "skill_name": "bob_ref",
+      "source_path": "dot_claude/skills/bob_ref/SKILL.md",
       "state": "active"
     },
     {
@@ -336,6 +350,13 @@
       "provider": "codex",
       "skill_name": "bob_query",
       "source_path": "dot_codex/skills/bob_query/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".codex/skills/bob_ref/SKILL.md",
+      "provider": "codex",
+      "skill_name": "bob_ref",
+      "source_path": "dot_codex/skills/bob_ref/SKILL.md",
       "state": "active"
     },
     {
@@ -605,6 +626,13 @@
       "state": "active"
     },
     {
+      "home_path": ".grok/skills/bob_ref/SKILL.md",
+      "provider": "grok",
+      "skill_name": "bob_ref",
+      "source_path": "dot_grok/skills/bob_ref/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".grok/skills/sase_agents_status/SKILL.md",
       "provider": "grok",
       "skill_name": "sase_agents_status",
@@ -773,6 +801,13 @@
       "state": "active"
     },
     {
+      "home_path": ".config/muse/skills/bob_ref/SKILL.md",
+      "provider": "muse",
+      "skill_name": "bob_ref",
+      "source_path": "dot_config/muse/skills/bob_ref/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".config/muse/skills/sase_agents_status/SKILL.md",
       "provider": "muse",
       "skill_name": "sase_agents_status",
@@ -931,6 +966,13 @@
       "provider": "opencode",
       "skill_name": "bob_query",
       "source_path": "dot_config/opencode/skills/bob_query/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/opencode/skills/bob_ref/SKILL.md",
+      "provider": "opencode",
+      "skill_name": "bob_ref",
+      "source_path": "dot_config/opencode/skills/bob_ref/SKILL.md",
       "state": "active"
     },
     {
@@ -1095,6 +1137,13 @@
       "state": "active"
     },
     {
+      "home_path": ".qwen/skills/bob_ref/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "bob_ref",
+      "source_path": "dot_qwen/skills/bob_ref/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".qwen/skills/sase_agents_status/SKILL.md",
       "provider": "qwen",
       "skill_name": "sase_agents_status",
@@ -1256,5 +1305,5 @@
       "state": "active"
     }
   ],
-  "source_commit": "312f17dc3f3ad83fcd57578c9b243098297768c0"
+  "source_commit": "66d598d1987bdee617cb01e8abe3664dbc0a911d"
 }
