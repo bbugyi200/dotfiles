@@ -90,6 +90,8 @@ ace:
       environment variable
     exed: |-
       external editors (via LSP support)
+    eya: |-
+      end your analysis with $1
     fae: |-
       for an example
     fax: |-
