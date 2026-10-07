@@ -315,8 +315,14 @@ end
 -- Build the menu bar title segments and the lazy dropdown model. opts is
 -- { rtt_ms, rtt_sent_at, window_size }: the RTT shows only when rtt_sent_at
 -- equals the newest sampled time; window_size clamps to the newest samples
--- (default DEFAULT_WINDOW_SIZE). Colors and fonts are the runtime's job: it
--- maps tier plus segment role to hs.styledtext attributes.
+-- (default DEFAULT_WINDOW_SIZE). A perfect (full, all-answered, online)
+-- window drops the count from the title. Colors and fonts are the runtime's
+-- job: it maps tier plus segment role to hs.styledtext attributes.
+-- A full window with every ping answered: the title drops the count.
+local function perfect_window(tier, summary, window_size)
+	return tier == "online" and summary.total == window_size and summary.successes == summary.total
+end
+
 function M.presentation(state_or_nil, now, opts)
 	opts = opts or {}
 	local window_size = opts.window_size
@@ -339,13 +345,25 @@ function M.presentation(state_or_nil, now, opts)
 	local glyph = TIER_GLYPHS[tier]
 	local count = M.format_count(summary)
 
-	local segments = {
-		{ text = NBSP, role = "pad" },
-		{ text = glyph, role = "glyph" },
-		{ text = " ", role = "gap" },
-		{ text = count, role = "count" },
-		{ text = NBSP, role = "pad" },
-	}
+	local segments
+	local title
+	if perfect_window(tier, summary, window_size) then
+		segments = {
+			{ text = NBSP, role = "pad" },
+			{ text = glyph, role = "glyph" },
+			{ text = NBSP, role = "pad" },
+		}
+		title = NBSP .. glyph .. NBSP
+	else
+		segments = {
+			{ text = NBSP, role = "pad" },
+			{ text = glyph, role = "glyph" },
+			{ text = " ", role = "gap" },
+			{ text = count, role = "count" },
+			{ text = NBSP, role = "pad" },
+		}
+		title = NBSP .. glyph .. " " .. count .. NBSP
+	end
 
 	local rtt_ms = nil
 	if summary.total > 0 and opts.rtt_ms ~= nil and opts.rtt_sent_at == sampled then
@@ -429,7 +447,7 @@ function M.presentation(state_or_nil, now, opts)
 
 	return {
 		tier = tier,
-		title = NBSP .. glyph .. " " .. count .. NBSP,
+		title = title,
 		segments = segments,
 		tooltip = tooltip,
 		menu = menu,

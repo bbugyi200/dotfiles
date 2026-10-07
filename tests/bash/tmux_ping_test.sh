@@ -525,7 +525,7 @@ function test_full_window_drops_oldest_end_to_end() {
   run_tmux_ping >"${out}"
   assert_equals "0" "$?"
 
-  assert_exact_output '#[fg=green]✓#[default] 30/30 | ' "${out}"
+  assert_exact_output '#[fg=green]✓#[default] | ' "${out}"
   assert_equals "${TEST_NOW} tmux ${TEST_NOW} 111111111111111111111111111111" "$(read_state)"
 }
 
@@ -537,7 +537,7 @@ function test_configured_twenty_sample_window_end_to_end() {
   run_tmux_ping >"${out}"
   assert_equals "0" "$?"
 
-  assert_exact_output '#[fg=green]✓#[default] 20/20 | ' "${out}"
+  assert_exact_output '#[fg=green]✓#[default] | ' "${out}"
   assert_equals "${TEST_NOW} tmux ${TEST_NOW} 11111111111111111111" "$(read_state)"
 }
 
@@ -564,7 +564,7 @@ function test_larger_state_clamps_to_configured_window() {
   run_tmux_ping >"${out}" 2>"${err}"
   assert_equals "0" "$?"
 
-  assert_exact_output '#[fg=green]✓#[default] 20/20 | ' "${out}"
+  assert_exact_output '#[fg=green]✓#[default] | ' "${out}"
   assert_equals "0" "$(call_count 'ping ')"
   assert_empty "$(cat "${err}")"
 }
@@ -668,9 +668,52 @@ function test_stale_tier_output_for_empty_window() {
   assert_equals "0" "$(call_count 'ping ')"
 }
 
+function test_perfect_window_hides_count_end_to_end() {
+  local thirty
+  thirty="$(printf '1%.0s' {1..30})"
+  write_state "${TEST_NOW} hammerspoon ${TEST_NOW} ${thirty}"
+
+  local out="${TEST_TMP}/out"
+  run_tmux_ping >"${out}"
+  assert_equals "0" "$?"
+
+  assert_exact_output '#[fg=green]✓#[default] | ' "${out}"
+  assert_equals "0" "$(call_count 'ping ')"
+}
+
+function test_full_window_with_miss_keeps_count_end_to_end() {
+  local twenty_nine
+  twenty_nine="$(printf '1%.0s' {1..29})"
+  write_state "${TEST_NOW} hammerspoon ${TEST_NOW} 0${twenty_nine}"
+
+  local out="${TEST_TMP}/out"
+  run_tmux_ping >"${out}"
+  assert_equals "0" "$?"
+
+  assert_exact_output '#[fg=green]✓#[default] 29/30 | ' "${out}"
+}
+
+function test_stale_perfect_window_keeps_count_end_to_end() {
+  local thirty
+  thirty="$(printf '1%.0s' {1..30})"
+  write_state "${TEST_NOW} hammerspoon $((TEST_NOW - 8)) ${thirty}"
+
+  local out="${TEST_TMP}/out"
+  run_tmux_ping >"${out}"
+  assert_equals "0" "$?"
+
+  assert_exact_output '#[fg=#828bb8]◌ 30/30#[default] | ' "${out}"
+  assert_equals "0" "$(call_count 'ping ')"
+}
+
 function test_render_helper_exact_strings() {
   local now="${TEST_NOW}"
+  local thirty
+  thirty="$(printf '1%.0s' {1..30})"
 
+  assert_equals \
+    '#[fg=green]✓#[default] | ' \
+    "$(render_of "${thirty}" "${now}" "${now}")"
   assert_equals \
     '#[fg=green]✓#[default] 20/20 | ' \
     "$(render_of '11111111111111111111' "${now}" "${now}")"

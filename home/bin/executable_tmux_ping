@@ -29,7 +29,8 @@
 #                                                                            #
 #  Health tiers, checked in this order: stale (empty window, or unsampled   #
 #  for > 6 s), offline (3+ trailing misses), down (newest is a miss),       #
-#  lossy (newest replied but < 90% replied), online (>= 90% replied).        #
+#  lossy (newest replied but < 90% replied), online (>= 90% replied). A     #
+#  full window with every ping answered renders just the check mark.        #
 #                                                                            #
 #  Shared ping-stream constants. Mirrored in                                 #
 #  `home/dot_hammerspoon/ping_window.lua`; keep both sides in sync.          #
@@ -61,11 +62,13 @@ usage: $(basename "$0") [-h]
 
 Render internet connectivity for the tmux status line from the shared
 ~/tmp/${STATE_BASENAME} window, as tmux style markup ending in "| " (for
-example '#[fg=green]✓#[default] 30/30 | '). While a fresh Hammerspoon
-heartbeat exists this only reads the shared window; otherwise, as a
-fallback, it pings ${PING_TARGET} (at most once per ${INTERVAL_SECONDS} s
-across clients, under an flock guard), appends the sample to the shared
-window, and renders. On non-macOS hosts this prints nothing.
+example '#[fg=green]✓#[default] | ' when every one of the last window_size
+pings answered, and '#[fg=green]✓#[default] 29/30 | ' with a miss in the
+window). While a fresh Hammerspoon heartbeat exists this only reads the
+shared window; otherwise, as a fallback, it pings ${PING_TARGET} (at most
+once per ${INTERVAL_SECONDS} s across clients, under an flock guard),
+appends the sample to the shared window, and renders. On non-macOS hosts
+this prints nothing.
 
 Configuration
 -------------
@@ -80,7 +83,8 @@ Optional Arguments
 
 Examples
 --------
-tmux_ping     # '#[fg=green]✓#[default] 30/30 | '
+tmux_ping     # '#[fg=green]✓#[default] | ' when every one of the last window_size pings answered
+tmux_ping     # '#[fg=green]✓#[default] 29/30 | ' with a miss in the window
 EOM
 }
 
@@ -255,7 +259,8 @@ function classify() {
 
 # Render one window as tmux status markup with no trailing newline. An
 # empty window counts as –. Clamps to the newest WINDOW_SIZE samples first,
-# so a larger state from a bigger window never breaks a smaller one.
+# so a larger state from a bigger window never breaks a smaller one. A full
+# window with every ping answered renders just the check mark.
 function render_state() {
   local results="$1" sampled="$2" now="$3"
 
@@ -287,7 +292,11 @@ function render_state() {
     printf '#[%s]✓#[default] %s | ' "${STYLE_LOSSY}" "${count}"
     ;;
   online)
-    printf '#[fg=green]✓#[default] %s | ' "${count}"
+    if ((10#${SUM_TOTAL} == window_n && 10#${SUM_SUCCESSES} == 10#${SUM_TOTAL})); then
+      printf '#[fg=green]✓#[default] | '
+    else
+      printf '#[fg=green]✓#[default] %s | ' "${count}"
+    fi
     ;;
   esac
 }

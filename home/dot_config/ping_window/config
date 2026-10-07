@@ -3,6 +3,7 @@
 # Both re-read this file on every 2 s tick, so an edit applies within one tick
 # without reloading Hammerspoon or tmux. No inline comments.
 
-# How many recent pings (one every 2 s) both displays count, e.g. 30/30.
+# How many recent pings (one every 2 s) both displays count, e.g. 29/30;
+# when all of them answered, both show just the check mark.
 # Whole number from 3 to 99; anything else falls back to 30.
 window_size=30

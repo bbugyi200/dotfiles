@@ -344,27 +344,89 @@ end)
 describe("Hammerspoon ping window presentation", function()
 	it("builds the exact title string and segment roles for each tier", function()
 		local now = 1759680010
+		local full_roles = { "pad", "glyph", "gap", "count", "pad" }
+		local perfect_roles = { "pad", "glyph", "pad" }
 		local cases = {
-			{ results = string.rep("1", 30), sampled = now, tier = "online", glyph = "✓", count = "30/30" },
+			{
+				results = string.rep("1", 30),
+				sampled = now,
+				tier = "online",
+				title = NBSP .. "✓" .. NBSP,
+				roles = perfect_roles,
+			},
+			{
+				results = "0" .. string.rep("1", 29),
+				sampled = now,
+				tier = "online",
+				title = NBSP .. "✓" .. " " .. "29/30" .. NBSP,
+				roles = full_roles,
+			},
 			{
 				results = "000" .. string.rep("1", 25) .. "01",
 				sampled = now,
 				tier = "lossy",
-				glyph = "✓",
-				count = "26/30",
+				title = NBSP .. "✓" .. " " .. "26/30" .. NBSP,
+				roles = full_roles,
 			},
-			{ results = string.rep("1", 29) .. "0", sampled = now, tier = "down", glyph = "✗", count = "29/30" },
-			{ results = string.rep("1", 27) .. "000", sampled = now, tier = "offline", glyph = "✗", count = "27/30" },
-			{ results = string.rep("1", 30), sampled = now - 7, tier = "stale", glyph = "◌", count = "30/30" },
+			{
+				results = string.rep("1", 29) .. "0",
+				sampled = now,
+				tier = "down",
+				title = NBSP .. "✗" .. " " .. "29/30" .. NBSP,
+				roles = full_roles,
+			},
+			{
+				results = string.rep("1", 27) .. "000",
+				sampled = now,
+				tier = "offline",
+				title = NBSP .. "✗" .. " " .. "27/30" .. NBSP,
+				roles = full_roles,
+			},
+			{
+				results = string.rep("1", 30),
+				sampled = now - 7,
+				tier = "stale",
+				title = NBSP .. "◌" .. " " .. "30/30" .. NBSP,
+				roles = full_roles,
+			},
 		}
 		for _, case in ipairs(cases) do
 			local state = { heartbeat = now, producer = "hammerspoon", sampled = case.sampled, results = case.results }
 			local presentation = ping_window.presentation(state, now, {})
 			assert.equals(case.tier, presentation.tier)
-			assert.equals(NBSP .. case.glyph .. " " .. case.count .. NBSP, presentation.title)
-			assert.same({ "pad", "glyph", "gap", "count", "pad" }, segment_roles(presentation.segments))
+			assert.equals(case.title, presentation.title)
+			assert.same(case.roles, segment_roles(presentation.segments))
 			assert.equals(presentation.title, concat_segments(presentation.segments))
 		end
+	end)
+
+	it("keeps the count while the window is still filling", function()
+		local now = 1759680010
+		local filling = { heartbeat = now, producer = "hammerspoon", sampled = now, results = string.rep("1", 29) }
+		local presentation = ping_window.presentation(filling, now, {})
+		assert.equals("online", presentation.tier)
+		assert.equals(NBSP .. "✓" .. " " .. "29/29" .. NBSP, presentation.title)
+		assert.same({ "pad", "glyph", "gap", "count", "pad" }, segment_roles(presentation.segments))
+		assert.equals(presentation.title, concat_segments(presentation.segments))
+
+		local small = { heartbeat = now, producer = "hammerspoon", sampled = now, results = string.rep("1", 19) }
+		local small_presentation = ping_window.presentation(small, now, { window_size = 20 })
+		assert.equals("online", small_presentation.tier)
+		assert.equals(NBSP .. "✓" .. " " .. "19/19" .. NBSP, small_presentation.title)
+		assert.same({ "pad", "glyph", "gap", "count", "pad" }, segment_roles(small_presentation.segments))
+		assert.equals(small_presentation.title, concat_segments(small_presentation.segments))
+	end)
+
+	it("keeps the tooltip and dropdown for a perfect window", function()
+		local now = 1759680010
+		local state = { heartbeat = now, producer = "hammerspoon", sampled = now, results = string.rep("1", 30) }
+		local presentation = ping_window.presentation(state, now, {})
+		assert.equals(NBSP .. "✓" .. NBSP, presentation.title)
+		assert.equals("Internet: 30 of 30 pings answered (100%)", presentation.tooltip)
+		local header = find_row(presentation.menu, "header")
+		assert.equals("✓ Online", concat_segments(header.segments))
+		local summary = find_row(presentation.menu, "summary")
+		assert.equals("30 of 30 pings answered (100%) · last 60 s", concat_segments(summary.segments))
 	end)
 
 	it("renders an empty window with a dashed count", function()
@@ -424,7 +486,7 @@ describe("Hammerspoon ping window presentation", function()
 		local now = 1759680010
 		local state = { heartbeat = now, producer = "hammerspoon", sampled = now, results = string.rep("1", 30) }
 		local presentation = ping_window.presentation(state, now, { window_size = 20 })
-		assert.equals(NBSP .. "✓" .. " " .. "20/20" .. NBSP, presentation.title)
+		assert.equals(NBSP .. "✓" .. NBSP, presentation.title)
 		local summary = find_row(presentation.menu, "summary")
 		assert.equals("20 of 20 pings answered (100%) · last 40 s", concat_segments(summary.segments))
 	end)

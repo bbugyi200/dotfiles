@@ -819,6 +819,53 @@ describe("Hammerspoon ping indicator dropdown", function()
 		)
 		local items = env.menus[1].menu_builder()
 		assert.equals(string.rep("●", 20) .. "  now", items[2].title)
+		assert.equals(NBSP .. "✓" .. NBSP, title_text(env.menus[1].title))
+	end)
+
+	it("shows just the check mark for a perfect window and restores the count on a miss", function()
+		local indicator
+		env, indicator = setup()
+		write_state_file(env, string.format("%d tmux %d %s\n", env.now - 2, env.now - 2, string.rep("1", 29)))
+		start_indicator(env, indicator)
+		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
+
+		assert.equals(NBSP .. "✓" .. NBSP, title_text(env.menus[1].title))
+		local spans = assert(title_spans(env.menus[1].title))
+		local glyph = assert(span_with_text(spans, "✓"))
+		assert.are.same({ hex = "#30d158", alpha = 1 }, glyph.attributes.color)
+		for _, span in ipairs(spans) do
+			assert.is_nil(span.text:find("/", 1, true))
+		end
+
+		env.now = env.now + 2
+		fire_tick(env)
+		complete_latest(env, 2, TIMEOUT_TRANSCRIPT)
+		local miss_text = title_text(env.menus[1].title)
+		assert.is_true(miss_text:find("✗", 1, true) ~= nil)
+		assert.is_true(miss_text:find("29/30", 1, true) ~= nil)
+		local miss_spans = assert(title_spans(env.menus[1].title))
+		local miss_glyph = assert(span_with_text(miss_spans, "✗"))
+		assert.are.same({ hex = "#E3413B", alpha = 1 }, miss_glyph.attributes.color)
+
+		env.now = env.now + 2
+		fire_tick(env)
+		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
+		local recovered = title_text(env.menus[1].title)
+		assert.is_true(recovered:find("✓", 1, true) ~= nil)
+		assert.is_true(recovered:find("29/30", 1, true) ~= nil)
+	end)
+
+	it("falls back to just the check mark for a perfect window when styling fails", function()
+		local indicator
+		env, indicator = setup()
+		env.fail_styling = true
+		write_state_file(env, string.format("%d tmux %d %s\n", env.now - 2, env.now - 2, string.rep("1", 29)))
+		start_indicator(env, indicator)
+		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
+
+		local title = env.menus[1].title
+		assert.equals("string", type(title))
+		assert.equals(NBSP .. "✓" .. NBSP, title)
 	end)
 
 	it("shrinks the window without a restart when the config changes", function()

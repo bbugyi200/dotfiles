@@ -100,8 +100,11 @@ updating, and shows fresh details when reopened.
 
 Hammerspoon shows internet connectivity as one status item beside the Pomodoro item. The
 title is a glyph plus a `successes/total` count over the last 30 pings (`✓ 27/30`),
-padded to a fixed width so the item never changes size between ticks or tiers. The count
-uses Menlo regular; the glyph uses the default menu bar face, and nothing is bold. The
+padded to a fixed width whenever it shows. When every one of the last 30 pings answered,
+the title is just a green `✓` and the item narrows. The count comes back as soon as a
+miss enters the window, and it also shows while a fresh window is still filling (after
+start or a sleep reset). The tooltip and dropdown still give the score. The count uses
+Menlo regular; the glyph uses the default menu bar face, and nothing is bold. The
 tooltip names the score and the last round-trip time. Opening the item shows the tier, a
 30-cell history strip, the score over its span, the last ping, and a Network Settings
 shortcut that opens System Settings → Network. If the shortcut cannot open Settings, it
@@ -135,13 +138,13 @@ change.
 
 Health tiers, checked in this order from the newest sample backward:
 
-| Tier      | Rule                                 | Menu bar              | tmux status            |
-| --------- | ------------------------------------ | --------------------- | ---------------------- |
-| `stale`   | empty window, or no sample for > 6 s | `◌ 27/30` in gray     | `◌ 27/30` in blue-gray |
-| `offline` | 3 or more trailing misses            | white `✗ 0/30` on red | white `✗ 0/30` on red  |
-| `down`    | newest ping missed, under 3 trailing | red `✗ 29/30`         | red `✗ 29/30`          |
-| `lossy`   | newest answered, under 90% answered  | orange `✓ 26/30`      | amber `✓ 26/30`        |
-| `online`  | newest answered, 90%+ answered       | green `✓ 30/30`       | green `✓ 30/30`        |
+| Tier      | Rule                                 | Menu bar                                                  | tmux status                                               |
+| --------- | ------------------------------------ | --------------------------------------------------------- | --------------------------------------------------------- |
+| `stale`   | empty window, or no sample for > 6 s | `◌ 27/30` in gray                                         | `◌ 27/30` in blue-gray                                    |
+| `offline` | 3 or more trailing misses            | white `✗ 0/30` on red                                     | white `✗ 0/30` on red                                     |
+| `down`    | newest ping missed, under 3 trailing | red `✗ 29/30`                                             | red `✗ 29/30`                                             |
+| `lossy`   | newest answered, under 90% answered  | orange `✓ 26/30`                                          | amber `✓ 26/30`                                           |
+| `online`  | newest answered, 90%+ answered       | green `✓` when all 30 answered, otherwise green `✓ 29/30` | green `✓` when all 30 answered, otherwise green `✓ 29/30` |
 
 The shared window lives in `~/tmp/tmux_ping_state`: one LF-terminated line of
 `<heartbeat> <producer> <sampled> <results>`, where `heartbeat` is the producer's latest
