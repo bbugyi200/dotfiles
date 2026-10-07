@@ -48,7 +48,7 @@ properties:
 
 highlights:
   pre_scan_hook: PATH="$HOME/bin:$PATH" bob_xlib_pull
-  # `bob highlights create --listen` (and `clip --listen`) narrates the target with
+  # `bob ref create --listen` (and `clip --listen`) narrates the target with
   # this command, which must write MP3 audio to {audio}; bob binds it as the PDF's
   # companion audio. bob shell-quotes {target} {pdf} {audio} {title} itself — do not
   # quote them. sase-listen's feed.auto_publish publishes the episode. See
