@@ -48,9 +48,9 @@ Check the library first, label what you find honestly, and never write to the va
 
 - Respect the cap. Honor `truncated` in the envelope, page with `--limit` instead of
   dumping everything, and never paste `list -A` output into a prompt.
-- Read-only. Never edit `~/bob`. Never run `bob ref clip`, `create`, `scan`, or `sync`
-  unless Bryan asks. Propose `bob ref create <URL>` lines (add `-L` to also narrate) for
-  him instead.
+- Read-only. Never edit `~/bob`. Never run `bob ref create`, `scan`, or `sync` unless
+  Bryan asks. Propose `bob ref create <URL>` lines (add `-L` to also narrate) for him
+  instead.
 - End reading-list reports with: "Library check: N of M candidates already in your
   library (K finished)."
 
