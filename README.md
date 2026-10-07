@@ -88,11 +88,13 @@ and dropdown carry no tomato and keep the raw `bob pomodoro` line and `Last sync
 details. Without a session the dropdown also shows a disabled
 `Next reminder at HH:MM · φ Nm` row previewing the next flash step. At and after ten
 minutes overdue, only the `OVERDUE` badge flashes between red text and white-on-red. The
-menu polls `bob pomodoro --show-stale` every 15 seconds, refreshes on wake and unlock,
-offers a manual Refresh item, and re-syncs once when crossing zero. An empty result
-shows `NO POMODORO`; command or parse failures hide the item. The dropdown shows a
-snapshot taken when it opens, stays open while the title keeps updating, and shows fresh
-details when reopened.
+menu re-syncs within about a second when today's daily note changes on disk (an Obsidian
+edit, a `bob` command, or a vault-sync pull), polls `bob pomodoro --show-stale` every 60
+seconds as a safety net (every 15 seconds if the file watcher cannot start), refreshes
+on wake and unlock, offers a manual Refresh item, and re-syncs once when crossing zero.
+An empty result shows `NO POMODORO`; command or parse failures hide the item. The
+dropdown shows a snapshot taken when it opens, stays open while the title keeps
+updating, and shows fresh details when reopened.
 
 ## Internet ping menu bar
 

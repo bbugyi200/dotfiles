@@ -187,6 +187,28 @@ local function make_hs(env)
 			table.insert(env.timers, timer)
 			return timer
 		end,
+		delayed = {
+			new = function(delay, fn)
+				local timer = make_started_object("delayed_timer")
+				timer.delay = delay
+				timer.fn = fn
+				timer.running = false
+				local base_start = timer.start
+				timer.start = function(self)
+					base_start(self)
+					self.running = true
+					return self
+				end
+				local base_stop = timer.stop
+				timer.stop = function(self)
+					base_stop(self)
+					self.running = false
+					return self
+				end
+				table.insert(env.delayed_timers, timer)
+				return timer
+			end,
+		},
 	}
 
 	hs.menubar = {
@@ -213,6 +235,18 @@ local function make_hs(env)
 
 	hs.pathwatcher = {
 		new = function(path, callback)
+			local is_vault = type(path) == "string" and path:sub(-#"/bob") == "/bob"
+			if is_vault then
+				if env.options and env.options.vault_watcher_error then
+					error(env.options.vault_watcher_error)
+				end
+				if env.options and env.options.pathwatcher_error then
+					error(env.options.pathwatcher_error)
+				end
+				if env.options and (env.options.vault_watcher_nil or env.options.pathwatcher_nil) then
+					return nil
+				end
+			end
 			local watcher = make_started_object("path_watcher")
 			watcher.path = path
 			watcher.callback = callback
@@ -267,10 +301,12 @@ local function setup_hammerspoon_init_environment(options)
 		ping_start_calls = {},
 		tasks = {},
 		timers = {},
+		delayed_timers = {},
 		menus = {},
 		wake_watchers = {},
 		path_watchers = {},
 		notifications = {},
+		options = options,
 		printf_calls = {},
 		menu_title_calls = {},
 		styled_text_calls = {},
@@ -467,7 +503,7 @@ describe("Hammerspoon init", function()
 		assert.equals(1, #env.menus)
 		assert.equals(2, #env.timers)
 		assert.equals(1, #env.wake_watchers)
-		assert.equals(1, #env.path_watchers)
+		assert.equals(2, #env.path_watchers)
 	end)
 
 	it("replaces a stale non-table Pomodoro runtime global", function()
@@ -504,7 +540,7 @@ describe("Hammerspoon init", function()
 		assert.equals(1, #env.menus)
 		assert.equals(2, #env.timers)
 		assert.equals(1, #env.wake_watchers)
-		assert.equals(1, #env.path_watchers)
+		assert.equals(2, #env.path_watchers)
 	end)
 
 	it("cleans up retained Pomodoro runtime objects and reuses the menu on reload", function()
@@ -518,6 +554,8 @@ describe("Hammerspoon init", function()
 		local old_tick_timer = runtime.tickTimer
 		local old_sync_timer = runtime.syncTimer
 		local old_wake_watcher = runtime.wakeWatcher
+		local old_vault_watcher = runtime.vaultWatcher
+		local old_debounce = runtime.vaultChangeDebounce
 
 		local second_env = setup_hammerspoon_init_environment({ runtime = runtime })
 		active_env = {
@@ -535,6 +573,8 @@ describe("Hammerspoon init", function()
 		assert.equals(1, old_tick_timer.stop_calls)
 		assert.equals(1, old_sync_timer.stop_calls)
 		assert.equals(1, old_wake_watcher.stop_calls)
+		assert.equals(1, old_vault_watcher.stop_calls)
+		assert.equals(1, old_debounce.stop_calls)
 		assert.is_not_nil(runtime.task)
 		assert.not_equals(old_task, runtime.task)
 		assert.is_not_nil(runtime.tickTimer)
@@ -543,6 +583,10 @@ describe("Hammerspoon init", function()
 		assert.not_equals(old_sync_timer, runtime.syncTimer)
 		assert.is_not_nil(runtime.wakeWatcher)
 		assert.not_equals(old_wake_watcher, runtime.wakeWatcher)
+		assert.is_not_nil(runtime.vaultWatcher)
+		assert.not_equals(old_vault_watcher, runtime.vaultWatcher)
+		assert.is_not_nil(runtime.vaultChangeDebounce)
+		assert.not_equals(old_debounce, runtime.vaultChangeDebounce)
 	end)
 
 	it("delivers a named active payload with full context and keeps --show-stale", function()
@@ -1079,6 +1123,279 @@ describe("Hammerspoon init", function()
 
 		_G.BobPomodoroCountdown.syncTimer.callback()
 		assert.equals(1, #env.tasks)
+	end)
+
+	it("installs a vault watcher on $HOME/bob with a 60s safety poll", function()
+		local restore_clock = freeze_clock_at(today_at(9, 50))
+		local ok, error_message, env = load_init_with({
+			task_completion = {
+				exit_code = 0,
+				stdout = "[<13m] 0950-1015 — DEEP WORK",
+				stderr = "",
+			},
+		})
+		assert.is_true(ok, error_message)
+		restore_clock()
+
+		local runtime = _G.BobPomodoroCountdown
+		local home = os.getenv("HOME")
+		local vault_watcher = nil
+		local config_watcher = nil
+		for _, watcher in ipairs(env.path_watchers) do
+			if watcher.path == home .. "/bob" then
+				vault_watcher = watcher
+			elseif watcher.path == home .. "/.hammerspoon/" then
+				config_watcher = watcher
+			end
+		end
+		assert.is_not_nil(vault_watcher)
+		assert.is_not_nil(config_watcher)
+		assert.equals(runtime.vaultWatcher, vault_watcher)
+		assert.is_true(vault_watcher.started)
+		assert.equals(60, runtime.syncTimer.interval)
+		assert.equals(2, #env.path_watchers)
+		assert.equals(2, #env.timers)
+		assert.equals(1, #env.delayed_timers)
+		assert.equals(0.25, runtime.vaultChangeDebounce.delay)
+		assert.equals(runtime.vaultChangeDebounce, env.delayed_timers[1])
+	end)
+
+	it("re-syncs through the debounce when today's day file changes", function()
+		local restore_clock = freeze_clock_at(today_at(9, 50))
+		local ok, error_message, env = load_init_with({
+			task_completion = {
+				exit_code = 0,
+				stdout = "[<13m] 0950-1015 — DEEP WORK",
+				stderr = "",
+			},
+		})
+		assert.is_true(ok, error_message)
+
+		local runtime = _G.BobPomodoroCountdown
+		local home = os.getenv("HOME")
+		local today_path = home .. "/bob/" .. os.date("%Y") .. "/" .. os.date("%Y%m%d") .. ".md"
+		local vault_watcher = nil
+		for _, watcher in ipairs(env.path_watchers) do
+			if watcher.path == home .. "/bob" then
+				vault_watcher = watcher
+			end
+		end
+		assert.is_not_nil(vault_watcher)
+
+		local tasks_before = #env.tasks
+		vault_watcher.callback({ today_path }, {})
+		assert.equals(1, runtime.vaultChangeDebounce.start_calls)
+
+		env.task_completion = {
+			exit_code = 0,
+			stdout = "[<5m] 1000-1020 — FOCUS TIME",
+			stderr = "",
+		}
+		runtime.vaultChangeDebounce.fn()
+		restore_clock()
+		assert.equals(tasks_before + 1, #env.tasks)
+		assert.is_true(task_command_text(env.tasks[#env.tasks]):find("--show-stale", 1, true) ~= nil)
+	end)
+
+	it("ignores vault events outside today's day file", function()
+		local restore_clock = freeze_clock_at(today_at(9, 50))
+		local fixed = os.time()
+		local ok, error_message, env = load_init_with({
+			task_completion = {
+				exit_code = 0,
+				stdout = "[<13m] 0950-1015 — DEEP WORK",
+				stderr = "",
+			},
+		})
+		assert.is_true(ok, error_message)
+
+		local runtime = _G.BobPomodoroCountdown
+		local home = os.getenv("HOME")
+		local year = os.date("%Y")
+		local stamp = os.date("%Y%m%d")
+		local yesterday = fixed - 86400
+		local unrelated = {
+			home .. "/bob/.git/FETCH_HEAD",
+			home .. "/bob/.obsidian/workspace.json",
+			home .. "/bob/" .. os.date("%Y", yesterday) .. "/" .. os.date("%Y%m%d", yesterday) .. ".md",
+			home .. "/bob/" .. year .. "/NOTES.md",
+			home .. "/bob/other-" .. stamp .. ".md",
+		}
+		local vault_watcher = nil
+		for _, watcher in ipairs(env.path_watchers) do
+			if watcher.path == home .. "/bob" then
+				vault_watcher = watcher
+			end
+		end
+		assert.is_not_nil(vault_watcher)
+
+		local tasks_before = #env.tasks
+		for _, path in ipairs(unrelated) do
+			vault_watcher.callback({ path }, {})
+		end
+		restore_clock()
+		assert.equals(0, runtime.vaultChangeDebounce.start_calls)
+		assert.equals(tasks_before, #env.tasks)
+	end)
+
+	it("collapses a burst of day-file saves into one sync", function()
+		local restore_clock = freeze_clock_at(today_at(9, 50))
+		local ok, error_message, env = load_init_with({
+			task_completion = {
+				exit_code = 0,
+				stdout = "[<13m] 0950-1015 — DEEP WORK",
+				stderr = "",
+			},
+		})
+		assert.is_true(ok, error_message)
+
+		local runtime = _G.BobPomodoroCountdown
+		local home = os.getenv("HOME")
+		local today_path = home .. "/bob/" .. os.date("%Y") .. "/" .. os.date("%Y%m%d") .. ".md"
+		local vault_watcher = nil
+		for _, watcher in ipairs(env.path_watchers) do
+			if watcher.path == home .. "/bob" then
+				vault_watcher = watcher
+			end
+		end
+		assert.is_not_nil(vault_watcher)
+
+		local tasks_before = #env.tasks
+		vault_watcher.callback({ today_path }, {})
+		vault_watcher.callback({ today_path }, {})
+		vault_watcher.callback({ today_path }, {})
+		assert.equals(3, runtime.vaultChangeDebounce.start_calls)
+		assert.equals(tasks_before, #env.tasks)
+
+		env.task_completion = {
+			exit_code = 0,
+			stdout = "[<5m] 1000-1020 — FOCUS TIME",
+			stderr = "",
+		}
+		runtime.vaultChangeDebounce.fn()
+		restore_clock()
+		assert.equals(tasks_before + 1, #env.tasks)
+	end)
+
+	it("queues one follow-up sync for changes that land mid-sync", function()
+		local restore_clock = freeze_clock_at(today_at(9, 50))
+		local valid_completion = {
+			exit_code = 0,
+			stdout = "[<13m] 0950-1015 — DEEP WORK",
+			stderr = "",
+		}
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+
+		local runtime = _G.BobPomodoroCountdown
+		assert.is_not_nil(runtime.task)
+		assert.equals(1, #env.tasks)
+
+		local home = os.getenv("HOME")
+		local today_path = home .. "/bob/" .. os.date("%Y") .. "/" .. os.date("%Y%m%d") .. ".md"
+		local vault_watcher = nil
+		for _, watcher in ipairs(env.path_watchers) do
+			if watcher.path == home .. "/bob" then
+				vault_watcher = watcher
+			end
+		end
+		assert.is_not_nil(vault_watcher)
+
+		vault_watcher.callback({ today_path }, {})
+		runtime.vaultChangeDebounce.fn()
+		assert.equals(1, #env.tasks)
+		assert.is_true(runtime.resyncRequested)
+
+		env.task_completion = valid_completion
+		local first_task = env.tasks[1]
+		first_task.callback(0, valid_completion.stdout, valid_completion.stderr)
+		assert.equals(2, #env.tasks)
+		assert.is_false(runtime.resyncRequested)
+
+		env.task_completion = nil
+		runtime.syncTimer.callback()
+		assert.equals(3, #env.tasks)
+		local third_task = env.tasks[3]
+
+		vault_watcher.callback({ today_path }, {})
+		runtime.vaultChangeDebounce.fn()
+		vault_watcher.callback({ today_path }, {})
+		runtime.vaultChangeDebounce.fn()
+		assert.equals(3, #env.tasks)
+		assert.is_true(runtime.resyncRequested)
+
+		env.task_completion = valid_completion
+		third_task.callback(0, valid_completion.stdout, valid_completion.stderr)
+		restore_clock()
+		assert.equals(4, #env.tasks)
+		assert.is_false(runtime.resyncRequested)
+		assert.is_nil(runtime.task)
+
+		local follow_up = env.tasks[4]
+		follow_up.callback(0, valid_completion.stdout, valid_completion.stderr)
+		assert.equals(4, #env.tasks)
+	end)
+
+	it("drops poll ticks that land mid-sync without queueing a follow-up", function()
+		local restore_clock = freeze_clock_at(today_at(9, 50))
+		local valid_completion = {
+			exit_code = 0,
+			stdout = "[<13m] 0950-1015 — DEEP WORK",
+			stderr = "",
+		}
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+
+		local runtime = _G.BobPomodoroCountdown
+		assert.is_not_nil(runtime.task)
+
+		runtime.syncTimer.callback()
+		assert.equals(1, #env.tasks)
+		assert.is_false(runtime.resyncRequested)
+
+		env.task_completion = valid_completion
+		env.tasks[1].callback(0, valid_completion.stdout, valid_completion.stderr)
+		restore_clock()
+		assert.equals(1, #env.tasks)
+		assert.is_nil(runtime.task)
+	end)
+
+	it("falls back to the 15s poll when the vault watcher cannot start", function()
+		local cases = {
+			{ vault_watcher_error = "boom" },
+			{ vault_watcher_nil = true },
+		}
+		for _, options in ipairs(cases) do
+			local restore_clock = freeze_clock_at(today_at(9, 50))
+			options.task_completion = {
+				exit_code = 0,
+				stdout = "[<13m] 0950-1015 — DEEP WORK",
+				stderr = "",
+			}
+			local ok, error_message, env = load_init_with(options)
+			assert.is_true(ok, error_message)
+
+			local runtime = _G.BobPomodoroCountdown
+			assert.is_nil(runtime.vaultWatcher)
+			assert.is_not_nil(runtime.menu)
+			assert.is_not_nil(runtime.tickTimer)
+			assert.is_not_nil(runtime.syncTimer)
+			assert.is_not_nil(runtime.wakeWatcher)
+			assert.equals(15, runtime.syncTimer.interval)
+			assert.equals(1, #env.path_watchers)
+			assert.equals(os.getenv("HOME") .. "/.hammerspoon/", env.path_watchers[1].path)
+
+			local logged = false
+			for _, call in ipairs(env.printf_calls) do
+				if tostring(call[1]):find("vault watcher unavailable", 1, true) ~= nil then
+					logged = true
+				end
+			end
+			assert.is_true(logged)
+			restore_clock()
+			active_env.restore()
+			active_env = nil
+		end
 	end)
 
 	it("requests one sync when crossing zero", function()

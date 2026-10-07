@@ -52,6 +52,10 @@ end
 local bobPomodoroRuntime = BobPomodoroCountdown
 local unpackArgs = table.unpack or unpack
 local BOB_POMODORO_TICK_INTERVAL = 0.5 -- Flash half-period for the OVERDUE badge and the NO POMODORO reminder.
+local BOB_POMODORO_POLL_INTERVAL = 60 -- Safety net while the vault watcher runs.
+local BOB_POMODORO_FALLBACK_POLL_INTERVAL = 15 -- Used when the vault watcher is unavailable.
+-- Hammerspoon does not inherit shell BOB_DIR; the vault-sync LaunchAgent uses ~/bob.
+local BOB_POMODORO_VAULT_ROOT = os.getenv("HOME") .. "/bob"
 local bobPomodoroFlashOn = false
 
 local function stopBobPomodoroRuntimeObject(name, object)
@@ -74,6 +78,8 @@ end
 stopBobPomodoroRuntimeObject("tick timer", bobPomodoroRuntime.tickTimer)
 stopBobPomodoroRuntimeObject("sync timer", bobPomodoroRuntime.syncTimer)
 stopBobPomodoroRuntimeObject("wake watcher", bobPomodoroRuntime.wakeWatcher)
+stopBobPomodoroRuntimeObject("vault watcher", bobPomodoroRuntime.vaultWatcher)
+stopBobPomodoroRuntimeObject("vault debounce", bobPomodoroRuntime.vaultChangeDebounce)
 stopBobPomodoroRuntimeObject("task", bobPomodoroRuntime.task)
 
 bobPomodoroRuntime.menu = bobPomodoroRuntime.menu or hs.menubar.new(false)
@@ -82,6 +88,9 @@ bobPomodoroRuntime.state = nil
 bobPomodoroRuntime.tickTimer = nil
 bobPomodoroRuntime.syncTimer = nil
 bobPomodoroRuntime.wakeWatcher = nil
+bobPomodoroRuntime.vaultWatcher = nil
+bobPomodoroRuntime.vaultChangeDebounce = nil
+bobPomodoroRuntime.resyncRequested = false
 
 local function clearBobPomodoroMenu(menu)
 	if not menu then
@@ -435,6 +444,7 @@ local function bobPomodoroMenuTitle(presentation)
 end
 
 local syncBobPomodoro
+local requestBobPomodoroResync
 
 local function bobPomodoroMissingShownEpoch(previousState, now)
 	if
@@ -589,10 +599,15 @@ syncBobPomodoro = function()
 				return
 			end
 			bobPomodoroRuntime.task = nil
+			local followUpRequested = bobPomodoroRuntime.resyncRequested
+			bobPomodoroRuntime.resyncRequested = false
 
 			if exitCode ~= 0 then
 				hideBobPomodoroMenu()
 				hs.printf("bob pomodoro failed with exit code %s: %s", exitCode, trimText(stdErr))
+				if followUpRequested then
+					syncBobPomodoro()
+				end
 				return
 			end
 
@@ -608,6 +623,9 @@ syncBobPomodoro = function()
 				}
 				updateBobPomodoroTooltip()
 				renderBobPomodoroMenu()
+				if followUpRequested then
+					syncBobPomodoro()
+				end
 				return
 			end
 
@@ -615,6 +633,9 @@ syncBobPomodoro = function()
 			if not parsed then
 				hideBobPomodoroMenu()
 				hs.printf("bob pomodoro output could not be parsed: %s: %s", parseError, output)
+				if followUpRequested then
+					syncBobPomodoro()
+				end
 				return
 			end
 
@@ -633,6 +654,9 @@ syncBobPomodoro = function()
 			bobPomodoroRuntime.state = parsed
 			updateBobPomodoroTooltip()
 			renderBobPomodoroMenu()
+			if followUpRequested then
+				syncBobPomodoro()
+			end
 		end),
 		{ "-lc", bobPomodoroCommand }
 	)
@@ -649,12 +673,21 @@ syncBobPomodoro = function()
 	end, debug.traceback)
 	if not startOk or not startedOrError then
 		bobPomodoroRuntime.task = nil
+		bobPomodoroRuntime.resyncRequested = false
 		hideBobPomodoroMenu()
 		if startOk then
 			hs.printf("bob pomodoro task could not be started")
 		else
 			hs.printf("bob pomodoro task start failed: %s", startedOrError)
 		end
+	end
+end
+
+requestBobPomodoroResync = function()
+	if bobPomodoroRuntime.task then
+		bobPomodoroRuntime.resyncRequested = true
+	else
+		syncBobPomodoro()
 	end
 end
 
@@ -682,7 +715,48 @@ bobPomodoroRuntime.tickTimer = hs.timer
 		true
 	)
 	:start()
-bobPomodoroRuntime.syncTimer = hs.timer.new(15, guardedBobPomodoroCallback("sync timer", syncBobPomodoro), true):start()
+
+local function bobPomodoroVaultChangeMatchesDayFile(paths)
+	local suffix = "/" .. os.date("%Y") .. "/" .. os.date("%Y%m%d") .. ".md"
+	if type(paths) ~= "table" then
+		return false
+	end
+	for _, path in ipairs(paths) do
+		if type(path) == "string" and #path >= #suffix and path:sub(-#suffix) == suffix then
+			return true
+		end
+	end
+	return false
+end
+
+local vaultStartOk, vaultStartError = xpcall(function()
+	bobPomodoroRuntime.vaultChangeDebounce =
+		hs.timer.delayed.new(0.25, guardedBobPomodoroCallback("vault watcher sync", requestBobPomodoroResync))
+	local watcher = hs.pathwatcher.new(
+		BOB_POMODORO_VAULT_ROOT,
+		guardedBobPomodoroCallback("vault watcher", function(paths, _flagTables)
+			if bobPomodoroVaultChangeMatchesDayFile(paths) then
+				bobPomodoroRuntime.vaultChangeDebounce:start()
+			end
+		end)
+	)
+	if watcher == nil then
+		error("hs.pathwatcher.new returned nil")
+	end
+	watcher:start()
+	bobPomodoroRuntime.vaultWatcher = watcher
+end, debug.traceback)
+if not vaultStartOk then
+	bobPomodoroRuntime.vaultWatcher = nil
+	hs.printf("Bob Pomodoro vault watcher unavailable: %s", vaultStartError)
+end
+
+local bobPomodoroPollInterval = BOB_POMODORO_POLL_INTERVAL
+if bobPomodoroRuntime.vaultWatcher == nil then
+	bobPomodoroPollInterval = BOB_POMODORO_FALLBACK_POLL_INTERVAL
+end
+bobPomodoroRuntime.syncTimer =
+	hs.timer.new(bobPomodoroPollInterval, guardedBobPomodoroCallback("sync timer", syncBobPomodoro), true):start()
 bobPomodoroRuntime.wakeWatcher =
 	hs.caffeinate.watcher.new(guardedBobPomodoroCallback("wake watcher", function(eventType)
 		if
