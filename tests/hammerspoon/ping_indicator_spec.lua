@@ -287,6 +287,7 @@ local function setup(options)
 		mkdir_calls = {},
 		now = options.now or 1759680002,
 		state_path = tmp_base .. "_ping_state",
+		config_path = tmp_base .. "_ping_config",
 		session_properties = options.session_properties,
 		session_throw = options.session_throw,
 		task_new_nil = options.task_new_nil,
@@ -306,6 +307,7 @@ local function setup(options)
 		package.loaded.ping_indicator = nil
 		pcall(os.remove, env.state_path)
 		pcall(os.remove, env.state_path .. ".tmp.hammerspoon")
+		pcall(os.remove, env.config_path)
 	end
 
 	_G.hs = make_hs(env)
@@ -319,8 +321,15 @@ local function start_indicator(env, indicator)
 	indicator.start({
 		state_path = env.state_path,
 		ping_path = "/sbin/ping",
+		config_path = env.config_path,
 		now = env.now_fn,
 	})
+end
+
+local function write_config_file(env, text)
+	local handle = assert(io.open(env.config_path, "w"))
+	handle:write(text)
+	handle:close()
 end
 
 local function read_state_file(env)
@@ -523,10 +532,20 @@ describe("Hammerspoon ping indicator producer loop", function()
 		assert.equals(string.format("%d hammerspoon %d 01111\n", env.now, env.now), read_state_file(env))
 	end)
 
+	it("appends at the gap edge and resets past it", function()
+		local indicator
+		env, indicator = setup()
+		write_state_file(env, string.format("%d tmux %d 0111\n", env.now - 60, env.now - 60))
+		start_indicator(env, indicator)
+		assert.equals(1, #env.tasks)
+		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
+		assert.equals(string.format("%d hammerspoon %d 01111\n", env.now, env.now), read_state_file(env))
+	end)
+
 	it("resets the window after a long gap", function()
 		local indicator
 		env, indicator = setup()
-		write_state_file(env, string.format("%d tmux %d 0111\n", env.now - 41, env.now - 41))
+		write_state_file(env, string.format("%d tmux %d 0111\n", env.now - 61, env.now - 61))
 		start_indicator(env, indicator)
 		assert.equals(1, #env.tasks)
 		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
@@ -672,7 +691,7 @@ describe("Hammerspoon ping indicator dropdown", function()
 
 		assert.equals("✓ Online", items[1].title)
 		assert.is_true(items[1].disabled)
-		assert.equals("●" .. string.rep("·", 19) .. "  now", items[2].title)
+		assert.equals("●" .. string.rep("·", 29) .. "  now", items[2].title)
 		assert.is_true(items[2].disabled)
 		assert.equals("1 of 1 pings answered (100%) · last 2 s", items[3].title)
 		assert.is_true(items[3].disabled)
@@ -782,7 +801,73 @@ describe("Hammerspoon ping indicator dropdown", function()
 		assert.is_true(#env.menu_titles > titles_before)
 
 		local items = builder()
-		assert.equals("●●○" .. string.rep("·", 17) .. "  now", items[2].title)
+		assert.equals("●●○" .. string.rep("·", 27) .. "  now", items[2].title)
 		assert.is_true(items[3].title:find("2 of 3", 1, true) ~= nil)
+	end)
+
+	it("renders a 20-cell window when configured", function()
+		local indicator
+		env, indicator = setup()
+		write_config_file(env, "window_size=20\n")
+		write_state_file(env, string.format("%d tmux %d %s\n", env.now - 2, env.now - 2, string.rep("1", 20)))
+		start_indicator(env, indicator)
+		assert.equals(1, #env.tasks)
+		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
+		assert.equals(
+			string.format("%d hammerspoon %d %s\n", env.now, env.now, string.rep("1", 20)),
+			read_state_file(env)
+		)
+		local items = env.menus[1].menu_builder()
+		assert.equals(string.rep("●", 20) .. "  now", items[2].title)
+	end)
+
+	it("shrinks the window without a restart when the config changes", function()
+		local indicator
+		env, indicator = setup()
+		write_state_file(env, string.format("%d tmux %d %s\n", env.now - 2, env.now - 2, string.rep("1", 30)))
+		start_indicator(env, indicator)
+		assert.equals(1, #env.tasks)
+		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
+		assert.equals(
+			string.format("%d hammerspoon %d %s\n", env.now, env.now, string.rep("1", 30)),
+			read_state_file(env)
+		)
+		write_config_file(env, "window_size=20\n")
+		env.now = env.now + 2
+		fire_tick(env)
+		assert.equals(2, #env.tasks)
+		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
+		assert.equals(
+			string.format("%d hammerspoon %d %s\n", env.now, env.now, string.rep("1", 20)),
+			read_state_file(env)
+		)
+	end)
+
+	it("logs an invalid config once and reuses the default", function()
+		local indicator
+		env, indicator = setup()
+		write_config_file(env, "window_size=abc\n")
+		write_state_file(env, string.format("%d tmux %d %s\n", env.now - 2, env.now - 2, string.rep("1", 20)))
+		start_indicator(env, indicator)
+		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
+		assert.equals(1, count_logs(env, "invalid window_size"))
+		env.now = env.now + 2
+		fire_tick(env)
+		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
+		assert.equals(1, count_logs(env, "invalid window_size"))
+		assert.equals(
+			string.format("%d hammerspoon %d %s\n", env.now, env.now, string.rep("1", 22)),
+			read_state_file(env)
+		)
+		write_config_file(env, "window_size=20\n")
+		env.now = env.now + 2
+		fire_tick(env)
+		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
+		assert.equals(1, count_logs(env, "invalid window_size"))
+		write_config_file(env, "window_size=xyz\n")
+		env.now = env.now + 2
+		fire_tick(env)
+		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
+		assert.equals(2, count_logs(env, "invalid window_size"))
 	end)
 end)

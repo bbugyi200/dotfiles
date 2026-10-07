@@ -78,8 +78,10 @@ describe("Hammerspoon ping window shared constants", function()
 	it("matches the tmux_ping contract values", function()
 		assert.equals("8.8.8.8", ping_window.TARGET)
 		assert.equals(2, ping_window.INTERVAL_SECONDS)
-		assert.equals(20, ping_window.WINDOW_SIZE)
-		assert.equals(40, ping_window.WINDOW_SECONDS)
+		assert.equals(30, ping_window.DEFAULT_WINDOW_SIZE)
+		assert.equals(3, ping_window.MIN_WINDOW_SIZE)
+		assert.equals(99, ping_window.MAX_WINDOW_SIZE)
+		assert.equals(".config/ping_window/config", ping_window.CONFIG_RELATIVE_PATH)
 		assert.equals(6, ping_window.HANDOFF_SECONDS)
 		assert.equals(6, ping_window.STALE_SECONDS)
 		assert.equals(3, ping_window.OFFLINE_AFTER_FAILURES)
@@ -90,6 +92,68 @@ describe("Hammerspoon ping window shared constants", function()
 		assert.equals("#FF9F0A", ping_window.WARN_COLOR)
 		assert.equals("#E3413B", ping_window.ALERT_COLOR)
 		assert.equals("#FFFFFF", ping_window.BADGE_TEXT_COLOR)
+	end)
+
+	it("mirrors the tmux_ping readonly constants", function()
+		local handle = assert(io.open("home/bin/executable_tmux_ping", "r"))
+		local text = assert(handle:read("*a"))
+		handle:close()
+		local function readonly_value(name)
+			local pattern = "readonly " .. name .. "=([^\n]*)"
+			local raw = text:match(pattern)
+			assert.is_not_nil(raw, "missing readonly " .. name)
+			raw = raw:match("^[ \t]*['\"]?(.-)['\"]?[ \t]*$")
+			return raw
+		end
+		assert.equals(tostring(ping_window.INTERVAL_SECONDS), readonly_value("INTERVAL_SECONDS"))
+		assert.equals(tostring(ping_window.DEFAULT_WINDOW_SIZE), readonly_value("DEFAULT_WINDOW_SIZE"))
+		assert.equals(tostring(ping_window.MIN_WINDOW_SIZE), readonly_value("MIN_WINDOW_SIZE"))
+		assert.equals(tostring(ping_window.MAX_WINDOW_SIZE), readonly_value("MAX_WINDOW_SIZE"))
+		assert.equals(ping_window.CONFIG_RELATIVE_PATH, readonly_value("CONFIG_RELATIVE_PATH"))
+	end)
+end)
+
+describe("Hammerspoon ping window config parsing", function()
+	it("resolves the shared fixture table", function()
+		local cases = {
+			{ text = nil, window = 30 },
+			{ text = "", window = 30 },
+			{ text = "window_size=20\n", window = 20 },
+			{ text = "  window_size = 45  \r\n", window = 45 },
+			{ text = "# window_size=10\nwindow_size=12\n", window = 12 },
+			{ text = "window_size=20\nwindow_size=25\n", window = 25 },
+			{ text = "other=1\nwindow_size=99", window = 99 },
+			{ text = "window_size=3", window = 3 },
+			{ text = "window_size=2", window = 30 },
+			{ text = "window_size=0", window = 30 },
+			{ text = "window_size=100", window = 30 },
+			{ text = "window_size=-5", window = 30 },
+			{ text = "window_size=030", window = 30 },
+			{ text = "window_size=abc", window = 30 },
+			{ text = "window_size=", window = 30 },
+			{ text = "window_size=20 #x", window = 30 },
+		}
+		for _, case in ipairs(cases) do
+			local window = ping_window.parse_config(case.text)
+			assert.equals(case.window, window, "text: " .. tostring(case.text))
+		end
+	end)
+
+	it("reports a problem only for present-but-invalid values", function()
+		local _, no_problem = ping_window.parse_config(nil)
+		assert.is_nil(no_problem)
+		local _, empty_problem = ping_window.parse_config("")
+		assert.is_nil(empty_problem)
+		local _, missing_problem = ping_window.parse_config("other=1\n")
+		assert.is_nil(missing_problem)
+		local window, valid_problem = ping_window.parse_config("window_size=20\n")
+		assert.equals(20, window)
+		assert.is_nil(valid_problem)
+		local fallback, invalid_problem = ping_window.parse_config("window_size=abc\n")
+		assert.equals(30, fallback)
+		assert.equals("invalid window_size 'abc'; using 30", invalid_problem)
+		local _, last_invalid = ping_window.parse_config("window_size=20\nwindow_size=abc\n")
+		assert.is_not_nil(last_invalid)
 	end)
 end)
 
@@ -136,7 +200,7 @@ describe("Hammerspoon ping window state parsing", function()
 			"1759680002 hammerspoon 1759680002 ",
 			"1759680002 hammerspoon 1759680002 2",
 			"1759680002 hammerspoon 1759680002 112a1",
-			"1759680002 hammerspoon 1759680002 " .. string.rep("1", 21),
+			"1759680002 hammerspoon 1759680002 " .. string.rep("1", 100),
 			" 1759680002 hammerspoon 1759680002 11",
 			"1759680002  hammerspoon 1759680002 11",
 			"1759680002 hammerspoon 1759680002 11 ",
@@ -146,6 +210,12 @@ describe("Hammerspoon ping window state parsing", function()
 		for _, text in ipairs(invalid) do
 			assert.is_nil(ping_window.parse_state(text), "expected nil for " .. tostring(text))
 		end
+	end)
+
+	it("accepts a 99-character window", function()
+		local line = "1759680002 hammerspoon 1759680002 " .. string.rep("1", 99)
+		local parsed = assert(ping_window.parse_state(line))
+		assert.equals(string.rep("1", 99), parsed.results)
 	end)
 
 	it("round trips serialize and parse", function()
@@ -171,16 +241,27 @@ describe("Hammerspoon ping window append", function()
 
 	it("appends inside the gap window and resets past it", function()
 		local state = { heartbeat = 100, producer = "tmux", sampled = 100, results = "11" }
-		assert.equals("111", ping_window.append_sample(state, true, 140))
-		assert.equals("110", ping_window.append_sample(state, false, 140))
-		assert.equals("1", ping_window.append_sample(state, true, 141))
-		assert.equals("0", ping_window.append_sample(state, false, 141))
+		assert.equals("111", ping_window.append_sample(state, true, 160))
+		assert.equals("110", ping_window.append_sample(state, false, 160))
+		assert.equals("1", ping_window.append_sample(state, true, 161))
+		assert.equals("0", ping_window.append_sample(state, false, 161))
 	end)
 
-	it("trims to the newest 20 samples", function()
-		local state = { heartbeat = 100, producer = "tmux", sampled = 100, results = "0" .. string.rep("1", 19) }
-		assert.equals(string.rep("1", 20), ping_window.append_sample(state, true, 101))
-		assert.equals(string.rep("1", 19) .. "0", ping_window.append_sample(state, false, 101))
+	it("derives the gap threshold from the window size", function()
+		local state = { heartbeat = 100, producer = "tmux", sampled = 100, results = "11" }
+		assert.equals("111", ping_window.append_sample(state, true, 140, 20))
+		assert.equals("1", ping_window.append_sample(state, true, 141, 20))
+	end)
+
+	it("trims to the newest 30 samples by default", function()
+		local state = { heartbeat = 100, producer = "tmux", sampled = 100, results = "0" .. string.rep("1", 29) }
+		assert.equals(string.rep("1", 30), ping_window.append_sample(state, true, 101))
+		assert.equals(string.rep("1", 29) .. "0", ping_window.append_sample(state, false, 101))
+	end)
+
+	it("trims to the configured window size", function()
+		local state = { heartbeat = 100, producer = "tmux", sampled = 100, results = string.rep("1", 30) }
+		assert.equals(string.rep("1", 20), ping_window.append_sample(state, true, 101, 20))
 	end)
 end)
 
@@ -221,14 +302,15 @@ end)
 
 describe("Hammerspoon ping window count and RTT", function()
 	it("right-aligns every count to exactly 5 code points", function()
-		assert.equals("20/20", ping_window.format_count({ successes = 20, total = 20 }))
+		assert.equals("30/30", ping_window.format_count({ successes = 30, total = 30 }))
+		assert.equals("99/99", ping_window.format_count({ successes = 99, total = 99 }))
 		assert.equals(FIGURE_SPACE .. "9/20", ping_window.format_count({ successes = 9, total = 20 }))
 		assert.equals(FIGURE_SPACE .. FIGURE_SPACE .. "1/1", ping_window.format_count({ successes = 1, total = 1 }))
 		assert.equals(
 			FIGURE_SPACE .. FIGURE_SPACE .. FIGURE_SPACE .. FIGURE_SPACE .. "–",
 			ping_window.format_count({ successes = 0, total = 0 })
 		)
-		for total = 0, 20 do
+		for total = 0, 99 do
 			for _, successes in ipairs({ 0, math.floor(total / 2), total }) do
 				if successes <= total then
 					assert.equals(
@@ -263,17 +345,17 @@ describe("Hammerspoon ping window presentation", function()
 	it("builds the exact title string and segment roles for each tier", function()
 		local now = 1759680010
 		local cases = {
-			{ results = string.rep("1", 20), sampled = now, tier = "online", glyph = "✓", count = "20/20" },
+			{ results = string.rep("1", 30), sampled = now, tier = "online", glyph = "✓", count = "30/30" },
 			{
-				results = "00" .. string.rep("1", 16) .. "01",
+				results = "000" .. string.rep("1", 25) .. "01",
 				sampled = now,
 				tier = "lossy",
 				glyph = "✓",
-				count = "17/20",
+				count = "26/30",
 			},
-			{ results = string.rep("1", 19) .. "0", sampled = now, tier = "down", glyph = "✗", count = "19/20" },
-			{ results = string.rep("1", 17) .. "000", sampled = now, tier = "offline", glyph = "✗", count = "17/20" },
-			{ results = string.rep("1", 20), sampled = now - 7, tier = "stale", glyph = "◌", count = "20/20" },
+			{ results = string.rep("1", 29) .. "0", sampled = now, tier = "down", glyph = "✗", count = "29/30" },
+			{ results = string.rep("1", 27) .. "000", sampled = now, tier = "offline", glyph = "✗", count = "27/30" },
+			{ results = string.rep("1", 30), sampled = now - 7, tier = "stale", glyph = "◌", count = "30/30" },
 		}
 		for _, case in ipairs(cases) do
 			local state = { heartbeat = now, producer = "hammerspoon", sampled = case.sampled, results = case.results }
@@ -295,11 +377,11 @@ describe("Hammerspoon ping window presentation", function()
 	it("labels each header row", function()
 		local now = 1759680010
 		local cases = {
-			{ results = string.rep("1", 20), sampled = now, label = "Online", glyph = "✓" },
-			{ results = "00" .. string.rep("1", 16) .. "01", sampled = now, label = "Packet loss", glyph = "✓" },
-			{ results = string.rep("1", 19) .. "0", sampled = now, label = "Ping failed", glyph = "✗" },
-			{ results = string.rep("1", 17) .. "000", sampled = now, label = "Offline", glyph = "✗" },
-			{ results = string.rep("1", 20), sampled = now - 7, label = "No recent pings", glyph = "◌" },
+			{ results = string.rep("1", 30), sampled = now, label = "Online", glyph = "✓" },
+			{ results = "000" .. string.rep("1", 25) .. "01", sampled = now, label = "Packet loss", glyph = "✓" },
+			{ results = string.rep("1", 29) .. "0", sampled = now, label = "Ping failed", glyph = "✗" },
+			{ results = string.rep("1", 27) .. "000", sampled = now, label = "Offline", glyph = "✗" },
+			{ results = string.rep("1", 30), sampled = now - 7, label = "No recent pings", glyph = "◌" },
 		}
 		for _, case in ipairs(cases) do
 			local state = { heartbeat = now, producer = "hammerspoon", sampled = case.sampled, results = case.results }
@@ -315,25 +397,43 @@ describe("Hammerspoon ping window presentation", function()
 		local now = 1759680010
 		local state = { heartbeat = now, producer = "tmux", sampled = now, results = "0111" }
 		local history = find_row(ping_window.presentation(state, now, {}).menu, "history")
-		assert.equals(21, #history.segments)
-		assert.equals("○●●●" .. string.rep("·", 16) .. "  now", concat_segments(history.segments))
+		assert.equals(31, #history.segments)
+		assert.equals("○●●●" .. string.rep("·", 26) .. "  now", concat_segments(history.segments))
 		local roles = segment_roles(history.segments)
 		assert.same("miss", roles[1])
 		assert.same("reply", roles[2])
 		assert.same("empty", roles[5])
-		assert.same("now", roles[21])
+		assert.same("now", roles[31])
 
-		local full = { heartbeat = now, producer = "hammerspoon", sampled = now, results = "01" .. string.rep("1", 18) }
+		local full = { heartbeat = now, producer = "hammerspoon", sampled = now, results = "01" .. string.rep("1", 28) }
 		local full_history = find_row(ping_window.presentation(full, now, {}).menu, "history")
-		assert.equals("○●" .. string.rep("●", 18) .. "  now", concat_segments(full_history.segments))
+		assert.equals("○●" .. string.rep("●", 28) .. "  now", concat_segments(full_history.segments))
+	end)
+
+	it("sizes the history strip from the window_size option", function()
+		local now = 1759680010
+		local state = { heartbeat = now, producer = "tmux", sampled = now, results = "0111" }
+		local default_history = find_row(ping_window.presentation(state, now, {}).menu, "history")
+		assert.equals(31, #default_history.segments)
+		local sized = find_row(ping_window.presentation(state, now, { window_size = 20 }).menu, "history")
+		assert.equals(21, #sized.segments)
+		assert.equals("○●●●" .. string.rep("·", 16) .. "  now", concat_segments(sized.segments))
+	end)
+
+	it("clamps a larger window to the configured size", function()
+		local now = 1759680010
+		local state = { heartbeat = now, producer = "hammerspoon", sampled = now, results = string.rep("1", 30) }
+		local presentation = ping_window.presentation(state, now, { window_size = 20 })
+		assert.equals(NBSP .. "✓" .. " " .. "20/20" .. NBSP, presentation.title)
+		local summary = find_row(presentation.menu, "summary")
+		assert.equals("20 of 20 pings answered (100%) · last 40 s", concat_segments(summary.segments))
 	end)
 
 	it("summarizes the window and spans total times two seconds", function()
 		local now = 1759680010
-		local state =
-			{ heartbeat = now, producer = "hammerspoon", sampled = now, results = "00" .. string.rep("1", 16) .. "01" }
+		local state = { heartbeat = now, producer = "hammerspoon", sampled = now, results = string.rep("1", 30) }
 		local summary = find_row(ping_window.presentation(state, now, {}).menu, "summary")
-		assert.equals("17 of 20 pings answered (85%) · last 40 s", concat_segments(summary.segments))
+		assert.equals("30 of 30 pings answered (100%) · last 60 s", concat_segments(summary.segments))
 		local empty_summary = find_row(ping_window.presentation(nil, now, {}).menu, "summary")
 		assert.equals("0 of 0 pings answered (–) · last 0 s", concat_segments(empty_summary.segments))
 	end)
@@ -342,18 +442,18 @@ describe("Hammerspoon ping window presentation", function()
 		local now = 1759680010
 		local sampled = now
 		local clock = os.date("%H:%M:%S", sampled)
-		local reply = { heartbeat = now, producer = "hammerspoon", sampled = sampled, results = string.rep("1", 20) }
+		local reply = { heartbeat = now, producer = "hammerspoon", sampled = sampled, results = string.rep("1", 30) }
 		local with_rtt =
 			find_row(ping_window.presentation(reply, now, { rtt_ms = 18.345, rtt_sent_at = sampled }).menu, "last")
 		assert.equals("Last reply 18 ms · " .. clock, concat_segments(with_rtt.segments))
 		local unknown_rtt = find_row(ping_window.presentation(reply, now, {}).menu, "last")
 		assert.equals("Last ping " .. clock, concat_segments(unknown_rtt.segments))
 		local failed =
-			{ heartbeat = now, producer = "hammerspoon", sampled = sampled, results = string.rep("1", 19) .. "0" }
+			{ heartbeat = now, producer = "hammerspoon", sampled = sampled, results = string.rep("1", 29) .. "0" }
 		local failed_row = find_row(ping_window.presentation(failed, now, {}).menu, "last")
 		assert.equals("Last ping failed · " .. clock, concat_segments(failed_row.segments))
 		local stale_state =
-			{ heartbeat = now, producer = "hammerspoon", sampled = now - 30, results = string.rep("1", 20) }
+			{ heartbeat = now, producer = "hammerspoon", sampled = now - 30, results = string.rep("1", 30) }
 		local stale_row = find_row(ping_window.presentation(stale_state, now, {}).menu, "last")
 		assert.equals("No ping since " .. os.date("%H:%M:%S", now - 30), concat_segments(stale_row.segments))
 		assert.is_nil(find_row(ping_window.presentation(nil, now, {}).menu, "last"))
@@ -362,21 +462,21 @@ describe("Hammerspoon ping window presentation", function()
 	it("shows the RTT in the tooltip only for the newest sample", function()
 		local now = 1759680010
 		local state =
-			{ heartbeat = now, producer = "hammerspoon", sampled = now, results = "00" .. string.rep("1", 16) .. "01" }
+			{ heartbeat = now, producer = "hammerspoon", sampled = now, results = "000" .. string.rep("1", 25) .. "01" }
 		assert.equals(
-			"Internet: 17 of 20 pings answered (85%) · last reply 18 ms",
+			"Internet: 26 of 30 pings answered (87%) · last reply 18 ms",
 			ping_window.presentation(state, now, { rtt_ms = 18.345, rtt_sent_at = now }).tooltip
 		)
-		assert.equals("Internet: 17 of 20 pings answered (85%)", ping_window.presentation(state, now, {}).tooltip)
+		assert.equals("Internet: 26 of 30 pings answered (87%)", ping_window.presentation(state, now, {}).tooltip)
 		assert.equals(
-			"Internet: 17 of 20 pings answered (85%)",
+			"Internet: 26 of 30 pings answered (87%)",
 			ping_window.presentation(state, now, { rtt_ms = 18.345, rtt_sent_at = now - 2 }).tooltip
 		)
 	end)
 
 	it("orders menu rows with separators and a network settings action", function()
 		local now = 1759680010
-		local state = { heartbeat = now, producer = "hammerspoon", sampled = now, results = string.rep("1", 20) }
+		local state = { heartbeat = now, producer = "hammerspoon", sampled = now, results = string.rep("1", 30) }
 		local menu = ping_window.presentation(state, now, {}).menu
 		assert.same(
 			{ "header", "history", "summary", "last", "separator", "info", "separator", "action" },

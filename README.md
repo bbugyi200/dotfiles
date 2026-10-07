@@ -99,11 +99,11 @@ updating, and shows fresh details when reopened.
 ## Internet ping menu bar
 
 Hammerspoon shows internet connectivity as one status item beside the Pomodoro item. The
-title is a glyph plus a `successes/total` count over the last 20 pings (`✓ 17/20`),
+title is a glyph plus a `successes/total` count over the last 30 pings (`✓ 27/30`),
 padded to a fixed width so the item never changes size between ticks or tiers. The count
 uses Menlo regular; the glyph uses the default menu bar face, and nothing is bold. The
 tooltip names the score and the last round-trip time. Opening the item shows the tier, a
-20-cell history strip, the score over its span, the last ping, and a Network Settings
+30-cell history strip, the score over its span, the last ping, and a Network Settings
 shortcut that opens System Settings → Network. If the shortcut cannot open Settings, it
 shows a brief alert naming the manual fallback and logs the failure. The dropdown shows
 a snapshot taken when it opens, stays open while the title keeps updating, and shows
@@ -111,7 +111,7 @@ fresh details when reopened.
 
 One ping stream feeds both this item and the tmux status bar. Hammerspoon is the
 preferred producer: it pings 8.8.8.8 every 2 s, and both displays render the same shared
-20-sample window, so they always agree. `tmux_ping` only reads while a fresh Hammerspoon
+30-sample window, so they always agree. `tmux_ping` only reads while a fresh Hammerspoon
 heartbeat exists and falls back to pinging when Hammerspoon is not running, broken, or
 unable to write. Handover is self-healing in both directions: Hammerspoon claims the
 stream by writing its heartbeat and tmux backs off on its next redraw, while tmux
@@ -119,6 +119,11 @@ resumes pinging within about 6 s when Hammerspoon stops. At most one extra ping 
 during a handover. Nobody pings while the Mac is locked: Hammerspoon stops pinging but
 keeps refreshing its heartbeat, so tmux does not take over either. With Hammerspoon not
 running, tmux keeps working on its own.
+
+To change the size, edit `window_size` in `~/.config/ping_window/config` (chezmoi source
+`home/dot_config/ping_window/config`), keep it in 3–99, and both displays switch within
+one 2 s tick with no reload. A window older than the new span is not reset by a size
+change.
 
 | Situation                      | Traffic              |
 | ------------------------------ | -------------------- |
@@ -132,18 +137,19 @@ Health tiers, checked in this order from the newest sample backward:
 
 | Tier      | Rule                                 | Menu bar              | tmux status            |
 | --------- | ------------------------------------ | --------------------- | ---------------------- |
-| `stale`   | empty window, or no sample for > 6 s | `◌ 17/20` in gray     | `◌ 17/20` in blue-gray |
-| `offline` | 3 or more trailing misses            | white `✗ 0/20` on red | white `✗ 0/20` on red  |
-| `down`    | newest ping missed, under 3 trailing | red `✗ 19/20`         | red `✗ 19/20`          |
-| `lossy`   | newest answered, under 90% answered  | orange `✓ 17/20`      | amber `✓ 17/20`        |
-| `online`  | newest answered, 90%+ answered       | green `✓ 20/20`       | green `✓ 20/20`        |
+| `stale`   | empty window, or no sample for > 6 s | `◌ 27/30` in gray     | `◌ 27/30` in blue-gray |
+| `offline` | 3 or more trailing misses            | white `✗ 0/30` on red | white `✗ 0/30` on red  |
+| `down`    | newest ping missed, under 3 trailing | red `✗ 29/30`         | red `✗ 29/30`          |
+| `lossy`   | newest answered, under 90% answered  | orange `✓ 26/30`      | amber `✓ 26/30`        |
+| `online`  | newest answered, 90%+ answered       | green `✓ 30/30`       | green `✓ 30/30`        |
 
 The shared window lives in `~/tmp/tmux_ping_state`: one LF-terminated line of
 `<heartbeat> <producer> <sampled> <results>`, where `heartbeat` is the producer's latest
 write, `producer` is `hammerspoon` or `tmux`, `sampled` is when the newest sample was
-sent (`0` when empty), and `results` is 1–20 `0` / `1` characters, oldest first (`-`
+sent (`0` when empty), and `results` is 1–99 `0` / `1` characters, oldest first (`-`
 when empty). Writers replace the file atomically, so readers never lock. A window older
-than 40 s is dropped on the next sample, so no window spans a sleep or a long pause.
+than the window span (size × 2 s, 60 s by default) is dropped on the next sample, so no
+window spans a sleep or a long pause.
 
 ## Deleting things under `/tmp`
 

@@ -153,6 +153,16 @@ function append_of() {
     bash "${SCRIPT}" "$1" "$2" "$3" "$4"
 }
 
+function window_size_of() {
+  "${BASH_BIN}" -c 'source "$1"; load_window_size "$2"; printf "%s" "${WINDOW_SIZE}"' \
+    bash "${SCRIPT}" "$1"
+}
+
+function write_config() {
+  mkdir -p "${TEST_HOME}/.config/ping_window"
+  printf '%s' "$1" >"${TEST_HOME}/.config/ping_window/config"
+}
+
 function summarize_of() {
   "${BASH_BIN}" -c '
     source "$1"
@@ -202,8 +212,21 @@ function test_empty_results_dash_parses_to_empty_window() {
     "$(parse_state_fields '1759680000 hammerspoon 0 -')"
 }
 
+function test_ninety_nine_sample_state_parses() {
+  local ninety_nine
+  ninety_nine="$(printf '1%.0s' {1..99})"
+  local exit_code=0
+  parse_state_exit "1759680002 hammerspoon 1759680002 ${ninety_nine}" >/dev/null 2>&1 || exit_code=$?
+  assert_equals "0" "${exit_code}"
+  assert_equals \
+    "[1759680002][hammerspoon][1759680002][${ninety_nine}]" \
+    "$(parse_state_fields "1759680002 hammerspoon 1759680002 ${ninety_nine}")"
+}
+
 function test_invalid_forms_are_rejected() {
   local bad exit_code
+  local hundred
+  hundred="$(printf '1%.0s' {1..100})"
   for bad in \
     '' \
     '1759680002 hammerspoon 1759680002' \
@@ -211,7 +234,7 @@ function test_invalid_forms_are_rejected() {
     '1759680002 aqua 1759680002 11' \
     'abc hammerspoon 1759680002 11' \
     '1759680002 hammerspoon xyz 11' \
-    '1759680002 hammerspoon 1759680002 111111111111111111111' \
+    "1759680002 hammerspoon 1759680002 ${hundred}" \
     '1759680002 hammerspoon 1759680002 1121' \
     '1759680002 hammerspoon 1759680002 ' \
     '1759680002  hammerspoon 1759680002 11' \
@@ -232,17 +255,48 @@ function test_append_to_empty_window_starts_fresh() {
 }
 
 function test_append_after_long_gap_resets_window() {
-  assert_equals "1" "$(append_of '1111' 1 "${TEST_NOW}" "$((TEST_NOW - 41))")"
+  assert_equals "1" "$(append_of '1111' 1 "${TEST_NOW}" "$((TEST_NOW - 61))")"
 }
 
 function test_append_at_exactly_window_seconds_appends() {
-  assert_equals "11111" "$(append_of '1111' 1 "${TEST_NOW}" "$((TEST_NOW - 40))")"
+  assert_equals "11111" "$(append_of '1111' 1 "${TEST_NOW}" "$((TEST_NOW - 60))")"
 }
 
-function test_append_trims_to_twenty_samples() {
+function test_append_trims_to_thirty_samples() {
   assert_equals \
-    '11111111111111111111' \
-    "$(append_of '01111111111111111111' 1 "${TEST_NOW}" "$((TEST_NOW - 5))")"
+    '111111111111111111111111111111' \
+    "$(append_of '011111111111111111111111111111' 1 "${TEST_NOW}" "$((TEST_NOW - 5))")"
+}
+
+function test_load_window_size_fixture_table() {
+  local config="${TEST_TMP}/ping_config"
+  printf 'window_size=20\n' >"${config}"
+  assert_equals "20" "$(window_size_of "${config}")"
+  printf '  window_size = 45  \r\n' >"${config}"
+  assert_equals "45" "$(window_size_of "${config}")"
+  printf '# window_size=10\nwindow_size=12\n' >"${config}"
+  assert_equals "12" "$(window_size_of "${config}")"
+  printf 'window_size=20\nwindow_size=25\n' >"${config}"
+  assert_equals "25" "$(window_size_of "${config}")"
+  printf 'other=1\nwindow_size=99' >"${config}"
+  assert_equals "99" "$(window_size_of "${config}")"
+  printf 'window_size=3' >"${config}"
+  assert_equals "3" "$(window_size_of "${config}")"
+  printf '' >"${config}"
+  assert_equals "30" "$(window_size_of "${config}")"
+  local bad
+  for bad in 'window_size=2' 'window_size=0' 'window_size=100' 'window_size=-5' \
+    'window_size=030' 'window_size=abc' 'window_size=' 'window_size=20 #x'; do
+    printf '%s\n' "${bad}" >"${config}"
+    assert_equals "30" "$(window_size_of "${config}")"
+  done
+  assert_equals "30" "$(window_size_of "${TEST_TMP}/does-not-exist")"
+}
+
+function test_load_window_size_missing_key_falls_back() {
+  local config="${TEST_TMP}/ping_config_missing"
+  printf 'other=1\n' >"${config}"
+  assert_equals "30" "$(window_size_of "${config}")"
 }
 
 function test_summarize_mixed_window() {
@@ -292,6 +346,8 @@ function test_help_flag_describes_shared_state_role() {
   assert_contains "usage:" "${out}"
   assert_contains "shared" "${out}"
   assert_contains "fallback" "${out}"
+  assert_contains "window_size" "${out}"
+  assert_contains ".config/ping_window/config" "${out}"
   assert_empty "$(calls)"
 }
 
@@ -383,10 +439,11 @@ function test_empty_state_pings_into_fresh_window() {
 }
 
 function test_invalid_states_ping_into_fresh_windows() {
-  local bad
+  local bad hundred
+  hundred="$(printf '1%.0s' {1..100})"
   for bad in \
     '1759680002 aqua 1759680002 11' \
-    '1759680002 hammerspoon 1759680002 111111111111111111111' \
+    "1759680002 hammerspoon 1759680002 ${hundred}" \
     '1759680002 hammerspoon 1759680002'; do
     rm -f "$(state_file)"
     write_state "${bad}"
@@ -440,6 +497,52 @@ function test_missing_flock_pings_unlocked() {
 }
 
 function test_long_gap_resets_window_end_to_end() {
+  write_state "$((TEST_NOW - 61)) tmux $((TEST_NOW - 61)) 1111"
+
+  local out="${TEST_TMP}/out"
+  run_tmux_ping >"${out}"
+  assert_equals "0" "$?"
+
+  assert_exact_output '#[fg=green]✓#[default] 1/1 | ' "${out}"
+  assert_equals "${TEST_NOW} tmux ${TEST_NOW} 1" "$(read_state)"
+}
+
+function test_gap_edge_appends_end_to_end() {
+  write_state "$((TEST_NOW - 60)) tmux $((TEST_NOW - 60)) 1111"
+
+  local out="${TEST_TMP}/out"
+  run_tmux_ping >"${out}"
+  assert_equals "0" "$?"
+
+  assert_exact_output '#[fg=green]✓#[default] 5/5 | ' "${out}"
+  assert_equals "${TEST_NOW} tmux ${TEST_NOW} 11111" "$(read_state)"
+}
+
+function test_full_window_drops_oldest_end_to_end() {
+  write_state "$((TEST_NOW - 5)) tmux $((TEST_NOW - 5)) 011111111111111111111111111111"
+
+  local out="${TEST_TMP}/out"
+  run_tmux_ping >"${out}"
+  assert_equals "0" "$?"
+
+  assert_exact_output '#[fg=green]✓#[default] 30/30 | ' "${out}"
+  assert_equals "${TEST_NOW} tmux ${TEST_NOW} 111111111111111111111111111111" "$(read_state)"
+}
+
+function test_configured_twenty_sample_window_end_to_end() {
+  write_config 'window_size=20'
+  write_state "$((TEST_NOW - 5)) tmux $((TEST_NOW - 5)) 01111111111111111111"
+
+  local out="${TEST_TMP}/out"
+  run_tmux_ping >"${out}"
+  assert_equals "0" "$?"
+
+  assert_exact_output '#[fg=green]✓#[default] 20/20 | ' "${out}"
+  assert_equals "${TEST_NOW} tmux ${TEST_NOW} 11111111111111111111" "$(read_state)"
+}
+
+function test_configured_gap_resets_at_forty_one_seconds() {
+  write_config 'window_size=20'
   write_state "$((TEST_NOW - 41)) tmux $((TEST_NOW - 41)) 1111"
 
   local out="${TEST_TMP}/out"
@@ -450,15 +553,52 @@ function test_long_gap_resets_window_end_to_end() {
   assert_equals "${TEST_NOW} tmux ${TEST_NOW} 1" "$(read_state)"
 }
 
-function test_full_window_drops_oldest_end_to_end() {
-  write_state "$((TEST_NOW - 5)) tmux $((TEST_NOW - 5)) 01111111111111111111"
+function test_larger_state_clamps_to_configured_window() {
+  write_config 'window_size=20'
+  local thirty
+  thirty="$(printf '1%.0s' {1..30})"
+  write_state "${TEST_NOW} hammerspoon ${TEST_NOW} ${thirty}"
 
   local out="${TEST_TMP}/out"
-  run_tmux_ping >"${out}"
+  local err="${TEST_TMP}/err"
+  run_tmux_ping >"${out}" 2>"${err}"
   assert_equals "0" "$?"
 
   assert_exact_output '#[fg=green]✓#[default] 20/20 | ' "${out}"
-  assert_equals "${TEST_NOW} tmux ${TEST_NOW} 11111111111111111111" "$(read_state)"
+  assert_equals "0" "$(call_count 'ping ')"
+  assert_empty "$(cat "${err}")"
+}
+
+function test_config_directory_falls_back_quietly() {
+  mkdir -p "${TEST_HOME}/.config/ping_window/config"
+  write_state "${TEST_NOW} hammerspoon ${TEST_NOW} 11"
+
+  local out="${TEST_TMP}/out"
+  local err="${TEST_TMP}/err"
+  run_tmux_ping >"${out}" 2>"${err}"
+  assert_equals "0" "$?"
+
+  assert_exact_output '#[fg=green]✓#[default] 2/2 | ' "${out}"
+  assert_equals "1" "$(call_count 'date ')"
+  assert_empty "$(cat "${err}")"
+}
+
+function test_unreadable_config_falls_back_quietly() {
+  if [[ "$(id -u)" == '0' ]]; then
+    skip 'unreadable-file test needs a non-root user'
+  fi
+  write_config 'window_size=20'
+  chmod 000 "${TEST_HOME}/.config/ping_window/config"
+  write_state "${TEST_NOW} hammerspoon ${TEST_NOW} 11"
+
+  local out="${TEST_TMP}/out"
+  local err="${TEST_TMP}/err"
+  run_tmux_ping >"${out}" 2>"${err}"
+  assert_equals "0" "$?"
+
+  assert_exact_output '#[fg=green]✓#[default] 2/2 | ' "${out}"
+  assert_equals "1" "$(call_count 'date ')"
+  assert_empty "$(cat "${err}")"
 }
 
 ################################################################################
@@ -562,7 +702,7 @@ function test_written_state_matches_contract_and_leaves_no_temp_files() {
 
   local line
   line="$(read_state)"
-  local pattern='^[0-9]+ (hammerspoon|tmux) [0-9]+ ([01]{1,20}|-)$'
+  local pattern='^[0-9]+ (hammerspoon|tmux) [0-9]+ ([01]{1,99}|-)$'
   local mismatch=''
   if [[ ! "${line}" =~ ${pattern} ]]; then
     mismatch="written state breaks the contract: '${line}'"

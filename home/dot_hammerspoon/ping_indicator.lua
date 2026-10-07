@@ -4,9 +4,11 @@
 -- Owns a precise 2 s timer, spawns /sbin/ping directly (one process per tick,
 -- no shell), pauses while the Mac is locked, claims and writes the shared
 -- state file, and renders the styled status item plus a lazy dropdown. The
--- pure window math and presentation model live in ping_window.lua; this module
--- only does scheduling, file I/O, and hs styling. Shared constants mirror
--- home/bin/executable_tmux_ping (and vice versa): change both sides together.
+-- window size comes from ~/.config/ping_window/config (re-read every tick).
+-- The pure window math and presentation model live in ping_window.lua; this
+-- module only does scheduling, file I/O, and hs styling. Shared constants
+-- mirror home/bin/executable_tmux_ping (and vice versa): change both sides
+-- together.
 local PingWindow = require("ping_window")
 
 local M = {}
@@ -58,6 +60,28 @@ local function read_state_file(path)
 	local text = handle:read("*a")
 	handle:close()
 	return PingWindow.parse_state(text)
+end
+
+local function refresh_window_size()
+	local window_size = PingWindow.DEFAULT_WINDOW_SIZE
+	local problem = nil
+	local handle = io.open(runtime.configPath, "r")
+	if handle then
+		local text = handle:read("*a")
+		handle:close()
+		if text ~= nil then
+			window_size, problem = PingWindow.parse_config(text)
+		end
+	end
+	runtime.windowSize = window_size
+	if problem ~= nil then
+		if problem ~= runtime.configProblem then
+			log_message("%s", problem)
+		end
+		runtime.configProblem = problem
+	else
+		runtime.configProblem = nil
+	end
 end
 
 local function ensure_parent_directory(path)
@@ -273,6 +297,7 @@ local function build_menu_items()
 	local presentation = PingWindow.presentation(state, now, {
 		rtt_ms = runtime.rttMs,
 		rtt_sent_at = runtime.rttSentAt,
+		window_size = runtime.windowSize or PingWindow.DEFAULT_WINDOW_SIZE,
 	})
 	local items = {}
 	for _, row in ipairs(presentation.menu) do
@@ -311,6 +336,7 @@ local function render_menu_bar()
 	local presentation = PingWindow.presentation(state, now, {
 		rtt_ms = runtime.rttMs,
 		rtt_sent_at = runtime.rttSentAt,
+		window_size = runtime.windowSize or PingWindow.DEFAULT_WINDOW_SIZE,
 	})
 	local ok, composed = pcall(compose_title, presentation)
 	if ok and composed ~= nil then
@@ -348,7 +374,8 @@ local function ping_completed(task, sent_at, exit_code, std_out)
 	runtime.taskSentAt = nil
 	-- Re-read the file so the read-modify-write is one synchronous step.
 	local fresh = read_state_file(runtime.statePath)
-	local results = PingWindow.append_sample(fresh, exit_code == 0, sent_at)
+	local results =
+		PingWindow.append_sample(fresh, exit_code == 0, sent_at, runtime.windowSize or PingWindow.DEFAULT_WINDOW_SIZE)
 	runtime.rttMs = PingWindow.parse_rtt_ms(std_out)
 	runtime.rttSentAt = sent_at
 	local now = runtime.nowFn()
@@ -366,6 +393,7 @@ local function ping_completed(task, sent_at, exit_code, std_out)
 end
 
 local function ping_tick()
+	refresh_window_size()
 	local now = runtime.nowFn()
 	if task_in_flight(runtime.task) then
 		local timeout = PingWindow.INTERVAL_SECONDS * M.TASK_TIMEOUT_TICKS
@@ -438,14 +466,18 @@ local function ping_tick()
 end
 
 -- Start (or restart) the producer loop. All options are optional and exist for
--- tests: state_path, ping_path, and now (a clock function, default os.time).
+-- tests: state_path, ping_path, config_path, and now (a clock function,
+-- default os.time).
 function M.start(options)
 	options = options or {}
 	runtime.statePath = options.state_path or default_state_path()
 	runtime.pingPath = options.ping_path or PingWindow.PING_PATH
+	runtime.configPath = options.config_path or (os.getenv("HOME") .. "/" .. PingWindow.CONFIG_RELATIVE_PATH)
 	runtime.nowFn = options.now or os.time
 	runtime.rttMs = nil
 	runtime.rttSentAt = nil
+	runtime.windowSize = PingWindow.DEFAULT_WINDOW_SIZE
+	runtime.configProblem = nil
 
 	stop_runtime_object("timer", runtime.timer)
 	stop_runtime_object("task", runtime.task)

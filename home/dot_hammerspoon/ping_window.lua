@@ -3,13 +3,16 @@
 -- phase can consume it from the runtime and busted can drive it directly.
 local M = {}
 
--- Shared ping-stream constants. These mirror the constants in
--- `home/bin/executable_tmux_ping` (and vice versa): change both sides
--- together so Hammerspoon and tmux keep rendering the same 20-sample window.
+-- Shared ping-stream constants. The window size is the runtime `window_size`
+-- config field (see CONFIG_RELATIVE_PATH); the remaining constants mirror
+-- `home/bin/executable_tmux_ping` (and vice versa), and a parity spec guards
+-- the mirror.
 M.TARGET = "8.8.8.8"
 M.INTERVAL_SECONDS = 2
-M.WINDOW_SIZE = 20
-M.WINDOW_SECONDS = 40
+M.DEFAULT_WINDOW_SIZE = 30
+M.MIN_WINDOW_SIZE = 3
+M.MAX_WINDOW_SIZE = 99
+M.CONFIG_RELATIVE_PATH = ".config/ping_window/config"
 M.HANDOFF_SECONDS = 6
 M.STALE_SECONDS = 6
 M.OFFLINE_AFTER_FAILURES = 3
@@ -53,6 +56,83 @@ local function is_digits(text)
 	return type(text) == "string" and text:match("^%d+$") ~= nil
 end
 
+local function trim_blanks(text)
+	return (tostring(text):match("^[ \t]*(.-)[ \t]*$"))
+end
+
+-- Parse the shared window-size config text per the contract both producers
+-- share: line by line (including a last line without a newline), one trailing
+-- CR stripped, blank and `#` lines skipped, split at the first `=`, only the
+-- last `window_size` line winning, valid only for 3-99 with no leading zero.
+-- Returns window_size, problem (problem non-nil only for present-but-invalid).
+function M.parse_config(text)
+	if type(text) ~= "string" or text == "" then
+		return M.DEFAULT_WINDOW_SIZE, nil
+	end
+	local last = nil
+	local has_key = false
+	-- Iterate lines including a final line without a newline.
+	local position = 1
+	while position <= #text + 1 do
+		local newline_at = text:find("\n", position, true)
+		local line
+		if newline_at == nil then
+			line = text:sub(position)
+			position = #text + 2
+		else
+			line = text:sub(position, newline_at - 1)
+			position = newline_at + 1
+		end
+		if newline_at == nil and line == "" then
+			break
+		end
+		if line:sub(-1) == "\r" then
+			line = line:sub(1, -2)
+		end
+		line = trim_blanks(line)
+		if line ~= "" and line:sub(1, 1) ~= "#" then
+			local equals_at = line:find("=", 1, true)
+			if equals_at ~= nil then
+				local key = trim_blanks(line:sub(1, equals_at - 1))
+				local value = trim_blanks(line:sub(equals_at + 1))
+				if key == "window_size" then
+					last = value
+					has_key = true
+				end
+			end
+		end
+		if newline_at == nil then
+			break
+		end
+	end
+	if not has_key then
+		return M.DEFAULT_WINDOW_SIZE, nil
+	end
+	local size = tonumber(last)
+	if
+		type(last) == "string"
+		and last:match("^[1-9][0-9]?$") ~= nil
+		and size ~= nil
+		and size >= M.MIN_WINDOW_SIZE
+		and size <= M.MAX_WINDOW_SIZE
+	then
+		return size, nil
+	end
+	return M.DEFAULT_WINDOW_SIZE, string.format("invalid window_size '%s'; using %d", last, M.DEFAULT_WINDOW_SIZE)
+end
+
+-- Newest n characters of a results string (oldest first).
+function M.newest(results, n)
+	local value = tostring(results or "")
+	if type(n) ~= "number" or n < 0 then
+		return value
+	end
+	if #value <= n then
+		return value
+	end
+	return value:sub(-n)
+end
+
 -- Parse one shared-state line into { heartbeat, producer, sampled, results },
 -- with results = "" for "-". Anything the contract calls invalid is nil.
 function M.parse_state(text)
@@ -75,7 +155,7 @@ function M.parse_state(text)
 	end
 	if results == "-" then
 		results = ""
-	elseif #results < 1 or #results > M.WINDOW_SIZE or results:match("^[01]+$") == nil then
+	elseif #results < 1 or #results > M.MAX_WINDOW_SIZE or results:match("^[01]+$") == nil then
 		return nil
 	end
 	return {
@@ -96,8 +176,13 @@ function M.serialize_state(state)
 end
 
 -- Append one sample (ok = ping answered) sent at sent_at. A gap longer than
--- WINDOW_SECONDS drops the old window; the result is trimmed to WINDOW_SIZE.
-function M.append_sample(state_or_nil, ok, sent_at)
+-- window_size * INTERVAL_SECONDS drops the old window; the result is trimmed
+-- to window_size (default DEFAULT_WINDOW_SIZE).
+function M.append_sample(state_or_nil, ok, sent_at, window_size)
+	local size = window_size
+	if type(size) ~= "number" then
+		size = M.DEFAULT_WINDOW_SIZE
+	end
 	local sample = ok and "1" or "0"
 	if type(state_or_nil) ~= "table" or type(state_or_nil.results) ~= "string" or state_or_nil.results == "" then
 		return sample
@@ -105,13 +190,13 @@ function M.append_sample(state_or_nil, ok, sent_at)
 	if
 		type(sent_at) == "number"
 		and type(state_or_nil.sampled) == "number"
-		and sent_at - state_or_nil.sampled > M.WINDOW_SECONDS
+		and sent_at - state_or_nil.sampled > size * M.INTERVAL_SECONDS
 	then
 		return sample
 	end
 	local results = state_or_nil.results .. sample
-	if #results > M.WINDOW_SIZE then
-		results = results:sub(-M.WINDOW_SIZE)
+	if #results > size then
+		results = results:sub(-size)
 	end
 	return results
 end
@@ -228,11 +313,16 @@ local function summary_text(summary)
 end
 
 -- Build the menu bar title segments and the lazy dropdown model. opts is
--- { rtt_ms, rtt_sent_at }: the RTT shows only when rtt_sent_at equals the
--- newest sampled time. Colors and fonts are the runtime's job: it maps tier
--- plus segment role to hs.styledtext attributes.
+-- { rtt_ms, rtt_sent_at, window_size }: the RTT shows only when rtt_sent_at
+-- equals the newest sampled time; window_size clamps to the newest samples
+-- (default DEFAULT_WINDOW_SIZE). Colors and fonts are the runtime's job: it
+-- maps tier plus segment role to hs.styledtext attributes.
 function M.presentation(state_or_nil, now, opts)
 	opts = opts or {}
+	local window_size = opts.window_size
+	if type(window_size) ~= "number" then
+		window_size = M.DEFAULT_WINDOW_SIZE
+	end
 	local results = ""
 	local sampled = 0
 	if type(state_or_nil) == "table" then
@@ -243,6 +333,7 @@ function M.presentation(state_or_nil, now, opts)
 			sampled = state_or_nil.sampled
 		end
 	end
+	results = M.newest(results, window_size)
 	local summary = M.summarize(results)
 	local tier = M.classify(results, sampled, now)
 	local glyph = TIER_GLYPHS[tier]
@@ -283,7 +374,7 @@ function M.presentation(state_or_nil, now, opts)
 	}
 
 	local history_segments = {}
-	for index = 1, M.WINDOW_SIZE do
+	for index = 1, window_size do
 		local cell = results:sub(index, index)
 		if cell == "1" then
 			table.insert(history_segments, { text = HISTORY_REPLY, role = "reply" })

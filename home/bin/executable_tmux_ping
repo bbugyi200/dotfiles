@@ -2,7 +2,7 @@
 
 ##############################################################################
 #  Render internet connectivity for the tmux status line from one shared     #
-#  20-sample ping window, pinging only as a fallback.                        #
+#  ping window, pinging only as a fallback.                                  #
 #                                                                            #
 #  The preferred producer is Hammerspoon (the Mac menu bar item): while its  #
 #  heartbeat in `$HOME/tmp/tmux_ping_state` is fresh this script only reads  #
@@ -16,8 +16,13 @@
 #      <heartbeat> <producer> <sampled> <results>                             #
 #  `heartbeat` is the producer's latest write (its claim on the stream),     #
 #  `producer` is `hammerspoon` or `tmux`, `sampled` is when the newest       #
-#  sample was sent (`0` when empty), and `results` is 1-20 `0`/`1` chars,    #
+#  sample was sent (`0` when empty), and `results` is 1-99 `0`/`1` chars,    #
 #  oldest first (`-` when empty). Anything else counts as "no state".        #
+#                                                                            #
+#  Configuration: `$HOME/.config/ping_window/config` holds `window_size`,    #
+#  how many recent pings (one every 2 s) both displays count (default 30,    #
+#  whole number 3-99). Shared with the Hammerspoon item; re-read on every    #
+#  run, so an edit applies within one 2 s tick with no reload.               #
 #  Writers write a sibling temp file and rename it over the path, so        #
 #  readers never lock. The old `~/tmp/tmux_ping_results*` files are         #
 #  abandoned: nothing reads or writes them anymore.                         #
@@ -38,12 +43,15 @@ set -e
 # Shared constants (see the header; mirror in ping_window.lua).
 readonly PING_TARGET='8.8.8.8'
 readonly INTERVAL_SECONDS=2
-readonly WINDOW_SIZE=20
-readonly WINDOW_SECONDS=40
+readonly DEFAULT_WINDOW_SIZE=30
+readonly MIN_WINDOW_SIZE=3
+readonly MAX_WINDOW_SIZE=99
+readonly CONFIG_RELATIVE_PATH='.config/ping_window/config'
 readonly HANDOFF_SECONDS=6
 readonly STALE_SECONDS=6
 readonly OFFLINE_AFTER_FAILURES=3
 readonly STATE_BASENAME='tmux_ping_state'
+WINDOW_SIZE="${DEFAULT_WINDOW_SIZE}"
 readonly STYLE_STALE='fg=#828bb8'
 readonly STYLE_LOSSY='fg=#ffc777'
 
@@ -53,11 +61,17 @@ usage: $(basename "$0") [-h]
 
 Render internet connectivity for the tmux status line from the shared
 ~/tmp/${STATE_BASENAME} window, as tmux style markup ending in "| " (for
-example '#[fg=green]✓#[default] 20/20 | '). While a fresh Hammerspoon
+example '#[fg=green]✓#[default] 30/30 | '). While a fresh Hammerspoon
 heartbeat exists this only reads the shared window; otherwise, as a
 fallback, it pings ${PING_TARGET} (at most once per ${INTERVAL_SECONDS} s
 across clients, under an flock guard), appends the sample to the shared
 window, and renders. On non-macOS hosts this prints nothing.
+
+Configuration
+-------------
+Edit window_size in ~/.config/ping_window/config (whole number 3-99,
+default 30, shared with the Hammerspoon item). Re-read on every run, so
+both displays switch within one 2 s tick with no reload.
 
 Optional Arguments
 ------------------
@@ -66,8 +80,56 @@ Optional Arguments
 
 Examples
 --------
-tmux_ping     # '#[fg=green]✓#[default] 20/20 | '
+tmux_ping     # '#[fg=green]✓#[default] 30/30 | '
 EOM
+}
+
+# Load the window size from the shared config file into WINDOW_SIZE.
+# Follows the parsing contract shared with ping_window.lua; falls back to
+# DEFAULT_WINDOW_SIZE when the file is missing, unreadable, a directory,
+# or holds no valid window_size. Never fails or prints (safe under set -e).
+function load_window_size() {
+  local path="$1"
+  WINDOW_SIZE="${DEFAULT_WINDOW_SIZE}"
+
+  if [[ ! -f "${path}" || ! -r "${path}" ]]; then
+    return 0
+  fi
+
+  local line='' last='' has_key=0
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    line="${line%$'\r'}"
+    line="${line#"${line%%[![:blank:]]*}"}"
+    line="${line%"${line##*[![:blank:]]}"}"
+    if [[ -z "${line}" || "${line}" == '#'* ]]; then
+      continue
+    fi
+    if [[ "${line}" != *'='* ]]; then
+      continue
+    fi
+    local key="${line%%=*}"
+    local value="${line#*=}"
+    key="${key#"${key%%[![:blank:]]*}"}"
+    key="${key%"${key##*[![:blank:]]}"}"
+    value="${value#"${value%%[![:blank:]]*}"}"
+    value="${value%"${value##*[![:blank:]]}"}"
+    if [[ "${key}" != 'window_size' ]]; then
+      continue
+    fi
+    last="${value}"
+    has_key=1
+  done <"${path}"
+
+  if ((has_key == 0)); then
+    return 0
+  fi
+  if [[ "${last}" =~ ^[1-9][0-9]?$ ]] \
+    && ((10#${last} >= 10#${MIN_WINDOW_SIZE} && 10#${last} <= 10#${MAX_WINDOW_SIZE})); then
+    WINDOW_SIZE="${last}"
+  else
+    WINDOW_SIZE="${DEFAULT_WINDOW_SIZE}"
+  fi
+  return 0
 }
 
 # Parse one state line. Sets STATE_HEARTBEAT, STATE_PRODUCER, STATE_SAMPLED,
@@ -77,7 +139,7 @@ function parse_state_line() {
   local line="$1"
   line="${line%$'\n'}"
 
-  local pattern='^([0-9]+) (hammerspoon|tmux) ([0-9]+) (-|[01]{1,20})$'
+  local pattern="^([0-9]+) (hammerspoon|tmux) ([0-9]+) (-|[01]{1,${MAX_WINDOW_SIZE}})$"
   if [[ "${line}" =~ ${pattern} ]]; then
     STATE_HEARTBEAT="${BASH_REMATCH[1]}"
     STATE_PRODUCER="${BASH_REMATCH[2]}"
@@ -150,21 +212,21 @@ function summarize() {
 
 # Append one sample (`ok` is `1` for a reply, `0` for a miss) sent at
 # `sent_at` to `results`. When there is no previous window, or
-# `sent_at - prev_sampled > WINDOW_SECONDS`, start a fresh one-sample
-# window so no window spans a sleep or a long pause; otherwise append and
-# trim to WINDOW_SIZE. Sets REPLY.
+# `sent_at - prev_sampled > WINDOW_SIZE * INTERVAL_SECONDS`, start a fresh
+# one-sample window so no window spans a sleep or a long pause; otherwise
+# append and trim to WINDOW_SIZE. Sets REPLY.
 function window_append() {
   local results="$1" ok="$2" sent_at="$3" prev_sampled="$4"
 
   if [[ -z "${results}" || -z "${prev_sampled}" || "${prev_sampled}" == '0' ]] \
-    || ((sent_at - prev_sampled > WINDOW_SECONDS)); then
+    || ((sent_at - prev_sampled > 10#${WINDOW_SIZE} * INTERVAL_SECONDS)); then
     REPLY="${ok}"
     return 0
   fi
 
   results="${results}${ok}"
-  if ((${#results} > WINDOW_SIZE)); then
-    results="${results:$(( ${#results} - WINDOW_SIZE ))}"
+  if ((${#results} > 10#${WINDOW_SIZE})); then
+    results="${results:$(( ${#results} - 10#${WINDOW_SIZE} ))}"
   fi
   REPLY="${results}"
 }
@@ -192,9 +254,15 @@ function classify() {
 }
 
 # Render one window as tmux status markup with no trailing newline. An
-# empty window counts as –.
+# empty window counts as –. Clamps to the newest WINDOW_SIZE samples first,
+# so a larger state from a bigger window never breaks a smaller one.
 function render_state() {
   local results="$1" sampled="$2" now="$3"
+
+  local window_n=$((10#${WINDOW_SIZE}))
+  if ((${#results} > window_n)); then
+    results="${results:$(( ${#results} - window_n ))}"
+  fi
 
   classify "${results}" "${sampled}" "${now}"
   local tier="${REPLY}"
@@ -269,6 +337,8 @@ function run() {
 
   local now
   now="$(date +%s)" || exit 0
+
+  load_window_size "${HOME}/${CONFIG_RELATIVE_PATH}"
 
   local state_file="${HOME}/tmp/${STATE_BASENAME}"
   local lock_file="${state_file}.lock"
