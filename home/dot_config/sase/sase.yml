@@ -182,6 +182,8 @@ ace:
     s: |-
       sase
     sa: "sase agent"
+    sab: |-
+      Can you help me finish whatever work remains on the $1 bead and then close it? $2
     sac: "SASE Admin Center"
     sact: |-
       the "$1" tab of the "#[sac]" panel
