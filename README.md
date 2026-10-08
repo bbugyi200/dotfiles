@@ -75,30 +75,30 @@ The running countdown digits stay in the ordinary menu-bar foreground for the wh
 session, including `00:00` and a session whose duration is unknown. They use a bold
 monospaced face, falling back to the regular monospaced face when bold is unavailable.
 From `+00:01` through `+09:59`, the `+MM:SS` countdown is alert red (`#E3413B`). For the
-first seconds of every overdue minute — `+00:01`–`+00:05`, then `+01:00`–`+01:05`,
-`+02:00`–`+02:05`, …, `+09:00`–`+09:05` — it flashes at 1 Hz like the `OVERDUE` badge:
+first ten seconds of every overdue minute — `+00:01`–`+00:10`, then `+01:00`–`+01:10`,
+`+02:00`–`+02:10`, …, `+09:00`–`+09:10` — it flashes at 1 Hz like the `OVERDUE` badge:
 red text alternating with white (`#FFFFFF`) on the same red, in the countdown's
-monospaced face. For the rest of each minute it holds steady red. The count carries one
-no-break space on each side in every overdue frame, the same padding as the `OVERDUE`
-badge, so the item keeps one width from `+00:01` through `+09:59` and never shifts when
-a pulse starts or stops. At and after ten minutes overdue, the status is `OVERDUE` and
-that badge flashes between red text and white on the same red. `NO POMODORO` is green
-(`#30d158`) with no tomato. Between each 60-second flash step it rests for a Fibonacci
-number of minutes — 1m, 1m, 2m, 3m, 5m, 8m, … uncapped — so the steps fall at 1:00,
-3:00, 6:00, 10:00, 16:00, 25:00, … counted from when it appeared while it stays up: bold
-green text alternates at 1 Hz with a filled pill of dark forest-green `#062E14` on
-`#30d158`, the same cadence as `OVERDUE`. Each step names the rest it just took as
-`φ Nm` (`NO POMODORO φ 5m`), shown through the whole step in both frames and gone
-between steps. The whole label is one pill with a regular-weight `φ` separator, and the
-item width changes only at step boundaries. The sequence re-anchors when the label
-appears (after a session ends, after a command or parse failure hides the item, or after
-a Hammerspoon reload) and when the Mac wakes or unlocks while it is showing, always
-restarting at `φ 1m`. Both idle frames pad the pill with a no-break space at its outer
-edges so the item never changes width mid-step. Theme, duration, separator, arrow, stop
-time, and the tomato stay in the ordinary foreground. A mid-tone wallpaper directly
-under a transparent menu bar can undercut any fixed color, including the system's own
-labels; turning on Accessibility › Display › Reduce transparency restores a uniform
-surface.
+monospaced face. For the rest of each minute (from `:11`) it holds steady red. The count
+carries one no-break space on each side in every overdue frame, the same padding as the
+`OVERDUE` badge, so the item keeps one width from `+00:01` through `+09:59` and never
+shifts when a pulse starts or stops. At and after ten minutes overdue, the status is
+`OVERDUE` and that badge flashes between red text and white on the same red.
+`NO POMODORO` is green (`#30d158`) with no tomato. Between each 60-second flash step it
+rests for a Fibonacci number of minutes — 1m, 1m, 2m, 3m, 5m, 8m, … uncapped — so the
+steps fall at 1:00, 3:00, 6:00, 10:00, 16:00, 25:00, … counted from when it appeared
+while it stays up: bold green text alternates at 1 Hz with a filled pill of dark
+forest-green `#062E14` on `#30d158`, the same cadence as `OVERDUE`. Each step names the
+rest it just took as `φ Nm` (`NO POMODORO φ 5m`), shown through the whole step in both
+frames and gone between steps. The whole label is one pill with a regular-weight `φ`
+separator, and the item width changes only at step boundaries. The sequence re-anchors
+when the label appears (after a session ends, after a command or parse failure hides the
+item, or after a Hammerspoon reload) and when the Mac wakes or unlocks while it is
+showing, always restarting at `φ 1m`. Both idle frames pad the pill with a no-break
+space at its outer edges so the item never changes width mid-step. Theme, duration,
+separator, arrow, stop time, and the tomato stay in the ordinary foreground. A mid-tone
+wallpaper directly under a transparent menu bar can undercut any fixed color, including
+the system's own labels; turning on Accessibility › Display › Reduce transparency
+restores a uniform surface.
 
 Long themes are bounded to 24 Unicode code points including the final ellipsis; the full
 theme stays in the tooltip and dropdown. The tooltip leads with `full theme (duration)`

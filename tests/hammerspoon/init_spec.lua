@@ -776,7 +776,7 @@ describe("Hammerspoon init", function()
 		assert.are.same(context_color, first_spans[7].attributes.color)
 	end)
 
-	it("pulses only the overdue count for the first seconds of each minute", function()
+	it("pulses only the overdue count for the first ten seconds of each minute", function()
 		local restore_clock, fixed = freeze_clock()
 		local ok, error_message, env = load_init_with()
 		assert.is_true(ok, error_message)
@@ -837,7 +837,7 @@ describe("Hammerspoon init", function()
 		assert.are.same({ hex = "#FFFFFF", alpha = 1 }, flash.color)
 		assert.are.same({ hex = "#E3413B", alpha = 1 }, flash.backgroundColor)
 
-		runtime.state.endEpoch = fixed - 66
+		runtime.state.endEpoch = fixed - 71
 		runtime.state.zeroSyncRequested = true
 		runtime.tickTimer.callback()
 		runtime.tickTimer.callback()
@@ -847,8 +847,8 @@ describe("Hammerspoon init", function()
 		assert.equals(title_text(third_title), title_text(fourth_title))
 		local third_spans = assert(title_spans(third_title))
 		local fourth_spans = assert(title_spans(fourth_title))
-		assert.equals("\194\160+01:06\194\160", third_spans[9].text)
-		assert.equals("\194\160+01:06\194\160", fourth_spans[9].text)
+		assert.equals("\194\160+01:11\194\160", third_spans[9].text)
+		assert.equals("\194\160+01:11\194\160", fourth_spans[9].text)
 		for _, spans in ipairs({ third_spans, fourth_spans }) do
 			assert.is_nil(spans[9].attributes.backgroundColor)
 			assert.are.same({ hex = "#E3413B", alpha = 1 }, spans[9].attributes.color)

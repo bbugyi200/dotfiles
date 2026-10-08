@@ -86,7 +86,7 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 
 	it("uses the short OVERDUE status at and beyond the cutoff", function()
 		assert.equals(600, countdown.OVERDUE_WARNING_AFTER_SECONDS)
-		assert.equals(5, countdown.OVERDUE_PULSE_LAST_SECOND)
+		assert.equals(10, countdown.OVERDUE_PULSE_LAST_SECOND)
 		assert_presentation(-600, false, CONTEXT, "DEEP WORK (50m) → 10:15 · 🍅 OVERDUE", "overdue_warning")
 		assert_presentation(-900, false, CONTEXT, "DEEP WORK (50m) → 10:15 · 🍅 OVERDUE", "overdue_warning")
 		assert_presentation(-600, true, CONTEXT, "DEEP WORK (50m) → 10:15 · 🍅 OVERDUE", "overdue_warning_flash")
@@ -106,17 +106,17 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 	it("ignores the flash phase outside the overdue warning, minute pulse, and missing reminder states", function()
 		assert_presentation(601, true, CONTEXT, "DEEP WORK (50m) · 🍅 10:01", "normal")
 		assert_presentation(0, true, CONTEXT, "DEEP WORK (50m) · 🍅 00:00", "normal")
-		assert_presentation(-6, true, CONTEXT, "DEEP WORK (50m) → 10:15 · 🍅 +00:06", "overdue")
+		assert_presentation(-11, true, CONTEXT, "DEEP WORK (50m) → 10:15 · 🍅 +00:11", "overdue")
 		assert_presentation(-599, true, CONTEXT, "DEEP WORK (50m) → 10:15 · 🍅 +09:59", "overdue")
 		assert_presentation(nil, true, CONTEXT, "NO POMODORO", "missing")
 	end)
 
 	it("pulses the overdue count for the first seconds of each minute", function()
-		local active = { -0.5, -1, -5, -5.5, -60, -65, -120, -125, -540, -545 }
+		local active = { -0.5, -1, -10, -10.5, -60, -70, -70.5, -120, -130, -540, -550 }
 		for _, remaining in ipairs(active) do
 			assert.is_true(countdown.overdue_pulse_active(remaining), tostring(remaining) .. " should pulse")
 		end
-		local inactive = { -6, -30, -59, -66, -119, -126, -546, -599 }
+		local inactive = { -11, -30, -59, -71, -119, -131, -551, -599 }
 		for _, remaining in ipairs(inactive) do
 			assert.is_false(countdown.overdue_pulse_active(remaining), tostring(remaining) .. " should rest")
 		end
@@ -136,11 +136,11 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 				assert.is_true(math.floor(-remaining) % 60 <= countdown.OVERDUE_PULSE_LAST_SECOND)
 			end
 		end
-		assert.equals(59, count)
+		assert.equals(109, count)
 	end)
 
 	it("flashes the overdue count only inside a pulse", function()
-		for _, remaining in ipairs({ -1, -60, -62, -540 }) do
+		for _, remaining in ipairs({ -1, -10, -60, -62, -540, -550 }) do
 			local steady = countdown.presentation(remaining, false, CONTEXT)
 			local flashing = countdown.presentation(remaining, true, CONTEXT)
 			assert.equals("overdue", steady.appearance)
@@ -152,7 +152,7 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 		local pulsed = countdown.presentation(-60, false, CONTEXT)
 		assert.equals("DEEP WORK (50m) → 10:15 · 🍅 +01:00", pulsed.title)
 
-		for _, remaining in ipairs({ -6, -30, -599 }) do
+		for _, remaining in ipairs({ -11, -30, -599 }) do
 			assert_presentation(
 				remaining,
 				false,
