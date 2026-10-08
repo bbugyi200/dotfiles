@@ -1,0 +1,54 @@
+{{- if eq .chezmoi.os "darwin" -}}
+#!/bin/bash
+
+# init.lua: {{ include "dot_hammerspoon/init.lua" | sha256sum }}
+# ping_indicator.lua: {{ include "dot_hammerspoon/ping_indicator.lua" | sha256sum }}
+# ping_window.lua: {{ include "dot_hammerspoon/ping_window.lua" | sha256sum }}
+# pomodoro_countdown.lua: {{ include "dot_hammerspoon/pomodoro_countdown.lua" | sha256sum }}
+# screenshot_region.lua: {{ include "dot_hammerspoon/screenshot_region.lua" | sha256sum }}
+#
+# Restart Hammerspoon every time any ~/.hammerspoon Lua file changes! Every Lua
+# file under home/dot_hammerspoon/ needs a hash line above (enforced by
+# tests/bash/hammerspoon_restart_hook_test.sh). A full restart, not hs.reload(),
+# loads the new config even when the running one failed to load; signals avoid
+# AppleScript Automation prompts during non-interactive applies.
+set -uo pipefail
+
+app="Hammerspoon"
+
+function hammerspoon_running() {
+  pgrep -x "${app}" >/dev/null
+}
+
+# Wait up to $1 tenths of a second for Hammerspoon to exit.
+function wait_for_exit() {
+  local tries="$1"
+  while ((tries-- > 0)); do
+    hammerspoon_running || return 0
+    sleep 0.1
+  done
+  ! hammerspoon_running
+}
+
+if ! hammerspoon_running; then
+  echo "Hammerspoon is not running; it will load the new config on its next launch."
+  exit 0
+fi
+
+pkill -x "${app}"
+if ! wait_for_exit 50; then
+  pkill -KILL -x "${app}"
+  if ! wait_for_exit 20; then
+    echo "Hammerspoon did not exit; restart it manually to load the new config." >&2
+    exit 1
+  fi
+fi
+
+if ! open -g -a "${app}"; then
+  echo "Hammerspoon was stopped but could not be relaunched; start it manually." >&2
+  exit 1
+fi
+echo "Hammerspoon restarted to load the updated config."
+
+# vim: ft=bash
+{{- end -}}

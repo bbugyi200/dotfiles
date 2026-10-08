@@ -503,7 +503,7 @@ describe("Hammerspoon init", function()
 		assert.equals(1, #env.menus)
 		assert.equals(2, #env.timers)
 		assert.equals(1, #env.wake_watchers)
-		assert.equals(2, #env.path_watchers)
+		assert.equals(1, #env.path_watchers)
 	end)
 
 	it("replaces a stale non-table Pomodoro runtime global", function()
@@ -540,7 +540,7 @@ describe("Hammerspoon init", function()
 		assert.equals(1, #env.menus)
 		assert.equals(2, #env.timers)
 		assert.equals(1, #env.wake_watchers)
-		assert.equals(2, #env.path_watchers)
+		assert.equals(1, #env.path_watchers)
 	end)
 
 	it("cleans up retained Pomodoro runtime objects and reuses the menu on reload", function()
@@ -1227,20 +1227,16 @@ describe("Hammerspoon init", function()
 		local runtime = _G.BobPomodoroCountdown
 		local home = os.getenv("HOME")
 		local vault_watcher = nil
-		local config_watcher = nil
 		for _, watcher in ipairs(env.path_watchers) do
 			if watcher.path == home .. "/bob" then
 				vault_watcher = watcher
-			elseif watcher.path == home .. "/.hammerspoon/" then
-				config_watcher = watcher
 			end
 		end
 		assert.is_not_nil(vault_watcher)
-		assert.is_not_nil(config_watcher)
 		assert.equals(runtime.vaultWatcher, vault_watcher)
 		assert.is_true(vault_watcher.started)
 		assert.equals(60, runtime.syncTimer.interval)
-		assert.equals(2, #env.path_watchers)
+		assert.equals(1, #env.path_watchers)
 		assert.equals(2, #env.timers)
 		assert.equals(1, #env.delayed_timers)
 		assert.equals(0.25, runtime.vaultChangeDebounce.delay)
@@ -1469,8 +1465,7 @@ describe("Hammerspoon init", function()
 			assert.is_not_nil(runtime.syncTimer)
 			assert.is_not_nil(runtime.wakeWatcher)
 			assert.equals(15, runtime.syncTimer.interval)
-			assert.equals(1, #env.path_watchers)
-			assert.equals(os.getenv("HOME") .. "/.hammerspoon/", env.path_watchers[1].path)
+			assert.equals(0, #env.path_watchers)
 
 			local logged = false
 			for _, call in ipairs(env.printf_calls) do
@@ -1483,6 +1478,19 @@ describe("Hammerspoon init", function()
 			active_env.restore()
 			active_env = nil
 		end
+	end)
+
+	it("registers no config watcher: chezmoi owns Hammerspoon restarts", function()
+		-- Config restarts are owned by chezmoi's
+		-- run_onchange_after_restart_hammerspoon hook, not an in-config watcher.
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+
+		local home = os.getenv("HOME")
+		for _, watcher in ipairs(env.path_watchers) do
+			assert.not_equals(home .. "/.hammerspoon/", watcher.path)
+		end
+		assert.equals(0, env.reload_calls)
 	end)
 
 	it("requests one sync when crossing zero", function()

@@ -25,7 +25,20 @@ git restore --source=3d841c1e9c6dac9f558709a6ba6ef36082c2c4d4 -- \
 chezmoi apply ~/.hammerspoon
 ```
 
-Never leave both production hotkeys active during rollback.
+Never leave both production hotkeys active during rollback. A targeted
+`chezmoi apply ~/.hammerspoon` does not run chezmoi scripts, so follow it with
+Hammerspoon's menu-bar **Reload Config** or a full apply.
+
+## Hammerspoon config restarts
+
+A full `chezmoi apply`/`chezmoi update` on macOS restarts Hammerspoon when any Lua file
+under `home/dot_hammerspoon/` changed. The hook is
+`home/.chezmoiscripts/run_onchange_after_restart_hammerspoon.tmpl`. It does nothing when
+Hammerspoon is not running, since the new files load on its next launch. A new
+Hammerspoon Lua module must be added to the hook's hash list:
+`tests/bash/hammerspoon_restart_hook_test.sh` fails until it is. A targeted
+`chezmoi apply ~/.hammerspoon` does not run scripts, so use Hammerspoon's menu-bar
+**Reload Config** or run a full apply instead.
 
 ## Pomodoro menu bar
 

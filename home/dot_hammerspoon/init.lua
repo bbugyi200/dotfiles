@@ -784,19 +784,11 @@ bobPomodoroRuntime.wakeWatcher =
 bobPomodoroRuntime.wakeWatcher:start()
 runBobPomodoroCallback("initial sync", syncBobPomodoro)
 
--- Internet ping menu bar. A ping failure must never break the hotkeys, the
--- Pomodoro item, or auto-reload, so a throwing start is logged and swallowed.
+-- Internet ping menu bar. A ping failure must never break the hotkeys or the
+-- Pomodoro item, so a throwing start is logged and swallowed.
 local pingStartOk, pingStartError = xpcall(function()
 	PingIndicator.start()
 end, debug.traceback)
 if not pingStartOk then
 	hs.printf("Bob ping start failed: %s", pingStartError)
 end
-
--- Auto-reload the config whenever the deployed files change (e.g. after a
--- `chezmoi apply`), so edits take effect without a manual reload. The watcher
--- is retained in a module-level local to keep it from being garbage collected.
-local configWatcher = hs.pathwatcher.new(os.getenv("HOME") .. "/.hammerspoon/", function()
-	hs.reload()
-end)
-configWatcher:start()
