@@ -87,8 +87,15 @@ stores `a=b=c`. `--json` composes with assignment, `--value`, and `--value-file`
   key is limited to 8 KiB of UTF-8 text; each variable is limited to depth 8, 1,024
   total nodes, and 65,536 encoded JSON bytes. Numbers must be finite and integers must
   fit the signed 64-bit range.
-- Output variables are for small handoff values, not report bodies; store a report as an
-  artifact file and publish its path instead.
+- Output variables are for small handoff values, not report bodies;
+  `sase artifact create` already publishes a report under the SASE-managed `artifacts`
+  list.
+- `sase artifact create` automatically maintains the SASE-managed `artifacts` list
+  (fields `ref`, `label`, `kind`, `path`, optional `source_path` and `bead`); do not
+  `sase var set artifacts` yourself; read your own with `sase var get`, another agent's
+  with `sase var get 'research.0k.*.artifacts'` or
+  `sase var get 'research.0k.cld.artifacts[0]["ref"]' --format raw`, or in a later
+  prompt with `{{ agents["research.0k.cld"].artifacts[0].ref }}`.
 - Do not store secrets. Output variables are persisted in `agent_meta.json` and shown in
   sase's TUI and the Telegram completion message.
 

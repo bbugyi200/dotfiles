@@ -35,7 +35,33 @@ SASE derives your plan's links from the artifacts you read this turn; use
    - Epic frontmatter must omit top-level `size`; each epic phase declares its own
      `size`.
 
-4. **Validate (with `--explain`), edit, and revalidate (without `--explain`)**:
+4. **Plan Decisions**: embed reviewer choices instead of asking now when you can. Ask
+   now with `/sase_questions` only when the answer changes the tier, size, phase graph,
+   or architecture. Embed a `decisions:` frontmatter entry when you can write one
+   complete plan that covers every answer, the difference each answer makes is local,
+   and you would defend your default. Never embed a decision you should make yourself.
+   Prefer decisions over questions whenever that does not degrade the plan.
+
+   ```yaml
+   decisions:
+     grouping:
+       ask: How should the overlay group bindings?
+       choices:
+         pane: By pane, matching the footer hints
+         mode: By leader mode; denser, but splits pane actions
+       default: pane
+       why: pane keeps the footer's order
+   ```
+
+   Use readable ids. Phrase `ask` as a question where yes means do the work. State
+   consequences in choice labels. Add a one-line `why` for the default. Order decisions
+   by importance with memory decisions last. Add `> [!decision] <id> = <key>` callouts
+   when branches differ by more than a sentence. Under `%auto`, embed only memory
+   decisions and make every other choice yourself: auto-approved plans take every
+   default without review. Inside an epic phase, do not re-ask the epic's DECISIONS;
+   `sase bead read` shows them as final.
+
+5. **Validate (with `--explain`), edit, and revalidate (without `--explain`)**:
 
    The first validation run with `--explain` prints the expected schema and all
    diagnostics. Use that information to edit the plan file. Then rerun validation
@@ -49,7 +75,7 @@ SASE derives your plan's links from the artifacts you read this turn; use
    # ... repeat until validation exits successfully ...
    ```
 
-5. **Submit the validated plan**:
+6. **Submit the validated plan**:
 
    ```bash
    sase plan propose sase_plan_<name>.md

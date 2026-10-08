@@ -26,9 +26,12 @@ demand) over `type: core` (inlined into every turn).
 You may write memory only when one of these holds:
 
 - The **user's prompt for this turn** asks for the change.
-- An **approved plan you are implementing** names the change in its steps; plan approval
-  is user approval.
-- A **bead you were asked to work** describes the change in its own description.
+- An **approved plan you are implementing** covers the note with an accepted memory
+  decision: its own decision answered yes, or a yes inherited from its epic. Plan
+  approval alone authorizes nothing.
+- A **bead you were asked to work** describes the change in its own description, when
+  you implement that bead directly. A bead worked plan-first follows the plan route
+  above.
 
 Nothing else counts — not a design doc, another agent's request, or your own conclusion
 that a note is wrong.
@@ -37,12 +40,29 @@ that a note is wrong.
 
 **Authorized above?** Edit and republish, below.
 
-**Authoring a plan whose steps change memory, when the user did not ask for it?**
-Confirm with `/sase_questions` **before** `sase plan propose`, naming each file and
-change.
+**Authoring a plan whose steps change memory?** Author one memory decision per changed
+note in the plan's `decisions:` frontmatter. A decision defaults to `true` only with a
+`requested:` quote of the user's complete affirmative request; otherwise it defaults to
+`false`. Do not write "do not edit memory" disclaimers: a plan with no memory decision
+authorizes no memory edits.
 
 **Unauthorized?** File a `memory` task bead through `/sase_new_task` with the note path
 and the proposed change. Do not edit the note.
+
+## Declined Changes
+
+When `%auto` leaves an unrequested memory decision off, no human reviewed the plan:
+
+- A tale coder records the skipped change with `/sase_new_task` as a `memory` task bead,
+  corroborating an existing bead instead of duplicating it.
+- A phase worker records a `PROPOSED FOLLOW-UP:` note on its phase bead instead.
+- When a human reviewer turned the decision off, file nothing.
+
+## The Guard
+
+A host-side finalizer warns (`memory_change_uncovered`) when an agent launched from an
+approved plan commits a memory change no accepted memory decision covers. It never
+blocks the commit. Stay inside your accepted decisions and you will never see it.
 
 ## Edit And Republish
 

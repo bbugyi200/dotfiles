@@ -46,6 +46,12 @@ Multiple questions:
 sase questions '[{"question": "Approach?", "header": "Approach", "options": [{"label": "A"}, {"label": "B"}]}, {"question": "Include tests?", "options": [{"label": "Yes"}, {"label": "No"}]}]'
 ```
 
+## Questions Versus Plan Decisions
+
+When the question shapes the plan but one complete plan can cover every answer, embed a
+Plan Decision in the plan's `decisions:` frontmatter instead of asking now. Ask with
+this skill only when the answer changes the tier, size, phase graph, or architecture.
+
 ## Handoff And Continuation
 
 Run `sase questions` in the foreground and wait for the process to exit on its own.
