@@ -86,6 +86,7 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 
 	it("uses the short OVERDUE status at and beyond the cutoff", function()
 		assert.equals(600, countdown.OVERDUE_WARNING_AFTER_SECONDS)
+		assert.equals(5, countdown.OVERDUE_PULSE_LAST_SECOND)
 		assert_presentation(-600, false, CONTEXT, "DEEP WORK (50m) → 10:15 · 🍅 OVERDUE", "overdue_warning")
 		assert_presentation(-900, false, CONTEXT, "DEEP WORK (50m) → 10:15 · 🍅 OVERDUE", "overdue_warning")
 		assert_presentation(-600, true, CONTEXT, "DEEP WORK (50m) → 10:15 · 🍅 OVERDUE", "overdue_warning_flash")
@@ -102,12 +103,90 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 		end
 	end)
 
-	it("ignores the flash phase outside the overdue warning and missing reminder states", function()
+	it("ignores the flash phase outside the overdue warning, minute pulse, and missing reminder states", function()
 		assert_presentation(601, true, CONTEXT, "DEEP WORK (50m) · 🍅 10:01", "normal")
 		assert_presentation(0, true, CONTEXT, "DEEP WORK (50m) · 🍅 00:00", "normal")
-		assert_presentation(-1, true, CONTEXT, "DEEP WORK (50m) → 10:15 · 🍅 +00:01", "overdue")
+		assert_presentation(-6, true, CONTEXT, "DEEP WORK (50m) → 10:15 · 🍅 +00:06", "overdue")
 		assert_presentation(-599, true, CONTEXT, "DEEP WORK (50m) → 10:15 · 🍅 +09:59", "overdue")
 		assert_presentation(nil, true, CONTEXT, "NO POMODORO", "missing")
+	end)
+
+	it("pulses the overdue count for the first seconds of each minute", function()
+		local active = { -0.5, -1, -5, -5.5, -60, -65, -120, -125, -540, -545 }
+		for _, remaining in ipairs(active) do
+			assert.is_true(countdown.overdue_pulse_active(remaining), tostring(remaining) .. " should pulse")
+		end
+		local inactive = { -6, -30, -59, -66, -119, -126, -546, -599 }
+		for _, remaining in ipairs(inactive) do
+			assert.is_false(countdown.overdue_pulse_active(remaining), tostring(remaining) .. " should rest")
+		end
+		for _, remaining in ipairs({ 1, 0, -600, -601, -900, -3600 }) do
+			assert.is_false(countdown.overdue_pulse_active(remaining), tostring(remaining) .. " should rest")
+		end
+		assert.is_false(countdown.overdue_pulse_active(nil))
+		assert.is_false(countdown.overdue_pulse_active("-1"))
+		assert.is_false(countdown.overdue_pulse_active(0 / 0))
+		assert.is_false(countdown.overdue_pulse_active(math.huge))
+		assert.is_false(countdown.overdue_pulse_active(-math.huge))
+
+		local count = 0
+		for remaining = -1, -599, -1 do
+			if countdown.overdue_pulse_active(remaining) then
+				count = count + 1
+				assert.is_true(math.floor(-remaining) % 60 <= countdown.OVERDUE_PULSE_LAST_SECOND)
+			end
+		end
+		assert.equals(59, count)
+	end)
+
+	it("flashes the overdue count only inside a pulse", function()
+		for _, remaining in ipairs({ -1, -60, -62, -540 }) do
+			local steady = countdown.presentation(remaining, false, CONTEXT)
+			local flashing = countdown.presentation(remaining, true, CONTEXT)
+			assert.equals("overdue", steady.appearance)
+			assert.equals("overdue_flash", flashing.appearance)
+			assert.equals(steady.title, flashing.title)
+			assert.equals(steady.status, flashing.status)
+			assert.are.same(steady.segments, flashing.segments)
+		end
+		local pulsed = countdown.presentation(-60, false, CONTEXT)
+		assert.equals("DEEP WORK (50m) → 10:15 · 🍅 +01:00", pulsed.title)
+
+		for _, remaining in ipairs({ -6, -30, -599 }) do
+			assert_presentation(
+				remaining,
+				false,
+				CONTEXT,
+				countdown.presentation(remaining, false, CONTEXT).title,
+				"overdue"
+			)
+			assert_presentation(
+				remaining,
+				true,
+				CONTEXT,
+				countdown.presentation(remaining, false, CONTEXT).title,
+				"overdue"
+			)
+		end
+
+		for _, remaining in ipairs({ 0, 1, 601 }) do
+			assert_presentation(
+				remaining,
+				false,
+				CONTEXT,
+				countdown.presentation(remaining, false, CONTEXT).title,
+				"normal"
+			)
+			assert_presentation(
+				remaining,
+				true,
+				CONTEXT,
+				countdown.presentation(remaining, false, CONTEXT).title,
+				"normal"
+			)
+		end
+		assert_presentation(-600, false, CONTEXT, "DEEP WORK (50m) → 10:15 · 🍅 OVERDUE", "overdue_warning")
+		assert_presentation(-600, true, CONTEXT, "DEEP WORK (50m) → 10:15 · 🍅 OVERDUE", "overdue_warning_flash")
 	end)
 
 	it("exports the missing reminder constants", function()

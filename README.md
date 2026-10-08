@@ -31,12 +31,13 @@ Never leave both production hotkeys active during rollback.
 
 Hammerspoon shows the current Bob Pomodoro as one status item in the fixed order **theme
 (duration) · 🍅 status**, with `→ stop time` inserted once overdue. The 🍅 sits
-immediately before the countdown, separated by exactly one ordinary space, so it
-identifies the digits to its right. The 🍅 accompanies current-session countdowns and
-overdue status only; the idle item has no tomato. While running, the duration names the
-session's scheduled length; the stop time returns once the session is overdue, when the
-scheduled endpoint is the useful fact. The stop time is zero-padded 24-hour `HH:MM`,
-matching the ledger convention.
+immediately before the countdown, separated by exactly one ordinary space (plus the
+padded overdue status's own no-break-space margin), so it identifies the digits to its
+right. The 🍅 accompanies current-session countdowns and overdue status only; the idle
+item has no tomato. While running, the duration names the session's scheduled length;
+the stop time returns once the session is overdue, when the scheduled endpoint is the
+useful fact. The stop time is zero-padded 24-hour `HH:MM`, matching the ledger
+convention.
 
 | State                               | Example title                          |
 | ----------------------------------- | -------------------------------------- |
@@ -60,25 +61,31 @@ time anchor plus the status.
 The running countdown digits stay in the ordinary menu-bar foreground for the whole
 session, including `00:00` and a session whose duration is unknown. They use a bold
 monospaced face, falling back to the regular monospaced face when bold is unavailable.
-From the first overdue second through `+09:59`, the `+MM:SS` countdown is alert red
-(`#E3413B`) and does not flash. At and after ten minutes overdue, the status is
-`OVERDUE` and only that badge flashes between red text and white (`#FFFFFF`) on the same
-red. `NO POMODORO` is green (`#30d158`) with no tomato. Between each 60-second flash
-step it rests for a Fibonacci number of minutes — 1m, 1m, 2m, 3m, 5m, 8m, … uncapped —
-so the steps fall at 1:00, 3:00, 6:00, 10:00, 16:00, 25:00, … counted from when it
-appeared while it stays up: bold green text alternates at 1 Hz with a filled pill of
-dark forest-green `#062E14` on `#30d158`, the same cadence as `OVERDUE`. Each step names
-the rest it just took as `φ Nm` (`NO POMODORO φ 5m`), shown through the whole step in
-both frames and gone between steps. The whole label is one pill with a regular-weight
-`φ` separator, and the item width changes only at step boundaries. The sequence
-re-anchors when the label appears (after a session ends, after a command or parse
-failure hides the item, or after a Hammerspoon reload) and when the Mac wakes or unlocks
-while it is showing, always restarting at `φ 1m`. Both idle frames pad the pill with a
-no-break space at its outer edges so the item never changes width mid-step. Theme,
-duration, separator, arrow, stop time, and the tomato stay in the ordinary foreground. A
-mid-tone wallpaper directly under a transparent menu bar can undercut any fixed color,
-including the system's own labels; turning on Accessibility › Display › Reduce
-transparency restores a uniform surface.
+From `+00:01` through `+09:59`, the `+MM:SS` countdown is alert red (`#E3413B`). For the
+first seconds of every overdue minute — `+00:01`–`+00:05`, then `+01:00`–`+01:05`,
+`+02:00`–`+02:05`, …, `+09:00`–`+09:05` — it flashes at 1 Hz like the `OVERDUE` badge:
+red text alternating with white (`#FFFFFF`) on the same red, in the countdown's
+monospaced face. For the rest of each minute it holds steady red. The count carries one
+no-break space on each side in every overdue frame, the same padding as the `OVERDUE`
+badge, so the item keeps one width from `+00:01` through `+09:59` and never shifts when
+a pulse starts or stops. At and after ten minutes overdue, the status is `OVERDUE` and
+that badge flashes between red text and white on the same red. `NO POMODORO` is green
+(`#30d158`) with no tomato. Between each 60-second flash step it rests for a Fibonacci
+number of minutes — 1m, 1m, 2m, 3m, 5m, 8m, … uncapped — so the steps fall at 1:00,
+3:00, 6:00, 10:00, 16:00, 25:00, … counted from when it appeared while it stays up: bold
+green text alternates at 1 Hz with a filled pill of dark forest-green `#062E14` on
+`#30d158`, the same cadence as `OVERDUE`. Each step names the rest it just took as
+`φ Nm` (`NO POMODORO φ 5m`), shown through the whole step in both frames and gone
+between steps. The whole label is one pill with a regular-weight `φ` separator, and the
+item width changes only at step boundaries. The sequence re-anchors when the label
+appears (after a session ends, after a command or parse failure hides the item, or after
+a Hammerspoon reload) and when the Mac wakes or unlocks while it is showing, always
+restarting at `φ 1m`. Both idle frames pad the pill with a no-break space at its outer
+edges so the item never changes width mid-step. Theme, duration, separator, arrow, stop
+time, and the tomato stay in the ordinary foreground. A mid-tone wallpaper directly
+under a transparent menu bar can undercut any fixed color, including the system's own
+labels; turning on Accessibility › Display › Reduce transparency restores a uniform
+surface.
 
 Long themes are bounded to 24 Unicode code points including the final ellipsis; the full
 theme stays in the tooltip and dropdown. The tooltip leads with `full theme (duration)`
@@ -87,14 +94,15 @@ without a known duration they stay as `full theme` and `full theme → HH:MM`. T
 and dropdown carry no tomato and keep the raw `bob pomodoro` line and `Last sync`
 details. Without a session the dropdown also shows a disabled
 `Next reminder at HH:MM · φ Nm` row previewing the next flash step. At and after ten
-minutes overdue, only the `OVERDUE` badge flashes between red text and white-on-red. The
-menu re-syncs within about a second when today's daily note changes on disk (an Obsidian
-edit, a `bob` command, or a vault-sync pull), polls `bob pomodoro --show-stale` every 60
-seconds as a safety net (every 15 seconds if the file watcher cannot start), refreshes
-on wake and unlock, offers a manual Refresh item, and re-syncs once when crossing zero.
-An empty result shows `NO POMODORO`; command or parse failures hide the item. The
-dropdown shows a snapshot taken when it opens, stays open while the title keeps
-updating, and shows fresh details when reopened.
+minutes overdue, the `OVERDUE` badge flashes between red text and white-on-red; in every
+state only the status run ever flashes, and the theme, duration, arrow, stop time,
+separator, and tomato never do. The menu re-syncs within about a second when today's
+daily note changes on disk (an Obsidian edit, a `bob` command, or a vault-sync pull),
+polls `bob pomodoro --show-stale` every 60 seconds as a safety net (every 15 seconds if
+the file watcher cannot start), refreshes on wake and unlock, offers a manual Refresh
+item, and re-syncs once when crossing zero. An empty result shows `NO POMODORO`; command
+or parse failures hide the item. The dropdown shows a snapshot taken when it opens,
+stays open while the title keeps updating, and shows fresh details when reopened.
 
 ## Internet ping menu bar
 

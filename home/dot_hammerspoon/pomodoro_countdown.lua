@@ -1,6 +1,7 @@
 local M = {}
 
 M.OVERDUE_WARNING_AFTER_SECONDS = 10 * 60
+M.OVERDUE_PULSE_LAST_SECOND = 5
 M.MISSING_REMINDER_WAIT_UNIT_SECONDS = 60
 M.MISSING_REMINDER_FOR_SECONDS = 60
 M.PHI = "φ"
@@ -181,6 +182,16 @@ function M.next_missing_reminder(shown_seconds)
 	return step
 end
 
+function M.overdue_pulse_active(remaining_seconds)
+	if not is_finite_number(remaining_seconds) then
+		return false
+	end
+	if remaining_seconds >= 0 or remaining_seconds <= -M.OVERDUE_WARNING_AFTER_SECONDS then
+		return false
+	end
+	return math.floor(-remaining_seconds) % 60 <= M.OVERDUE_PULSE_LAST_SECOND
+end
+
 function M.presentation(remaining_seconds, flash_on, context)
 	if remaining_seconds == nil then
 		local shown_seconds = nil
@@ -258,7 +269,7 @@ function M.presentation(remaining_seconds, flash_on, context)
 		appearance = flash_on and "overdue_warning_flash" or "overdue_warning"
 	elseif remaining_seconds < 0 then
 		status_text = format_seconds(remaining_seconds)
-		appearance = "overdue"
+		appearance = (flash_on and M.overdue_pulse_active(remaining_seconds)) and "overdue_flash" or "overdue"
 	else
 		status_text = format_seconds(remaining_seconds)
 		appearance = "normal"

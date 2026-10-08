@@ -51,7 +51,7 @@ end
 
 local bobPomodoroRuntime = BobPomodoroCountdown
 local unpackArgs = table.unpack or unpack
-local BOB_POMODORO_TICK_INTERVAL = 0.5 -- Flash half-period for the OVERDUE badge and the NO POMODORO reminder.
+local BOB_POMODORO_TICK_INTERVAL = 0.5 -- Flash half-period for the OVERDUE badge, the overdue minute pulse, and the NO POMODORO reminder.
 local BOB_POMODORO_POLL_INTERVAL = 60 -- Safety net while the vault watcher runs.
 local BOB_POMODORO_FALLBACK_POLL_INTERVAL = 15 -- Used when the vault watcher is unavailable.
 -- Hammerspoon does not inherit shell BOB_DIR; the vault-sync LaunchAgent uses ~/bob.
@@ -289,6 +289,11 @@ local bobPomodoroCountdownTitleAttributes =
 	bobPomodoroTitleAttributes(bobPomodoroContextForeground, bobPomodoroCountdownFont)
 local bobPomodoroOverdueCountdownTitleAttributes =
 	bobPomodoroTitleAttributes(bobPomodoroOverdueForeground, bobPomodoroCountdownFont)
+local bobPomodoroOverdueCountdownFlashTitleAttributes = bobPomodoroTitleAttributes(
+	{ hex = PomodoroCountdown.BADGE_TEXT_COLOR, alpha = 1 },
+	bobPomodoroCountdownFont,
+	{ hex = PomodoroCountdown.ALERT_COLOR, alpha = 1 }
+)
 
 local bobPomodoroOverdueWarningTitleAttributes =
 	bobPomodoroTitleAttributes({ hex = PomodoroCountdown.ALERT_COLOR, alpha = 1 }, bobPomodoroBoldMenuBarFont)
@@ -328,6 +333,7 @@ local function bobPomodoroMenuTitle(presentation)
 			not is_missing
 			and appearance ~= "normal"
 			and appearance ~= "overdue"
+			and appearance ~= "overdue_flash"
 			and appearance ~= "overdue_warning"
 			and appearance ~= "overdue_warning_flash"
 		then
@@ -381,7 +387,11 @@ local function bobPomodoroMenuTitle(presentation)
 				if appearance == "normal" then
 					attributes = bobPomodoroCountdownTitleAttributes
 				elseif appearance == "overdue" then
+					text = bobPomodoroNoBreakSpace .. text .. bobPomodoroNoBreakSpace
 					attributes = bobPomodoroOverdueCountdownTitleAttributes
+				elseif appearance == "overdue_flash" then
+					text = bobPomodoroNoBreakSpace .. text .. bobPomodoroNoBreakSpace
+					attributes = bobPomodoroOverdueCountdownFlashTitleAttributes
 				elseif appearance == "overdue_warning" then
 					text = bobPomodoroNoBreakSpace .. text .. bobPomodoroNoBreakSpace
 					attributes = bobPomodoroOverdueWarningTitleAttributes

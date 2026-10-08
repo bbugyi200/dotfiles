@@ -776,14 +776,93 @@ describe("Hammerspoon init", function()
 		assert.are.same(context_color, first_spans[7].attributes.color)
 	end)
 
-	it("does not animate countdown, recently overdue, or missing states", function()
+	it("pulses only the overdue count for the first seconds of each minute", function()
+		local restore_clock, fixed = freeze_clock()
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+
+		local runtime = _G.BobPomodoroCountdown
+		runtime.state = {
+			rawOutput = "[<13m] 0950-1015 — DEEP WORK",
+			status = "overdue",
+			taskText = "— DEEP WORK",
+			fullTheme = "DEEP WORK",
+			displayTheme = "DEEP WORK",
+			stopTime = "10:15",
+			startHour = 9,
+			startMinute = 50,
+			endHour = 10,
+			endMinute = 15,
+			durationMinutes = 15,
+			duration = "15m",
+			endEpoch = fixed - 62,
+			lastSyncEpoch = fixed,
+			zeroSyncRequested = true,
+		}
+		local base_calls = #env.menu_title_calls
+		runtime.tickTimer.callback()
+		runtime.tickTimer.callback()
+		local first_title = env.menu_title_calls[base_calls + 1].title
+		local second_title = env.menu_title_calls[base_calls + 2].title
+		assert.equals(title_text(first_title), title_text(second_title))
+
+		local first_spans = assert(title_spans(first_title))
+		local second_spans = assert(title_spans(second_title))
+		assert.equals(9, #first_spans)
+		assert.equals(9, #second_spans)
+
+		local count_text = first_spans[9].text
+		assert.equals(second_spans[9].text, count_text)
+		assert.equals("\194\160+01:02\194\160", count_text)
+
+		for index = 1, 8 do
+			assert.are.same(first_spans[index].attributes, second_spans[index].attributes)
+			assert.is_nil(first_spans[index].attributes.backgroundColor)
+		end
+
+		local first_count = first_spans[9].attributes
+		local second_count = second_spans[9].attributes
+		assert.equals(first_count.font.name, second_count.font.name)
+		assert.equals(first_count.font.size, second_count.font.size)
+		assert.is_false(
+			first_count.color.hex == second_count.color.hex
+				and first_count.backgroundColor == second_count.backgroundColor
+		)
+		local steady, flash = first_count, second_count
+		if steady.backgroundColor ~= nil then
+			steady, flash = second_count, first_count
+		end
+		assert.is_nil(steady.backgroundColor)
+		assert.are.same({ hex = "#E3413B", alpha = 1 }, steady.color)
+		assert.are.same({ hex = "#FFFFFF", alpha = 1 }, flash.color)
+		assert.are.same({ hex = "#E3413B", alpha = 1 }, flash.backgroundColor)
+
+		runtime.state.endEpoch = fixed - 66
+		runtime.state.zeroSyncRequested = true
+		runtime.tickTimer.callback()
+		runtime.tickTimer.callback()
+		restore_clock()
+		local third_title = env.menu_title_calls[base_calls + 3].title
+		local fourth_title = env.menu_title_calls[base_calls + 4].title
+		assert.equals(title_text(third_title), title_text(fourth_title))
+		local third_spans = assert(title_spans(third_title))
+		local fourth_spans = assert(title_spans(fourth_title))
+		assert.equals("\194\160+01:06\194\160", third_spans[9].text)
+		assert.equals("\194\160+01:06\194\160", fourth_spans[9].text)
+		for _, spans in ipairs({ third_spans, fourth_spans }) do
+			assert.is_nil(spans[9].attributes.backgroundColor)
+			assert.are.same({ hex = "#E3413B", alpha = 1 }, spans[9].attributes.color)
+		end
+	end)
+
+	it("does not animate countdown, recently overdue between pulses, or missing states", function()
 		local restore_clock, fixed = freeze_clock()
 		local ok, error_message, env = load_init_with()
 		assert.is_true(ok, error_message)
 
 		local states = {
 			{ status = "active", endEpoch = fixed + 300, fullTheme = "DEEP WORK", stopTime = "10:15" },
-			{ status = "overdue", endEpoch = fixed - 1, fullTheme = "DEEP WORK", stopTime = "10:15" },
+			{ status = "overdue", endEpoch = fixed - 30, fullTheme = "DEEP WORK", stopTime = "10:15" },
 			{ status = "missing" },
 		}
 		local runtime = _G.BobPomodoroCountdown
@@ -815,6 +894,12 @@ describe("Hammerspoon init", function()
 			local first_title = env.menu_title_calls[first_call].title
 			local second_title = env.menu_title_calls[first_call + 1].title
 			assert.equals(title_text(first_title), title_text(second_title))
+			if state.status == "overdue" then
+				local steady_first = assert(title_spans(first_title))
+				local steady_second = assert(title_spans(second_title))
+				assert.equals("\194\160+00:30\194\160", steady_first[#steady_first].text)
+				assert.equals("\194\160+00:30\194\160", steady_second[#steady_second].text)
+			end
 			for index = first_call, first_call + 1 do
 				local spans = title_spans(env.menu_title_calls[index].title)
 				if spans then
@@ -1977,12 +2062,13 @@ describe("Hammerspoon init Pomodoro countdown colors", function()
 		assert.is_true(ok, error_message)
 
 		local runtime = _G.BobPomodoroCountdown
-		runtime.state = running_state(fixed, -1, 15)
+		runtime.state = running_state(fixed, -30, 15)
 		runtime.state.status = "overdue"
 		runtime.state.zeroSyncRequested = true
-		runtime.state.endEpoch = fixed - 1
+		runtime.state.endEpoch = fixed - 30
 		runtime.tickTimer.callback()
 		local _, overdue_spans = last_spans(env)
+		assert.equals("\194\160+00:30\194\160", overdue_spans[#overdue_spans].text)
 		assert.are.same({ hex = ALERT_COLOR, alpha = 1 }, overdue_spans[#overdue_spans].attributes.color)
 		assert.equals("Menlo-Bold", overdue_spans[#overdue_spans].attributes.font.name)
 
@@ -2064,15 +2150,36 @@ describe("Hammerspoon init Pomodoro countdown colors", function()
 		assert.are.same(LABEL_COLOR, neutral_spans[#neutral_spans].attributes.color)
 		assert.equals("Menlo-Regular", neutral_spans[#neutral_spans].attributes.font.name)
 
-		runtime.state = running_state(fixed, -1, 15)
+		runtime.state = running_state(fixed, -30, 15)
 		runtime.state.status = "overdue"
 		runtime.state.zeroSyncRequested = true
-		runtime.state.endEpoch = fixed - 1
+		runtime.state.endEpoch = fixed - 30
 		runtime.tickTimer.callback()
-		restore_clock()
 		local _, overdue_spans = last_spans(env)
+		assert.equals("\194\160+00:30\194\160", overdue_spans[#overdue_spans].text)
 		assert.are.same({ hex = ALERT_COLOR, alpha = 1 }, overdue_spans[#overdue_spans].attributes.color)
 		assert.equals("Menlo-Regular", overdue_spans[#overdue_spans].attributes.font.name)
+
+		runtime.state = running_state(fixed, -62, 15)
+		runtime.state.status = "overdue"
+		runtime.state.zeroSyncRequested = true
+		runtime.state.endEpoch = fixed - 62
+		runtime.tickTimer.callback()
+		local _, first_pulse_spans = last_spans(env)
+		runtime.tickTimer.callback()
+		restore_clock()
+		local _, second_pulse_spans = last_spans(env)
+		local steady_pulse, flash_pulse = first_pulse_spans[#first_pulse_spans], second_pulse_spans[#second_pulse_spans]
+		if steady_pulse.attributes.backgroundColor ~= nil then
+			steady_pulse, flash_pulse = flash_pulse, steady_pulse
+		end
+		assert.equals("\194\160+01:02\194\160", steady_pulse.text)
+		assert.equals("\194\160+01:02\194\160", flash_pulse.text)
+		assert.equals("Menlo-Regular", flash_pulse.attributes.font.name)
+		assert.is_nil(steady_pulse.attributes.backgroundColor)
+		assert.are.same({ hex = "#E3413B", alpha = 1 }, steady_pulse.attributes.color)
+		assert.are.same({ hex = "#FFFFFF", alpha = 1 }, flash_pulse.attributes.color)
+		assert.are.same({ hex = "#E3413B", alpha = 1 }, flash_pulse.attributes.backgroundColor)
 
 		assert.equals(calls_after_load, env.valid_font_calls["Menlo-Bold"])
 	end)
@@ -2213,6 +2320,15 @@ describe("Hammerspoon init Pomodoro countdown colors", function()
 		runtime.state.status = "overdue"
 		runtime.state.zeroSyncRequested = true
 		runtime.state.endEpoch = fixed - 1
+		runtime.tickTimer.callback()
+		audit_current_title()
+
+		runtime.state = running_state(fixed, -62, 15)
+		runtime.state.status = "overdue"
+		runtime.state.zeroSyncRequested = true
+		runtime.state.endEpoch = fixed - 62
+		runtime.tickTimer.callback()
+		audit_current_title()
 		runtime.tickTimer.callback()
 		audit_current_title()
 
