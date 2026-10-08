@@ -669,7 +669,9 @@ describe("Hammerspoon init", function()
 	end)
 
 	it("delivers a stale-overdue payload with theme, stop time, and OVERDUE status", function()
-		local restore_clock = freeze_clock()
+		-- Freeze after the 09:15 stop (not at the wall clock): the stale
+		-- payload only renders stop time and OVERDUE once now is past the stop.
+		local restore_clock = freeze_clock_at(today_at(10, 0))
 		local ok, error_message, env = load_init_with({
 			task_completion = {
 				exit_code = 0,
