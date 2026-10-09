@@ -52,6 +52,13 @@ When the question shapes the plan but one complete plan can cover every answer, 
 Plan Decision in the plan's `decisions:` frontmatter instead of asking now. Ask with
 this skill only when the answer changes the tier, size, phase graph, or architecture.
 
+## Recommended Option First
+
+Put your recommended option first in every question's options list. When the agent runs
+under `%auto`, SASE answers question gates automatically by choosing the first option of
+every question, and no human reads them — so the first option is the one that takes
+effect. Order the remaining options by preference after it.
+
 ## Handoff And Continuation
 
 Run `sase questions` in the foreground and wait for the process to exit on its own.

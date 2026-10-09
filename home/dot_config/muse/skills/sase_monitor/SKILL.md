@@ -108,8 +108,8 @@ the row color, so reusing one pair across related monitors makes them read as on
   — you are still running and nothing was handed off. Read the error and either retry or
   run the command inline instead of assuming a monitor exists.
 - The command after `--` is preserved argument-for-argument. Pass one quoted string
-  (`-- 'just install && just check'`) and it runs verbatim as the shell command under
-  the host's `/bin/sh -c`; pass several bare words (`-- just check`) and they are
+  (`-- 'just install-venv && just check'`) and it runs verbatim as the shell command
+  under the host's `/bin/sh -c`; pass several bare words (`-- just check`) and they are
   rejoined for you. Do not wrap the command in `bash -c '...'` or `sh -c '...'` — the
   host already runs it under a shell, so the wrapper is redundant and is the leading
   cause of monitor command misquoting (`sase monitor start` warns if you do it anyway).
