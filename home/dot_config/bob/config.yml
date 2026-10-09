@@ -92,4 +92,4 @@ plan:
   max_ready: 100 # soft limit for dashboard READY tasks, excluding Today
   strict: false # refuse #NAME captures that would create a theme past max_themes
   exempt: [GTD] # open entries that never count as themes
-  inventory_labels: [LATER, MISC, NEW FEATURES, SASE] # open names that are storage, not themes
+  inventory_labels: [LATER, MISC, NEW FEATURES] # open names that are storage, not themes
