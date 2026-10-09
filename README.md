@@ -7,15 +7,15 @@
 
 ## Bob Mac Capture cutover
 
-Control-Shift-Command-I is owned by the native Bob Mac Capture app. Hammerspoon no
-longer registers that shortcut or carries the retired WebView capture workflow and Lua
-capture grammar.
+Control-Shift-Command-I (capture) and Control-Shift-Command-O (Bob Refs) are owned by
+the native Bob Mac Capture app. Hammerspoon no longer registers the capture shortcut or
+carries the retired WebView capture workflow and Lua capture grammar.
 
 The last known-good pre-cutover chezmoi revision is
 `3d841c1e9c6dac9f558709a6ba6ef36082c2c4d4`. To roll back, first turn off **Use
 production Control-Shift-Command-I** in Bob Mac Capture Settings so the app returns to
-the temporary Control-Shift-Command-O shortcut. Then restore and deploy the old
-Hammerspoon feature:
+the Control-Shift-Command-R development capture shortcut. Then restore and deploy the
+old Hammerspoon feature:
 
 ```sh
 git restore --source=3d841c1e9c6dac9f558709a6ba6ef36082c2c4d4 -- \
