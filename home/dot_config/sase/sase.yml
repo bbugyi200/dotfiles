@@ -16,7 +16,7 @@ commit_hooks:
   before: "sase_git_fix"
 file_hooks:
   - use: sase-research-artifacts@research-highlights
-    command: bob highlights create --include-id
+    command: bob ref create --include-id -P "$SASE_FILE_HOOK_PROJECT"
 github_orgs:
   - bbugyi200
   - sase-org
