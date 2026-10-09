@@ -190,7 +190,7 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 	end)
 
 	it("exports the missing reminder constants", function()
-		assert.equals(60, countdown.MISSING_REMINDER_FOR_SECONDS)
+		assert.equals(10, countdown.MISSING_REMINDER_FOR_SECONDS)
 		assert.equals(60, countdown.MISSING_REMINDER_WAIT_UNIT_SECONDS)
 		assert.equals("φ", countdown.PHI)
 		assert.is_nil(countdown.MISSING_REMINDER_EVERY_SECONDS)
@@ -198,20 +198,20 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 		assert.equals("#062E14", countdown.MISSING_BADGE_TEXT_COLOR)
 	end)
 
-	it("schedules Fibonacci rests between fixed one-minute steps", function()
+	it("schedules Fibonacci rests between fixed ten-second steps", function()
 		local rows = {
-			{ wait = 1, start = 60, stop = 120 },
-			{ wait = 1, start = 180, stop = 240 },
-			{ wait = 2, start = 360, stop = 420 },
-			{ wait = 3, start = 600, stop = 660 },
-			{ wait = 5, start = 960, stop = 1020 },
-			{ wait = 8, start = 1500, stop = 1560 },
-			{ wait = 13, start = 2340, stop = 2400 },
-			{ wait = 21, start = 3660, stop = 3720 },
-			{ wait = 34, start = 5760, stop = 5820 },
-			{ wait = 55, start = 9120, stop = 9180 },
-			{ wait = 89, start = 14520, stop = 14580 },
-			{ wait = 144, start = 23220, stop = 23280 },
+			{ wait = 1, start = 60, stop = 70 },
+			{ wait = 1, start = 130, stop = 140 },
+			{ wait = 2, start = 260, stop = 270 },
+			{ wait = 3, start = 450, stop = 460 },
+			{ wait = 5, start = 760, stop = 770 },
+			{ wait = 8, start = 1250, stop = 1260 },
+			{ wait = 13, start = 2040, stop = 2050 },
+			{ wait = 21, start = 3310, stop = 3320 },
+			{ wait = 34, start = 5360, stop = 5370 },
+			{ wait = 55, start = 8670, stop = 8680 },
+			{ wait = 89, start = 14020, stop = 14030 },
+			{ wait = 144, start = 22670, stop = 22680 },
 		}
 		for _, row in ipairs(rows) do
 			local step = countdown.missing_reminder_step(row.start)
@@ -219,10 +219,10 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 			assert.equals(row.wait, step.waitMinutes)
 			assert.equals(row.start, step.startSeconds)
 			assert.equals(row.stop, step.endSeconds)
-			assert.is_true(countdown.missing_reminder_step(row.start + 59).active)
-			assert.is_true(countdown.missing_reminder_step(row.start + 59.5).active)
+			assert.is_true(countdown.missing_reminder_step(row.start + 9).active)
+			assert.is_true(countdown.missing_reminder_step(row.start + 9.5).active)
 			assert.is_false(countdown.missing_reminder_step(row.start - 1).active)
-			assert.is_false(countdown.missing_reminder_step(row.start + 60).active)
+			assert.is_false(countdown.missing_reminder_step(row.start + 10).active)
 		end
 	end)
 
@@ -243,10 +243,10 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 	end)
 
 	it("activates the missing reminder only inside each Fibonacci flash step", function()
-		for _, shown in ipairs({ 60, 119, 180, 239, 360, 419, 600, 659, 960, 1500, 2340, 3660 }) do
+		for _, shown in ipairs({ 60, 69, 130, 139, 260, 269, 450, 459, 760, 769, 1250, 2040, 3310 }) do
 			assert.is_true(countdown.missing_reminder_active(shown), tostring(shown) .. " should be active")
 		end
-		for _, shown in ipairs({ 0, 59, 120, 179, 240, 299, 300, 359, 420, 599, 660, 959, 1020, 1499 }) do
+		for _, shown in ipairs({ 0, 59, 70, 129, 140, 259, 270, 449, 460, 759, 770, 1249, 1260, 2039 }) do
 			assert.is_false(countdown.missing_reminder_active(shown), tostring(shown) .. " should be inactive")
 		end
 		assert.is_false(countdown.missing_reminder_active(-1))
@@ -267,10 +267,12 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 		end
 
 		assert_next(0, 60, 1)
-		assert_next(60, 180, 1)
-		assert_next(119, 180, 1)
-		assert_next(240, 360, 2)
-		assert_next(600, 960, 5)
+		assert_next(60, 130, 1)
+		assert_next(69, 130, 1)
+		assert_next(70, 130, 1)
+		assert_next(140, 260, 2)
+		assert_next(250, 260, 2)
+		assert_next(460, 760, 5)
 		assert.is_nil(countdown.next_missing_reminder(-1))
 		assert.is_nil(countdown.next_missing_reminder(nil))
 		assert.is_nil(countdown.next_missing_reminder("0"))
@@ -282,11 +284,11 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 	it("shows the Fibonacci rest through the whole flash step with the φ suffix", function()
 		local cases = {
 			{ shown = 60, waited = 1, title = "NO POMODORO φ 1m" },
-			{ shown = 180, waited = 1, title = "NO POMODORO φ 1m" },
-			{ shown = 360, waited = 2, title = "NO POMODORO φ 2m" },
-			{ shown = 600, waited = 3, title = "NO POMODORO φ 3m" },
-			{ shown = 960, waited = 5, title = "NO POMODORO φ 5m" },
-			{ shown = 23220, waited = 144, title = "NO POMODORO φ 144m" },
+			{ shown = 130, waited = 1, title = "NO POMODORO φ 1m" },
+			{ shown = 260, waited = 2, title = "NO POMODORO φ 2m" },
+			{ shown = 450, waited = 3, title = "NO POMODORO φ 3m" },
+			{ shown = 760, waited = 5, title = "NO POMODORO φ 5m" },
+			{ shown = 22670, waited = 144, title = "NO POMODORO φ 144m" },
 		}
 		for _, case in ipairs(cases) do
 			for _, flash_on in ipairs({ false, true }) do
@@ -328,14 +330,14 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 
 		assert_missing(nil, true, { missingShownSeconds = 0 }, "missing")
 		assert_missing(nil, true, { missingShownSeconds = 59 }, "missing")
-		assert_missing(nil, true, { missingShownSeconds = 120 }, "missing")
-		assert_missing(nil, true, { missingShownSeconds = 179 }, "missing")
-		assert_missing(nil, true, { missingShownSeconds = 240 }, "missing")
-		assert_missing(nil, true, { missingShownSeconds = 300 }, "missing")
-		assert_missing(nil, true, { missingShownSeconds = 359 }, "missing")
-		assert_missing(nil, true, { missingShownSeconds = 420 }, "missing")
-		assert_missing(nil, true, { missingShownSeconds = 599 }, "missing")
-		assert_missing(nil, true, { missingShownSeconds = 660 }, "missing")
+		assert_missing(nil, true, { missingShownSeconds = 70 }, "missing")
+		assert_missing(nil, true, { missingShownSeconds = 129 }, "missing")
+		assert_missing(nil, true, { missingShownSeconds = 140 }, "missing")
+		assert_missing(nil, true, { missingShownSeconds = 200 }, "missing")
+		assert_missing(nil, true, { missingShownSeconds = 259 }, "missing")
+		assert_missing(nil, true, { missingShownSeconds = 270 }, "missing")
+		assert_missing(nil, true, { missingShownSeconds = 449 }, "missing")
+		assert_missing(nil, true, { missingShownSeconds = 460 }, "missing")
 		assert_missing(nil, true, nil, "missing")
 		assert_missing(nil, true, CONTEXT, "missing")
 

@@ -83,9 +83,9 @@ carries one no-break space on each side in every overdue frame, the same padding
 `OVERDUE` badge, so the item keeps one width from `+00:01` through `+09:59` and never
 shifts when a pulse starts or stops. At and after ten minutes overdue, the status is
 `OVERDUE` and that badge flashes between red text and white on the same red.
-`NO POMODORO` is green (`#30d158`) with no tomato. Between each 60-second flash step it
+`NO POMODORO` is green (`#30d158`) with no tomato. Between each 10-second flash step it
 rests for a Fibonacci number of minutes — 1m, 1m, 2m, 3m, 5m, 8m, … uncapped — so the
-steps fall at 1:00, 3:00, 6:00, 10:00, 16:00, 25:00, … counted from when it appeared
+steps fall at 1:00, 2:10, 4:20, 7:30, 12:40, 20:50, … counted from when it appeared
 while it stays up: bold green text alternates at 1 Hz with a filled pill of dark
 forest-green `#062E14` on `#30d158`, the same cadence as `OVERDUE`. Each step names the
 rest it just took as `φ Nm` (`NO POMODORO φ 5m`), shown through the whole step in both

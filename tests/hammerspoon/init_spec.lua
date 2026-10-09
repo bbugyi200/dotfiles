@@ -1690,12 +1690,12 @@ describe("Hammerspoon init", function()
 
 		local cases = {
 			{ shown = 60, waited = "1m" },
-			{ shown = 119, waited = "1m" },
-			{ shown = 180, waited = "1m" },
-			{ shown = 239, waited = "1m" },
-			{ shown = 360, waited = "2m" },
-			{ shown = 600, waited = "3m" },
-			{ shown = 960, waited = "5m" },
+			{ shown = 69, waited = "1m" },
+			{ shown = 130, waited = "1m" },
+			{ shown = 139, waited = "1m" },
+			{ shown = 260, waited = "2m" },
+			{ shown = 450, waited = "3m" },
+			{ shown = 760, waited = "5m" },
 		}
 		for _, case in ipairs(cases) do
 			runtime.state = {
@@ -1766,15 +1766,15 @@ describe("Hammerspoon init", function()
 		local cases = {
 			{ missingShownEpoch = fixed },
 			{ missingShownEpoch = fixed - 59 },
-			{ missingShownEpoch = fixed - 120 },
-			{ missingShownEpoch = fixed - 179 },
-			{ missingShownEpoch = fixed - 240 },
-			{ missingShownEpoch = fixed - 300 },
-			{ missingShownEpoch = fixed - 359 },
-			{ missingShownEpoch = fixed - 420 },
-			{ missingShownEpoch = fixed - 599 },
-			{ missingShownEpoch = fixed - 660 },
-			{ missingShownEpoch = fixed - 959 },
+			{ missingShownEpoch = fixed - 70 },
+			{ missingShownEpoch = fixed - 129 },
+			{ missingShownEpoch = fixed - 140 },
+			{ missingShownEpoch = fixed - 200 },
+			{ missingShownEpoch = fixed - 259 },
+			{ missingShownEpoch = fixed - 270 },
+			{ missingShownEpoch = fixed - 449 },
+			{ missingShownEpoch = fixed - 460 },
+			{ missingShownEpoch = fixed - 759 },
 			{},
 		}
 		for _, case in ipairs(cases) do
@@ -1810,8 +1810,12 @@ describe("Hammerspoon init", function()
 		local shown_cases = {
 			{ shown = 59, expected = "\194\160NO POMODORO\194\160" },
 			{ shown = 60, expected = "\194\160NO POMODORO φ 1m\194\160" },
-			{ shown = 119, expected = "\194\160NO POMODORO φ 1m\194\160" },
-			{ shown = 120, expected = "\194\160NO POMODORO\194\160" },
+			{ shown = 69, expected = "\194\160NO POMODORO φ 1m\194\160" },
+			{ shown = 70, expected = "\194\160NO POMODORO\194\160" },
+			{ shown = 129, expected = "\194\160NO POMODORO\194\160" },
+			{ shown = 130, expected = "\194\160NO POMODORO φ 1m\194\160" },
+			{ shown = 139, expected = "\194\160NO POMODORO φ 1m\194\160" },
+			{ shown = 140, expected = "\194\160NO POMODORO\194\160" },
 		}
 		for _, case in ipairs(shown_cases) do
 			runtime.state = {
@@ -1848,13 +1852,13 @@ describe("Hammerspoon init", function()
 		assert.is_true(items[2].disabled)
 		assert.is_not_nil(menu_refresh_fn(runtime.menu))
 
-		runtime.state.missingShownEpoch = fixed - 90
+		runtime.state.missingShownEpoch = fixed - 65
 		items = dropdown_titles()
-		assert.equals("Next reminder at " .. os.date("%H:%M", fixed - 90 + 180) .. " · φ 1m", items[2].title)
+		assert.equals("Next reminder at " .. os.date("%H:%M", fixed - 65 + 130) .. " · φ 1m", items[2].title)
 
 		runtime.state.missingShownEpoch = fixed - 250
 		items = dropdown_titles()
-		assert.equals("Next reminder at " .. os.date("%H:%M", fixed - 250 + 360) .. " · φ 2m", items[2].title)
+		assert.equals("Next reminder at " .. os.date("%H:%M", fixed - 250 + 260) .. " · φ 2m", items[2].title)
 
 		runtime.state = {
 			rawOutput = "No current Pomodoro",
