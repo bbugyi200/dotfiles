@@ -127,5 +127,8 @@ jobs:
       - name: Install the bugyi.sh Bash library
         run: uvx basher export "$HOME/lib"
 
+      - name: Install tmux
+        run: sudo apt-get update && sudo apt-get install -y tmux && tmux -V
+
       - name: Run tests
         run: just test
