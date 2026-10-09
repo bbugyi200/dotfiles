@@ -14,8 +14,8 @@
 
 # ---------- sase ----------
 alias ace='sase -p tui'
-acei() { install_sase_github "$@" && sase tui --restart-axe; }
-aceii() { install_sase_google "$@" && sase tui --restart-axe; }
+acei() { just -f ~/projects/github/sase-org/sase/Justfile install-dev --sync -y "$@"; }
+aceii() { just -f ~/projects/github/sase-org/sase/Justfile install-dev --sync -y --with sase-google --with sase-gchat "$@"; }
 alias axe='sase -p axe'
 alias commit='sase -p commit'
 alias gsl='get_sase_logs'
