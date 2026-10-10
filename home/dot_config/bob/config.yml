@@ -49,10 +49,12 @@ properties:
 highlights:
   pre_scan_hook: PATH="$HOME/bin:$PATH" bob_xlib_pull
   # `bob ref create --listen` (and `clip --listen`) narrates the target with
-  # this command, which must write MP3 audio to {audio}; bob binds it as the PDF's
-  # companion audio. bob shell-quotes {target} {pdf} {audio} {title} itself — do not
-  # quote them. This managed setup uses the SASE plugin (`sase listen render`);
-  # a standalone `uv tool install sase-listen` uses `sase-listen` instead. The
+  # `sase listen render ...`, which must write MP3 audio to {audio}; bob binds it
+  # as the PDF's companion audio. bob passes {target} {pdf} {audio} {title} as
+  # single arguments to `sase` itself — do not quote them. A direct
+  # `sase-listen render ...` setting migrates automatically; wrappers, shell
+  # programs, chains, pipelines, redirections, and expansions are rejected.
+  # This managed setup uses the SASE plugin (`sase listen render`). The
   # plugin's feed.auto_publish publishes the episode. See
   # docs/highlights-create.md in bob-cli.
   listen_command: sase listen render {target} -e full -o {audio}
