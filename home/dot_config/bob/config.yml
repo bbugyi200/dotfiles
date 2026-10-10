@@ -51,9 +51,11 @@ highlights:
   # `bob ref create --listen` (and `clip --listen`) narrates the target with
   # this command, which must write MP3 audio to {audio}; bob binds it as the PDF's
   # companion audio. bob shell-quotes {target} {pdf} {audio} {title} itself — do not
-  # quote them. sase-listen's feed.auto_publish publishes the episode. See
+  # quote them. This managed setup uses the SASE plugin (`sase listen render`);
+  # a standalone `uv tool install sase-listen` uses `sase-listen` instead. The
+  # plugin's feed.auto_publish publishes the episode. See
   # docs/highlights-create.md in bob-cli.
-  listen_command: sase-listen render {target} -e full -o {audio}
+  listen_command: sase listen render {target} -e full -o {audio}
 
 # `bob gkeep` drains the Google Keep inbox into gkeep_inbox.md as Obsidian
 # tasks; see `bob gkeep --help` and docs/gkeep.md in bob-cli. Run
