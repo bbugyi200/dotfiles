@@ -177,3 +177,11 @@ service:
       env:
         SASE_TELEGRAM_BOT_USERNAME: sase_athena2_bot
         SASE_TELEGRAM_BOT_CHAT_ID: "8990449281"
+
+ace:
+  notification_rules:
+    - name: quiet-task-beads-telegram
+      description: Keep Beads notifications in SASE without sending them to Telegram.
+      match:
+        tab: beads
+      telegram: false
