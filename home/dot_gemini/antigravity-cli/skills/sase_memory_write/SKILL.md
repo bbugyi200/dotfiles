@@ -51,7 +51,8 @@ and the proposed change. Do not edit the note.
 
 ## Declined Changes
 
-When `%auto` leaves an unrequested memory decision off, no human reviewed the plan:
+When your plan's decisions block says no human reviewed the plan and an unrequested
+memory decision is off:
 
 - A tale coder records the skipped change with `/sase_new_task` as a `memory` task bead,
   corroborating an existing bead instead of duplicating it.

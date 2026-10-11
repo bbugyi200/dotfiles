@@ -54,10 +54,8 @@ this skill only when the answer changes the tier, size, phase graph, or architec
 
 ## Recommended Option First
 
-Put your recommended option first in every question's options list. When the agent runs
-under `%auto`, SASE answers question gates automatically by choosing the first option of
-every question, and no human reads them — so the first option is the one that takes
-effect. Order the remaining options by preference after it.
+Put your recommended option first in every question's options list, then order the
+remaining options by preference.
 
 ## Handoff And Continuation
 

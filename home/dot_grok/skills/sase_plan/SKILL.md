@@ -56,10 +56,8 @@ SASE derives your plan's links from the artifacts you read this turn; use
    Use readable ids. Phrase `ask` as a question where yes means do the work. State
    consequences in choice labels. Add a one-line `why` for the default. Order decisions
    by importance with memory decisions last. Add `> [!decision] <id> = <key>` callouts
-   when branches differ by more than a sentence. Under `%auto`, embed only memory
-   decisions and make every other choice yourself: auto-approved plans take every
-   default without review. Inside an epic phase, do not re-ask the epic's DECISIONS;
-   `sase bead read` shows them as final.
+   when branches differ by more than a sentence. Inside an epic phase, do not re-ask the
+   epic's DECISIONS; `sase bead read` shows them as final.
 
 5. **Validate (with `--explain`), edit, and revalidate (without `--explain`)**:
 
@@ -85,9 +83,8 @@ SASE derives your plan's links from the artifacts you read this turn; use
    handoff marker, and sends `SIGTERM` to the current agent runner process group. The
    runner treats that signal as an intentional handoff: it creates the tier-specific
    `PlanApproval` or `EpicApproval` gate turn and ends this agent; the turn owns review
-   settlement and launches the feedback replanner or approved tale coder. `%auto`
-   remains synchronous and continues in this process without a detached agent. The
-   proposal command itself must run until it completes the marker write, which can take
-   up to a minute. If your tool yields or backgrounds its session, keep polling that
-   same session until it exits; an early or empty result does not mean a proposal
-   happened. Once it succeeds, do not poll response files yourself.
+   settlement and launches the feedback replanner or approved tale coder. The proposal
+   command itself must run until it completes the marker write, which can take up to a
+   minute. If your tool yields or backgrounds its session, keep polling that same
+   session until it exits; an early or empty result does not mean a proposal happened.
+   Once it succeeds, do not poll response files yourself.
