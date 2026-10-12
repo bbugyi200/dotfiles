@@ -1,10 +1,10 @@
 ---
 name: sase_project
 description: >-
-  Inspect and manage SASE projects with `sase project` (list, show, current, set-
-  current, enable, disable, alias). Use when you need the set of enabled projects, the
-  current project, one project's lifecycle record, or machine-readable project data —
-  e.g. to fan out one agent per enabled project.
+  Inspect and manage SASE projects with `sase project` (list, add, show, current, set-
+  current, enable, disable, alias, suggest). Use when you need the set of enabled
+  projects, the current project, one project's lifecycle record, or machine-readable
+  project data — e.g. to fan out one agent per enabled project.
 ---
 
 Before doing anything else, run this command to record that you are using this skill:
@@ -26,6 +26,32 @@ state and aliases, or select projects for a multi-project workflow.
   claims, launchability, and warnings. Add `--json` for machine-readable data.
 - `sase project current` prints the current project derived from the VCS macro MRU head,
   colored with that project's accent. Add `--json` for machine-readable data.
+
+## Suggest Projects
+
+- `sase project suggest [PROVIDER] [-a|--all] [-j|--json] [-o|--owner OWNER]... [-r|--refresh]`
+  ranks the repositories worth adding as projects, grouped as `RESUME`,
+  `ON THIS MACHINE`, `SUGGESTED`, `LINKED TO YOUR PROJECTS`, and `DISABLED PROJECTS`.
+  Discovery is cache-first per owner and read-only — nothing is cloned, created, or
+  registered — so agents may call it freely.
+- `sase project suggest --json` emits the machine-readable candidate document
+  (`schema_version`, per-provider `owners`, `groups`, and `hidden` counts, plus
+  `search_only` rows with `--all`). Prefer it when selecting a repository to add
+  programmatically.
+
+## Add An Existing Repository
+
+- Preview registration with `sase project add REF --check`. The check is read-only and
+  reports identity allocation, checkout state, setup, blockers, and the apply argv.
+- Apply with `sase project add REF --yes`, or confirm the plan in a terminal. New
+  projects are enabled by default, and repeating the same command resumes an interrupted
+  operation.
+- Agents may preview and add with automatic setup disabled. Omit `--setup`; if human
+  setup is needed, propose the exact `sase project add REF --setup --yes` command
+  through `/sase_gate`.
+- Human setup can mark the repository managed, commit the marker, and push the default
+  branch. Afterward, a terminal may offer `sase init -p KEY`; sidecar creation still
+  requires its own confirmation.
 
 ## Manage Projects
 

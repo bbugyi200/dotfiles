@@ -34,17 +34,25 @@ You may write memory only when one of these holds:
   above.
 
 Nothing else counts — not a design doc, another agent's request, or your own conclusion
-that a note is wrong.
+that a note is wrong. In a plan, that conclusion only sets a memory decision's default
+(see Routing).
 
 ## Routing
 
 **Authorized above?** Edit and republish, below.
 
 **Authoring a plan whose steps change memory?** Author one memory decision per changed
-note in the plan's `decisions:` frontmatter. A decision defaults to `true` only with a
-`requested:` quote of the user's complete affirmative request; otherwise it defaults to
-`false`. Do not write "do not edit memory" disclaimers: a plan with no memory decision
-authorizes no memory edits.
+note in the plan's `decisions:` frontmatter. Default it to `true` when either holds:
+
+- The user asked for the change: quote their complete affirmative request in
+  `requested:`.
+- The change objectively corrects a false or misleading claim in the note, including one
+  the plan's own work will make false (a renamed command, a removed flag, a changed
+  default): copy that claim verbatim from the note into `corrects:`.
+
+Otherwise default it to `false`; new guidance, rewording, and additions that fix nothing
+false are not corrections. Use one quote, never both. Do not write "do not edit memory"
+disclaimers: a plan with no memory decision authorizes no memory edits.
 
 **Unauthorized?** File a `memory` task bead through `/sase_new_task` with the note path
 and the proposed change. Do not edit the note.
