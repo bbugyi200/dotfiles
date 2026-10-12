@@ -13,7 +13,6 @@
 *.o
 *.out
 *.pyc
-*.svg
 *.swp
 *.tar
 *~
