@@ -8,9 +8,9 @@
 
   <key>ProgramArguments</key>
   <array>
-    <string>/Users/bbugyi/.cargo/bin/bob</string>
-    <string>vault-sync</string>
-    <string>-q</string>
+    <string>/bin/sh</string>
+    <string>-c</string>
+    <string>exec /Users/bbugyi/.cargo/bin/bob vault-sync -q</string>
   </array>
 
   <key>WorkingDirectory</key>
