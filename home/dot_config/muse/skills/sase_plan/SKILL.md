@@ -54,12 +54,14 @@ SASE derives your plan's links from the artifacts you read this turn; use
    ```
 
    Use readable ids. Phrase `ask` as a question where yes means do the work. State
-   consequences in choice labels. Add a one-line `why` for the default. Order decisions
-   by importance with memory decisions last. If the planned work would leave a memory
-   note stating something false, plan that correction too, under a memory decision
-   authored with your `/sase_memory_write` skill. Add `> [!decision] <id> = <key>`
-   callouts when branches differ by more than a sentence. Inside an epic phase, do not
-   re-ask the epic's DECISIONS; `sase bead read` shows them as final.
+   consequences in choice labels. Do not restate the choice key, or a `Yes:`/`No:`
+   prefix, at the start of its label; the label states the consequence. Add a one-line
+   `why` for the default. Order decisions by importance with memory decisions last. If
+   the planned work would leave a memory note stating something false, plan that
+   correction too, under a memory decision authored with your `/sase_memory_write`
+   skill. Add `> [!decision] <id> = <key>` callouts when branches differ by more than a
+   sentence. Inside an epic phase, do not re-ask the epic's DECISIONS; `sase bead read`
+   shows them as final.
 
 5. **Validate (with `--explain`), edit, and revalidate (without `--explain`)**:
 
