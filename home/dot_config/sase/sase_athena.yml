@@ -92,9 +92,11 @@ axe:
         Runs every five minutes. The single job owns its own actstat config so unrelated orgs are never swept,
         classifies high-cadence repos from terminal job evidence instead of blanket in-flight state, and collapses
         concurrent failing-job incidents into one SASE notification that quietly +1s as the announced repo set
-        changes. Its only GitHub mutation is a guarded merge for an eligible release-please PR when live mode and
-        `merge_enabled` are both explicit. It never creates gates, launch requests, repair agents, or Axe proposals,
-        and every notification links to the combined CI WATCH report when the report publishes successfully.
+        changes. Its GitHub mutations are a guarded merge for an eligible release-please PR when live mode and
+        `merge_enabled` are both explicit, and a guarded `gh workflow run` of each repo's `heavy_workflows` when
+        `heavy_dispatch_every_hours` is set and the newest run is stale with none in flight. It never creates gates,
+        launch requests, repair agents, or Axe proposals, and every notification links to the combined CI WATCH
+        report when the report publishes successfully.
       interval: 300
       job_timeout: "120s"
       jobs:
@@ -112,7 +114,7 @@ axe:
             again. Green branches with fully green release-please PRs merge deterministically in dependency order,
             capped at one merge per tick. Repos with no Actions report no_ci, while unknown, pending, stale, or
             malformed evidence fails closed. The job may only call actstat, bounded GitHub reads, guarded
-            `gh pr merge`, and `sase notify create`/`sase notify +1`.
+            `gh pr merge`, guarded `gh workflow run` for stale heavy workflows, and `sase notify create`/`sase notify +1`.
           env:
             ACTSTAT_CONFIG: /home/bryan/.config/sase/actstat-ci-watch.yml
             # gh 2.98+ colorizes JSON even on pipes when CLICOLOR=1; force
@@ -153,6 +155,8 @@ axe:
               sase-org/sase: 6
               sase-org/sase-github: 6
               sase-org/sase-telegram: 6
+            heavy_dispatch_every_hours:
+              sase-org/sase: 2
 dispatch:
   machines:
     apollo:
