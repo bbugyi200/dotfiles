@@ -96,3 +96,6 @@ plan:
   strict: false # refuse #NAME captures that would create a theme past max_themes
   exempt: [GTD] # open entries that never count as themes
   inventory_labels: [LATER, MISC, NEW FEATURES] # open names that are storage, not themes
+
+stats:
+  bob_path: ~/.local/bin/bob
