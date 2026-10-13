@@ -98,4 +98,4 @@ plan:
   inventory_labels: [LATER, MISC, NEW FEATURES] # open names that are storage, not themes
 
 stats:
-  bob_path: ~/.local/bin/bob
+  bob_path: ~/.cargo/bin/bob
