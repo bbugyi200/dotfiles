@@ -1,0 +1,100 @@
+{{- if ne .chezmoi.os "darwin" -}}
+#!/bin/bash
+
+# Install / update gog on Linux machines weekly (WEEK#{{ output "date" "+%V" | trim }})
+
+source ~/.local/share/chezmoi/lib/chezmoi_utils.sh
+
+readonly GOG_VERSION=0.44.0
+readonly GOG_SHA256=9e40b7e51be9162e5ab92d255376257e4d594e9e64dc360fffccd85ba4e1c0c0
+readonly GOG_BIN="$HOME"/.local/bin/gog
+
+function current_gog_version() {
+  if [[ ! -x "$GOG_BIN" ]]; then
+    printf '%s\n' "NONE"
+    return 0
+  fi
+
+  local raw
+  raw="$("$GOG_BIN" --version 2>/dev/null | awk '{print $1; exit}')"
+  raw="${raw#v}"
+  if [[ -z "$raw" ]]; then
+    printf '%s\n' "NONE"
+    return 0
+  fi
+  printf '%s\n' "$raw"
+}
+
+function log_shadowed_gog() {
+  if [[ -e "$HOME"/go/bin/gog ]]; then
+    chez::log "$HOME/go/bin/gog shadows ~/bin/gog and drops GOG_KEYRING_PASSWORD"
+  fi
+}
+
+function gog_archive_member() {
+  local tarball="$1"
+  local path base
+  while IFS= read -r path; do
+    [[ -z "$path" || "$path" == */ ]] && continue
+    base="${path##*/}"
+    if [[ "$base" == "gog" ]]; then
+      printf '%s\n' "$path"
+      return 0
+    fi
+  done < <(tar tzf "$tarball")
+  return 1
+}
+
+function install_gog() {
+  local arch
+  arch="$(uname -m)"
+  if [[ "$arch" != "x86_64" ]]; then
+    chez::log "UNSUPPORTED ARCHITECTURE FOR GOG INSTALL: %s (linux_amd64 only)" "$arch"
+    return 1
+  fi
+
+  local current_version
+  current_version="$(current_gog_version)"
+  if [[ "$current_version" == "$GOG_VERSION" ]]; then
+    chez::log "GOG VERSION ALREADY INSTALLED: %s" "$GOG_VERSION"
+    log_shadowed_gog
+    return 0
+  fi
+
+  local build_dir
+  build_dir="$(chez::build_dir_root)"/gog
+  rm -rf "$build_dir"
+  mkdir -p "$build_dir"
+  pushd "$build_dir" &>/dev/null || return 1
+
+  local rc=0
+  local tarball="gogcli_${GOG_VERSION}_linux_amd64.tar.gz"
+  local member
+  chez::log "INSTALLING GOG VERSION %s (was %s)" "$GOG_VERSION" "$current_version"
+  curl -fLo "$tarball" "https://github.com/openclaw/gogcli/releases/download/v${GOG_VERSION}/${tarball}" &&
+    printf '%s  %s\n' "$GOG_SHA256" "$tarball" | sha256sum -c - &&
+    member="$(gog_archive_member "$tarball")" &&
+    tar xzf "$tarball" "$member" &&
+    install -D -m 755 "${member#./}" "$GOG_BIN" || rc=1
+
+  popd &>/dev/null || return 1
+  if [[ "$rc" -ne 0 ]]; then
+    return "$rc"
+  fi
+
+  local installed_version
+  installed_version="$(current_gog_version)"
+  if [[ "$installed_version" != "$GOG_VERSION" ]]; then
+    chez::log "INSTALLED GOG VERSION MISMATCH: expected %s, got %s" "$GOG_VERSION" "$installed_version"
+    return 1
+  fi
+
+  log_shadowed_gog
+  return 0
+}
+
+install_gog
+chez::exit_install "$?"
+
+# vim: ft=bash
+{{- end -}}
