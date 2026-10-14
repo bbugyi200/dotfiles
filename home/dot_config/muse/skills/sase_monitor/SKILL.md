@@ -163,8 +163,9 @@ sase monitor start \
 
 ## Useful Flags
 
-- `--cwd DIR` runs the command from a specific directory. The default is the agent's
-  workspace when SASE can resolve it, otherwise the current directory.
+- `--cwd DIR` runs the command from a specific directory. The default is the current
+  directory when it is inside a repo opened with `sase repo open`, else the agent's
+  workspace, else the current directory.
 - `-p, --profile verify` supplies `TESTING` / `TESTED` labels and `--next-output auto`
   for verification commands. It does not authorize host completion by itself.
 - `--agent NAME` targets a specific agent. Inside an agent, the current agent is the
