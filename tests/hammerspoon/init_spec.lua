@@ -589,7 +589,7 @@ describe("Hammerspoon init", function()
 		assert.not_equals(old_debounce, runtime.vaultChangeDebounce)
 	end)
 
-	it("delivers a named active payload with full context and keeps --show-stale", function()
+	it("delivers a named active payload with full context and keeps --show-stale --worked", function()
 		local restore_clock = freeze_clock_at(today_at(9, 50))
 		local ok, error_message, env = load_init_with({
 			task_completion = {
@@ -612,6 +612,7 @@ describe("Hammerspoon init", function()
 
 		assert.is_true(#env.tasks >= 1)
 		assert.is_true(task_command_text(env.tasks[1]):find("--show-stale", 1, true) ~= nil)
+		assert.is_true(task_command_text(env.tasks[1]):find("--worked", 1, true) ~= nil)
 
 		local title = title_text(runtime.menu.title)
 		assert.is_true(title:find("🍅", 1, true) ~= nil)
@@ -627,6 +628,72 @@ describe("Hammerspoon init", function()
 		assert.equals(runtime.state.rawOutput, menu_items(runtime.menu)[2].title)
 		assert.is_true(menu_items(runtime.menu)[3].title:find("Last sync", 1, true) ~= nil)
 		assert.is_not_nil(menu_refresh_fn(runtime.menu))
+	end)
+
+	it("shows worked totals on idle syncs and preserves the reminder anchor", function()
+		local restore_clock, fixed = freeze_clock()
+		local worked_output = "No current Pomodoro · 1h35m worked today"
+		local ok, error_message, env = load_init_with({
+			task_completion = { exit_code = 0, stdout = "[WORKED 95m]\n", stderr = "" },
+		})
+		assert.is_true(ok, error_message)
+
+		local runtime = _G.BobPomodoroCountdown
+		assert.equals("missing", runtime.state.status)
+		assert.equals(95, runtime.state.workedMinutes)
+		assert.equals("\194\1601h35m\194\160", title_text(runtime.menu.title))
+		assert.equals(worked_output, runtime.menu.tooltip)
+		assert.equals(worked_output, menu_items(runtime.menu)[1].title)
+		assert.is_true(menu_items(runtime.menu)[2].title:find("Next reminder at", 1, true) ~= nil)
+		assert.is_not_nil(menu_refresh_fn(runtime.menu))
+		assert.is_true(task_command_text(env.tasks[1]):find("--show-stale", 1, true) ~= nil)
+		assert.is_true(task_command_text(env.tasks[1]):find("--worked", 1, true) ~= nil)
+
+		local reminder_anchor = runtime.state.missingShownEpoch
+		runtime.state.missingShownEpoch = fixed - 60
+		runtime.tickTimer.callback()
+		assert.equals("\194\1601h35m φ 1m\194\160", title_text(env.menu_title_calls[#env.menu_title_calls].title))
+
+		runtime.state.missingShownEpoch = reminder_anchor
+		env.task_completion = { exit_code = 0, stdout = "[WORKED 120m]", stderr = "" }
+		runtime.syncTimer.callback()
+		restore_clock()
+		assert.equals(reminder_anchor, runtime.state.missingShownEpoch)
+		assert.equals(120, runtime.state.workedMinutes)
+		assert.equals("\194\1602h0m\194\160", title_text(runtime.menu.title))
+		assert.equals("No current Pomodoro · 2h0m worked today", runtime.menu.tooltip)
+	end)
+
+	it("clears active context when worked output replaces the current session", function()
+		local restore_clock = freeze_clock_at(today_at(9, 50))
+		local ok, error_message, env = load_init_with({
+			task_completion = {
+				exit_code = 0,
+				stdout = "[<13m] 0950-1015 — DEEP WORK",
+				stderr = "",
+			},
+		})
+		assert.is_true(ok, error_message)
+
+		local runtime = _G.BobPomodoroCountdown
+		env.task_completion = { exit_code = 0, stdout = "[WORKED 25m]", stderr = "" }
+		runtime.syncTimer.callback()
+		restore_clock()
+
+		assert.equals("missing", runtime.state.status)
+		assert.is_nil(runtime.state.fullTheme)
+		assert.is_nil(runtime.state.stopTime)
+		assert.is_nil(runtime.state.duration)
+		assert.equals("\194\1600h25m\194\160", title_text(runtime.menu.title))
+	end)
+
+	it("hides the menu when the worked line is malformed", function()
+		local ok, error_message = load_init_with({
+			task_completion = { exit_code = 0, stdout = "[WORKED xm]", stderr = "" },
+		})
+		assert.is_true(ok, error_message)
+		assert.is_nil(_G.BobPomodoroCountdown.state)
+		assert.is_true(_G.BobPomodoroCountdown.menu.removed)
 	end)
 
 	it("renders the same state without the stop before the end and with it after", function()

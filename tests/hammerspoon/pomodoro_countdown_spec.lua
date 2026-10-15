@@ -64,6 +64,43 @@ local function segment_roles(segments)
 end
 
 describe("Hammerspoon Pomodoro countdown presentation", function()
+	it("formats worked totals without padding the minutes", function()
+		for _, case in ipairs({
+			{ 0, "0h0m" },
+			{ 5, "0h5m" },
+			{ 59, "0h59m" },
+			{ 60, "1h0m" },
+			{ 95, "1h35m" },
+			{ 95.9, "1h35m" },
+			{ 605, "10h5m" },
+		}) do
+			assert.equals(case[2], countdown.format_worked(case[1]))
+		end
+		assert.is_nil(countdown.format_worked(nil))
+		for _, minutes in ipairs({ -1, 0 / 0, math.huge }) do
+			assert.is_nil(countdown.format_worked(minutes))
+		end
+	end)
+
+	it("uses worked totals in the idle label and Fibonacci reminder", function()
+		local resting = countdown.presentation(nil, false, { workedMinutes = 95 })
+		assert.equals("1h35m", resting.title)
+		assert.equals("1h35m", resting.status)
+		assert.equals("missing", resting.segments[1].role)
+		assert.equals("missing", resting.appearance)
+		assert.equals(95, resting.workedMinutes)
+
+		local flashing = countdown.presentation(nil, true, {
+			workedMinutes = 95,
+			missingShownSeconds = 60,
+		})
+		assert.equals("1h35m φ 1m", flashing.title)
+		assert.equals("missing_flash", flashing.appearance)
+		assert.are.same({ "missing", "phi", "waited" }, segment_roles(flashing.segments))
+		assert.equals(95, flashing.workedMinutes)
+		assert_presentation(nil, false, nil, "NO POMODORO", "missing")
+	end)
+
 	it("formats running countdowns with theme, duration, tomato, and status", function()
 		assert_presentation(754, false, CONTEXT, "DEEP WORK (50m) · 🍅 12:34", "normal")
 		assert_presentation(601, false, CONTEXT, "DEEP WORK (50m) · 🍅 10:01", "normal")

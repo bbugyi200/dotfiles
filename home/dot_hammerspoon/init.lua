@@ -180,6 +180,11 @@ local function parseBobPomodoroOutput(rawOutput)
 	}
 end
 
+local function parseBobPomodoroWorked(rawOutput)
+	local minutes = trimText(rawOutput):match("^%[WORKED (%d+)m%]$")
+	return minutes and tonumber(minutes) or nil
+end
+
 local function todayEndEpoch(endHour, endMinute)
 	local today = os.date("*t")
 	today.hour = endHour
@@ -578,8 +583,11 @@ local function renderBobPomodoroMenu()
 			duration = state.duration,
 			durationMinutes = state.durationMinutes,
 		}
-	elseif type(state.missingShownEpoch) == "number" then
-		context = { missingShownSeconds = os.time() - state.missingShownEpoch }
+	else
+		context = { workedMinutes = state.workedMinutes }
+		if type(state.missingShownEpoch) == "number" then
+			context.missingShownSeconds = os.time() - state.missingShownEpoch
+		end
 	end
 
 	local presentation = PomodoroCountdown.presentation(remaining, bobPomodoroFlashOn, context)
@@ -593,7 +601,7 @@ export PATH
 if [ -z "${DATE+x}" ] && command -v gdate >/dev/null 2>&1; then
 	export DATE=gdate
 fi
-exec bob pomodoro --show-stale
+exec bob pomodoro --show-stale --worked
 ]]
 
 syncBobPomodoro = function()
@@ -630,6 +638,27 @@ syncBobPomodoro = function()
 					status = "missing",
 					lastSyncEpoch = now,
 					missingShownEpoch = bobPomodoroMissingShownEpoch(previousState, now),
+				}
+				updateBobPomodoroTooltip()
+				renderBobPomodoroMenu()
+				if followUpRequested then
+					syncBobPomodoro()
+				end
+				return
+			end
+
+			local workedMinutes = parseBobPomodoroWorked(output)
+			if workedMinutes ~= nil then
+				local now = os.time()
+				local previousState = bobPomodoroRuntime.state
+				bobPomodoroRuntime.state = {
+					rawOutput = "No current Pomodoro · "
+						.. PomodoroCountdown.format_worked(workedMinutes)
+						.. " worked today",
+					status = "missing",
+					lastSyncEpoch = now,
+					missingShownEpoch = bobPomodoroMissingShownEpoch(previousState, now),
+					workedMinutes = workedMinutes,
 				}
 				updateBobPomodoroTooltip()
 				renderBobPomodoroMenu()

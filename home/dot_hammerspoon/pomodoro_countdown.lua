@@ -145,6 +145,21 @@ function M.format_duration(minutes)
 	return string.format("%dm", floored)
 end
 
+function M.format_worked(minutes)
+	if not is_finite_number(minutes) or minutes < 0 then
+		return nil
+	end
+	local whole_minutes = math.floor(minutes)
+	local hours = math.floor(whole_minutes / 60)
+	local minute_part = whole_minutes % 60
+	return string.format("%dh%dm", hours, minute_part)
+end
+
+function M.idle_title(context)
+	local worked_minutes = type(context) == "table" and context.workedMinutes or nil
+	return M.format_worked(worked_minutes) or M.NO_POMODORO_TITLE
+end
+
 function M.missing_reminder_step(shown_seconds)
 	if not is_finite_number(shown_seconds) or shown_seconds < 0 then
 		return nil
@@ -195,14 +210,19 @@ end
 function M.presentation(remaining_seconds, flash_on, context)
 	if remaining_seconds == nil then
 		local shown_seconds = nil
+		local worked_minutes = nil
 		if type(context) == "table" then
 			shown_seconds = context.missingShownSeconds
+			if is_finite_number(context.workedMinutes) and context.workedMinutes >= 0 then
+				worked_minutes = math.floor(context.workedMinutes)
+			end
 		end
+		local idle_title = M.idle_title(context)
 		local step = M.missing_reminder_step(shown_seconds)
 		if step ~= nil and step.active then
 			local waited = M.format_duration(step.waitMinutes)
 			local segments = {
-				{ text = M.NO_POMODORO_TITLE, role = "missing" },
+				{ text = idle_title, role = "missing" },
 				{ text = " " .. M.PHI .. " ", role = "phi" },
 				{ text = waited, role = "waited" },
 			}
@@ -213,20 +233,22 @@ function M.presentation(remaining_seconds, flash_on, context)
 			return {
 				title = table.concat(parts),
 				appearance = flash_on and "missing_flash" or "missing",
-				status = M.NO_POMODORO_TITLE,
+				status = idle_title,
 				duration = nil,
 				waitedMinutes = step.waitMinutes,
+				workedMinutes = worked_minutes,
 				segments = segments,
 			}
 		end
 		return {
-			title = M.NO_POMODORO_TITLE,
+			title = idle_title,
 			appearance = "missing",
-			status = M.NO_POMODORO_TITLE,
+			status = idle_title,
 			duration = nil,
 			waitedMinutes = nil,
+			workedMinutes = worked_minutes,
 			segments = {
-				{ text = M.NO_POMODORO_TITLE, role = "missing" },
+				{ text = idle_title, role = "missing" },
 			},
 		}
 	end

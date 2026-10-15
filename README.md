@@ -61,8 +61,8 @@ convention.
 | Ten minutes overdue and later       | `DEEP WORK (50m) → 10:15 · 🍅 OVERDUE` |
 | Session without a name              | `UNTITLED (50m) · 🍅 12:34`            |
 | Duration unknown (degenerate range) | `DEEP WORK → 10:15 · 🍅 12:34`         |
-| No current session                  | `NO POMODORO`                          |
-| No session, reminder step           | `NO POMODORO φ 5m`                     |
+| No current session                  | `1h35m`                                |
+| No session, reminder step           | `1h35m φ 5m`                           |
 
 The duration is the scheduled session length in whole minutes (`5m`, `25m`, `50m`,
 `90m`, `120m`), derived from the ledger range with midnight wrap (`2330-0020` → `50m`).
@@ -82,40 +82,47 @@ monospaced face. For the rest of each minute (from `:11`) it holds steady red. T
 carries one no-break space on each side in every overdue frame, the same padding as the
 `OVERDUE` badge, so the item keeps one width from `+00:01` through `+09:59` and never
 shifts when a pulse starts or stops. At and after ten minutes overdue, the status is
-`OVERDUE` and that badge flashes between red text and white on the same red.
-`NO POMODORO` is green (`#30d158`) with no tomato. Between each 10-second flash step it
+`OVERDUE` and that badge flashes between red text and white on the same red. Without a
+session, the item shows today's worked total as `<H>h<M>m`, supplied by bob's
+`[WORKED <minutes>m]` line from today's closed Pomodoros. The label is green (`#30d158`)
+with no tomato; for example, `95m` is `1h35m`. Between each 10-second flash step it
 rests for a Fibonacci number of minutes — 1m, 1m, 2m, 3m, 5m, 8m, … uncapped — so the
 steps fall at 1:00, 2:10, 4:20, 7:30, 12:40, 20:50, … counted from when it appeared
 while it stays up: bold green text alternates at 1 Hz with a filled pill of dark
 forest-green `#062E14` on `#30d158`, the same cadence as `OVERDUE`. Each step names the
-rest it just took as `φ Nm` (`NO POMODORO φ 5m`), shown through the whole step in both
-frames and gone between steps. The whole label is one pill with a regular-weight `φ`
-separator, and the item width changes only at step boundaries. The sequence re-anchors
-when the label appears (after a session ends, after a command or parse failure hides the
-item, or after a Hammerspoon reload) and when the Mac wakes or unlocks while it is
-showing, always restarting at `φ 1m`. Both idle frames pad the pill with a no-break
-space at its outer edges so the item never changes width mid-step. Theme, duration,
-separator, arrow, stop time, and the tomato stay in the ordinary foreground. A mid-tone
-wallpaper directly under a transparent menu bar can undercut any fixed color, including
-the system's own labels; turning on Accessibility › Display › Reduce transparency
-restores a uniform surface.
+rest it just took as `φ Nm` (`1h35m φ 5m`), shown through the whole step in both frames
+and gone between steps. The whole label is one pill with a regular-weight `φ` separator.
+Its width changes at reminder-step boundaries and when today's worked total changes,
+which only happens when the ledger changes. The sequence re-anchors when the label
+appears (after a session ends, after a command or parse failure hides the item, or after
+a Hammerspoon reload) and when the Mac wakes or unlocks while it is showing, always
+restarting at `φ 1m`. Both idle frames pad the pill with a no-break space at its outer
+edges so the item never changes width mid-step. Theme, duration, separator, arrow, stop
+time, and the tomato stay in the ordinary foreground. A mid-tone wallpaper directly
+under a transparent menu bar can undercut any fixed color, including the system's own
+labels; turning on Accessibility › Display › Reduce transparency restores a uniform
+surface.
 
 Long themes are bounded to 24 Unicode code points including the final ellipsis; the full
 theme stays in the tooltip and dropdown. The tooltip leads with `full theme (duration)`
 and `Stops at HH:MM`, and the dropdown first item is `full theme (duration) → HH:MM`;
 without a known duration they stay as `full theme` and `full theme → HH:MM`. The tooltip
 and dropdown carry no tomato and keep the raw `bob pomodoro` line and `Last sync`
-details. Without a session the dropdown also shows a disabled
-`Next reminder at HH:MM · φ Nm` row previewing the next flash step. At and after ten
-minutes overdue, the `OVERDUE` badge flashes between red text and white-on-red; in every
-state only the status run ever flashes, and the theme, duration, arrow, stop time,
-separator, and tomato never do. The menu re-syncs within about a second when today's
-daily note changes on disk (an Obsidian edit, a `bob` command, or a vault-sync pull),
-polls `bob pomodoro --show-stale` every 60 seconds as a safety net (every 15 seconds if
-the file watcher cannot start), refreshes on wake and unlock, offers a manual Refresh
-item, and re-syncs once when crossing zero. An empty result shows `NO POMODORO`; command
-or parse failures hide the item. The dropdown shows a snapshot taken when it opens,
-stays open while the title keeps updating, and shows fresh details when reopened.
+details. Without a session, the dropdown's first row names today's worked total and it
+also shows a disabled `Next reminder at HH:MM · φ Nm` row previewing the next flash
+step. At and after ten minutes overdue, the `OVERDUE` badge flashes between red text and
+white-on-red; in every state only the status run ever flashes, and the theme, duration,
+arrow, stop time, separator, and tomato never do. The menu re-syncs within about a
+second when today's daily note changes on disk (an Obsidian edit, a `bob` command, or a
+vault-sync pull), polls `bob pomodoro --show-stale --worked` every 60 seconds as a
+safety net (every 15 seconds if the file watcher cannot start), refreshes on wake and
+unlock, offers a manual Refresh item, and re-syncs once when crossing zero. A
+`[WORKED <minutes>m]` result shows the worked total, an empty result falls back to
+`NO POMODORO`, and command or parse failures hide the item. The dropdown shows a
+snapshot taken when it opens, stays open while the title keeps updating, and shows fresh
+details when reopened. The Mac's installed `bob` must support `--worked` before this
+config is applied; an older `bob` exits 2 on the unknown option and Hammerspoon hides
+the item.
 
 ## Internet ping menu bar
 
