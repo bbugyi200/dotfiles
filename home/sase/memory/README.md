@@ -92,8 +92,8 @@ strand inherits no `type:` of its own and never inlines into `AGENTS.md`.
 - Type: `core`
 - Parent: `AGENTS.md`
 - Description: No description set.
-- Lines: 65
-- Approx. tokens: 869
+- Lines: 67
+- Approx. tokens: 917
 
 ### `sase/memory/obsidian.md`
 
@@ -118,8 +118,8 @@ strand inherits no `type:` of its own and never inlines into `AGENTS.md`.
 - Core notes: 1
 - Reference notes: 2
 - Web descriptor notes: 0
-- Total lines: 130
-- Total approx. tokens: 1665
+- Total lines: 132
+- Total approx. tokens: 1713
 
 ## Commands
 

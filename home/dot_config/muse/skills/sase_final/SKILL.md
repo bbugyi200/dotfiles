@@ -74,7 +74,8 @@ Use it for final verification so passing work lands with no further turn.
 
    When the assigned bead is done, set `bead_action: "close"` on the primary repository
    decision; use `"keep"` for intermediate work. See "Steps" below and
-   `docs/monitors.md` ("Prepared host completion") for the full wrapper shape.
+   `docs/reference/automation/monitors.md` ("Prepared host completion") for the full
+   wrapper shape.
 
 3. Publish the intent and keep the returned ref:
 
