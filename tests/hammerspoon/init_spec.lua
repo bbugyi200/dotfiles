@@ -630,6 +630,32 @@ describe("Hammerspoon init", function()
 		assert.is_not_nil(menu_refresh_fn(runtime.menu))
 	end)
 
+	it("delivers an unnamed linked-task payload as a derived home title", function()
+		local restore_clock = freeze_clock_at(today_at(9, 0))
+		local ok, error_message, env = load_init_with({
+			task_completion = {
+				exit_code = 0,
+				stdout = "[<13m] 0900-0950 sase",
+				stderr = "",
+			},
+		})
+		assert.is_true(ok, error_message)
+		restore_clock()
+
+		local runtime = _G.BobPomodoroCountdown
+		assert.equals("sase", runtime.state.fullTheme)
+		assert.equals("09:50", runtime.state.stopTime)
+		assert.equals("0900-0950", runtime.state.range)
+		assert.equals("50m", runtime.state.duration)
+
+		local title = title_text(runtime.menu.title)
+		assert.is_true(title:find("🍅", 1, true) ~= nil)
+		assert.is_true(title:find("sase", 1, true) ~= nil)
+		assert.is_true(title:find("(50m)", 1, true) ~= nil)
+		assert.is_nil(title:find("UNTITLED", 1, true))
+		assert.is_true(task_command_text(env.tasks[1]):find("--show-stale", 1, true) ~= nil)
+	end)
+
 	it("shows worked totals on idle syncs and preserves the reminder anchor", function()
 		local restore_clock, fixed = freeze_clock()
 		local worked_output = "No current Pomodoro · 1h35m worked today"

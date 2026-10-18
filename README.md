@@ -60,6 +60,7 @@ convention.
 | Last second before escalation       | `DEEP WORK (50m) → 10:15 · 🍅 +09:59`  |
 | Ten minutes overdue and later       | `DEEP WORK (50m) → 10:15 · 🍅 OVERDUE` |
 | Session without a name              | `UNTITLED (50m) · 🍅 12:34`            |
+| Unnamed session with linked tasks   | `sase (50m) · 🍅 12:34`                |
 | Duration unknown (degenerate range) | `DEEP WORK → 10:15 · 🍅 12:34`         |
 | No current session                  | `1h35m`                                |
 | No session, reminder step           | `1h35m φ 5m`                           |

@@ -690,6 +690,17 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 		)
 	end)
 
+	it("renders a derived lowercase home label from bob pomodoro", function()
+		assert.equals("sase", countdown.normalize_theme("sase"))
+		assert_presentation(
+			754,
+			false,
+			{ theme = "sase", stop = "10:15", duration = "50m" },
+			"sase (50m) · 🍅 12:34",
+			"normal"
+		)
+	end)
+
 	it("keeps short themes complete and bounds long themes to 24 code points", function()
 		assert.equals(24, countdown.MAX_THEME_CODEPOINTS)
 		local exact = string.rep("A", 24)
