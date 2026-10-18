@@ -193,6 +193,8 @@ ace:
       the "$1" tab of the "#[sac]" panel
     saf: |-
       The `$1` sase agent just failed. Is there something that we can/should fix here? #if_so_plan Think hard about this.
+    sas: |-
+      Is the `$1` sase agent stalled? #if_so_plan $2
     sat: |-
       the `$1` sase agent
     sc: |-
