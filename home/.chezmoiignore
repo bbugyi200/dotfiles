@@ -11,6 +11,10 @@ tags
 {{ if ne .chezmoi.hostname "apollo" }}
 .config/sase/sase_apollo.yml
 {{ end }}
+{{ if ne .chezmoi.os "linux" }}
+.config/systemd/user/bob-ref-intake.service
+.config/systemd/user/bob-ref-intake.timer
+{{ end }}
 {{ if ne .chezmoi.hostname "athena" }}
 .cargo/config.toml
 .config/sccache/config

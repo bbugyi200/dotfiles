@@ -1,0 +1,11 @@
+[Unit]
+Description=Drain Bob reference intake every ten minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=10min
+Persistent=true
+Unit=bob-ref-intake.service
+
+[Install]
+WantedBy=timers.target

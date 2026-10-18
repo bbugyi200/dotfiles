@@ -47,7 +47,7 @@ properties:
         max_days: 365
 
 highlights:
-  pre_scan_hook: PATH="$HOME/bin:$PATH" bob_xlib_pull
+  # Each host drains its own xlib/ with bob ref scan --intake-only.
   # `bob ref create --listen` (and `clip --listen`) narrates the target with
   # `sase listen render ...`, which must write MP3 audio to {audio}; bob binds it
   # as the PDF's companion audio. bob passes {target} {pdf} {audio} {title} as

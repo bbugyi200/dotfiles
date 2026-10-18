@@ -1,0 +1,12 @@
+[Unit]
+Description=Drain this host's Bob reference intake queue
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+Environment=HOME=/home/bryan
+Environment=BOB_DIR=/home/bryan/bob
+Environment=PATH=/home/bryan/.cargo/bin:/home/bryan/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/bryan/.cargo/bin/bob ref scan --intake-only
+Nice=10

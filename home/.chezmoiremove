@@ -9,3 +9,4 @@
 .config/muse/skills/bob_dataview
 .config/opencode/skills/bob_dataview
 sase/xprompts
+bin/bob_xlib_pull

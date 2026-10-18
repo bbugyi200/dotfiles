@@ -15,22 +15,32 @@ expand_home() {
 }
 
 bob_dir=$(expand_home "${BOB_DIR:-"$HOME/bob"}")
-highlights_lib_dir=${BOB_HIGHLIGHTS_LIB_DIR:-lib}
+resolve_dir() {
+  configured_dir="$1"
+  case "$configured_dir" in
+  /*)
+    printf '%s\n' "$configured_dir"
+    ;;
+  "~" | "~/"*)
+    expand_home "$configured_dir"
+    ;;
+  *)
+    printf '%s\n' "$bob_dir/$configured_dir"
+    ;;
+  esac
+}
 
-case "$highlights_lib_dir" in
-/*)
-  lib_dir=$highlights_lib_dir
-  ;;
-"~" | "~/"*)
-  lib_dir=$(expand_home "$highlights_lib_dir")
-  ;;
-*)
-  lib_dir=$bob_dir/$highlights_lib_dir
-  ;;
-esac
+lib_dir=$(resolve_dir "${BOB_HIGHLIGHTS_LIB_DIR:-lib}")
+xlib_dir=$(resolve_dir "${BOB_HIGHLIGHTS_XLIB_DIR:-xlib}")
 
-if [ ! -d "$lib_dir" ]; then
-  exit 0
+recent_file=
+if [ -d "$lib_dir" ]; then
+  recent_file=$(find "$lib_dir" -type f -mtime 0 -print | sed -n '1p')
+fi
+
+queued_file=
+if [ -d "$xlib_dir" ]; then
+  queued_file=$(find "$xlib_dir" -type f -print | sed -n '1p')
 fi
 
 pre_scan_hook_configured() {
@@ -66,14 +76,11 @@ pre_scan_hook_configured() {
   ' "$config_file"
 }
 
-if ! pre_scan_hook_configured; then
-  recent_file=$(find "$lib_dir" -type f -mtime 0 -print | sed -n '1p')
-  if [ -z "$recent_file" ]; then
-    exit 0
-  fi
+if ! pre_scan_hook_configured && [ -z "$recent_file" ] && [ -z "$queued_file" ]; then
+  exit 0
 fi
 
-# bob_xlib_pull takes this same lock directory before it runs its own scan.
+# Serialize overlapping scheduled Highlights scans on this host.
 lock_dir=${TMPDIR:-/tmp}/maybe_bob_highlights_sync.lock
 if ! mkdir "$lock_dir" 2>/dev/null; then
   exit 0

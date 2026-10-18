@@ -1,0 +1,9 @@
+{{- if and (eq .chezmoi.os "linux") (or (eq .chezmoi.hostname "athena") (eq .chezmoi.hostname "apollo")) -}}
+#!/bin/sh
+# bob-ref-intake.service: {{ include "dot_config/systemd/user/bob-ref-intake.service" | sha256sum }}
+# bob-ref-intake.timer: {{ include "dot_config/systemd/user/bob-ref-intake.timer" | sha256sum }}
+set -eu
+
+systemctl --user daemon-reload
+systemctl --user enable --now bob-ref-intake.timer
+{{- end }}
