@@ -182,7 +182,7 @@ ace:
     rs: |-
       #research_swarm:: $1
     rsa: |-
-      #research_swarm(gemini=true,grok=true,muse=true,image=true):: $1
+      #research_swarm(gemini=true,grok=true,muse=true,image=true,image_model=gpt-6-astra,codex_model=gpt-6-astra):: $1
     s: |-
       sase
     sa: "sase agent"
