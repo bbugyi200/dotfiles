@@ -3,7 +3,12 @@ local M = {}
 local SETTINGS_KEY = "macscrotLastRegion"
 local MIN_SIZE = 16
 local HANDLE_SIZE = 10
+local HANDLE_HIT_RADIUS = 6
+local DRAG_THRESHOLD = 3
 local CAPTURE_DELAY = 0.08
+local HINT_WIDTH = 360
+local HINT_HEIGHT = 42
+local HINT_TEXT = "Drag: new box · ⌘-drag: move · Corners: resize\nEnter: capture · Esc: cancel"
 
 local activeSession = nil
 local unpackTable = table.unpack or unpack
@@ -168,10 +173,10 @@ local function buildElements(region, screenFrame)
 		labelFrame = floatingFrame(screenFrame, rect.x, bottom + 8, 116, 24)
 	end
 
-	local hintWidth = math.min(348, math.max(1, screenFrame.w - 16))
-	local hintFrame = floatingFrame(screenFrame, rect.x, bottom + 38, hintWidth, 24)
+	local hintWidth = math.min(HINT_WIDTH, math.max(1, screenFrame.w - 16))
+	local hintFrame = floatingFrame(screenFrame, rect.x, bottom + 38, hintWidth, HINT_HEIGHT)
 	if hintFrame.y + hintFrame.h > screenFrame.h - 8 then
-		hintFrame = floatingFrame(screenFrame, rect.x, rect.y - 62, hintWidth, 24)
+		hintFrame = floatingFrame(screenFrame, rect.x, rect.y - (HINT_HEIGHT + 38), hintWidth, HINT_HEIGHT)
 	end
 
 	local handleOffset = HANDLE_SIZE / 2
@@ -258,8 +263,8 @@ local function buildElements(region, screenFrame)
 		{
 			type = "text",
 			action = "fill",
-			frame = { x = hintFrame.x + 8, y = hintFrame.y + 4, w = hintFrame.w - 16, h = hintFrame.h },
-			text = "Drag to adjust | Enter to capture | Esc to cancel",
+			frame = { x = hintFrame.x + 8, y = hintFrame.y + 5, w = hintFrame.w - 16, h = hintFrame.h - 5 },
+			text = HINT_TEXT,
 			textColor = textColor,
 			textFont = ".AppleSystemUIFont",
 			textSize = 12,
@@ -274,15 +279,15 @@ local function pointInRect(point, rect)
 end
 
 local function handleAt(point, rect)
-	local half = HANDLE_SIZE
+	local half = HANDLE_HIT_RADIUS
 	local handles = {
 		nw = { x = rect.x - half, y = rect.y - half, w = half * 2, h = half * 2 },
 		ne = { x = rect.x + rect.w - half, y = rect.y - half, w = half * 2, h = half * 2 },
 		sw = { x = rect.x - half, y = rect.y + rect.h - half, w = half * 2, h = half * 2 },
 		se = { x = rect.x + rect.w - half, y = rect.y + rect.h - half, w = half * 2, h = half * 2 },
 	}
-	for name, handle in pairs(handles) do
-		if pointInRect(point, handle) then
+	for _, name in ipairs({ "nw", "ne", "sw", "se" }) do
+		if pointInRect(point, handles[name]) then
 			return name
 		end
 	end
@@ -395,6 +400,30 @@ function M.pick(onConfirm)
 		region = clampRegionToFrame(nextRegion, screenFrame)
 	end
 
+	local function applyDrag(point)
+		if drag.mode == "move" then
+			local dx = point.x - drag.startPoint.x
+			local dy = point.y - drag.startPoint.y
+			region = clampRegionToFrame({
+				x = drag.startRegion.x + dx,
+				y = drag.startRegion.y + dy,
+				w = drag.startRegion.w,
+				h = drag.startRegion.h,
+			}, screenFrame)
+		elseif drag.mode == "resize" then
+			region = resizeFromHandle(drag.startRegion, drag.handle, point, screenFrame)
+		elseif drag.mode == "new" then
+			local dx = math.abs(point.x - drag.anchor.x)
+			local dy = math.abs(point.y - drag.anchor.y)
+			if dx >= DRAG_THRESHOLD or dy >= DRAG_THRESHOLD then
+				drag.moved = true
+			end
+			if drag.moved then
+				updateNewRegion(drag.anchor, point)
+			end
+		end
+	end
+
 	local eventTypes = hs.eventtap.event.types
 	tap = hs.eventtap
 		.new({
@@ -412,6 +441,9 @@ function M.pick(onConfirm)
 					return true
 				end
 				if code == hs.keycodes.map["return"] or code == hs.keycodes.map.padenter then
+					if drag then
+						return true
+					end
 					finish(region.w >= MIN_SIZE and region.h >= MIN_SIZE)
 					return true
 				end
@@ -425,17 +457,19 @@ function M.pick(onConfirm)
 					return true
 				end
 
+				-- Precedence: off-screen closes; ⌘ moves from anywhere; handle resizes; otherwise draw.
+				local flags = event:getFlags() or {}
 				local handle = handleAt(point, region)
-				if handle then
-					drag = {
-						mode = "resize",
-						handle = handle,
-						startRegion = copyRect(region),
-					}
-				elseif pointInRect(point, region) then
+				if flags.cmd then
 					drag = {
 						mode = "move",
 						startPoint = point,
+						startRegion = copyRect(region),
+					}
+				elseif handle then
+					drag = {
+						mode = "resize",
+						handle = handle,
 						startRegion = copyRect(region),
 					}
 				else
@@ -443,39 +477,33 @@ function M.pick(onConfirm)
 						mode = "new",
 						anchor = point,
 						moved = false,
+						startRegion = copyRect(region),
 					}
-					updateNewRegion(point, point)
-					redraw()
 				end
 				return true
 			end
 
 			if eventType == eventTypes.leftMouseDragged and drag then
-				if drag.mode == "move" then
-					local dx = point.x - drag.startPoint.x
-					local dy = point.y - drag.startPoint.y
-					region = clampRegionToFrame({
-						x = drag.startRegion.x + dx,
-						y = drag.startRegion.y + dy,
-						w = drag.startRegion.w,
-						h = drag.startRegion.h,
-					}, screenFrame)
-				elseif drag.mode == "resize" then
-					region = resizeFromHandle(drag.startRegion, drag.handle, point, screenFrame)
-				elseif drag.mode == "new" then
-					local dx = math.abs(point.x - drag.anchor.x)
-					local dy = math.abs(point.y - drag.anchor.y)
-					drag.moved = drag.moved or dx >= 3 or dy >= 3
-					updateNewRegion(drag.anchor, point)
-				end
+				applyDrag(point)
 				redraw()
 				return true
 			end
 
 			if eventType == eventTypes.leftMouseUp then
-				if drag and drag.mode == "new" and not drag.moved then
-					finish(false)
+				if not drag then
+					return true
 				end
+				applyDrag(point)
+				if drag.mode == "new" then
+					local clampedX = clamp(point.x, screenFrame.x, screenFrame.x + screenFrame.w)
+					local clampedY = clamp(point.y, screenFrame.y, screenFrame.y + screenFrame.h)
+					local extentX = math.abs(clampedX - drag.anchor.x)
+					local extentY = math.abs(clampedY - drag.anchor.y)
+					if not drag.moved or (extentX < MIN_SIZE and extentY < MIN_SIZE) then
+						region = copyRect(drag.startRegion)
+					end
+				end
+				redraw()
 				drag = nil
 				return true
 			end
