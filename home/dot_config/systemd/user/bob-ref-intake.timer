@@ -1,9 +1,9 @@
 [Unit]
-Description=Drain Bob reference intake every ten minutes
+Description=Drain Bob reference intake every two minutes
 
 [Timer]
 OnBootSec=2min
-OnUnitActiveSec=10min
+OnUnitActiveSec=2min
 Persistent=true
 Unit=bob-ref-intake.service
 

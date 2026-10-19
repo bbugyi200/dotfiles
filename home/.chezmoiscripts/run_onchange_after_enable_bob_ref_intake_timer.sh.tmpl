@@ -6,4 +6,5 @@ set -eu
 
 systemctl --user daemon-reload
 systemctl --user enable --now bob-ref-intake.timer
+systemctl --user restart bob-ref-intake.timer
 {{- end }}
