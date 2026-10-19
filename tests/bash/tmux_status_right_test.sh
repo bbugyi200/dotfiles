@@ -22,6 +22,7 @@ THEME_CONF="${PWD}/home/dot_config/tmux/theme.conf"
 
 DEFAULT_POMODORO='[<7m] 1545-1610 — SASE V18 · plan 2/3 · 6/10 | '
 LONG_POMODORO='[<7m] 1545-1610 — Refactor the capture grammar for the Bob Mac Capture thin client · plan 2/3 · 6/10 | '
+UNNAMED_DERIVED_POMODORO='[<13m] 0950-1015 sase | '
 
 function set_up() {
   TEST_TMP="$(mktemp -d)"
@@ -182,5 +183,16 @@ function test_wide_terminal_fits_a_long_pomodoro() {
   line="$(render_status_line 285)"
 
   assert_contains "[<7m]" "${line}"
+  assert_ends_with "cpu 40% mem 65%" "${line}"
+}
+
+function test_wide_terminal_shows_unnamed_derived_label() {
+  require_tmux || return 0
+  FAKE_POMODORO="${UNNAMED_DERIVED_POMODORO}"
+
+  local line
+  line="$(render_status_line 285)"
+
+  assert_contains "[<13m] 0950-1015 sase" "${line}"
   assert_ends_with "cpu 40% mem 65%" "${line}"
 }
