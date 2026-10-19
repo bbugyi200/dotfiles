@@ -1,6 +1,7 @@
 local PICKER_PATH = "home/dot_hammerspoon/screenshot_region.lua"
 local SETTINGS_KEY = "macscrotLastRegion"
-local HINT_TEXT = "Drag: new box · ⌘-drag: move · Corners: resize\nEnter: capture · Esc: cancel"
+local HINT_TEXT =
+	"Drag: new box · ⌘-drag: move · Corners: resize\nEnter: capture · ⌘Enter: capture + save default · Esc: cancel"
 
 local function copy_rect(rect)
 	return { x = rect.x, y = rect.y, w = rect.w, h = rect.h }
@@ -41,6 +42,7 @@ local function make_hs(env)
 			return value
 		end,
 		set = function(key, value)
+			env.settingsWrites = env.settingsWrites + 1
 			if type(value) == "table" then
 				env.settings[key] = copy_rect(value)
 			else
@@ -172,6 +174,7 @@ local function setup(options)
 		previous_hs = _G.hs,
 		frame = copy_rect(frame),
 		settings = {},
+		settingsWrites = 0,
 		confirmed = {},
 		doAfterCalls = {},
 		notifications = {},
@@ -215,8 +218,8 @@ local function release(env, x, y, flags)
 	fire(env, event_types().leftMouseUp, x, y, flags, nil)
 end
 
-local function key(env, name)
-	fire(env, event_types().keyDown, 0, 0, {}, _G.hs.keycodes.map[name])
+local function key(env, name, flags)
+	fire(env, event_types().keyDown, 0, 0, flags or {}, _G.hs.keycodes.map[name])
 end
 
 local function latest_elements(env)
@@ -280,7 +283,8 @@ describe("screenshot region picker draw-first gestures", function()
 		release(env, 350, 280)
 		key(env, "return")
 		assert_region(env.confirmed[1], 200, 200, 150, 80)
-		assert_region(env.settings[SETTINGS_KEY], 200, 200, 150, 80)
+		assert_region(env.settings[SETTINGS_KEY], 100, 100, 600, 400)
+		assert.equals(0, env.settingsWrites)
 		assert.equals(0.08, env.doAfterCalls[1].delay)
 	end)
 
@@ -291,7 +295,8 @@ describe("screenshot region picker draw-first gestures", function()
 		release(env, 200, 200)
 		key(env, "return")
 		assert_region(env.confirmed[1], 200, 200, 150, 80)
-		assert_region(env.settings[SETTINGS_KEY], 200, 200, 150, 80)
+		assert_region(env.settings[SETTINGS_KEY], 100, 100, 600, 400)
+		assert.equals(0, env.settingsWrites)
 	end)
 
 	it("3. plain drag outside the box draws a new box", function()
@@ -526,7 +531,7 @@ describe("screenshot region picker draw-first gestures", function()
 		assert_region(env.confirmed[1], -1440, 0, 400, 300)
 	end)
 
-	it("22. the hint shows both lines on a 42x360 background", function()
+	it("22. the hint shows both lines on a 42x420 background", function()
 		local env = open()
 		assert.equals(HINT_TEXT, hint_text(env))
 		local elements = latest_elements(env)
@@ -539,7 +544,100 @@ describe("screenshot region picker draw-first gestures", function()
 		assert.is_not_nil(hintIndex)
 		local background = elements[hintIndex - 1]
 		assert.equals("rectangle", background.type)
-		assert.equals(360, background.frame.w)
+		assert.equals(420, background.frame.w)
 		assert.equals(42, background.frame.h)
+	end)
+
+	it("23. Enter captures without saving", function()
+		local env = open()
+		press(env, 200, 200)
+		drag(env, 350, 280)
+		release(env, 350, 280)
+		key(env, "return")
+		assert_region(env.confirmed[1], 200, 200, 150, 80)
+		assert.equals(0.08, env.doAfterCalls[1].delay)
+		assert.equals(0, env.settingsWrites)
+		assert_region(env.settings[SETTINGS_KEY], 100, 100, 600, 400)
+		env.repick()
+		assert_region(rendered_region(env), 100, 100, 600, 400)
+	end)
+
+	it("24. ⌘Enter captures and saves", function()
+		local env = open()
+		press(env, 200, 200)
+		drag(env, 350, 280)
+		release(env, 350, 280)
+		key(env, "return", { cmd = true })
+		assert_region(env.confirmed[1], 200, 200, 150, 80)
+		assert.equals(0.08, env.doAfterCalls[1].delay)
+		assert.equals(1, env.settingsWrites)
+		assert_region(env.settings[SETTINGS_KEY], 200, 200, 150, 80)
+		env.repick()
+		assert_region(rendered_region(env), 200, 200, 150, 80)
+		key(env, "return")
+		assert_region(env.confirmed[2], 200, 200, 150, 80)
+		assert.equals(1, env.settingsWrites)
+	end)
+
+	it("25. ⌘ with the keypad Enter also saves", function()
+		local env = open()
+		press(env, 300, 300)
+		drag(env, 500, 450)
+		release(env, 500, 450)
+		key(env, "padenter", { cmd = true })
+		assert_region(env.settings[SETTINGS_KEY], 300, 300, 200, 150)
+	end)
+
+	it("26. only ⌘ matters", function()
+		local env = open()
+		press(env, 200, 200)
+		drag(env, 350, 280)
+		release(env, 350, 280)
+		key(env, "return", { shift = true })
+		assert_region(env.confirmed[1], 200, 200, 150, 80)
+		assert.equals(0, env.settingsWrites)
+		env.repick()
+		press(env, 200, 200)
+		drag(env, 350, 280)
+		release(env, 350, 280)
+		key(env, "return", { cmd = true, shift = true })
+		assert_region(env.confirmed[2], 200, 200, 150, 80)
+		assert_region(env.settings[SETTINGS_KEY], 200, 200, 150, 80)
+		assert.equals(1, env.settingsWrites)
+	end)
+
+	it("27. ⌘Enter mid-drag does nothing", function()
+		local env = open()
+		press(env, 200, 200)
+		drag(env, 350, 280)
+		key(env, "return", { cmd = true })
+		assert_picker_open(env)
+		assert.equals(0, env.settingsWrites)
+		release(env, 350, 280)
+		key(env, "return", { cmd = true })
+		assert_region(env.settings[SETTINGS_KEY], 200, 200, 150, 80)
+	end)
+
+	it("28. no saved default", function()
+		local env = open({ saved = false })
+		key(env, "return")
+		assert_region(env.confirmed[1], 200, 160, 600, 480)
+		assert.is_nil(env.settings[SETTINGS_KEY])
+		assert.equals(0, env.settingsWrites)
+		env.repick()
+		assert_region(rendered_region(env), 200, 160, 600, 480)
+		key(env, "return", { cmd = true })
+		assert_region(env.settings[SETTINGS_KEY], 200, 160, 600, 480)
+		assert.equals(1, env.settingsWrites)
+	end)
+
+	it("29. the saved rect equals the captured rect", function()
+		local env = open()
+		press(env, 200.4, 200.6)
+		drag(env, 350.2, 280.7)
+		release(env, 350.2, 280.7)
+		key(env, "return", { cmd = true })
+		assert_region(env.confirmed[1], 200, 201, 150, 80)
+		assert_region(env.settings[SETTINGS_KEY], 200, 201, 150, 80)
 	end)
 end)

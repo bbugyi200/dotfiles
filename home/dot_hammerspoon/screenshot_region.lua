@@ -6,9 +6,10 @@ local HANDLE_SIZE = 10
 local HANDLE_HIT_RADIUS = 6
 local DRAG_THRESHOLD = 3
 local CAPTURE_DELAY = 0.08
-local HINT_WIDTH = 360
+local HINT_WIDTH = 420
 local HINT_HEIGHT = 42
-local HINT_TEXT = "Drag: new box · ⌘-drag: move · Corners: resize\nEnter: capture · Esc: cancel"
+local HINT_TEXT =
+	"Drag: new box · ⌘-drag: move · Corners: resize\nEnter: capture · ⌘Enter: capture + save default · Esc: cancel"
 
 local activeSession = nil
 local unpackTable = table.unpack or unpack
@@ -356,7 +357,7 @@ function M.pick(onConfirm)
 		activeSession = nil
 	end
 
-	local function finish(confirm)
+	local function finish(confirm, saveDefault)
 		if finished then
 			return
 		end
@@ -369,7 +370,9 @@ function M.pick(onConfirm)
 			return
 		end
 
-		hs.settings.set(SETTINGS_KEY, finalRegion)
+		if saveDefault then
+			hs.settings.set(SETTINGS_KEY, finalRegion)
+		end
 		hs.timer.doAfter(CAPTURE_DELAY, function()
 			onConfirm(finalRegion)
 		end)
@@ -444,7 +447,8 @@ function M.pick(onConfirm)
 					if drag then
 						return true
 					end
-					finish(region.w >= MIN_SIZE and region.h >= MIN_SIZE)
+					local flags = event:getFlags() or {}
+					finish(region.w >= MIN_SIZE and region.h >= MIN_SIZE, flags.cmd == true)
 					return true
 				end
 				return true
