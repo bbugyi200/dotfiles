@@ -97,7 +97,11 @@ polling that same session rather than ending the turn.
 If `sase final prepare` is refused, run the verification command inline, then pass the
 same wrapper file to `sase final submit <wrapper>`; it submits the wrapper's
 `declaration` unchanged. Never rebuild the manifest from `manifest_template`, which
-drops the message you wrote (the unedited placeholder message is rejected).
+drops the message you wrote (the unedited placeholder message is rejected). Prepare
+refuses when the check cannot report stage evidence — no-model host completion needs a
+check tool declared with `stages: run_silent` — and it refuses re-sealing an unchanged
+tree whose passing verification was already refused, since re-running the same check
+cannot change the result.
 
 If the verification run escalates (`sase tool run` exits `124` with an escalation block)
 instead of settling, finish it with

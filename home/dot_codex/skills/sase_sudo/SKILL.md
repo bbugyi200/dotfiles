@@ -32,6 +32,11 @@ same operations on a remote machine.
   command whose output should not enter the next model context. Use `tail` for ordinary
   diagnostics; use `full` only when the complete output is necessary and safe.
 - Set `machine` for remote targets. Leave it out for the local host.
+- The request stays reviewable for `gate_timeout_seconds` (default one day). If nobody
+  approves in that window, the gate times out, no successor runs, and the session ends.
+  Set a shorter window only when the batch would be unsafe to run later. Top-level
+  `timeout_seconds` is only the default per-command timeout; it never shortens the
+  review window.
 - If `sase sudo request` is unavailable or disabled, report that blocker. Do not fall
   back to raw sudo.
 

@@ -31,7 +31,10 @@ Choose a command's place before starting it. Run it inline when it fits within y
 provider's synchronous limit (as your SASE provider instructions state it) and waits on
 nothing external. Start it with a monitor when it can outlast that limit, or when it
 waits on CI, a deploy, a release, or a rate limit. For final verification, prefer
-prepared monitor completion; see `/sase_final`.
+prepared monitor completion; see `/sase_final`. Prepared completion needs a
+stage-reporting check (`stages: run_silent`), and an unchanged tree whose passing
+verification was already refused is refused again — use the inline fallback instead of
+re-running the same check.
 
 Never cancel, kill, or rerun an in-flight command to move it to a monitor. Let it
 finish, read its result, and only then decide what runs next.
