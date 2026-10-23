@@ -3,6 +3,8 @@
 # (the identifier of an open #task chosen from the current file), the literal string
 # `priority` (a P-level that also rolls a random date into another date property), or a
 # list of allowed values.
+timezone: America/New_York
+
 properties:
   - name: scheduled
     values: date
