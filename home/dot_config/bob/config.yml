@@ -60,6 +60,10 @@ highlights:
   # plugin's feed.auto_publish publishes the episode. See
   # docs/highlights-create.md in bob-cli.
   listen_command: sase listen render {target} -e full -o {audio}
+  # Ask Highlights (macOS file coordination) to save an open PDF before bob
+  # rewrites its page-1 marker, then reload it in place. Inert off macOS. See
+  # "PDFs open in Highlights" in bob-cli docs/highlights-ref-sync.md.
+  coordinate_pdf_writes: true
 
 # `bob gkeep` drains the Google Keep inbox into gkeep_inbox.md as Obsidian
 # tasks; see `bob gkeep --help` and docs/gkeep.md in bob-cli. Run
