@@ -30,7 +30,10 @@ same operations on a remote machine.
   `argv`, and a one-line `why`.
 - Set the top-level `"output_to_agent": "none"` for secret-adjacent commands or any
   command whose output should not enter the next model context. Use `tail` for ordinary
-  diagnostics; use `full` only when the complete output is necessary and safe.
+  diagnostics; use `full` only when the complete output is necessary and safe. `full` is
+  still bounded by a shared ~60 KiB settlement budget across every selected command, so
+  prefer targeted commands (for example `nft list chain ...` or filtered `ss`) over
+  whole-system dumps.
 - Set `machine` for remote targets. Leave it out for the local host.
 - The request stays reviewable for `gate_timeout_seconds` (default one day). If nobody
   approves in that window, the gate times out, no successor runs, and the session ends.

@@ -30,11 +30,11 @@ in SASE's single-turn agent model. Use `sase monitor start` instead.
 Choose a command's place before starting it. Run it inline when it fits within your
 provider's synchronous limit (as your SASE provider instructions state it) and waits on
 nothing external. Start it with a monitor when it can outlast that limit, or when it
-waits on CI, a deploy, a release, or a rate limit. For final verification, prefer
-prepared monitor completion; see `/sase_final`. Prepared completion needs a
-stage-reporting check (`stages: run_silent`), and an unchanged tree whose passing
-verification was already refused is refused again — use the inline fallback instead of
-re-running the same check.
+waits on CI, a deploy, a release, or a rate limit. A pure wait takes `-w 0`; see Sleep
+Or Wait. For final verification, prefer prepared monitor completion; see `/sase_final`.
+Prepared completion needs a stage-reporting check (`stages: run_silent`), and an
+unchanged tree whose passing verification was already refused is refused again — use the
+inline fallback instead of re-running the same check.
 
 Never cancel, kill, or rerun an in-flight command to move it to a monitor. Let it
 finish, read its result, and only then decide what runs next.
@@ -106,6 +106,10 @@ the row color, so reusing one pair across related monitors makes them read as on
 
 ## Hazards
 
+- Never pass `-w 0` for a command that does heavy local work (`just check`, builds,
+  installs, screenshot regeneration, renders) or that polls and then builds. A
+  zero-weight monitor is invisible to the capacity budget, so the host overcommits.
+  Waiting on a human is not a monitor at all: use `/sase_gate` or `/sase_questions`.
 - `sase monitor start` only kills the current agent once the supervisor has acknowledged
   it is actually alive. A non-zero exit means the supervisor never acknowledged startup
   — you are still running and nothing was handed off. Read the error and either retry or
@@ -135,12 +139,17 @@ the row color, so reusing one pair across related monitors makes them read as on
 ## Sleep Or Wait
 
 Use `sleep` as the monitored command when you need to wait for CI, a deploy, a rate
-limit, or a scheduled time. Pair the wait with labels that name what is being waited on:
+limit, or a scheduled time. A pure wait uses no host resources, so pass `-w 0`: the
+monitor then holds no runner capacity while it waits, and the follow-up queues for
+capacity at your normal weight when the wait ends. The same applies to `gh run watch`,
+`gh pr checks --watch`, and scripts that only poll something external (a release tag,
+PyPI, another bead). Pair the wait with labels that name what is being waited on:
 
 ```bash
 sase monitor start \
   --reason 'Wait for the CI run on PR #412 to finish' \
   --timeout 6m \
+  --weight 0 \
   --start-status 'SLEEPING FOR 300s' \
   --stop-status 'SLEPT FOR 300s' \
   --next 'Check the CI status for PR #412 with `gh pr checks 412`.' \
@@ -166,6 +175,10 @@ sase monitor start \
 
 ## Useful Flags
 
+- `-w, --weight 0` frees this monitor's runner capacity for a pure wait (sleep, CI
+  watch, external poll). The follow-up queues again at your normal weight. Only `0` is
+  accepted, and it cannot be combined with `-p verify`, `-f`, `-J`, or a `sase tool run`
+  command.
 - `--cwd DIR` runs the command from a specific directory. The default is the current
   directory when it is inside a repo opened with `sase repo open`, else the agent's
   workspace, else the current directory.

@@ -1,6 +1,6 @@
 {
-  "deployed_at": "2026-10-20T13:48:42.615320Z",
-  "macro_set_sha256": "4885a9a333f1a81c9cd237ce3c65884015521cafff91174019be64e7f841d078",
+  "deployed_at": "2026-10-24T19:46:36.209426Z",
+  "macro_set_sha256": "a7271c957506994162e43a91bf7a064925f930e7b9d28f7ca79f68de3c9747a4",
   "managed_files": [
     {
       "home_path": ".gemini/antigravity-cli/skills/bob_query/SKILL.md",
@@ -14,6 +14,13 @@
       "provider": "agy",
       "skill_name": "bob_ref",
       "source_path": "dot_gemini/antigravity-cli/skills/bob_ref/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".gemini/antigravity-cli/skills/mermaid_diagrams/SKILL.md",
+      "provider": "agy",
+      "skill_name": "mermaid_diagrams",
+      "source_path": "dot_gemini/antigravity-cli/skills/mermaid_diagrams/SKILL.md",
       "state": "active"
     },
     {
@@ -182,6 +189,13 @@
       "provider": "claude",
       "skill_name": "bob_ref",
       "source_path": "dot_claude/skills/bob_ref/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".claude/skills/mermaid_diagrams/SKILL.md",
+      "provider": "claude",
+      "skill_name": "mermaid_diagrams",
+      "source_path": "dot_claude/skills/mermaid_diagrams/SKILL.md",
       "state": "active"
     },
     {
@@ -357,6 +371,13 @@
       "provider": "codex",
       "skill_name": "bob_ref",
       "source_path": "dot_codex/skills/bob_ref/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".codex/skills/mermaid_diagrams/SKILL.md",
+      "provider": "codex",
+      "skill_name": "mermaid_diagrams",
+      "source_path": "dot_codex/skills/mermaid_diagrams/SKILL.md",
       "state": "active"
     },
     {
@@ -633,6 +654,13 @@
       "state": "active"
     },
     {
+      "home_path": ".grok/skills/mermaid_diagrams/SKILL.md",
+      "provider": "grok",
+      "skill_name": "mermaid_diagrams",
+      "source_path": "dot_grok/skills/mermaid_diagrams/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".grok/skills/sase_agents_status/SKILL.md",
       "provider": "grok",
       "skill_name": "sase_agents_status",
@@ -808,6 +836,13 @@
       "state": "active"
     },
     {
+      "home_path": ".config/muse/skills/mermaid_diagrams/SKILL.md",
+      "provider": "muse",
+      "skill_name": "mermaid_diagrams",
+      "source_path": "dot_config/muse/skills/mermaid_diagrams/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".config/muse/skills/sase_agents_status/SKILL.md",
       "provider": "muse",
       "skill_name": "sase_agents_status",
@@ -973,6 +1008,13 @@
       "provider": "opencode",
       "skill_name": "bob_ref",
       "source_path": "dot_config/opencode/skills/bob_ref/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/opencode/skills/mermaid_diagrams/SKILL.md",
+      "provider": "opencode",
+      "skill_name": "mermaid_diagrams",
+      "source_path": "dot_config/opencode/skills/mermaid_diagrams/SKILL.md",
       "state": "active"
     },
     {
@@ -1144,6 +1186,13 @@
       "state": "active"
     },
     {
+      "home_path": ".qwen/skills/mermaid_diagrams/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "mermaid_diagrams",
+      "source_path": "dot_qwen/skills/mermaid_diagrams/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".qwen/skills/sase_agents_status/SKILL.md",
       "provider": "qwen",
       "skill_name": "sase_agents_status",
@@ -1305,5 +1354,5 @@
       "state": "active"
     }
   ],
-  "source_commit": "2648c7cddf2e644d73fd1cacdc81d59a3c5466ff"
+  "source_commit": "c594443dc78c5acde55e25f25c73e573647e5560"
 }
