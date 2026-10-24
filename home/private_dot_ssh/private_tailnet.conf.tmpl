@@ -19,3 +19,10 @@ Host mac
   User bbugyi
   IdentityFile ~/.ssh/id_rsa
   IdentitiesOnly yes
+{{ if eq .chezmoi.hostname "apollo" }}
+# Use Apollo's own GitHub identity, even with a forwarded ssh-agent.
+Host github.com
+  User git
+  IdentityFile ~/.ssh/id_rsa
+  IdentitiesOnly yes
+{{ end -}}

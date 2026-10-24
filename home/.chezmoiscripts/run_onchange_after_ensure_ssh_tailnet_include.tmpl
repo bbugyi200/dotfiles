@@ -1,7 +1,7 @@
 {{ if or (eq .chezmoi.hostname "athena") (eq .chezmoi.hostname "apollo") (eq .chezmoi.hostname "Kellys-MacBook-Pro") -}}
 #!/bin/bash
 
-# tailnet.conf: {{ include "private_dot_ssh/private_tailnet.conf" | sha256sum }}
+# tailnet.conf: {{ include "private_dot_ssh/private_tailnet.conf.tmpl" | sha256sum }}
 #
 # Ensure ~/.ssh/config Include's the chezmoi-managed tailnet host blocks.
 set -euo pipefail
