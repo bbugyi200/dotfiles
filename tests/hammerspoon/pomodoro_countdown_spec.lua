@@ -774,4 +774,97 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 		assert.equals("DEEP WORK → 09:05 · 🍅 01:00", presentation.title)
 		assert.equals("09:05", presentation.stop)
 	end)
+
+	it("splits + components and keys them like the catalog", function()
+		assert.are.same({ "BOB" }, countdown.split_theme_components("BOB"))
+		assert.are.same({ "BOB", "DECKS" }, countdown.split_theme_components("— BOB + DECKS"))
+		assert.are.same({ "GTD", "BOB" }, countdown.split_theme_components("GTD + + BOB"))
+		assert.are.same({ "Deep Work" }, countdown.split_theme_components("Deep  Work"))
+		assert.are.same({}, countdown.split_theme_components(""))
+		assert.are.same({}, countdown.split_theme_components("—"))
+		assert.equals("bob", countdown.normalize_theme_key("BOB"))
+		assert.equals("deep work", countdown.normalize_theme_key("Deep  Work"))
+	end)
+
+	it("maps hue slots to the shared light and dark hex values", function()
+		assert.equals("#e87ba4", countdown.hue_hex("magenta", "light"))
+		assert.equals("#d55181", countdown.hue_hex("magenta", "dark"))
+		assert.equals("#1baf7a", countdown.hue_hex("AQUA", "light"))
+		assert.is_nil(countdown.hue_hex("unknown", "light"))
+		assert.is_nil(countdown.hue_hex(nil, "light"))
+	end)
+
+	it("prepends a swatch for each non-exempt catalog theme and skips the rest", function()
+		local catalog = countdown.parse_theme_catalog({
+			themes = {
+				{ key = "bob", hue = "magenta", hue_source = "hash", exempt = false },
+				{ key = "decks", hue = "blue", hue_source = "hash", exempt = false },
+				{ key = "gtd", hue = nil, hue_source = "exempt", exempt = true },
+				{ key = "job", hue = "aqua", hue_source = "area", exempt = false },
+			},
+		})
+
+		local composite = countdown.presentation(754, false, {
+			theme = "BOB + DECKS",
+			stop = "10:15",
+			durationMinutes = 50,
+			themeCatalog = catalog,
+		})
+		assert.equals("■ ■ BOB + DECKS (50m) · 🍅 12:34", composite.title)
+		assert.equals("swatch", composite.segments[1].role)
+		assert.equals("magenta", composite.segments[1].hue)
+		assert.equals("#e87ba4", composite.segments[1].hex)
+		assert.equals("swatch", composite.segments[3].role)
+		assert.equals("blue", composite.segments[3].hue)
+		assert.equals("theme", composite.segments[5].role)
+		assert.equals("BOB + DECKS", composite.segments[5].text)
+
+		local mixed = countdown.presentation(754, false, {
+			theme = "GTD + BOB",
+			stop = "10:15",
+			durationMinutes = 50,
+			themeCatalog = catalog,
+		})
+		assert.equals("■ GTD + BOB (50m) · 🍅 12:34", mixed.title)
+		assert.equals(1, #countdown.swatch_hues("GTD + BOB", catalog))
+
+		local unknown = countdown.presentation(754, false, {
+			theme = "DEEP WORK",
+			stop = "10:15",
+			durationMinutes = 50,
+			themeCatalog = catalog,
+		})
+		assert.equals("DEEP WORK (50m) · 🍅 12:34", unknown.title)
+		assert.equals("theme", unknown.segments[1].role)
+
+		local untitled = countdown.presentation(754, false, {
+			theme = "",
+			stop = "10:15",
+			durationMinutes = 50,
+			themeCatalog = catalog,
+		})
+		assert.equals("UNTITLED (50m) · 🍅 12:34", untitled.title)
+
+		local dark = countdown.presentation(754, false, {
+			theme = "JOB",
+			stop = "10:15",
+			durationMinutes = 50,
+			themeCatalog = catalog,
+			menuBarAppearance = "dark",
+		})
+		assert.equals("#199e70", dark.segments[1].hex)
+	end)
+
+	it("leaves idle titles without swatches even when a catalog is present", function()
+		local catalog = countdown.parse_theme_catalog({
+			themes = { { key = "bob", hue = "magenta", hue_source = "hash" } },
+		})
+		local idle = countdown.presentation(nil, false, {
+			workedMinutes = 95,
+			themeCatalog = catalog,
+			theme = "BOB",
+		})
+		assert.equals("1h35m", idle.title)
+		assert.equals("missing", idle.segments[1].role)
+	end)
 end)

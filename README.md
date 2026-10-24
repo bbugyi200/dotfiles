@@ -42,8 +42,15 @@ Hammerspoon Lua module must be added to the hook's hash list:
 
 ## Pomodoro menu bar
 
-Hammerspoon shows the current Bob Pomodoro as one status item in the fixed order **theme
-(duration) · 🍅 status**, with `→ stop time` inserted once overdue. The 🍅 sits
+Hammerspoon shows the current Bob Pomodoro as one status item in the fixed order
+**swatches theme (duration) · 🍅 status**, with `→ stop time` inserted once overdue.
+Each non-exempt theme of the running session gets a colored `■` (`hs.styledtext`) before
+the name, using that hue's light or dark hex for the menu-bar appearance. Composite
+names such as `BOB + DECKS` get one square per component. The title text itself is never
+tinted: red and green already mean overdue and worked. Hue comes from
+`bob themes list -a -f json` on the same re-sync as `bob pomodoro --show-stale --worked`
+and is cached until the next re-sync. An exempt theme, a name the catalog does not know,
+or a failed/unparsable themes call means no swatch and an unchanged title. The 🍅 sits
 immediately before the countdown, separated by exactly one ordinary space (plus the
 padded overdue status's own no-break-space margin), so it identifies the digits to its
 right. The 🍅 accompanies current-session countdowns and overdue status only; the idle
@@ -52,18 +59,20 @@ the stop time returns once the session is overdue, when the scheduled endpoint i
 useful fact. The stop time is zero-padded 24-hour `HH:MM`, matching the ledger
 convention.
 
-| State                               | Example title                          |
-| ----------------------------------- | -------------------------------------- |
-| Running                             | `DEEP WORK (50m) · 🍅 12:34`           |
-| At the stop time                    | `DEEP WORK (50m) · 🍅 00:00`           |
-| Recently overdue                    | `DEEP WORK (50m) → 10:15 · 🍅 +00:01`  |
-| Last second before escalation       | `DEEP WORK (50m) → 10:15 · 🍅 +09:59`  |
-| Ten minutes overdue and later       | `DEEP WORK (50m) → 10:15 · 🍅 OVERDUE` |
-| Session without a name              | `UNTITLED (50m) · 🍅 12:34`            |
-| Unnamed session with linked tasks   | `sase (50m) · 🍅 12:34`                |
-| Duration unknown (degenerate range) | `DEEP WORK → 10:15 · 🍅 12:34`         |
-| No current session                  | `1h35m`                                |
-| No session, reminder step           | `1h35m φ 5m`                           |
+| State                               | Example title                            |
+| ----------------------------------- | ---------------------------------------- |
+| Running                             | `■ DEEP WORK (50m) · 🍅 12:34`           |
+| Composite running                   | `■ ■ BOB + DECKS (50m) · 🍅 12:34`       |
+| At the stop time                    | `■ DEEP WORK (50m) · 🍅 00:00`           |
+| Recently overdue                    | `■ DEEP WORK (50m) → 10:15 · 🍅 +00:01`  |
+| Last second before escalation       | `■ DEEP WORK (50m) → 10:15 · 🍅 +09:59`  |
+| Ten minutes overdue and later       | `■ DEEP WORK (50m) → 10:15 · 🍅 OVERDUE` |
+| Exempt or unknown theme             | `GTD (50m) · 🍅 12:34`                   |
+| Session without a name              | `UNTITLED (50m) · 🍅 12:34`              |
+| Unnamed session with linked tasks   | `sase (50m) · 🍅 12:34`                  |
+| Duration unknown (degenerate range) | `■ DEEP WORK → 10:15 · 🍅 12:34`         |
+| No current session                  | `1h35m`                                  |
+| No session, reminder step           | `1h35m φ 5m`                             |
 
 The duration is the scheduled session length in whole minutes (`5m`, `25m`, `50m`,
 `90m`, `120m`), derived from the ledger range with midnight wrap (`2330-0020` → `50m`).
@@ -99,10 +108,11 @@ appears (after a session ends, after a command or parse failure hides the item, 
 a Hammerspoon reload) and when the Mac wakes or unlocks while it is showing, always
 restarting at `φ 1m`. Both idle frames pad the pill with a no-break space at its outer
 edges so the item never changes width mid-step. Theme, duration, separator, arrow, stop
-time, and the tomato stay in the ordinary foreground. A mid-tone wallpaper directly
-under a transparent menu bar can undercut any fixed color, including the system's own
-labels; turning on Accessibility › Display › Reduce transparency restores a uniform
-surface.
+time, and the tomato stay in the ordinary foreground. Theme swatches are the one
+exception: they use the catalog hue's light/dark hex and never color the name. A
+mid-tone wallpaper directly under a transparent menu bar can undercut any fixed color,
+including the system's own labels; turning on Accessibility › Display › Reduce
+transparency restores a uniform surface.
 
 Long themes are bounded to 24 Unicode code points including the final ellipsis; the full
 theme stays in the tooltip and dropdown. The tooltip leads with `full theme (duration)`
@@ -112,13 +122,13 @@ and dropdown carry no tomato and keep the raw `bob pomodoro` line and `Last sync
 details. Without a session, the dropdown's first row names today's worked total and it
 also shows a disabled `Next reminder at HH:MM · φ Nm` row previewing the next flash
 step. At and after ten minutes overdue, the `OVERDUE` badge flashes between red text and
-white-on-red; in every state only the status run ever flashes, and the theme, duration,
-arrow, stop time, separator, and tomato never do. The menu re-syncs within about a
-second when today's daily note changes on disk (an Obsidian edit, a `bob` command, or a
-vault-sync pull), polls `bob pomodoro --show-stale --worked` every 60 seconds as a
-safety net (every 15 seconds if the file watcher cannot start), refreshes on wake and
-unlock, offers a manual Refresh item, and re-syncs once when crossing zero. A
-`[WORKED <minutes>m]` result shows the worked total, an empty result falls back to
+white-on-red; in every state only the status run ever flashes, and the swatches, theme,
+duration, arrow, stop time, separator, and tomato never do. The menu re-syncs within
+about a second when today's daily note changes on disk (an Obsidian edit, a `bob`
+command, or a vault-sync pull), polls `bob pomodoro --show-stale --worked` every 60
+seconds as a safety net (every 15 seconds if the file watcher cannot start), refreshes
+on wake and unlock, offers a manual Refresh item, and re-syncs once when crossing zero.
+A `[WORKED <minutes>m]` result shows the worked total, an empty result falls back to
 `NO POMODORO`, and command or parse failures hide the item. The dropdown shows a
 snapshot taken when it opens, stays open while the title keeps updating, and shows fresh
 details when reopened. The Mac's installed `bob` must support `--worked` before this

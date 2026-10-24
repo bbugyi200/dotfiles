@@ -61,6 +61,160 @@ local function make_menu(env, autosave_name)
 	return menu
 end
 
+local function json_decode(text)
+	local source = tostring(text or "")
+	local index = 1
+
+	local function peek()
+		return source:sub(index, index)
+	end
+
+	local function skip()
+		while source:sub(index, index):match("%s") do
+			index = index + 1
+		end
+	end
+
+	local parse_value
+	local function parse_string()
+		index = index + 1
+		local chars = {}
+		while true do
+			local char = source:sub(index, index)
+			if char == "" then
+				error("unterminated string")
+			end
+			if char == '"' then
+				index = index + 1
+				break
+			end
+			if char == "\\" then
+				local escaped = source:sub(index + 1, index + 1)
+				local mapped = ({
+					n = "\n",
+					t = "\t",
+					r = "\r",
+					['"'] = '"',
+					["\\"] = "\\",
+					["/"] = "/",
+				})[escaped]
+				table.insert(chars, mapped or escaped)
+				index = index + 2
+			else
+				table.insert(chars, char)
+				index = index + 1
+			end
+		end
+		return table.concat(chars)
+	end
+
+	local function parse_number()
+		local start = index
+		if peek() == "-" then
+			index = index + 1
+		end
+		while source:sub(index, index):match("%d") do
+			index = index + 1
+		end
+		if peek() == "." then
+			index = index + 1
+			while source:sub(index, index):match("%d") do
+				index = index + 1
+			end
+		end
+		return tonumber(source:sub(start, index - 1))
+	end
+
+	local function parse_array()
+		index = index + 1
+		skip()
+		local array = {}
+		if peek() == "]" then
+			index = index + 1
+			return array
+		end
+		while true do
+			table.insert(array, parse_value())
+			skip()
+			if peek() == "]" then
+				index = index + 1
+				break
+			end
+			if peek() ~= "," then
+				error("expected comma")
+			end
+			index = index + 1
+			skip()
+		end
+		return array
+	end
+
+	local function parse_object()
+		index = index + 1
+		skip()
+		local object = {}
+		if peek() == "}" then
+			index = index + 1
+			return object
+		end
+		while true do
+			skip()
+			if peek() ~= '"' then
+				error("expected key")
+			end
+			local key = parse_string()
+			skip()
+			if peek() ~= ":" then
+				error("expected colon")
+			end
+			index = index + 1
+			object[key] = parse_value()
+			skip()
+			if peek() == "}" then
+				index = index + 1
+				break
+			end
+			if peek() ~= "," then
+				error("expected comma")
+			end
+			index = index + 1
+		end
+		return object
+	end
+
+	parse_value = function()
+		skip()
+		local char = peek()
+		if char == '"' then
+			return parse_string()
+		end
+		if char == "{" then
+			return parse_object()
+		end
+		if char == "[" then
+			return parse_array()
+		end
+		if source:sub(index, index + 3) == "true" then
+			index = index + 4
+			return true
+		end
+		if source:sub(index, index + 4) == "false" then
+			index = index + 5
+			return false
+		end
+		if source:sub(index, index + 3) == "null" then
+			index = index + 4
+			return nil
+		end
+		if char == "-" or char:match("%d") then
+			return parse_number()
+		end
+		error("unexpected json at " .. tostring(char))
+	end
+
+	return parse_value()
+end
+
 local function make_task(env, command, callback, args)
 	local task = {
 		command = command,
@@ -263,6 +417,16 @@ local function make_hs(env)
 
 	hs.styledtext = make_styledtext(env)
 
+	hs.json = {
+		decode = function(text)
+			table.insert(env.json_decode_calls, text)
+			if env.json_decode_error then
+				error(env.json_decode_error)
+			end
+			return json_decode(text)
+		end,
+	}
+
 	hs.host = {
 		interfaceStyle = function()
 			env.host_calls = (env.host_calls or 0) + 1
@@ -313,6 +477,7 @@ local function setup_hammerspoon_init_environment(options)
 		styled_compositions = {},
 		convert_font_calls = {},
 		valid_font_calls = {},
+		json_decode_calls = {},
 		task_completion = options.task_completion,
 		reload_calls = 0,
 		fail_styling = false,
@@ -455,6 +620,20 @@ local function task_command_text(task)
 	end
 	return ""
 end
+
+local function combined_bob_stdout(pomodoro, themes_json)
+	return pomodoro .. "\n---BOB-THEMES---\n" .. themes_json
+end
+
+local BOB_THEME_LIST_JSON = [[{
+  "schema_version": 1,
+  "themes": [
+    {"key": "bob", "name": "BOB", "hue": "magenta", "hue_source": "hash", "exempt": false},
+    {"key": "decks", "name": "DECKS", "hue": "blue", "hue_source": "hash", "exempt": false},
+    {"key": "gtd", "name": "GTD", "hue": null, "hue_source": "exempt", "exempt": true},
+    {"key": "job", "name": "JOB", "hue": "aqua", "hue_source": "area", "exempt": false}
+  ]
+}]]
 
 local function menu_items(menu)
 	if type(menu.menu) == "function" then
@@ -2523,5 +2702,134 @@ describe("Hammerspoon init Pomodoro countdown colors", function()
 		local flashing_missing_title = env.menu_title_calls[#env.menu_title_calls].title
 		assert.equals("string", type(flashing_missing_title))
 		assert.equals("NO POMODORO φ 1m", flashing_missing_title)
+	end)
+
+	it("fetches bob themes list on the same re-sync as bob pomodoro", function()
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+		local command = task_command_text(env.tasks[1])
+		assert.is_true(command:find("--show-stale", 1, true) ~= nil)
+		assert.is_true(command:find("--worked", 1, true) ~= nil)
+		assert.is_true(command:find("bob themes list -a -f json", 1, true) ~= nil)
+		assert.is_true(command:find("---BOB-THEMES---", 1, true) ~= nil)
+	end)
+
+	it("prepends a hue swatch before the title and never tints the name", function()
+		local restore_clock = freeze_clock_at(today_at(9, 50))
+		local ok, error_message, env = load_init_with({
+			task_completion = {
+				exit_code = 0,
+				stdout = combined_bob_stdout("[<13m] 0950-1015 — BOB", BOB_THEME_LIST_JSON),
+				stderr = "",
+			},
+		})
+		assert.is_true(ok, error_message)
+		restore_clock()
+
+		local runtime = _G.BobPomodoroCountdown
+		assert.equals("BOB", runtime.state.fullTheme)
+		assert.is_not_nil(runtime.themeCatalog)
+		assert.equals("magenta", runtime.themeCatalog.bob.hue)
+
+		local title = runtime.menu.title
+		assert.equals("■ BOB (25m) · 🍅 25:00", title_text(title))
+		local spans = assert(title_spans(title))
+		assert.equals("■", spans[1].text)
+		assert.are.same({ hex = "#e87ba4", alpha = 1 }, spans[1].attributes.color)
+		assert.equals("BOB", spans[3].text)
+		assert.are.same({ list = "System", name = "labelColor", alpha = 1 }, spans[3].attributes.color)
+		assert.is_nil(spans[3].attributes.backgroundColor)
+	end)
+
+	it("prepends a swatch per non-exempt composite theme and skips the rest", function()
+		local restore_clock = freeze_clock_at(today_at(9, 50))
+		local ok, error_message, env = load_init_with({
+			task_completion = {
+				exit_code = 0,
+				stdout = combined_bob_stdout("[<13m] 0950-1015 — BOB + DECKS", BOB_THEME_LIST_JSON),
+				stderr = "",
+			},
+		})
+		assert.is_true(ok, error_message)
+
+		assert.equals(
+			"■ ■ BOB + DECKS (25m) · 🍅 25:00",
+			title_text(env.menu_title_calls[#env.menu_title_calls].title)
+		)
+		local spans = assert(title_spans(env.menu_title_calls[#env.menu_title_calls].title))
+		assert.equals("■", spans[1].text)
+		assert.are.same({ hex = "#e87ba4", alpha = 1 }, spans[1].attributes.color)
+		assert.equals("■", spans[3].text)
+		assert.are.same({ hex = "#2a78d6", alpha = 1 }, spans[3].attributes.color)
+
+		env.task_completion = {
+			exit_code = 0,
+			stdout = combined_bob_stdout("[<13m] 0950-1015 — GTD", BOB_THEME_LIST_JSON),
+			stderr = "",
+		}
+		_G.BobPomodoroCountdown.syncTimer.callback()
+		assert.equals("GTD (25m) · 🍅 25:00", title_text(_G.BobPomodoroCountdown.menu.title))
+
+		env.task_completion = {
+			exit_code = 0,
+			stdout = combined_bob_stdout("[<13m] 0950-1015 — DEEP WORK", BOB_THEME_LIST_JSON),
+			stderr = "",
+		}
+		_G.BobPomodoroCountdown.syncTimer.callback()
+		restore_clock()
+		assert.equals("DEEP WORK (25m) · 🍅 25:00", title_text(_G.BobPomodoroCountdown.menu.title))
+	end)
+
+	it("uses the dark hex when the menu bar appearance is dark", function()
+		local restore_clock = freeze_clock_at(today_at(9, 50))
+		local ok, error_message, env = load_init_with({
+			task_completion = {
+				exit_code = 0,
+				stdout = combined_bob_stdout("[<13m] 0950-1015 — JOB", BOB_THEME_LIST_JSON),
+				stderr = "",
+			},
+		})
+		assert.is_true(ok, error_message)
+		env.interface_style = "Dark"
+		_G.BobPomodoroCountdown.tickTimer.callback()
+		restore_clock()
+		local spans = assert(title_spans(_G.BobPomodoroCountdown.menu.title))
+		assert.equals("■", spans[1].text)
+		assert.are.same({ hex = "#199e70", alpha = 1 }, spans[1].attributes.color)
+		assert.equals("JOB", spans[3].text)
+		assert.are.same({ list = "System", name = "labelColor", alpha = 1 }, spans[3].attributes.color)
+	end)
+
+	it("drops swatches when the themes payload is missing or unparsable", function()
+		local restore_clock = freeze_clock_at(today_at(9, 50))
+		local ok, error_message, env = load_init_with({
+			task_completion = {
+				exit_code = 0,
+				stdout = combined_bob_stdout("[<13m] 0950-1015 — BOB", BOB_THEME_LIST_JSON),
+				stderr = "",
+			},
+		})
+		assert.is_true(ok, error_message)
+		assert.equals("■ BOB (25m) · 🍅 25:00", title_text(_G.BobPomodoroCountdown.menu.title))
+
+		env.task_completion = {
+			exit_code = 0,
+			stdout = "[<13m] 0950-1015 — BOB",
+			stderr = "",
+		}
+		_G.BobPomodoroCountdown.syncTimer.callback()
+		assert.equals("BOB (25m) · 🍅 25:00", title_text(_G.BobPomodoroCountdown.menu.title))
+		assert.is_nil(_G.BobPomodoroCountdown.themeCatalog)
+
+		env.json_decode_error = "boom"
+		env.task_completion = {
+			exit_code = 0,
+			stdout = combined_bob_stdout("[<13m] 0950-1015 — BOB", BOB_THEME_LIST_JSON),
+			stderr = "",
+		}
+		_G.BobPomodoroCountdown.syncTimer.callback()
+		restore_clock()
+		assert.equals("BOB (25m) · 🍅 25:00", title_text(_G.BobPomodoroCountdown.menu.title))
+		assert.is_nil(_G.BobPomodoroCountdown.themeCatalog)
 	end)
 end)

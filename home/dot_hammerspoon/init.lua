@@ -85,6 +85,7 @@ stopBobPomodoroRuntimeObject("task", bobPomodoroRuntime.task)
 
 bobPomodoroRuntime.menu = bobPomodoroRuntime.menu or hs.menubar.new(false)
 bobPomodoroRuntime.task = nil
+bobPomodoroRuntime.themeCatalog = nil
 bobPomodoroRuntime.state = nil
 bobPomodoroRuntime.tickTimer = nil
 bobPomodoroRuntime.syncTimer = nil
@@ -311,6 +312,16 @@ local bobPomodoroOverdueWarningFlashTitleAttributes = bobPomodoroTitleAttributes
 
 local bobPomodoroNoBreakSpace = "\194\160"
 
+local function bobPomodoroMenuBarAppearance()
+	local ok, style = pcall(function()
+		return hs.host.interfaceStyle()
+	end)
+	if ok and type(style) == "string" and style:lower() == "dark" then
+		return "dark"
+	end
+	return "light"
+end
+
 local function bobPomodoroSegmentText(segments, role)
 	if type(segments) ~= "table" then
 		return nil
@@ -379,6 +390,15 @@ local function bobPomodoroMenuTitle(presentation)
 				attributes = bobPomodoroIconTitleAttributes
 			elseif segment.role == "gap" then
 				attributes = bobPomodoroContextTitleAttributes
+			elseif segment.role == "swatch" then
+				local hex = segment.hex
+				if type(hex) ~= "string" or hex == "" then
+					hex = PomodoroCountdown.hue_hex(segment.hue, bobPomodoroMenuBarAppearance())
+				end
+				if type(hex) ~= "string" or hex == "" then
+					error("missing swatch hex")
+				end
+				attributes = bobPomodoroTitleAttributes({ hex = hex, alpha = 1 }, bobPomodoroMenuBarFont)
 			elseif segment.role == "theme" then
 				attributes = bobPomodoroThemeTitleAttributes
 			elseif segment.role == "duration" then
@@ -583,6 +603,8 @@ local function renderBobPomodoroMenu()
 			endMinute = state.endMinute,
 			duration = state.duration,
 			durationMinutes = state.durationMinutes,
+			themeCatalog = bobPomodoroRuntime.themeCatalog,
+			menuBarAppearance = bobPomodoroRuntime.themeCatalog and bobPomodoroMenuBarAppearance() or "light",
 		}
 	else
 		context = { workedMinutes = state.workedMinutes }
@@ -596,14 +618,59 @@ local function renderBobPomodoroMenu()
 	menuBarItem:returnToMenuBar()
 end
 
+local BOB_THEMES_MARKER = "---BOB-THEMES---"
+
 local bobPomodoroCommand = [[
 PATH="$HOME/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 export PATH
 if [ -z "${DATE+x}" ] && command -v gdate >/dev/null 2>&1; then
 	export DATE=gdate
 fi
-exec bob pomodoro --show-stale --worked
+pomodoro_status=0
+bob pomodoro --show-stale --worked || pomodoro_status=$?
+printf '%s\n' '---BOB-THEMES---'
+if [ "$pomodoro_status" -eq 0 ]; then
+	bob themes list -a -f json || true
+fi
+exit "$pomodoro_status"
 ]]
+
+local function decodeBobThemesJson(rawOutput)
+	if type(rawOutput) ~= "string" or rawOutput == "" then
+		return nil
+	end
+	if type(hs.json) ~= "table" or type(hs.json.decode) ~= "function" then
+		return nil
+	end
+	local ok, decoded = pcall(hs.json.decode, rawOutput)
+	if not ok then
+		return nil
+	end
+	return decoded
+end
+
+local function splitBobPomodoroAndThemes(rawOutput)
+	local output = tostring(rawOutput or "")
+	local marker = BOB_THEMES_MARKER
+	local index = output:find(marker, 1, true)
+	if not index then
+		return trimText(output), nil
+	end
+	local pomodoro = trimText(output:sub(1, index - 1))
+	local themes = trimText(output:sub(index + #marker))
+	if themes == "" then
+		themes = nil
+	end
+	return pomodoro, themes
+end
+
+local function cacheBobThemeCatalog(themesOutput)
+	local catalog = PomodoroCountdown.parse_theme_catalog(decodeBobThemesJson(themesOutput))
+	bobPomodoroRuntime.themeCatalog = catalog
+	if themesOutput ~= nil and catalog == nil then
+		hs.printf("bob themes list output could not be parsed")
+	end
+end
 
 syncBobPomodoro = function()
 	if bobPomodoroRuntime.task then
@@ -630,7 +697,8 @@ syncBobPomodoro = function()
 				return
 			end
 
-			local output = trimText(stdOut)
+			local output, themesOutput = splitBobPomodoroAndThemes(stdOut)
+			cacheBobThemeCatalog(themesOutput)
 			if output == "" then
 				local now = os.time()
 				local previousState = bobPomodoroRuntime.state

@@ -20,6 +20,19 @@ M.ALERT_COLOR = "#E3413B"
 M.MISSING_COLOR = "#30d158"
 M.BADGE_TEXT_COLOR = "#FFFFFF"
 M.MISSING_BADGE_TEXT_COLOR = "#062E14"
+M.SWATCH = "■"
+
+-- Light/dark hex for the eight Hue slots in docs/pomodoro-homes.md (R8).
+M.HUE_HEX = {
+	blue = { light = "#2a78d6", dark = "#3987e5" },
+	orange = { light = "#eb6834", dark = "#d95926" },
+	aqua = { light = "#1baf7a", dark = "#199e70" },
+	yellow = { light = "#eda100", dark = "#c98500" },
+	magenta = { light = "#e87ba4", dark = "#d55181" },
+	green = { light = "#008300", dark = "#008300" },
+	violet = { light = "#6250d6", dark = "#9085e9" },
+	red = { light = "#e34948", dark = "#e66767" },
+}
 
 local function is_finite_number(value)
 	return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
@@ -112,6 +125,85 @@ function M.shorten_theme(theme)
 	local prefix = truncate_to_codepoints(value, M.MAX_THEME_CODEPOINTS - 1)
 	prefix = prefix:gsub("%s+$", "")
 	return prefix .. ELLIPSIS
+end
+
+function M.normalize_theme_key(component)
+	local label = trim(tostring(component or ""))
+	label = label:gsub("%s+", " ")
+	return label:lower()
+end
+
+function M.split_theme_components(name)
+	local label = M.normalize_theme(name)
+	if label == "" or label == M.UNTITLED_THEME then
+		return {}
+	end
+
+	local components = {}
+	for part in (label .. "+"):gmatch("([^%+]*)%+") do
+		local component = trim(part)
+		if component ~= "" then
+			table.insert(components, component)
+		end
+	end
+	return components
+end
+
+function M.hue_hex(hue, appearance)
+	if type(hue) ~= "string" or hue == "" then
+		return nil
+	end
+	local slot = M.HUE_HEX[hue:lower()]
+	if type(slot) ~= "table" then
+		return nil
+	end
+	if appearance == "dark" then
+		return slot.dark
+	end
+	return slot.light
+end
+
+local function theme_entry_is_swatchable(theme)
+	if type(theme) ~= "table" then
+		return false
+	end
+	if theme.exempt == true or theme.hue_source == "exempt" then
+		return false
+	end
+	return type(theme.hue) == "string" and theme.hue ~= ""
+end
+
+function M.swatch_hues(name, catalog)
+	if type(catalog) ~= "table" then
+		return {}
+	end
+
+	local hues = {}
+	for _, component in ipairs(M.split_theme_components(name)) do
+		local theme = catalog[M.normalize_theme_key(component)]
+		if theme_entry_is_swatchable(theme) then
+			table.insert(hues, theme.hue:lower())
+		end
+	end
+	return hues
+end
+
+function M.parse_theme_catalog(decoded)
+	if type(decoded) ~= "table" or type(decoded.themes) ~= "table" then
+		return nil
+	end
+
+	local catalog = {}
+	for _, theme in ipairs(decoded.themes) do
+		if type(theme) == "table" and type(theme.key) == "string" and theme.key ~= "" then
+			catalog[theme.key] = {
+				hue = theme.hue,
+				hue_source = theme.hue_source,
+				exempt = theme.exempt == true,
+			}
+		end
+	end
+	return catalog
 end
 
 function M.format_stop_time(end_hour, end_minute)
@@ -270,6 +362,18 @@ function M.presentation(remaining_seconds, flash_on, context)
 	end
 
 	local display_theme = M.shorten_theme(full_theme)
+	local swatch_hues = {}
+	local menu_bar_appearance = "light"
+	if type(context) == "table" then
+		if context.menuBarAppearance == "dark" then
+			menu_bar_appearance = "dark"
+		end
+		if type(context.swatchHues) == "table" then
+			swatch_hues = context.swatchHues
+		elseif type(context.themeCatalog) == "table" then
+			swatch_hues = M.swatch_hues(full_theme, context.themeCatalog)
+		end
+	end
 
 	local duration = nil
 	local duration_minutes = nil
@@ -297,9 +401,20 @@ function M.presentation(remaining_seconds, flash_on, context)
 		appearance = "normal"
 	end
 
-	local segments = {
-		{ text = display_theme, role = "theme" },
-	}
+	local segments = {}
+	for _, hue in ipairs(swatch_hues) do
+		local hex = M.hue_hex(hue, menu_bar_appearance)
+		if hex ~= nil then
+			table.insert(segments, {
+				text = M.SWATCH,
+				role = "swatch",
+				hue = hue,
+				hex = hex,
+			})
+			table.insert(segments, { text = GAP, role = "gap" })
+		end
+	end
+	table.insert(segments, { text = display_theme, role = "theme" })
 	if duration ~= nil then
 		table.insert(segments, { text = GAP, role = "gap" })
 		table.insert(segments, { text = "(" .. duration .. ")", role = "duration" })
