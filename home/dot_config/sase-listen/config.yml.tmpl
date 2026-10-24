@@ -13,6 +13,13 @@ feed:
   host_ssh: [apollo, apollo-do]
   dir: ~/.local/share/sase-listen/feed
   base_url: https://apollo.tail297af1.ts.net:8443
+  {{- /* apollo's non-interactive feed receiver reads the provisioned token file. */}}{{- if eq .chezmoi.hostname "apollo" }}
+  # feed receive runs over non-interactive SSH, where pinentry cannot prompt; the OOM-killed gpg-agent lost its cache on 2026-10-17.
+  # This file is a mode-600 copy of pass show sase_listen_feed_token.
+  # This follows the ~/.sase/telegram_bot_token precedent.
+  token_command: cat {{ .chezmoi.homeDir }}/.sase/sase_listen_feed_token
+  {{- else }}
   token_command: pass show sase_listen_feed_token
+  {{- end }}
   title: SASE Listen
   auto_publish: true
