@@ -1,0 +1,72 @@
+{{- if eq .chezmoi.os "darwin" -}}
+#!/bin/bash
+
+# Amethyst's default mod2 + l (Swap focused window to clockwise screen) uses
+# Carbon key code 37 and modifiers 6656 (Ctrl+Option+Shift), swallowing
+# Ctrl+Shift+Option+L before Obsidian can run bob-navigation-hotkeys' "Task
+# card: Linked from" command. Restore the shortcut in Amethyst Settings →
+# Shortcuts if you want to use it there again.
+set -uo pipefail
+
+domain="com.amethyst.Amethyst"
+key="KeyboardShortcuts_swap-screen-cw"
+app="Amethyst"
+
+value="$(defaults read "${domain}" "${key}" 2>/dev/null)" || {
+  echo "Amethyst swap-screen-cw is unbound; Ctrl+Option+Shift+L is free."
+  exit 0
+}
+
+if [[ ! "${value}" =~ \"carbonKeyCode\":37[,\}] ]] || \
+  [[ ! "${value}" =~ \"carbonModifiers\":6656[,\}] ]]; then
+  echo "Amethyst swap-screen-cw is bound to another chord; leaving it alone."
+  exit 0
+fi
+
+was_running=0
+if pgrep -x "${app}" >/dev/null; then
+  was_running=1
+  pkill -x "${app}"
+
+  function amethyst_running() {
+    pgrep -x "${app}" >/dev/null
+  }
+
+  function wait_for_exit() {
+    local tries="$1"
+    while ((tries-- > 0)); do
+      amethyst_running || return 0
+      sleep 0.1
+    done
+    ! amethyst_running
+  }
+
+  if ! wait_for_exit 50; then
+    pkill -KILL -x "${app}"
+    if ! wait_for_exit 20; then
+      echo 'Amethyst did not exit; clear "Swap focused window to clockwise screen" in Amethyst Settings → Shortcuts instead.' >&2
+      exit 1
+    fi
+  fi
+fi
+
+if ! defaults delete "${domain}" "${key}"; then
+  echo "Could not clear Amethyst's swap-screen-cw shortcut." >&2
+  if ((was_running)); then
+    open -g -a "${app}" || echo "Amethyst could not be relaunched; start it manually." >&2
+  fi
+  exit 1
+fi
+
+if ((was_running)); then
+  if ! open -g -a "${app}"; then
+    echo "Cleared Amethyst's Ctrl+Option+Shift+L (swap-screen-cw); Amethyst could not be relaunched; start it manually." >&2
+    exit 1
+  fi
+  echo "Cleared Amethyst's Ctrl+Option+Shift+L (swap-screen-cw); Amethyst restarted."
+else
+  echo "Cleared Amethyst's Ctrl+Option+Shift+L (swap-screen-cw); it applies on Amethyst's next launch."
+fi
+
+# vim: ft=bash
+{{- end -}}
