@@ -55,7 +55,9 @@ this skill only when the answer changes the tier, size, phase graph, or architec
 ## Recommended Option First
 
 Put your recommended option first in every question's options list, then order the
-remaining options by preference.
+remaining options by preference. Your questions, with the first option shown as the
+recommendation, and their answers, with how they were answered, appear in the session's
+QUESTIONS section on the Agents tab.
 
 ## Handoff And Continuation
 
