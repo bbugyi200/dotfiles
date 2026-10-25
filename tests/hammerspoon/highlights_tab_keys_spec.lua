@@ -61,6 +61,9 @@ local function setup(options)
 		open_calls = {},
 		focused = options.focused,
 		app_element_focused = options.app_element_focused,
+		focused_window = options.focused_window,
+		app_windows = options.app_windows,
+		app_element_attrs = options.app_element_attrs,
 		frontmost_bundle = options.frontmost_bundle,
 		highlights_pid = options.highlights_pid or 111,
 		tap_enabled = false,
@@ -161,6 +164,13 @@ local function setup(options)
 			function element:attributeValue(name)
 				if name == "AXFocusedUIElement" then
 					return env.app_element_focused
+				elseif name == "AXFocusedWindow" then
+					return env.focused_window
+				elseif name == "AXWindows" then
+					return env.app_windows
+				end
+				if type(env.app_element_attrs) == "table" then
+					return env.app_element_attrs[name]
 				end
 				return nil
 			end
@@ -293,6 +303,140 @@ local function make_adapter(state)
 			return "/pdfs/" .. title
 		end,
 	}
+end
+
+local function start_with_real_adapter(env, extra)
+	extra = extra or {}
+	local options = {
+		hs = env.hs,
+		after = function(seconds, fn)
+			env.after_calls = env.after_calls + 1
+			table.insert(env.queue, { seconds = seconds, fn = fn })
+		end,
+		now = function()
+			return env.now
+		end,
+		alert = function(message)
+			table.insert(env.alerts, { message = message })
+		end,
+	}
+	if extra.open ~= nil then
+		options.open = extra.open
+	end
+	env.keys.start(options)
+end
+
+local function make_native_tabs(env, titles, selected, options)
+	options = options or {}
+	local numeric = options.numeric == true
+	local state = { titles = {}, docs = {}, selected = selected }
+	for index, title in ipairs(titles) do
+		state.titles[index] = title
+	end
+	if type(options.docs) == "table" then
+		for index, doc in ipairs(options.docs) do
+			state.docs[index] = doc
+		end
+	else
+		for index, title in ipairs(titles) do
+			state.docs[index] = "file:///pdfs/" .. title
+		end
+	end
+	local buttons = {}
+	for _, title in ipairs(titles) do
+		local button = make_ax_element({ AXRole = "AXRadioButton", AXSubrole = "AXTabButton", AXTitle = title })
+		button._attrs["AXValue"] = function()
+			local index = nil
+			for position, candidate in ipairs(buttons) do
+				if candidate == button then
+					index = position
+					break
+				end
+			end
+			if index ~= nil and state.selected == index then
+				if numeric then
+					return 1
+				end
+				return true
+			end
+			if numeric then
+				return 0
+			end
+			return false
+		end
+		function button:performAction(action)
+			if action ~= "AXPress" then
+				return false
+			end
+			for position, candidate in ipairs(buttons) do
+				if candidate == button then
+					state.selected = position
+					return true
+				end
+			end
+			return false
+		end
+		table.insert(buttons, button)
+	end
+	local tab_group = make_ax_element({ AXRole = "AXTabGroup" })
+	tab_group._attrs["AXTabs"] = function()
+		return buttons
+	end
+	local split = make_ax_element({ AXRole = "AXSplitGroup", AXChildren = {} })
+	local toolbar = make_ax_element({ AXRole = "AXToolbar", AXChildren = {} })
+	local close_button = make_ax_element({ AXRole = "AXButton" })
+	function close_button:performAction(action)
+		if action ~= "AXPress" then
+			return false
+		end
+		if type(state.selected) ~= "number" or state.selected < 1 or state.selected > #state.titles then
+			return false
+		end
+		state.close_calls = (state.close_calls or 0) + 1
+		table.remove(state.titles, state.selected)
+		table.remove(state.docs, state.selected)
+		table.remove(buttons, state.selected)
+		if state.selected > #state.titles then
+			state.selected = #state.titles
+		end
+		if #state.titles == 0 then
+			state.selected = nil
+		end
+		return true
+	end
+	local window = make_ax_element({ AXRole = "AXWindow" })
+	window._attrs["AXChildren"] = function()
+		if #state.titles <= 1 then
+			return { split, toolbar }
+		end
+		return { split, toolbar, tab_group }
+	end
+	window._attrs["AXCloseButton"] = close_button
+	window._attrs["AXDocument"] = function()
+		if type(state.selected) ~= "number" then
+			return nil
+		end
+		return state.docs[state.selected]
+	end
+	env.focused_window = window
+	env.app_windows = { window }
+	env.native_state = state
+	return state
+end
+
+local function tap_leader(env, second, second_flags)
+	assert.is_true(env.tap_key({ chars = "\\", flags = {}, keycode = 0 }))
+	assert.is_true(env.tap_key({ chars = second, flags = second_flags or {}, keycode = 0 }))
+	env.drain()
+end
+
+local function alert_saw(env, needle)
+	for _, alert in ipairs(env.alerts) do
+		if tostring(alert.message):find(needle, 1, true) then
+			return true
+		end
+	end
+	return false
 end
 
 describe("Highlights tab keys runtime", function()
@@ -467,5 +611,86 @@ describe("Highlights tab keys runtime", function()
 		local deep_top = make_ax_element({ AXRole = "AXWindow", AXChildren = { d1 } })
 		assert.is_nil(keys.find_tab_group(deep_top))
 		assert.is_not_nil(leaf("AXTable"))
+	end)
+
+	it("closes right tabs through the real adapter with boolean AXValue", function()
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		local state = make_native_tabs(env, { "a.pdf", "b.pdf", "c.pdf" }, 1)
+		start_with_real_adapter(env)
+		tap_leader(env, ">", { shift = true })
+		assert.same({ "a.pdf" }, state.titles)
+		assert.equals(1, state.selected)
+		assert.is_true(alert_saw(env, "Closed 2 tabs to the right"))
+	end)
+
+	it("closes other tabs from the middle through the real adapter", function()
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		local state = make_native_tabs(env, { "a.pdf", "b.pdf", "c.pdf", "d.pdf", "e.pdf" }, 3)
+		start_with_real_adapter(env)
+		tap_leader(env, "\\")
+		assert.same({ "c.pdf" }, state.titles)
+		assert.equals(1, state.selected)
+		assert.is_true(alert_saw(env, "Closed 4 other tabs"))
+	end)
+
+	it("closes left tabs through the real adapter", function()
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		local state = make_native_tabs(env, { "a.pdf", "b.pdf", "c.pdf", "d.pdf", "e.pdf" }, 3)
+		start_with_real_adapter(env)
+		tap_leader(env, "<", { shift = true })
+		assert.same({ "c.pdf", "d.pdf", "e.pdf" }, state.titles)
+		assert.equals(1, state.selected)
+		assert.is_true(alert_saw(env, "Closed 2 tabs to the left"))
+	end)
+
+	it("closes through the real adapter with numeric AXValue", function()
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		local state = make_native_tabs(env, { "a.pdf", "b.pdf", "c.pdf" }, 1, { numeric = true })
+		start_with_real_adapter(env)
+		tap_leader(env, ">", { shift = true })
+		assert.same({ "a.pdf" }, state.titles)
+		assert.equals(1, state.selected)
+		assert.is_true(alert_saw(env, "Closed 2 tabs to the right"))
+	end)
+
+	it("reopens a percent-encoded document through the real adapter", function()
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		local state = make_native_tabs(env, { "keep.pdf", "spaced.pdf" }, 1, {
+			docs = { "file:///pdfs/keep.pdf", "file:///Users/me/My%20Paper%C3%A9.pdf" },
+		})
+		start_with_real_adapter(env)
+		tap_leader(env, ">", { shift = true })
+		assert.same({ "keep.pdf" }, state.titles)
+		assert.equals(1, #_G.BobHighlightsTabKeys.lastBatch)
+		assert.equals("/Users/me/My Paperé.pdf", _G.BobHighlightsTabKeys.lastBatch[1])
+
+		tap_leader(env, "u")
+		assert.equals(1, #env.tasks)
+		local task = env.tasks[1]
+		assert.equals("/usr/bin/open", task.path)
+		assert.same({ "-b", BUNDLE_ID, "/Users/me/My Paperé.pdf" }, task.args)
+		assert.is_true(alert_saw(env, "Reopened 1 tab"))
+	end)
+
+	it("names the failure when no tab reads as selected", function()
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		make_native_tabs(env, { "a.pdf", "b.pdf" }, nil)
+		start_with_real_adapter(env)
+		tap_leader(env, ">", { shift = true })
+		assert.is_true(alert_saw(env, "Stopped after closing 0 tab(s): couldn't tell which tab is selected"))
+		local logged = false
+		for _, call in ipairs(env.logs) do
+			local joined = ""
+			for _, part in ipairs(call) do
+				joined = joined .. tostring(part) .. "\n"
+			end
+			if joined:find("Bob Highlights tab keys", 1, true) then
+				logged = true
+				assert.is_truthy(joined:find("couldn't tell which tab is selected", 1, true))
+				assert.is_nil(joined:find("a.pdf", 1, true))
+				assert.is_nil(joined:find("b.pdf", 1, true))
+			end
+		end
+		assert.is_true(logged)
 	end)
 end)

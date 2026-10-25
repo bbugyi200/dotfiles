@@ -276,6 +276,23 @@ local function make_can_arm(H)
 	end
 end
 
+local function ax_flag(value)
+	if value == true then
+		return true
+	end
+	local value_type = type(value)
+	if value_type == "number" or value_type == "string" then
+		return tonumber(value) == 1
+	end
+	return false
+end
+
+local function percent_decode(path)
+	return (path:gsub("%%(%x%x)", function(hex)
+		return string.char(tonumber(hex, 16))
+	end))
+end
+
 local function doc_to_path(value)
 	if type(value) ~= "string" or value == "" then
 		return nil
@@ -283,6 +300,7 @@ local function doc_to_path(value)
 	if value:sub(1, 7) == "file://" then
 		local path = value:gsub("^file://[^/]*", "")
 		path = path:gsub("^localhost", "")
+		path = percent_decode(path)
 		if path == "" or path:sub(1, 1) ~= "/" then
 			return nil
 		end
@@ -330,7 +348,7 @@ local function make_real_adapter(H)
 				title = "Untitled"
 			end
 			local raw_value = ax_attr(button, "AXValue")
-			local selected = raw_value == 1 or tonumber(raw_value) == 1
+			local selected = ax_flag(raw_value)
 			table.insert(tabs, { title = title, selected = selected == true })
 		end
 		return { tabs = tabs }
@@ -657,6 +675,11 @@ function M.start(options)
 					runtime.lastBatch = {}
 				end
 				show(HighlightsTabs.message(command, result or {}))
+				if type(result) == "table" and result.status == "failed" then
+					pcall(function()
+						H.printf("Bob Highlights tab keys %s failed: %s", command, tostring(result.reason))
+					end)
+				end
 			end)
 		end)
 		if not ok then

@@ -246,7 +246,7 @@ function M.run_close(mode, deps, on_done)
 		end
 	end
 	if selected_index == nil then
-		done({ status = "failed", closed = 0, reason = "tabs changed while closing", paths = {} })
+		done({ status = "failed", closed = 0, reason = "couldn't tell which tab is selected", paths = {} })
 		return
 	end
 

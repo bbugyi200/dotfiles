@@ -420,6 +420,13 @@ describe("Highlights close runner", function()
 		assert.equals(reselects_before + 1, kept.select_calls)
 	end)
 
+	it("fails when no tab is selected", function()
+		local finished = run_and_drain(M, "right", make_state({ "a.pdf", "b.pdf" }, nil))
+		assert.equals("failed", finished.status)
+		assert.equals(0, finished.closed)
+		assert.equals("couldn't tell which tab is selected", finished.reason)
+	end)
+
 	it("fails on drift", function()
 		local M_local = M
 		local deps, _, drain = make_deps(M_local, make_state({ "a.pdf", "b.pdf" }, 1))
