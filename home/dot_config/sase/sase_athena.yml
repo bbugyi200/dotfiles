@@ -103,8 +103,11 @@ axe:
         ci_watch:
           script: bugyi_chop_ci_watch
           description: |-
-            Sweep actstat once, notify on CI incidents, and merge ready release-please PRs
+            Sweep actstat once, notify on CI incidents, and merge ready plugin release-please PRs
 
+            sase releases are out of scope here: the release steward owns the
+            sase release PR and the sase core cut (handover phase sase-1n6.9),
+            so sase-org/sase is watched for CI health only and never merged.
             Terminal job failures collapse into one incident-combination SASE notification covering every repo
             currently announced as failing, with workflow, job, conclusion, step, URL, failing SHA, and
             unsettled-current-HEAD evidence per repo. Fingerprint churn, recoveries, and re-failures within the
@@ -135,28 +138,23 @@ axe:
                 sase-org/sase-nvim,
               ]
             release_repositories:
-              [sase-org/sase, sase-org/sase-github, sase-org/sase-telegram]
-            merge_order: [sase-github, sase-telegram, sase]
+              [sase-org/sase-github, sase-org/sase-telegram]
+            merge_order: [sase-github, sase-telegram]
             max_merges_per_tick: 1
             merge_enabled: true
             merge_method:
-              sase-org/sase: merge
               sase-org/sase-github: squash
               sase-org/sase-telegram: squash
             gating_workflows:
-              sase-org/sase: ["Master Gate"]
               sase-org/sase-github: []
               sase-org/sase-telegram: []
             heavy_workflows:
-              sase-org/sase: ["Full CI"]
               sase-org/sase-github: []
               sase-org/sase-telegram: []
             heavy_max_age_hours:
-              sase-org/sase: 6
               sase-org/sase-github: 6
               sase-org/sase-telegram: 6
-            heavy_dispatch_every_hours:
-              sase-org/sase: 2
+            heavy_dispatch_every_hours: {}
 dispatch:
   machines:
     apollo:
