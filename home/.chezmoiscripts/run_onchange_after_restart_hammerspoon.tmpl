@@ -13,10 +13,14 @@
 # file under home/dot_hammerspoon/ needs a hash line above (enforced by
 # tests/bash/hammerspoon_restart_hook_test.sh). A full restart, not hs.reload(),
 # loads the new config even when the running one failed to load; signals avoid
-# AppleScript Automation prompts during non-interactive applies.
+# AppleScript Automation prompts during non-interactive applies. After the
+# process exits LaunchServices briefly keeps the old instance registered, so an
+# immediate open can fail with -600 by reopening the dead instance; the hook
+# waits for the release and retries the relaunch.
 set -uo pipefail
 
 app="Hammerspoon"
+bundle_id="org.hammerspoon.Hammerspoon"
 
 function hammerspoon_running() {
   pgrep -x "${app}" >/dev/null
@@ -30,6 +34,25 @@ function wait_for_exit() {
     sleep 0.1
   done
   ! hammerspoon_running
+}
+
+# True while LaunchServices still has the old Hammerspoon instance registered.
+# A missing or failing lsappinfo counts as not registered, so the probe never
+# hangs or fails the hook.
+function launchservices_registered() {
+  lsappinfo find "bundleid=${bundle_id}" 2>/dev/null | grep -q 'ASN:'
+}
+
+# Wait up to $1 tenths of a second for LaunchServices to release the old
+# instance. Best-effort: always succeeds so the hook still tries to relaunch
+# when the registration lingers.
+function wait_for_launchservices_release() {
+  local tries="$1"
+  while ((tries-- > 0)); do
+    launchservices_registered || return 0
+    sleep 0.1
+  done
+  return 0
 }
 
 if ! hammerspoon_running; then
@@ -46,7 +69,24 @@ if ! wait_for_exit 50; then
   fi
 fi
 
-if ! open -g -a "${app}"; then
+wait_for_launchservices_release 30
+
+open_succeeded=0
+open_err=""
+for attempt in 1 2 3 4 5; do
+  if open_err="$(open -g -a "${app}" 2>&1 >/dev/null)"; then
+    open_succeeded=1
+    open_err=""
+    break
+  fi
+  if [[ "${attempt}" != "5" ]]; then
+    sleep 0.5
+  fi
+done
+if ((open_succeeded == 0)); then
+  if [[ -n "${open_err}" ]]; then
+    echo "${open_err}" >&2
+  fi
   echo "Hammerspoon was stopped but could not be relaunched; start it manually." >&2
   exit 1
 fi

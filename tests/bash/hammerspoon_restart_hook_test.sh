@@ -23,7 +23,8 @@ function set_up() {
   : >"${CALLS_FILE}"
   FAKE_SURVIVES_TERM=0
   FAKE_SURVIVES_KILL=0
-  FAKE_OPEN_RC=0
+  FAKE_OPEN_FAILS=0
+  FAKE_LS_LINGER=0
   write_host_stubs
 }
 
@@ -68,13 +69,46 @@ EOF
   cat >"${FAKE_BIN}/open" <<'EOF'
 #!/bin/bash
 printf 'open %s\n' "$*" >>"${CALLS_FILE}"
-if [[ "${FAKE_OPEN_RC:-0}" != "0" ]]; then
-  exit "${FAKE_OPEN_RC}"
+count_file="${TEST_TMP}/open.count"
+count=0
+if [[ -f "${count_file}" ]]; then
+  count="$(cat "${count_file}")"
+fi
+count=$((count + 1))
+printf '%s\n' "${count}" >"${count_file}"
+fails="${FAKE_OPEN_FAILS:-0}"
+if ((count <= fails)); then
+  printf '_LSOpenURLsWithCompletionHandler() failed for the application /Applications/Hammerspoon.app with error -600.\n' >&2
+  exit 1
 fi
 printf 'running\n' >"${STATE_FILE}"
 exit 0
 EOF
   chmod +x "${FAKE_BIN}/open"
+
+  cat >"${FAKE_BIN}/lsappinfo" <<'EOF'
+#!/bin/bash
+printf 'lsappinfo %s\n' "$*" >>"${CALLS_FILE}"
+if [[ "$(cat "${STATE_FILE}")" == "running" ]]; then
+  printf 'ASN:0x0-0x1-"Hammerspoon":\n'
+  exit 0
+fi
+count_file="${TEST_TMP}/lsappinfo.count"
+count=0
+if [[ -f "${count_file}" ]]; then
+  count="$(cat "${count_file}")"
+fi
+count=$((count + 1))
+printf '%s\n' "${count}" >"${count_file}"
+linger="${FAKE_LS_LINGER:-0}"
+if ((count <= linger)); then
+  printf 'ASN:0x0-0x1-"Hammerspoon":\n'
+else
+  printf '\n'
+fi
+exit 0
+EOF
+  chmod +x "${FAKE_BIN}/lsappinfo"
 
   # No-op so the hook's exit-wait loops stay fast.
   cat >"${FAKE_BIN}/sleep" <<'EOF'
@@ -94,9 +128,11 @@ function run_hook() {
   PATH="${FAKE_BIN}:/usr/bin:/bin" \
     STATE_FILE="${STATE_FILE}" \
     CALLS_FILE="${CALLS_FILE}" \
+    TEST_TMP="${TEST_TMP}" \
     FAKE_SURVIVES_TERM="${FAKE_SURVIVES_TERM}" \
     FAKE_SURVIVES_KILL="${FAKE_SURVIVES_KILL}" \
-    FAKE_OPEN_RC="${FAKE_OPEN_RC}" \
+    FAKE_OPEN_FAILS="${FAKE_OPEN_FAILS}" \
+    FAKE_LS_LINGER="${FAKE_LS_LINGER}" \
     bash "${HOOK_SCRIPT}" >"${STDOUT_FILE}" 2>"${STDERR_FILE}"
 }
 
@@ -173,6 +209,7 @@ function test_not_running_does_nothing() {
   assert_contains "not running" "$(stdout_text)"
   assert_not_contains "pkill" "$(calls_text)"
   assert_not_contains "open " "$(calls_text)"
+  assert_not_contains "lsappinfo" "$(calls_text)"
 }
 
 function test_running_exits_on_term() {
@@ -220,15 +257,64 @@ function test_running_survives_kill_is_not_relaunched() {
   assert_contains "did not exit" "$(stderr_text)"
 }
 
-function test_open_failure_exits_nonzero() {
+function test_waits_for_launchservices_release_before_open() {
   require_chezmoi || return 0
   render_darwin_hook
   printf 'running\n' >"${STATE_FILE}"
-  FAKE_OPEN_RC=1
+  FAKE_LS_LINGER=3
+
+  local rc
+  if run_hook; then rc=0; else rc=$?; fi
+
+  assert_same "0" "${rc}"
+  assert_contains "restarted" "$(stdout_text)"
+  assert_same "1" "$(grep -c '^open ' "${CALLS_FILE}")"
+  local last_lsappinfo open_line
+  last_lsappinfo="$(grep -n '^lsappinfo ' "${CALLS_FILE}" | tail -n 1 | cut -d: -f1)"
+  open_line="$(grep -n '^open ' "${CALLS_FILE}" | cut -d: -f1)"
+  assert_same "1" "$([ "${open_line}" -gt "${last_lsappinfo}" ] && printf '1\n' || printf '0\n')"
+}
+
+function test_transient_open_failure_is_retried() {
+  require_chezmoi || return 0
+  render_darwin_hook
+  printf 'running\n' >"${STATE_FILE}"
+  FAKE_OPEN_FAILS=1
+
+  local rc
+  if run_hook; then rc=0; else rc=$?; fi
+
+  assert_same "0" "${rc}"
+  assert_contains "restarted" "$(stdout_text)"
+  assert_same "2" "$(grep -c '^open ' "${CALLS_FILE}")"
+  assert_not_contains "_LSOpenURLsWithCompletionHandler" "$(stderr_text)"
+}
+
+function test_persistent_open_failure_exits_nonzero() {
+  require_chezmoi || return 0
+  render_darwin_hook
+  printf 'running\n' >"${STATE_FILE}"
+  FAKE_OPEN_FAILS=10
 
   local rc
   if run_hook; then rc=0; else rc=$?; fi
 
   assert_same "1" "${rc}"
   assert_contains "could not be relaunched" "$(stderr_text)"
+  assert_contains "error -600" "$(stderr_text)"
+  assert_same "5" "$(grep -c '^open ' "${CALLS_FILE}")"
+}
+
+function test_lingering_launchservices_registration_still_relaunches() {
+  require_chezmoi || return 0
+  render_darwin_hook
+  printf 'running\n' >"${STATE_FILE}"
+  FAKE_LS_LINGER=100
+
+  local rc
+  if run_hook; then rc=0; else rc=$?; fi
+
+  assert_same "0" "${rc}"
+  assert_contains "restarted" "$(stdout_text)"
+  assert_contains "open -g -a Hammerspoon" "$(calls_text)"
 }

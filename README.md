@@ -34,11 +34,13 @@ Hammerspoon's menu-bar **Reload Config** or a full apply.
 A full `chezmoi apply`/`chezmoi update` on macOS restarts Hammerspoon when any Lua file
 under `home/dot_hammerspoon/` changed. The hook is
 `home/.chezmoiscripts/run_onchange_after_restart_hammerspoon.tmpl`. It does nothing when
-Hammerspoon is not running, since the new files load on its next launch. A new
-Hammerspoon Lua module must be added to the hook's hash list:
-`tests/bash/hammerspoon_restart_hook_test.sh` fails until it is. A targeted
-`chezmoi apply ~/.hammerspoon` does not run scripts, so use Hammerspoon's menu-bar
-**Reload Config** or run a full apply instead.
+Hammerspoon is not running, since the new files load on its next launch. After stopping
+Hammerspoon, the hook waits for LaunchServices to release the old instance and retries
+the relaunch a few times; only if all attempts fail does the apply report an error, in
+which case you start Hammerspoon manually. A new Hammerspoon Lua module must be added to
+the hook's hash list: `tests/bash/hammerspoon_restart_hook_test.sh` fails until it is. A
+targeted `chezmoi apply ~/.hammerspoon` does not run scripts, so use Hammerspoon's
+menu-bar **Reload Config** or run a full apply instead.
 
 ## Pomodoro menu bar
 
