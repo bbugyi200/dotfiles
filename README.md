@@ -135,6 +135,25 @@ details when reopened. The Mac's installed `bob` must support `--worked` before 
 config is applied; an older `bob` exits 2 on the unknown option and Hammerspoon hides
 the item.
 
+## Highlights tab keys
+
+While Highlights is frontmost, a `\` leader closes tabs in its focused window:
+
+| Keys | Action                                           |
+| ---- | ------------------------------------------------ |
+| `\\` | Close every other tab, keeping the selected tab  |
+| `\<` | Close every tab to the left of the selected tab  |
+| `\>` | Close every tab to the right of the selected tab |
+| `\u` | Reopen the last batch these keys closed          |
+
+Press `\`, then the second key within 1 s. The leader stays active only while Highlights
+is frontmost and only touches the focused window; other Highlights windows stay open.
+`\` types normally in text fields and in the Bob Refs panel. A save dialog stops the run
+with the dialog left up. These closes skip Bob Refs' ⇧⌘T closed-tab stack, and `\u`
+reopens only the last batch (in memory only; a reload forgets it). Hammerspoon owns this
+binding instead of Bob Mac Capture because the leader needs an active event tap, and
+because a full apply restarts Hammerspoon while the app would need a signed rebuild.
+
 ## Internet ping menu bar
 
 Hammerspoon shows internet connectivity as one status item beside the Pomodoro item. The

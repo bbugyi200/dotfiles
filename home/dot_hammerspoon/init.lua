@@ -1,3 +1,4 @@
+local HighlightsTabKeys = require("highlights_tab_keys")
 local PingIndicator = require("ping_indicator")
 local PomodoroCountdown = require("pomodoro_countdown")
 local ScreenshotRegion = require("screenshot_region")
@@ -889,4 +890,13 @@ local pingStartOk, pingStartError = xpcall(function()
 end, debug.traceback)
 if not pingStartOk then
 	hs.printf("Bob ping start failed: %s", pingStartError)
+end
+
+-- Highlights tab-close leader keys. A throwing start must never break the
+-- other hotkeys or the Pomodoro item, so it is logged and swallowed.
+local highlightsTabKeysStartOk, highlightsTabKeysStartError = xpcall(function()
+	HighlightsTabKeys.start()
+end, debug.traceback)
+if not highlightsTabKeysStartOk then
+	hs.printf("Bob Highlights tab keys start failed: %s", highlightsTabKeysStartError)
 end
