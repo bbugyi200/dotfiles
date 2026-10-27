@@ -17,6 +17,7 @@ commit_hooks:
 file_hooks:
   - use: sase-research-artifacts@research-highlights
     command: bob_research_capture
+    timeout: 300s
 github_orgs:
   - bbugyi200
   - sase-org
