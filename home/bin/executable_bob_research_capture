@@ -1,0 +1,351 @@
+#!/usr/bin/env python3
+"""Stable research-file capture hook for SASE file hooks.
+
+Derives a hash-free ``-N`` stem from the report path, resolves any existing
+reference through ``bob ref show -f json``, follows its explicit ``later``
+family paths to the newest live reading, and recaptures with ``-f`` reread
+or ``-f=overwrite``. Uses only the standard library, argv arrays, and the
+JSON interface. Never parses human hint prose and never shell-evaluates a
+path, project name, or JSON field.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+STABLE_SUFFIX_RE = re.compile(r"-[0-9a-fA-F]{12}$")
+NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
+EXPECTED_SCHEMA_VERSION = 1
+
+
+def fail(message: str, code: int = 1) -> int:
+    print(f"bob-research-capture: error: {message}", file=sys.stderr)
+    return code
+
+
+def stable_stem_for(basename: str) -> str | None:
+    stem = basename
+    if stem.lower().endswith(".md"):
+        stem = stem[: -len(".md")]
+    else:
+        return None
+    if not stem:
+        return None
+    stem = STABLE_SUFFIX_RE.sub("", stem)
+    if not stem:
+        return None
+    if not NAME_RE.match(stem):
+        return None
+    return stem
+
+
+def find_bob() -> str | None:
+    found = shutil.which("bob")
+    if found:
+        return found
+    cargo = os.path.expanduser("~/.cargo/bin/bob")
+    if os.path.isfile(cargo) and os.access(cargo, os.X_OK):
+        return cargo
+    return None
+
+
+def run_show(bob_bin: str, query: str) -> tuple[dict | None, str | None]:
+    try:
+        proc = subprocess.run(
+            [bob_bin, "ref", "show", query, "-f", "json"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+        )
+    except OSError as exc:
+        return None, f"failed to run bob ref show for {query!r}: {exc}"
+    out = (proc.stdout or "").strip()
+    if not out:
+        err = (proc.stderr or "").strip()
+        suffix = f": {err}" if err else ""
+        return None, f"empty JSON from bob ref show for {query!r}{suffix}"
+    try:
+        payload = json.loads(out)
+    except json.JSONDecodeError as exc:
+        return None, f"malformed JSON from bob ref show for {query!r}: {exc}"
+    if not isinstance(payload, dict):
+        return None, f"malformed envelope from bob ref show for {query!r}"
+    return payload, None
+
+
+def show_row_for(
+    bob_bin: str, query: str, expect_path: str | None = None
+) -> tuple[dict | None, dict | None, str | None]:
+    """Return (row, envelope, error). Unknown references return (None, envelope, None)."""
+    payload, err = run_show(bob_bin, query)
+    if err is not None:
+        return None, None, err
+    if payload.get("schema_version") != EXPECTED_SCHEMA_VERSION:
+        return (
+            None,
+            None,
+            f"unsupported schema {payload.get('schema_version')!r} for {query!r}",
+        )
+    ok = payload.get("ok")
+    if ok is True:
+        refs = payload.get("refs")
+        if not isinstance(refs, list) or len(refs) != 1:
+            return (
+                None,
+                None,
+                f"expected exactly one ref for {query!r}, got {len(refs) if isinstance(refs, list) else type(refs).__name__}",
+            )
+        row = refs[0]
+        if not isinstance(row, dict):
+            return None, None, f"malformed ref row for {query!r}"
+        path = row.get("path")
+        if not isinstance(path, str) or not path:
+            return None, None, f"ref row for {query!r} has no path"
+        if expect_path is not None and path != expect_path:
+            return (
+                None,
+                None,
+                f"inconsistent ref for {query!r}: returned {path!r}",
+            )
+        # Precise stem queries must resolve to that stem, never to a
+        # title-only hit under a different stem.
+        if expect_path is None:
+            stem = Path(path).name
+            if stem.lower().endswith(".md"):
+                stem = stem[: -len(".md")]
+            if stem != query and Path(query).name != path:
+                # Query was a bare stem: require the returned stem to match.
+                if "/" not in query:
+                    return (
+                        None,
+                        None,
+                        f"inconsistent ref for {query!r}: returned {path!r}",
+                    )
+        return row, payload, None
+    if ok is False:
+        error = payload.get("error")
+        code = error.get("code") if isinstance(error, dict) else None
+        message = error.get("message") if isinstance(error, dict) else query
+        if code == "unknown_reference":
+            return None, payload, None
+        return None, None, f"{code or 'lookup_failed'}: {message}"
+    return None, None, f"malformed envelope from bob ref show for {query!r}"
+
+
+def stem_of_path(path: str) -> str | None:
+    base = Path(path).name
+    if base.lower().endswith(".md"):
+        base = base[: -len(".md")]
+    if not base or not NAME_RE.match(base):
+        return None
+    return base
+
+
+def is_numeric_zero(value) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value == 0
+
+
+def collect_family(
+    bob_bin: str, root_query: str, root_row: dict
+) -> tuple[list[dict] | None, str | None]:
+    rows: list[dict] = [root_row]
+    seen: set[str] = set()
+    root_path = root_row.get("path")
+    if isinstance(root_path, str):
+        seen.add(root_path)
+    queue: list[str] = []
+    later = root_row.get("later")
+    if later is None:
+        later = []
+    if not isinstance(later, list):
+        return None, f"malformed later list for {root_query!r}"
+    for item in later:
+        if not isinstance(item, str) or not item:
+            return None, f"malformed later entry for {root_query!r}"
+        queue.append(item)
+    while queue:
+        path = queue.pop(0)
+        if path in seen:
+            continue
+        seen.add(path)
+        row, _, err = show_row_for(bob_bin, path, expect_path=path)
+        if err is not None:
+            return None, err
+        if row is None:
+            return None, f"vanished later member {path!r}"
+        rows.append(row)
+        nested = row.get("later")
+        if nested is None:
+            nested = []
+        if not isinstance(nested, list):
+            return None, f"malformed later list for {path!r}"
+        for item in nested:
+            if not isinstance(item, str) or not item:
+                return None, f"malformed later entry for {path!r}"
+            if item not in seen:
+                queue.append(item)
+    # Validate reading numbers: at most one row per reading, all ints or None.
+    seen_readings: set[int] = set()
+    for row in rows:
+        reading = row.get("reading")
+        if reading is None:
+            continue
+        if not is_numeric_zero(reading) and not (
+            isinstance(reading, int)
+            and not isinstance(reading, bool)
+            and reading >= 1
+        ):
+            return (
+                None,
+                f"malformed reading number for {row.get('path')!r}",
+            )
+        if reading in seen_readings:
+            return None, f"duplicate reading number {reading} in family"
+        seen_readings.add(reading)
+    return rows, None
+
+
+def newest_row(rows: list[dict]) -> dict:
+    def key(row: dict) -> tuple[int, str]:
+        reading = row.get("reading")
+        if isinstance(reading, int) and not isinstance(reading, bool):
+            return (reading, str(row.get("path") or ""))
+        return (1, str(row.get("path") or ""))
+
+    return max(rows, key=key)
+
+
+def overwrite_eligible(row: dict) -> bool:
+    if row.get("status") != "ready":
+        return False
+    if row.get("status_sync") != "ok":
+        return False
+    annotation_count = row.get("annotation_count")
+    if not isinstance(annotation_count, int) or isinstance(annotation_count, bool):
+        return False
+    if annotation_count != 0:
+        return False
+    snapshot = row.get("snapshot")
+    if not isinstance(snapshot, dict):
+        return False
+    highlights = snapshot.get("highlights_count")
+    # Null, absent, boolean, and malformed values are never zero.
+    if not is_numeric_zero(highlights):
+        return False
+    return True
+
+
+def main(argv: list[str]) -> int:
+    args = argv[1:]
+    if len(args) != 1:
+        return fail("expected exactly one Markdown report path", 2)
+    target = args[0]
+    if not target:
+        return fail("report path is empty", 2)
+    target_path = Path(target)
+    if target_path.suffix.lower() != ".md":
+        return fail(f"report path must have a .md extension: {target!r}", 2)
+    if not target_path.is_file():
+        return fail(f"report path is not a readable file: {target!r}", 2)
+    try:
+        with target_path.open("r", encoding="utf-8"):
+            pass
+    except OSError as exc:
+        return fail(f"report path is not readable: {target!r}: {exc}", 2)
+
+    project = os.environ.get("SASE_FILE_HOOK_PROJECT", "")
+    if not project.strip():
+        return fail("SASE_FILE_HOOK_PROJECT is missing or blank", 2)
+
+    stable = stable_stem_for(target_path.name)
+    if stable is None:
+        return fail(f"cannot derive a valid stable stem from {target_path.name!r}", 2)
+
+    bob_bin = find_bob()
+    if bob_bin is None:
+        return fail("bob executable not found on PATH or ~/.cargo/bin/bob")
+
+    row, _, err = show_row_for(bob_bin, stable)
+    if err is not None:
+        print(f"bob-research-capture: error: {err}", file=sys.stderr)
+        return 1
+    if row is None:
+        mode = "first-capture"
+        name = stable
+        force_args = ["-f"]
+        print(
+            f"bob-research-capture: stable={stable} mode={mode} name={name}",
+            file=sys.stderr,
+        )
+        create_argv = [
+            bob_bin,
+            "ref",
+            "create",
+            target,
+            "--include-id",
+            "-N",
+            name,
+            "-P",
+            project,
+            *force_args,
+        ]
+        proc = subprocess.run(create_argv, check=False)
+        return proc.returncode
+
+    family, ferr = collect_family(bob_bin, stable, row)
+    if ferr is not None or family is None:
+        print(f"bob-research-capture: error: {ferr}", file=sys.stderr)
+        return 1
+    newest = newest_row(family)
+    newest_path = newest.get("path")
+    if not isinstance(newest_path, str) or not newest_path:
+        print(
+            "bob-research-capture: error: newest reading has no path",
+            file=sys.stderr,
+        )
+        return 1
+    newest_stem = stem_of_path(newest_path)
+    if newest_stem is None:
+        print(
+            f"bob-research-capture: error: newest path has invalid stem: {newest_path!r}",
+            file=sys.stderr,
+        )
+        return 1
+
+    if overwrite_eligible(newest):
+        mode = "overwrite"
+        name = newest_stem
+        force_args = ["-f=overwrite"]
+    else:
+        mode = "reread"
+        name = stable
+        force_args = ["-f"]
+    print(
+        f"bob-research-capture: stable={stable} mode={mode} name={name}",
+        file=sys.stderr,
+    )
+    create_argv = [
+        bob_bin,
+        "ref",
+        "create",
+        target,
+        "--include-id",
+        "-N",
+        name,
+        "-P",
+        project,
+        *force_args,
+    ]
+    proc = subprocess.run(create_argv, check=False)
+    return proc.returncode
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv))
