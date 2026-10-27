@@ -100,5 +100,5 @@ plan:
   max_next: 8 # [*] Next lane soft cap (docs/plan.md)
   max_ready: 16 # soft limit for dashboard READY tasks, excluding Today
   strict: false # refuse #NAME captures that would create a theme past max_themes
-  exempt: [GTD] # open entries that never count as themes
+  exempt: [PLAN] # open entries that never count as themes
   inventory_labels: [LATER, MISC, NEW FEATURES] # open names that are storage, not themes
