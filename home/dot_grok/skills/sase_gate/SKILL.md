@@ -85,9 +85,11 @@ notification panel's detail pane, so those fields are the user's whole view of t
 decision: write them for the reviewer, not for yourself.
 
 Command `argv` arrays are executed without a shell. Their first element must name an
-executable `command` resource in the bundle. A command receives the gate input as JSON
-on stdin and must print exactly one JSON value on stdout; diagnostics belong on stderr.
-Every command's output must satisfy its option's `result_schema`.
+executable `command` resource in the bundle. Every command resource must start with a
+`#!` interpreter line (for example `#!/bin/sh`), or be a native executable.
+`sase gate create` rejects other content with `invalid_command`. A command receives the
+gate input as JSON on stdin and must print exactly one JSON value on stdout; diagnostics
+belong on stderr. Every command's output must satisfy its option's `result_schema`.
 
 ## Declare Inputs And Actions
 
@@ -261,8 +263,17 @@ action that does need to rewrite one lists that resource's path under `targets`,
 run is rejected after the fact for touching something it never declared.
 
 For larger commands, set a resource's `source` to a script you authored instead of
-embedding `content`; use exactly one of `source` or `content`. Keep command resources
-narrowly scoped to the action shown to the user.
+embedding `content`; use exactly one of `source` or `content`. The `source` file must
+also start with a `#!` interpreter line (or be a native executable), or creation fails
+with `invalid_command`. Keep command resources narrowly scoped to the action shown to
+the user.
+
+Option and operation commands run with the gate bundle as their working directory, in
+the environment of whichever process executes the answer — the TUI, mobile, a proc, or a
+follow-up runner — not in the creating agent's environment. So bake absolute paths and
+pinned artifacts into the command at creation time, and never depend on agent-only
+variables such as `CARGO_TARGET_DIR`, `SASE_ARTIFACTS_DIR`, or the agent's workspace
+path.
 
 ## Declare The `turn` Block
 

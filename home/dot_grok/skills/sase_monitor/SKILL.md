@@ -104,6 +104,21 @@ most 20 characters; longer values are truncated with a trailing `…`. The pair 
 the row color, so reusing one pair across related monitors makes them read as one lane.
 `TESTING` / `TESTED` is the pair for `just check` and `just check-full`.
 
+Name a wait for what it is waiting on, in terms a reader outside your epic would
+recognize. Never use your plan's internal codename, such as `CUTOVER`. When the blocker
+is a SASE bead or agent, put its ID in the status label: `WAITING <id>` → `WAITED <id>`.
+Use the full ID when the status label fits within 20 characters; otherwise use the
+shorthand after the final dash. Always put the full ID in `--label`. For common external
+waits, reuse these pairs so related monitors read as one lane:
+
+| Wait                            | Start → stop                           |
+| ------------------------------- | -------------------------------------- |
+| GitHub Actions run or PR checks | `WATCHING CI` → `WATCHED CI`           |
+| Release                         | `WATCHING RELEASE` → `WATCHED RELEASE` |
+| Timed sleep                     | `SLEEPING FOR <n>s` → `SLEPT FOR <n>s` |
+
+Name any other external system directly, for example `WAITING PYPI`.
+
 ## Hazards
 
 - Never pass `-w 0` for a command that does heavy local work (`just check`, builds,
@@ -144,6 +159,33 @@ monitor then holds no runner capacity while it waits, and the follow-up queues f
 capacity at your normal weight when the wait ends. The same applies to `gh run watch`,
 `gh pr checks --watch`, and scripts that only poll something external (a release tag,
 PyPI, another bead). Pair the wait with labels that name what is being waited on:
+
+### Waiting On Another Bead
+
+First record the prerequisite on your own bead with
+`sase bead dep add <your-bead> <blocker>`. Skip this when your bead already depends on
+the blocker. Epic phase workers may add this edge to their own phase bead; it is not a
+new bead. Then start the monitor.
+
+Poll the bead's own `status` field, not nested child or dependency statuses in the JSON
+envelope. A canceled blocker is not success, so the follow-up reads its resolution
+before deciding what to do. Set the row label to `--label '<id> prerequisite'` with the
+full ID:
+
+```bash
+sase monitor start \
+  --reason 'Wait for prerequisite sase-1oe.4 to close' \
+  --timeout 7d \
+  -w 0 \
+  --start-status 'WAITING 1oe.4' \
+  --stop-status 'WAITED 1oe.4' \
+  --label 'sase-1oe.4 prerequisite' \
+  --next 'Read the resolution of sase-1oe.4; a canceled blocker is not success.' \
+  -- 'until [ "$(sase bead read sase-1oe.4 -N -f json -r "Poll prerequisite status" | jq -r .issue.status)" = closed ]; do sleep 300; done'
+```
+
+Use your full bead ID in `--label`, even when the status label needs its shorthand to
+fit within 20 characters.
 
 ```bash
 sase monitor start \
