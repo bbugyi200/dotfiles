@@ -125,6 +125,6 @@ themes:
   CHORE: magenta
   FIX: red
   MEET: blue
-  PLAN: grey
+  PLAN: auto
   READ: green
   WRITE: violet
