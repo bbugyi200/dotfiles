@@ -121,9 +121,10 @@ relations:
 # `bob themes color` pins. Colors were picked so the themes that share the most days
 # sit in different hue families.
 themes:
-  PLAN: blue
   BUILD: yellow
-  READ: green
   CHORE: magenta
-  WRITE: violet
   FIX: red
+  MEET: aqua
+  PLAN: blue
+  READ: green
+  WRITE: violet
