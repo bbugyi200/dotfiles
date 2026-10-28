@@ -95,10 +95,10 @@ freshness:
 # except `bob plan`, which exits 2.
 plan:
   max_themes: 3 # distinct open Pomodoro names besides the exempt ones
-  max_links: 12 # distinct open Task Links outside exempt entries
+  max_links: 13 # distinct open Task Links outside exempt entries
   max_pending: 8 # [/] In Progress lane soft cap, shown as PENDING
-  max_next: 16 # [*] Next lane soft cap (docs/plan.md)
-  max_ready: 32 # soft limit for dashboard READY tasks, excluding Today
+  max_next: 13 # [*] Next lane soft cap (docs/plan.md)
+  max_ready: 21 # soft limit for dashboard READY tasks, excluding Today
   strict: false # refuse #NAME captures that would create a theme past max_themes
   exempt: [PLAN] # open entries that never count as themes
   inventory_labels: [LATER, MISC, NEW FEATURES] # open names that are storage, not themes
