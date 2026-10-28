@@ -146,6 +146,9 @@ Name any other external system directly, for example `WAITING PYPI`.
   `--next '#commit ...'` or `--next '%model:opus ...'` will not route or expand
   anything, but writing `#412` or a directive name in prose is safe. Use `-m/--model` to
   select the follow-up agent's model; `%model` text inside `--next` stays literal.
+- When the follow-up should finish by committing, write
+  `submit /sase_final with a commit decision for <repo>: <message>`. Never write
+  `commit <repo>`: a follow-up on another model may run raw `git commit`.
 - Do not poll, sleep, or wait for the monitored command after `sase monitor start`
   exits; the starting agent is then handed off and killed when running inside an agent.
   Until the start command exits, keep polling that same command session if your tool
