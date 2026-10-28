@@ -103,6 +103,17 @@ plan:
   exempt: [PLAN] # open entries that never count as themes
   inventory_labels: [LATER, MISC, NEW FEATURES] # open names that are storage, not themes
 
+# Task relations (docs/task-relations.md §17 in bob-cli).
+relations:
+  # linked_from_lines: true   # write 🪢 LINKED FROM mirrors (default)
+  # Committing a link with one of these labels also cancels the task the label
+  # is phrased from ("S duplicate of T" cancels S). Matched like relation
+  # labels (case, spacing, trailing colon ignored). Empty cancels nothing.
+  cancel_labels:
+    - duplicate of
+    - superseded by
+    # - merged into
+
 # Pomodoro themes: your vocabulary and its colors (docs/pomodoro-themes.md PT12 in
 # bob-cli). A name outside this list still works, but menus stop suggesting it and
 # capture, bob plan, and the ledger mark it. Colors are palette slots (blue, orange,
