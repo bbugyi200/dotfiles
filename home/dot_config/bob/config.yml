@@ -102,6 +102,7 @@ plan:
   strict: false # refuse #NAME captures that would create a theme past max_themes
   exempt: [PLAN] # open entries that never count as themes
   inventory_labels: [LATER, MISC, NEW FEATURES] # open names that are storage, not themes
+  default_type: CHORE # last-resort type for tasks without a more specific default
 
 # Task relations (docs/task-relations.md §17 in bob-cli).
 relations:
@@ -120,13 +121,13 @@ relations:
     - implemented by
     - verified by
 
-# Pomodoro themes: your vocabulary and its colors (docs/pomodoro-themes.md PT12 in
-# bob-cli). A name outside this list still works, but menus stop suggesting it and
+# Task types: your vocabulary and its colors (docs/task-types.md PT12 in bob-cli).
+# A name outside this list still works, but menus stop suggesting it and
 # capture, bob plan, and the ledger mark it. Colors are palette slots (blue, orange,
 # aqua, yellow, magenta, green, violet, red) or auto; they win over
 # `bob themes color` pins. Colors were picked so the themes that share the most days
 # sit in different hue families.
-themes:
+types:
   BUILD: yellow
   CHORE: magenta
   FIX: red
