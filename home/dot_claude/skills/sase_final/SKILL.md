@@ -51,8 +51,14 @@ executed plan, monitor, pipe, or questions handoff is exempt.
   refreshed context no longer requires one.
 - If submit reports other validation errors, repair the manifest and resubmit when
   possible.
-- Successfully executed handoffs through plan, monitor, pipe, or questions terminate the
-  runner mechanically and do not need this skill.
+
+## Handoff Commands
+
+Handoff commands have two outcomes. If a command reports **Staged**, finish the turn
+through `/sase_final` and submit a declaration only when its context requires one. Stage
+before declaring, do not mutate files after a successful declaration, and never wait for
+your own staged handoff. If it does not report **Staged**, the legacy command ends your
+turn mechanically. Native helpers return to the root agent and never declare.
 
 ## Prepared Monitor Completion
 

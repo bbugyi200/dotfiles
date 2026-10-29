@@ -83,12 +83,11 @@ SASE derives your plan's links from the artifacts you read this turn; use
    sase plan propose sase_plan_<name>.md
    ```
 
-   Submission consumes the scratch plan into SASE's durable plan archive, writes a
-   handoff marker, and sends `SIGTERM` to the current agent runner process group. The
-   runner treats that signal as an intentional handoff: it creates the tier-specific
-   `PlanApproval` or `EpicApproval` gate turn and ends this agent; the turn owns review
-   settlement and launches the feedback replanner or approved tale coder. The proposal
-   command itself must run until it completes the marker write, which can take up to a
-   minute. If your tool yields or backgrounds its session, keep polling that same
-   session until it exits; an early or empty result does not mean a proposal happened.
-   Once it succeeds, do not poll response files yourself.
+   If the command reports **Staged**, it archived the proposal and staged approval for
+   host completion. Nothing starts until your turn ends: finish through `/sase_final`,
+   submitting only when its context says a declaration is required. Stage before you
+   declare, do not mutate files after a successful declaration, and never wait for your
+   own staged proposal. Otherwise the legacy command has ended your turn mechanically;
+   the runner creates the tier-specific `PlanApproval` or `EpicApproval` gate turn,
+   which owns review settlement and launches the feedback replanner or approved tale
+   coder. Do not poll response files yourself.
