@@ -113,6 +113,12 @@ relations:
     - duplicate of
     - superseded by
     # - merged into
+  # Committing a link with one of these labels also completes the task the label is
+  # phrased from ("S implemented by T" completes S), exactly as Ctrl+Enter or capture
+  # `!` would. Matched like cancel_labels. Empty completes nothing.
+  complete_labels:
+    - implemented by
+    - verified by
 
 # Pomodoro themes: your vocabulary and its colors (docs/pomodoro-themes.md PT12 in
 # bob-cli). A name outside this list still works, but menus stop suggesting it and
