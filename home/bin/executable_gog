@@ -1,4 +1,12 @@
 #!/bin/bash
 
+if [[ -x ~/.local/bin/gog ]]; then
+  GOG=~/.local/bin/gog
+elif [[ -x /opt/homebrew/bin/gog ]]; then
+  GOG=/opt/homebrew/bin/gog
+else
+  echo "gog executable not found"
+  exit 1
+fi
 GOG_KEYRING_PASSWORD="$(pass show gogcli/keyring-password | sed -n '1p')" \
-  ~/.local/bin/gog "$@"
+  $GOG "$@"
