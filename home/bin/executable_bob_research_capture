@@ -7,6 +7,13 @@ family paths to the newest live reading, and recaptures with ``-f`` reread
 or ``-f=overwrite``. Uses only the standard library, argv arrays, and the
 JSON interface. Never parses human hint prose and never shell-evaluates a
 path, project name, or JSON field.
+
+When the target sits under a research month directory (``YYYYMM``), only
+canonical reports proceed: ``<YYYYMM>/<stem>.md`` or
+``<YYYYMM>/<name>/<name>.md``. Asset-folder files, nested notes, and other
+topic-dir Markdown skip with exit 0 and never call ``bob``. Paths with no
+month ancestor (manual runs, artifact-store copies under 14-digit timestamp
+dirs) keep the previous behavior.
 """
 
 from __future__ import annotations
@@ -21,12 +28,46 @@ from pathlib import Path
 
 STABLE_SUFFIX_RE = re.compile(r"-[0-9a-fA-F]{12}$")
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
+MONTH_DIR_RE = re.compile(r"^20\d{4}$")
 EXPECTED_SCHEMA_VERSION = 1
 
 
 def fail(message: str, code: int = 1) -> int:
     print(f"bob-research-capture: error: {message}", file=sys.stderr)
     return code
+
+
+def parts_below_month_dir(target: str) -> tuple[str, ...] | None:
+    """Return path parts below the nearest ``YYYYMM`` ancestor, or None.
+
+    Uses ``os.path.abspath`` and does not resolve symlinks. Artifact-store
+    copies live under 14-digit timestamp dirs such as ``20261030113020`` and
+    never match ``MONTH_DIR_RE``.
+    """
+    path = Path(os.path.abspath(target))
+    below: list[str] = [path.name]
+    for parent in path.parents:
+        if MONTH_DIR_RE.fullmatch(parent.name):
+            return tuple(below)
+        if parent == parent.parent:
+            break
+        below.insert(0, parent.name)
+    return None
+
+
+def skip_non_report(target: str, stable: str) -> str | None:
+    """Return a skip reason if *target* is not a canonical research report."""
+    below = parts_below_month_dir(target)
+    if below is None:
+        return None
+    if len(below) == 1:
+        return None
+    if len(below) == 2 and below[0] == stable:
+        return None
+    return (
+        f"skip: {target} is not a research report "
+        f"(expected <YYYYMM>/<stem>.md or <YYYYMM>/<name>/<name>.md)"
+    )
 
 
 def stable_stem_for(basename: str) -> str | None:
@@ -267,6 +308,11 @@ def main(argv: list[str]) -> int:
     stable = stable_stem_for(target_path.name)
     if stable is None:
         return fail(f"cannot derive a valid stable stem from {target_path.name!r}", 2)
+
+    skip_reason = skip_non_report(target, stable)
+    if skip_reason is not None:
+        print(f"bob-research-capture: {skip_reason}", file=sys.stderr)
+        return 0
 
     bob_bin = find_bob()
     if bob_bin is None:

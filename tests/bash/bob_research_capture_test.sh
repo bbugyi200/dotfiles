@@ -416,6 +416,43 @@ function test_metachars_stay_single_literal_arguments() {
   assert_same "0" "$?"
 }
 
+function test_canonical_month_dir_reports_are_captured() {
+  local r
+  r="$(write_report "202610/topic/topic.md")"
+  HOOK_PROJECT="proj" run_capture "$r" >/dev/null 2>&1
+  assert_same "0" "$?"
+  assert_same "1" "$(create_call_count)"
+  last_create_json | python3 -c 'import json,sys; a=json.load(sys.stdin); assert a[a.index("-N")+1] == "topic", a'
+  assert_same "0" "$?"
+  : >"$CALLS_FILE"
+  r="$(write_report "202610/solo_report.md")"
+  HOOK_PROJECT="proj" run_capture "$r" >/dev/null 2>&1
+  assert_same "0" "$?"
+  assert_same "1" "$(create_call_count)"
+  last_create_json | python3 -c 'import json,sys; a=json.load(sys.stdin); assert a[a.index("-N")+1] == "solo_report", a'
+  assert_same "0" "$?"
+}
+
+function test_non_canonical_month_dir_markdown_is_skipped() {
+  local rel r err
+  err="${TEST_TMP}/skip.err"
+  for rel in \
+    "202610/topic/topic__final_assets/README.md" \
+    "202610/topic/topic__cld_assets/test.md" \
+    "202610/topic/acceptance.md" \
+    "202610/topic/pdfkit_table_selection_report_drafts.md"
+  do
+    : >"$CALLS_FILE"
+    : >"$err"
+    r="$(write_report "$rel")"
+    HOOK_PROJECT="proj" run_capture "$r" >/dev/null 2>"$err"
+    assert_same "0" "$?"
+    assert_same "0" "$(create_call_count)"
+    assert_contains "bob-research-capture: skip:" "$(cat "$err")"
+    assert_contains "is not a research report" "$(cat "$err")"
+  done
+}
+
 function test_hook_command_and_provider_use_intact() {
   assert_contains "sase-research-artifacts@research-highlights" "$(cat "$SASE_YML")"
   assert_contains "command: bob_research_capture" "$(cat "$SASE_YML")"
