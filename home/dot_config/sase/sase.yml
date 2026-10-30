@@ -185,7 +185,7 @@ ace:
     rsa: |-
       #research_swarm(gemini=true,grok=true,muse=true,image=true,image_model=gpt-6-astra,codex_model=gpt-6-astra):: $1
     s: |-
-      sase
+      #{project}
     sa: "sase agent"
     sab: |-
       Can you help me finish whatever work remains on the $1 bead and then close it? $2
