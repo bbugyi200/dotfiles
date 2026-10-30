@@ -64,6 +64,11 @@ highlights:
   # rewrites its page-1 marker, then reload it in place. Inert off macOS. See
   # "PDFs open in Highlights" in bob-cli docs/highlights-ref-sync.md.
   coordinate_pdf_writes: true
+  # Link each task created from a Highlights `#task` annotation back to its
+  # reference's reading task on the new task's 🪢 LINKS line ("<task> inspired by
+  # <reading task>"). Unset links nothing. See "Relation to the reading task" in
+  # bob-cli docs/highlights-ref-sync.md.
+  annotation_task_relation: inspired by
 
 # `bob gkeep` drains the Google Keep inbox into gkeep_inbox.md as Obsidian
 # tasks; see `bob gkeep --help` and docs/gkeep.md in bob-cli. Run
