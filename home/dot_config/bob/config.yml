@@ -116,7 +116,7 @@ freshness:
 # strings. Invalid values fall back to the defaults with a warning everywhere
 # except `bob plan`, which exits 2.
 plan:
-  max_themes: 3 # distinct open Pomodoro names besides the exempt ones
+  max_themes: 4 # distinct open Pomodoro names besides the exempt ones
   max_links: 13 # distinct open Task Links outside exempt entries
   max_pending: 8 # [/] In Progress lane soft cap, shown as PENDING
   max_next: 13 # [*] Next lane soft cap (docs/plan.md)
