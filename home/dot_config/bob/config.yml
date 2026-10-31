@@ -85,8 +85,9 @@ gkeep:
 # `bob gcal` projects Google Calendar events onto today's daily note as Event
 # Tasks; see `bob gcal --help` and docs/gcal.md in bob-cli. Uncomment to
 # enable, then run `bob gcal login` once and `bob gcal doctor` to diagnose
-# the setup. Only the host named by `writer` may sync; the Mac runs sync
-# every 5 minutes through the com.bbugyi.bob-gcal-sync LaunchAgent.
+# the setup. Only the host named by `writer` may sync; the Mac syncs when
+# you run `bob gcal sync`, and Ledger Tools runs it once when today's note
+# is created.
 # gcal:
 #   account: bryanbugyi34@gmail.com # optional when gog holds exactly one account
 #   writer: kellys-macbook-pro # the one host label allowed to sync

@@ -10,3 +10,4 @@
 .config/opencode/skills/bob_dataview
 sase/xprompts
 bin/bob_xlib_pull
+Library/LaunchAgents/com.bbugyi.bob-gcal-sync.plist
