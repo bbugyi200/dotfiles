@@ -32,20 +32,20 @@ properties:
     levels:
       - label: P1
         value: high
-        min_days: 2
-        max_days: 7
+        min_days: 3
+        max_days: 8
         # rolls: 3   # optional: this level's own roll limit
       - label: P2
         value: medium
-        min_days: 8
-        max_days: 30
+        min_days: 9
+        max_days: 31
       - label: P3
         value: low
-        min_days: 31
-        max_days: 90
+        min_days: 32
+        max_days: 100
       - label: P4
         value: lowest
-        min_days: 91
+        min_days: 101
         max_days: 365
 
 highlights:
@@ -105,9 +105,9 @@ gkeep:
 # a missing block means these defaults. Invalid values are a config error for
 # `bob freshness` (exit 2); ledger-tools falls back to defaults marked invalid.
 freshness:
-  interval: 7 # Ready backlog review cadence
+  interval: 3 # Ready backlog review cadence
   pending_interval: 1 # [/] lane daily review; false = not walked
-  next_interval: 1 # [*] lane daily review; false = not walked
+  next_interval: 2 # [*] lane daily review; false = not walked
   project_interval: 1 # Bryan's ^prj review cadence (personal setting, not a built-in default)
   # rotten_daily_budget: 15 # counts upkeep outside the lanes; never hides tasks
 
