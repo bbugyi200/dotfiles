@@ -27,8 +27,8 @@ properties:
     # same-level rolls (read from the task's Schedule Log); the next recommended roll
     # decays the task one level (P2 → P3), and past the last level it cancels it.
     # `decay: false` makes Ctrl+Enter a plain same-level roll that never decays.
-    # decay:
-    #   rolls: 1
+    decay:
+      rolls: 2 # two same-level Ctrl+Enter rolls per level, then the next one decays
     levels:
       - label: P1
         value: high
@@ -110,6 +110,11 @@ freshness:
   next_interval: 1 # [*] lane daily review; false = not walked
   project_interval: 1 # Bryan's ^prj review cadence (personal setting, not a built-in default)
   # rotten_daily_budget: 15 # counts upkeep outside the lanes; never hides tasks
+  # Interim task decay (bob-cli docs/freshness.md §2a): 2 due Alt+F keeps then
+  # the Ready card; enter P1. Per-rung keys land in memory-config.
+  decay:
+    keeps: 2
+    enter: P1
 
 # Today's plan budget (`bob plan`, capture, tmux, Obsidian) and the NEXT/PENDING/READY
 # lane caps; see `docs/plan.md` in bob-cli. The block is optional: a missing block
