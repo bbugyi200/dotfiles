@@ -107,7 +107,7 @@ gkeep:
 freshness:
   interval: 3 # Ready backlog review cadence
   pending_interval: 1 # [/] lane daily review; false = not walked
-  next_interval: 2 # [*] lane daily review; false = not walked
+  next_interval: 1 # [*] lane daily review; false = not walked
   project_interval: 1 # Bryan's ^prj review cadence (personal setting, not a built-in default)
   # rotten_daily_budget: 15 # counts upkeep outside the lanes; never hides tasks
 
