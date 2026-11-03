@@ -9,6 +9,7 @@ M.MAX_THEME_CODEPOINTS = 24
 M.UNTITLED_THEME = "UNTITLED"
 M.NO_POMODORO_TITLE = "NO POMODORO"
 M.ICON = "🍅"
+M.ENDED_MARK = "⇥"
 
 local EM_DASH = "—"
 local ELLIPSIS = "…"
@@ -303,21 +304,29 @@ function M.presentation(remaining_seconds, flash_on, context)
 	if remaining_seconds == nil then
 		local shown_seconds = nil
 		local worked_minutes = nil
+		local last_stop = nil
 		if type(context) == "table" then
 			shown_seconds = context.missingShownSeconds
 			if is_finite_number(context.workedMinutes) and context.workedMinutes >= 0 then
 				worked_minutes = math.floor(context.workedMinutes)
+			end
+			if type(context.lastStop) == "string" and context.lastStop:match("^%d%d:%d%d$") then
+				last_stop = context.lastStop
 			end
 		end
 		local idle_title = M.idle_title(context)
 		local step = M.missing_reminder_step(shown_seconds)
 		if step ~= nil and step.active then
 			local waited = M.format_duration(step.waitMinutes)
-			local segments = {
-				{ text = idle_title, role = "missing" },
-				{ text = " " .. M.PHI .. " ", role = "phi" },
-				{ text = waited, role = "waited" },
-			}
+			local segments = {}
+			if last_stop ~= nil then
+				table.insert(segments, { text = M.ENDED_MARK .. " ", role = "arrow" })
+				table.insert(segments, { text = last_stop, role = "stop" })
+				table.insert(segments, { text = SEPARATOR, role = "separator" })
+			end
+			table.insert(segments, { text = idle_title, role = "missing" })
+			table.insert(segments, { text = " " .. M.PHI .. " ", role = "phi" })
+			table.insert(segments, { text = waited, role = "waited" })
 			local parts = {}
 			for _, segment in ipairs(segments) do
 				table.insert(parts, segment.text)
@@ -329,19 +338,30 @@ function M.presentation(remaining_seconds, flash_on, context)
 				duration = nil,
 				waitedMinutes = step.waitMinutes,
 				workedMinutes = worked_minutes,
+				lastStop = last_stop,
 				segments = segments,
 			}
 		end
+		local steady_segments = {}
+		if last_stop ~= nil then
+			table.insert(steady_segments, { text = M.ENDED_MARK .. " ", role = "arrow" })
+			table.insert(steady_segments, { text = last_stop, role = "stop" })
+			table.insert(steady_segments, { text = SEPARATOR, role = "separator" })
+		end
+		table.insert(steady_segments, { text = idle_title, role = "missing" })
+		local steady_parts = {}
+		for _, segment in ipairs(steady_segments) do
+			table.insert(steady_parts, segment.text)
+		end
 		return {
-			title = idle_title,
+			title = table.concat(steady_parts),
 			appearance = "missing",
 			status = idle_title,
 			duration = nil,
 			waitedMinutes = nil,
 			workedMinutes = worked_minutes,
-			segments = {
-				{ text = idle_title, role = "missing" },
-			},
+			lastStop = last_stop,
+			segments = steady_segments,
 		}
 	end
 

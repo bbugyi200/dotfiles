@@ -912,6 +912,269 @@ describe("Hammerspoon init", function()
 		assert.equals("No current Pomodoro · 2h0m worked today", runtime.menu.tooltip)
 	end)
 
+	it("requests --last with an exit-2 fallback to the worked-only view", function()
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+		local command = task_command_text(env.tasks[1])
+		assert.is_true(command:find("--show-stale --worked --last", 1, true) ~= nil)
+		assert.is_true(command:find('if [ "$pomodoro_status" -eq 2 ]', 1, true) ~= nil)
+		assert.is_true(command:find("bob pomodoro --show-stale --worked ||", 1, true) ~= nil)
+		local first = command:find("bob pomodoro --show-stale --worked --last", 1, true)
+		local fallback = command:find("bob pomodoro --show-stale --worked ||", 1, true)
+		assert.is_not_nil(first)
+		assert.is_not_nil(fallback)
+		assert.is_true(fallback > first)
+	end)
+
+	it("shows the last-end mark on idle syncs with tooltip and dropdown rows", function()
+		local restore_clock, fixed = freeze_clock()
+		local ok, error_message, env = load_init_with({
+			task_completion = {
+				exit_code = 0,
+				stdout = "[WORKED 230m] [LAST 1430-1435] — BUILD",
+				stderr = "",
+			},
+		})
+		assert.is_true(ok, error_message)
+
+		local runtime = _G.BobPomodoroCountdown
+		assert.equals("missing", runtime.state.status)
+		assert.equals(230, runtime.state.workedMinutes)
+		assert.equals("14:35", runtime.state.lastStopTime)
+		assert.equals("BUILD", runtime.state.lastTheme)
+		assert.equals("5m", runtime.state.lastDuration)
+
+		local worked_output = "No current Pomodoro · 3h50m worked today"
+		assert.equals(worked_output .. "\nBUILD (5m) ended at 14:35", runtime.menu.tooltip)
+
+		local items = menu_items(runtime.menu)
+		assert.equals(worked_output, items[1].title)
+		assert.equals("BUILD (5m) ended at 14:35", items[2].title)
+		assert.is_true(items[2].disabled)
+		assert.is_true(items[3].title:find("Next reminder at", 1, true) ~= nil)
+
+		local title = title_text(runtime.menu.title)
+		assert.is_true(title:find("⇥ 14:35 ·", 1, true) ~= nil)
+		assert.is_true(title:find("3h50m", 1, true) ~= nil)
+		assert.is_nil(title:find("🍅", 1, true))
+
+		local spans = assert(title_spans(runtime.menu.title))
+		assert.equals("⇥ ", spans[1].text)
+		assert.equals("14:35", spans[2].text)
+		assert.equals(" · ", spans[3].text)
+		assert.is_true(spans[4].text:find("3h50m", 1, true) ~= nil)
+		assert.are.same({ list = "System", name = "labelColor", alpha = 1 }, spans[1].attributes.color)
+		assert.are.same({ list = "System", name = "labelColor", alpha = 1 }, spans[2].attributes.color)
+		assert.is_nil(spans[1].attributes.backgroundColor)
+		assert.is_nil(spans[2].attributes.backgroundColor)
+		assert.is_nil(spans[3].attributes.backgroundColor)
+
+		runtime.state.missingShownEpoch = fixed - 60
+		runtime.tickTimer.callback()
+		local reminder_title = title_text(env.menu_title_calls[#env.menu_title_calls].title)
+		assert.is_true(reminder_title:find("⇥ 14:35 ·", 1, true) ~= nil)
+		assert.is_true(reminder_title:find("3h50m", 1, true) ~= nil)
+		assert.is_true(reminder_title:find("φ 1m", 1, true) ~= nil)
+		local reminder_spans = assert(title_spans(env.menu_title_calls[#env.menu_title_calls].title))
+		assert.equals("⇥ ", reminder_spans[1].text)
+		assert.equals("14:35", reminder_spans[2].text)
+		assert.is_nil(reminder_spans[1].attributes.backgroundColor)
+		assert.is_nil(reminder_spans[2].attributes.backgroundColor)
+
+		env.task_completion = { exit_code = 0, stdout = "[WORKED 95m]", stderr = "" }
+		runtime.syncTimer.callback()
+		restore_clock()
+		assert.is_nil(runtime.state.lastStopTime)
+		assert.is_nil(runtime.state.lastTheme)
+		assert.equals(worked_output:gsub("3h50m", "1h35m"), runtime.menu.tooltip)
+	end)
+
+	it("keeps the bare worked view without a last-end row or tooltip line", function()
+		local ok, error_message = load_init_with({
+			task_completion = { exit_code = 0, stdout = "[WORKED 95m]\n", stderr = "" },
+		})
+		assert.is_true(ok, error_message)
+		local runtime = _G.BobPomodoroCountdown
+		assert.is_nil(runtime.state.lastStopTime)
+		assert.equals("No current Pomodoro · 1h35m worked today", runtime.menu.tooltip)
+		local items = menu_items(runtime.menu)
+		for _, item in ipairs(items) do
+			assert.is_nil((item.title or ""):find("ended at", 1, true))
+		end
+		assert.is_true(items[2].title:find("Next reminder at", 1, true) ~= nil)
+	end)
+
+	it("hides the menu when the last-end token is invalid or trailed by junk", function()
+		for _, stdout in ipairs({
+			"[WORKED 95m] [LAST 2560-0000]",
+			"[WORKED 95m] junk",
+		}) do
+			local ok, error_message = load_init_with({
+				task_completion = { exit_code = 0, stdout = stdout, stderr = "" },
+			})
+			assert.is_true(ok, error_message, stdout)
+			assert.is_nil(_G.BobPomodoroCountdown.state, stdout)
+			assert.is_true(_G.BobPomodoroCountdown.menu.removed, stdout)
+		end
+	end)
+
+	it("clears the active context when moving to idle with a last end", function()
+		local restore_clock = freeze_clock_at(today_at(9, 50))
+		local ok, error_message, env = load_init_with({
+			task_completion = {
+				exit_code = 0,
+				stdout = "[<13m] 0950-1015 — DEEP WORK",
+				stderr = "",
+			},
+		})
+		assert.is_true(ok, error_message)
+
+		local runtime = _G.BobPomodoroCountdown
+		assert.equals("DEEP WORK", runtime.state.fullTheme)
+
+		env.task_completion = {
+			exit_code = 0,
+			stdout = "[WORKED 230m] [LAST 1430-1435] — BUILD",
+			stderr = "",
+		}
+		runtime.syncTimer.callback()
+		restore_clock()
+
+		assert.equals("missing", runtime.state.status)
+		assert.is_nil(runtime.state.fullTheme)
+		assert.is_nil(runtime.state.stopTime)
+		assert.is_nil(runtime.state.endEpoch)
+		assert.equals("14:35", runtime.state.lastStopTime)
+		assert.equals("BUILD", runtime.state.lastTheme)
+		local title = title_text(runtime.menu.title)
+		assert.is_true(title:find("⇥ 14:35 ·", 1, true) ~= nil)
+		assert.is_nil(title:find("🍅", 1, true))
+	end)
+
+	it("shows the last-end row without a duration when the range is degenerate", function()
+		local ok, error_message = load_init_with({
+			task_completion = {
+				exit_code = 0,
+				stdout = "[WORKED 95m] [LAST 1430-1430] — BUILD",
+				stderr = "",
+			},
+		})
+		assert.is_true(ok, error_message)
+		local runtime = _G.BobPomodoroCountdown
+		assert.equals("14:30", runtime.state.lastStopTime)
+		assert.equals("BUILD", runtime.state.lastTheme)
+		assert.is_nil(runtime.state.lastDuration)
+		assert.equals("No current Pomodoro · 1h35m worked today\nBUILD ended at 14:30", runtime.menu.tooltip)
+		assert.equals("BUILD ended at 14:30", menu_items(runtime.menu)[2].title)
+
+		local untitled_ok, untitled_message, untitled_env = load_init_with({
+			task_completion = {
+				exit_code = 0,
+				stdout = "[WORKED 95m] [LAST 1430-1435]",
+				stderr = "",
+			},
+		})
+		assert.is_true(untitled_ok, untitled_message)
+		local untitled_runtime = _G.BobPomodoroCountdown
+		assert.equals("UNTITLED", untitled_runtime.state.lastTheme)
+		assert.equals("5m", untitled_runtime.state.lastDuration)
+
+		local linked_ok, linked_message = load_init_with({
+			task_completion = {
+				exit_code = 0,
+				stdout = "[WORKED 95m] [LAST 0950-1015] sase",
+				stderr = "",
+			},
+		})
+		assert.is_true(linked_ok, linked_message)
+		local linked_runtime = _G.BobPomodoroCountdown
+		assert.equals("sase", linked_runtime.state.lastTheme)
+		assert.equals(
+			"No current Pomodoro · 1h35m worked today\nsase (25m) ended at 10:15",
+			linked_runtime.menu.tooltip
+		)
+		-- Silence unused-variable warnings for the second and third loads.
+		assert.is_not_nil(untitled_env)
+	end)
+
+	it("retries the composed command without --last only on exit 2", function()
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+		local command = task_command_text(env.tasks[1])
+		assert.is_true(command:find("--last", 1, true) ~= nil)
+
+		local function shell_ok(status)
+			return status == 0 or status == true
+		end
+
+		local function run_composed_with_pomodoro_exit(pomodoro_exit)
+			local base = os.tmpname()
+			local dir = base .. "-bob-last-dir"
+			assert.is_true(shell_ok(os.execute("mkdir -p " .. dir .. "/bin")))
+			local log = dir .. "/args.log"
+			local bob_path = dir .. "/bin/bob"
+			local script = io.open(bob_path, "w")
+			assert.is_not_nil(script)
+			script:write("#!/bin/sh\n")
+			script:write('echo "$@" >> "' .. log .. '"\n')
+			script:write('case "$*" in\n')
+			script:write("  *pomodoro*--last*) exit " .. tostring(pomodoro_exit) .. " ;;\n")
+			script:write("esac\n")
+			script:write("exit 0\n")
+			script:close()
+			assert.is_true(shell_ok(os.execute("chmod +x " .. bob_path)))
+
+			local runner = dir .. "/run.sh"
+			local runner_file = io.open(runner, "w")
+			assert.is_not_nil(runner_file)
+			runner_file:write(command)
+			runner_file:close()
+
+			local exit_code = os.execute('HOME="' .. dir .. '" sh "' .. runner .. '" >/dev/null 2>&1')
+			local lines = {}
+			local log_file = io.open(log, "r")
+			if log_file then
+				for line in log_file:lines() do
+					table.insert(lines, line)
+				end
+				log_file:close()
+			end
+			os.execute('rm -rf "' .. dir .. '"')
+			return exit_code, lines
+		end
+
+		local _, lines_retry = run_composed_with_pomodoro_exit(2)
+		local pomodoro_calls = {}
+		for _, line in ipairs(lines_retry) do
+			if line:find("pomodoro", 1, true) then
+				table.insert(pomodoro_calls, line)
+			end
+		end
+		assert.equals(2, #pomodoro_calls)
+		assert.is_true(pomodoro_calls[1]:find("--last", 1, true) ~= nil)
+		assert.is_nil(pomodoro_calls[2]:find("--last", 1, true))
+
+		local _, lines_ok = run_composed_with_pomodoro_exit(0)
+		local ok_calls = {}
+		for _, line in ipairs(lines_ok) do
+			if line:find("pomodoro", 1, true) then
+				table.insert(ok_calls, line)
+			end
+		end
+		assert.equals(1, #ok_calls)
+		assert.is_true(ok_calls[1]:find("--last", 1, true) ~= nil)
+
+		local _, lines_fail = run_composed_with_pomodoro_exit(1)
+		local fail_calls = {}
+		for _, line in ipairs(lines_fail) do
+			if line:find("pomodoro", 1, true) then
+				table.insert(fail_calls, line)
+			end
+		end
+		assert.equals(1, #fail_calls)
+		assert.is_true(fail_calls[1]:find("--last", 1, true) ~= nil)
+	end)
+
 	it("clears active context when worked output replaces the current session", function()
 		local restore_clock = freeze_clock_at(today_at(9, 50))
 		local ok, error_message, env = load_init_with({

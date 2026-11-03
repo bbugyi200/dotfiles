@@ -183,9 +183,57 @@ local function parseBobPomodoroOutput(rawOutput)
 	}
 end
 
+local function parseBobPomodoroIdle(rawOutput)
+	local output = trimText(rawOutput)
+	local worked_text, rest = output:match("^%[WORKED (%d+)m%](.*)$")
+	if not worked_text then
+		return nil
+	end
+	local workedMinutes = tonumber(worked_text)
+	if not workedMinutes then
+		return nil
+	end
+	rest = trimText(rest or "")
+	if rest == "" then
+		return { workedMinutes = workedMinutes }
+	end
+	local startHourText, startMinuteText, endHourText, endMinuteText, taskText =
+		rest:match("^%[LAST (%d%d)(%d%d)%-(%d%d)(%d%d)%]%s*(.*)$")
+	if not startHourText then
+		return nil
+	end
+	local startHour = tonumber(startHourText)
+	local startMinute = tonumber(startMinuteText)
+	local endHour = tonumber(endHourText)
+	local endMinute = tonumber(endMinuteText)
+	if
+		not startHour
+		or not startMinute
+		or not endHour
+		or not endMinute
+		or startHour > 23
+		or startMinute > 59
+		or endHour > 23
+		or endMinute > 59
+	then
+		return nil
+	end
+	return {
+		workedMinutes = workedMinutes,
+		lastStartHour = startHour,
+		lastStartMinute = startMinute,
+		lastEndHour = endHour,
+		lastEndMinute = endMinute,
+		lastTaskText = trimText(taskText or ""),
+	}
+end
+
 local function parseBobPomodoroWorked(rawOutput)
-	local minutes = trimText(rawOutput):match("^%[WORKED (%d+)m%]$")
-	return minutes and tonumber(minutes) or nil
+	local idle = parseBobPomodoroIdle(rawOutput)
+	if idle ~= nil and idle.lastEndHour == nil then
+		return idle.workedMinutes
+	end
+	return nil
 end
 
 local function todayEndEpoch(endHour, endMinute)
@@ -556,6 +604,13 @@ local function buildBobPomodoroMenuItems()
 			end
 		end
 	end
+	if state.status == "missing" and state.lastStopTime ~= nil and state.lastTheme ~= nil then
+		local last_label = state.lastTheme
+		if state.lastDuration ~= nil and tostring(state.lastDuration) ~= "" then
+			last_label = last_label .. " (" .. tostring(state.lastDuration) .. ")"
+		end
+		table.insert(items, 2, { title = last_label .. " ended at " .. state.lastStopTime, disabled = true })
+	end
 	return items
 end
 
@@ -573,6 +628,12 @@ local function updateBobPomodoroTooltip()
 			theme_label = theme_label .. " (" .. tostring(state.duration) .. ")"
 		end
 		tooltip = theme_label .. "\nStops at " .. state.stopTime .. "\n" .. state.rawOutput
+	elseif state.status == "missing" and state.lastStopTime ~= nil and state.lastTheme ~= nil then
+		local last_label = state.lastTheme
+		if state.lastDuration ~= nil and tostring(state.lastDuration) ~= "" then
+			last_label = last_label .. " (" .. tostring(state.lastDuration) .. ")"
+		end
+		tooltip = state.rawOutput .. "\n" .. last_label .. " ended at " .. state.lastStopTime
 	end
 
 	menuBarItem:setTooltip(tooltip)
@@ -608,7 +669,7 @@ local function renderBobPomodoroMenu()
 			menuBarAppearance = bobPomodoroRuntime.themeCatalog and bobPomodoroMenuBarAppearance() or "light",
 		}
 	else
-		context = { workedMinutes = state.workedMinutes }
+		context = { workedMinutes = state.workedMinutes, lastStop = state.lastStopTime }
 		if type(state.missingShownEpoch) == "number" then
 			context.missingShownSeconds = os.time() - state.missingShownEpoch
 		end
@@ -628,7 +689,12 @@ if [ -z "${DATE+x}" ] && command -v gdate >/dev/null 2>&1; then
 	export DATE=gdate
 fi
 pomodoro_status=0
-bob pomodoro --show-stale --worked || pomodoro_status=$?
+bob pomodoro --show-stale --worked --last || pomodoro_status=$?
+if [ "$pomodoro_status" -eq 2 ]; then
+	# A bob older than --last rejects it as a usage error; keep the worked-only view.
+	pomodoro_status=0
+	bob pomodoro --show-stale --worked || pomodoro_status=$?
+fi
 printf '%s\n' '---BOB-THEMES---'
 if [ "$pomodoro_status" -eq 0 ]; then
 	bob themes list -a -f json || true
@@ -717,19 +783,32 @@ syncBobPomodoro = function()
 				return
 			end
 
-			local workedMinutes = parseBobPomodoroWorked(output)
-			if workedMinutes ~= nil then
+			local idle = parseBobPomodoroIdle(output)
+			if idle ~= nil then
 				local now = os.time()
 				local previousState = bobPomodoroRuntime.state
-				bobPomodoroRuntime.state = {
+				local state = {
 					rawOutput = "No current Pomodoro · "
-						.. PomodoroCountdown.format_worked(workedMinutes)
+						.. PomodoroCountdown.format_worked(idle.workedMinutes)
 						.. " worked today",
 					status = "missing",
 					lastSyncEpoch = now,
 					missingShownEpoch = bobPomodoroMissingShownEpoch(previousState, now),
-					workedMinutes = workedMinutes,
+					workedMinutes = idle.workedMinutes,
 				}
+				if idle.lastEndHour ~= nil then
+					state.lastStopTime = PomodoroCountdown.format_stop_time(idle.lastEndHour, idle.lastEndMinute)
+					state.lastTheme = PomodoroCountdown.normalize_theme(idle.lastTaskText)
+					state.lastDuration = PomodoroCountdown.format_duration(
+						PomodoroCountdown.duration_minutes(
+							idle.lastStartHour,
+							idle.lastStartMinute,
+							idle.lastEndHour,
+							idle.lastEndMinute
+						)
+					)
+				end
+				bobPomodoroRuntime.state = state
 				updateBobPomodoroTooltip()
 				renderBobPomodoroMenu()
 				if followUpRequested then

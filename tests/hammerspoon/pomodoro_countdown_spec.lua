@@ -867,4 +867,53 @@ describe("Hammerspoon Pomodoro countdown presentation", function()
 		assert.equals("1h35m", idle.title)
 		assert.equals("missing", idle.segments[1].role)
 	end)
+
+	it("prepends the last-end mark to idle titles when lastStop is valid", function()
+		local steady = countdown.presentation(nil, false, {
+			workedMinutes = 230,
+			lastStop = "14:35",
+		})
+		assert.equals("⇥ 14:35 · 3h50m", steady.title)
+		assert.equals("missing", steady.appearance)
+		assert.equals("3h50m", steady.status)
+		assert.equals("14:35", steady.lastStop)
+		assert.are.same({ "arrow", "stop", "separator", "missing" }, segment_roles(steady.segments))
+		assert.equals("⇥ ", steady.segments[1].text)
+		assert.equals("14:35", steady.segments[2].text)
+		assert.equals(" · ", steady.segments[3].text)
+		assert.equals("3h50m", steady.segments[4].text)
+		assert.equals(concat_segments(steady.segments), steady.title)
+
+		for _, flash_on in ipairs({ false, true }) do
+			local expected_appearance = flash_on and "missing_flash" or "missing"
+			local reminder = countdown.presentation(nil, flash_on, {
+				workedMinutes = 230,
+				missingShownSeconds = 60,
+				lastStop = "14:35",
+			})
+			assert.equals("⇥ 14:35 · 3h50m φ 1m", reminder.title)
+			assert.equals(expected_appearance, reminder.appearance)
+			assert.equals("3h50m", reminder.status)
+			assert.equals("14:35", reminder.lastStop)
+			assert.are.same(
+				{ "arrow", "stop", "separator", "missing", "phi", "waited" },
+				segment_roles(reminder.segments)
+			)
+			assert.equals(concat_segments(reminder.segments), reminder.title)
+		end
+
+		for _, bad in ipairs({ nil, "", "14-35", "1435", "14:35:00", 1435 }) do
+			local context = { workedMinutes = 95, missingShownSeconds = 60 }
+			if bad ~= nil then
+				context.lastStop = bad
+			end
+			local presentation = countdown.presentation(nil, false, context)
+			assert.is_nil(presentation.lastStop)
+			assert.are.same({ "missing", "phi", "waited" }, segment_roles(presentation.segments))
+		end
+
+		local absent = countdown.presentation(nil, false, { workedMinutes = 95 })
+		assert.are.same({ { text = "1h35m", role = "missing" } }, absent.segments)
+		assert.is_nil(absent.lastStop)
+	end)
 end)
