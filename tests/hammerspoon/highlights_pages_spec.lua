@@ -64,7 +64,10 @@ local function run_fake(M, command, state, overrides)
 		end,
 	}
 	local result = nil
-	M.run(command, state.jumps or {}, deps, function(value)
+	if type(state.history) ~= "table" then
+		state.history = M.new_history()
+	end
+	M.run(command, state.history, deps, function(value)
 		result = value
 	end)
 	local steps = 0
@@ -193,6 +196,87 @@ describe("Highlights page keys", function()
 			end).swallow)
 		end)
 
+		it("fires Ctrl-I from idle and leaves modified Ctrl-I alone", function()
+			local keys = M.new_keys()
+			local result = keys:on_key(key("\9", { plain = "i", ctrl = true }), 1, function()
+				return true
+			end)
+			assert.is_true(result.swallow)
+			assert.same({ kind = "forward" }, result.command)
+			for _, overrides in ipairs({
+				{ plain = "i", ctrl = true, shift = true },
+				{ plain = "i", ctrl = true, cmd = true },
+				{ plain = "i", ctrl = true, alt = true },
+				{ plain = "i", ctrl = true, autorepeat = true },
+			}) do
+				local other = M.new_keys()
+				assert.is_false(other:on_key(key("\9", overrides), 2, function()
+					return true
+				end).swallow)
+			end
+		end)
+
+		it("passes Tab and Ctrl-Tab through without calling can_arm", function()
+			for _, overrides in ipairs({
+				{ plain = "\t", chars = "\t" },
+				{ plain = "\t", chars = "\t", ctrl = true },
+			}) do
+				local keys = M.new_keys()
+				local calls = 0
+				local result = keys:on_key(key("\t", overrides), 1, function()
+					calls = calls + 1
+					return true
+				end)
+				assert.is_false(result.swallow)
+				assert.is_false(keys:is_pending())
+				assert.equals(0, calls)
+			end
+		end)
+
+		it("cancels a pending sequence on Ctrl-I and fires forward", function()
+			local keys = M.new_keys()
+			keys:on_key(key("g"), 1, function()
+				return true
+			end)
+			assert.is_true(keys:is_pending())
+			local fired = keys:on_key(key("\9", { plain = "i", ctrl = true }), 1.1, function()
+				return true
+			end)
+			assert.is_true(fired.swallow)
+			assert.same({ kind = "forward" }, fired.command)
+			assert.is_false(keys:is_pending())
+
+			keys = M.new_keys()
+			keys:on_key(key("1"), 2, function()
+				return true
+			end)
+			keys:on_key(key("2"), 2.1, function()
+				return true
+			end)
+			assert.is_true(keys:is_pending())
+			fired = keys:on_key(key("\9", { plain = "i", ctrl = true }), 2.2, function()
+				return true
+			end)
+			assert.is_true(fired.swallow)
+			assert.same({ kind = "forward" }, fired.command)
+			assert.is_false(keys:is_pending())
+		end)
+
+		it("passes Ctrl-I when can_arm is false or throws", function()
+			for _, can_arm in ipairs({
+				function()
+					return false
+				end,
+				function()
+					error("AX failed")
+				end,
+			}) do
+				local keys = M.new_keys()
+				assert.is_false(keys:on_key(key("\9", { plain = "i", ctrl = true }), 1, can_arm).swallow)
+				assert.is_false(keys:is_pending())
+			end
+		end)
+
 		it("passes arming keys when can_arm is false or throws", function()
 			for _, can_arm in ipairs({
 				function()
@@ -274,18 +358,18 @@ describe("Highlights page keys", function()
 
 	describe("jump runner", function()
 		it("uses the primary scroll-bar mechanism when it lands", function()
-			local state = { page = 10, count = 44, jumps = {} }
+			local state = { page = 10, count = 44, history = M.new_history() }
 			local result, env = run_fake(M, { kind = "goto", target = 2 }, state)
 			assert.equals("done", result.status)
 			assert.equals("scroll_bar", result.via)
 			assert.equals(2, state.page)
-			assert.same({ 10 }, state.jumps["/paper.pdf"])
+			assert.same({ 10 }, state.history.back["/paper.pdf"])
 			assert.equals(1, env.calls.scroll_to)
 		end)
 
 		it("uses AXScrollToVisible when the primary mechanism returns false", function()
 			local state = { page = 10, count = 44 }
-			state.jumps = {}
+			state.history = M.new_history()
 			local result, env = run_fake(M, { kind = "goto", target = 2 }, state, {
 				primary_result = false,
 				fallback_lands = true,
@@ -323,11 +407,12 @@ describe("Highlights page keys", function()
 		end)
 
 		it("rejects an out-of-range count without scrolling or recording history", function()
-			local state = { page = 10, count = 44, jumps = {} }
+			local state = { page = 10, count = 44, history = M.new_history() }
 			local result, env = run_fake(M, { kind = "goto", target = 50 }, state)
 			assert.equals("out_of_range", result.status)
 			assert.equals(0, env.calls.scroll_to)
-			assert.same({}, state.jumps)
+			assert.same({}, state.history.back)
+			assert.same({}, state.history.forward)
 		end)
 
 		it("reports title-read failure and still scrolls gg on page one", function()
@@ -340,25 +425,174 @@ describe("Highlights page keys", function()
 			assert.equals("failed", read_error.status)
 			assert.equals("couldn't read Highlights' page number", read_error.reason)
 
-			state = { page = 1, count = 44, jumps = {} }
+			state = { page = 1, count = 44, history = M.new_history() }
 			local result, env = run_fake(M, { kind = "goto", target = "first" }, state)
 			assert.equals("done", result.status)
 			assert.equals(1, env.calls.scroll_to)
-			assert.same({}, state.jumps)
+			assert.same({}, state.history.back)
 		end)
 
 		it("returns empty for an empty back stack and restores a failed back entry", function()
-			local state = { page = 2, count = 44, jumps = {} }
+			local state = { page = 2, count = 44, history = M.new_history() }
 			local empty = run_fake(M, { kind = "back" }, state)
 			assert.equals("empty", empty.status)
 
-			state = { page = 2, count = 44, jumps = { ["/paper.pdf"] = { 4 } } }
+			state = { page = 2, count = 44, history = M.new_history() }
+			state.history.back = { ["/paper.pdf"] = { 4 } }
 			local failed = run_fake(M, { kind = "back" }, state, {
 				primary_result = false,
 				fallback_result = false,
 			})
 			assert.equals("failed", failed.status)
-			assert.same({ 4 }, state.jumps["/paper.pdf"])
+			assert.same({ 4 }, state.history.back["/paper.pdf"])
+		end)
+
+		it("walks back then forward through two jumps", function()
+			local state = { page = 30, count = 44, history = M.new_history() }
+			local first = run_fake(M, { kind = "goto", target = 2 }, state)
+			assert.equals("done", first.status)
+			assert.equals(2, state.page)
+			assert.same({ 30 }, state.history.back["/paper.pdf"])
+			assert.is_nil(state.history.forward["/paper.pdf"])
+
+			local second = run_fake(M, { kind = "goto", target = 10 }, state)
+			assert.equals("done", second.status)
+			assert.equals(10, state.page)
+			assert.same({ 30, 2 }, state.history.back["/paper.pdf"])
+
+			local back_one = run_fake(M, { kind = "back" }, state)
+			assert.equals("done", back_one.status)
+			assert.equals(2, back_one.page)
+			assert.equals(2, state.page)
+			assert.same({ 30 }, state.history.back["/paper.pdf"])
+			assert.same({ 10 }, state.history.forward["/paper.pdf"])
+
+			local back_two = run_fake(M, { kind = "back" }, state)
+			assert.equals("done", back_two.status)
+			assert.equals(30, state.page)
+			assert.same({}, state.history.back["/paper.pdf"] or {})
+			assert.same({ 10, 2 }, state.history.forward["/paper.pdf"])
+
+			local forward_one = run_fake(M, { kind = "forward" }, state)
+			assert.equals("done", forward_one.status)
+			assert.equals(2, forward_one.page)
+			assert.equals(2, state.page)
+			assert.same({ 30 }, state.history.back["/paper.pdf"])
+			assert.same({ 10 }, state.history.forward["/paper.pdf"])
+
+			local forward_two = run_fake(M, { kind = "forward" }, state)
+			assert.equals("done", forward_two.status)
+			assert.equals(10, state.page)
+			assert.same({ 30, 2 }, state.history.back["/paper.pdf"])
+			assert.same({}, state.history.forward["/paper.pdf"] or {})
+
+			local forward_empty = run_fake(M, { kind = "forward" }, state)
+			assert.equals("empty", forward_empty.status)
+			assert.equals("forward", forward_empty.kind)
+			assert.equals(10, state.page)
+		end)
+
+		it("records history only once a jump lands", function()
+			local state = { page = 2, count = 44, history = M.new_history() }
+			state.history.back = { ["/paper.pdf"] = { 30 } }
+			local landed_back = run_fake(M, { kind = "back" }, state)
+			assert.equals("done", landed_back.status)
+			assert.equals(30, state.page)
+			assert.same({ 2 }, state.history.forward["/paper.pdf"])
+
+			state = { page = 2, count = 44, history = M.new_history() }
+			state.history.forward = { ["/paper.pdf"] = { 10 } }
+			local landed_forward = run_fake(M, { kind = "forward" }, state)
+			assert.equals("done", landed_forward.status)
+			assert.equals(10, state.page)
+			assert.same({ 2 }, state.history.back["/paper.pdf"])
+			assert.same({}, state.history.forward["/paper.pdf"] or {})
+		end)
+
+		it("clears the forward stack on a new goto after going back", function()
+			local state = { page = 30, count = 44, history = M.new_history() }
+			run_fake(M, { kind = "goto", target = 2 }, state)
+			run_fake(M, { kind = "back" }, state)
+			assert.equals(30, state.page)
+			assert.same({ 2 }, state.history.forward["/paper.pdf"])
+			local jumped = run_fake(M, { kind = "goto", target = 10 }, state)
+			assert.equals("done", jumped.status)
+			assert.equals(10, state.page)
+			assert.same({ 30 }, state.history.back["/paper.pdf"])
+			assert.is_nil(state.history.forward["/paper.pdf"])
+		end)
+
+		it("leaves the forward stack intact on same-page and out-of-range gotos", function()
+			local state = { page = 1, count = 44, history = M.new_history() }
+			state.history.forward = { ["/paper.pdf"] = { 9 } }
+			local same = run_fake(M, { kind = "goto", target = "first" }, state)
+			assert.equals("done", same.status)
+			assert.same({ 9 }, state.history.forward["/paper.pdf"])
+			assert.same({}, state.history.back["/paper.pdf"] or {})
+
+			state = { page = 10, count = 44, history = M.new_history() }
+			state.history.back = { ["/paper.pdf"] = { 30 } }
+			state.history.forward = { ["/paper.pdf"] = { 12 } }
+			local far = run_fake(M, { kind = "goto", target = 50 }, state)
+			assert.equals("out_of_range", far.status)
+			assert.same({ 30 }, state.history.back["/paper.pdf"])
+			assert.same({ 12 }, state.history.forward["/paper.pdf"])
+		end)
+
+		it("restores a failed forward entry without touching the back stack", function()
+			local state = { page = 2, count = 44, history = M.new_history() }
+			state.history.back = { ["/paper.pdf"] = { 30 } }
+			state.history.forward = { ["/paper.pdf"] = { 10 } }
+			local failed = run_fake(M, { kind = "forward" }, state, {
+				primary_result = false,
+				fallback_result = false,
+			})
+			assert.equals("failed", failed.status)
+			assert.same({ 10 }, state.history.forward["/paper.pdf"])
+			assert.same({ 30 }, state.history.back["/paper.pdf"])
+		end)
+
+		it("leaves the forward stack alone when a back jump fails", function()
+			local state = { page = 10, count = 44, history = M.new_history() }
+			state.history.back = { ["/paper.pdf"] = { 2 } }
+			state.history.forward = { ["/paper.pdf"] = { 12 } }
+			local failed = run_fake(M, { kind = "back" }, state, {
+				primary_result = false,
+				fallback_result = false,
+			})
+			assert.equals("failed", failed.status)
+			assert.same({ 2 }, state.history.back["/paper.pdf"])
+			assert.same({ 12 }, state.history.forward["/paper.pdf"])
+		end)
+
+		it("leaves both stacks unchanged when a goto fails", function()
+			local state = { page = 10, count = 44, history = M.new_history() }
+			state.history.back = { ["/paper.pdf"] = { 30 } }
+			state.history.forward = { ["/paper.pdf"] = { 12 } }
+			local failed = run_fake(M, { kind = "goto", target = 2 }, state, {
+				primary_lands = false,
+				fallback_lands = false,
+			})
+			assert.equals("failed", failed.status)
+			assert.equals(10, state.page)
+			assert.same({ 30 }, state.history.back["/paper.pdf"])
+			assert.same({ 12 }, state.history.forward["/paper.pdf"])
+		end)
+
+		it("keeps the forward stack per document", function()
+			local state = { page = 2, count = 44, history = M.new_history() }
+			state.history.forward = { ["/other.pdf"] = { 7 } }
+			local empty = run_fake(M, { kind = "forward" }, state)
+			assert.equals("empty", empty.status)
+			assert.same({ 7 }, state.history.forward["/other.pdf"])
+			assert.is_nil(state.history.forward["/paper.pdf"])
+		end)
+
+		it("starts from an empty history when the argument is bad", function()
+			local state = { page = 10, count = 44, history = { back = false, forward = "nope" } }
+			local result = run_fake(M, { kind = "goto", target = 2 }, state)
+			assert.equals("done", result.status)
+			assert.same({ 10 }, state.history.back["/paper.pdf"])
 		end)
 	end)
 
@@ -375,6 +609,8 @@ describe("Highlights page keys", function()
 				M.message({ status = "out_of_range", page = 2, count = 1 })
 			)
 			assert.equals("No earlier page", M.message({ status = "empty" }))
+			assert.equals("No earlier page", M.message({ status = "empty", kind = "back" }))
+			assert.equals("No later page", M.message({ status = "empty", kind = "forward" }))
 			assert.equals(
 				"Couldn't read Highlights' page number",
 				M.message({ status = "failed", reason = "couldn't read Highlights' page number" })
@@ -386,6 +622,10 @@ describe("Highlights page keys", function()
 			assert.equals(
 				"Couldn't go back to page 2: didn't reach page 2",
 				M.message({ status = "failed", kind = "back", page = 2, reason = "didn't reach page 2" })
+			)
+			assert.equals(
+				"Couldn't go forward to page 2: didn't reach page 2",
+				M.message({ status = "failed", kind = "forward", page = 2, reason = "didn't reach page 2" })
 			)
 		end)
 	end)

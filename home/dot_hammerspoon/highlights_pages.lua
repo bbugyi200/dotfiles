@@ -40,10 +40,13 @@ local function idle_command(key)
 	if key.ctrl and not key.shift and key_plain(key) == "o" then
 		return { kind = "back" }
 	end
+	if key.ctrl and not key.shift and key_plain(key) == "i" then
+		return { kind = "forward" }
+	end
 	return nil
 end
 
---- Create the `gg` / `G` / count / Ctrl-O key state machine.
+--- Create the `gg` / `G` / count / Ctrl-O / Ctrl-I key state machine.
 function M.new_keys(opts)
 	opts = opts or {}
 	local timeout = tonumber(opts.timeout) or M.KEY_TIMEOUT_SECONDS
@@ -175,6 +178,11 @@ function M.push_jump(jumps, document, page)
 	return true
 end
 
+--- Create an empty back/forward jump history (one stack per PDF per side).
+function M.new_history()
+	return { back = {}, forward = {} }
+end
+
 --- Pop the newest page not equal to the current page.
 function M.pop_jump(jumps, document, current)
 	if type(jumps) ~= "table" or type(document) ~= "string" then
@@ -221,9 +229,20 @@ local function safe_now(deps)
 end
 
 --- Run a page jump, polling the title and geometry until one mechanism lands.
-function M.run(command, jumps, deps, on_done)
+--- History holds a back stack and a forward stack per PDF. A command changes
+--- history only once its jump lands (`done`), except a back/forward target is
+--- popped up front and restored on failure.
+function M.run(command, history, deps, on_done)
 	command = type(command) == "table" and command or {}
-	jumps = type(jumps) == "table" and jumps or {}
+	if type(history) ~= "table" then
+		history = {}
+	end
+	if type(history.back) ~= "table" then
+		history.back = {}
+	end
+	if type(history.forward) ~= "table" then
+		history.forward = {}
+	end
 	deps = type(deps) == "table" and deps or {}
 	on_done = type(on_done) == "function" and on_done or function() end
 	local completed = false
@@ -251,13 +270,16 @@ function M.run(command, jumps, deps, on_done)
 			finish({ status = "out_of_range", kind = "goto", page = target, count = info.count, from = info.page })
 			return
 		end
-		if target ~= info.page then
-			M.push_jump(jumps, info.document, info.page)
-		end
 	elseif command.kind == "back" then
-		target = M.pop_jump(jumps, info.document, info.page)
+		target = M.pop_jump(history.back, info.document, info.page)
 		if target == nil then
 			finish({ status = "empty", kind = "back", page = nil, count = info.count, from = info.page })
+			return
+		end
+	elseif command.kind == "forward" then
+		target = M.pop_jump(history.forward, info.document, info.page)
+		if target == nil then
+			finish({ status = "empty", kind = "forward", page = nil, count = info.count, from = info.page })
 			return
 		end
 	else
@@ -265,9 +287,24 @@ function M.run(command, jumps, deps, on_done)
 		return
 	end
 
+	local function record_landed()
+		if command.kind == "goto" then
+			if target ~= info.page then
+				M.push_jump(history.back, info.document, info.page)
+				history.forward[info.document] = nil
+			end
+		elseif command.kind == "back" then
+			M.push_jump(history.forward, info.document, info.page)
+		elseif command.kind == "forward" then
+			M.push_jump(history.back, info.document, info.page)
+		end
+	end
+
 	local function failed(reason)
 		if command.kind == "back" then
-			M.push_jump(jumps, info.document, target)
+			M.push_jump(history.back, info.document, target)
+		elseif command.kind == "forward" then
+			M.push_jump(history.forward, info.document, target)
 		end
 		finish({
 			status = "failed",
@@ -309,6 +346,7 @@ function M.run(command, jumps, deps, on_done)
 				if attempt.name == "scroll_to_visible" then
 					call(deps.log, "Highlights page scroll-bar jump missed; AXScrollToVisible landed")
 				end
+				record_landed()
 				finish({
 					status = "done",
 					kind = command.kind,
@@ -344,6 +382,9 @@ function M.message(result)
 		local noun = result.count == 1 and "page" or "pages"
 		return string.format("No page %s — this PDF has %s %s", tostring(result.page), tostring(result.count), noun)
 	elseif result.status == "empty" then
+		if result.kind == "forward" then
+			return "No later page"
+		end
 		return "No earlier page"
 	elseif result.status == "failed" then
 		if result.reason == "couldn't read Highlights' page number" then
@@ -351,6 +392,9 @@ function M.message(result)
 		end
 		if result.kind == "back" then
 			return string.format("Couldn't go back to page %s: %s", tostring(result.page), tostring(result.reason))
+		end
+		if result.kind == "forward" then
+			return string.format("Couldn't go forward to page %s: %s", tostring(result.page), tostring(result.reason))
 		end
 		return string.format("Couldn't jump to page %s: %s", tostring(result.page), tostring(result.reason))
 	end

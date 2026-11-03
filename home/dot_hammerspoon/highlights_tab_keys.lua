@@ -727,7 +727,7 @@ local function build_key(H, event)
 	}
 end
 
---- Stop the tap, watcher, and pending timers. Keeps `lastBatch` and jumps in memory.
+--- Stop the tap, watcher, and pending timers. Keeps `lastBatch` and jump history in memory.
 function M.stop()
 	if runtime.tap ~= nil and type(runtime.tap.stop) == "function" then
 		pcall(function()
@@ -781,8 +781,12 @@ function M.start(options)
 	if type(runtime.lastBatch) ~= "table" then
 		runtime.lastBatch = {}
 	end
-	if type(runtime.jumps) ~= "table" then
-		runtime.jumps = {}
+	if
+		type(runtime.history) ~= "table"
+		or type(runtime.history.back) ~= "table"
+		or type(runtime.history.forward) ~= "table"
+	then
+		runtime.history = HighlightsPages.new_history()
 	end
 	runtime.timers = {}
 
@@ -890,7 +894,7 @@ function M.start(options)
 			end,
 		}
 		local ok, err = pcall(function()
-			HighlightsPages.run(command, runtime.jumps, page_deps, function(result)
+			HighlightsPages.run(command, runtime.history, page_deps, function(result)
 				runtime.page_running = false
 				local message = HighlightsPages.message(result)
 				if message ~= nil then

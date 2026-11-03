@@ -161,13 +161,14 @@ because a full apply restarts Hammerspoon while the app would need a signed rebu
 While the PDF view in Highlights has focus, use these keys to move between physical PDF
 pages:
 
-| Keys   | Action                  |
-| ------ | ----------------------- |
-| `gg`   | Jump to the first page  |
-| `G`    | Jump to the last page   |
-| `<N>g` | Jump to page N          |
-| `<N>G` | Jump to page N          |
-| `⌃O`   | Jump back through jumps |
+| Keys   | Action                        |
+| ------ | ----------------------------- |
+| `gg`   | Jump to the first page        |
+| `G`    | Jump to the last page         |
+| `<N>g` | Jump to page N                |
+| `<N>G` | Jump to page N                |
+| `⌃O`   | Jump back through jumps       |
+| `⌃I`   | Jump forward again after `⌃O` |
 
 Each jump goes to the top of the page. N is the physical page number shown in
 Highlights' `Page N of M` title, not a printed page label. A count outside `1–M` shows
@@ -175,8 +176,11 @@ an alert and does not move. Finish a sequence within 1 s of its previous key.
 
 For example, on page 30, `2g` jumps to page 2 and `⌃O` returns to page 30. `⌃O` keeps
 walking back through earlier jumps; when there are no earlier jumps it shows
-`No earlier page`. The history is per PDF, records only jumps made with these keys, and
-lives in memory, so a Hammerspoon reload or restart may forget it.
+`No earlier page`. `⌃I` goes forward again through the pages `⌃O` walked back over; when
+there are no later pages it shows `No later page`. A new `gg`, `G`, or `<N>g` jump
+clears the pages ahead. The history is per PDF, records only jumps made with these keys,
+and lives in memory, so a Hammerspoon reload or restart may forget it. `⌃I` is
+Control-I, so Highlights' `⌃⇥` tab switching still works.
 
 These keys type normally in text fields, the Bob Refs panel, and windows without a PDF.
 Keep Bob Mac Capture's “In Highlights, open Bob Refs with” setting at Command-O or Off;
