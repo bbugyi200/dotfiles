@@ -150,6 +150,11 @@ relations:
   complete_labels:
     - implemented by
     - verified by
+  # Linking S with one of these labels to T offers S as a successor when T is
+  # parked (left Pending, off today's plan) or done. Never blocks; S is never
+  # auto-linked. Empty offers nothing.
+  successor_labels:
+    - starts after
 
 # Task types: your vocabulary and its colors (docs/task-types.md PT12 in bob-cli).
 # A name outside this list still works, but menus stop suggesting it and
