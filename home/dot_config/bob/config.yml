@@ -110,11 +110,15 @@ freshness:
   next_interval: 1 # [*] lane daily review; false = not walked
   project_interval: 1 # Bryan's ^prj review cadence (personal setting, not a built-in default)
   # rotten_daily_budget: 15 # counts upkeep outside the lanes; never hides tasks
-  # Interim task decay (bob-cli docs/freshness.md §2a): 2 due Alt+F keeps then
-  # the Ready card; enter P1. Per-rung keys land in memory-config.
+  # Task decay (bob-cli docs/freshness.md §2a): each rung allows N due Alt+F keeps, and
+  # the next due keep opens the decay card. Enter steps one rung down (WIP → Next →
+  # Ready → P1 → … → P4; never drops); Alt+F stays and restarts the count. Every keep,
+  # stay, and step writes a 🥀 ROTTEN LOG entry. false = count and log, never ask.
   decay:
-    keeps: 2
-    enter: P1
+    pending_keeps: 2 # WIP [/] → Next
+    next_keeps: 2 # Next [*] → Ready
+    ready_keeps: 2 # Ready → P1, and each P-level → the next
+    enter: P1 # unprioritized Ready tasks enter the ladder at P1
 
 # Today's plan budget (`bob plan`, capture, tmux, Obsidian) and the NEXT/PENDING/READY
 # lane caps; see `docs/plan.md` in bob-cli. The block is optional: a missing block
