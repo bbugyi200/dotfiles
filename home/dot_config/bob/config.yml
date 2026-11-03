@@ -28,7 +28,7 @@ properties:
     # decays the task one level (P2 → P3), and past the last level it cancels it.
     # `decay: false` makes Ctrl+Enter a plain same-level roll that never decays.
     decay:
-      rolls: 2 # two same-level Ctrl+Enter rolls per level, then the next one decays
+      rolls: 1
     levels:
       - label: P1
         value: high
