@@ -1,0 +1,392 @@
+local HIGHLIGHTS_PAGES_PATH = "home/dot_hammerspoon/highlights_pages.lua"
+
+local function load_pure()
+	return assert(loadfile(HIGHLIGHTS_PAGES_PATH))()
+end
+
+local function key(chars, overrides)
+	local result = {
+		chars = chars,
+		plain = chars,
+		escape = false,
+		cmd = false,
+		alt = false,
+		ctrl = false,
+		shift = false,
+		autorepeat = false,
+	}
+	for name, value in pairs(overrides or {}) do
+		result[name] = value
+	end
+	return result
+end
+
+local function run_fake(M, command, state, overrides)
+	overrides = overrides or {}
+	local env = {
+		now = 0,
+		queue = {},
+		logs = {},
+		calls = { scroll_to = 0, scroll_to_visible = 0 },
+	}
+	local deps = {
+		page_info = overrides.page_info or function()
+			if state.read_error then
+				return nil, state.read_error
+			end
+			return { page = state.page, count = state.count, document = state.document or "/paper.pdf" }
+		end,
+		scroll_to = overrides.scroll_to or function(page)
+			env.calls.scroll_to = env.calls.scroll_to + 1
+			if overrides.primary_lands ~= false then
+				state.page = page
+			end
+			return overrides.primary_result ~= false
+		end,
+		scroll_to_visible = overrides.scroll_to_visible or function(page)
+			env.calls.scroll_to_visible = env.calls.scroll_to_visible + 1
+			if overrides.fallback_lands == true then
+				state.page = page
+			end
+			return overrides.fallback_result ~= false
+		end,
+		landed = overrides.landed or function(page)
+			return state.page == page
+		end,
+		after = function(seconds, fn)
+			table.insert(env.queue, { seconds = seconds, fn = fn })
+		end,
+		now = function()
+			return env.now
+		end,
+		log = function(message)
+			table.insert(env.logs, message)
+		end,
+	}
+	local result = nil
+	M.run(command, state.jumps or {}, deps, function(value)
+		result = value
+	end)
+	local steps = 0
+	while #env.queue > 0 and steps < 100 do
+		steps = steps + 1
+		local queued = table.remove(env.queue, 1)
+		env.now = env.now + queued.seconds
+		queued.fn()
+	end
+	assert.is_true(steps < 100, "runner queue should drain")
+	return result, env
+end
+
+describe("Highlights page keys", function()
+	local M = nil
+
+	before_each(function()
+		M = load_pure()
+	end)
+
+	describe("key state machine", function()
+		it("recognizes gg, G, and counted g/G jumps", function()
+			local cases = {
+				{ { key("g"), key("g") }, { kind = "goto", target = "first" } },
+				{ { key("G", { shift = true }) }, { kind = "goto", target = "last" } },
+				{ { key("2"), key("g") }, { kind = "goto", target = 2 } },
+				{ { key("1"), key("2"), key("g") }, { kind = "goto", target = 12 } },
+				{ { key("1"), key("2"), key("G", { shift = true }) }, { kind = "goto", target = 12 } },
+				{ { key("1"), key("0"), key("g") }, { kind = "goto", target = 10 } },
+			}
+			for _, case in ipairs(cases) do
+				local keys = M.new_keys()
+				local outcome = nil
+				for _, pressed in ipairs(case[1]) do
+					outcome = keys:on_key(pressed, 10, function()
+						return true
+					end)
+				end
+				assert.same(case[2], outcome.command)
+				assert.is_true(outcome.swallow)
+				assert.is_false(keys:is_pending())
+			end
+		end)
+
+		it("passes a bare zero and starts a count after g", function()
+			local keys = M.new_keys()
+			assert.is_false(keys:on_key(key("0"), 0, function()
+				return true
+			end).swallow)
+			assert.is_true(keys:on_key(key("g"), 1, function()
+				return true
+			end).swallow)
+			local count = keys:on_key(key("5"), 1.1, function()
+				return true
+			end)
+			assert.is_true(count.swallow)
+			assert.is_true(keys:is_pending())
+			local command = keys:on_key(key("g"), 1.2, function()
+				return true
+			end)
+			assert.same({ kind = "goto", target = 5 }, command.command)
+		end)
+
+		it("cancels on Escape and swallows autorepeat only while pending", function()
+			local keys = M.new_keys()
+			assert.is_false(keys:on_key(key("g", { autorepeat = true }), 0, function()
+				return true
+			end).swallow)
+			keys:on_key(key("g"), 1, function()
+				return true
+			end)
+			assert.is_true(keys:on_key(key("g", { autorepeat = true }), 1.1).swallow)
+			assert.is_true(keys:is_pending())
+			local escaped = keys:on_key(key("escape", { escape = true }), 1.2)
+			assert.is_true(escaped.swallow)
+			assert.is_false(keys:is_pending())
+		end)
+
+		it("expires from the last swallowed key and rehandles the new key as idle", function()
+			local keys = M.new_keys()
+			keys:on_key(key("g"), 10, function()
+				return true
+			end)
+			local result = keys:on_key(key("g"), 11.01, function()
+				return true
+			end)
+			assert.is_true(result.swallow)
+			assert.is_nil(result.command)
+			assert.is_true(keys:is_pending())
+		end)
+
+		it("cancels command and option chords, passing them through", function()
+			for _, chord in ipairs({ key("x", { cmd = true }), key("x", { alt = true }) }) do
+				local keys = M.new_keys()
+				keys:on_key(key("g"), 1, function()
+					return true
+				end)
+				local result = keys:on_key(chord, 1.1, function()
+					return true
+				end)
+				assert.is_false(result.swallow)
+				assert.is_false(keys:is_pending())
+			end
+		end)
+
+		it("cancels a count after a seventh digit", function()
+			local keys = M.new_keys()
+			for index = 1, 7 do
+				local result = keys:on_key(key(tostring(index)), index, function()
+					return true
+				end)
+				assert.is_true(result.swallow)
+			end
+			assert.is_false(keys:is_pending())
+		end)
+
+		it("fires Ctrl-O from idle and leaves shifted Ctrl-O alone", function()
+			local keys = M.new_keys()
+			local result = keys:on_key(key("\15", { plain = "o", ctrl = true }), 1, function()
+				return true
+			end)
+			assert.is_true(result.swallow)
+			assert.same({ kind = "back" }, result.command)
+			assert.is_false(keys:on_key(key("\15", { plain = "o", ctrl = true, shift = true }), 2, function()
+				return true
+			end).swallow)
+		end)
+
+		it("passes arming keys when can_arm is false or throws", function()
+			for _, can_arm in ipairs({
+				function()
+					return false
+				end,
+				function()
+					error("AX failed")
+				end,
+			}) do
+				local keys = M.new_keys()
+				assert.is_false(keys:on_key(key("g"), 1, can_arm).swallow)
+				assert.is_false(keys:is_pending())
+			end
+		end)
+
+		it("calls can_arm only for arming keys", function()
+			local keys = M.new_keys()
+			local calls = 0
+			local function can_arm()
+				calls = calls + 1
+				return true
+			end
+			keys:on_key(key("x"), 1, can_arm)
+			keys:on_key(key("0"), 2, can_arm)
+			keys:on_key(key("G", { ctrl = true }), 3, can_arm)
+			assert.equals(0, calls)
+			keys:on_key(key("g"), 4, can_arm)
+			assert.equals(1, calls)
+		end)
+	end)
+
+	describe("title parser", function()
+		it("accepts en, hyphen, and em dash separators with mixed case", function()
+			for _, title in ipairs({
+				"paper.pdf – Page 10 of 44",
+				"paper.pdf - page 2 of 3",
+				"paper.pdf — pAgE 1 Of 1",
+			}) do
+				local page, count = M.parse_title(title)
+				assert.is_not_nil(page)
+				assert.is_not_nil(count)
+			end
+		end)
+
+		it("rejects missing separators, impossible pages, and empty titles", function()
+			for _, title in ipairs({ "Page 3 of 5.pdf", "paper.pdf – Page 6 of 5", "", nil }) do
+				assert.is_nil(M.parse_title(title))
+			end
+		end)
+	end)
+
+	describe("jump history", function()
+		it("keeps order per document and skips duplicate newest entries", function()
+			local jumps = {}
+			assert.is_true(M.push_jump(jumps, "/a.pdf", 1))
+			assert.is_true(M.push_jump(jumps, "/a.pdf", 2))
+			assert.is_false(M.push_jump(jumps, "/a.pdf", 2))
+			M.push_jump(jumps, "/b.pdf", 9)
+			assert.equals(2, M.pop_jump(jumps, "/a.pdf", 3))
+			assert.equals(1, M.pop_jump(jumps, "/a.pdf", 3))
+			assert.equals(9, M.pop_jump(jumps, "/b.pdf", 3))
+		end)
+
+		it("caps each document at MAX_JUMPS", function()
+			local jumps = {}
+			for page = 1, M.MAX_JUMPS + 5 do
+				M.push_jump(jumps, "/paper.pdf", page)
+			end
+			assert.equals(M.MAX_JUMPS, #jumps["/paper.pdf"])
+			assert.equals(6, jumps["/paper.pdf"][1])
+		end)
+
+		it("drops entries equal to the current page before popping", function()
+			local jumps = { ["/paper.pdf"] = { 1, 2, 3, 3 } }
+			assert.equals(2, M.pop_jump(jumps, "/paper.pdf", 3))
+			assert.same({ 1 }, jumps["/paper.pdf"])
+		end)
+	end)
+
+	describe("jump runner", function()
+		it("uses the primary scroll-bar mechanism when it lands", function()
+			local state = { page = 10, count = 44, jumps = {} }
+			local result, env = run_fake(M, { kind = "goto", target = 2 }, state)
+			assert.equals("done", result.status)
+			assert.equals("scroll_bar", result.via)
+			assert.equals(2, state.page)
+			assert.same({ 10 }, state.jumps["/paper.pdf"])
+			assert.equals(1, env.calls.scroll_to)
+		end)
+
+		it("uses AXScrollToVisible when the primary mechanism returns false", function()
+			local state = { page = 10, count = 44 }
+			state.jumps = {}
+			local result, env = run_fake(M, { kind = "goto", target = 2 }, state, {
+				primary_result = false,
+				fallback_lands = true,
+			})
+			assert.equals("scroll_to_visible", result.via)
+			assert.equals(1, env.calls.scroll_to_visible)
+			assert.equals(1, #env.logs)
+			assert.is_truthy(env.logs[1]:find("scroll%-bar jump missed"))
+		end)
+
+		it("falls back after the primary misses its landing deadline", function()
+			local state = { page = 10, count = 44 }
+			local result, env = run_fake(M, { kind = "goto", target = 2 }, state, {
+				primary_lands = false,
+				fallback_lands = true,
+			})
+			assert.equals("scroll_to_visible", result.via)
+			assert.is_true(env.now >= M.LAND_TIMEOUT_SECONDS)
+		end)
+
+		it("fails when both mechanisms miss or cannot find the PDF view", function()
+			local state = { page = 10, count = 44 }
+			local missed = run_fake(M, { kind = "goto", target = 2 }, state, {
+				primary_lands = false,
+				fallback_lands = false,
+			})
+			assert.equals("didn't reach page 2", missed.reason)
+
+			state = { page = 10, count = 44 }
+			local absent = run_fake(M, { kind = "goto", target = 2 }, state, {
+				primary_result = false,
+				fallback_result = false,
+			})
+			assert.equals("couldn't find the PDF view", absent.reason)
+		end)
+
+		it("rejects an out-of-range count without scrolling or recording history", function()
+			local state = { page = 10, count = 44, jumps = {} }
+			local result, env = run_fake(M, { kind = "goto", target = 50 }, state)
+			assert.equals("out_of_range", result.status)
+			assert.equals(0, env.calls.scroll_to)
+			assert.same({}, state.jumps)
+		end)
+
+		it("reports title-read failure and still scrolls gg on page one", function()
+			local state = { page = 10, count = 44 }
+			local read_error = run_fake(M, { kind = "goto", target = 2 }, state, {
+				page_info = function()
+					return nil, "ignored detail"
+				end,
+			})
+			assert.equals("failed", read_error.status)
+			assert.equals("couldn't read Highlights' page number", read_error.reason)
+
+			state = { page = 1, count = 44, jumps = {} }
+			local result, env = run_fake(M, { kind = "goto", target = "first" }, state)
+			assert.equals("done", result.status)
+			assert.equals(1, env.calls.scroll_to)
+			assert.same({}, state.jumps)
+		end)
+
+		it("returns empty for an empty back stack and restores a failed back entry", function()
+			local state = { page = 2, count = 44, jumps = {} }
+			local empty = run_fake(M, { kind = "back" }, state)
+			assert.equals("empty", empty.status)
+
+			state = { page = 2, count = 44, jumps = { ["/paper.pdf"] = { 4 } } }
+			local failed = run_fake(M, { kind = "back" }, state, {
+				primary_result = false,
+				fallback_result = false,
+			})
+			assert.equals("failed", failed.status)
+			assert.same({ 4 }, state.jumps["/paper.pdf"])
+		end)
+	end)
+
+	describe("alert copy", function()
+		it("keeps successful jumps quiet and reports every other status", function()
+			assert.equals("Still jumping pages", M.message({ status = "busy" }))
+			assert.is_nil(M.message({ status = "done", page = 2, count = 44 }))
+			assert.equals(
+				"No page 50 — this PDF has 44 pages",
+				M.message({ status = "out_of_range", page = 50, count = 44 })
+			)
+			assert.equals(
+				"No page 2 — this PDF has 1 page",
+				M.message({ status = "out_of_range", page = 2, count = 1 })
+			)
+			assert.equals("No earlier page", M.message({ status = "empty" }))
+			assert.equals(
+				"Couldn't read Highlights' page number",
+				M.message({ status = "failed", reason = "couldn't read Highlights' page number" })
+			)
+			assert.equals(
+				"Couldn't jump to page 2: didn't reach page 2",
+				M.message({ status = "failed", kind = "goto", page = 2, reason = "didn't reach page 2" })
+			)
+			assert.equals(
+				"Couldn't go back to page 2: didn't reach page 2",
+				M.message({ status = "failed", kind = "back", page = 2, reason = "didn't reach page 2" })
+			)
+		end)
+	end)
+end)

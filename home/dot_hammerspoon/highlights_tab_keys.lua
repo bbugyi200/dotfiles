@@ -1,7 +1,8 @@
--- Hammerspoon Highlights tab-close leader keys runtime (hs glue).
--- The pure leader, runner, and alert copy live in `highlights_tabs.lua`; this
--- module only wires `hs` event taps, watchers, and Accessibility to it.
+-- Hammerspoon Highlights tab-close and page keys runtime (hs glue).
+-- Pure state machines and runners live in `highlights_tabs.lua` and
+-- `highlights_pages.lua`; this module wires one event tap, watchers, and AX.
 local HighlightsTabs = require("highlights_tabs")
+local HighlightsPages = require("highlights_pages")
 
 local M = {}
 
@@ -87,6 +88,44 @@ function M.find_tab_group(window, depth)
 					return found
 				end
 			end
+		end
+	end
+	return nil
+end
+
+--- Find the PDF scroll area and its shared document container to depth 3.
+--- Never descends into scroll, web, text, table, or outline roles.
+function M.find_pdf_view(window, depth)
+	depth = depth or 0
+	if window == nil or depth > 3 then
+		return nil
+	end
+	local role = ax_attr(window, "AXRole")
+	if role == "AXScrollArea" then
+		local children = ax_attr(window, "AXChildren")
+		if type(children) == "table" then
+			for _, child in ipairs(children) do
+				if ax_attr(child, "AXSubrole") == "AXSharedDocumentContainer" then
+					local pages = ax_attr(child, "AXChildren")
+					if type(pages) == "table" and pages[1] ~= nil and ax_attr(pages[1], "AXRole") == "AXPage" then
+						return window, child
+					end
+				end
+			end
+		end
+		return nil
+	end
+	if role ~= nil and EXCLUDED_ROLES[role] then
+		return nil
+	end
+	local children = ax_attr(window, "AXChildren")
+	if type(children) ~= "table" then
+		return nil
+	end
+	for _, child in ipairs(children) do
+		local area, document = M.find_pdf_view(child, depth + 1)
+		if area ~= nil then
+			return area, document
 		end
 	end
 	return nil
@@ -312,6 +351,55 @@ local function doc_to_path(value)
 	return nil
 end
 
+local function coordinate(value, primary, alternate)
+	if type(value) ~= "table" then
+		return nil
+	end
+	local result = value[primary]
+	if result == nil and alternate ~= nil then
+		result = value[alternate]
+	end
+	return tonumber(result)
+end
+
+local function element_frame(element)
+	local frame = ax_attr(element, "AXFrame")
+	local x = coordinate(frame, "x")
+	local y = coordinate(frame, "y")
+	local w = coordinate(frame, "w", "width")
+	local h = coordinate(frame, "h", "height")
+	if x ~= nil and y ~= nil and w ~= nil and h ~= nil then
+		return { x = x, y = y, w = w, h = h }
+	end
+	local position = ax_attr(element, "AXPosition")
+	local size = ax_attr(element, "AXSize")
+	x = coordinate(position, "x")
+	y = coordinate(position, "y")
+	w = coordinate(size, "w", "width")
+	h = coordinate(size, "h", "height")
+	if x == nil or y == nil or w == nil or h == nil then
+		return nil
+	end
+	return { x = x, y = y, w = w, h = h }
+end
+
+local function pdf_page_element(document, page_number)
+	local children = ax_attr(document, "AXChildren")
+	if type(children) ~= "table" then
+		return nil
+	end
+	local fast = children[page_number]
+	if fast ~= nil and tonumber(ax_attr(fast, "AXPageIndex")) == page_number - 1 then
+		return fast
+	end
+	for _, child in ipairs(children) do
+		if tonumber(ax_attr(child, "AXPageIndex")) == page_number - 1 then
+			return child
+		end
+	end
+	return nil
+end
+
 local function make_real_adapter(H)
 	local function focused_window()
 		local app_element = highlights_app_element(H)
@@ -441,12 +529,119 @@ local function make_real_adapter(H)
 		return doc_to_path(ax_attr(window, "AXDocument"))
 	end
 
+	local function has_document()
+		return document() ~= nil
+	end
+
+	local function page_info()
+		local window = focused_window()
+		if window == nil then
+			return nil, "couldn't read Highlights' page number"
+		end
+		local page, count = HighlightsPages.parse_title(ax_attr(window, "AXTitle"))
+		local path = document()
+		if page == nil or count == nil or path == nil then
+			return nil, "couldn't read Highlights' page number"
+		end
+		return { page = page, count = count, document = path }
+	end
+
+	local function current_pdf_view()
+		local window = focused_window()
+		if window == nil then
+			return nil
+		end
+		return M.find_pdf_view(window)
+	end
+
+	local function vertical_scrollbar(area)
+		local bar = ax_attr(area, "AXVerticalScrollBar")
+		if bar ~= nil then
+			return bar
+		end
+		local children = ax_attr(area, "AXChildren")
+		if type(children) ~= "table" then
+			return nil
+		end
+		for _, child in ipairs(children) do
+			if
+				ax_attr(child, "AXRole") == "AXScrollBar"
+				and ax_attr(child, "AXOrientation") == "AXVerticalOrientation"
+			then
+				return child
+			end
+		end
+		return nil
+	end
+
+	local function scroll_to(page_number)
+		local area, shared_document = current_pdf_view()
+		if area == nil or shared_document == nil then
+			return false
+		end
+		local page = pdf_page_element(shared_document, page_number)
+		local area_frame = element_frame(area)
+		local document_frame = element_frame(shared_document)
+		local page_frame = element_frame(page)
+		local bar = vertical_scrollbar(area)
+		if page == nil or area_frame == nil or document_frame == nil or page_frame == nil or bar == nil then
+			return false
+		end
+		local maximum = document_frame.h - area_frame.h
+		local value = 0
+		if page_number ~= 1 and maximum > 0 then
+			value = math.max(0, math.min(1, (page_frame.y - document_frame.y) / maximum))
+		end
+		if type(bar.setAttributeValue) ~= "function" then
+			return false
+		end
+		local ok, result = pcall(function()
+			return bar:setAttributeValue("AXValue", value)
+		end)
+		return ok and result ~= nil
+	end
+
+	local function scroll_to_visible(page_number)
+		local _, shared_document = current_pdf_view()
+		local page = pdf_page_element(shared_document, page_number)
+		if page == nil or type(page.performAction) ~= "function" then
+			return false
+		end
+		local ok, result = pcall(function()
+			return page:performAction("AXScrollToVisible")
+		end)
+		return ok and result ~= false and result ~= nil
+	end
+
+	local function landed(page_number)
+		local area, shared_document = current_pdf_view()
+		if area == nil or shared_document == nil then
+			return false
+		end
+		local page_frame = element_frame(pdf_page_element(shared_document, page_number))
+		local area_frame = element_frame(area)
+		if page_frame == nil or area_frame == nil then
+			return false
+		end
+		local page_bottom = page_frame.y + page_frame.h
+		local area_bottom = area_frame.y + area_frame.h
+		local midpoint = area_frame.y + area_frame.h / 2
+		local covers_midpoint = page_frame.y <= midpoint and page_bottom >= midpoint
+		local entirely_visible = page_frame.y >= area_frame.y and page_bottom <= area_bottom
+		return covers_midpoint or entirely_visible
+	end
+
 	return {
 		read = read,
 		select = select,
 		close_selected = close_selected,
 		has_sheet = has_sheet,
 		document = document,
+		has_document = has_document,
+		page_info = page_info,
+		scroll_to = scroll_to,
+		scroll_to_visible = scroll_to_visible,
+		landed = landed,
 	}
 end
 
@@ -461,6 +656,22 @@ local function build_key(H, event)
 		end
 	elseif type(event.chars) == "string" then
 		chars = event.chars
+	end
+	local plain = nil
+	if type(event.getCharacters) == "function" then
+		local ok, value = pcall(function()
+			return event:getCharacters(true)
+		end)
+		if ok then
+			plain = value
+		end
+	end
+	if type(plain) ~= "string" then
+		if type(event.plain) == "string" then
+			plain = event.plain
+		else
+			plain = chars
+		end
 	end
 	local keycode = nil
 	if type(event.getKeyCode) == "function" then
@@ -506,6 +717,7 @@ local function build_key(H, event)
 	end
 	return {
 		chars = chars,
+		plain = plain,
 		escape = keycode ~= nil and escape_code ~= nil and keycode == escape_code,
 		cmd = flags.cmd == true or flags.command == true,
 		alt = flags.alt == true or flags.option == true,
@@ -515,7 +727,7 @@ local function build_key(H, event)
 	}
 end
 
---- Stop the tap, watcher, and pending timers. Keeps `lastBatch` in memory.
+--- Stop the tap, watcher, and pending timers. Keeps `lastBatch` and jumps in memory.
 function M.stop()
 	if runtime.tap ~= nil and type(runtime.tap.stop) == "function" then
 		pcall(function()
@@ -540,14 +752,20 @@ function M.stop()
 	end
 	runtime.timers = {}
 	runtime.running = false
+	runtime.page_running = false
 	if runtime.leader ~= nil and type(runtime.leader.cancel) == "function" then
 		pcall(function()
 			runtime.leader:cancel()
 		end)
 	end
+	if runtime.page_keys ~= nil and type(runtime.page_keys.cancel) == "function" then
+		pcall(function()
+			runtime.page_keys:cancel()
+		end)
+	end
 end
 
---- Start (or restart) the Highlights leader tap. `options` overrides exist for tests.
+--- Start (or restart) the Highlights tab and page key tap. Test overrides are supported.
 function M.start(options)
 	options = options or {}
 	local H = options.hs or hs
@@ -557,9 +775,14 @@ function M.start(options)
 	M.stop()
 
 	runtime.leader = HighlightsTabs.new_leader({ timeout = HighlightsTabs.LEADER_TIMEOUT_SECONDS })
+	runtime.page_keys = HighlightsPages.new_keys({ timeout = HighlightsPages.KEY_TIMEOUT_SECONDS })
 	runtime.running = false
+	runtime.page_running = false
 	if type(runtime.lastBatch) ~= "table" then
 		runtime.lastBatch = {}
+	end
+	if type(runtime.jumps) ~= "table" then
+		runtime.jumps = {}
 	end
 	runtime.timers = {}
 
@@ -621,6 +844,13 @@ function M.start(options)
 		end
 	end
 	local can_arm = make_can_arm(H)
+	local can_arm_pages = function()
+		if not can_arm() or type(adapter.has_document) ~= "function" then
+			return false
+		end
+		local ok, result = pcall(adapter.has_document)
+		return ok and result == true
+	end
 
 	local deps = {
 		read = adapter.read,
@@ -638,7 +868,60 @@ function M.start(options)
 		end)
 	end
 
+	local function dispatch_page(command)
+		if runtime.running then
+			show(HighlightsTabs.BUSY_MESSAGE)
+			return
+		end
+		if runtime.page_running then
+			show(HighlightsPages.BUSY_MESSAGE)
+			return
+		end
+		runtime.page_running = true
+		local page_deps = {
+			page_info = adapter.page_info,
+			scroll_to = adapter.scroll_to,
+			scroll_to_visible = adapter.scroll_to_visible,
+			landed = adapter.landed,
+			after = after_fn,
+			now = now_fn,
+			log = function(message)
+				H.printf("%s", message)
+			end,
+		}
+		local ok, err = pcall(function()
+			HighlightsPages.run(command, runtime.jumps, page_deps, function(result)
+				runtime.page_running = false
+				local message = HighlightsPages.message(result)
+				if message ~= nil then
+					show(message)
+				end
+				if type(result) == "table" and result.status == "failed" then
+					pcall(function()
+						H.printf(
+							"Bob Highlights page keys %s failed: %s",
+							tostring(result.kind),
+							tostring(result.reason)
+						)
+					end)
+				end
+			end)
+		end)
+		if not ok then
+			runtime.page_running = false
+			local result = { status = "failed", kind = command and command.kind, reason = "couldn't find the PDF view" }
+			show(HighlightsPages.message(result))
+			pcall(function()
+				H.printf("Bob Highlights page keys %s failed: %s", tostring(result.kind), tostring(err))
+			end)
+		end
+	end
+
 	local function dispatch(command)
+		if runtime.page_running then
+			show(HighlightsPages.BUSY_MESSAGE)
+			return
+		end
 		if runtime.running then
 			show(HighlightsTabs.BUSY_MESSAGE)
 			return
@@ -697,17 +980,46 @@ function M.start(options)
 					runtime.leader:cancel()
 				end)
 			end
+			if runtime.page_keys ~= nil and type(runtime.page_keys.cancel) == "function" then
+				pcall(function()
+					runtime.page_keys:cancel()
+				end)
+			end
 			return false
 		end
 		local key = build_key(H, event)
-		local outcome = runtime.leader:on_key(key, now_fn(), can_arm)
-		if outcome ~= nil and outcome.command ~= nil then
-			after_fn(0, function()
-				dispatch(outcome.command)
-			end)
+		local now = now_fn()
+		local leader_was_offered = runtime.leader:is_pending()
+		if leader_was_offered then
+			local leader_outcome = runtime.leader:on_key(key, now, can_arm)
+			if leader_outcome ~= nil and (leader_outcome.swallow or leader_outcome.command ~= nil) then
+				if leader_outcome.command ~= nil then
+					after_fn(0, function()
+						dispatch(leader_outcome.command)
+					end)
+				end
+				return leader_outcome.swallow == true
+			end
 		end
-		if outcome ~= nil and outcome.swallow then
-			return true
+
+		local page_outcome = runtime.page_keys:on_key(key, now, can_arm_pages)
+		if page_outcome ~= nil and (page_outcome.swallow or page_outcome.command ~= nil) then
+			if page_outcome.command ~= nil then
+				after_fn(0, function()
+					dispatch_page(page_outcome.command)
+				end)
+			end
+			return page_outcome.swallow == true
+		end
+
+		if not leader_was_offered then
+			local leader_outcome = runtime.leader:on_key(key, now, can_arm)
+			if leader_outcome ~= nil and leader_outcome.command ~= nil then
+				after_fn(0, function()
+					dispatch(leader_outcome.command)
+				end)
+			end
+			return leader_outcome ~= nil and leader_outcome.swallow == true
 		end
 		return false
 	end
@@ -782,6 +1094,11 @@ function M.start(options)
 						runtime.leader:cancel()
 					end)
 				end
+				if runtime.page_keys ~= nil and type(runtime.page_keys.cancel) == "function" then
+					pcall(function()
+						runtime.page_keys:cancel()
+					end)
+				end
 			end
 		end, debug.traceback)
 		if not ok then
@@ -806,8 +1123,18 @@ function M.start(options)
 	end
 
 	runtime._deps_for_tests = deps
+	runtime._page_deps_for_tests = {
+		page_info = adapter.page_info,
+		scroll_to = adapter.scroll_to,
+		scroll_to_visible = adapter.scroll_to_visible,
+		landed = adapter.landed,
+		after = after_fn,
+		now = now_fn,
+	}
 	runtime._can_arm_for_tests = can_arm
+	runtime._can_arm_pages_for_tests = can_arm_pages
 	runtime._dispatch_for_tests = dispatch
+	runtime._page_dispatch_for_tests = dispatch_page
 	runtime._handle_key_for_tests = handle_key
 end
 

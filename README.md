@@ -156,6 +156,32 @@ reopens only the last batch (in memory only; a reload forgets it). Hammerspoon o
 binding instead of Bob Mac Capture because the leader needs an active event tap, and
 because a full apply restarts Hammerspoon while the app would need a signed rebuild.
 
+## Highlights page keys
+
+While the PDF view in Highlights has focus, use these keys to move between physical PDF
+pages:
+
+| Keys   | Action                  |
+| ------ | ----------------------- |
+| `gg`   | Jump to the first page  |
+| `G`    | Jump to the last page   |
+| `<N>g` | Jump to page N          |
+| `<N>G` | Jump to page N          |
+| `⌃O`   | Jump back through jumps |
+
+Each jump goes to the top of the page. N is the physical page number shown in
+Highlights' `Page N of M` title, not a printed page label. A count outside `1–M` shows
+an alert and does not move. Finish a sequence within 1 s of its previous key.
+
+For example, on page 30, `2g` jumps to page 2 and `⌃O` returns to page 30. `⌃O` keeps
+walking back through earlier jumps; when there are no earlier jumps it shows
+`No earlier page`. The history is per PDF, records only jumps made with these keys, and
+lives in memory, so a Hammerspoon reload or restart may forget it.
+
+These keys type normally in text fields, the Bob Refs panel, and windows without a PDF.
+Keep Bob Mac Capture's “In Highlights, open Bob Refs with” setting at Command-O or Off;
+Control-O would collide with `⌃O`.
+
 ## Internet ping menu bar
 
 Hammerspoon shows internet connectivity as one status item beside the Pomodoro item. The

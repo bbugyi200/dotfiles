@@ -892,8 +892,8 @@ if not pingStartOk then
 	hs.printf("Bob ping start failed: %s", pingStartError)
 end
 
--- Highlights tab-close leader keys. A throwing start must never break the
--- other hotkeys or the Pomodoro item, so it is logged and swallowed.
+-- Highlights tab-close leader and page-navigation keys. A throwing start must never
+-- break the other hotkeys or the Pomodoro item, so it is logged and swallowed.
 local highlightsTabKeysStartOk, highlightsTabKeysStartError = xpcall(function()
 	HighlightsTabKeys.start()
 end, debug.traceback)

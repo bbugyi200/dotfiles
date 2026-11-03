@@ -1,5 +1,6 @@
 local HIGHLIGHTS_KEYS_PATH = "home/dot_hammerspoon/highlights_tab_keys.lua"
 local HIGHLIGHTS_TABS_PATH = "home/dot_hammerspoon/highlights_tabs.lua"
+local HIGHLIGHTS_PAGES_PATH = "home/dot_hammerspoon/highlights_pages.lua"
 local BUNDLE_ID = "net.highlightsapp.universal"
 
 local function make_app(bundle, pid)
@@ -38,6 +39,10 @@ local function make_ax_element(attrs)
 		return value
 	end
 	function element:setTimeout(_) end
+	function element:setAttributeValue(name, value)
+		self._attrs[name] = value
+		return true
+	end
 	function element:performAction(_)
 		self._pressed = (self._pressed or 0) + 1
 		return true
@@ -51,6 +56,7 @@ local function setup(options)
 		previous_hs = _G.hs,
 		previous_runtime = _G.BobHighlightsTabKeys,
 		previous_tabs = package.loaded.highlights_tabs,
+		previous_pages = package.loaded.highlights_pages,
 		previous_keys = package.loaded.highlights_tab_keys,
 		alerts = {},
 		logs = {},
@@ -220,6 +226,7 @@ local function setup(options)
 		_G.hs = env.previous_hs
 		_G.BobHighlightsTabKeys = env.previous_runtime
 		package.loaded.highlights_tabs = env.previous_tabs
+		package.loaded.highlights_pages = env.previous_pages
 		package.loaded.highlights_tab_keys = env.previous_keys
 	end
 
@@ -243,6 +250,7 @@ local function setup(options)
 	_G.hs = hs
 	_G.BobHighlightsTabKeys = nil
 	package.loaded.highlights_tabs = assert(loadfile(HIGHLIGHTS_TABS_PATH))()
+	package.loaded.highlights_pages = assert(loadfile(HIGHLIGHTS_PAGES_PATH))()
 	local keys = assert(loadfile(HIGHLIGHTS_KEYS_PATH))()
 	env.hs = hs
 	env.keys = keys
@@ -424,9 +432,127 @@ local function make_native_tabs(env, titles, selected, options)
 	return state
 end
 
+local function make_pdf_view(env, options)
+	options = options or {}
+	local state = {
+		page = options.page or 10,
+		count = options.count or 44,
+		document = options.document or "file:///papers/the_ai_native_sdlc_playbook.pdf",
+		area_y = 100,
+		area_h = 500,
+		page_h = 800,
+		gap = 20,
+		offset = 0,
+	}
+	local function step()
+		return state.page_h + state.gap
+	end
+	local function document_height()
+		return state.count * state.page_h + (state.count - 1) * state.gap
+	end
+	local function maximum()
+		return math.max(0, document_height() - state.area_h)
+	end
+	local function page_top(index)
+		return state.area_y + (index - 1) * step() - state.offset
+	end
+	local function current_page()
+		return math.min(state.count, math.floor(state.offset / step()) + 1)
+	end
+	state.offset = math.min(maximum(), math.max(0, (state.page - 1) * step()))
+	local pages = {}
+	for index = 1, state.count do
+		local page = make_ax_element({ AXRole = "AXPage", AXPageIndex = index - 1 })
+		page._attrs["AXFrame"] = function()
+			return { x = 0, y = page_top(index), w = 600, h = state.page_h }
+		end
+		page._attrs["AXPosition"] = function()
+			return { x = 0, y = page_top(index) }
+		end
+		page._attrs["AXSize"] = { w = 600, h = state.page_h }
+		function page:performAction(action)
+			if action ~= "AXScrollToVisible" or options.ignore_visible then
+				return false
+			end
+			state.offset = math.min(maximum(), math.max(0, (index - 1) * step()))
+			return true
+		end
+		pages[index] = page
+	end
+	local document = make_ax_element({ AXSubrole = "AXSharedDocumentContainer" })
+	document._attrs["AXChildren"] = function()
+		return pages
+	end
+	document._attrs["AXFrame"] = function()
+		return { x = 0, y = state.area_y - state.offset, w = 600, h = document_height() }
+	end
+	document._attrs["AXPosition"] = function()
+		return { x = 0, y = state.area_y - state.offset }
+	end
+	document._attrs["AXSize"] = function()
+		return { w = 600, h = document_height() }
+	end
+	local bar = make_ax_element({ AXRole = "AXScrollBar", AXOrientation = "AXVerticalOrientation" })
+	bar._attrs["AXValue"] = function()
+		if maximum() == 0 then
+			return 0
+		end
+		return state.offset / maximum()
+	end
+	function bar:setAttributeValue(name, value)
+		if name ~= "AXValue" then
+			return false
+		end
+		if not options.ignore_bar then
+			state.offset = math.max(0, math.min(maximum(), tonumber(value) * maximum()))
+		end
+		return true
+	end
+	local sidebar = make_ax_element({ AXRole = "AXScrollArea", AXChildren = {} })
+	local sidebar_group = make_ax_element({ AXRole = "AXGroup", AXChildren = { sidebar } })
+	local area = make_ax_element({ AXRole = "AXScrollArea", AXChildren = { document, bar } })
+	area._attrs["AXVerticalScrollBar"] = bar
+	area._attrs["AXFrame"] = function()
+		return { x = 0, y = state.area_y, w = 700, h = state.area_h }
+	end
+	area._attrs["AXPosition"] = function()
+		return { x = 0, y = state.area_y }
+	end
+	area._attrs["AXSize"] = { w = 700, h = state.area_h }
+	local split = make_ax_element({ AXRole = "AXSplitGroup", AXChildren = { sidebar_group, area } })
+	local window = make_ax_element({ AXRole = "AXWindow" })
+	window._attrs["AXChildren"] = { split }
+	window._attrs["AXDocument"] = function()
+		if options.no_document then
+			return nil
+		end
+		return state.document
+	end
+	window._attrs["AXTitle"] = function()
+		return "the_ai_native_sdlc_playbook.pdf – Page " .. current_page() .. " of " .. state.count
+	end
+	env.focused_window = window
+	env.app_windows = { window }
+	env.pdf_state = state
+	env.pdf_area = area
+	env.pdf_bar = bar
+	return state
+end
+
 local function tap_leader(env, second, second_flags)
 	assert.is_true(env.tap_key({ chars = "\\", flags = {}, keycode = 0 }))
 	assert.is_true(env.tap_key({ chars = second, flags = second_flags or {}, keycode = 0 }))
+	env.drain()
+end
+
+local function tap_ctrl_o(env)
+	return env.tap_key({ chars = "\15", plain = "o", flags = { ctrl = true }, keycode = 31 })
+end
+
+local function tap_page_keys(env, chars)
+	for _, value in ipairs(chars) do
+		assert.is_true(env.tap_key({ chars = value, plain = value, flags = {}, keycode = 0 }))
+	end
 	env.drain()
 end
 
@@ -692,5 +818,163 @@ describe("Highlights tab keys runtime", function()
 			end
 		end
 		assert.is_true(logged)
+	end)
+
+	it("jumps back through per-PDF history with quiet successful jumps", function()
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		local state = make_pdf_view(env, { page = 10, count = 44 })
+		start_with_real_adapter(env)
+		assert.is_true(_G.BobHighlightsTabKeys._page_deps_for_tests.page_info().page == 10)
+
+		tap_page_keys(env, { "2", "g" })
+		assert.equals(2, math.floor(state.offset / 820) + 1)
+		assert.equals(0, #env.alerts)
+		assert.equals(0, #env.logs)
+		assert.is_true(tap_ctrl_o(env))
+		env.drain()
+		assert.equals(10, math.floor(state.offset / 820) + 1)
+		assert.equals(0, #env.alerts)
+
+		assert.is_true(tap_ctrl_o(env))
+		env.drain()
+		assert.is_true(alert_saw(env, "No earlier page"))
+		assert.equals(10, math.floor(state.offset / 820) + 1)
+	end)
+
+	it("jumps to the first and last pages and rejects out-of-range counts", function()
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		local state = make_pdf_view(env, { page = 10, count = 44 })
+		start_with_real_adapter(env)
+		tap_page_keys(env, { "g", "g" })
+		assert.equals(0, state.offset)
+		tap_page_keys(env, { "G" })
+		assert.equals(44, math.floor(state.offset / 820) + 1)
+
+		local offset = state.offset
+		tap_page_keys(env, { "5", "0", "g" })
+		assert.equals(offset, state.offset)
+		assert.is_true(alert_saw(env, "No page 50 — this PDF has 44 pages"))
+	end)
+
+	it("falls back to AXScrollToVisible without logging document details", function()
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		local state = make_pdf_view(env, { page = 10, count = 44, ignore_bar = true })
+		start_with_real_adapter(env)
+		tap_page_keys(env, { "2", "g" })
+		assert.equals(2, math.floor(state.offset / 820) + 1)
+		local joined = ""
+		for _, call in ipairs(env.logs) do
+			for _, part in ipairs(call) do
+				joined = joined .. tostring(part) .. "\n"
+			end
+		end
+		assert.is_truthy(joined:find("AXScrollToVisible landed", 1, true))
+		assert.is_nil(joined:find("the_ai_native_sdlc_playbook.pdf", 1, true))
+		assert.is_nil(joined:find("/papers/", 1, true))
+	end)
+
+	it("alerts and logs when neither real-adapter mechanism lands", function()
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		make_pdf_view(env, { page = 10, count = 44, ignore_bar = true, ignore_visible = true })
+		start_with_real_adapter(env)
+		tap_page_keys(env, { "2", "g" })
+		assert.is_true(alert_saw(env, "Couldn't jump to page 2: didn't reach page 2"))
+		local logged = false
+		for _, call in ipairs(env.logs) do
+			if tostring(call[1]):find("Bob Highlights page keys %s failed", 1, true) then
+				logged = true
+			end
+		end
+		assert.is_true(logged)
+	end)
+
+	it("passes page keys in text fields, other processes, and windows without a PDF", function()
+		local cases = {
+			{ focused = make_focused(111, "AXTextField") },
+			{ focused = make_focused(111, "AXTextArea") },
+			{ focused = make_focused(222, "AXUnknown") },
+			{ focused = make_focused(111, "AXUnknown"), no_document = true },
+		}
+		for _, case in ipairs(cases) do
+			env = setup({ focused = case.focused })
+			make_pdf_view(env, { no_document = case.no_document })
+			start_with_real_adapter(env)
+			assert.is_false(env.tap_key({ chars = "g", plain = "g", flags = {}, keycode = 0 }))
+			assert.is_false(env.tap_key({ chars = "5", plain = "5", flags = {}, keycode = 0 }))
+			assert.is_false(tap_ctrl_o(env))
+			env.restore()
+			env = nil
+		end
+	end)
+
+	it("isolates history by document and cancels a pending g on deactivation", function()
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		local state = make_pdf_view(env, { page = 10, count = 44 })
+		start_with_real_adapter(env)
+		tap_page_keys(env, { "2", "g" })
+		state.document = "file:///papers/another.pdf"
+		assert.is_true(tap_ctrl_o(env))
+		env.drain()
+		assert.is_true(alert_saw(env, "No earlier page"))
+
+		assert.is_true(env.tap_key({ chars = "g", plain = "g", flags = {}, keycode = 0 }))
+		assert.is_true(_G.BobHighlightsTabKeys.page_keys:is_pending())
+		env.watcher_callback("x", "deactivated", env.highlights_app)
+		assert.is_false(_G.BobHighlightsTabKeys.page_keys:is_pending())
+	end)
+
+	it("routes backslash to the tab leader around pending page keys", function()
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		local state = { titles = { "a.pdf", "b.pdf", "c.pdf" }, selected = 1 }
+		local adapter = make_adapter(state)
+		adapter.has_document = function()
+			return true
+		end
+		start_with_adapter(env, adapter)
+		assert.is_true(env.tap_key({ chars = "g", plain = "g", flags = {}, keycode = 0 }))
+		assert.is_true(env.tap_key({ chars = "\\", plain = "\\", flags = {}, keycode = 0 }))
+		assert.is_true(env.tap_key({ chars = ">", plain = ">", flags = { shift = true }, keycode = 0 }))
+		env.drain()
+		assert.same({ "a.pdf" }, state.titles)
+
+		env.restore()
+		env = nil
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		adapter = make_adapter({ titles = { "a.pdf" }, selected = 1 })
+		adapter.has_document = function()
+			return true
+		end
+		start_with_adapter(env, adapter)
+		assert.is_true(env.tap_key({ chars = "\\", plain = "\\", flags = {}, keycode = 0 }))
+		assert.is_true(env.tap_key({ chars = "g", plain = "g", flags = {}, keycode = 0 }))
+		assert.is_true(_G.BobHighlightsTabKeys.page_keys:is_pending())
+	end)
+
+	it("reports the tab busy message when a page jump overlaps a tab close", function()
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		local state = { titles = { "a.pdf", "b.pdf", "c.pdf" }, selected = 1 }
+		local adapter = make_adapter(state)
+		adapter.has_document = function()
+			return true
+		end
+		adapter.page_info = function()
+			return { page = 1, count = 10, document = "/paper.pdf" }
+		end
+		adapter.scroll_to = function()
+			return true
+		end
+		adapter.scroll_to_visible = function()
+			return true
+		end
+		adapter.landed = function()
+			return true
+		end
+		start_with_adapter(env, adapter)
+		assert.is_true(env.tap_key({ chars = "\\", plain = "\\", flags = {}, keycode = 0 }))
+		assert.is_true(env.tap_key({ chars = ">", plain = ">", flags = { shift = true }, keycode = 0 }))
+		assert.is_true(env.tap_key({ chars = "2", plain = "2", flags = {}, keycode = 0 }))
+		assert.is_true(env.tap_key({ chars = "g", plain = "g", flags = {}, keycode = 0 }))
+		env.drain()
+		assert.is_true(alert_saw(env, "Still closing Highlights tabs"))
 	end)
 end)
