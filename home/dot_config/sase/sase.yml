@@ -103,6 +103,8 @@ ace:
       for example, $1
     fi: "the $1 file"
     fix: "Can you help me fix this?"
+    fixs: |-
+      Can you help me fix these issues?
     fixx: "Can you help me diagnose the root cause of this issue and fix it?"
     fixxx: |-
       Can you help me confirm/deny my suspicion, diagnose the true root cause, and fix the issue?
