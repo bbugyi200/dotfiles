@@ -143,7 +143,6 @@ relations:
   cancel_labels:
     - duplicate of
     - superseded by
-    # - merged into
   # Committing a link with one of these labels also completes the task the label is
   # phrased from ("S implemented by T" completes S), exactly as Ctrl+Enter or capture
   # `!` would. Matched like cancel_labels. Empty completes nothing.
@@ -155,6 +154,10 @@ relations:
   # auto-linked. Empty offers nothing.
   successor_labels:
     - starts after
+  # A committed link with one of these labels merges its source into its
+  # target. `>` uses the first configured label; an empty list disables
+  # only relation-triggered merges.
+  merge_labels: [merged into]
 
 # Task types: your vocabulary and its colors (docs/task-types.md PT12 in bob-cli).
 # A name outside this list still works, but menus stop suggesting it and
