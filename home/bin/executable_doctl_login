@@ -1,0 +1,589 @@
+#!/usr/bin/env bash
+#
+# Set up or re-check athena's DigitalOcean token for Apollo recovery.
+
+set -euo pipefail
+
+readonly REQUIRED_SCOPES="account:read actions:read droplet:read droplet:update image:read regions:read sizes:read snapshot:read"
+readonly TOKENS_URL="https://cloud.digitalocean.com/account/api/tokens"
+readonly TOKEN_INFO_URL="https://cloud.digitalocean.com/v1/oauth/token/info"
+readonly DROPLET_NAME="apollo"
+readonly DROPLET_SSH_ALIAS="apollo-do"
+readonly EXPECTED_BIN="${HOME}/.local/bin/doctl"
+
+readonly TITLE="DigitalOcean · doctl on athena · Apollo recovery token"
+
+if [[ -t 2 && -z "${NO_COLOR+x}" ]]; then
+	readonly C_CYAN=$'\033[36m'
+	readonly C_GREEN=$'\033[32m'
+	readonly C_YELLOW=$'\033[33m'
+	readonly C_RED=$'\033[31m'
+	readonly C_DIM=$'\033[2m'
+	readonly C_RESET=$'\033[0m'
+else
+	readonly C_CYAN=""
+	readonly C_GREEN=""
+	readonly C_YELLOW=""
+	readonly C_RED=""
+	readonly C_DIM=""
+	readonly C_RESET=""
+fi
+
+tmp=""
+echo_disabled=0
+has_terminal=0
+logout=0
+replace=0
+yes=0
+ambient_token_override=0
+new_token=""
+
+if [[ -t 0 || "${DOCTL_LOGIN_ASSUME_TTY:-}" == "1" ]]; then
+	has_terminal=1
+fi
+
+usage() {
+	cat >&2 <<EOF
+Usage: doctl_login [-h] [-l [-y]] [-r]
+
+Set up or check athena's doctl token for Apollo recovery. After setup, a rerun is a
+read-only check. A run without a terminal never prompts.
+
+Required token scopes:
+  account:read       actions:read       droplet:read       droplet:update
+  image:read         regions:read       sizes:read         snapshot:read
+
+Options:
+  -h, --help       Show this help.
+  -l, --logout     Remove the saved token, then print the revoke URL.
+  -r, --replace    Prompt for a new token, even when one is connected.
+  -y, --yes        Skip the --logout confirmation.
+
+Exit status: 0 connected or removed, 1 not connected, failed, or cancelled, 2 usage error.
+
+Environment:
+  DOCTL_LOGIN_ASSUME_TTY=1  Test hook that treats stdin as a terminal.
+  NO_COLOR                  Disable colored output.
+  XDG_CONFIG_HOME           doctl config root used for its token.
+
+Examples:
+  doctl_login
+  doctl_login -r
+  doctl_login -l
+  doctl_login -l -y
+EOF
+}
+
+title() {
+	printf '%s%s%s\n' "$C_CYAN" "$TITLE" "$C_RESET" >&2
+}
+
+step_open() {
+	printf '%s  %-15s %s\n' "$1" "$2" "$3" >&2
+}
+
+step_result() {
+	local step="$1" label="$2" kind="$3" detail="$4"
+	local glyph color
+	case "$kind" in
+	ok) glyph="✓"; color="$C_GREEN" ;;
+	warn) glyph="!"; color="$C_YELLOW" ;;
+	fail) glyph="✗"; color="$C_RED" ;;
+	*) glyph=""; color="" ;;
+	esac
+	if [[ -n "$glyph" ]]; then
+		printf '%s  %-15s %s%s%s %s\n' "$step" "$label" "$color" "$glyph" "$C_RESET" "$detail" >&2
+	else
+		printf '%s  %-15s %s\n' "$step" "$label" "$detail" >&2
+	fi
+}
+
+note() {
+	printf '                    %s\n' "$1" >&2
+}
+
+usage_error() {
+	printf 'doctl_login: %s\n\n' "$1" >&2
+	usage
+	exit 2
+}
+
+cleanup() {
+	if [[ "$echo_disabled" == "1" ]]; then
+		stty echo 2>/dev/null || true
+		echo_disabled=0
+	fi
+	if [[ -n "$tmp" ]]; then
+		rm -rf -- "$tmp"
+	fi
+}
+
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+is_ipv4() {
+	local address="$1" octet
+	local -a parts=()
+	[[ "$address" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 1
+	IFS=. read -r -a parts <<<"$address"
+	[[ "${#parts[@]}" == "4" ]] || return 1
+	for octet in "${parts[@]}"; do
+		(( 10#$octet <= 255 )) || return 1
+	done
+}
+
+inspect_token() {
+	local token="$1" http_code scope required found expires now
+	local -a granted_scopes=()
+	INSPECT_CLASS=""
+	INSPECT_MISSING=""
+	INSPECT_EXTRA_REFUSED=""
+	INSPECT_EXTRA_READONLY=""
+	INSPECT_EXPIRY="no expiry"
+
+	if ! http_code="$(printf 'Authorization: Bearer %s\n' "$token" |
+		curl -sS --max-time 20 -H @- -o "$tmp/info.json" -w '%{http_code}' "$TOKEN_INFO_URL" 2>"$tmp/curl.err")"; then
+		INSPECT_CLASS="unreachable"
+		return 0
+	fi
+
+	case "$http_code" in
+	401 | 403)
+		INSPECT_CLASS="rejected"
+		return 0
+		;;
+	200) ;;
+	*)
+		INSPECT_CLASS="unexpected_http"
+		INSPECT_HTTP_CODE="$http_code"
+		return 0
+		;;
+	esac
+
+	if ! jq -e '.scopes | type == "array"' "$tmp/info.json" >/dev/null 2>&1; then
+		INSPECT_CLASS="invalid_response"
+		return 0
+	fi
+	while IFS= read -r scope; do
+		[[ -n "$scope" ]] && granted_scopes+=("$scope")
+	done < <(jq -r '.scopes[] | select(type == "string")' "$tmp/info.json")
+
+	for required in $REQUIRED_SCOPES; do
+		found=0
+		for scope in "${granted_scopes[@]}"; do
+			if [[ "$scope" == "$required" ]]; then
+				found=1
+				break
+			fi
+		done
+		if [[ "$found" == "0" ]]; then
+			INSPECT_MISSING+="${INSPECT_MISSING:+ }$required"
+		fi
+	done
+
+	for scope in "${granted_scopes[@]}"; do
+		found=0
+		for required in $REQUIRED_SCOPES; do
+			if [[ "$scope" == "$required" ]]; then
+				found=1
+				break
+			fi
+		done
+		if [[ "$found" == "0" ]]; then
+			case "$scope" in
+			read | *:read)
+				INSPECT_EXTRA_READONLY+="${INSPECT_EXTRA_READONLY:+ }$scope"
+				;;
+			*)
+				INSPECT_EXTRA_REFUSED+="${INSPECT_EXTRA_REFUSED:+ }$scope"
+				;;
+			esac
+		fi
+	done
+
+	expires="$(jq -r 'if .expires_in_seconds == null then "" else (.expires_in_seconds | tostring) end' "$tmp/info.json")"
+	if [[ "$expires" =~ ^[0-9]+$ ]] && (( 10#$expires > 0 )); then
+		now="$(date +%s)"
+		INSPECT_EXPIRY="expires $(date -u -d "@$((now + 10#$expires))" +%F 2>/dev/null || printf 'soon')"
+	fi
+
+	if [[ -n "$INSPECT_MISSING" || -n "$INSPECT_EXTRA_REFUSED" ]]; then
+		INSPECT_CLASS="scope_problem"
+	else
+		INSPECT_CLASS="valid"
+	fi
+}
+
+show_inspection_problem() {
+	case "$INSPECT_CLASS" in
+	rejected)
+		step_result "2/3" "Token" warn "the saved token stopped working (revoked or expired)"
+		;;
+	scope_problem)
+		if [[ -n "$INSPECT_MISSING" ]]; then
+			step_result "2/3" "Token" warn "missing scopes: $INSPECT_MISSING"
+		fi
+		if [[ -n "$INSPECT_EXTRA_REFUSED" ]]; then
+			step_result "2/3" "Token" fail "extra scopes refused: $INSPECT_EXTRA_REFUSED"
+			note "Generate a token with only the eight scopes, then delete the over-scoped token."
+		fi
+		;;
+	unreachable)
+		step_result "2/3" "Token" fail "could not reach cloud.digitalocean.com"
+		;;
+	unexpected_http)
+		step_result "2/3" "Token" fail "unexpected HTTP ${INSPECT_HTTP_CODE} while checking token"
+		;;
+	*)
+		step_result "2/3" "Token" fail "could not read the token details"
+		;;
+	esac
+}
+
+show_prompt_token_problem() {
+	case "$INSPECT_CLASS" in
+	rejected)
+		step_result "2/3" "Token" fail "DigitalOcean rejected this token; try again"
+		;;
+	scope_problem)
+		if [[ -n "$INSPECT_MISSING" ]]; then
+			step_result "2/3" "Token" fail "missing scopes: $INSPECT_MISSING"
+		fi
+		if [[ -n "$INSPECT_EXTRA_REFUSED" ]]; then
+			step_result "2/3" "Token" fail "extra scopes refused: $INSPECT_EXTRA_REFUSED"
+			note "Generate a token with only the eight scopes, then delete the over-scoped token."
+		fi
+		;;
+	unexpected_http)
+		step_result "2/3" "Token" fail "unexpected HTTP ${INSPECT_HTTP_CODE} while checking token"
+		;;
+	*)
+		step_result "2/3" "Token" fail "could not read the token details"
+		;;
+	esac
+}
+
+show_valid_token() {
+	step_result "2/3" "Token" ok "already connected · 8 scopes · $INSPECT_EXPIRY"
+	if [[ -n "$INSPECT_EXTRA_READONLY" ]]; then
+		printf '                    %salso has read-only scopes: %s%s\n' "$C_DIM" "$INSPECT_EXTRA_READONLY" "$C_RESET" >&2
+	fi
+	if [[ "$INSPECT_EXPIRY" != "no expiry" ]]; then
+		show_expiry_warning
+	fi
+}
+
+show_expiry_warning() {
+	step_result "2/3" "Token" warn "$INSPECT_EXPIRY; use a No-expiry token and run doctl_login -r"
+}
+
+prompt_for_token() {
+	local raw
+	step_open "2/3" "Token" "Create a token for athena's doctl (about 2 minutes):"
+	note "a. Generate New Token · name athena-doctl · Expiration: No expiry."
+	note "b. Custom Scopes · make sure exactly these eight are ticked:"
+	note "   account:read   actions:read   droplet:read   droplet:update"
+	note "   image:read     regions:read   sizes:read      snapshot:read"
+	note "c. Generate, then copy the token. It is shown only once."
+	printf '\n%s\n\n' "$TOKENS_URL" >&2
+	while true; do
+		printf 'Paste the token (input hidden), or q to stop › ' >&2
+		if [[ -t 0 ]]; then
+			stty -echo
+			echo_disabled=1
+		fi
+		if ! IFS= read -r -s raw; then
+			if [[ "$echo_disabled" == "1" ]]; then
+				stty echo 2>/dev/null || true
+				echo_disabled=0
+			fi
+			printf '\n' >&2
+			step_result "2/3" "Token" fail "cancelled; nothing was saved"
+			return 1
+		fi
+		if [[ "$echo_disabled" == "1" ]]; then
+			stty echo 2>/dev/null || true
+			echo_disabled=0
+		fi
+		printf '\n' >&2
+		if [[ "$raw" == "q" || "$raw" == "quit" ]]; then
+			step_result "2/3" "Token" fail "cancelled; nothing was saved"
+			return 1
+		fi
+		new_token="${raw//$'\e[200~'/}"
+		new_token="${new_token//$'\e[201~'/}"
+		new_token="${new_token#"${new_token%%[![:space:]]*}"}"
+		new_token="${new_token%"${new_token##*[![:space:]]}"}"
+		unset raw
+		if [[ ${#new_token} -ne 64 && ! ( "$new_token" == do* && ${#new_token} -eq 71 ) ]]; then
+			step_result "2/3" "Token" fail "that doesn't look like a DigitalOcean token; try again"
+			new_token=""
+			continue
+		fi
+
+		inspect_token "$new_token"
+		case "$INSPECT_CLASS" in
+		valid)
+			if [[ -n "$INSPECT_EXTRA_READONLY" ]]; then
+				printf '                    %salso has read-only scopes: %s%s\n' "$C_DIM" "$INSPECT_EXTRA_READONLY" "$C_RESET" >&2
+			fi
+			return 0
+			;;
+		scope_problem | rejected | unexpected_http | invalid_response)
+			show_prompt_token_problem
+			new_token=""
+			;;
+		unreachable)
+			show_inspection_problem
+			return 1
+			;;
+		esac
+	done
+}
+
+save_token() {
+	local token="$1" captured safe_output line
+	if DIGITALOCEAN_ACCESS_TOKEN="$token" doctl --context default auth init >"$tmp/init.out" 2>&1; then
+		return 0
+	fi
+	captured="$(cat "$tmp/init.out")"
+	safe_output="${captured//"$token"/***}"
+	step_result "2/3" "Token" fail "doctl could not save the token"
+	while IFS= read -r line; do
+		[[ -n "$line" ]] && note "$line"
+	done <<<"$safe_output"
+	return 1
+}
+
+parse_args() {
+	local arg
+	while (($# > 0)); do
+		arg="$1"
+		shift
+		case "$arg" in
+		-h | --help)
+			usage
+			exit 0
+			;;
+		-l | --logout) logout=1 ;;
+		-r | --replace) replace=1 ;;
+		-y | --yes) yes=1 ;;
+		-*) usage_error "unknown option: $arg" ;;
+		*) usage_error "unexpected argument: $arg" ;;
+		esac
+	done
+	if [[ "$logout" == "1" && "$replace" == "1" ]]; then
+		usage_error "--logout cannot be combined with --replace"
+	fi
+	if [[ "$yes" == "1" && "$logout" == "0" ]]; then
+		usage_error "--yes requires --logout"
+	fi
+}
+
+parse_args "$@"
+title
+
+if [[ -n "${DIGITALOCEAN_ACCESS_TOKEN+x}" ]]; then
+	ambient_token_override=1
+	unset DIGITALOCEAN_ACCESS_TOKEN
+fi
+
+for required_tool in curl jq; do
+	if ! command -v "$required_tool" >/dev/null 2>&1; then
+		step_result "1/3" "doctl" fail "$required_tool not found; install it before running doctl_login"
+		exit 1
+	fi
+done
+
+if ! command -v doctl >/dev/null 2>&1; then
+	step_result "1/3" "doctl" fail "doctl not found"
+	note "Install it on athena with chezmoi apply (run_onchange_install_doctl)."
+	exit 1
+fi
+
+doctl_path="$(command -v doctl)"
+if ! version_output="$(doctl --context default version 2>/dev/null)"; then
+	step_result "1/3" "doctl" fail "could not run doctl version"
+	exit 1
+fi
+if [[ "$version_output" =~ ([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+	doctl_version="${BASH_REMATCH[1]}"
+else
+	doctl_version="unknown version"
+fi
+step_result "1/3" "doctl" ok "$doctl_version · ~/.local/bin/doctl"
+if [[ "$doctl_path" != "$EXPECTED_BIN" ]]; then
+	step_result "1/3" "doctl" warn "using $doctl_path"
+fi
+
+tmp="$(mktemp -d "${TMPDIR:-/tmp}/doctl-login.XXXXXX")"
+chmod 700 "$tmp"
+
+if [[ "$logout" == "1" ]]; then
+	saved_token="$(doctl --context default auth token 2>/dev/null || true)"
+	if [[ -z "$saved_token" ]]; then
+		step_result "2/3" "Token" ok "nothing to remove"
+		exit 0
+	fi
+	if [[ "$yes" != "1" ]]; then
+		if [[ "$has_terminal" != "1" ]]; then
+			step_result "2/3" "Token" fail "logout needs confirmation in a terminal"
+			note "Pass -y to confirm logout without a terminal."
+			exit 1
+		fi
+		printf "Remove doctl's saved DigitalOcean token? [y/N] › " >&2
+		IFS= read -r answer || answer=""
+		if [[ ! "$answer" =~ ^[Yy]([Ee][Ss])?$ ]]; then
+			step_result "2/3" "Token" fail "cancelled; nothing was removed"
+			exit 1
+		fi
+	fi
+	if ! doctl --context default auth remove >"$tmp/remove.out" 2>&1; then
+		step_result "2/3" "Token" fail "could not remove the saved token"
+		exit 1
+	fi
+	unset saved_token
+	step_result "2/3" "Token" ok "removed"
+	note "This does not revoke the token. Revoke it in the DigitalOcean control panel:"
+	printf '\n%s\n\n' "$TOKENS_URL" >&2
+	exit 0
+fi
+
+saved_token="$(doctl --context default auth token 2>/dev/null || true)"
+if [[ -n "$saved_token" && "$replace" != "1" ]]; then
+	inspect_token "$saved_token"
+	case "$INSPECT_CLASS" in
+	valid)
+		show_valid_token
+		unset saved_token
+		;;
+	unreachable)
+		show_inspection_problem
+		exit 1
+		;;
+	scope_problem | rejected)
+		show_inspection_problem
+		unset saved_token
+		if [[ "$has_terminal" != "1" ]]; then
+			note "Run doctl_login in a terminal on athena to replace the token."
+			exit 1
+		fi
+		if ! prompt_for_token; then
+			exit 1
+		fi
+		if ! save_token "$new_token"; then
+			unset new_token
+			exit 1
+		fi
+		unset new_token
+		config_file="${XDG_CONFIG_HOME:-$HOME/.config}/doctl/config.yaml"
+		if [[ ! -e "$config_file" ]]; then
+			step_result "2/3" "Token" fail "doctl did not create its config file"
+			exit 1
+		fi
+		if [[ "$(stat -c '%a' "$config_file" 2>/dev/null || true)" != "600" ]]; then
+			chmod 600 "$config_file"
+			note "Tightened doctl config permissions to 600."
+		fi
+		step_result "2/3" "Token" ok "saved to doctl's default context · 8 scopes · $INSPECT_EXPIRY"
+		if [[ "$INSPECT_EXPIRY" != "no expiry" ]]; then
+			show_expiry_warning
+		fi
+		;;
+	*)
+		show_inspection_problem
+		exit 1
+		;;
+	esac
+else
+	if [[ "$has_terminal" != "1" ]]; then
+		if [[ "$replace" == "1" ]]; then
+			step_result "2/3" "Token" fail "-r needs a terminal"
+		else
+			step_result "2/3" "Token" fail "no token saved in doctl's default context"
+		fi
+		note "Run doctl_login in a terminal on athena."
+		exit 1
+	fi
+	if ! prompt_for_token; then
+		exit 1
+	fi
+	if ! save_token "$new_token"; then
+		unset new_token
+		exit 1
+	fi
+	unset new_token
+	config_file="${XDG_CONFIG_HOME:-$HOME/.config}/doctl/config.yaml"
+	if [[ ! -e "$config_file" ]]; then
+		step_result "2/3" "Token" fail "doctl did not create its config file"
+		exit 1
+	fi
+	if [[ "$(stat -c '%a' "$config_file" 2>/dev/null || true)" != "600" ]]; then
+		chmod 600 "$config_file"
+		note "Tightened doctl config permissions to 600."
+	fi
+	step_result "2/3" "Token" ok "saved to doctl's default context · 8 scopes · $INSPECT_EXPIRY"
+	if [[ "$INSPECT_EXPIRY" != "no expiry" ]]; then
+		show_expiry_warning
+	fi
+	if [[ "$replace" == "1" ]]; then
+		note "The old token works until you revoke it at $TOKENS_URL."
+	fi
+fi
+
+if doctl --context default auth list -o json >"$tmp/contexts.json" 2>/dev/null; then
+	other_context="$(jq -r '.[] | select(.current == true and .name != "default") | .name' "$tmp/contexts.json" | paste -sd ', ' -)"
+	if [[ -n "$other_context" ]]; then
+		step_result "2/3" "Token" warn "plain doctl commands use context $other_context"
+		note "Run doctl auth switch --context default."
+	fi
+fi
+
+step_open "3/3" "Check" ""
+if ! doctl --context default account get -o json >"$tmp/account.json" 2>"$tmp/account.err"; then
+	step_result "3/3" "Check" fail "could not read the DigitalOcean account"
+	exit 1
+fi
+account_email="$(jq -r '.email // "unknown account"' "$tmp/account.json")"
+if ! doctl --context default compute droplet list -o json >"$tmp/droplets.json" 2>"$tmp/droplets.err"; then
+	step_result "3/3" "Check" fail "could not list DigitalOcean droplets"
+	exit 1
+fi
+
+apollo="$(jq -c --arg name "$DROPLET_NAME" '[.[] | select((.name // "" | ascii_downcase) == $name)][0] // empty' "$tmp/droplets.json")"
+ssh_ip=""
+if [[ -z "$apollo" ]] && command -v ssh >/dev/null 2>&1; then
+	ssh_host="$(ssh -G "$DROPLET_SSH_ALIAS" 2>/dev/null | awk '$1 == "hostname" { print $2; exit }' || true)"
+	if is_ipv4 "$ssh_host"; then
+		ssh_ip="$ssh_host"
+		apollo="$(jq -c --arg ip "$ssh_ip" '[.[] | select(any(.networks.v4[]?; .type == "public" and .ip_address == $ip))][0] // empty' "$tmp/droplets.json")"
+	fi
+fi
+
+if [[ -n "$apollo" ]]; then
+	droplet_id="$(jq -r '.id // "<id>"' <<<"$apollo")"
+	droplet_name="$(jq -r '.name // "apollo"' <<<"$apollo")"
+	droplet_status="$(jq -r '.status // "unknown"' <<<"$apollo")"
+	droplet_region="$(jq -r '.region.slug // "unknown region"' <<<"$apollo")"
+	droplet_ip="$(jq -r '[.networks.v4[]? | select(.type == "public") | .ip_address][0] // "no public IPv4"' <<<"$apollo")"
+	step_result "3/3" "Check" ok "$account_email · $droplet_name · id $droplet_id · $droplet_status · $droplet_region · $droplet_ip"
+	note "active only means powered on; a frozen guest still shows active"
+	if [[ "$droplet_status" != "active" ]]; then
+		step_result "3/3" "Check" warn "Apollo status is $droplet_status"
+	fi
+else
+	found_names="$(jq -r '[.[].name // empty] | join(", ")' "$tmp/droplets.json")"
+	step_result "3/3" "Check" warn "no droplet named apollo or at ${ssh_ip:-<resolved IPv4>}; found: ${found_names:-none}"
+	droplet_id="<id>"
+fi
+
+if [[ "$ambient_token_override" == "1" ]]; then
+	step_result "2/3" "Token" warn "DIGITALOCEAN_ACCESS_TOKEN overrides the saved token for plain doctl commands"
+fi
+
+printf '\n%s✓ Connected.%s doctl on athena can check and power-cycle apollo.\n\n' "$C_GREEN" "$C_RESET" >&2
+printf '  Next     doctl compute droplet get %s\n' "$droplet_id" >&2
+printf '  Reset    doctl compute droplet-action power-cycle %s --wait   (hard reset; last resort)\n' "$droplet_id" >&2
+printf '  Rotate   doctl_login -r\n' >&2
+printf '  Undo     doctl_login -l, then revoke the token at %s\n' "$TOKENS_URL" >&2

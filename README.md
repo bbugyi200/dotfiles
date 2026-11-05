@@ -5,6 +5,14 @@
 
 [chezmoi]: https://www.chezmoi.io
 
+## DigitalOcean doctl on athena
+
+On athena, `doctl_login` sets up or re-checks the token used for Apollo recovery. Run
+`doctl_login` to check the connection, `doctl_login -r` to rotate the token, or
+`doctl_login -l` to remove it. Removal does not revoke the token; revoke it in the
+DigitalOcean control panel. Agents may run bare `doctl_login`; without a terminal, it
+performs a read-only connection check.
+
 ## Bob Mac Capture cutover
 
 Control-Shift-Command-I (capture) and Control-Shift-Command-O (Bob Refs) are owned by
