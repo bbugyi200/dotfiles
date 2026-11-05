@@ -159,6 +159,14 @@ relations:
   # only relation-triggered merges.
   merge_labels: [merged into]
 
+# Counted clipboard history (`bob capture %c<N>`; docs/capture.md §Clipboard
+# in bob-cli). On macOS `%c<N>` reads only Alfred and refuses, naming Alfred,
+# if Alfred stops tracking; a relaunched Clipy is never used. On Linux `%c<N>`
+# still needs `BOB_CLIPBOARD_HISTORY_CMD`, which outranks this key. Older bob
+# builds ignore unknown `capture` keys, so this is safe on every host.
+capture:
+  clipboard_history: alfred
+
 # Task types: your vocabulary and its colors (docs/task-types.md PT12 in bob-cli).
 # A name outside this list still works, but menus stop suggesting it and
 # capture, bob plan, and the ledger mark it. Colors are palette slots (blue, orange,
