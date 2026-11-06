@@ -105,6 +105,11 @@ gkeep:
 # a missing block means these defaults. Invalid values are a config error for
 # `bob freshness` (exit 2); ledger-tools falls back to defaults marked invalid.
 freshness:
+  # PRE/POST checklist stages (bob-cli docs/freshness.md §4). A stage is a tag written
+  # right after #pre/#post (`#task #gtd #pre #browser`). Stages walk in list order, ahead
+  # of unstaged rows; inside a stage, rows keep file order. Names omit '#'.
+  pre_stages: [terminal, periods, browser]
+  post_stages: [periods]
   interval: 3 # Ready backlog review cadence
   pending_interval: 1 # [/] lane daily review; false = not walked
   next_interval: 1 # [*] lane daily review; false = not walked
