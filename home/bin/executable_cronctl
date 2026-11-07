@@ -1,0 +1,1125 @@
+#!/bin/bash
+
+#################################################################################
+# cronctl: inspect and converge chezmoi-managed user crontabs.                  #
+#                                                                               #
+# The cron: block in home/.chezmoidata.yaml is the single source of truth for   #
+# every enrolled machine's crontab. chezmoi renders this machine's marked block #
+# into ~/.config/cron/managed.crontab (and its temporary legacy lines into      #
+# ~/.config/cron/retire.crontab); `cronctl sync` is the only installer, and it  #
+# never touches a line outside the "# BEGIN/END chezmoi-cron" block except an   #
+# exact retire match.                                                           #
+#                                                                               #
+# Keep this script bash 3.2-compatible (macOS /bin/bash): no associative        #
+# arrays, mapfile, ${x,,}, {fd}> redirections, or GNU-only flags. It needs no   #
+# jq or Python: chezmoi templates do all YAML parsing. Everything lives in      #
+# functions and `main "$@"` is the last line, so the script can also be         #
+# streamed to `bash -s`; every child command reads </dev/null or a file.       #
+#                                                                               #
+# crontab always gets its file on stdin (`crontab - <file`): Debian's crontab   #
+# silently truncates file arguments to 99 bytes, so a long TMPDIR path could    #
+# name a different file.                                                        #
+#                                                                               #
+# Runtime state lives in ~/.local/state/cron/ (shared with cronrun):            #
+#   installed.block            the last block sync installed                    #
+#   backups/crontab.<stamp>    whole-table backups taken before installs (20)   #
+#   sync.lock, sync.lock.d/    sync serializer (flock, or mkdir without flock)  #
+#                                                                               #
+# Test hooks: CRONCTL_CHEZMOI, CRONCTL_HOSTNAME, CRONCTL_LOCK_IMPL              #
+# (flock|mkdir), CRONCTL_LOCK_TIMEOUT.                                          #
+#################################################################################
+
+# chezmoi templates and crontab lines are single-quoted on purpose.
+# shellcheck disable=SC2016
+
+#############################
+#  Help                     #
+#############################
+cronctl_usage() {
+  cat <<'EOM'
+usage: cronctl [-h] <command> [<args>]
+
+Inspect and converge the chezmoi-managed user crontabs. The cron: block in the
+chezmoi source's home/.chezmoidata.yaml is the single source of truth for every
+enrolled machine; each machine's crontab holds one marked block,
+
+  # BEGIN chezmoi-cron (machine: <name>; ...)
+  ...
+  # END chezmoi-cron
+
+that `cronctl sync` installs from ~/.config/cron/managed.crontab without
+touching any line outside it. Never hand-edit inside the block.
+
+Commands
+--------
+list      Show the job x machine matrix from the data (offline).
+render    Print the desired block for any machine (offline, no SSH).
+check     Render and validate every machine; non-zero on any error.
+sync      Install this machine's block into its crontab (the only installer).
+help      Show help for a command.
+
+Run `cronctl <command> --help` for a command's options.
+
+Change a job by editing cron: in the chezmoi source, then `cronctl check`,
+commit, push, and run `chezmoi update -a` on each machine.
+
+Exit Status
+-----------
+0 ok; 1 failure; 2 usage or validation error.
+EOM
+}
+
+cronctl_usage_list() {
+  cat <<'EOM'
+usage: cronctl list [-h] [--json] [--source DIR]
+
+Show every job in the cron: data with its schedule, the machines it runs on,
+whether it is enabled, and its command. Reads the data only; never touches a
+crontab or the network.
+
+Optional Arguments
+------------------
+--json
+    Print the validated data as JSON instead: version, machines, env, retire,
+    and jobs (each with name, machines as written, targets with [all]
+    expanded, schedule, description, enabled, and command).
+
+--source DIR
+    Read the data from this chezmoi repo root (or source directory), such as
+    an uncommitted checkout, instead of the local chezmoi source.
+
+-h | --help
+    View this help message.
+EOM
+}
+
+cronctl_usage_render() {
+  cat <<'EOM'
+usage: cronctl render [-h] [--source DIR] <machine>
+
+Print the managed block that <machine> should have, exactly as `cronctl sync`
+would install it there. Works for any enrolled machine from any machine; it
+reads the data only and never touches a crontab or the network.
+
+Positional Arguments
+--------------------
+<machine>
+    A canonical machine name from cron.machines (its SSH alias).
+
+Optional Arguments
+------------------
+--source DIR
+    Render from this chezmoi repo root (or source directory), such as an
+    uncommitted checkout, instead of the local chezmoi source.
+
+-h | --help
+    View this help message.
+
+Examples
+--------
+cronctl render athena
+cronctl render mac --source ~/src/dotfiles > /tmp/mac.block
+EOM
+}
+
+cronctl_usage_check() {
+  cat <<'EOM'
+usage: cronctl check [-h] [--source DIR]
+
+Validate the cron: data and render every enrolled machine's block and retire
+lines, exactly as chezmoi apply would. Where the local crontab command offers
+a syntax check that installs nothing (Debian `crontab -n`, cronie
+`crontab -T`), each rendered block is also checked with it. Prints one line
+per machine.
+
+Optional Arguments
+------------------
+--source DIR
+    Check this chezmoi repo root (or source directory), such as an
+    uncommitted checkout, instead of the local chezmoi source.
+
+-h | --help
+    View this help message.
+
+Exit Status
+-----------
+0 when every machine renders; 2 on a validation error; 1 when chezmoi or
+crontab could not run.
+EOM
+}
+
+cronctl_usage_sync() {
+  cat <<'EOM'
+usage: cronctl sync [-h] [--dry-run [--block FILE] [--retire FILE]]
+
+Install this machine's block from ~/.config/cron/managed.crontab into its user
+crontab. The chezmoi run_onchange hook runs this whenever the machine's block,
+its retire lines, or cronctl change, so `chezmoi update -a` converges the
+crontab.
+
+Steps: resolve this machine through the chezmoi data (an unknown machine, or a
+missing managed.crontab, warns and exits 0); take the sync lock; read the
+table (`no crontab` reads as empty; any other crontab -l failure exits 1);
+insert the block at the top when there are no markers, or replace the one
+well-formed BEGIN/END pair in place (anything else is refused); remove the
+lines in ~/.config/cron/retire.crontab from outside the block (exact matches
+after stripping trailing whitespace) and keep every other line byte for byte;
+warn when the live block differs from the last installed one (a hand edit);
+back up the table (keeping 20) and run the native syntax check when crontab
+has one; install, read back, and restore the backup on any mismatch.
+
+An unchanged table is left alone: the installer is never called.
+
+Optional Arguments
+------------------
+--dry-run
+    Stop before changing anything: print a unified diff of the live table vs
+    the candidate and the retire lines that would be removed. Takes no lock
+    and writes no state.
+
+--block FILE
+    With --dry-run only: preview FILE, a block rendered elsewhere (for
+    example `cronctl render <this machine> --source <checkout>`), in place of
+    managed.crontab. Its machine must be this machine.
+
+--retire FILE
+    With --dry-run only: use FILE's lines (for example from a checkout's
+    cron-retire partial) in place of ~/.config/cron/retire.crontab.
+
+-h | --help
+    View this help message.
+
+Exit Status
+-----------
+0 ok (including nothing to do); 1 failure, with the crontab unchanged or
+restored; 2 usage or validation error.
+EOM
+}
+
+#############################
+#  Messages                 #
+#############################
+cronctl_die_usage() {
+  printf 'cronctl: %s\n' "$*" >&2
+  printf "Run 'cronctl %s--help' for usage.\n" "${cronctl_command:+${cronctl_command} }" >&2
+  exit 2
+}
+
+cronctl_die() {
+  printf 'cronctl: %s\n' "$*" >&2
+  exit 1
+}
+
+cronctl_warn() {
+  printf 'cronctl: warning: %s\n' "$*" >&2
+}
+
+#############################
+#  Helpers                  #
+#############################
+cronctl_valid_name() {
+  case "$1" in
+  '' | [!a-z0-9]* | *[!a-z0-9-]*) return 1 ;;
+  esac
+  return 0
+}
+
+cronctl_line_count() {
+  local count
+  count="$(wc -l <"$1")"
+  printf '%s' "$((count + 0))"
+}
+
+cronctl_plural() {
+  if [ "$1" = 1 ]; then
+    printf '%s %s' "$1" "$2"
+  else
+    printf '%s %ss' "$1" "$2"
+  fi
+}
+
+# shellcheck disable=SC2317  # invoked by the EXIT trap
+cronctl_cleanup() {
+  cronctl_unlock
+  if [ -n "${cronctl_tmp}" ] && [ -d "${cronctl_tmp}" ]; then
+    rm -rf "${cronctl_tmp}"
+  fi
+}
+
+cronctl_make_tmp() {
+  [ -n "${cronctl_tmp}" ] && return 0
+  cronctl_tmp="$(mktemp -d "${TMPDIR:-/tmp}/cronctl.XXXXXX")" ||
+    cronctl_die "cannot create a temporary directory"
+}
+
+cronctl_set_source() {
+  [ -n "$1" ] || cronctl_die_usage "--source needs a directory"
+  [ -d "$1" ] || cronctl_die_usage "--source: no such directory: $1"
+  cronctl_source="$1"
+}
+
+#############################
+#  chezmoi                  #
+#############################
+cronctl_find_chezmoi() {
+  local candidate
+  [ -n "${cronctl_chezmoi}" ] && return 0
+  for candidate in "${CRONCTL_CHEZMOI:-}" "${CHEZMOI_EXECUTABLE:-}" \
+    "$(command -v chezmoi 2>/dev/null)" \
+    "${HOME}/.nix-profile/bin/chezmoi" /opt/homebrew/bin/chezmoi \
+    /usr/local/bin/chezmoi "${HOME}/bin/chezmoi" "${HOME}/go/bin/chezmoi" \
+    "${HOME}/.local/bin/chezmoi"; do
+    if [ -n "${candidate}" ] && [ -x "${candidate}" ] && [ ! -d "${candidate}" ]; then
+      cronctl_chezmoi="${candidate}"
+      return 0
+    fi
+  done
+  cronctl_die "chezmoi not found (looked on PATH, ~/.nix-profile/bin, /opt/homebrew/bin, /usr/local/bin, ~/bin, ~/go/bin, ~/.local/bin)"
+}
+
+# cronctl_template <template> <outfile>: render <template> against the chosen
+# chezmoi source (--source, or the local source) into <outfile>. Returns 2
+# with a clean message when the cron: data fails validation, or 1 when
+# chezmoi itself fails.
+cronctl_template() {
+  local template="$1" out="$2" err rc=0 message
+  cronctl_find_chezmoi
+  err="${cronctl_tmp}/chezmoi.err"
+  if [ -n "${cronctl_source}" ]; then
+    "${cronctl_chezmoi}" --source "${cronctl_source}" execute-template "${template}" \
+      </dev/null >"${out}" 2>"${err}" || rc=$?
+  else
+    "${cronctl_chezmoi}" execute-template "${template}" \
+      </dev/null >"${out}" 2>"${err}" || rc=$?
+  fi
+  [ "${rc}" -eq 0 ] && return 0
+  message="$(sed -n 's/.*error calling fail: //p' "${err}")"
+  if [ -n "${message}" ]; then
+    printf 'cronctl: invalid cron: data: %s\n' "${message}" >&2
+    return 2
+  fi
+  printf 'cronctl: chezmoi execute-template failed (exit %s)%s:\n' "${rc}" \
+    "${cronctl_source:+ for --source ${cronctl_source}}" >&2
+  sed 's/^/  /' "${err}" >&2
+  return 1
+}
+
+# Template expression for this host's name: .chezmoi.hostname, unless the
+# CRONCTL_HOSTNAME test hook overrides it.
+cronctl_hostname_expr() {
+  local override="${CRONCTL_HOSTNAME:-}"
+  if [ -z "${override}" ]; then
+    printf '%s' '.chezmoi.hostname'
+    return 0
+  fi
+  case "${override}" in
+  [!A-Za-z0-9]* | *[!A-Za-z0-9._-]*)
+    cronctl_die_usage "invalid CRONCTL_HOSTNAME: ${override}"
+    ;;
+  esac
+  printf '"%s"' "${override}"
+}
+
+# Sets cronctl_hostname and cronctl_machine (empty for an unknown host) from
+# the cron-machine partial.
+cronctl_resolve_local() {
+  local out expr rc=0 sep
+  sep="$(printf '\037')"
+  out="${cronctl_tmp}/resolve.out"
+  expr="$(cronctl_hostname_expr)"
+  cronctl_template "{{ ${expr} }}{{ \"\\x1f\" }}{{ template \"cron-machine\" (dict \"hostname\" ${expr} \"cron\" .cron) }}" \
+    "${out}" || rc=$?
+  [ "${rc}" -eq 0 ] || return "${rc}"
+  IFS="${sep}" read -r cronctl_hostname cronctl_machine <"${out}"
+  return 0
+}
+
+#############################
+#  crontab                  #
+#############################
+# cronctl_read_crontab <outfile>: the live table, empty for "no crontab".
+cronctl_read_crontab() {
+  local out="$1" err rc=0
+  err="${cronctl_tmp}/crontab-l.err"
+  crontab -l </dev/null >"${out}" 2>"${err}" || rc=$?
+  [ "${rc}" -eq 0 ] && return 0
+  if grep -qi 'no crontab for' "${err}"; then
+    : >"${out}"
+    return 0
+  fi
+  printf 'cronctl: crontab -l failed (exit %s), so the crontab is left untouched:\n' "${rc}" >&2
+  sed 's/^/  /' "${err}" >&2
+  return 1
+}
+
+# Sets cronctl_native_flag to the flag of a native syntax check that installs
+# nothing (Debian `crontab -n`, cronie `crontab -T`), or to nothing when the
+# local crontab has none. Probes the usage text instead of guessing from the
+# platform, because -n means something else on cronie.
+cronctl_probe_native_check() {
+  local usage
+  [ "${cronctl_native_probed}" = 1 ] && return 0
+  usage="$(crontab -h </dev/null 2>&1)"
+  cronctl_native_flag=
+  if printf '%s\n' "${usage}" | grep -Eq '^[[:space:]]*-n[[:space:]].*(dry run|syntax)'; then
+    cronctl_native_flag="-n"
+  elif printf '%s\n' "${usage}" | grep -Eq '^[[:space:]]*-T[[:space:]].*syntax'; then
+    cronctl_native_flag="-T"
+  fi
+  cronctl_native_probed=1
+}
+
+# cronctl_native_check <file> <label>: returns 1 (with crontab's message) when
+# the native syntax check rejects <file>; 0 when it passes or is unavailable.
+cronctl_native_check() {
+  local err
+  cronctl_probe_native_check
+  [ -n "${cronctl_native_flag}" ] || return 0
+  err="${cronctl_tmp}/native-check.err"
+  crontab "${cronctl_native_flag}" - <"$1" >/dev/null 2>"${err}" && return 0
+  printf 'cronctl: crontab %s rejects %s:\n' "${cronctl_native_flag}" "$2" >&2
+  sed 's/^/  /' "${err}" >&2
+  return 1
+}
+
+#############################
+#  Blocks and markers       #
+#############################
+cronctl_is_begin() {
+  case "$1" in
+  "# BEGIN chezmoi-cron"*) return 0 ;;
+  esac
+  return 1
+}
+
+cronctl_is_end() {
+  [ "${1%"${1##*[![:space:]]}"}" = "# END chezmoi-cron" ]
+}
+
+# cronctl_read_block <file>: checks that <file> is one marked block and sets
+# cronctl_block_machine from its BEGIN line.
+cronctl_read_block() {
+  local file="$1" line n=0 begins=0 ends=0 last_end=0
+  cronctl_block_machine=
+  [ -s "${file}" ] || {
+    printf 'cronctl: %s is empty\n' "${file}" >&2
+    return 1
+  }
+  while IFS= read -r line || [ -n "${line}" ]; do
+    n=$((n + 1))
+    if cronctl_is_begin "${line}"; then
+      begins=$((begins + 1))
+      if [ "${n}" -eq 1 ]; then
+        cronctl_block_machine="$(printf '%s\n' "${line}" |
+          sed -n 's/^# BEGIN chezmoi-cron (machine: \([a-z0-9][a-z0-9-]*\);.*/\1/p')"
+      fi
+    elif cronctl_is_end "${line}"; then
+      ends=$((ends + 1))
+      last_end="${n}"
+    fi
+  done <"${file}"
+  if [ "${begins}" -ne 1 ] || [ "${ends}" -ne 1 ] || [ "${last_end}" -ne "${n}" ] ||
+    [ -z "${cronctl_block_machine}" ]; then
+    printf 'cronctl: %s is not one marked block (want a first line "# BEGIN chezmoi-cron (machine: <name>; ...)" and a last line "# END chezmoi-cron")\n' \
+      "${file}" >&2
+    return 1
+  fi
+  return 0
+}
+
+# cronctl_build_candidate <live> <block> <retire> <candidate> <removed> <live-block>
+# Writes the table sync would install: <block> replaces the one marked pair
+# in <live> (or goes on top when there is none), and outside lines that equal
+# a <retire> line after stripping trailing whitespace are dropped (and listed
+# in <removed>). Every other line is kept byte for byte, in order. The live
+# block, if any, goes to <live-block>. Returns 1 on corrupt markers.
+cronctl_build_candidate() {
+  local live="$1" block="$2" retire="$3" candidate="$4" removed="$5" live_block="$6"
+  local line stripped n=0 begins=0 ends=0 begin_at=0 end_at=0 i keep
+  local retire_lines retire_count=0
+  retire_lines=()
+
+  while IFS= read -r line || [ -n "${line}" ]; do
+    n=$((n + 1))
+    if cronctl_is_begin "${line}"; then
+      begins=$((begins + 1))
+      begin_at="${n}"
+    elif cronctl_is_end "${line}"; then
+      ends=$((ends + 1))
+      end_at="${n}"
+    fi
+  done <"${live}"
+
+  if [ "${begins}" -ne 0 ] || [ "${ends}" -ne 0 ]; then
+    if [ "${begins}" -ne 1 ] || [ "${ends}" -ne 1 ] || [ "${begin_at}" -gt "${end_at}" ]; then
+      printf 'cronctl: refusing to sync: the crontab has %s and %s; want exactly one "# BEGIN chezmoi-cron" line followed by one "# END chezmoi-cron" line (or neither). Fix the markers by hand (a backup of the table is advised), then rerun cronctl sync.\n' \
+        "$(cronctl_plural "${begins}" "BEGIN marker")" \
+        "$(cronctl_plural "${ends}" "END marker")" >&2
+      return 1
+    fi
+  fi
+
+  if [ -f "${retire}" ]; then
+    while IFS= read -r line || [ -n "${line}" ]; do
+      stripped="${line%"${line##*[![:space:]]}"}"
+      [ -n "${stripped}" ] || continue
+      retire_lines[retire_count]="${stripped}"
+      retire_count=$((retire_count + 1))
+    done <"${retire}"
+  fi
+
+  : >"${removed}"
+  : >"${live_block}"
+  n=0
+  {
+    [ "${begin_at}" -eq 0 ] && cat "${block}"
+    while IFS= read -r line || [ -n "${line}" ]; do
+      n=$((n + 1))
+      if [ "${begin_at}" -ne 0 ] && [ "${n}" -ge "${begin_at}" ] && [ "${n}" -le "${end_at}" ]; then
+        printf '%s\n' "${line}" >>"${live_block}"
+        [ "${n}" -eq "${begin_at}" ] && cat "${block}"
+        continue
+      fi
+      keep=1
+      if [ "${retire_count}" -gt 0 ]; then
+        stripped="${line%"${line##*[![:space:]]}"}"
+        i=0
+        while [ "${i}" -lt "${retire_count}" ]; do
+          if [ "${stripped}" = "${retire_lines[i]}" ]; then
+            keep=0
+            break
+          fi
+          i=$((i + 1))
+        done
+      fi
+      if [ "${keep}" = 1 ]; then
+        printf '%s\n' "${line}"
+      else
+        printf '%s\n' "${line}" >>"${removed}"
+      fi
+    done <"${live}"
+  } >"${candidate}"
+  return 0
+}
+
+#############################
+#  State, lock, and backups #
+#############################
+cronctl_write_atomic() {
+  local src="$1" dest="$2" tmp
+  tmp="$(mktemp "${dest}.XXXXXX")" || return 1
+  if cp "${src}" "${tmp}" && mv -f "${tmp}" "${dest}"; then
+    return 0
+  fi
+  rm -f "${tmp}"
+  return 1
+}
+
+# Prints the backup's path. Keeps the newest 20 backups.
+cronctl_backup() {
+  local src="$1" dir stamp path n=1 count
+  dir="${cronctl_state_dir}/backups"
+  mkdir -p "${dir}" || return 1
+  stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+  path="${dir}/crontab.${stamp}"
+  while [ -e "${path}" ]; do
+    path="${dir}/crontab.${stamp}.${n}"
+    n=$((n + 1))
+  done
+  cp "${src}" "${path}" || return 1
+  count="$(find "${dir}" -type f -name 'crontab.*' | wc -l)"
+  count=$((count + 0))
+  if [ "${count}" -gt 20 ]; then
+    find "${dir}" -type f -name 'crontab.*' | LC_ALL=C sort |
+      head -n "$((count - 20))" | while IFS= read -r old; do
+      rm -f "${old}"
+    done
+  fi
+  printf '%s\n' "${path}"
+}
+
+cronctl_pid_is_cronctl() {
+  local pid="$1" command_line
+  kill -0 "${pid}" 2>/dev/null || return 1
+  command_line="$(ps -ww -p "${pid}" -o command= 2>/dev/null)"
+  # When ps cannot describe the pid, trust kill -0 alone.
+  [ -n "${command_line}" ] || return 0
+  case "${command_line}" in
+  # cronctl itself, or a cronctl streamed to `bash -s`.
+  *cronctl* | *bash*) return 0 ;;
+  esac
+  # A recycled pid now owned by an unrelated process: the lock is stale.
+  return 1
+}
+
+cronctl_lock_flock() {
+  local timeout="$1"
+  exec 8>>"${cronctl_state_dir}/sync.lock" || return 2
+  if flock -w "${timeout}" 8; then
+    cronctl_lock_held="flock"
+    return 0
+  fi
+  exec 8>&-
+  return 1
+}
+
+cronctl_lock_mkdir() {
+  local timeout="$1" dir="${cronctl_state_dir}/sync.lock.d" pid waited=0
+  while :; do
+    if mkdir "${dir}" 2>/dev/null; then
+      if printf '%s\n' "$$" >"${dir}/pid"; then
+        cronctl_lock_held="mkdir"
+        return 0
+      fi
+      rm -rf "${dir}"
+      return 2
+    fi
+    if [ -d "${dir}" ]; then
+      pid="$(cat "${dir}/pid" 2>/dev/null)"
+      if [ -z "${pid}" ]; then
+        # The holder may sit between its mkdir and its pid write.
+        sleep 1
+        waited=$((waited + 1))
+        pid="$(cat "${dir}/pid" 2>/dev/null)"
+      fi
+      if [ -n "${pid}" ] && cronctl_pid_is_cronctl "${pid}"; then
+        [ "${waited}" -ge "${timeout}" ] && return 1
+        sleep 1
+        waited=$((waited + 1))
+        continue
+      fi
+      # Stale: rename first so only one breaker can win, then retry mkdir.
+      if mv "${dir}" "${dir}.stale.$$" 2>/dev/null; then
+        rm -rf "${dir}.stale.$$"
+      fi
+    fi
+  done
+}
+
+cronctl_lock() {
+  local impl="${CRONCTL_LOCK_IMPL:-}" timeout="${CRONCTL_LOCK_TIMEOUT:-60}" rc=0
+  if [ -z "${impl}" ]; then
+    if command -v flock >/dev/null 2>&1; then
+      impl="flock"
+    else
+      impl="mkdir"
+    fi
+  fi
+  case "${impl}" in
+  flock)
+    command -v flock >/dev/null 2>&1 ||
+      cronctl_die "CRONCTL_LOCK_IMPL=flock, but flock is not on PATH"
+    cronctl_lock_flock "${timeout}" || rc=$?
+    ;;
+  mkdir) cronctl_lock_mkdir "${timeout}" || rc=$? ;;
+  *) cronctl_die "unknown CRONCTL_LOCK_IMPL: ${impl} (use flock or mkdir)" ;;
+  esac
+  case "${rc}" in
+  0) return 0 ;;
+  1) cronctl_die "another cronctl sync still holds ${cronctl_state_dir}/sync.lock after ${timeout}s; nothing changed" ;;
+  *) cronctl_die "cannot take the sync lock in ${cronctl_state_dir}" ;;
+  esac
+}
+
+# shellcheck disable=SC2317  # reached through the EXIT trap
+cronctl_unlock() {
+  case "${cronctl_lock_held}" in
+  mkdir)
+    if [ "$(cat "${cronctl_state_dir}/sync.lock.d/pid" 2>/dev/null)" = "$$" ]; then
+      rm -rf "${cronctl_state_dir}/sync.lock.d"
+    fi
+    ;;
+  flock) exec 8>&- ;;
+  esac
+  cronctl_lock_held=
+}
+
+#############################
+#  list                     #
+#############################
+cronctl_cmd_list() {
+  local json=0 out sep kind name schedule enabled targets command machines m
+  local name_width=3 schedule_width=8 job_count=0 retire_note=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+    -h | --help)
+      cronctl_usage_list
+      return 0
+      ;;
+    --json) json=1 ;;
+    --source)
+      [ "$#" -ge 2 ] || cronctl_die_usage "--source needs a directory"
+      cronctl_set_source "$2"
+      shift
+      ;;
+    --source=*) cronctl_set_source "${1#--source=}" ;;
+    *) cronctl_die_usage "unexpected argument: $1" ;;
+    esac
+    shift
+  done
+
+  out="${cronctl_tmp}/list.out"
+  if [ "${json}" = 1 ]; then
+    cronctl_template '{{- template "cron-validate" (dict "cron" .cron) -}}
+{{- $c := .cron -}}
+{{- $all := keys $c.machines | sortAlpha -}}
+{{- $jobs := list -}}
+{{- range $job := (index $c "jobs" | default (list)) -}}
+{{-   $targets := $job.machines -}}
+{{-   if has "all" $job.machines }}{{ $targets = $all }}{{ end -}}
+{{-   $jobs = append $jobs (dict "name" $job.name "machines" $job.machines "targets" $targets "schedule" $job.schedule "description" (index $job "description" | default "") "enabled" (ne (index $job "enabled" | toString) "false") "command" $job.command) -}}
+{{- end -}}
+{{- dict "version" 1 "machines" $c.machines "env" (index $c "env" | default (dict)) "jobs" $jobs "retire" (index $c "retire" | default (dict)) | toPrettyJson -}}' \
+      "${out}" || return $?
+    # chezmoi releases differ on the trailing newline; print exactly one.
+    printf '%s\n' "$(cat "${out}")"
+    return 0
+  fi
+
+  # One record per line, fields split by the ASCII unit separator so that
+  # schedules and commands may hold spaces and tabs:
+  #   M <machines>   J <name> <schedule> <enabled> ,<targets>, <command>
+  #   R <machine> <retire line count>
+  cronctl_template '{{- template "cron-validate" (dict "cron" .cron) -}}
+{{- $s := "\x1f" -}}
+{{- $c := .cron -}}
+{{- $all := keys $c.machines | sortAlpha -}}
+M{{ $s }}{{ join " " $all }}
+{{ range $job := (index $c "jobs" | default (list)) -}}
+{{-   $targets := $job.machines -}}
+{{-   if has "all" $job.machines }}{{ $targets = $all }}{{ end -}}
+J{{ $s }}{{ $job.name }}{{ $s }}{{ $job.schedule }}{{ $s }}{{ ne (index $job "enabled" | toString) "false" }}{{ $s }},{{ join "," $targets }},{{ $s }}{{ $job.command }}
+{{ end -}}
+{{- range $m, $lines := (index $c "retire" | default (dict)) -}}
+R{{ $s }}{{ $m }}{{ $s }}{{ len ($lines | default (list)) }}
+{{ end -}}' "${out}" || return $?
+
+  sep="$(printf '\037')"
+  while IFS="${sep}" read -r kind name schedule enabled targets command; do
+    case "${kind}" in
+    M) machines="${name}" ;;
+    J)
+      job_count=$((job_count + 1))
+      [ "${#name}" -gt "${name_width}" ] && name_width="${#name}"
+      [ "${#schedule}" -gt "${schedule_width}" ] && schedule_width="${#schedule}"
+      ;;
+    R)
+      [ "${schedule}" = 0 ] ||
+        retire_note="${retire_note}${retire_note:+, }${name} ($(cronctl_plural "${schedule}" line))"
+      ;;
+    esac
+  done <"${out}"
+
+  printf '%-*s  %-*s' "${name_width}" JOB "${schedule_width}" SCHEDULE
+  for m in ${machines}; do
+    printf '  %s' "${m}"
+  done
+  printf '  %-7s  %s\n' ENABLED COMMAND
+  while IFS="${sep}" read -r kind name schedule enabled targets command; do
+    [ "${kind}" = J ] || continue
+    printf '%-*s  %-*s' "${name_width}" "${name}" "${schedule_width}" "${schedule}"
+    for m in ${machines}; do
+      case "${targets}" in
+      *",${m},"*) printf '  %-*s' "${#m}" x ;;
+      *) printf '  %-*s' "${#m}" - ;;
+      esac
+    done
+    if [ "${enabled}" = true ]; then
+      printf '  %-7s  %s\n' yes "${command}"
+    else
+      printf '  %-7s  %s\n' no "${command}"
+    fi
+  done <"${out}"
+
+  [ "${job_count}" -gt 0 ] || printf '(no jobs in cron.jobs)\n'
+  if [ -n "${retire_note}" ]; then
+    printf 'retire: %s still listed for removal by cronctl sync\n' "${retire_note}"
+  fi
+  return 0
+}
+
+#############################
+#  render                   #
+#############################
+cronctl_cmd_render() {
+  local machine="" out sep enrolled
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+    -h | --help)
+      cronctl_usage_render
+      return 0
+      ;;
+    --source)
+      [ "$#" -ge 2 ] || cronctl_die_usage "--source needs a directory"
+      cronctl_set_source "$2"
+      shift
+      ;;
+    --source=*) cronctl_set_source "${1#--source=}" ;;
+    -*) cronctl_die_usage "unknown option: $1" ;;
+    *)
+      [ -z "${machine}" ] || cronctl_die_usage "expected one <machine>, got another: $1"
+      machine="$1"
+      ;;
+    esac
+    shift
+  done
+  [ -n "${machine}" ] || cronctl_die_usage "missing <machine>"
+  cronctl_valid_name "${machine}" ||
+    cronctl_die_usage "invalid machine name: '${machine}' (want ^[a-z0-9][a-z0-9-]*\$)"
+
+  # An unknown machine renders a unit-separator-prefixed list of the
+  # enrolled ones instead of failing, so it reports as a usage error.
+  out="${cronctl_tmp}/render.out"
+  cronctl_template "{{- template \"cron-validate\" (dict \"cron\" .cron) -}}
+{{- if hasKey .cron.machines \"${machine}\" -}}
+{{-   template \"cron-block\" (dict \"machine\" \"${machine}\" \"cron\" .cron) -}}
+{{- else -}}
+{{-   \"\\x1f\" }}{{ keys .cron.machines | sortAlpha | join \", \" -}}
+{{- end -}}" "${out}" || return $?
+  sep="$(printf '\037')"
+  if [ "$(head -c 1 "${out}")" = "${sep}" ]; then
+    enrolled="$(tail -c +2 "${out}")"
+    cronctl_die_usage "unknown machine: '${machine}' (enrolled: ${enrolled})"
+  fi
+  cat "${out}"
+}
+
+#############################
+#  check                    #
+#############################
+cronctl_cmd_check() {
+  local out machines machine block retire rc lines jobs disabled retired native
+  local failures=0 machine_count=0 total_jobs=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+    -h | --help)
+      cronctl_usage_check
+      return 0
+      ;;
+    --source)
+      [ "$#" -ge 2 ] || cronctl_die_usage "--source needs a directory"
+      cronctl_set_source "$2"
+      shift
+      ;;
+    --source=*) cronctl_set_source "${1#--source=}" ;;
+    *) cronctl_die_usage "unexpected argument: $1" ;;
+    esac
+    shift
+  done
+
+  out="${cronctl_tmp}/check.out"
+  cronctl_template '{{- template "cron-validate" (dict "cron" .cron) -}}
+{{- range $m, $_ := .cron.machines }}{{ $m }}{{ "\n" }}{{ end -}}
+jobs={{ len (index .cron "jobs" | default (list)) }}' "${out}" || return $?
+  machines="$(sed '$d' "${out}")"
+  total_jobs="$(sed -n '$s/^jobs=//p' "${out}")"
+  cronctl_probe_native_check
+
+  for machine in ${machines}; do
+    machine_count=$((machine_count + 1))
+    block="${cronctl_tmp}/check.${machine}.block"
+    retire="${cronctl_tmp}/check.${machine}.retire"
+    rc=0
+    cronctl_template "{{ template \"cron-block\" (dict \"machine\" \"${machine}\" \"cron\" .cron) }}" \
+      "${block}" || rc=$?
+    if [ "${rc}" -eq 0 ]; then
+      cronctl_template "{{ template \"cron-retire\" (dict \"machine\" \"${machine}\" \"cron\" .cron) }}" \
+        "${retire}" || rc=$?
+    fi
+    [ "${rc}" -eq 1 ] && return 1
+    if [ "${rc}" -eq 0 ]; then
+      if ! cronctl_read_block "${block}"; then
+        rc=2
+      elif [ "${cronctl_block_machine}" != "${machine}" ]; then
+        printf 'cronctl: the block rendered for %s names machine %s\n' "${machine}" \
+          "${cronctl_block_machine}" >&2
+        rc=2
+      elif ! cronctl_native_check "${block}" "the block for ${machine}"; then
+        rc=2
+      fi
+    fi
+    if [ "${rc}" -ne 0 ]; then
+      printf 'FAIL  %s\n' "${machine}"
+      failures=$((failures + 1))
+      continue
+    fi
+    lines="$(cronctl_line_count "${block}")"
+    jobs="$(grep -c '"\$HOME/bin/cronrun" ' "${block}")"
+    disabled="$(grep -c '^# [a-z0-9][a-z0-9-]* (disabled): ' "${block}")"
+    retired="$(cronctl_line_count "${retire}")"
+    printf 'ok    %s: block of %s (%s enabled, %s disabled), %s\n' "${machine}" \
+      "$(cronctl_plural "${lines}" line)" "$((jobs - disabled))" "${disabled}" \
+      "$(cronctl_plural "${retired}" "retire line")"
+  done
+
+  if [ "${failures}" -gt 0 ]; then
+    printf 'cronctl check: %s of %s failed\n' "$(cronctl_plural "${failures}" machine)" \
+      "${machine_count}" >&2
+    return 2
+  fi
+  native="unavailable"
+  [ -z "${cronctl_native_flag}" ] || native="crontab ${cronctl_native_flag}"
+  printf 'cronctl check: ok (%s, %s; native syntax check: %s)\n' \
+    "$(cronctl_plural "${machine_count}" machine)" "$(cronctl_plural "${total_jobs}" job)" \
+    "${native}"
+  return 0
+}
+
+#############################
+#  sync                     #
+#############################
+cronctl_print_dry_run() {
+  local live="$1" candidate="$2" removed="$3" source_label="$4"
+  printf 'cronctl sync --dry-run: %s (block from %s); nothing is changed\n' \
+    "${cronctl_machine}" "${source_label}"
+  if cmp -s "${live}" "${candidate}"; then
+    printf 'no changes: the crontab already matches\n'
+    return 0
+  fi
+  diff -u "${live}" "${candidate}" |
+    sed -e '1s/^--- .*/--- crontab (live)/' -e '2s/^+++ .*/+++ crontab (candidate)/'
+  if [ -s "${removed}" ]; then
+    printf 'retire lines that would be removed (%s):\n' "$(cronctl_line_count "${removed}")"
+    sed 's/^/  /' "${removed}"
+  else
+    printf 'retire lines that would be removed: none\n'
+  fi
+}
+
+cronctl_cmd_sync() {
+  local dry_run=0 block_arg="" retire_arg="" block managed retire attempt live reread
+  local candidate removed live_block backup install_err install_rc readback action
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+    -h | --help)
+      cronctl_usage_sync
+      return 0
+      ;;
+    --dry-run) dry_run=1 ;;
+    --block)
+      [ "$#" -ge 2 ] || cronctl_die_usage "--block needs a file"
+      block_arg="$2"
+      shift
+      ;;
+    --block=*) block_arg="${1#--block=}" ;;
+    --retire)
+      [ "$#" -ge 2 ] || cronctl_die_usage "--retire needs a file"
+      retire_arg="$2"
+      shift
+      ;;
+    --retire=*) retire_arg="${1#--retire=}" ;;
+    *) cronctl_die_usage "unexpected argument: $1" ;;
+    esac
+    shift
+  done
+  if [ -n "${block_arg}" ]; then
+    [ "${dry_run}" = 1 ] ||
+      cronctl_die_usage "--block needs --dry-run: only ~/.config/cron/managed.crontab is ever installed"
+    [ -f "${block_arg}" ] || cronctl_die_usage "--block: no such file: ${block_arg}"
+  fi
+  if [ -n "${retire_arg}" ]; then
+    [ "${dry_run}" = 1 ] ||
+      cronctl_die_usage "--retire needs --dry-run: only ~/.config/cron/retire.crontab is ever applied"
+    [ -f "${retire_arg}" ] || cronctl_die_usage "--retire: no such file: ${retire_arg}"
+  fi
+
+  # 1. Resolve this machine.
+  cronctl_resolve_local || return $?
+  if [ -z "${cronctl_machine}" ]; then
+    cronctl_warn "this host (${cronctl_hostname}) is not enrolled in cron.machines; leaving its crontab untouched"
+    return 0
+  fi
+  managed="${HOME}/.config/cron/managed.crontab"
+  retire="${retire_arg:-${HOME}/.config/cron/retire.crontab}"
+  if [ -n "${block_arg}" ]; then
+    block="${block_arg}"
+  else
+    if [ ! -f "${managed}" ]; then
+      cronctl_warn "${managed} is missing (run chezmoi apply first); leaving the crontab of ${cronctl_machine} untouched"
+      return 0
+    fi
+    block="${managed}"
+  fi
+  cronctl_read_block "${block}" || return 1
+  if [ "${cronctl_block_machine}" != "${cronctl_machine}" ]; then
+    printf 'cronctl: %s holds the block for %s, but this host (%s) is %s; nothing changed\n' \
+      "${block}" "${cronctl_block_machine}" "${cronctl_hostname}" "${cronctl_machine}" >&2
+    [ -n "${block_arg}" ] && return 2
+    return 1
+  fi
+
+  # 2. Lock (a dry run changes nothing, so it takes no lock). Backups hold
+  # whole tables, so state is private to the user, like the crontab itself.
+  if [ "${dry_run}" = 0 ]; then
+    umask 077
+    mkdir -p "${cronctl_state_dir}" ||
+      cronctl_die "cannot create the state directory ${cronctl_state_dir}"
+    cronctl_lock
+  fi
+
+  # 3. Read.
+  live="${cronctl_tmp}/live"
+  reread="${cronctl_tmp}/reread"
+  candidate="${cronctl_tmp}/candidate"
+  removed="${cronctl_tmp}/removed"
+  live_block="${cronctl_tmp}/live.block"
+  cronctl_read_crontab "${live}" || return 1
+
+  attempt=1
+  while :; do
+    # 4-5. Count markers and build the candidate.
+    cronctl_build_candidate "${live}" "${block}" "${retire}" "${candidate}" \
+      "${removed}" "${live_block}" || return 1
+    if cmp -s "${live}" "${candidate}"; then
+      if [ "${dry_run}" = 1 ]; then
+        cronctl_print_dry_run "${live}" "${candidate}" "${removed}" "${block}"
+      elif ! cmp -s "${block}" "${cronctl_state_dir}/installed.block"; then
+        cronctl_write_atomic "${block}" "${cronctl_state_dir}/installed.block" ||
+          cronctl_warn "cannot record ${cronctl_state_dir}/installed.block"
+      fi
+      return 0
+    fi
+
+    # 6. Warn on hand edits inside the block.
+    if [ -s "${live_block}" ] && [ -f "${cronctl_state_dir}/installed.block" ] &&
+      ! cmp -s "${live_block}" "${cronctl_state_dir}/installed.block"; then
+      {
+        printf '\n'
+        printf 'cronctl: WARNING: the "# BEGIN/END chezmoi-cron" block in the %s crontab\n' "${cronctl_machine}"
+        printf 'cronctl: WARNING: differs from the block cronctl last installed: a hand edit\n'
+        printf 'cronctl: WARNING: inside the block is being overwritten. Put persistent jobs in\n'
+        printf 'cronctl: WARNING: the cron: data instead (see cronctl --help).\n'
+        diff -u "${cronctl_state_dir}/installed.block" "${live_block}" |
+          sed -e '1s/^--- .*/--- block (last installed)/' -e '2s/^+++ .*/+++ block (live)/' \
+            -e 's/^/cronctl: WARNING: /'
+        printf '\n'
+      } >&2
+    fi
+
+    # 7. Dry run.
+    if [ "${dry_run}" = 1 ]; then
+      cronctl_print_dry_run "${live}" "${candidate}" "${removed}" "${block}"
+      return 0
+    fi
+
+    # 8. Back up and pre-check.
+    backup="$(cronctl_backup "${live}")" ||
+      cronctl_die "cannot back up the crontab to ${cronctl_state_dir}/backups; nothing changed"
+    cronctl_native_check "${candidate}" "the candidate crontab" || {
+      printf 'cronctl: nothing changed\n' >&2
+      return 1
+    }
+
+    # 9.1. Re-read: rebuild once if the table changed meanwhile.
+    cronctl_read_crontab "${reread}" || return 1
+    cmp -s "${live}" "${reread}" && break
+    if [ "${attempt}" -ge 2 ]; then
+      cronctl_die "the crontab changed twice while syncing; nothing changed (rerun cronctl sync)"
+    fi
+    cronctl_warn "the crontab changed while syncing; rebuilding once"
+    cp "${reread}" "${live}" || cronctl_die "cannot copy the re-read crontab"
+    attempt=2
+  done
+
+  # 9.2. Install, then read back and compare.
+  install_err="${cronctl_tmp}/install.err"
+  readback="${cronctl_tmp}/readback"
+  install_rc=0
+  crontab - <"${candidate}" >/dev/null 2>"${install_err}" || install_rc=$?
+  if [ "${install_rc}" -eq 0 ] && cronctl_read_crontab "${readback}" 2>/dev/null &&
+    cmp -s "${candidate}" "${readback}"; then
+    # 9.4. Record and summarize.
+    cronctl_write_atomic "${block}" "${cronctl_state_dir}/installed.block" ||
+      cronctl_warn "cannot record ${cronctl_state_dir}/installed.block"
+    if [ -s "${live_block}" ]; then
+      action="updated the managed block in place"
+    else
+      action="inserted the managed block at the top"
+    fi
+    printf 'cronctl sync: %s: %s (%s); removed %s\n' "${cronctl_machine}" "${action}" \
+      "$(cronctl_plural "$(cronctl_line_count "${block}")" line)" \
+      "$(cronctl_plural "$(cronctl_line_count "${removed}")" "retire line")"
+    return 0
+  fi
+
+  # 9.3. Install failed or did not verify: restore the backup.
+  if [ "${install_rc}" -ne 0 ]; then
+    printf 'cronctl: crontab install failed (exit %s):\n' "${install_rc}" >&2
+    sed 's/^/  /' "${install_err}" >&2
+    if grep -q 'Operation not permitted' "${install_err}" && [ "$(uname -s)" = Darwin ]; then
+      printf 'cronctl: on macOS over SSH, grant Full Disk Access to remote users (System Settings > General > Sharing > Remote Login), or run chezmoi update -a locally\n' >&2
+    fi
+  else
+    printf 'cronctl: the installed crontab does not read back as the candidate\n' >&2
+  fi
+  if cronctl_read_crontab "${readback}" 2>/dev/null && cmp -s "${backup}" "${readback}"; then
+    printf 'cronctl: the crontab is unchanged (backup: %s)\n' "${backup}" >&2
+    return 1
+  fi
+  if crontab - <"${backup}" >/dev/null 2>"${install_err}" &&
+    cronctl_read_crontab "${readback}" 2>/dev/null && cmp -s "${backup}" "${readback}"; then
+    printf 'cronctl: restored the previous crontab from %s\n' "${backup}" >&2
+    return 1
+  fi
+  printf 'cronctl: ERROR: could not restore the previous crontab; reinstall it with: crontab - <%s\n' \
+    "${backup}" >&2
+  return 1
+}
+
+#############################
+#  Main                     #
+#############################
+main() {
+  cronctl_command=
+  cronctl_source=
+  cronctl_chezmoi=
+  cronctl_tmp=
+  cronctl_lock_held=
+  cronctl_native_probed=0
+  cronctl_native_flag=
+  cronctl_hostname=
+  cronctl_machine=
+  cronctl_block_machine=
+  [ -n "${HOME:-}" ] || cronctl_die "HOME is not set"
+  cronctl_state_dir="${HOME}/.local/state/cron"
+
+  case "${1:-}" in
+  '')
+    cronctl_usage >&2
+    return 2
+    ;;
+  -h | --help)
+    cronctl_usage
+    return 0
+    ;;
+  help)
+    case "${2:-}" in
+    '') cronctl_usage ;;
+    list) cronctl_usage_list ;;
+    render) cronctl_usage_render ;;
+    check) cronctl_usage_check ;;
+    sync) cronctl_usage_sync ;;
+    *) cronctl_die_usage "unknown command: $2" ;;
+    esac
+    return 0
+    ;;
+  list | render | check | sync) cronctl_command="$1" ;;
+  *) cronctl_die_usage "unknown command: $1" ;;
+  esac
+  shift
+
+  trap cronctl_cleanup EXIT
+  trap 'exit 129' HUP
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  cronctl_make_tmp
+
+  case "${cronctl_command}" in
+  list) cronctl_cmd_list "$@" ;;
+  render) cronctl_cmd_render "$@" ;;
+  check) cronctl_cmd_check "$@" ;;
+  sync) cronctl_cmd_sync "$@" ;;
+  esac
+}
+
+main "$@"

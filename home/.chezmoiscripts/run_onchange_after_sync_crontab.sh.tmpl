@@ -1,0 +1,26 @@
+{{- /*
+  Install this machine's managed cron block with cronctl sync whenever its
+  inputs change: chezmoi re-runs a run_onchange script exactly when its
+  rendered content changes, so the inert heredoc below carries this machine's
+  rendered block and retire lines, and the comment carries cronctl's hash.
+  An unknown machine renders whitespace only, so chezmoi skips the script and
+  its crontab is never touched. A failed sync fails chezmoi apply, and chezmoi
+  retries the script on the next apply.
+*/ -}}
+{{- template "cron-validate" (dict "cron" .cron) -}}
+{{- $hostname := .chezmoi.hostname -}}
+{{- $machine := "" -}}
+{{- range $name, $hosts := .cron.machines -}}
+{{-   if has $hostname $hosts }}{{ $machine = $name }}{{ end -}}
+{{- end -}}
+{{- if $machine -}}
+#!/bin/bash
+# chezmoi-cron sync hook for {{ $machine }}; see `cronctl sync --help`.
+: <<'CHEZMOI_CRON_INPUTS_END'
+{{ template "cron-block" (dict "machine" $machine "cron" .cron) -}}
+# retire:
+{{ template "cron-retire" (dict "machine" $machine "cron" .cron) -}}
+CHEZMOI_CRON_INPUTS_END
+# cronctl sha256: {{ include "bin/executable_cronctl" | sha256sum }}
+exec "$HOME/bin/cronctl" sync
+{{ end -}}
