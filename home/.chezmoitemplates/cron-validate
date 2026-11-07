@@ -1,0 +1,190 @@
+{{- /*
+  cron-validate: validate the cron: data from home/.chezmoidata.yaml.
+  Args: (dict "cron" .cron). Renders nothing, or aborts through fail.
+
+  Every cron-* partial calls this first, so a bad file aborts chezmoi apply
+  (and cronctl) before any crontab changes. Templates on chezmoi v2.13.1 do not
+  short-circuit and/or, so guards nest through else-if chains, and optional
+  keys are read with index (field access on a missing key is an error).
+*/ -}}
+{{- $c := .cron -}}
+{{- if not (kindIs "map" $c) -}}
+{{-   fail "cron: must be a mapping" -}}
+{{- end -}}
+{{- range $key, $_ := $c -}}
+{{-   if not (has $key (list "version" "machines" "env" "jobs" "retire")) -}}
+{{-     fail (printf "cron: unknown key %q (allowed: version, machines, env, jobs, retire)" $key) -}}
+{{-   end -}}
+{{- end -}}
+
+{{- /* version */ -}}
+{{- $version := index $c "version" -}}
+{{- if not (has (kindOf $version) (list "int" "int64" "uint64" "float64")) -}}
+{{-   fail "cron.version: must be 1" -}}
+{{- else if ne (toString $version) "1" -}}
+{{-   fail (printf "cron.version: must be 1, got %v" $version) -}}
+{{- end -}}
+
+{{- /* machines: canonical name -> hostnames */ -}}
+{{- $machines := index $c "machines" -}}
+{{- if not (kindIs "map" $machines) -}}
+{{-   fail "cron.machines: must be a non-empty mapping of machine name to hostname list" -}}
+{{- else if eq (len $machines) 0 -}}
+{{-   fail "cron.machines: must enroll at least one machine" -}}
+{{- end -}}
+{{- $owner := dict -}}
+{{- range $name, $hosts := $machines -}}
+{{-   if not (regexMatch "^[a-z0-9][a-z0-9-]*$" $name) -}}
+{{-     fail (printf "cron.machines: invalid machine name %q (must match ^[a-z0-9][a-z0-9-]*$)" $name) -}}
+{{-   else if eq $name "all" -}}
+{{-     fail "cron.machines: \"all\" is reserved for jobs and cannot name a machine" -}}
+{{-   end -}}
+{{-   if not (kindIs "slice" $hosts) -}}
+{{-     fail (printf "cron.machines.%s: must be a list of hostnames" $name) -}}
+{{-   else if eq (len $hosts) 0 -}}
+{{-     fail (printf "cron.machines.%s: must list at least one hostname" $name) -}}
+{{-   end -}}
+{{-   range $host := $hosts -}}
+{{-     if not (kindIs "string" $host) -}}
+{{-       fail (printf "cron.machines.%s: hostname %v must be a string" $name $host) -}}
+{{-     else if not (regexMatch "^[A-Za-z0-9][A-Za-z0-9._-]*$" $host) -}}
+{{-       fail (printf "cron.machines.%s: invalid hostname %q" $name $host) -}}
+{{-     else if hasKey $owner $host -}}
+{{-       fail (printf "cron.machines: hostname %q is claimed by both %s and %s" $host (get $owner $host) $name) -}}
+{{-     end -}}
+{{-     $_ := set $owner $host $name -}}
+{{-   end -}}
+{{- end -}}
+
+{{- /* env: shared variables at the top of every block */ -}}
+{{- $env := index $c "env" -}}
+{{- if not (kindIs "invalid" $env) -}}
+{{-   if not (kindIs "map" $env) -}}
+{{-     fail "cron.env: must be a mapping of variable name to value" -}}
+{{-   end -}}
+{{-   range $key, $value := $env -}}
+{{-     if not (regexMatch "^[A-Z_][A-Z0-9_]*$" $key) -}}
+{{-       fail (printf "cron.env: invalid variable name %q (must match ^[A-Z_][A-Z0-9_]*$)" $key) -}}
+{{-     else if not (kindIs "string" $value) -}}
+{{-       fail (printf "cron.env.%s: value must be a string (quote it)" $key) -}}
+{{-     else if regexMatch "[\r\n]" $value -}}
+{{-       fail (printf "cron.env.%s: value must be a single line" $key) -}}
+{{-     else if regexMatch "/home/|/Users/|/run/user/" $value -}}
+{{-       fail (printf "cron.env.%s: value must not hard-code /home/, /Users/, or /run/user/ (use $HOME; cronrun derives runtime dirs)" $key) -}}
+{{-     end -}}
+{{-   end -}}
+{{- end -}}
+
+{{- /* jobs */ -}}
+{{- $jobs := index $c "jobs" -}}
+{{- if not (or (kindIs "invalid" $jobs) (kindIs "slice" $jobs)) -}}
+{{-   fail "cron.jobs: must be a list of jobs" -}}
+{{- end -}}
+{{- $names := dict -}}
+{{- range $i, $job := $jobs -}}
+{{-   $where := printf "cron.jobs[%d]" $i -}}
+{{-   if not (kindIs "map" $job) -}}
+{{-     fail (printf "%s: must be a mapping" $where) -}}
+{{-   end -}}
+
+{{- /* name */ -}}
+{{-   $name := index $job "name" -}}
+{{-   if not (kindIs "string" $name) -}}
+{{-     fail (printf "%s: name is required and must be a string" $where) -}}
+{{-   else if not (regexMatch "^[a-z0-9][a-z0-9-]*$" $name) -}}
+{{-     fail (printf "%s: invalid job name %q (must match ^[a-z0-9][a-z0-9-]*$)" $where $name) -}}
+{{-   else if hasKey $names $name -}}
+{{-     fail (printf "%s: duplicate job name %q" $where $name) -}}
+{{-   end -}}
+{{-   $_ := set $names $name true -}}
+{{-   $where = printf "cron.jobs[%d] (%s)" $i $name -}}
+
+{{- /* unknown keys catch typos such as machine: */ -}}
+{{-   range $key, $_ := $job -}}
+{{-     if not (has $key (list "name" "machines" "schedule" "description" "enabled" "command")) -}}
+{{-       fail (printf "%s: unknown key %q (allowed: name, machines, schedule, description, enabled, command)" $where $key) -}}
+{{-     end -}}
+{{-   end -}}
+
+{{- /* machines */ -}}
+{{-   $targets := index $job "machines" -}}
+{{-   if not (kindIs "slice" $targets) -}}
+{{-     fail (printf "%s: machines must be a list of machine names, or [all]" $where) -}}
+{{-   else if eq (len $targets) 0 -}}
+{{-     fail (printf "%s: machines must not be empty" $where) -}}
+{{-   end -}}
+{{-   range $target := $targets -}}
+{{-     if not (kindIs "string" $target) -}}
+{{-       fail (printf "%s: machine %v must be a string" $where $target) -}}
+{{-     else if eq $target "all" -}}
+{{-       if gt (len $targets) 1 -}}
+{{-         fail (printf "%s: machines may list all only on its own" $where) -}}
+{{-       end -}}
+{{-     else if not (hasKey $machines $target) -}}
+{{-       fail (printf "%s: unknown machine %q (enrolled: %s)" $where $target (keys $machines | sortAlpha | join ", ")) -}}
+{{-     end -}}
+{{-   end -}}
+
+{{- /* schedule */ -}}
+{{-   $schedule := index $job "schedule" -}}
+{{-   if not (kindIs "string" $schedule) -}}
+{{-     fail (printf "%s: schedule is required and must be a string (quote @keywords)" $where) -}}
+{{-   else if not (or (regexMatch "^@(reboot|yearly|annually|monthly|weekly|daily|midnight|hourly)$" $schedule) (regexMatch "^[0-9A-Za-z*/,-]+( +[0-9A-Za-z*/,-]+){4}$" $schedule)) -}}
+{{-     fail (printf "%s: invalid schedule %q (five cron fields, or one of @reboot @yearly @annually @monthly @weekly @daily @midnight @hourly)" $where $schedule) -}}
+{{-   end -}}
+
+{{- /* command */ -}}
+{{-   $command := index $job "command" -}}
+{{-   if not (kindIs "string" $command) -}}
+{{-     fail (printf "%s: command is required and must be a string" $where) -}}
+{{-   else if eq (trim $command) "" -}}
+{{-     fail (printf "%s: command must not be empty" $where) -}}
+{{-   else if regexMatch "[\r\n]" $command -}}
+{{-     fail (printf "%s: command must be a single line (use >- for folded YAML)" $where) -}}
+{{-   else if regexMatch "/home/|/Users/|/run/user/" $command -}}
+{{-     fail (printf "%s: command must not hard-code /home/, /Users/, or /run/user/ (use $HOME; cronrun derives runtime dirs)" $where) -}}
+{{-   else if contains "\\%" $command -}}
+{{-     fail (printf "%s: command must not contain a backslash before %%: cron cannot express a literal \\%%" $where) -}}
+{{-   end -}}
+
+{{- /* description */ -}}
+{{-   if hasKey $job "description" -}}
+{{-     $description := index $job "description" -}}
+{{-     if not (kindIs "string" $description) -}}
+{{-       fail (printf "%s: description must be a string" $where) -}}
+{{-     else if regexMatch "[\r\n]" $description -}}
+{{-       fail (printf "%s: description must be a single line" $where) -}}
+{{-     end -}}
+{{-   end -}}
+
+{{- /* enabled */ -}}
+{{-   if hasKey $job "enabled" -}}
+{{-     if not (kindIs "bool" (index $job "enabled")) -}}
+{{-       fail (printf "%s: enabled must be true or false" $where) -}}
+{{-     end -}}
+{{-   end -}}
+{{- end -}}
+
+{{- /* retire: temporary legacy lines, keyed by machine (path rule exempt) */ -}}
+{{- $retire := index $c "retire" -}}
+{{- if not (kindIs "invalid" $retire) -}}
+{{-   if not (kindIs "map" $retire) -}}
+{{-     fail "cron.retire: must be a mapping of machine name to a list of lines" -}}
+{{-   end -}}
+{{-   range $name, $lines := $retire -}}
+{{-     if not (hasKey $machines $name) -}}
+{{-       fail (printf "cron.retire: unknown machine %q (enrolled: %s)" $name (keys $machines | sortAlpha | join ", ")) -}}
+{{-     else if not (or (kindIs "invalid" $lines) (kindIs "slice" $lines)) -}}
+{{-       fail (printf "cron.retire.%s: must be a list of lines" $name) -}}
+{{-     end -}}
+{{-     range $j, $line := $lines -}}
+{{-       if not (kindIs "string" $line) -}}
+{{-         fail (printf "cron.retire.%s[%d]: must be a string" $name $j) -}}
+{{-       else if eq (trim $line) "" -}}
+{{-         fail (printf "cron.retire.%s[%d]: must not be blank" $name $j) -}}
+{{-       else if regexMatch "[\r\n]" $line -}}
+{{-         fail (printf "cron.retire.%s[%d]: must be a single line" $name $j) -}}
+{{-       end -}}
+{{-     end -}}
+{{-   end -}}
+{{- end -}}

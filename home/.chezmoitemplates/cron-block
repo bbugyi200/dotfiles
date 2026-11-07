@@ -1,0 +1,32 @@
+{{- /*
+  cron-block: render the managed crontab block for one canonical machine.
+  Args: (dict "machine" <name> "cron" .cron). Validates the data and fails
+  for a machine that is not enrolled. An enrolled machine with no jobs still
+  renders the markers and env lines. Commands are single-quoted for /bin/sh
+  (each ' written as '\'') and then each % is escaped as \% for cron.
+*/ -}}
+{{- template "cron-validate" . -}}
+{{- $c := .cron -}}
+{{- $machine := .machine -}}
+{{- if not (hasKey $c.machines $machine) -}}
+{{-   fail (printf "cron: unknown machine %q (enrolled: %s)" $machine (keys $c.machines | sortAlpha | join ", ")) -}}
+{{- end -}}
+# BEGIN chezmoi-cron (machine: {{ $machine }}; source: cron: in home/.chezmoidata.yaml; manage with cronctl)
+{{- range $key, $value := (index $c "env" | default (dict)) }}
+{{ $key }}={{ if eq $value "" }}""{{ else }}{{ $value }}{{ end }}
+{{- end }}
+{{- range $job := (index $c "jobs" | default (list)) }}
+{{-   if or (has "all" $job.machines) (has $machine $job.machines) }}
+{{-     $quoted := printf "'%s'" (replace "'" "'\\''" $job.command | replace "%" "\\%") }}
+{{-     $line := printf "%s \"$HOME/bin/cronrun\" %s %s" $job.schedule $job.name $quoted }}
+{{-     if hasKey $job "description" }}
+# {{ $job.name }}: {{ index $job "description" }}
+{{-     end }}
+{{-     if eq (index $job "enabled" | toString) "false" }}
+# {{ $job.name }} (disabled): {{ $line }}
+{{-     else }}
+{{ $line }}
+{{-     end }}
+{{-   end }}
+{{- end }}
+# END chezmoi-cron

@@ -1,0 +1,45 @@
+# chezmoi template data shared by every machine; each top-level key is
+# available to templates as .<key> (for example .cron).
+#
+# cron: is the single source of truth for the user crontab of every enrolled
+# machine. Each machine renders its own marked block into
+# ~/.config/cron/managed.crontab, and cronctl sync installs that block without
+# touching any line outside it. Manage it with cronctl (list, render, check,
+# diff, apply); never hand-edit the "# BEGIN/END chezmoi-cron" block.
+#
+# Only cron.machines holds machine-specific facts; everything else must be
+# machine-agnostic. Different behaviour on two machines means two jobs.
+# Schedules run in each machine's local time. This repo is public, so jobs must
+# never hold secrets (reference encrypted files by path only).
+#
+# Validation lives in home/.chezmoitemplates/cron-validate: a bad file aborts
+# chezmoi apply before any crontab changes.
+cron:
+  version: 1
+  # Canonical machine name (= its SSH alias in ~/.ssh/tailnet.conf) -> the
+  # hostnames .chezmoi.hostname may report there. Listing a machine enrolls it;
+  # an unlisted machine's crontab is never touched.
+  machines:
+    athena: [athena]
+    apollo: [apollo]
+    mac: [Kellys-MacBook-Pro]
+  # Written at the top of every managed block, sorted by key. Cron env lines
+  # are positional, so they also apply to unmanaged lines below the block.
+  env:
+    MAILTO: bryanbugyi34@gmail.com
+  # Each job is rendered as:
+  #   <schedule> "$HOME/bin/cronrun" <name> '<command>'
+  # Keys:
+  #   name:        ^[a-z0-9][a-z0-9-]*$, unique (keys the log and status files)
+  #   machines:    canonical machine names, or [all] on its own
+  #   schedule:    five cron fields, or a quoted @keyword such as "@daily"
+  #   description: optional one-line comment rendered above the job
+  #   enabled:     optional boolean (default true); false renders a comment
+  #   command:     one line, run by cronrun under bash; use $HOME, never
+  #                /home/, /Users/, or /run/user/ paths
+  jobs: []
+  # TEMPORARY migration aid: exact legacy lines (keyed by machine) that
+  # cronctl sync removes from outside the block in the same install as the
+  # block that replaces them. Delete entries once cronctl status reports that
+  # none remain.
+  retire: {}

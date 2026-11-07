@@ -1,0 +1,12 @@
+{{- /*
+  cron-machine: resolve a hostname to its canonical cron machine name.
+  Args: (dict "hostname" .chezmoi.hostname "cron" .cron). Renders the name
+  of the cron.machines entry whose hostname list holds hostname, or nothing
+  for an unknown machine. Validates the data first.
+*/ -}}
+{{- template "cron-validate" . -}}
+{{- $machine := "" -}}
+{{- range $name, $hosts := .cron.machines -}}
+{{-   if has $.hostname $hosts }}{{ $machine = $name }}{{ end -}}
+{{- end -}}
+{{- $machine -}}

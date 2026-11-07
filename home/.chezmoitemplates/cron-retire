@@ -1,0 +1,15 @@
+{{- /*
+  cron-retire: render one machine's cron.retire lines, one per line.
+  Args: (dict "machine" <name> "cron" .cron). Validates the data and fails
+  for a machine that is not enrolled. Renders nothing when the machine has
+  no retire lines.
+*/ -}}
+{{- template "cron-validate" . -}}
+{{- $c := .cron -}}
+{{- $machine := .machine -}}
+{{- if not (hasKey $c.machines $machine) -}}
+{{-   fail (printf "cron: unknown machine %q (enrolled: %s)" $machine (keys $c.machines | sortAlpha | join ", ")) -}}
+{{- end -}}
+{{- range $line := (index (index $c "retire" | default (dict)) $machine | default (list)) -}}
+{{    $line }}{{ "\n" }}
+{{- end -}}

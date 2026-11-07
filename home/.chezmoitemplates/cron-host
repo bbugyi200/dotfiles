@@ -1,0 +1,22 @@
+{{- /*
+  cron-host: render this host's cron target, or nothing for an unknown host.
+  Args: (dict "output" "block"|"retire" "hostname" .chezmoi.hostname
+  "cron" .cron). Resolves hostname like cron-machine (repeated here because
+  chezmoi v2.13.1 cannot capture a partial's output), then renders
+  cron-block or cron-retire for that machine. The data is validated even
+  for an unknown host, so a bad file aborts chezmoi apply everywhere.
+*/ -}}
+{{- template "cron-validate" . -}}
+{{- if not (has .output (list "block" "retire")) -}}
+{{-   fail (printf "cron-host: output must be block or retire, got %q" .output) -}}
+{{- end -}}
+{{- $machine := "" -}}
+{{- range $name, $hosts := .cron.machines -}}
+{{-   if has $.hostname $hosts }}{{ $machine = $name }}{{ end -}}
+{{- end -}}
+{{- if not $machine -}}
+{{- else if eq .output "block" -}}
+{{-   template "cron-block" (dict "machine" $machine "cron" .cron) -}}
+{{- else -}}
+{{-   template "cron-retire" (dict "machine" $machine "cron" .cron) -}}
+{{- end -}}
