@@ -1,0 +1,530 @@
+#!/bin/bash
+
+#################################################################################
+# cronrun: the machine-agnostic runner behind every chezmoi-managed cron job.  #
+#                                                                               #
+# Each line in the "# BEGIN chezmoi-cron" block calls                           #
+#   "$HOME/bin/cronrun" <job> '<command>'                                       #
+# so the job environment is derived here at run time instead of being written   #
+# into the crontab. Keep this script bash 3.2-compatible (macOS /bin/bash): no  #
+# associative arrays, mapfile, ${x,,}, {fd}> redirections, or GNU-only flags.  #
+#                                                                               #
+# Runtime state lives in ~/.local/state/cron/ (see cronctl):                    #
+#   <job>.log, <job>.log.1   job output, rotated past 1 MiB                     #
+#   <job>.status             key=value: job host pid start end exit (UTC)       #
+#   <job>.lock               flock overlap guard                                #
+#   <job>.lock.d/            mkdir overlap guard where flock is missing (macOS) #
+#                                                                               #
+# Test hooks: CRONRUN_LOCK_IMPL (flock|mkdir), CRONRUN_LOG_MAX_BYTES,           #
+# CRONRUN_OS, CRONRUN_RUN_USER_DIR, CRONRUN_X11_DIR.                            #
+#################################################################################
+
+cronrun_usage() {
+  cat <<'EOM'
+usage: cronrun [-h] [--dry-run] <job> <command>
+
+Run one cron job's command with a derived environment, an overlap guard, a
+job log, and a status file. cron runs every chezmoi-managed job through this
+script; see `cronctl --help`.
+
+The environment starts from a baseline PATH ($HOME/bin, $HOME/.local/bin,
+$HOME/.cargo/bin, $HOME/.nix-profile/bin, /opt/homebrew/bin, /usr/local/bin,
+/usr/bin, /bin, /usr/sbin, /sbin), then sources $HOME/.profile when present.
+On Linux it then exports XDG_RUNTIME_DIR, DBUS_SESSION_BUS_ADDRESS, and
+DISPLAY=:0, each only when it is unset and its target exists.
+
+The command runs under `bash -c` with stdin from /dev/null. Its output is
+appended to ~/.local/state/cron/<job>.log between timestamped start and end
+lines, and ~/.local/state/cron/<job>.status records the latest run. When an
+earlier run of the same job still holds the lock, this run logs one
+"skipped" line and exits 0.
+
+cronrun is silent on success. On failure it prints a one-line summary and the
+last 40 lines of this run's log to stderr (so cron mails them), then exits
+with the job's exit code.
+
+Positional Arguments
+--------------------
+<job>
+    The job name from the cron: data (^[a-z0-9][a-z0-9-]*$).
+
+<command>
+    One shell command line, run with `bash -c`.
+
+Optional Arguments
+------------------
+--dry-run
+    Resolve the environment exactly as a real run would, print PATH, the
+    runtime variables, and where the command's first word resolves, then exit
+    non-zero if it does not resolve. Never runs the command, takes no lock,
+    and writes no log or status file.
+
+-h | --help
+    View this help message.
+
+Exit Status
+-----------
+The job's own exit code; 0 for a skipped overlap; 1 when cronrun itself
+fails; 2 for a usage error. --dry-run exits 1 when the first word does not
+resolve.
+
+Examples
+--------
+cronrun pass-git-sync 'pass_git_sync'
+cronrun --dry-run bob-nightly '. "$HOME/.config/nvm/nvm.sh"; bob nightly'
+EOM
+}
+
+cronrun_die_usage() {
+  printf 'cronrun: %s\n' "$*" >&2
+  printf "Run 'cronrun --help' for usage.\n" >&2
+  exit 2
+}
+
+cronrun_die() {
+  printf 'cronrun: %s\n' "$*" >&2
+  exit 1
+}
+
+cronrun_now() {
+  date -u +%Y-%m-%dT%H:%M:%SZ
+}
+
+cronrun_hostname() {
+  local host
+  host="$(hostname -s 2>/dev/null)"
+  [ -n "${host}" ] || host="$(uname -n 2>/dev/null)"
+  printf '%s\n' "${host%%.*}"
+}
+
+cronrun_trim() {
+  local value="$1"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  printf '%s' "${value}"
+}
+
+cronrun_file_size() {
+  if [ -f "$1" ]; then
+    cronrun_trim "$(wc -c <"$1")"
+  else
+    printf '0'
+  fi
+}
+
+cronrun_log_line() {
+  # Keep each marker on its own line even when the job's output did not end
+  # with a newline ($(...) strips a trailing newline, so this is empty then).
+  if [ -s "${cronrun_log}" ] && [ -n "$(tail -c 1 "${cronrun_log}")" ]; then
+    printf '\n' >>"${cronrun_log}"
+  fi
+  printf '==> %s %s\n' "$(cronrun_now)" "$*" >>"${cronrun_log}"
+}
+
+cronrun_rotate_log() {
+  local size
+  size="$(cronrun_file_size "${cronrun_log}")"
+  if [ "${size}" -gt "${cronrun_log_max_bytes}" ]; then
+    mv -f "${cronrun_log}" "${cronrun_log}.1"
+  fi
+}
+
+# cronrun_write_status <start> <end> <exit>: replace <job>.status atomically.
+cronrun_write_status() {
+  local tmp
+  tmp="$(mktemp "${cronrun_state_dir}/.${cronrun_job}.status.XXXXXX")" || return 1
+  if printf 'job=%s\nhost=%s\npid=%s\nstart=%s\nend=%s\nexit=%s\n' \
+    "${cronrun_job}" "${cronrun_host}" "$$" "$1" "$2" "$3" >"${tmp}" &&
+    mv -f "${tmp}" "${cronrun_status}"; then
+    return 0
+  fi
+  rm -f "${tmp}"
+  return 1
+}
+
+cronrun_status_value() {
+  [ -f "${cronrun_status}" ] || return 0
+  sed -n "s/^$1=//p" "${cronrun_status}" | head -n 1
+}
+
+#############################
+#  Overlap guard            #
+#############################
+cronrun_pid_is_cronrun() {
+  local pid="$1" command_line
+  kill -0 "${pid}" 2>/dev/null || return 1
+  command_line="$(ps -ww -p "${pid}" -o command= 2>/dev/null)"
+  if [ -z "${command_line}" ]; then
+    # ps could not describe it; trust kill -0 alone.
+    kill -0 "${pid}" 2>/dev/null
+    return
+  fi
+  case "${command_line}" in
+  *cronrun*) return 0 ;;
+  esac
+  # A recycled pid now owned by an unrelated process: the lock is stale.
+  return 1
+}
+
+# Returns 0 when locked, 1 when another run holds the lock, 2 on error.
+cronrun_lock_flock() {
+  local rc
+  exec 9>>"${cronrun_lock_file}" || return 2
+  flock -n 9
+  rc=$?
+  if [ "${rc}" -eq 0 ]; then
+    cronrun_lock_held="flock"
+    return 0
+  fi
+  exec 9>&-
+  [ "${rc}" -eq 1 ] && return 1
+  return 2
+}
+
+# Returns 0 when locked, 1 when another run holds the lock, 2 on error.
+cronrun_lock_mkdir() {
+  local dir="${cronrun_lock_dir}" pid attempt=0
+  while [ "${attempt}" -lt 3 ]; do
+    attempt=$((attempt + 1))
+    if mkdir "${dir}" 2>/dev/null; then
+      if printf '%s\n' "$$" >"${dir}/pid"; then
+        cronrun_lock_held="mkdir"
+        return 0
+      fi
+      rm -rf "${dir}"
+      return 2
+    fi
+    [ -d "${dir}" ] || continue
+    pid="$(cat "${dir}/pid" 2>/dev/null)"
+    if [ -z "${pid}" ]; then
+      # The holder may sit between its mkdir and its pid write.
+      sleep 1
+      pid="$(cat "${dir}/pid" 2>/dev/null)"
+    fi
+    if [ -n "${pid}" ] && cronrun_pid_is_cronrun "${pid}"; then
+      cronrun_lock_holder="${pid}"
+      return 1
+    fi
+    # Stale: rename first so only one breaker can win, then retry mkdir.
+    if mv "${dir}" "${dir}.stale.$$" 2>/dev/null; then
+      rm -rf "${dir}.stale.$$"
+    fi
+  done
+  return 2
+}
+
+cronrun_lock() {
+  local impl="${CRONRUN_LOCK_IMPL:-}"
+  if [ -z "${impl}" ]; then
+    if command -v flock >/dev/null 2>&1; then
+      impl="flock"
+    else
+      impl="mkdir"
+    fi
+  fi
+  case "${impl}" in
+  flock)
+    command -v flock >/dev/null 2>&1 ||
+      cronrun_die "CRONRUN_LOCK_IMPL=flock, but flock is not on PATH"
+    cronrun_lock_flock
+    ;;
+  mkdir) cronrun_lock_mkdir ;;
+  *) cronrun_die "unknown CRONRUN_LOCK_IMPL: ${impl} (use flock or mkdir)" ;;
+  esac
+}
+
+# shellcheck disable=SC2317  # reached through the EXIT trap
+cronrun_unlock() {
+  case "${cronrun_lock_held}" in
+  mkdir)
+    if [ "$(cat "${cronrun_lock_dir}/pid" 2>/dev/null)" = "$$" ]; then
+      rm -rf "${cronrun_lock_dir}"
+    fi
+    ;;
+  flock) exec 9>&- ;;
+  esac
+  cronrun_lock_held=
+}
+
+# shellcheck disable=SC2317  # invoked by the EXIT trap
+cronrun_on_exit() {
+  local rc=$?
+  if [ "${cronrun_started}" = 1 ] && [ "${cronrun_finished}" = 0 ]; then
+    cronrun_finished=1
+    cronrun_log_line "end ${cronrun_job} exit=${rc} (cronrun was interrupted)"
+    cronrun_write_status "${cronrun_start_iso}" "$(cronrun_now)" "${rc}"
+  fi
+  cronrun_unlock
+}
+
+cronrun_install_traps() {
+  trap cronrun_on_exit EXIT
+  trap 'exit 129' HUP
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+}
+
+#############################
+#  Environment              #
+#############################
+cronrun_baseline_path() {
+  printf '%s' "${HOME}/bin:${HOME}/.local/bin:${HOME}/.cargo/bin:${HOME}/.nix-profile/bin"
+  printf '%s\n' ":/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+}
+
+# Exports the Linux desktop-session variables cron does not provide, each only
+# when it is unset and its target exists. Records what it set for --dry-run.
+cronrun_runtime_env() {
+  local os run_user_dir x11_dir
+  os="${CRONRUN_OS:-$(uname -s)}"
+  [ "${os}" = Linux ] || return 0
+  run_user_dir="${CRONRUN_RUN_USER_DIR:-/run/user}"
+  x11_dir="${CRONRUN_X11_DIR:-/tmp/.X11-unix}"
+
+  local candidate
+  candidate="${run_user_dir}/$(id -u)"
+  if [ -z "${XDG_RUNTIME_DIR:-}" ] && [ -d "${candidate}" ]; then
+    export XDG_RUNTIME_DIR="${candidate}"
+    cronrun_derived="${cronrun_derived} XDG_RUNTIME_DIR"
+  fi
+  if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ] && [ -n "${XDG_RUNTIME_DIR:-}" ] &&
+    [ -S "${XDG_RUNTIME_DIR}/bus" ]; then
+    export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
+    cronrun_derived="${cronrun_derived} DBUS_SESSION_BUS_ADDRESS"
+  fi
+  if [ -z "${DISPLAY:-}" ] && [ -S "${x11_dir}/X0" ]; then
+    export DISPLAY=:0
+    cronrun_derived="${cronrun_derived} DISPLAY"
+  fi
+}
+
+#############################
+#  --dry-run                #
+#############################
+# Best-effort first word of a shell command line, for `command -v`. Skips
+# leading NAME=value assignments, strips one layer of quotes, and expands a
+# leading ~ or $HOME. Never evaluates the command.
+cronrun_first_word() {
+  local rest="$1" word name delims='[[:space:];&|<>()]*'
+  rest="${rest#"${rest%%[![:space:]]*}"}"
+  while :; do
+    word="${rest%%[[:space:]]*}"
+    case "${word}" in
+    [A-Za-z_]*=*) ;;
+    *) break ;;
+    esac
+    name="${word%%=*}"
+    case "${name}" in
+    *[!A-Za-z0-9_]*) break ;;
+    esac
+    [ "${word}" != "${rest}" ] || break
+    rest="${rest#"${word}"}"
+    rest="${rest#"${rest%%[![:space:]]*}"}"
+  done
+  # Unquoted assignments with substring offsets keep the quote handling
+  # identical across bash 3.2 and 5.
+  case "${rest}" in
+  \"*)
+    word=${rest:1}
+    word=${word%%\"*}
+    ;;
+  \'*)
+    word=${rest:1}
+    word=${word%%\'*}
+    ;;
+  *)
+    # shellcheck disable=SC2295  # delims is a pattern on purpose
+    word=${rest%%${delims}}
+    ;;
+  esac
+  case "${word}" in
+  \~) word=${HOME} ;;
+  \~/*) word=${HOME}/${word:2} ;;
+  \$HOME) word=${HOME} ;;
+  \$HOME/*) word=${HOME}/${word:6} ;;
+  \$\{HOME\}) word=${HOME} ;;
+  \$\{HOME\}/*) word=${HOME}/${word:8} ;;
+  esac
+  printf '%s' "${word}"
+}
+
+cronrun_describe_var() {
+  local name="$1" value
+  eval "value=\${${name}-}"
+  if [ -z "${value}" ]; then
+    printf '%s=<unset>\n' "${name}"
+  else
+    case " ${cronrun_derived} " in
+    *" ${name} "*) printf '%s=%s (derived by cronrun)\n' "${name}" "${value}" ;;
+    *) printf '%s=%s\n' "${name}" "${value}" ;;
+    esac
+  fi
+}
+
+cronrun_dry_run_report() {
+  local word resolved bash_path rc=0
+  bash_path="$(command -v bash 2>/dev/null)"
+  printf 'cronrun: dry run of job %s on %s; the command is not run\n' \
+    "${cronrun_job}" "${cronrun_host}"
+  printf 'command: %s\n' "${cronrun_command}"
+  printf 'profile: %s\n' "${cronrun_profile_note}"
+  printf 'bash: %s\n' "${bash_path:-<not found>}"
+  printf 'HOME=%s\n' "${HOME}"
+  printf 'PATH=%s\n' "${PATH}"
+  cronrun_describe_var XDG_RUNTIME_DIR
+  cronrun_describe_var DBUS_SESSION_BUS_ADDRESS
+  cronrun_describe_var DISPLAY
+  printf 'log: %s\n' "${cronrun_log}"
+  printf 'status: %s\n' "${cronrun_status}"
+
+  word="$(cronrun_first_word "${cronrun_command}")"
+  if [ -z "${word}" ]; then
+    printf 'first word: <could not determine>\n'
+    return 1
+  fi
+  # Resolve in a fresh `bash -c`, as the job will run, so functions and
+  # aliases that only ~/.profile defines do not count.
+  resolved="$(bash -c 'command -v -- "$1"' cronrun-dry-run "${word}" </dev/null 2>/dev/null)" ||
+    rc=$?
+  if [ "${rc}" -eq 0 ] && [ -n "${resolved}" ]; then
+    printf 'first word: %s -> %s\n' "${word}" "${resolved}"
+    return 0
+  fi
+  printf 'first word: %s -> NOT FOUND\n' "${word}"
+  return 1
+}
+
+#############################
+#  Main flow                #
+#############################
+# The main flow runs at the top level, not in a function, so a `declare` in
+# ~/.profile still creates globals when it is sourced below.
+
+cronrun_dry_run=0
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+  -h | --help)
+    cronrun_usage
+    exit 0
+    ;;
+  --dry-run) cronrun_dry_run=1 ;;
+  --)
+    shift
+    break
+    ;;
+  -*) cronrun_die_usage "unknown option: $1" ;;
+  *) break ;;
+  esac
+  shift
+done
+[ "$#" -eq 2 ] || cronrun_die_usage "expected <job> <command>, got $# argument(s)"
+
+cronrun_job="$1"
+cronrun_command="$2"
+case "${cronrun_job}" in
+'' | [!a-z0-9]* | *[!a-z0-9-]*)
+  cronrun_die_usage "invalid job name: '${cronrun_job}' (want ^[a-z0-9][a-z0-9-]*\$)"
+  ;;
+esac
+[ -n "$(cronrun_trim "${cronrun_command}")" ] || cronrun_die_usage "empty command"
+[ -n "${HOME:-}" ] || cronrun_die "HOME is not set"
+
+cronrun_host="$(cronrun_hostname)"
+cronrun_state_dir="${HOME}/.local/state/cron"
+cronrun_log="${cronrun_state_dir}/${cronrun_job}.log"
+cronrun_status="${cronrun_state_dir}/${cronrun_job}.status"
+cronrun_lock_file="${cronrun_state_dir}/${cronrun_job}.lock"
+cronrun_lock_dir="${cronrun_state_dir}/${cronrun_job}.lock.d"
+cronrun_log_max_bytes="${CRONRUN_LOG_MAX_BYTES:-1048576}"
+cronrun_lock_held=
+cronrun_lock_holder=
+cronrun_started=0
+cronrun_finished=0
+cronrun_start_iso=
+cronrun_derived=
+cronrun_profile_note="none ($HOME/.profile is missing)"
+
+export PATH
+PATH="$(cronrun_baseline_path)"
+
+if [ "${cronrun_dry_run}" = 0 ]; then
+  mkdir -p "${cronrun_state_dir}" ||
+    cronrun_die "cannot create the state directory ${cronrun_state_dir}"
+  cronrun_install_traps
+
+  cronrun_lock
+  cronrun_lock_rc=$?
+  if [ "${cronrun_lock_rc}" -eq 1 ]; then
+    [ -n "${cronrun_lock_holder}" ] || cronrun_lock_holder="$(cronrun_status_value pid)"
+    cronrun_log_line "skipped ${cronrun_job}: an earlier run" \
+      "(pid ${cronrun_lock_holder:-unknown}) still holds the lock"
+    exit 0
+  elif [ "${cronrun_lock_rc}" -ne 0 ]; then
+    cronrun_die "cannot take the ${cronrun_job} lock in ${cronrun_state_dir}"
+  fi
+
+  cronrun_rotate_log
+  cronrun_log_offset="$(cronrun_file_size "${cronrun_log}")"
+  cronrun_start_iso="$(cronrun_now)"
+  cronrun_start_epoch="$(date +%s)"
+  cronrun_status_ok=1
+  cronrun_write_status "${cronrun_start_iso}" "" "" || cronrun_status_ok=0
+  cronrun_started=1
+  cronrun_log_line "start ${cronrun_job} pid=$$ host=${cronrun_host}"
+  if [ "${cronrun_status_ok}" = 0 ]; then
+    printf 'cronrun: cannot write %s\n' "${cronrun_status}" >&2
+  fi
+fi
+
+if [ -f "${HOME}/.profile" ]; then
+  # Hide our arguments, options, IFS, and lock fd from the profile, and
+  # restore our options and traps afterwards.
+  set --
+  cronrun_saved_opts="$(set +o)"
+  cronrun_saved_ifs="${IFS}"
+  if [ "${cronrun_dry_run}" = 1 ]; then
+    # shellcheck disable=SC1091
+    . "${HOME}/.profile" </dev/null 1>&2 9>&-
+  else
+    # shellcheck disable=SC1091
+    . "${HOME}/.profile" </dev/null >>"${cronrun_log}" 2>&1 9>&-
+  fi
+  cronrun_profile_rc=$?
+  IFS="${cronrun_saved_ifs}"
+  eval "${cronrun_saved_opts}"
+  [ "${cronrun_dry_run}" = 1 ] || cronrun_install_traps
+  if [ "${cronrun_profile_rc}" -eq 0 ]; then
+    cronrun_profile_note="sourced ${HOME}/.profile"
+  else
+    cronrun_profile_note="sourcing ${HOME}/.profile failed (exit ${cronrun_profile_rc}); continued"
+    [ "${cronrun_dry_run}" = 1 ] || cronrun_log_line "warning: ${cronrun_profile_note}"
+  fi
+fi
+export PATH
+
+cronrun_runtime_env
+
+if [ "${cronrun_dry_run}" = 1 ]; then
+  cronrun_dry_run_report
+  exit $?
+fi
+
+bash -c "${cronrun_command}" "${cronrun_job}" </dev/null >>"${cronrun_log}" 2>&1 9>&-
+cronrun_rc=$?
+
+cronrun_finished=1
+cronrun_log_line "end ${cronrun_job} exit=${cronrun_rc}" \
+  "duration=$(($(date +%s) - cronrun_start_epoch))s"
+if ! cronrun_write_status "${cronrun_start_iso}" "$(cronrun_now)" "${cronrun_rc}"; then
+  printf 'cronrun: cannot write %s\n' "${cronrun_status}" >&2
+fi
+
+if [ "${cronrun_rc}" -ne 0 ]; then
+  {
+    printf 'cronrun: %s failed (exit %s) on %s\n' \
+      "${cronrun_job}" "${cronrun_rc}" "${cronrun_host}"
+    printf -- '--- last 40 lines of this run from %s ---\n' "${cronrun_log}"
+    tail -c +"$((cronrun_log_offset + 1))" "${cronrun_log}" | tail -n 40
+  } >&2
+fi
+exit "${cronrun_rc}"
