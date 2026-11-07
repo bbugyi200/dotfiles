@@ -192,7 +192,7 @@ function test_help_and_usage_errors() {
   assert_equals "0" "$RUN_RC"
   assert_equals "" "$(cat "$STDOUT_FILE")"
   local options
-  options="$(rg '^  -[hlry],' "$STDERR_FILE")"
+  options="$(grep '^  -[hlry],' "$STDERR_FILE")"
   assert_contains "-h, --help" "$options"
   assert_contains "-l, --logout" "$options"
   assert_contains "-r, --replace" "$options"
