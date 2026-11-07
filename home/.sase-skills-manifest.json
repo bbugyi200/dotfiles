@@ -1,6 +1,6 @@
 {
-  "deployed_at": "2026-11-07T20:25:49.704305Z",
-  "macro_set_sha256": "211c89f79217b0738d55899711aea14e2c65b2817f85ca10626f3991ccd9637d",
+  "deployed_at": "2026-11-07T22:24:07.794013Z",
+  "macro_set_sha256": "c7fc5dc3f46f4a4e815eba3a4beba6a23b22573360c205365ef44dc9d71ea04a",
   "managed_files": [
     {
       "home_path": ".gemini/antigravity-cli/skills/bob_query/SKILL.md",
@@ -168,6 +168,13 @@
       "provider": "agy",
       "skill_name": "sase_run",
       "source_path": "dot_gemini/antigravity-cli/skills/sase_run/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".gemini/antigravity-cli/skills/sase_spotify/SKILL.md",
+      "provider": "agy",
+      "skill_name": "sase_spotify",
+      "source_path": "dot_gemini/antigravity-cli/skills/sase_spotify/SKILL.md",
       "state": "active"
     },
     {
@@ -360,6 +367,13 @@
       "state": "active"
     },
     {
+      "home_path": ".claude/skills/sase_spotify/SKILL.md",
+      "provider": "claude",
+      "skill_name": "sase_spotify",
+      "source_path": "dot_claude/skills/sase_spotify/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".claude/skills/sase_sudo/SKILL.md",
       "provider": "claude",
       "skill_name": "sase_sudo",
@@ -546,6 +560,13 @@
       "provider": "codex",
       "skill_name": "sase_run",
       "source_path": "dot_codex/skills/sase_run/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".codex/skills/sase_spotify/SKILL.md",
+      "provider": "codex",
+      "skill_name": "sase_spotify",
+      "source_path": "dot_codex/skills/sase_spotify/SKILL.md",
       "state": "active"
     },
     {
@@ -836,6 +857,13 @@
       "state": "active"
     },
     {
+      "home_path": ".grok/skills/sase_spotify/SKILL.md",
+      "provider": "grok",
+      "skill_name": "sase_spotify",
+      "source_path": "dot_grok/skills/sase_spotify/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".grok/skills/sase_sudo/SKILL.md",
       "provider": "grok",
       "skill_name": "sase_sudo",
@@ -1018,6 +1046,13 @@
       "state": "active"
     },
     {
+      "home_path": ".config/muse/skills/sase_spotify/SKILL.md",
+      "provider": "muse",
+      "skill_name": "sase_spotify",
+      "source_path": "dot_config/muse/skills/sase_spotify/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".config/muse/skills/sase_sudo/SKILL.md",
       "provider": "muse",
       "skill_name": "sase_sudo",
@@ -1197,6 +1232,13 @@
       "provider": "opencode",
       "skill_name": "sase_run",
       "source_path": "dot_config/opencode/skills/sase_run/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/opencode/skills/sase_spotify/SKILL.md",
+      "provider": "opencode",
+      "skill_name": "sase_spotify",
+      "source_path": "dot_config/opencode/skills/sase_spotify/SKILL.md",
       "state": "active"
     },
     {
@@ -1389,6 +1431,13 @@
       "state": "active"
     },
     {
+      "home_path": ".qwen/skills/sase_spotify/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "sase_spotify",
+      "source_path": "dot_qwen/skills/sase_spotify/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".qwen/skills/sase_sudo/SKILL.md",
       "provider": "qwen",
       "skill_name": "sase_sudo",
@@ -1403,5 +1452,5 @@
       "state": "active"
     }
   ],
-  "source_commit": "da1561407ab03db299959ec3ab8e2a5fadafb1e3"
+  "source_commit": "8668755b3534f6d0065b1ccb3bc8461d96be26b2"
 }
