@@ -1,6 +1,6 @@
 {
-  "deployed_at": "2026-11-07T08:59:43.258909Z",
-  "macro_set_sha256": "13aad7e3ea9b0ac1bb38e63a764230d9ce3af3fdd88de964c52d604abbf929cd",
+  "deployed_at": "2026-11-07T20:25:49.704305Z",
+  "macro_set_sha256": "211c89f79217b0738d55899711aea14e2c65b2817f85ca10626f3991ccd9637d",
   "managed_files": [
     {
       "home_path": ".gemini/antigravity-cli/skills/bob_query/SKILL.md",
@@ -14,6 +14,13 @@
       "provider": "agy",
       "skill_name": "bob_ref",
       "source_path": "dot_gemini/antigravity-cli/skills/bob_ref/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".gemini/antigravity-cli/skills/crontab/SKILL.md",
+      "provider": "agy",
+      "skill_name": "crontab",
+      "source_path": "dot_gemini/antigravity-cli/skills/crontab/SKILL.md",
       "state": "active"
     },
     {
@@ -189,6 +196,13 @@
       "provider": "claude",
       "skill_name": "bob_ref",
       "source_path": "dot_claude/skills/bob_ref/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".claude/skills/crontab/SKILL.md",
+      "provider": "claude",
+      "skill_name": "crontab",
+      "source_path": "dot_claude/skills/crontab/SKILL.md",
       "state": "active"
     },
     {
@@ -371,6 +385,13 @@
       "provider": "codex",
       "skill_name": "bob_ref",
       "source_path": "dot_codex/skills/bob_ref/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".codex/skills/crontab/SKILL.md",
+      "provider": "codex",
+      "skill_name": "crontab",
+      "source_path": "dot_codex/skills/crontab/SKILL.md",
       "state": "active"
     },
     {
@@ -654,6 +675,13 @@
       "state": "active"
     },
     {
+      "home_path": ".grok/skills/crontab/SKILL.md",
+      "provider": "grok",
+      "skill_name": "crontab",
+      "source_path": "dot_grok/skills/crontab/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".grok/skills/mermaid_diagrams/SKILL.md",
       "provider": "grok",
       "skill_name": "mermaid_diagrams",
@@ -836,6 +864,13 @@
       "state": "active"
     },
     {
+      "home_path": ".config/muse/skills/crontab/SKILL.md",
+      "provider": "muse",
+      "skill_name": "crontab",
+      "source_path": "dot_config/muse/skills/crontab/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".config/muse/skills/mermaid_diagrams/SKILL.md",
       "provider": "muse",
       "skill_name": "mermaid_diagrams",
@@ -1008,6 +1043,13 @@
       "provider": "opencode",
       "skill_name": "bob_ref",
       "source_path": "dot_config/opencode/skills/bob_ref/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/opencode/skills/crontab/SKILL.md",
+      "provider": "opencode",
+      "skill_name": "crontab",
+      "source_path": "dot_config/opencode/skills/crontab/SKILL.md",
       "state": "active"
     },
     {
@@ -1186,6 +1228,13 @@
       "state": "active"
     },
     {
+      "home_path": ".qwen/skills/crontab/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "crontab",
+      "source_path": "dot_qwen/skills/crontab/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".qwen/skills/mermaid_diagrams/SKILL.md",
       "provider": "qwen",
       "skill_name": "mermaid_diagrams",
@@ -1354,5 +1403,5 @@
       "state": "active"
     }
   ],
-  "source_commit": "8dce35a8f04c1d6717836d201e11224205b08101"
+  "source_commit": "da1561407ab03db299959ec3ab8e2a5fadafb1e3"
 }

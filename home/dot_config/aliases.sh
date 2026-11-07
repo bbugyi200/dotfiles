@@ -530,7 +530,6 @@ alias unfreeze='icebox --unfreeze /tmp/icebox'
 alias updatedb='sudo updatedb'
 alias uplug='vim +PlugUpdate +qall'
 alias va='vv_push $HOME/projects/ansible_config'
-vab() { vim $(find "$HOME"/Sync/bin/cron.jobs -type f | sort | tr '\n' ' '); }
 alias valg='valgrind --leak-check=full --show-reachable=yes --track-origins=yes'
 alias vapt='vim /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/preferences'
 alias vb='vv_push $HOME/projects/pylibs'
@@ -538,9 +537,8 @@ alias vbb='vv_push $HOME/projects/bashlibs'
 alias vbox='xspawn sudo virtualbox'
 alias vbt='vim ~/.local/share/torrent/*.txt'
 alias vbudget='pushd ~/projects/budget &>/dev/null && vim main.py && popd &>/dev/null'
-alias vcron='vim ~/Sync/bin/cron.jobs/jobs.sh ~/Sync/bin/cron.jobs/{cron.hourly/hourly_jobs,cron.daily/daily_jobs,cron.weekly/weekly_jobs} ~/Sync/bin/cron.jobs/backup.sh ~/Sync/bin/cron.jobs/cron.{hourly,daily,weekly,monthly}/*'
+alias vcron='cronctl edit'
 alias vdaily="vgtd-daily-review"
-alias vdb='vim $HOME/Sync/bin/cron/cron.daily/*'
 alias vdiff='vimdiff -n'
 venv() { vim "$HOME"/.zprofile "$HOME"/.profile "$HOME"/Sync/etc/environment "$(find "$HOME"/Sync/etc/profile.d -type f)" "$HOME"/.local/bin/etc-generator; }
 alias vgdb-l='voltron view command "cmds set listsize $(tput lines) ; list *\$pc" --lexer c'
@@ -566,7 +564,6 @@ vimx() {
   vim "${temp_file}"
 }
 alias vipy='vim -c "/c.InteractiveShellApp.exec_lines" ~/.ipython/profile_default/ipython_config.py'
-alias vmb='vim $HOME/Sync/bin/cron/cron.monthly/*'
 alias vmkrules='make -p > /tmp/make-rules && vim /tmp/make-rules'
 alias vnc-athena='open vnc://athena-arch.ddns.net:34590'
 alias vnix='vv_push ~/.nixnote'
@@ -583,7 +580,6 @@ alias vtorr='cval "$HOME/Sync/bin/main" "vim torrent libtorrent/**/[^_]*.py"'
 alias vtv="vim \$HOME/.local/bin/tmux_view.sh \$HOME/.local/bin/tv_*"
 vuse() { vim /etc/portage/package.use/"$1"; }
 vv_push() { tmux send-keys "clear && pushd '$1' &> /dev/null && vv && popd &> /dev/null && clear" "Enter"; }
-alias vwb='vim $HOME/Sync/bin/cron/cron.weekly/*'
 alias vweekly='vgtd-weekly-review'
 alias vx='vv_push ~/.xmonad'
 alias vxorg='sudo -E vim /etc/X11/xorg.conf.d/*'

@@ -95,13 +95,22 @@ strand inherits no `type:` of its own and never inlines into `AGENTS.md`.
 - Lines: 67
 - Approx. tokens: 915
 
+### `sase/memory/crontab.md`
+
+- Type: `reference`
+- Parent: `AGENTS.md`
+- Description: Read before reading or changing any machine's crontab - the chezmoi cron
+  data is the only source of truth; use cronctl and the /crontab skill.
+- Lines: 45
+- Approx. tokens: 618
+
 ### `sase/memory/obsidian.md`
 
 - Type: `reference`
 - Parent: `AGENTS.md`
 - Description: Bob vault note conventions, git sync, and recovery runbooks.
-- Lines: 29
-- Approx. tokens: 378
+- Lines: 31
+- Approx. tokens: 420
 
 ### `sase/memory/tailnet.md`
 
@@ -109,17 +118,17 @@ strand inherits no `type:` of its own and never inlines into `AGENTS.md`.
 - Parent: `AGENTS.md`
 - Description: Tailnet machines (athena, apollo, mac) - Tailscale SSH access, users, and
   the chezmoi-managed ~/.ssh/config convention.
-- Lines: 36
-- Approx. tokens: 418
+- Lines: 38
+- Approx. tokens: 448
 
 ## Statistics
 
-- Total notes: 3
+- Total notes: 4
 - Core notes: 1
-- Reference notes: 2
+- Reference notes: 3
 - Web descriptor notes: 0
-- Total lines: 132
-- Total approx. tokens: 1711
+- Total lines: 181
+- Total approx. tokens: 2401
 
 ## Commands
 

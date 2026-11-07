@@ -281,3 +281,24 @@ intercept it. `alias r='/bin/rm'` is the shorthand for this.
 `~/.profile` runs it in the background with `--periodic` (at most once every 24h). Run
 it by hand — `tmp_trash_empty -n -v` to preview, `tmp_trash_empty` to purge — if you
 need the space back now.
+
+## Crontabs
+
+Every machine's user crontab comes from one place: the `cron:` key in
+`home/.chezmoidata.yaml`. Each enrolled machine's crontab holds one block between
+`# BEGIN chezmoi-cron` and `# END chezmoi-cron`; `chezmoi update -a` reinstalls that
+block when it changes and never touches the lines outside it. Every job runs through
+`~/bin/cronrun`, which logs to `~/.local/state/cron/<job>.log` and mails only failures.
+Run `cronctl --help` for the full command list.
+
+To change a job:
+
+1. Run `cronctl edit` (or `vcron`). It opens the data in `$EDITOR`, then checks it and
+   shows the diff for this machine.
+2. Commit and push.
+3. Run `chezmoi update -a` on each affected machine, or `cronctl apply <machine>...`
+   from any machine.
+
+Check the result with `cronctl status --all`, and read a job's output with
+`cronctl logs <job> --machine <machine>`. Never use `crontab -e` for a lasting job, and
+never edit inside the managed block: the next sync overwrites it.

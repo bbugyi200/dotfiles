@@ -21,6 +21,8 @@ reachable from each other over SSH via that tailnet.
   it as best-effort and expect connection timeouts otherwise.
 - `apollo` is also reachable at its DigitalOcean public IP through the `apollo-do`
   alias, which keeps working when Tailscale is down.
+- `cronctl` names machines by these SSH aliases; see [[crontab.md]] before reading or
+  changing any machine's crontab.
 
 ## SSH Config Convention
 
