@@ -62,6 +62,6 @@ result to your parent instead. Before any normal response that ends this SASE pr
 turn, use your `/sase_final` skill as the last action. This includes a final answer and
 an incomplete-status response; an unfinished turn still declares so its work is
 committed. Never end a turn to wait for a command or to resume later: nothing can wake
-you, so hand long commands to `/sase_monitor` before starting them. Only a successfully
-executed plan, monitor, pipe, or questions handoff is exempt, because those commands
-terminate the runner mechanically.
+you, so hand long commands to `/sase_monitor` before starting them. Every root turn ends
+through `/sase_final`, including handoff turns: a staged handoff is adopted by the host
+after finalizers settle.
