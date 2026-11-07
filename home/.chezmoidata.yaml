@@ -37,9 +37,74 @@ cron:
   #   enabled:     optional boolean (default true); false renders a comment
   #   command:     one line, run by cronrun under bash; use $HOME, never
   #                /home/, /Users/, or /run/user/ paths
-  jobs: []
+  jobs:
+    # athena
+    - name: bob-nightly
+      machines: [athena]
+      schedule: "30 3 * * *"
+      description: >-
+        Nightly Bob Obsidian maintenance: shared sync, then collect-done + sync
+        push
+      command: '. "$HOME/.config/nvm/nvm.sh"; nvm use --silent default; bob nightly'
+    - name: pass-git-sync
+      machines: [athena]
+      schedule: "0 * * * *"
+      description: Sync password-store with upstream every hour (pull then push)
+      command: pass_git_sync
+    - name: tman
+      machines: [athena]
+      schedule: "0 4 * * *"
+      description: Run tman at 4AM every night
+      enabled: false
+      command: >-
+        tman --log=stdout:INFO@nocolor --log=/var/tmp/tman.log:DEBUG@json start
+    - name: init-bg
+      machines: [athena]
+      schedule: "5 * * * *"
+      description: Run init-bg at five past every hour
+      enabled: false
+      command: init-bg
+    # mac: staggered five minutes apart so their vault writes do not collide
+    # with each other or with the 15-second bob-vault-sync LaunchAgent (see
+    # bob-cli docs/vault-git-sync.md, "Mac scheduled maintenance").
+    - name: bob-highlights-sync
+      machines: [mac]
+      schedule: "0,15,30,45 * * * *"
+      description: Bob highlights intake and full annotation scan
+      command: maybe_bob_highlights_sync -w
+    - name: bob-projects-sync
+      machines: [mac]
+      schedule: "5,20,35,50 * * * *"
+      description: Bob project reconciliation
+      command: bob projects sync
+    - name: bob-task-reconcile
+      machines: [mac]
+      schedule: "10,25,40,55 * * * *"
+      description: Bob task-status reconciliation with a 2-minute retry budget
+      command: bob task reconcile --retry-timeout 120
   # TEMPORARY migration aid: exact legacy lines (keyed by machine) that
   # cronctl sync removes from outside the block in the same install as the
   # block that replaces them. Delete entries once cronctl status reports that
   # none remain.
-  retire: {}
+  retire:
+    # Copied from athena's `crontab -l` on 2026-11-07. The epic watchdog line
+    # (# sase-epic-watchdog:...) is ephemeral automation, not data: never list
+    # it here.
+    athena:
+      - "DISPLAY=:0"
+      - "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus"
+      - "HOME=/home/bryan"
+      - "MAILTO=bryanbugyi34@gmail.com"
+      - "XDG_RUNTIME_DIR=/run/user/1000"
+      - "# Run `tman` at 4AM every night."
+      - '# 0 4 * * * bash -c ". $HOME/.profile; tman --log=stdout:INFO@nocolor --log=/var/tmp/tman.log:DEBUG@json start > /var/tmp/tman.out"'
+      - '# 5 * * * * bash -c ". $HOME/.profile; init-bg"'
+      - "# Nightly Bob Obsidian maintenance: shared sync, then collect-done + sync push."
+      - '30 3 * * * bash -c ". $HOME/.profile; . $HOME/.config/nvm/nvm.sh; nvm use --silent default; bob nightly" >> /var/tmp/bob_nightly.log 2>&1'
+      - "# Sync password-store with upstream every hour (pull then push)."
+      - '0 * * * * bash -o pipefail -c ". $HOME/.profile; pass_git_sync 2>&1 | cat >> /var/tmp/pass_git_sync.log"'
+    # Copied from `ssh mac crontab -l` on 2026-11-07.
+    mac:
+      - "*/15 * * * * ~/bin/maybe_bob_highlights_sync -w >> /var/tmp/maybe_bob_highlights_sync.log"
+      - "*/15 * * * * ~/.cargo/bin/bob projects sync >> /var/tmp/bob_projects.log"
+      - "*/15 * * * * ~/.cargo/bin/bob task reconcile >> /var/tmp/bob_task_status_hooks.log"
