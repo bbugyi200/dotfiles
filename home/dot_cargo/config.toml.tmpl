@@ -3,3 +3,12 @@
 build-dir = "{{ .chezmoi.homeDir }}/.cache/sase/tmp/build-targets/cargo-{workspace-path-hash}"
 rustc-wrapper = "{{ .chezmoi.homeDir }}/bin/sase-rustc-wrapper"
 {{- end }}
+{{- if eq .chezmoi.hostname "Kellys-MacBook-Pro" -}}
+# Mac disk guard (tailnet): keep file:line backtraces, drop variable-level debug
+# info, and drop dependency debug info entirely to slow target/ growth.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false
+{{- end }}

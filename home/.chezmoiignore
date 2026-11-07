@@ -15,8 +15,10 @@ tags
 .config/systemd/user/bob-ref-intake.service
 .config/systemd/user/bob-ref-intake.timer
 {{ end }}
-{{ if ne .chezmoi.hostname "athena" }}
+{{ if and (ne .chezmoi.hostname "athena") (ne .chezmoi.hostname "Kellys-MacBook-Pro") }}
 .cargo/config.toml
+{{ end }}
+{{ if ne .chezmoi.hostname "athena" }}
 .config/sccache/config
 .config/systemd/user/poseidon-cache-watch.service
 .config/systemd/user/poseidon-cache-watch.timer
