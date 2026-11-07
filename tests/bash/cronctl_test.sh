@@ -39,11 +39,13 @@ function set_up() {
   ORIGIN="${TEST_TMP}/origin.git"
   WORK="${TEST_TMP}/work"
   SSH_LOG="${TEST_TMP}/ssh.log"
+  SSH_ARGV_LOG="${TEST_TMP}/ssh.argv"
   LEAK_LOG="${TEST_TMP}/stdin-leaks.log"
   OUT_FILE="${TEST_TMP}/stdout"
   ERR_FILE="${TEST_TMP}/stderr"
   RUN_ENV=()
   : >"${SSH_LOG}"
+  : >"${SSH_ARGV_LOG}"
   : >"${LEAK_LOG}"
   mkdir -p "${FAKE_BIN}" "${MACHINES}"
   if ! command -v chezmoi >/dev/null 2>&1; then
@@ -119,9 +121,11 @@ EOF
 
   # ssh [-o opt]... <alias> <command>: the remote login shell runs <command>
   # with sshd's environment only. A trailer after the streamed script
-  # catches any child that reads stdin.
+  # catches any child that reads stdin. The whole argv goes to SSH_ARGV_LOG,
+  # and the alias and command alone to SSH_LOG.
   cat >"${FAKE_BIN}/ssh" <<EOF
 #!/bin/bash
+printf '%s\n' "\$*" >>"${SSH_ARGV_LOG}"
 while [ "\$#" -gt 0 ]; do
   case "\$1" in
   -o) shift 2 ;;
@@ -305,6 +309,9 @@ function test_apply_converges_a_target_with_no_prior_cronctl() {
   # A targeted apply leaves every other dotfile for the next full update.
   assert_file_not_exists "${mac_home}/.placeholder"
   assert_same "mac bash -s -- __apply ${CRON_REV} mac" "$(cat "${SSH_LOG}")"
+  # Keepalives make a link that dies mid-session exit 255 (pending).
+  assert_same "-o BatchMode=yes -o ConnectTimeout=8 -o ServerAliveInterval=10 -o ServerAliveCountMax=3 mac bash -s -- __apply ${CRON_REV} mac" \
+    "$(cat "${SSH_ARGV_LOG}")"
   assert_no_stdin_leaks
 }
 

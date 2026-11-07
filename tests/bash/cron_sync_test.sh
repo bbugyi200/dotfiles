@@ -60,7 +60,9 @@ function set_up() {
   LOCK_IMPL=""
   LOCK_TIMEOUT="5"
   RUN_ENV=()
+  RUN_PREFIX=()
   HOLDER_PID=""
+  UNWRITABLE_DIR=""
   write_fake_crontab
   write_source
 
@@ -79,6 +81,9 @@ function tear_down() {
   if [[ -n "${HOLDER_PID}" ]]; then
     kill "${HOLDER_PID}" 2>/dev/null || true
     wait "${HOLDER_PID}" 2>/dev/null || true
+  fi
+  if [[ -n "${UNWRITABLE_DIR}" ]]; then
+    chmod 755 "${UNWRITABLE_DIR}" 2>/dev/null || true
   fi
   rm -rf "${TEST_TMP}"
 }
@@ -203,7 +208,7 @@ function write_retire() {
 
 # Runs cronctl with a cron-like environment; sets RC, OUT_FILE, and ERR_FILE.
 function run_cronctl() {
-  env -i \
+  ${RUN_PREFIX[@]+"${RUN_PREFIX[@]}"} env -i \
     HOME="${TEST_HOME}" \
     PATH="${FAKE_BIN}:/usr/bin:/bin:/usr/sbin:/sbin" \
     TMPDIR="${TEST_TMP}" \
@@ -216,6 +221,17 @@ function run_cronctl() {
     ${RUN_ENV[@]+"${RUN_ENV[@]}"} \
     "${BASH}" "${SCRIPT}" "$@" </dev/null >"${OUT_FILE}" 2>"${ERR_FILE}"
   RC=$?
+}
+
+# bound_runs <seconds>: kill every later run_cronctl after <seconds> (exit
+# 124 from timeout, or 142 from perl's alarm on a Mac without timeout), so a
+# regression that spins fails the test instead of hanging the suite.
+function bound_runs() {
+  if command -v timeout >/dev/null 2>&1; then
+    RUN_PREFIX=(timeout "$1")
+  else
+    RUN_PREFIX=(perl -e 'alarm shift; exec @ARGV or die "exec: $!\n"' "$1")
+  fi
 }
 
 function install_count() {
@@ -291,6 +307,68 @@ function test_a_block_update_keeps_foreign_lines_in_place() {
   assert_contains "updated the managed block in place (6 lines)" "$(cat "${OUT_FILE}")"
   assert_empty "$(cat "${ERR_FILE}")"
   assert_same "${BLOCK_V2}" "$(cat "${STATE_DIR}/installed.block")"
+}
+
+# A block file whose "# END chezmoi-cron" has no final newline (a trimmed
+# partial, or a --block saved from $(cronctl render ...)) must not swallow
+# the line after it.
+function test_an_unterminated_block_on_top_keeps_the_next_line_intact() {
+  require_chezmoi || return 0
+  printf '%s' "${BLOCK_V1}" >"${CRON_CONFIG}/managed.crontab"
+  write_table "${FOREIGN_TABLE}"
+  : >"${CRON_CONFIG}/retire.crontab"
+
+  run_cronctl sync
+
+  assert_same "0" "${RC}"
+  printf '%s\n%s\n' "${BLOCK_V1}" "${FOREIGN_TABLE}" >"${TEST_TMP}/want"
+  assert_files_equals "${TEST_TMP}/want" "${TABLE}"
+  assert_contains "inserted the managed block at the top (5 lines)" "$(cat "${OUT_FILE}")"
+  assert_empty "$(cat "${ERR_FILE}")"
+  printf '%s\n' "${BLOCK_V1}" >"${TEST_TMP}/want.block"
+  assert_files_equals "${TEST_TMP}/want.block" "${STATE_DIR}/installed.block"
+  : >"${CALLS}"
+
+  run_cronctl sync
+
+  assert_same "0" "${RC}"
+  assert_empty "$(cat "${OUT_FILE}")"
+  assert_empty "$(cat "${ERR_FILE}")"
+  assert_same "0" "$(install_count)"
+  assert_files_equals "${TEST_TMP}/want" "${TABLE}"
+}
+
+function test_an_unterminated_block_in_place_keeps_the_next_line_intact() {
+  require_chezmoi || return 0
+  write_table "$(printf '%s\n%s\n%s' "# above the block" "${BLOCK_V1}" "MAILTO=old@example.com")"
+  printf '%s' "${BLOCK_V2}" >"${CRON_CONFIG}/managed.crontab"
+  mkdir -p "${STATE_DIR}"
+  printf '%s\n' "${BLOCK_V1}" >"${STATE_DIR}/installed.block"
+
+  run_cronctl sync
+
+  assert_same "0" "${RC}"
+  printf '%s\n%s\n%s\n' "# above the block" "${BLOCK_V2}" "MAILTO=old@example.com" \
+    >"${TEST_TMP}/want"
+  assert_files_equals "${TEST_TMP}/want" "${TABLE}"
+  assert_contains "updated the managed block in place (6 lines)" "$(cat "${OUT_FILE}")"
+  assert_empty "$(cat "${ERR_FILE}")"
+  : >"${CALLS}"
+
+  run_cronctl sync
+
+  assert_same "0" "${RC}"
+  assert_empty "$(cat "${OUT_FILE}")"
+  assert_empty "$(cat "${ERR_FILE}")"
+  assert_same "0" "$(install_count)"
+  assert_files_equals "${TEST_TMP}/want" "${TABLE}"
+
+  # A dry run against it reports no changes and no hand edit either.
+  run_cronctl sync --dry-run
+
+  assert_same "0" "${RC}"
+  assert_contains "no changes: the crontab already matches" "$(cat "${OUT_FILE}")"
+  assert_empty "$(cat "${ERR_FILE}")"
 }
 
 function test_no_crontab_reads_as_an_empty_table() {
@@ -742,6 +820,81 @@ function test_the_mkdir_lock_fallback_waits_for_a_live_holder() {
   # A dry run changes nothing, so it does not wait for the lock.
   run_cronctl sync --dry-run
   assert_same "0" "${RC}"
+}
+
+function test_the_mkdir_lock_fails_at_once_when_a_file_has_its_name() {
+  require_chezmoi || return 0
+  LOCK_IMPL="mkdir"
+  LOCK_TIMEOUT="30"
+  write_managed "${BLOCK_V1}"
+  write_table "${FOREIGN_TABLE}"
+  mkdir -p "${STATE_DIR}"
+  printf 'not a lock\n' >"${STATE_DIR}/sync.lock.d"
+  bound_runs 15
+  local start="${SECONDS}"
+
+  run_cronctl sync
+
+  assert_same "1" "${RC}"
+  assert_less_than "10" "$((SECONDS - start))"
+  assert_contains "cannot take the sync lock in ${STATE_DIR}" "$(cat "${ERR_FILE}")"
+  assert_same "0" "$(install_count)"
+  assert_same "${FOREIGN_TABLE}" "$(cat "${TABLE}")"
+}
+
+function test_the_mkdir_lock_gives_up_on_an_unwritable_state_dir() {
+  require_chezmoi || return 0
+  if [[ "$(id -u)" = 0 ]]; then
+    bashunit::skip "root writes to a mode 555 directory anyway"
+    return 0
+  fi
+  LOCK_IMPL="mkdir"
+  LOCK_TIMEOUT="2"
+  write_managed "${BLOCK_V1}"
+  write_table "${FOREIGN_TABLE}"
+  mkdir -p "${STATE_DIR}"
+  chmod 555 "${STATE_DIR}"
+  UNWRITABLE_DIR="${STATE_DIR}"
+  bound_runs 20
+  local start="${SECONDS}"
+
+  run_cronctl sync
+
+  assert_same "1" "${RC}"
+  assert_less_or_equal_than "$((LOCK_TIMEOUT + 6))" "$((SECONDS - start))"
+  assert_contains "cannot take the sync lock in ${STATE_DIR}" "$(cat "${ERR_FILE}")"
+  assert_same "0" "$(install_count)"
+  assert_same "${FOREIGN_TABLE}" "$(cat "${TABLE}")"
+}
+
+function test_the_mkdir_lock_breaks_a_lock_whose_pid_is_now_another_bash() {
+  require_chezmoi || return 0
+  LOCK_IMPL="mkdir"
+  write_managed "${BLOCK_V1}"
+  write_table "${FOREIGN_TABLE}"
+  # A recycled pid: a live bash that is not cronctl. The trailing ":" keeps
+  # bash from exec-ing sleep, so ps shows the bash command line.
+  bash -c 'sleep 30; :' </dev/null >/dev/null 2>&1 &
+  HOLDER_PID=$!
+  local i command_line=""
+  for ((i = 0; i < 50; i++)); do
+    command_line="$(ps -ww -p "${HOLDER_PID}" -o command= 2>/dev/null)"
+    [[ "${command_line}" == *"sleep 30; :"* ]] && break
+    sleep 0.1
+  done
+  assert_contains "bash" "${command_line}"
+  assert_not_contains "cronctl" "${command_line}"
+  mkdir -p "${STATE_DIR}/sync.lock.d"
+  printf '%s\n' "${HOLDER_PID}" >"${STATE_DIR}/sync.lock.d/pid"
+
+  run_cronctl sync
+
+  assert_same "0" "${RC}"
+  assert_contains "inserted the managed block" "$(cat "${OUT_FILE}")"
+  assert_same "1" "$(install_count)"
+  assert_directory_not_exists "${STATE_DIR}/sync.lock.d"
+  kill -0 "${HOLDER_PID}"
+  assert_same "0" "$?"
 }
 
 function test_the_flock_lock_waits_for_a_live_holder() {

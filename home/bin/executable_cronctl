@@ -17,12 +17,15 @@
 # can also be streamed to `bash -s`; every child reads </dev/null or a file.    #
 #                                                                               #
 # Fleet commands (status, diff, apply, logs, run) reach another machine with    #
-#   ssh -o BatchMode=yes -o ConnectTimeout=8 <alias> bash -s -- __<routine> ... #
+#   ssh -o BatchMode=yes -o ConnectTimeout=8 -o ServerAliveInterval=10 \        #
+#     -o ServerAliveCountMax=3 <alias> bash -s -- __<routine> ...               #
 # and this very script on stdin, so a target needs only chezmoi and its source  #
-# checkout, never a deployed ~/bin/cronctl. The local machine runs the same     #
-# routine in a subshell. Routines answer in a line protocol (key=value lines,   #
-# ">section" headers, "|"-prefixed section lines, and a final end=1) that the   #
-# caller parses; SSH exit 255 means unreachable (pending), never success.       #
+# checkout, never a deployed ~/bin/cronctl. The keepalives make ssh give up on  #
+# a link that dies mid-session (a Mac that sleeps, say) within about 30s. The   #
+# local machine runs the same routine in a subshell. Routines answer in a line  #
+# protocol (key=value lines, ">section" headers, "|"-prefixed section lines,    #
+# and a final end=1) that the caller parses; SSH exit 255 means unreachable     #
+# (pending), never success.                                                     #
 #                                                                               #
 # crontab always gets its file on stdin (`crontab - <file`): Debian's crontab   #
 # silently truncates file arguments to 99 bytes, so a long TMPDIR path could    #
@@ -672,6 +675,16 @@ cronctl_is_end() {
   [ "${1%"${1##*[![:space:]]}"}" = "# END chezmoi-cron" ]
 }
 
+# cronctl_emit_lines <file>: print <file> with every line newline-terminated,
+# whatever its final byte. A block always goes out through this, so the line
+# after an unterminated "# END chezmoi-cron" can never merge into it.
+cronctl_emit_lines() {
+  local line
+  while IFS= read -r line || [ -n "${line}" ]; do
+    printf '%s\n' "${line}"
+  done <"$1"
+}
+
 # cronctl_read_block <file>: checks that <file> is one marked block and sets
 # cronctl_block_machine from its BEGIN line.
 cronctl_read_block() {
@@ -772,12 +785,12 @@ cronctl_build_candidate() {
   : >"${live_block}"
   n=0
   {
-    [ "${begin_at}" -eq 0 ] && cat "${block}"
+    [ "${begin_at}" -eq 0 ] && cronctl_emit_lines "${block}"
     while IFS= read -r line || [ -n "${line}" ]; do
       n=$((n + 1))
       if [ "${begin_at}" -ne 0 ] && [ "${n}" -ge "${begin_at}" ] && [ "${n}" -le "${end_at}" ]; then
         printf '%s\n' "${line}" >>"${live_block}"
-        [ "${n}" -eq "${begin_at}" ] && cat "${block}"
+        [ "${n}" -eq "${begin_at}" ] && cronctl_emit_lines "${block}"
         continue
       fi
       keep=1
@@ -838,6 +851,11 @@ cronctl_backup() {
   printf '%s\n' "${path}"
 }
 
+# cronctl_pid_is_cronctl <pid>: whether <pid> may still hold the mkdir lock.
+# Only `cronctl sync` takes that lock, and both the sync hook and the __apply
+# routine run it as "$HOME/bin/cronctl" sync, so a live holder's command line
+# always names cronctl. Any other process, even a bash one, owns a recycled
+# pid, and the lock is stale.
 cronctl_pid_is_cronctl() {
   local pid="$1" command_line
   kill -0 "${pid}" 2>/dev/null || return 1
@@ -845,10 +863,8 @@ cronctl_pid_is_cronctl() {
   # When ps cannot describe the pid, trust kill -0 alone.
   [ -n "${command_line}" ] || return 0
   case "${command_line}" in
-  # cronctl itself, or a cronctl streamed to `bash -s`.
-  *cronctl* | *bash*) return 0 ;;
+  *cronctl*) return 0 ;;
   esac
-  # A recycled pid now owned by an unrelated process: the lock is stale.
   return 1
 }
 
@@ -863,6 +879,10 @@ cronctl_lock_flock() {
   return 1
 }
 
+# cronctl_lock_mkdir <timeout>: take the lock directory. Returns 0 when held,
+# 1 when a live holder kept it for <timeout> seconds, and 2 when it cannot be
+# taken at all. Every pass that does not take it either returns or sleeps
+# and counts toward <timeout>, so it never spins.
 cronctl_lock_mkdir() {
   local timeout="$1" dir="${cronctl_state_dir}/sync.lock.d" pid waited=0
   while :; do
@@ -891,8 +911,18 @@ cronctl_lock_mkdir() {
       # Stale: rename first so only one breaker can win, then retry mkdir.
       if mv "${dir}" "${dir}.stale.$$" 2>/dev/null; then
         rm -rf "${dir}.stale.$$"
+        continue
       fi
+    elif [ -e "${dir}" ] || [ -L "${dir}" ]; then
+      # Something that is not a directory (a regular file, say) has the
+      # lock's name; waiting will not move it.
+      return 2
     fi
+    # mkdir failed with nothing in the way (an unwritable state directory,
+    # say), or the stale lock would not move aside: wait, up to the timeout.
+    [ "${waited}" -ge "${timeout}" ] && return 2
+    sleep 1
+    waited=$((waited + 1))
   done
 }
 
@@ -1187,8 +1217,8 @@ cronctl_print_dry_run() {
 }
 
 cronctl_cmd_sync() {
-  local dry_run=0 block_arg="" retire_arg="" block managed retire attempt live reread
-  local candidate removed live_block backup install_err install_rc readback action
+  local dry_run=0 block_arg="" retire_arg="" block block_file managed retire attempt
+  local live reread candidate removed live_block backup install_err install_rc readback action
   while [ "$#" -gt 0 ]; do
     case "$1" in
     -h | --help)
@@ -1232,21 +1262,27 @@ cronctl_cmd_sync() {
   managed="${HOME}/.config/cron/managed.crontab"
   retire="${retire_arg:-${HOME}/.config/cron/retire.crontab}"
   if [ -n "${block_arg}" ]; then
-    block="${block_arg}"
+    block_file="${block_arg}"
   else
     if [ ! -f "${managed}" ]; then
       cronctl_warn "${managed} is missing (run chezmoi apply first); leaving the crontab of ${cronctl_machine} untouched"
       return 0
     fi
-    block="${managed}"
+    block_file="${managed}"
   fi
-  cronctl_read_block "${block}" || return 1
+  cronctl_read_block "${block_file}" || return 1
   if [ "${cronctl_block_machine}" != "${cronctl_machine}" ]; then
     printf 'cronctl: %s holds the block for %s, but this host (%s) is %s; nothing changed\n' \
-      "${block}" "${cronctl_block_machine}" "${cronctl_hostname}" "${cronctl_machine}" >&2
+      "${block_file}" "${cronctl_block_machine}" "${cronctl_hostname}" "${cronctl_machine}" >&2
     [ -n "${block_arg}" ] && return 2
     return 1
   fi
+  # Work from a newline-terminated copy, so the candidate, installed.block,
+  # and the hand-edit check all see the same bytes, whatever the final byte
+  # of ${block_file}.
+  block="${cronctl_tmp}/block"
+  cronctl_normalize "${block_file}" "${block}" ||
+    cronctl_die "cannot copy ${block_file}"
 
   # 2. Lock (a dry run changes nothing, so it takes no lock). Backups hold
   # whole tables, so state is private to the user, like the crontab itself.
@@ -1272,7 +1308,7 @@ cronctl_cmd_sync() {
       "${removed}" "${live_block}" || return 1
     if cmp -s "${live}" "${candidate}"; then
       if [ "${dry_run}" = 1 ]; then
-        cronctl_print_dry_run "${live}" "${candidate}" "${removed}" "${block}"
+        cronctl_print_dry_run "${live}" "${candidate}" "${removed}" "${block_file}"
       elif ! cmp -s "${block}" "${cronctl_state_dir}/installed.block"; then
         cronctl_write_atomic "${block}" "${cronctl_state_dir}/installed.block" ||
           cronctl_warn "cannot record ${cronctl_state_dir}/installed.block"
@@ -1280,9 +1316,10 @@ cronctl_cmd_sync() {
       return 0
     fi
 
-    # 6. Warn on hand edits inside the block.
+    # 6. Warn on hand edits inside the block (by lines, so an installed.block
+    # recorded without a final newline is no false alarm).
     if [ -s "${live_block}" ] && [ -f "${cronctl_state_dir}/installed.block" ] &&
-      ! cmp -s "${live_block}" "${cronctl_state_dir}/installed.block"; then
+      ! cronctl_same "${live_block}" "${cronctl_state_dir}/installed.block"; then
       {
         printf '\n'
         printf 'cronctl: WARNING: the "# BEGIN/END chezmoi-cron" block in the %s crontab\n' "${cronctl_machine}"
@@ -1298,7 +1335,7 @@ cronctl_cmd_sync() {
 
     # 7. Dry run.
     if [ "${dry_run}" = 1 ]; then
-      cronctl_print_dry_run "${live}" "${candidate}" "${removed}" "${block}"
+      cronctl_print_dry_run "${live}" "${candidate}" "${removed}" "${block_file}"
       return 0
     fi
 
@@ -1390,12 +1427,9 @@ cronctl_flat_file() {
 # cronctl_normalize <in> <out>: copy <in> with every line newline-terminated
 # (a missing <in> gives an empty <out>), so tables compare with cmp.
 cronctl_normalize() {
-  local line
   : >"$2"
   [ -f "$1" ] || return 0
-  while IFS= read -r line || [ -n "${line}" ]; do
-    printf '%s\n' "${line}"
-  done <"$1" >"$2"
+  cronctl_emit_lines "$1" >"$2"
 }
 
 # cronctl_same <a> <b>: whether two files hold the same lines (missing reads
@@ -1588,7 +1622,8 @@ cronctl_on_target() {
   {
     [ -z "${cronctl_payload}" ] || printf '%s\n' "${cronctl_payload}"
     cat "${script}"
-  } | ssh -o BatchMode=yes -o ConnectTimeout=8 "${machine}" bash -s -- "$@"
+  } | ssh -o BatchMode=yes -o ConnectTimeout=8 -o ServerAliveInterval=10 \
+    -o ServerAliveCountMax=3 "${machine}" bash -s -- "$@"
 }
 
 # cronctl_on_targets <dir> <routine> [<arg>...]: run a routine for every
