@@ -14,8 +14,10 @@ must include a `parent` frontmatter field linking to another Markdown note in th
 - **Automation:** athena/apollo use the user service `bob-vault-sync.service`; the
   MacBook uses LaunchAgent `com.bbugyi.bob-vault-sync`. athena's `bob nightly` syncs,
   runs `bob task archive`, then syncs again; both commands share `bob_sync.lock`.
-- **Conflicts:** supported conflicts keep the remote version in place and preserve local
-  copies under `_conflicts/`, logged in `_conflicts/sync_conflicts.md`.
+- **Conflicts:** same-point insertions in Markdown notes (two hosts adding different
+  lines at one spot) merge in place, keeping both sides in an outline-safe order. Other
+  supported conflicts keep the remote version in place and preserve local copies under
+  `_conflicts/`. Both are logged in `_conflicts/sync_conflicts.md`.
 - **Coverage:** `lit_review/` and `xlib/` are gitignored; git sync does not transfer
   them. Custom `bob-*` plugins are also gitignored; deploy from the `bob-plugins` source
   repo with `bob plugins sync`.
