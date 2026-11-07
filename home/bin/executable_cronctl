@@ -13,8 +13,16 @@
 # Keep this script bash 3.2-compatible (macOS /bin/bash): no associative        #
 # arrays, mapfile, ${x,,}, {fd}> redirections, or GNU-only flags. It needs no   #
 # jq or Python: chezmoi templates do all YAML parsing. Everything lives in      #
-# functions and `main "$@"` is the last line, so the script can also be         #
-# streamed to `bash -s`; every child command reads </dev/null or a file.       #
+# functions and `main "$@"` runs last (in a group that exits), so the script    #
+# can also be streamed to `bash -s`; every child reads </dev/null or a file.    #
+#                                                                               #
+# Fleet commands (status, diff, apply, logs, run) reach another machine with    #
+#   ssh -o BatchMode=yes -o ConnectTimeout=8 <alias> bash -s -- __<routine> ... #
+# and this very script on stdin, so a target needs only chezmoi and its source  #
+# checkout, never a deployed ~/bin/cronctl. The local machine runs the same     #
+# routine in a subshell. Routines answer in a line protocol (key=value lines,   #
+# ">section" headers, "|"-prefixed section lines, and a final end=1) that the   #
+# caller parses; SSH exit 255 means unreachable (pending), never success.       #
 #                                                                               #
 # crontab always gets its file on stdin (`crontab - <file`): Debian's crontab   #
 # silently truncates file arguments to 99 bytes, so a long TMPDIR path could    #
@@ -26,7 +34,7 @@
 #   sync.lock, sync.lock.d/    sync serializer (flock, or mkdir without flock)  #
 #                                                                               #
 # Test hooks: CRONCTL_CHEZMOI, CRONCTL_HOSTNAME, CRONCTL_LOCK_IMPL              #
-# (flock|mkdir), CRONCTL_LOCK_TIMEOUT.                                          #
+# (flock|mkdir), CRONCTL_LOCK_TIMEOUT, CRONCTL_OS (Linux|Darwin).               #
 #################################################################################
 
 # chezmoi templates and crontab lines are single-quoted on purpose.
@@ -56,16 +64,266 @@ list      Show the job x machine matrix from the data (offline).
 render    Print the desired block for any machine (offline, no SSH).
 check     Render and validate every machine; non-zero on any error.
 sync      Install this machine's block into its crontab (the only installer).
+status    Show the live state of one or more machines (read-only).
+diff      Diff a machine's desired block against its live one (read-only).
+apply     Converge machines to a pushed revision of the chezmoi source.
+logs      Tail a job's log on the machine that runs it.
+run       Run a job now through cronrun (real side effects).
+edit      Edit the cron: data in $EDITOR, then check and diff it.
 help      Show help for a command.
 
 Run `cronctl <command> --help` for a command's options.
 
-Change a job by editing cron: in the chezmoi source, then `cronctl check`,
-commit, push, and run `chezmoi update -a` on each machine.
+Machines are named by their cron.machines key, which is also their SSH alias.
+status, diff, apply, logs, and run reach another machine over SSH with this
+script on stdin, so a target needs only chezmoi and its source checkout; the
+local machine needs no SSH.
+
+Change a job by editing cron: in the chezmoi source (`cronctl edit`), then
+`cronctl check`, commit, push, and run `chezmoi update -a` on each machine (or
+`cronctl apply <machine>...` from any machine).
 
 Exit Status
 -----------
-0 ok; 1 failure; 2 usage or validation error.
+0 ok; 1 failure; 2 usage or validation error; 3 when at least one target
+machine is unreachable (pending) and none failed.
+EOM
+}
+
+cronctl_usage_status() {
+  cat <<'EOM'
+usage: cronctl status [-h] [--json] [--all-schedulers] [--all | <machine>...]
+
+Report the live cron state of machines, read-only: reachability, hostname,
+and timezone; the chezmoi source HEAD vs origin's HEAD; the state; the
+non-comment unmanaged lines outside the managed block; the cron.retire lines
+still present; and each job's last run from ~/.local/state/cron/<job>.status.
+Reads other machines over SSH (unreachable ones are pending).
+
+States
+------
+in_sync            The deployed block is live and `cronctl sync` would change
+                   nothing.
+drifted            The live table differs from what sync would install from
+                   the deployed managed.crontab (a hand edit inside the block,
+                   or a retire line put back).
+pending            Unreachable, or not yet applied: the source is behind
+                   origin, or ~/.config/cron does not match the source.
+unmanaged          Enrolled and applied, but the crontab has no block yet.
+identity_mismatch  The host answering for <machine> resolves, through its own
+                   cron: data, to another machine (or to none).
+failed             The state could not be read (crontab -l, chezmoi, or
+                   corrupt markers).
+
+When cron.retire has lines, every machine they name was reachable, and none
+of those lines remains outside a block, status prints
+"cron.retire can be deleted".
+
+Positional Arguments
+--------------------
+<machine>
+    A canonical machine name from cron.machines (its SSH alias). Without one
+    (and without --all), status reports this machine.
+
+Optional Arguments
+------------------
+--all
+    Report every enrolled machine.
+
+--json
+    Print one JSON document instead of text.
+
+--all-schedulers
+    Also list, read-only, the other schedulers on each machine: systemd user
+    timers on Linux and non-Apple LaunchAgents on macOS. cronctl never
+    manages them.
+
+-h | --help
+    View this help message.
+
+Exit Status
+-----------
+0 when every machine was read; 1 when any machine is failed or
+identity_mismatch; 2 on a usage or validation error; 3 when any machine is
+unreachable and none failed.
+EOM
+}
+
+cronctl_usage_diff() {
+  cat <<'EOM'
+usage: cronctl diff [-h] [--source DIR] <machine>
+
+Show a unified diff from <machine>'s live managed block to the block the data
+wants there (rendered here, from the local chezmoi source or --source). Then
+list the non-comment lines outside the block, which sync keeps as they are,
+and the cron.retire lines that sync would remove. Read-only; reads another
+machine's crontab over SSH.
+
+Positional Arguments
+--------------------
+<machine>
+    A canonical machine name from cron.machines (its SSH alias).
+
+Optional Arguments
+------------------
+--source DIR
+    Render the desired block and retire lines from this chezmoi repo root
+    (or source directory), such as an uncommitted checkout.
+
+-h | --help
+    View this help message.
+
+Exit Status
+-----------
+0 when the diff was shown (with or without differences); 1 on failure; 2 on
+a usage or validation error; 3 when <machine> is unreachable.
+
+Examples
+--------
+cronctl diff athena
+cronctl diff mac --source ~/src/dotfiles
+EOM
+}
+
+cronctl_usage_apply() {
+  cat <<'EOM'
+usage: cronctl apply [-h] [--rev REV] (--all | <machine>...)
+
+Converge machines to a pushed revision of the chezmoi source. REV defaults to
+origin's HEAD (`git ls-remote` from the local chezmoi source). On each target
+(this machine without SSH; others over SSH, needing only chezmoi and its
+source checkout), apply:
+
+  1. runs `chezmoi git -- pull --ff-only`;
+  2. checks that REV is an ancestor of the source HEAD;
+  3. checks identity: the target's hostname must resolve, through its own
+     cron: data, to the requested machine (else identity_mismatch);
+  4. runs mkdir -p ~/.config/cron ~/bin;
+  5. runs the targeted `chezmoi apply --force ~/.config/cron ~/bin/cronctl
+     ~/bin/cronrun`, leaving every other dotfile for the machine's next
+     `chezmoi update -a`;
+  6. runs the freshly deployed `~/bin/cronctl sync`, because a targeted apply
+     runs no hooks.
+
+Then it prints one line per machine: in_sync, pending (unreachable),
+failed, or identity_mismatch, with the source revision.
+
+Positional Arguments
+--------------------
+<machine>
+    A canonical machine name from cron.machines (its SSH alias).
+
+Optional Arguments
+------------------
+--all
+    Apply to every enrolled machine.
+
+--rev REV
+    Converge to REV instead of origin's HEAD. REV must be reachable from
+    origin (only pushed commits apply); it is resolved in the local chezmoi
+    source after a `git fetch`.
+
+-h | --help
+    View this help message.
+
+Exit Status
+-----------
+0 when every target is in_sync; 1 when any failed or is identity_mismatch;
+2 on a usage error or an unpushed --rev; 3 when any target is unreachable
+and none failed.
+
+Examples
+--------
+cronctl apply mac
+cronctl apply --all
+cronctl apply --rev 0b8e7388 athena apollo
+EOM
+}
+
+cronctl_usage_logs() {
+  cat <<'EOM'
+usage: cronctl logs [-h] [--machine M] [-n N] <job>
+
+Print the last N lines of <job>'s log (~/.local/state/cron/<job>.log, after
+its rotated <job>.log.1) on the machine that runs it, reading another
+machine's log over SSH.
+
+Positional Arguments
+--------------------
+<job>
+    A job name from cron.jobs.
+
+Optional Arguments
+------------------
+--machine M
+    Read the log on machine M. Needed unless the job runs on this machine.
+
+-n N
+    How many lines to print (default 50).
+
+-h | --help
+    View this help message.
+
+Exit Status
+-----------
+0 ok; 1 when the machine has no log for the job; 2 on a usage error; 3 when
+the machine is unreachable.
+EOM
+}
+
+cronctl_usage_run() {
+  cat <<'EOM'
+usage: cronctl run [-h] [--machine M] <job>
+
+WARNING: this runs the job for real, with all of its side effects.
+
+Run <job> now on the machine that runs it, exactly as cron would: its command
+from the cron: data goes to `"$HOME/bin/cronrun" <job> '<command>'` under
+/bin/sh with cron's minimal environment (HOME, LOGNAME, SHELL=/bin/sh,
+PATH=/usr/bin:/bin, plus cron.env), so the log, status file, and overlap
+guard all behave as in a scheduled run. To check a job without side effects,
+run `cronrun --dry-run <job> '<command>'` on its machine instead.
+
+Positional Arguments
+--------------------
+<job>
+    An enabled job name from cron.jobs.
+
+Optional Arguments
+------------------
+--machine M
+    Run the job on machine M, which must be one of its machines. Needed
+    unless the job runs on this machine.
+
+-h | --help
+    View this help message.
+
+Exit Status
+-----------
+The job's exit code (a job exit of 255 is reported as 1); 2 on a usage
+error; 3 when the machine is unreachable.
+EOM
+}
+
+cronctl_usage_edit() {
+  cat <<'EOM'
+usage: cronctl edit [-h]
+
+The human replacement for `crontab -e`. Opens the cron: data
+(.chezmoidata.yaml in the local chezmoi source) in $VISUAL, $EDITOR, or vi,
+then runs `cronctl check` and `cronctl diff` for this machine. When check
+fails on a terminal, it offers to edit again. Nothing is installed: finish by
+committing and pushing the change, then run `chezmoi update -a` on each
+affected machine (or `cronctl apply <machine>...` from any machine).
+
+Optional Arguments
+------------------
+-h | --help
+    View this help message.
+
+Exit Status
+-----------
+0 when the data checks out; 1 on failure; 2 when the data is invalid.
 EOM
 }
 
@@ -261,7 +519,9 @@ cronctl_set_source() {
 #############################
 #  chezmoi                  #
 #############################
-cronctl_find_chezmoi() {
+# Sets cronctl_chezmoi, or returns 1. A non-interactive SSH PATH lacks
+# chezmoi on apollo and the Mac, so the usual install dirs are searched too.
+cronctl_locate_chezmoi() {
   local candidate
   [ -n "${cronctl_chezmoi}" ] && return 0
   for candidate in "${CRONCTL_CHEZMOI:-}" "${CHEZMOI_EXECUTABLE:-}" \
@@ -274,7 +534,23 @@ cronctl_find_chezmoi() {
       return 0
     fi
   done
-  cronctl_die "chezmoi not found (looked on PATH, ~/.nix-profile/bin, /opt/homebrew/bin, /usr/local/bin, ~/bin, ~/go/bin, ~/.local/bin)"
+  return 1
+}
+
+cronctl_find_chezmoi() {
+  cronctl_locate_chezmoi ||
+    cronctl_die "chezmoi not found (looked on PATH, ~/.nix-profile/bin, /opt/homebrew/bin, /usr/local/bin, ~/bin, ~/go/bin, ~/.local/bin)"
+}
+
+# cronctl_git <git args>: run git in the chosen chezmoi source (--source, or
+# the local source) through `chezmoi git`, never letting it read stdin.
+cronctl_git() {
+  cronctl_find_chezmoi
+  if [ -n "${cronctl_source}" ]; then
+    "${cronctl_chezmoi}" --source "${cronctl_source}" git -- "$@" </dev/null
+  else
+    "${cronctl_chezmoi}" git -- "$@" </dev/null
+  fi
 }
 
 # cronctl_template <template> <outfile>: render <template> against the chosen
@@ -433,31 +709,55 @@ cronctl_read_block() {
 # a <retire> line after stripping trailing whitespace are dropped (and listed
 # in <removed>). Every other line is kept byte for byte, in order. The live
 # block, if any, goes to <live-block>. Returns 1 on corrupt markers.
-cronctl_build_candidate() {
-  local live="$1" block="$2" retire="$3" candidate="$4" removed="$5" live_block="$6"
-  local line stripped n=0 begins=0 ends=0 begin_at=0 end_at=0 i keep
-  local retire_lines retire_count=0
-  retire_lines=()
-
+# cronctl_scan_markers <table>: sets cronctl_begins and cronctl_ends (marker
+# counts) and cronctl_begin_at and cronctl_end_at (line numbers of the one
+# pair, or 0 when there are no markers). Returns 1 unless the table has no
+# markers or exactly one BEGIN line followed by one END line.
+cronctl_scan_markers() {
+  local line n=0
+  cronctl_begins=0
+  cronctl_ends=0
+  cronctl_begin_at=0
+  cronctl_end_at=0
   while IFS= read -r line || [ -n "${line}" ]; do
     n=$((n + 1))
     if cronctl_is_begin "${line}"; then
-      begins=$((begins + 1))
-      begin_at="${n}"
+      cronctl_begins=$((cronctl_begins + 1))
+      cronctl_begin_at="${n}"
     elif cronctl_is_end "${line}"; then
-      ends=$((ends + 1))
-      end_at="${n}"
+      cronctl_ends=$((cronctl_ends + 1))
+      cronctl_end_at="${n}"
     fi
-  done <"${live}"
-
-  if [ "${begins}" -ne 0 ] || [ "${ends}" -ne 0 ]; then
-    if [ "${begins}" -ne 1 ] || [ "${ends}" -ne 1 ] || [ "${begin_at}" -gt "${end_at}" ]; then
-      printf 'cronctl: refusing to sync: the crontab has %s and %s; want exactly one "# BEGIN chezmoi-cron" line followed by one "# END chezmoi-cron" line (or neither). Fix the markers by hand (a backup of the table is advised), then rerun cronctl sync.\n' \
-        "$(cronctl_plural "${begins}" "BEGIN marker")" \
-        "$(cronctl_plural "${ends}" "END marker")" >&2
-      return 1
-    fi
+  done <"$1"
+  [ "${cronctl_begins}" -eq 0 ] && [ "${cronctl_ends}" -eq 0 ] && return 0
+  if [ "${cronctl_begins}" -ne 1 ] || [ "${cronctl_ends}" -ne 1 ] ||
+    [ "${cronctl_begin_at}" -gt "${cronctl_end_at}" ]; then
+    cronctl_begin_at=0
+    cronctl_end_at=0
+    return 1
   fi
+  return 0
+}
+
+cronctl_markers_problem() {
+  printf 'the crontab has %s and %s; want exactly one "# BEGIN chezmoi-cron" line followed by one "# END chezmoi-cron" line (or neither)' \
+    "$(cronctl_plural "${cronctl_begins}" "BEGIN marker")" \
+    "$(cronctl_plural "${cronctl_ends}" "END marker")"
+}
+
+cronctl_build_candidate() {
+  local live="$1" block="$2" retire="$3" candidate="$4" removed="$5" live_block="$6"
+  local line stripped n=0 begin_at end_at i keep
+  local retire_lines retire_count=0
+  retire_lines=()
+
+  if ! cronctl_scan_markers "${live}"; then
+    printf 'cronctl: refusing to sync: %s. Fix the markers by hand (a backup of the table is advised), then rerun cronctl sync.\n' \
+      "$(cronctl_markers_problem)" >&2
+    return 1
+  fi
+  begin_at="${cronctl_begin_at}"
+  end_at="${cronctl_end_at}"
 
   if [ -f "${retire}" ]; then
     while IFS= read -r line || [ -n "${line}" ]; do
@@ -1067,6 +1367,1535 @@ cronctl_cmd_sync() {
 }
 
 #############################
+#  Fleet: data              #
+#############################
+cronctl_is_sha() {
+  case "$1" in
+  '' | *[!0-9a-f]*) return 1 ;;
+  esac
+  [ "${#1}" -eq 40 ] || [ "${#1}" -eq 64 ]
+}
+
+# cronctl_oneline <text>: <text> on one line, whitespace squeezed, capped.
+cronctl_oneline() {
+  printf '%s\n' "$1" | tr '\n\t' '  ' |
+    sed -e 's/   */ /g' -e 's/^ //' -e 's/ $//' | cut -c 1-400
+}
+
+cronctl_flat_file() {
+  [ -f "$1" ] || return 0
+  cronctl_oneline "$(cat "$1")"
+}
+
+# cronctl_normalize <in> <out>: copy <in> with every line newline-terminated
+# (a missing <in> gives an empty <out>), so tables compare with cmp.
+cronctl_normalize() {
+  local line
+  : >"$2"
+  [ -f "$1" ] || return 0
+  while IFS= read -r line || [ -n "${line}" ]; do
+    printf '%s\n' "${line}"
+  done <"$1" >"$2"
+}
+
+# cronctl_same <a> <b>: whether two files hold the same lines (missing reads
+# as empty).
+cronctl_same() {
+  cronctl_normalize "$1" "${cronctl_tmp}/same.a"
+  cronctl_normalize "$2" "${cronctl_tmp}/same.b"
+  cmp -s "${cronctl_tmp}/same.a" "${cronctl_tmp}/same.b"
+}
+
+# cronctl_load_data: read the validated cron: data of the chosen source into
+#   cronctl_machines                  enrolled names, sorted, space-separated;
+#   cronctl_job_name/enabled/targets/command
+#                                     parallel arrays (enabled is true|false;
+#                                     targets is ",a,b," with [all] expanded);
+#   ${cronctl_tmp}/data.env           the cron.env lines, KEY=value;
+#   ${cronctl_tmp}/hosts.<machine>    its hostnames as ",h1,h2,";
+#   ${cronctl_tmp}/retire.<machine>   its cron.retire lines.
+cronctl_load_data() {
+  local out sep kind a b c d
+  [ "${cronctl_data_loaded}" = 1 ] && return 0
+  out="${cronctl_tmp}/data.out"
+  cronctl_template '{{- template "cron-validate" (dict "cron" .cron) -}}
+{{- $s := "\x1f" -}}
+{{- $c := .cron -}}
+{{- $all := keys $c.machines | sortAlpha -}}
+{{- range $m := $all -}}
+M{{ $s }}{{ $m }}{{ $s }},{{ join "," (index $c.machines $m) }},{{ "\n" }}
+{{- end -}}
+{{- range $k, $v := (index $c "env" | default (dict)) -}}
+E{{ $s }}{{ $k }}{{ $s }}{{ $v }}{{ "\n" }}
+{{- end -}}
+{{- range $job := (index $c "jobs" | default (list)) -}}
+{{-   $targets := $job.machines -}}
+{{-   if has "all" $job.machines }}{{ $targets = $all }}{{ end -}}
+J{{ $s }}{{ $job.name }}{{ $s }}{{ ne (index $job "enabled" | toString) "false" }}{{ $s }},{{ join "," $targets }},{{ $s }}{{ $job.command }}{{ "\n" }}
+{{- end -}}
+{{- range $m, $lines := (index $c "retire" | default (dict)) -}}
+{{-   range $line := ($lines | default (list)) -}}
+R{{ $s }}{{ $m }}{{ $s }}{{ $line }}{{ "\n" }}
+{{-   end -}}
+{{- end -}}' "${out}" || return $?
+
+  sep="$(printf '\037')"
+  cronctl_machines=
+  cronctl_job_count=0
+  : >"${cronctl_tmp}/data.env"
+  while IFS="${sep}" read -r kind a b c d || [ -n "${kind}" ]; do
+    case "${kind}" in
+    M)
+      cronctl_machines="${cronctl_machines}${cronctl_machines:+ }${a}"
+      printf '%s\n' "${b}" >"${cronctl_tmp}/hosts.${a}"
+      : >"${cronctl_tmp}/retire.${a}"
+      ;;
+    E) printf '%s=%s\n' "${a}" "${b}" >>"${cronctl_tmp}/data.env" ;;
+    J)
+      cronctl_job_name[cronctl_job_count]="${a}"
+      cronctl_job_enabled[cronctl_job_count]="${b}"
+      cronctl_job_targets[cronctl_job_count]="${c}"
+      cronctl_job_command[cronctl_job_count]="${d}"
+      cronctl_job_count=$((cronctl_job_count + 1))
+      ;;
+    R) printf '%s\n' "${b}" >>"${cronctl_tmp}/retire.${a}" ;;
+    esac
+  done <"${out}"
+  cronctl_data_loaded=1
+}
+
+# cronctl_add_name <list> <name>: print the space-separated <list> with
+# <name> appended unless it is already there.
+cronctl_add_name() {
+  case " $1 " in
+  *" $2 "*) printf '%s' "$1" ;;
+  *) printf '%s' "$1${1:+ }$2" ;;
+  esac
+}
+
+cronctl_is_enrolled() {
+  case " ${cronctl_machines} " in
+  *" $1 "*) return 0 ;;
+  esac
+  return 1
+}
+
+# cronctl_need_machine <name>: usage error unless <name> is enrolled.
+cronctl_need_machine() {
+  cronctl_valid_name "$1" ||
+    cronctl_die_usage "invalid machine name: '$1' (want ^[a-z0-9][a-z0-9-]*\$)"
+  cronctl_is_enrolled "$1" ||
+    cronctl_die_usage "unknown machine: '$1' (enrolled: $(printf '%s' "${cronctl_machines}" | sed 's/ /, /g'))"
+}
+
+# cronctl_job_index <name>: sets cronctl_j to the job's index, or returns 1.
+cronctl_job_index() {
+  local i=0
+  while [ "${i}" -lt "${cronctl_job_count}" ]; do
+    if [ "${cronctl_job_name[i]}" = "$1" ]; then
+      cronctl_j="${i}"
+      return 0
+    fi
+    i=$((i + 1))
+  done
+  return 1
+}
+
+# cronctl_job_runs_on <index> <machine>
+cronctl_job_runs_on() {
+  case "${cronctl_job_targets[$1]}" in
+  *",$2,"*) return 0 ;;
+  esac
+  return 1
+}
+
+cronctl_job_machines_text() {
+  local targets="${cronctl_job_targets[$1]}"
+  targets="${targets#,}"
+  targets="${targets%,}"
+  printf '%s' "${targets}" | sed 's/,/, /g'
+}
+
+# Sets cronctl_local to this host's canonical machine name, resolved through
+# the local chezmoi source (or --source when the local one cannot resolve),
+# or to nothing for a host that is not enrolled.
+cronctl_find_local() {
+  local saved="${cronctl_source}"
+  [ "${cronctl_local_known}" = 1 ] && return 0
+  cronctl_local=
+  cronctl_source=
+  if cronctl_resolve_local 2>"${cronctl_tmp}/local.err"; then
+    cronctl_local="${cronctl_machine}"
+  elif [ -n "${saved}" ]; then
+    cronctl_source="${saved}"
+    if cronctl_resolve_local 2>"${cronctl_tmp}/local.err"; then
+      cronctl_local="${cronctl_machine}"
+    fi
+  fi
+  cronctl_source="${saved}"
+  cronctl_local_known=1
+}
+
+# Prints origin's HEAD commit, read with `git ls-remote` from the chosen
+# chezmoi source, or returns 1.
+cronctl_origin_head() {
+  local out
+  out="$(cronctl_git ls-remote origin HEAD 2>"${cronctl_tmp}/ls-remote.err")" || return 1
+  out="${out%%[[:space:]]*}"
+  cronctl_is_sha "${out}" || return 1
+  printf '%s\n' "${out}"
+}
+
+#############################
+#  Fleet: remote execution  #
+#############################
+# cronctl_quote <value>: <value> single-quoted for bash.
+cronctl_quote() {
+  printf "'%s'" "$(printf '%s\n' "$1" | sed "s/'/'\\\\''/g")"
+}
+
+# cronctl_on_target <machine> <routine> [<arg>...]: run an internal routine
+# for <machine>. This machine runs it in a subshell; any other machine runs it
+# with `ssh ... <machine> bash -s -- <routine> <args>`, streaming the shell
+# assignments in ${cronctl_payload} and then this script on stdin. Since the
+# remote bash reads the script from stdin as it runs, no routine's child may
+# read stdin. Call cronctl_find_local first. Returns the routine's exit code,
+# or 255 when SSH could not reach the machine.
+cronctl_on_target() {
+  local machine="$1" script arg
+  shift
+  for arg in "$@"; do
+    case "${arg}" in
+    '' | *[!A-Za-z0-9_.=-]*)
+      printf 'cronctl: internal error: unsafe routine argument: %s\n' "${arg}" >&2
+      return 2
+      ;;
+    esac
+  done
+  if [ -n "${cronctl_local}" ] && [ "${machine}" = "${cronctl_local}" ]; then
+    (
+      eval "${cronctl_payload}"
+      main "$@"
+    ) </dev/null
+    return $?
+  fi
+  script="${BASH_SOURCE[0]}"
+  if [ -z "${script}" ] || [ ! -f "${script}" ] || [ ! -r "${script}" ]; then
+    printf 'cronctl: cannot read this script (%s) to stream it to %s\n' "${script:-stdin}" \
+      "${machine}" >&2
+    return 1
+  fi
+  {
+    [ -z "${cronctl_payload}" ] || printf '%s\n' "${cronctl_payload}"
+    cat "${script}"
+  } | ssh -o BatchMode=yes -o ConnectTimeout=8 "${machine}" bash -s -- "$@"
+}
+
+# cronctl_on_targets <dir> <routine> [<arg>...]: run a routine for every
+# machine in cronctl_targets at once, keeping each one's answer, stderr, and
+# exit code in <dir>/<machine>.out, .err, and .rc. "{machine}" in an
+# argument stands for the target's name.
+cronctl_on_targets() {
+  local dir="$1" machine i=0 pids args arg
+  shift
+  pids=()
+  mkdir -p "${dir}" || return 1
+  for machine in ${cronctl_targets}; do
+    args=()
+    for arg in "$@"; do
+      [ "${arg}" = "{machine}" ] && arg="${machine}"
+      args[${#args[@]}]="${arg}"
+    done
+    cronctl_on_target "${machine}" "${args[@]}" >"${dir}/${machine}.out" \
+      2>"${dir}/${machine}.err" &
+    pids[i]=$!
+    i=$((i + 1))
+  done
+  i=0
+  for machine in ${cronctl_targets}; do
+    wait "${pids[i]}"
+    printf '%s\n' "$?" >"${dir}/${machine}.rc"
+    i=$((i + 1))
+  done
+}
+
+# cronctl_parse_answer <answer> <dir>: split a routine's answer into
+# <dir>/kv (its key=value lines) and <dir>/sec.<name> (each section's lines).
+cronctl_parse_answer() {
+  local line section=""
+  mkdir -p "$2" || return 1
+  : >"$2/kv"
+  [ -f "$1" ] || return 0
+  while IFS= read -r line || [ -n "${line}" ]; do
+    case "${line}" in
+    '|'*)
+      [ -z "${section}" ] || printf '%s\n' "${line#|}" >>"$2/sec.${section}"
+      ;;
+    '>'*)
+      section="${line#>}"
+      case "${section}" in
+      '' | *[!a-z0-9._-]*) section="" ;;
+      *) : >"$2/sec.${section}" ;;
+      esac
+      ;;
+    *=*) printf '%s\n' "${line}" >>"$2/kv" ;;
+    esac
+  done <"$1"
+}
+
+# cronctl_kv <dir> <key>: the last value of <key> in a parsed answer.
+cronctl_kv() {
+  [ -f "$1/kv" ] || return 0
+  sed -n "s/^$2=//p" "$1/kv" | tail -n 1
+}
+
+# cronctl_file_kv <file> <key>: the last value of <key> in a key=value file.
+cronctl_file_kv() {
+  [ -f "$1" ] || return 0
+  sed -n "s/^$2=//p" "$1" | tail -n 1
+}
+
+#############################
+#  Fleet: target routines   #
+#############################
+# These run on the target machine (see cronctl_on_target) and answer in
+# key=value lines, ">section" headers followed by "|"-prefixed lines, and a
+# final end=1. They never exit 255, which means "unreachable" to the caller.
+cronctl_emit() {
+  printf '%s=%s\n' "$1" "$(cronctl_oneline "$2")"
+}
+
+# cronctl_emit_section <name> <file>: ">name", then each line of <file>
+# prefixed with "|" (none for a missing file).
+cronctl_emit_section() {
+  local line
+  printf '>%s\n' "$1"
+  [ -f "$2" ] || return 0
+  while IFS= read -r line || [ -n "${line}" ]; do
+    printf '|%s\n' "${line}"
+  done <"$2"
+}
+
+cronctl_os() {
+  printf '%s' "${CRONCTL_OS:-$(uname -s 2>/dev/null)}"
+}
+
+# This host's name as chezmoi reports it, without asking chezmoi.
+cronctl_plain_hostname() {
+  local host="${CRONCTL_HOSTNAME:-}"
+  [ -n "${host}" ] || host="$(uname -n 2>/dev/null)"
+  printf '%s' "${host%%.*}"
+}
+
+cronctl_timezone() {
+  local link zone=""
+  link="$(readlink /etc/localtime 2>/dev/null)"
+  case "${link}" in
+  *zoneinfo/*) zone="${link##*zoneinfo/}" ;;
+  esac
+  [ -n "${zone}" ] || zone="${TZ:-}"
+  if [ -z "${zone}" ] && [ -r /etc/timezone ]; then
+    zone="$(head -n 1 /etc/timezone)"
+  fi
+  [ -n "${zone}" ] || zone="$(date +%Z)"
+  printf '%s (UTC%s)' "${zone}" "$(date +%z)"
+}
+
+# cronctl_state_source <origin>: emit head, dirty, and source (the relation of
+# HEAD to origin's HEAD: current, ahead, behind, diverged, or unknown).
+cronctl_state_source() {
+  local origin="$1" head dirty relation
+  head="$(cronctl_git rev-parse HEAD 2>/dev/null)" || head=
+  if ! cronctl_is_sha "${head}"; then
+    cronctl_emit source unknown
+    return 0
+  fi
+  cronctl_emit head "${head}"
+  dirty="$(cronctl_git status --porcelain 2>/dev/null | wc -l)"
+  cronctl_emit dirty "$((dirty + 0))"
+  if [ -z "${origin}" ]; then
+    relation=unknown
+  elif [ "${head}" = "${origin}" ]; then
+    relation=current
+  elif ! cronctl_git cat-file -e "${origin}^{commit}" >/dev/null 2>&1; then
+    # origin's HEAD was never fetched here.
+    relation=behind
+  elif cronctl_git merge-base --is-ancestor "${origin}" HEAD >/dev/null 2>&1; then
+    relation=ahead
+  elif cronctl_git merge-base --is-ancestor HEAD "${origin}" >/dev/null 2>&1; then
+    relation=behind
+  else
+    relation=diverged
+  fi
+  cronctl_emit source "${relation}"
+}
+
+# Lists the other schedulers, read-only: systemd user timers on Linux, and
+# LaunchAgents that are not Apple's on macOS.
+cronctl_list_schedulers() {
+  local dir plist label loaded found=0 out
+  case "$(cronctl_os)" in
+  Darwin)
+    for dir in "${HOME}/Library/LaunchAgents" /Library/LaunchAgents; do
+      for plist in "${dir}"/*.plist; do
+        [ -f "${plist}" ] || continue
+        label="${plist##*/}"
+        label="${label%.plist}"
+        case "${label}" in
+        com.apple.*) continue ;;
+        esac
+        found=1
+        loaded="not loaded"
+        if launchctl list "${label}" </dev/null >/dev/null 2>&1; then
+          loaded="loaded"
+        fi
+        printf 'launchd %s (%s; %s)\n' "${label}" "${loaded}" "${plist}"
+      done
+    done
+    [ "${found}" = 1 ] || printf '(no non-Apple LaunchAgents)\n'
+    ;;
+  *)
+    if ! command -v systemctl >/dev/null 2>&1; then
+      printf '(no systemctl)\n'
+      return 0
+    fi
+    out="$(XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}" \
+      systemctl --user list-timers --all --no-pager --no-legend </dev/null 2>&1)" || {
+      printf 'systemctl --user list-timers failed: %s\n' "$(cronctl_oneline "${out}")"
+      return 0
+    }
+    if [ -z "${out}" ]; then
+      printf '(no systemd user timers)\n'
+    else
+      # NEXT LEFT LAST PASSED UNIT ACTIVATES: lead with the unit.
+      printf '%s\n' "${out}" | awk 'NF >= 2 {
+        unit = $(NF - 1); service = $NF; $NF = ""; $(NF - 1) = ""; sub(/ +$/, "")
+        printf "systemd %s (activates %s; next, left, last, passed: %s)\n", unit, service, $0
+      }'
+    fi
+    ;;
+  esac
+}
+
+# __state [--origin SHA] [--schedulers]: this machine's facts for status and
+# diff. Reads only; changes nothing.
+cronctl_internal_state() {
+  local origin="" schedulers=0 err f job resolved=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+    --origin)
+      [ "$#" -ge 2 ] || cronctl_die_usage "--origin needs a commit"
+      cronctl_is_sha "$2" || cronctl_die_usage "--origin: not a commit id: $2"
+      origin="$2"
+      shift
+      ;;
+    --schedulers) schedulers=1 ;;
+    *) cronctl_die_usage "unexpected argument: $1" ;;
+    esac
+    shift
+  done
+  err="${cronctl_tmp}/state.err"
+  printf 'proto=1\n'
+  cronctl_emit os "$(cronctl_os)"
+  cronctl_emit tz "$(cronctl_timezone)"
+
+  # Identity: this host's name and the machine its own cron: data makes it.
+  if ! cronctl_locate_chezmoi; then
+    cronctl_emit chezmoi missing
+    cronctl_emit hostname "$(cronctl_plain_hostname)"
+  else
+    if cronctl_resolve_local 2>"${err}"; then
+      resolved=1
+      cronctl_emit hostname "${cronctl_hostname}"
+      cronctl_emit machine "${cronctl_machine}"
+      printf 'resolved=1\n'
+    else
+      cronctl_emit resolve_error "$(cronctl_flat_file "${err}")"
+      cronctl_emit hostname "$(cronctl_plain_hostname)"
+    fi
+    cronctl_state_source "${origin}"
+  fi
+
+  if cronctl_read_crontab "${cronctl_tmp}/live" 2>"${err}"; then
+    cronctl_emit_section crontab "${cronctl_tmp}/live"
+  else
+    cronctl_emit crontab_error "$(cronctl_flat_file "${err}")"
+  fi
+  if [ -f "${HOME}/.config/cron/managed.crontab" ]; then
+    printf 'managed=present\n'
+    cronctl_emit_section managed "${HOME}/.config/cron/managed.crontab"
+  else
+    printf 'managed=missing\n'
+  fi
+  cronctl_emit_section retire_deployed "${HOME}/.config/cron/retire.crontab"
+
+  # What this machine's own source wants, to tell "not applied" apart.
+  if [ "${resolved}" = 1 ] && [ -n "${cronctl_machine}" ]; then
+    if cronctl_template "{{ template \"cron-block\" (dict \"machine\" \"${cronctl_machine}\" \"cron\" .cron) }}" \
+      "${cronctl_tmp}/desired" 2>"${err}" &&
+      cronctl_template "{{ template \"cron-retire\" (dict \"machine\" \"${cronctl_machine}\" \"cron\" .cron) }}" \
+        "${cronctl_tmp}/desired_retire" 2>"${err}"; then
+      cronctl_emit_section desired "${cronctl_tmp}/desired"
+      cronctl_emit_section desired_retire "${cronctl_tmp}/desired_retire"
+    else
+      cronctl_emit desired_error "$(cronctl_flat_file "${err}")"
+    fi
+  fi
+
+  for f in "${cronctl_state_dir}"/*.status; do
+    [ -f "${f}" ] || continue
+    job="${f##*/}"
+    job="${job%.status}"
+    cronctl_valid_name "${job}" || continue
+    cronctl_emit_section "status.${job}" "${f}"
+  done
+
+  if [ "${schedulers}" = 1 ]; then
+    cronctl_list_schedulers >"${cronctl_tmp}/schedulers" 2>&1
+    cronctl_emit_section schedulers "${cronctl_tmp}/schedulers"
+  fi
+  printf 'end=1\n'
+}
+
+cronctl_apply_result() {
+  cronctl_emit result "$1"
+  cronctl_emit detail "$2"
+  printf 'end=1\n'
+}
+
+# __apply <rev> <machine>: converge this machine to <rev> (see apply --help).
+cronctl_internal_apply() {
+  local rev="$1" want="$2" head pull_rc=0 rc=0 out err live
+  [ "$#" -eq 2 ] || cronctl_die_usage "usage: __apply <rev> <machine>"
+  cronctl_is_sha "${rev}" || cronctl_die_usage "not a commit id: ${rev}"
+  cronctl_valid_name "${want}" || cronctl_die_usage "invalid machine name: ${want}"
+  out="${cronctl_tmp}/apply.out"
+  err="${cronctl_tmp}/apply.err"
+  live="${cronctl_tmp}/live"
+  printf 'proto=1\n'
+  cronctl_emit os "$(cronctl_os)"
+  if ! cronctl_locate_chezmoi; then
+    cronctl_apply_result failed "chezmoi not found (looked on PATH, ~/.nix-profile/bin, /opt/homebrew/bin, /usr/local/bin, ~/bin, ~/go/bin, ~/.local/bin)"
+    return 0
+  fi
+
+  # 1-2. Pull, then require <rev> in HEAD.
+  cronctl_git pull --ff-only >"${out}" 2>&1 || pull_rc=$?
+  head="$(cronctl_git rev-parse HEAD 2>/dev/null)" || head=
+  cronctl_emit head "${head}"
+  if ! cronctl_git merge-base --is-ancestor "${rev}" HEAD >/dev/null 2>&1; then
+    if [ "${pull_rc}" -ne 0 ]; then
+      cronctl_apply_result failed "git pull --ff-only failed (exit ${pull_rc}): $(cronctl_flat_file "${out}")"
+    else
+      cronctl_apply_result failed "the chezmoi source HEAD (${head:-unknown}) does not contain ${rev} after git pull --ff-only; is the checkout on another branch?"
+    fi
+    return 0
+  fi
+  if [ "${pull_rc}" -ne 0 ]; then
+    cronctl_emit note "git pull --ff-only failed, but HEAD already contains the revision: $(cronctl_flat_file "${out}")"
+  fi
+
+  # 3. Identity, through this machine's own data.
+  if ! cronctl_resolve_local 2>"${err}"; then
+    cronctl_apply_result failed "cannot resolve this host through its cron: data: $(cronctl_flat_file "${err}")"
+    return 0
+  fi
+  cronctl_emit hostname "${cronctl_hostname}"
+  cronctl_emit machine "${cronctl_machine}"
+  if [ "${cronctl_machine}" != "${want}" ]; then
+    cronctl_apply_result identity_mismatch "this host (${cronctl_hostname}) is ${cronctl_machine:-not enrolled} in its own cron: data, not ${want}; nothing was applied"
+    return 0
+  fi
+
+  # 4-5. A targeted apply: v2.13.1 needs the parent directories to exist.
+  if ! mkdir -p "${HOME}/.config/cron" "${HOME}/bin" 2>"${err}"; then
+    cronctl_apply_result failed "mkdir failed: $(cronctl_flat_file "${err}")"
+    return 0
+  fi
+  if ! "${cronctl_chezmoi}" apply --force "${HOME}/.config/cron" "${HOME}/bin/cronctl" \
+    "${HOME}/bin/cronrun" </dev/null >"${out}" 2>&1; then
+    cronctl_apply_result failed "chezmoi apply failed: $(cronctl_flat_file "${out}")"
+    return 0
+  fi
+
+  # 6. A targeted apply runs no hooks, so sync explicitly.
+  if [ ! -x "${HOME}/bin/cronctl" ]; then
+    cronctl_apply_result failed "chezmoi apply did not deploy ${HOME}/bin/cronctl"
+    return 0
+  fi
+  "${HOME}/bin/cronctl" sync </dev/null >"${out}" 2>"${err}" || rc=$?
+  cronctl_emit_section sync_out "${out}"
+  cronctl_emit_section sync_err "${err}"
+  if [ "${rc}" -ne 0 ]; then
+    cronctl_apply_result failed "cronctl sync failed (exit ${rc})"
+    return 0
+  fi
+
+  # 7. Verify: the live block is the deployed one.
+  if [ ! -f "${HOME}/.config/cron/managed.crontab" ]; then
+    cronctl_apply_result failed "${HOME}/.config/cron/managed.crontab is missing after chezmoi apply"
+    return 0
+  fi
+  if ! cronctl_read_crontab "${live}" 2>"${err}"; then
+    cronctl_apply_result failed "cannot read the crontab back: $(cronctl_flat_file "${err}")"
+    return 0
+  fi
+  if ! cronctl_split_table "${live}" "${cronctl_tmp}/live.block" "${cronctl_tmp}/live.outside" ||
+    ! cronctl_same "${cronctl_tmp}/live.block" "${HOME}/.config/cron/managed.crontab"; then
+    cronctl_apply_result failed "the live block still differs from ~/.config/cron/managed.crontab after cronctl sync"
+    return 0
+  fi
+  if [ -s "${out}" ]; then
+    cronctl_apply_result in_sync "$(head -n 1 "${out}")"
+  else
+    cronctl_apply_result in_sync "the crontab already matched"
+  fi
+}
+
+# __logs <job> <lines>: the tail of the job's log, across its rotation.
+cronctl_internal_logs() {
+  local job="$1" lines="$2" log
+  [ "$#" -eq 2 ] || cronctl_die_usage "usage: __logs <job> <lines>"
+  cronctl_valid_name "${job}" || cronctl_die_usage "invalid job name: ${job}"
+  log="${cronctl_state_dir}/${job}.log"
+  if [ ! -f "${log}" ] && [ ! -f "${log}.1" ]; then
+    printf 'cronctl: no log for %s on %s (%s)\n' "${job}" "$(cronctl_plain_hostname)" \
+      "${log}" >&2
+    return 1
+  fi
+  printf '==> %s on %s <==\n' "${log}" "$(cronctl_plain_hostname)" >&2
+  {
+    [ ! -f "${log}.1" ] || cat "${log}.1"
+    [ ! -f "${log}" ] || cat "${log}"
+  } | tail -n "${lines}"
+}
+
+# __run <job>: run "$HOME/bin/cronrun" <job> "$CRONCTL_RUN_COMMAND" the way
+# cron does: /bin/sh, cron's minimal environment, then $CRONCTL_RUN_ENV.
+cronctl_internal_run() {
+  local job="$1" command="${CRONCTL_RUN_COMMAND:-}" line rc=0 env_args
+  [ "$#" -eq 1 ] || cronctl_die_usage "usage: __run <job>"
+  cronctl_valid_name "${job}" || cronctl_die_usage "invalid job name: ${job}"
+  [ -n "${command}" ] || cronctl_die_usage "no command for ${job}"
+  if [ ! -x "${HOME}/bin/cronrun" ]; then
+    cronctl_die "${HOME}/bin/cronrun is missing on $(cronctl_plain_hostname); run cronctl apply there first"
+  fi
+  env_args=("HOME=${HOME}" "LOGNAME=${LOGNAME:-${USER:-$(id -un)}}"
+  "USER=${USER:-${LOGNAME:-$(id -un)}}" "SHELL=/bin/sh" "PATH=/usr/bin:/bin")
+  while IFS= read -r line; do
+    [ -n "${line}" ] && env_args[${#env_args[@]}]="${line}"
+  done <<EOF
+${CRONCTL_RUN_ENV:-}
+EOF
+  env -i "${env_args[@]}" /bin/sh -c '"$HOME/bin/cronrun" "$1" "$2"' sh "${job}" \
+    "${command}" </dev/null || rc=$?
+  if [ "${rc}" -eq 255 ]; then
+    printf 'cronctl: %s exited 255; reporting 1 so that it does not read as an unreachable machine\n' \
+      "${job}" >&2
+    rc=1
+  fi
+  return "${rc}"
+}
+
+#############################
+#  Fleet: table analysis    #
+#############################
+# cronctl_split_table <table> <inside> <outside>: write the marked block
+# (empty when there is none) and every other line. Sets cronctl_has_block.
+# Returns 1 on corrupt markers.
+cronctl_split_table() {
+  local line n=0
+  : >"$2"
+  : >"$3"
+  cronctl_has_block=0
+  cronctl_scan_markers "$1" || return 1
+  [ "${cronctl_begin_at}" -eq 0 ] || cronctl_has_block=1
+  while IFS= read -r line || [ -n "${line}" ]; do
+    n=$((n + 1))
+    if [ "${cronctl_has_block}" = 1 ] && [ "${n}" -ge "${cronctl_begin_at}" ] &&
+      [ "${n}" -le "${cronctl_end_at}" ]; then
+      printf '%s\n' "${line}" >>"$2"
+    else
+      printf '%s\n' "${line}" >>"$3"
+    fi
+  done <"$1"
+}
+
+# cronctl_sort_outside <outside> <retire> <unmanaged> <present>: split the
+# lines outside the block into the retire lines still present (exact matches
+# after stripping trailing whitespace, as sync compares them) and the other
+# non-blank, non-comment lines. Sets cronctl_comment_count.
+cronctl_sort_outside() {
+  local line stripped trimmed retire matched
+  : >"$3"
+  : >"$4"
+  cronctl_comment_count=0
+  while IFS= read -r line || [ -n "${line}" ]; do
+    stripped="${line%"${line##*[![:space:]]}"}"
+    matched=0
+    if [ -n "${stripped}" ] && [ -s "$2" ]; then
+      while IFS= read -r retire || [ -n "${retire}" ]; do
+        retire="${retire%"${retire##*[![:space:]]}"}"
+        if [ -n "${retire}" ] && [ "${retire}" = "${stripped}" ]; then
+          matched=1
+          break
+        fi
+      done <"$2"
+    fi
+    if [ "${matched}" = 1 ]; then
+      printf '%s\n' "${line}" >>"$4"
+      continue
+    fi
+    trimmed="${stripped#"${stripped%%[![:space:]]*}"}"
+    case "${trimmed}" in
+    '' | '#'*) cronctl_comment_count=$((cronctl_comment_count + 1)) ;;
+    *) printf '%s\n' "${line}" >>"$3" ;;
+    esac
+  done <"$1"
+}
+
+# cronctl_check_identity <machine> <dir>: whether the host that answered for
+# <machine> is it: through the host's own data when that resolved, else by
+# its hostname in the data here. Sets cronctl_identity_note when not.
+cronctl_check_identity() {
+  local machine="$1" dir="$2" seen host
+  cronctl_identity_note=
+  host="$(cronctl_kv "${dir}" hostname)"
+  if [ "$(cronctl_kv "${dir}" resolved)" = 1 ]; then
+    seen="$(cronctl_kv "${dir}" machine)"
+    [ "${seen}" = "${machine}" ] && return 0
+    cronctl_identity_note="the host answering for ${machine} (${host}) is ${seen:-not enrolled} in its own cron: data"
+    return 1
+  fi
+  case "$(cat "${cronctl_tmp}/hosts.${machine}" 2>/dev/null)" in
+  *",${host},"*) return 0 ;;
+  esac
+  cronctl_identity_note="the host answering for ${machine} (${host}) is not among its hostnames in cron.machines"
+  return 1
+}
+
+# cronctl_assess <machine> <dir>: classify the __state answer in
+# <dir>/<machine>.{out,err,rc} into <dir>/<machine>.d/: state, reachable,
+# notes, unmanaged, and present (retire lines still outside the block).
+cronctl_assess() {
+  local machine="$1" d="$2/$1.d" rc state="" relation live
+  rc="$(cat "$2/${machine}.rc" 2>/dev/null)"
+  cronctl_has_block=0
+  mkdir -p "${d}"
+  : >"${d}/notes"
+  : >"${d}/unmanaged"
+  : >"${d}/present"
+  : >"${d}/kv"
+  if [ "${rc:-1}" -eq 255 ]; then
+    printf '0\n' >"${d}/reachable"
+    printf 'unreachable over SSH: %s\n' "$(cronctl_flat_file "$2/${machine}.err")" >>"${d}/notes"
+    printf 'pending\n' >"${d}/state"
+    return 0
+  fi
+  printf '1\n' >"${d}/reachable"
+  cronctl_parse_answer "$2/${machine}.out" "${d}"
+  live="${d}/sec.crontab"
+  relation="$(cronctl_kv "${d}" source)"
+
+  if [ "${rc:-1}" -ne 0 ] || [ "$(cronctl_kv "${d}" end)" != 1 ]; then
+    printf 'cronctl could not read %s (exit %s): %s\n' "${machine}" "${rc:-?}" \
+      "$(cronctl_flat_file "$2/${machine}.err")" >>"${d}/notes"
+    state=failed
+  elif [ "$(cronctl_kv "${d}" chezmoi)" = missing ]; then
+    printf 'chezmoi not found on %s\n' "${machine}" >>"${d}/notes"
+    state=failed
+  elif [ -n "$(cronctl_kv "${d}" crontab_error)" ]; then
+    printf 'crontab -l failed: %s\n' "$(cronctl_kv "${d}" crontab_error)" >>"${d}/notes"
+    state=failed
+  elif ! cronctl_check_identity "${machine}" "${d}"; then
+    printf '%s\n' "${cronctl_identity_note}" >>"${d}/notes"
+    state=identity_mismatch
+  elif [ "$(cronctl_kv "${d}" resolved)" != 1 ]; then
+    printf 'its chezmoi source cannot resolve the host: %s\n' \
+      "$(cronctl_kv "${d}" resolve_error)" >>"${d}/notes"
+    if [ "${relation}" = behind ]; then
+      printf 'its chezmoi source is behind origin; run cronctl apply %s\n' "${machine}" >>"${d}/notes"
+      state=pending
+    else
+      state=failed
+    fi
+  fi
+
+  if [ -f "${live}" ]; then
+    if cronctl_split_table "${live}" "${d}/inside" "${d}/outside"; then
+      cronctl_sort_outside "${d}/outside" "${cronctl_tmp}/retire.${machine}" \
+        "${d}/unmanaged" "${d}/present"
+    elif [ -z "${state}" ]; then
+      printf '%s\n' "$(cronctl_markers_problem)" >>"${d}/notes"
+      state=failed
+    fi
+  fi
+
+  if [ -z "${state}" ]; then
+    case "${relation}" in
+    behind)
+      printf 'its chezmoi source is behind origin; run cronctl apply %s\n' "${machine}" >>"${d}/notes"
+      state=pending
+      ;;
+    diverged)
+      printf 'its chezmoi source has diverged from origin; git pull --ff-only cannot converge it, so fix that checkout by hand\n' >>"${d}/notes"
+      state=pending
+      ;;
+    esac
+  fi
+  if [ -z "${state}" ]; then
+    if [ "$(cronctl_kv "${d}" managed)" != present ]; then
+      printf 'managed.crontab in ~/.config/cron is missing (not applied); run cronctl apply %s\n' \
+        "${machine}" >>"${d}/notes"
+      state=pending
+    elif [ -n "$(cronctl_kv "${d}" desired_error)" ]; then
+      printf 'its chezmoi source cannot render its block: %s\n' \
+        "$(cronctl_kv "${d}" desired_error)" >>"${d}/notes"
+      state=failed
+    elif ! cronctl_same "${d}/sec.desired" "${d}/sec.managed" ||
+      ! cronctl_same "${d}/sec.desired_retire" "${d}/sec.retire_deployed"; then
+      printf 'the files in ~/.config/cron do not match its chezmoi source (not applied); run cronctl apply %s\n' \
+        "${machine}" >>"${d}/notes"
+      state=pending
+    fi
+  fi
+  if [ -z "${state}" ] && [ "${cronctl_has_block}" != 1 ]; then
+    printf 'the crontab has no managed block yet; run cronctl apply %s\n' "${machine}" >>"${d}/notes"
+    state=unmanaged
+  fi
+  if [ -z "${state}" ]; then
+    cronctl_build_candidate "${live}" "${d}/sec.managed" "${d}/sec.retire_deployed" \
+      "${d}/candidate" "${d}/removed" "${d}/live.block" 2>/dev/null
+    if cmp -s "${live}" "${d}/candidate"; then
+      state=in_sync
+    else
+      if ! cronctl_same "${d}/live.block" "${d}/sec.managed"; then
+        printf 'the live block differs from the deployed managed.crontab (a hand edit inside the block?); cronctl sync would overwrite it\n' \
+          >>"${d}/notes"
+      fi
+      if [ -s "${d}/removed" ]; then
+        printf 'deployed retire lines are back outside the block; cronctl sync would remove them\n' >>"${d}/notes"
+      fi
+      state=drifted
+    fi
+  fi
+  printf '%s\n' "${state}" >"${d}/state"
+}
+
+#############################
+#  status                   #
+#############################
+cronctl_json_str() {
+  local s="$1"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  s="${s//${cronctl_tab}/\\t}"
+  s="${s//${cronctl_cr}/\\r}"
+  case "${s}" in
+  *[[:cntrl:]]*) s="$(printf '%s' "${s}" | tr -d '\000-\037')" ;;
+  esac
+  printf '"%s"' "${s}"
+}
+
+cronctl_json_str_or_null() {
+  if [ -n "$1" ]; then
+    cronctl_json_str "$1"
+  else
+    printf 'null'
+  fi
+}
+
+cronctl_json_num_or_null() {
+  case "$1" in
+  '' | *[!0-9]*) printf 'null' ;;
+  *) printf '%s' "$1" ;;
+  esac
+}
+
+# cronctl_json_lines <file>: the file's lines as a JSON array of strings.
+cronctl_json_lines() {
+  local line sep=""
+  printf '['
+  if [ -f "$1" ]; then
+    while IFS= read -r line || [ -n "${line}" ]; do
+      printf '%s%s' "${sep}" "$(cronctl_json_str "${line}")"
+      sep=", "
+    done <"$1"
+  fi
+  printf ']'
+}
+
+cronctl_relation_text() {
+  case "$1" in
+  current) printf "at origin's HEAD" ;;
+  ahead) printf 'ahead of origin' ;;
+  behind) printf 'behind origin' ;;
+  diverged) printf 'diverged from origin' ;;
+  *) printf 'origin unknown' ;;
+  esac
+}
+
+# cronctl_last_run_text <status file>
+cronctl_last_run_text() {
+  local start end code pid host
+  if [ ! -f "$1" ]; then
+    printf 'never run here'
+    return 0
+  fi
+  start="$(cronctl_file_kv "$1" start)"
+  end="$(cronctl_file_kv "$1" end)"
+  code="$(cronctl_file_kv "$1" exit)"
+  pid="$(cronctl_file_kv "$1" pid)"
+  host="$(cronctl_file_kv "$1" host)"
+  if [ -z "${end}" ]; then
+    printf 'running since %s (pid %s on %s)' "${start}" "${pid}" "${host}"
+  else
+    printf 'last run %s to %s, exit %s' "${start}" "${end}" "${code}"
+  fi
+}
+
+cronctl_print_status_text() {
+  local m="$1" d="$2/$1.d" state head dirty i n note line
+  state="$(cat "${d}/state")"
+  printf '%s: %s\n' "${m}" "${state}"
+  while IFS= read -r note; do
+    printf '  note: %s\n' "${note}"
+  done <"${d}/notes"
+  [ "$(cat "${d}/reachable")" = 1 ] || return 0
+  printf '  host: %s (%s), timezone %s\n' "$(cronctl_kv "${d}" hostname)" \
+    "$(cronctl_kv "${d}" os)" "$(cronctl_kv "${d}" tz)"
+  head="$(cronctl_kv "${d}" head)"
+  if [ -n "${head}" ]; then
+    dirty="$(cronctl_kv "${d}" dirty)"
+    printf '  source: %s, %s%s\n' "${head}" "$(cronctl_relation_text "$(cronctl_kv "${d}" source)")" \
+      "$([ "${dirty:-0}" = 0 ] || printf ', %s uncommitted changes' "${dirty}")"
+  fi
+  [ -f "${d}/sec.crontab" ] || return 0
+  n="$(cronctl_line_count "${d}/unmanaged")"
+  if [ "${n}" -eq 0 ]; then
+    printf '  unmanaged lines outside the block: none\n'
+  else
+    printf '  unmanaged lines outside the block (%s):\n' "${n}"
+    while IFS= read -r line; do
+      printf '    %s\n' "${line}"
+    done <"${d}/unmanaged"
+  fi
+  n="$(cronctl_line_count "${d}/present")"
+  if [ "${n}" -gt 0 ]; then
+    printf '  retire lines still present (%s):\n' "${n}"
+    while IFS= read -r line; do
+      printf '    %s\n' "${line}"
+    done <"${d}/present"
+  elif [ -s "${cronctl_tmp}/retire.${m}" ]; then
+    printf '  retire lines still present: none\n'
+  fi
+  i=0
+  n=0
+  while [ "${i}" -lt "${cronctl_job_count}" ]; do
+    if cronctl_job_runs_on "${i}" "${m}"; then
+      [ "${n}" -gt 0 ] || printf '  jobs:\n'
+      n=$((n + 1))
+      printf '    %s%s: %s\n' "${cronctl_job_name[i]}" \
+        "$([ "${cronctl_job_enabled[i]}" = true ] || printf ' (disabled)')" \
+        "$(cronctl_last_run_text "${d}/sec.status.${cronctl_job_name[i]}")"
+    fi
+    i=$((i + 1))
+  done
+  [ "${n}" -gt 0 ] || printf '  jobs: none\n'
+  if [ -f "${d}/sec.schedulers" ]; then
+    printf '  other schedulers (read-only):\n'
+    while IFS= read -r line; do
+      printf '    %s\n' "${line}"
+    done <"${d}/sec.schedulers"
+  fi
+}
+
+cronctl_print_status_json_machine() {
+  local m="$1" d="$2/$1.d" status i sep=""
+  printf '    {\n'
+  printf '      "machine": %s,\n' "$(cronctl_json_str "${m}")"
+  printf '      "state": %s,\n' "$(cronctl_json_str "$(cat "${d}/state")")"
+  if [ "$(cat "${d}/reachable")" = 1 ]; then
+    printf '      "reachable": true,\n'
+  else
+    printf '      "reachable": false,\n'
+  fi
+  printf '      "hostname": %s,\n' "$(cronctl_json_str_or_null "$(cronctl_kv "${d}" hostname)")"
+  printf '      "os": %s,\n' "$(cronctl_json_str_or_null "$(cronctl_kv "${d}" os)")"
+  printf '      "timezone": %s,\n' "$(cronctl_json_str_or_null "$(cronctl_kv "${d}" tz)")"
+  printf '      "source": {"head": %s, "relation": %s, "dirty": %s},\n' \
+    "$(cronctl_json_str_or_null "$(cronctl_kv "${d}" head)")" \
+    "$(cronctl_json_str_or_null "$(cronctl_kv "${d}" source)")" \
+    "$(cronctl_json_num_or_null "$(cronctl_kv "${d}" dirty)")"
+  printf '      "notes": %s,\n' "$(cronctl_json_lines "${d}/notes")"
+  printf '      "unmanaged_lines": %s,\n' "$(cronctl_json_lines "${d}/unmanaged")"
+  printf '      "retire_present": %s,\n' "$(cronctl_json_lines "${d}/present")"
+  printf '      "jobs": ['
+  i=0
+  while [ "${i}" -lt "${cronctl_job_count}" ]; do
+    if cronctl_job_runs_on "${i}" "${m}"; then
+      status="${d}/sec.status.${cronctl_job_name[i]}"
+      printf '%s\n        {"name": %s, "enabled": %s, "last_run": ' "${sep}" \
+        "$(cronctl_json_str "${cronctl_job_name[i]}")" "${cronctl_job_enabled[i]}"
+      if [ -f "${status}" ]; then
+        printf '{"host": %s, "pid": %s, "start": %s, "end": %s, "exit": %s}}' \
+          "$(cronctl_json_str_or_null "$(cronctl_file_kv "${status}" host)")" \
+          "$(cronctl_json_num_or_null "$(cronctl_file_kv "${status}" pid)")" \
+          "$(cronctl_json_str_or_null "$(cronctl_file_kv "${status}" start)")" \
+          "$(cronctl_json_str_or_null "$(cronctl_file_kv "${status}" end)")" \
+          "$(cronctl_json_num_or_null "$(cronctl_file_kv "${status}" exit)")"
+      else
+        printf 'null}'
+      fi
+      sep=","
+    fi
+    i=$((i + 1))
+  done
+  [ -z "${sep}" ] || printf '\n      '
+  printf ']'
+  if [ -f "${d}/sec.schedulers" ]; then
+    printf ',\n      "schedulers": %s' "$(cronctl_json_lines "${d}/sec.schedulers")"
+  fi
+  printf '\n    }'
+}
+
+# Decides whether cron.retire can be deleted: it has lines, every machine
+# they name was read in this run, and none of them is still present. Sets
+# cronctl_retire_lines, cronctl_retire_deletable (true|false), and
+# cronctl_retire_blockers.
+cronctl_retire_verdict() {
+  local dir="$1" m d state n
+  cronctl_retire_lines=0
+  cronctl_retire_deletable=false
+  cronctl_retire_blockers=
+  for m in ${cronctl_machines}; do
+    n="$(cronctl_line_count "${cronctl_tmp}/retire.${m}")"
+    [ "${n}" -gt 0 ] || continue
+    cronctl_retire_lines=$((cronctl_retire_lines + n))
+    d="${dir}/${m}.d"
+    if [ ! -f "${d}/state" ]; then
+      cronctl_retire_blockers="${cronctl_retire_blockers}${cronctl_retire_blockers:+; }${m} was not checked"
+      continue
+    fi
+    state="$(cat "${d}/state")"
+    if [ ! -f "${d}/sec.crontab" ] || [ "${state}" = failed ] ||
+      [ "${state}" = identity_mismatch ]; then
+      cronctl_retire_blockers="${cronctl_retire_blockers}${cronctl_retire_blockers:+; }${m} could not be read (${state})"
+    elif [ -s "${d}/present" ]; then
+      cronctl_retire_blockers="${cronctl_retire_blockers}${cronctl_retire_blockers:+; }${m} still has $(cronctl_plural "$(cronctl_line_count "${d}/present")" line)"
+    fi
+  done
+  if [ "${cronctl_retire_lines}" -gt 0 ] && [ -z "${cronctl_retire_blockers}" ]; then
+    cronctl_retire_deletable=true
+  fi
+}
+
+cronctl_cmd_status() {
+  local json=0 schedulers=0 all=0 named="" m dir origin state rc=0 failed=0 unreachable=0
+  local sep="" args
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+    -h | --help)
+      cronctl_usage_status
+      return 0
+      ;;
+    --all) all=1 ;;
+    --json) json=1 ;;
+    --all-schedulers) schedulers=1 ;;
+    -*) cronctl_die_usage "unknown option: $1" ;;
+    *)
+      cronctl_valid_name "$1" ||
+        cronctl_die_usage "invalid machine name: '$1' (want ^[a-z0-9][a-z0-9-]*\$)"
+      named="$(cronctl_add_name "${named}" "$1")"
+      ;;
+    esac
+    shift
+  done
+  if [ "${all}" = 1 ] && [ -n "${named}" ]; then
+    cronctl_die_usage "pass --all or machine names, not both"
+  fi
+  cronctl_load_data || return $?
+  for m in ${named}; do
+    cronctl_need_machine "${m}"
+  done
+  cronctl_find_local
+  if [ "${all}" = 1 ]; then
+    cronctl_targets="${cronctl_machines}"
+  elif [ -n "${named}" ]; then
+    cronctl_targets="${named}"
+  elif [ -n "${cronctl_local}" ]; then
+    cronctl_targets="${cronctl_local}"
+  else
+    cronctl_die_usage "this host is not enrolled in cron.machines; name machines or pass --all"
+  fi
+
+  origin="$(cronctl_origin_head)" || origin=
+  args=(__state)
+  [ -z "${origin}" ] || args=("${args[@]}" --origin "${origin}")
+  [ "${schedulers}" = 0 ] || args=("${args[@]}" --schedulers)
+  dir="${cronctl_tmp}/status"
+  cronctl_on_targets "${dir}" "${args[@]}"
+  for m in ${cronctl_targets}; do
+    cronctl_assess "${m}" "${dir}"
+    state="$(cat "${dir}/${m}.d/state")"
+    case "${state}" in
+    failed | identity_mismatch) failed=1 ;;
+    esac
+    [ "$(cat "${dir}/${m}.d/reachable")" = 1 ] || unreachable=1
+  done
+  cronctl_retire_verdict "${dir}"
+
+  if [ "${json}" = 1 ]; then
+    printf '{\n  "version": 1,\n  "origin": %s,\n' "$(cronctl_json_str_or_null "${origin}")"
+    printf '  "retire": {"lines": %s, "deletable": %s, "blockers": ' \
+      "${cronctl_retire_lines}" "${cronctl_retire_deletable}"
+    printf '%s\n' "${cronctl_retire_blockers}" | tr ';' '\n' | sed -e 's/^ //' -e '/^$/d' \
+      >"${cronctl_tmp}/blockers"
+    printf '%s},\n  "machines": [' "$(cronctl_json_lines "${cronctl_tmp}/blockers")"
+    for m in ${cronctl_targets}; do
+      printf '%s\n' "${sep}"
+      cronctl_print_status_json_machine "${m}" "${dir}"
+      sep=","
+    done
+    printf '\n  ]\n}\n'
+  else
+    if [ -z "${origin}" ]; then
+      printf "cronctl status: origin's HEAD unknown (git ls-remote failed), so source freshness is not checked\n"
+    fi
+    for m in ${cronctl_targets}; do
+      cronctl_print_status_text "${m}" "${dir}"
+    done
+    if [ "${cronctl_retire_deletable}" = true ]; then
+      printf 'cron.retire can be deleted\n'
+    elif [ "${cronctl_retire_lines}" -gt 0 ]; then
+      printf 'cron.retire is still needed: %s\n' "${cronctl_retire_blockers}"
+    fi
+  fi
+
+  if [ "${failed}" = 1 ]; then
+    rc=1
+  elif [ "${unreachable}" = 1 ]; then
+    rc=3
+  fi
+  return "${rc}"
+}
+
+#############################
+#  diff                     #
+#############################
+cronctl_cmd_diff() {
+  local machine="" desired retire dir d rc host label n line
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+    -h | --help)
+      cronctl_usage_diff
+      return 0
+      ;;
+    --source)
+      [ "$#" -ge 2 ] || cronctl_die_usage "--source needs a directory"
+      cronctl_set_source "$2"
+      shift
+      ;;
+    --source=*) cronctl_set_source "${1#--source=}" ;;
+    -*) cronctl_die_usage "unknown option: $1" ;;
+    *)
+      [ -z "${machine}" ] || cronctl_die_usage "expected one <machine>, got another: $1"
+      machine="$1"
+      ;;
+    esac
+    shift
+  done
+  [ -n "${machine}" ] || cronctl_die_usage "missing <machine>"
+  cronctl_load_data || return $?
+  cronctl_need_machine "${machine}"
+
+  desired="${cronctl_tmp}/diff.desired"
+  cronctl_template "{{ template \"cron-block\" (dict \"machine\" \"${machine}\" \"cron\" .cron) }}" \
+    "${desired}.raw" || return $?
+  cronctl_normalize "${desired}.raw" "${desired}"
+  retire="${cronctl_tmp}/retire.${machine}"
+
+  cronctl_find_local
+  cronctl_targets="${machine}"
+  dir="${cronctl_tmp}/diff"
+  cronctl_on_targets "${dir}" __state
+  rc="$(cat "${dir}/${machine}.rc")"
+  if [ "${rc}" -eq 255 ]; then
+    printf 'cronctl: %s is unreachable over SSH (pending): %s\n' "${machine}" \
+      "$(cronctl_flat_file "${dir}/${machine}.err")" >&2
+    return 3
+  fi
+  d="${dir}/${machine}.d"
+  cronctl_parse_answer "${dir}/${machine}.out" "${d}"
+  if [ "${rc}" -ne 0 ] || [ "$(cronctl_kv "${d}" end)" != 1 ]; then
+    printf 'cronctl: cannot read %s (exit %s):\n' "${machine}" "${rc}" >&2
+    sed 's/^/  /' "${dir}/${machine}.err" >&2
+    return 1
+  fi
+  if [ -n "$(cronctl_kv "${d}" crontab_error)" ]; then
+    printf 'cronctl: crontab -l failed on %s: %s\n' "${machine}" \
+      "$(cronctl_kv "${d}" crontab_error)" >&2
+    return 1
+  fi
+  if ! cronctl_check_identity "${machine}" "${d}"; then
+    printf 'cronctl: %s (identity_mismatch); not diffing another machine'"'"'s crontab\n' \
+      "${cronctl_identity_note}" >&2
+    return 1
+  fi
+  if ! cronctl_split_table "${d}/sec.crontab" "${d}/live.block" "${d}/outside"; then
+    printf 'cronctl: cannot diff %s: %s\n' "${machine}" "$(cronctl_markers_problem)" >&2
+    return 1
+  fi
+  cronctl_sort_outside "${d}/outside" "${retire}" "${d}/unmanaged" "${d}/present"
+
+  host="$(cronctl_kv "${d}" hostname)"
+  label="${cronctl_source:-the local chezmoi source}"
+  printf 'cronctl diff %s: the live crontab on %s vs the block from %s\n' "${machine}" \
+    "${host}" "${label}"
+  if [ "${cronctl_has_block}" != 1 ]; then
+    printf 'the live crontab has no managed block yet; sync would insert it at the top\n'
+  fi
+  if cmp -s "${d}/live.block" "${desired}"; then
+    printf 'block: no changes\n'
+  else
+    diff -u "${d}/live.block" "${desired}" |
+      sed -e "1s/^--- .*/--- block (live on ${machine})/" -e '2s/^+++ .*/+++ block (desired)/'
+  fi
+
+  n="$(cronctl_line_count "${d}/unmanaged")"
+  if [ "${n}" -eq 0 ]; then
+    printf 'unmanaged lines outside the block, which sync keeps: none'
+  else
+    printf 'unmanaged lines outside the block, which sync keeps (%s):' "${n}"
+  fi
+  if [ "${cronctl_comment_count}" -gt 0 ]; then
+    printf ' (plus %s)\n' "$(cronctl_plural "${cronctl_comment_count}" "comment or blank line")"
+  else
+    printf '\n'
+  fi
+  while IFS= read -r line; do
+    printf '  %s\n' "${line}"
+  done <"${d}/unmanaged"
+  n="$(cronctl_line_count "${d}/present")"
+  if [ "${n}" -eq 0 ]; then
+    printf 'retire lines that sync would remove: none\n'
+  else
+    printf 'retire lines that sync would remove (%s):\n' "${n}"
+    while IFS= read -r line; do
+      printf '  %s\n' "${line}"
+    done <"${d}/present"
+  fi
+  if [ "$(cronctl_kv "${d}" managed)" != present ]; then
+    printf 'deployed ~/.config/cron/managed.crontab on %s: missing (not applied)\n' "${machine}"
+  elif cronctl_same "${d}/sec.managed" "${desired}"; then
+    printf 'deployed ~/.config/cron/managed.crontab on %s: matches the desired block\n' "${machine}"
+  else
+    printf 'deployed ~/.config/cron/managed.crontab on %s: differs from the desired block (not applied there yet)\n' \
+      "${machine}"
+  fi
+  return 0
+}
+
+#############################
+#  apply                    #
+#############################
+cronctl_cmd_apply() {
+  local all=0 named="" rev_arg="" rev label m dir d rc state detail head line width=7
+  local in_sync=0 pending=0 failed=0 mismatched=0 summary=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+    -h | --help)
+      cronctl_usage_apply
+      return 0
+      ;;
+    --all) all=1 ;;
+    --rev)
+      [ "$#" -ge 2 ] || cronctl_die_usage "--rev needs a revision"
+      rev_arg="$2"
+      shift
+      ;;
+    --rev=*) rev_arg="${1#--rev=}" ;;
+    -*) cronctl_die_usage "unknown option: $1" ;;
+    *)
+      cronctl_valid_name "$1" ||
+        cronctl_die_usage "invalid machine name: '$1' (want ^[a-z0-9][a-z0-9-]*\$)"
+      named="$(cronctl_add_name "${named}" "$1")"
+      ;;
+    esac
+    shift
+  done
+  if [ "${all}" = 1 ] && [ -n "${named}" ]; then
+    cronctl_die_usage "pass --all or machine names, not both"
+  fi
+  [ "${all}" = 1 ] || [ -n "${named}" ] || cronctl_die_usage "name the machines to apply, or pass --all"
+  if [ -n "${rev_arg}" ]; then
+    case "${rev_arg}" in
+    -* | *[!A-Za-z0-9._/~^-]*) cronctl_die_usage "--rev: invalid revision: ${rev_arg}" ;;
+    esac
+  fi
+  cronctl_load_data || return $?
+  for m in ${named}; do
+    cronctl_need_machine "${m}"
+  done
+  if [ "${all}" = 1 ]; then
+    cronctl_targets="${cronctl_machines}"
+  else
+    cronctl_targets="${named}"
+  fi
+  cronctl_find_local
+
+  if [ -n "${rev_arg}" ]; then
+    cronctl_git fetch --quiet origin >/dev/null 2>"${cronctl_tmp}/fetch.err" ||
+      cronctl_warn "git fetch origin failed, so --rev is checked against the remote-tracking refs as they are: $(cronctl_flat_file "${cronctl_tmp}/fetch.err")"
+    rev="$(cronctl_git rev-parse --verify --quiet "${rev_arg}^{commit}" 2>/dev/null)" || rev=
+    cronctl_is_sha "${rev}" ||
+      cronctl_die_usage "--rev ${rev_arg}: no such commit in the local chezmoi source; push it first"
+    if ! cronctl_git branch -r --contains "${rev}" 2>/dev/null |
+      grep -Eq '^[[:space:]]*origin/'; then
+      cronctl_die_usage "--rev ${rev_arg} (${rev}) is not reachable from origin; push it first (only pushed commits apply)"
+    fi
+    label="--rev ${rev_arg}"
+  else
+    rev="$(cronctl_origin_head)" ||
+      cronctl_die "cannot read origin's HEAD with git ls-remote from the local chezmoi source: $(cronctl_flat_file "${cronctl_tmp}/ls-remote.err")"
+    label="origin's HEAD"
+  fi
+  printf 'cronctl apply: %s (%s) to %s\n' "${rev}" "${label}" \
+    "$(printf '%s' "${cronctl_targets}" | sed 's/ /, /g')"
+
+  dir="${cronctl_tmp}/apply"
+  cronctl_on_targets "${dir}" __apply "${rev}" "{machine}"
+  for m in ${cronctl_targets}; do
+    [ "${#m}" -le "${width}" ] || width="${#m}"
+  done
+  for m in ${cronctl_targets}; do
+    d="${dir}/${m}.d"
+    rc="$(cat "${dir}/${m}.rc")"
+    head=
+    if [ "${rc}" -eq 255 ]; then
+      state=pending
+      detail="unreachable over SSH: $(cronctl_flat_file "${dir}/${m}.err")"
+    else
+      cronctl_parse_answer "${dir}/${m}.out" "${d}"
+      head="$(cronctl_kv "${d}" head)"
+      if [ "${rc}" -ne 0 ] || [ "$(cronctl_kv "${d}" end)" != 1 ]; then
+        state=failed
+        detail="the apply routine failed (exit ${rc}): $(cronctl_flat_file "${dir}/${m}.err")"
+      else
+        state="$(cronctl_kv "${d}" result)"
+        detail="$(cronctl_kv "${d}" detail)"
+      fi
+    fi
+    case "${state}" in
+    in_sync) in_sync=$((in_sync + 1)) ;;
+    pending) pending=$((pending + 1)) ;;
+    identity_mismatch) mismatched=$((mismatched + 1)) ;;
+    *)
+      state=failed
+      failed=$((failed + 1))
+      ;;
+    esac
+    printf '%-*s  %-17s  %-12s  %s\n' "${width}" "${m}" "${state}" \
+      "$(printf '%s' "${head:--}" | cut -c 1-12)" "${detail}"
+    if [ -f "${d}/kv" ]; then
+      sed -n 's/^note=/    note: /p' "${d}/kv"
+    fi
+    if [ -s "${d}/sec.sync_err" ]; then
+      while IFS= read -r line; do
+        printf '    %s\n' "${line}"
+      done <"${d}/sec.sync_err"
+      if grep -q 'Operation not permitted' "${d}/sec.sync_err" &&
+        ! grep -q 'Full Disk Access' "${d}/sec.sync_err"; then
+        printf '    hint: on macOS over SSH, grant Full Disk Access to remote users (System Settings > General > Sharing > Remote Login), or run chezmoi update -a locally\n'
+      fi
+    fi
+  done
+
+  [ "${in_sync}" -eq 0 ] || summary="${in_sync} in_sync"
+  [ "${pending}" -eq 0 ] || summary="${summary}${summary:+, }${pending} pending"
+  [ "${mismatched}" -eq 0 ] || summary="${summary}${summary:+, }${mismatched} identity_mismatch"
+  [ "${failed}" -eq 0 ] || summary="${summary}${summary:+, }${failed} failed"
+  printf 'cronctl apply: %s\n' "${summary}"
+  if [ "${pending}" -gt 0 ]; then
+    printf 'cronctl apply: a pending machine converges at its next `chezmoi update -a`, or rerun cronctl apply when it is reachable\n'
+  fi
+  if [ "${failed}" -gt 0 ] || [ "${mismatched}" -gt 0 ]; then
+    return 1
+  fi
+  [ "${pending}" -eq 0 ] || return 3
+  return 0
+}
+
+#############################
+#  logs and run             #
+#############################
+# cronctl_job_target <job> <--machine value>: sets cronctl_target_machine to
+# the machine to act on: the given one, or this machine when the job runs here.
+cronctl_job_target() {
+  local job="$1" machine="$2"
+  if [ -n "${machine}" ]; then
+    cronctl_need_machine "${machine}"
+    cronctl_target_machine="${machine}"
+    return 0
+  fi
+  cronctl_job_index "${job}" ||
+    cronctl_die_usage "unknown job: ${job} (see cronctl list; pass --machine M for a job the data no longer lists)"
+  if [ -n "${cronctl_local}" ] && cronctl_job_runs_on "${cronctl_j}" "${cronctl_local}"; then
+    cronctl_target_machine="${cronctl_local}"
+    return 0
+  fi
+  cronctl_die_usage "${job} runs on $(cronctl_job_machines_text "${cronctl_j}"), not on this host${cronctl_local:+ (${cronctl_local})}; pass --machine M"
+}
+
+cronctl_cmd_logs() {
+  local job="" machine="" lines=50 rc=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+    -h | --help)
+      cronctl_usage_logs
+      return 0
+      ;;
+    --machine)
+      [ "$#" -ge 2 ] || cronctl_die_usage "--machine needs a machine"
+      machine="$2"
+      shift
+      ;;
+    --machine=*) machine="${1#--machine=}" ;;
+    -n)
+      [ "$#" -ge 2 ] || cronctl_die_usage "-n needs a number"
+      lines="$2"
+      shift
+      ;;
+    -n*) lines="${1#-n}" ;;
+    -*) cronctl_die_usage "unknown option: $1" ;;
+    *)
+      [ -z "${job}" ] || cronctl_die_usage "expected one <job>, got another: $1"
+      job="$1"
+      ;;
+    esac
+    shift
+  done
+  [ -n "${job}" ] || cronctl_die_usage "missing <job>"
+  cronctl_valid_name "${job}" || cronctl_die_usage "invalid job name: '${job}'"
+  case "${lines}" in
+  '' | *[!0-9]* | 0) cronctl_die_usage "-n needs a positive number, got '${lines}'" ;;
+  esac
+  cronctl_load_data || return $?
+  cronctl_find_local
+  cronctl_job_target "${job}" "${machine}"
+  cronctl_on_target "${cronctl_target_machine}" __logs "${job}" "${lines}" || rc=$?
+  if [ "${rc}" -eq 255 ]; then
+    printf 'cronctl: %s is unreachable over SSH (pending)\n' "${cronctl_target_machine}" >&2
+    return 3
+  fi
+  return "${rc}"
+}
+
+cronctl_cmd_run() {
+  local job="" machine="" rc=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+    -h | --help)
+      cronctl_usage_run
+      return 0
+      ;;
+    --machine)
+      [ "$#" -ge 2 ] || cronctl_die_usage "--machine needs a machine"
+      machine="$2"
+      shift
+      ;;
+    --machine=*) machine="${1#--machine=}" ;;
+    -*) cronctl_die_usage "unknown option: $1" ;;
+    *)
+      [ -z "${job}" ] || cronctl_die_usage "expected one <job>, got another: $1"
+      job="$1"
+      ;;
+    esac
+    shift
+  done
+  [ -n "${job}" ] || cronctl_die_usage "missing <job>"
+  cronctl_valid_name "${job}" || cronctl_die_usage "invalid job name: '${job}'"
+  cronctl_load_data || return $?
+  cronctl_job_index "${job}" || cronctl_die_usage "unknown job: ${job} (see cronctl list)"
+  cronctl_find_local
+  cronctl_job_target "${job}" "${machine}"
+  if ! cronctl_job_runs_on "${cronctl_j}" "${cronctl_target_machine}"; then
+    cronctl_die_usage "${job} does not run on ${cronctl_target_machine} (its machines: $(cronctl_job_machines_text "${cronctl_j}"))"
+  fi
+  if [ "${cronctl_job_enabled[cronctl_j]}" != true ]; then
+    cronctl_die_usage "${job} is disabled in the cron: data, so cron would not run it"
+  fi
+
+  cronctl_payload="CRONCTL_RUN_COMMAND=$(cronctl_quote "${cronctl_job_command[cronctl_j]}")
+CRONCTL_RUN_ENV=$(cronctl_quote "$(cat "${cronctl_tmp}/data.env")")"
+  printf 'cronctl run: running %s on %s now, as cron would (real side effects)\n' "${job}" \
+    "${cronctl_target_machine}" >&2
+  cronctl_on_target "${cronctl_target_machine}" __run "${job}" || rc=$?
+  cronctl_payload=
+  if [ "${rc}" -eq 255 ]; then
+    printf 'cronctl: %s is unreachable over SSH (pending); nothing ran\n' \
+      "${cronctl_target_machine}" >&2
+    return 3
+  fi
+  printf 'cronctl run: %s on %s exited %s; see cronctl logs %s --machine %s\n' "${job}" \
+    "${cronctl_target_machine}" "${rc}" "${job}" "${cronctl_target_machine}" >&2
+  return "${rc}"
+}
+
+#############################
+#  edit                     #
+#############################
+cronctl_cmd_edit() {
+  local src data editor rc answer
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+    -h | --help)
+      cronctl_usage_edit
+      return 0
+      ;;
+    *) cronctl_die_usage "unexpected argument: $1" ;;
+    esac
+  done
+  cronctl_find_chezmoi
+  src="$("${cronctl_chezmoi}" source-path </dev/null 2>/dev/null)" ||
+    cronctl_die "cannot find the local chezmoi source (chezmoi source-path failed)"
+  data="${src}/.chezmoidata.yaml"
+  [ -f "${data}" ] || cronctl_die "no cron: data file at ${data}"
+  editor="${VISUAL:-${EDITOR:-vi}}"
+
+  while :; do
+    # $editor may carry flags, as in EDITOR="code -w".
+    # shellcheck disable=SC2086
+    ${editor} "${data}" || cronctl_die "${editor} failed; nothing was checked"
+    rc=0
+    (cronctl_cmd_check) || rc=$?
+    [ "${rc}" -ne 0 ] || break
+    if [ "${rc}" -eq 2 ] && [ -t 0 ] && [ -t 2 ]; then
+      printf 'cronctl edit: the cron: data does not check out. Edit it again? [Y/n] ' >&2
+      read -r answer || answer=n
+      case "${answer}" in
+      [nN]*) ;;
+      *) continue ;;
+      esac
+    fi
+    printf 'cronctl edit: fix %s before committing it\n' "${data}" >&2
+    return "${rc}"
+  done
+
+  printf '\n'
+  cronctl_find_local
+  if [ -n "${cronctl_local}" ]; then
+    (cronctl_cmd_diff "${cronctl_local}") || true
+  else
+    printf 'cronctl edit: this host is not enrolled in cron.machines; see cronctl diff <machine>\n'
+  fi
+  printf '\nNothing is installed yet. Next: commit and push the change (%s), then run\n' "${src}"
+  printf '`chezmoi update -a` on each affected machine, or `cronctl apply <machine>...` from\n'
+  printf 'any machine.\n'
+  return 0
+}
+
+#############################
 #  Main                     #
 #############################
 main() {
@@ -1080,6 +2909,14 @@ main() {
   cronctl_hostname=
   cronctl_machine=
   cronctl_block_machine=
+  cronctl_local=
+  cronctl_local_known=0
+  cronctl_data_loaded=0
+  cronctl_machines=
+  cronctl_job_count=0
+  cronctl_payload=
+  cronctl_tab="$(printf '\t')"
+  cronctl_cr="$(printf '\r')"
   [ -n "${HOME:-}" ] || cronctl_die "HOME is not set"
   cronctl_state_dir="${HOME}/.local/state/cron"
 
@@ -1099,11 +2936,21 @@ main() {
     render) cronctl_usage_render ;;
     check) cronctl_usage_check ;;
     sync) cronctl_usage_sync ;;
+    status) cronctl_usage_status ;;
+    diff) cronctl_usage_diff ;;
+    apply) cronctl_usage_apply ;;
+    logs) cronctl_usage_logs ;;
+    run) cronctl_usage_run ;;
+    edit) cronctl_usage_edit ;;
     *) cronctl_die_usage "unknown command: $2" ;;
     esac
     return 0
     ;;
-  list | render | check | sync) cronctl_command="$1" ;;
+  list | render | check | sync | status | diff | apply | logs | run | edit)
+    cronctl_command="$1"
+    ;;
+  # Internal routines that fleet commands run on a target machine.
+  __state | __apply | __logs | __run) cronctl_command="$1" ;;
   *) cronctl_die_usage "unknown command: $1" ;;
   esac
   shift
@@ -1119,7 +2966,23 @@ main() {
   render) cronctl_cmd_render "$@" ;;
   check) cronctl_cmd_check "$@" ;;
   sync) cronctl_cmd_sync "$@" ;;
+  status) cronctl_cmd_status "$@" ;;
+  diff) cronctl_cmd_diff "$@" ;;
+  apply) cronctl_cmd_apply "$@" ;;
+  logs) cronctl_cmd_logs "$@" ;;
+  run) cronctl_cmd_run "$@" ;;
+  edit) cronctl_cmd_edit "$@" ;;
+  __state) cronctl_internal_state "$@" ;;
+  __apply) cronctl_internal_apply "$@" ;;
+  __logs) cronctl_internal_logs "$@" ;;
+  __run) cronctl_internal_run "$@" ;;
   esac
 }
 
-main "$@"
+# `cronctl apply` may rewrite this very file while it runs (chezmoi writes in
+# place when its temp dir is on another device). bash parses this whole group
+# before running it, so it never reads the file past here.
+{
+  main "$@"
+  exit
+}
