@@ -44,17 +44,22 @@ sase launch request -f launch_request.json -o json
 Run this command in the foreground and wait for the process to exit on its own. Never
 invoke it with a yield window, a background flag, or any early-return timeout: an early
 return with no descriptor does not mean the request was created, it means you stopped
-watching before the CLI made its first durable write, and nothing was created.
+watching before the CLI made its first durable write, and nothing was created. Never
+wrap the command in `timeout`, a pipe, or a background job.
 
-The command creates a durable pending `LaunchApproval` gate turn, prints its descriptor,
-hands this agent's session lane to that gate turn, and then this turn ends by killing
-this process right after the descriptor prints. Seeing that descriptor is how you know
-the request was created; the kill that follows is not a signal you can observe, so never
-treat an early or empty tool result as that signal. If the tool call ever returns
-something other than the descriptor — an error, or output you did not expect — your turn
-has NOT ended; read it and report it instead of assuming the handoff already happened.
-It does not spawn an agent unless the approver accepts the request and host dispatch
-succeeds.
+Read the descriptor and check its `status` before deciding what happens next.
+
+When the descriptor says `"status": "staged"`, the LaunchApproval gate has not been
+published yet. Nothing starts until this turn ends: finish through `/sase_final` so host
+finalizers can settle before publication. Do not wait for your own staged launch
+request. Print the descriptor, then stop. The host publishes the gate after this turn
+completes; it does not spawn an agent unless the approver accepts the request and host
+dispatch succeeds.
+
+If the descriptor has no staged status, the request was not handed off — read the output
+and continue or retry. An error, unexpected output, or empty result does not mean the
+request was created. It does not spawn an agent unless the approver accepts the request
+and host dispatch succeeds.
 
 The pending request lives in SASE's neutral `interaction_requests/launch/<request-id>/`
 layout. Every terminal option uses the bundle's hash-verified command; do not write the
@@ -118,7 +123,11 @@ control how the launched agent's changes land. Discover what is available with
 member's sanitized prompts plus reply outcome, model, launch time, size statistics, and
 transcript path; full member replies are intentionally omitted so the child can open
 only the transcripts it needs. `#fork:@<tribe>` implies the matching tribe wait and then
-forks the same next entity, using the lean clan block when that entity is a clan.
+forks the same next entity, using the lean clan block when that entity is a clan. For an
+agent parent, `#fork(parent, target=turn)` pins the current turn, waits for it to
+finish, and limits history to that turn and earlier session turns. Omit `target` for the
+whole session when `parent` is bare, or for that one member when `parent` is an exact
+`--<suffix>` name.
 
 ### Literal Directive Text
 
@@ -210,18 +219,17 @@ declaration instead.
 Inside a running agent, `sase launch request` does not return a terminal approval
 outcome. The gate turn owns the pending decision while this requester is gone.
 
-The creation descriptor looks like:
+A staged creation descriptor looks like:
 
 ```json
 {
+  "schema_version": 1,
+  "status": "staged",
+  "kind": "launch",
   "request_id": "launch-123",
-  "notification_id": "notification-123",
-  "response_dir": "/path/to/interaction_requests/launch/launch-123",
-  "gate_turn": {
-    "gate_id": "launch-123",
-    "member_agent_name": "agent--gate",
-    "state": "pending"
-  }
+  "staged_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+  "workspace_mode": "inherit",
+  "instruction": "Nothing starts until this turn ends; finish through `/sase_final`. Do not wait for your own staged gate."
 }
 ```
 

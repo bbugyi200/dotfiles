@@ -12,12 +12,16 @@ description: >-
 ## Core Rule
 
 Use this skill only when the user explicitly asks you to hand off (or pipe) work to
-another agent. `sase pipe` kills the calling agent only after it writes its handoff
-marker, so run `sase pipe` in the foreground until it exits. If your tool yields or
+another agent. Run `sase pipe` in the foreground until it exits. If your tool yields or
 backgrounds its session, keep polling that same session; never end your turn while it is
-still running. Write everything the successor needs inside the handoff prompt itself,
-not in a reply you plan to send afterward — after a successful handoff, there is no
-afterward.
+still running. Write everything the successor needs inside the handoff prompt itself.
+
+If the command reports **Staged**, it wrote the handoff and staged the successor for
+host completion. Nothing starts until your turn ends: finish through `/sase_final`,
+submitting only when its context says a declaration is required. Stage before you
+declare, do not mutate files after a successful declaration, and never wait for your own
+staged pipe. If it does not report **Staged**, the pipe was not handed off — read the
+output and continue or retry.
 
 ## Canonical Invocation
 
@@ -43,6 +47,8 @@ Do not hand off for:
 
 - `-f, --fresh` — successor starts with a clean context window. Default: prefix
   `#fork:<this agent>` so the successor inherits this chat.
+- Use `#fork(<this agent>, target=turn)` when the successor should inherit history only
+  through this agent's current turn.
 - `-j, --json` — print a machine-readable hand-off summary instead of the rich one.
 - `-m, --model MODEL` — model or alias for the successor (`opus`, `opus@high`, `sonnet`,
   `codex/gpt-5`). Default: inherit this agent's model.
@@ -61,5 +67,6 @@ Do not hand off for:
   continue or retry, not assume a successor exists.
 - Chains are bounded by the `max_agent_pipe_chain` config field; a successor that hands
   off again can eventually be refused once the bound is reached.
-- After a successful handoff, do not keep working, poll, or wait. If your tool yielded
-  before that handoff completed, follow the Core Rule and keep polling the same session.
+- After a successful staged handoff, finish through `/sase_final` and then stop. After a
+  successful handoff, do not keep working, poll, or wait. If your tool yielded before
+  that handoff completed, follow the Core Rule and keep polling the same session.

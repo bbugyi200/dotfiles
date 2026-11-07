@@ -76,18 +76,21 @@ sase sudo request <<'JSON'
 JSON
 ```
 
-Run `sase sudo request` in the foreground and wait for the process to exit on its own.
-Never invoke it with a yield window, a background flag, or any early-return timeout: an
-early return with no descriptor does not mean the gate was created, it means you stopped
-watching before the CLI made its first durable write, and nothing was created.
+Run `sase sudo request` in the foreground and wait for it to exit on its own. Never
+invoke it with a yield window, a background flag, or an early-return timeout. Never wrap
+the command in `timeout`, a pipe, or a background job. Read the JSON descriptor and
+check its `status` before deciding what happens next.
 
-The command prints a JSON descriptor and, once the handoff completes, ends your current
-turn by killing this process right after. Seeing that descriptor is how you know the
-gate was created; the kill that follows is not a signal you can observe, so never treat
-an early or empty tool result as that signal. **If the tool call ever returns something
-other than the descriptor — an error, or output you did not expect — your turn has NOT
-ended.** Read it and report it; do not treat silence, a timeout, or an early return as
-proof the gate was created.
+When the descriptor says `"status": "staged"`, nothing starts until this turn ends.
+Finish through `/sase_final` so host finalizers settle before the sudo gate is
+published. Do not wait for your own staged gate; it starts after the turn ends. Other
+gates may still be waited on.
+
+When the descriptor has no staged status and `auto_resolution.state` is `resolved`, the
+gate resolved automatically and this process continues. If it does not report staged and
+did not auto-resolve, the gate was not created — read the output and continue or retry.
+An error, unexpected output, timeout, or empty result does not mean the gate was
+created.
 
 Bryan authenticates only on a real terminal handed to `/usr/bin/sudo`/PAM. A successor
 agent receives the structured ledger with the authentication outcome, per-command

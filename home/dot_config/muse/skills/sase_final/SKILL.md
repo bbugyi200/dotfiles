@@ -10,8 +10,8 @@ Use this skill whenever the current SASE turn is about to end with a normal resp
 is mandatory for final answers and incomplete-status responses; an unfinished turn still
 declares so its work is committed. Root agent only: if you were spawned or forked as a
 helper (a native subagent), do not use this skill — return your result to your parent
-instead. Never use it to wait for a command or to resume later. Only a successfully
-executed plan, monitor, pipe, or questions handoff is exempt.
+instead. Never use it to wait for a command or to resume later. Every root turn ends
+through this skill, including handoff turns: stage the handoff first, then finish here.
 
 ## Rules
 
@@ -54,11 +54,12 @@ executed plan, monitor, pipe, or questions handoff is exempt.
 
 ## Handoff Commands
 
-Handoff commands have two outcomes. If a command reports **Staged**, finish the turn
-through `/sase_final` and submit a declaration only when its context requires one. Stage
-before declaring, do not mutate files after a successful declaration, and never wait for
-your own staged handoff. If it does not report **Staged**, the legacy command ends your
-turn mechanically. Native helpers return to the root agent and never declare.
+Turn-ending commands stage their handoff and return. If a command reports **Staged**,
+finish the turn through `/sase_final` and submit a declaration only when its context
+requires one. Stage before declaring, do not mutate files after a successful
+declaration, and never wait for your own staged handoff. If it does not report
+**Staged**, the command did not hand off — read the output and continue or retry. Native
+helpers return to the root agent and never declare.
 
 ## Prepared Monitor Completion
 
@@ -95,10 +96,18 @@ Use it for final verification so passing work lands with no further turn.
    sase monitor start -p verify -f <ref> -r 'Verify before host completion' -- just check
    ```
 
-The verification command is monitored, but `sase monitor start` itself is not. Run that
-start command in the foreground until it exits; it can take up to a minute before it
-writes the handoff marker and kills the runner. If your tool yields a live session, keep
-polling that same session rather than ending the turn.
+That start reports `Staged`: it reserves the intent without binding it, and the host
+binds it once at adoption after finalizers settle. The verification command, bind, claim
+move, and proc launch all wait until then. Run that start command in the foreground
+until it exits; if your tool yields a live session, keep polling that same session
+rather than ending the turn. Never wait for the reserved run after a `Staged` start;
+finish through `/sase_final`.
+
+Prepared `-f` completion stays explicit: only a successful verification enters the
+host-owned commit and close path, and a failed or ineligible run launches recovery. An
+unprepared inheriting monitor may instead receive host-synthesized carry when the turn
+ends without a declaration; use an explicit commit decision when the monitor must wait
+for CI to verify work that should be committed first.
 
 If `sase final prepare` is refused, run the verification command inline, then pass the
 same wrapper file to `sase final submit <wrapper>`; it submits the wrapper's

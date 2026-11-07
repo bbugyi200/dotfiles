@@ -15,12 +15,27 @@ agent turn, or when you need a timed sleep/wait before more work can happen.
 Never wait for the **monitored command** yourself. Put any continuation work in `--next`
 so a follow-up agent can resume from the same workspace and conversation.
 
-The `sase monitor start` command itself must run to completion. It may take up to a
-minute to create and acknowledge the detached supervisor, then writes its handoff marker
-and kills the current agent. If your command tool yields or backgrounds that start
-command before it exits, keep waiting on the same session until it reports an exit code.
-Never end your turn while `sase monitor start` is still running; an early or empty
-result means only that you stopped observing before the handoff happened.
+The `sase monitor start` command itself must run to completion. If your command tool
+yields or backgrounds that start command before it exits, keep waiting on the same
+session until it reports an exit code. Never end your turn while `sase monitor start` is
+still running; an early or empty result means only that you stopped observing before the
+handoff happened.
+
+When `sase monitor start` reports `Staged`, nothing has started yet: the request is
+frozen, any ToolRun or prepared intent is only reserved, and the command, bind, claim
+move, and proc launch all wait until after host finalization. Finish through
+`/sase_final`. If it does not report `Staged`, the monitor was not handed off — read the
+output and continue or retry.
+
+Do not wait for your own staged monitor. `sase tool wait RUN` on the reserved run from
+your own staged start returns promptly with a `/sase_final` message instead of blocking.
+Reservation is not binding: `-f` reserves the prepared intent at stage time and binds it
+once at adoption, while `-J` reserves the existing run at stage time and activates the
+join at adoption. An unprepared staged monitor may use host-synthesized carry when it
+inherits unfinished repository work and you leave without a declaration. When the
+monitor must wait for CI on committed changes, submit an explicit commit decision for
+those repositories through `/sase_final` before starting it. Prepared `-f` completion
+keeps its explicit green/red host-completion path.
 
 Provider-native monitor, background-execution, and scheduled wake-up tools do not work
 in SASE's single-turn agent model. Use `sase monitor start` instead.
@@ -125,10 +140,9 @@ Name any other external system directly, for example `WAITING PYPI`.
   installs, screenshot regeneration, renders) or that polls and then builds. A
   zero-weight monitor is invisible to the capacity budget, so the host overcommits.
   Waiting on a human is not a monitor at all: use `/sase_gate` or `/sase_questions`.
-- `sase monitor start` only kills the current agent once the supervisor has acknowledged
-  it is actually alive. A non-zero exit means the supervisor never acknowledged startup
-  — you are still running and nothing was handed off. Read the error and either retry or
-  run the command inline instead of assuming a monitor exists.
+- A non-zero exit means nothing was staged — you are still running and no monitor will
+  start. Read the error and either retry or run the command inline instead of assuming a
+  monitor exists.
 - The command after `--` is preserved argument-for-argument. Pass one quoted string
   (`-- 'just install-venv && just check'`) and it runs verbatim as the shell command
   under the host's `/bin/sh -c`; pass several bare words (`-- just check`) and they are
@@ -149,10 +163,9 @@ Name any other external system directly, for example `WAITING PYPI`.
 - When the follow-up should finish by committing, write
   `submit /sase_final with a commit decision for <repo>: <message>`. Never write
   `commit <repo>`: a follow-up on another model may run raw `git commit`.
-- Do not poll, sleep, or wait for the monitored command after `sase monitor start`
-  exits; the starting agent is then handed off and killed when running inside an agent.
-  Until the start command exits, keep polling that same command session if your tool
-  yielded it.
+- Do not poll, sleep, or wait for the monitored command after `sase monitor start` exits
+  with `Staged`; finish through `/sase_final`. Until the start command exits, keep
+  polling that same command session if your tool yielded it.
 
 ## Sleep Or Wait
 
@@ -284,9 +297,11 @@ When `--next` is set, the follow-up agent receives the previous conversation thr
 own turn, the same shared turn substrate that gate turns fork through — plus the
 original reason, the requested next action, and a command-run breakdown: outcome, exit
 code, elapsed time, selected output policy, and the path to the retained captured log.
-The reason, next action, table fields, and embedded output are wrapped as literal prompt
-text; only the follow-up's routing prefix remains live. Omit `--model` to inherit the
-starter's model and reasoning effort; pass `--model` to replace that inherited routing.
+Use `#fork(<agent session>, target=turn)` when a follow-up should wait for and include
+only the current turn's bounded session history. The reason, next action, table fields,
+and embedded output are wrapped as literal prompt text; only the follow-up's routing
+prefix remains live. Omit `--model` to inherit the starter's model and reasoning effort;
+pass `--model` to replace that inherited routing.
 
 With `--next-output auto`, completed runs use facts and refs, failed runs prefer
 diagnostic refs, and timeouts include a bounded raw tail. With `--next-output tail`, the

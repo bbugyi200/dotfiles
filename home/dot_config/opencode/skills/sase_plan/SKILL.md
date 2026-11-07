@@ -87,7 +87,8 @@ SASE derives your plan's links from the artifacts you read this turn; use
    host completion. Nothing starts until your turn ends: finish through `/sase_final`,
    submitting only when its context says a declaration is required. Stage before you
    declare, do not mutate files after a successful declaration, and never wait for your
-   own staged proposal. Otherwise the legacy command has ended your turn mechanically;
-   the runner creates the tier-specific `PlanApproval` or `EpicApproval` gate turn,
-   which owns review settlement and launches the feedback replanner or approved tale
-   coder. Do not poll response files yourself.
+   own staged proposal. If it does not report **Staged**, the proposal was not handed
+   off — read the output and continue or retry. After the host adopts the handoff, the
+   tier-specific `PlanApproval` or `EpicApproval` gate turn owns review settlement and
+   launches the feedback replanner or approved tale coder. Do not poll response files
+   yourself.

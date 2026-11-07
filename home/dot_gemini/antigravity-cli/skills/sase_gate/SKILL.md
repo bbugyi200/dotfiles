@@ -273,7 +273,8 @@ the environment of whichever process executes the answer — the TUI, mobile, a 
 follow-up runner — not in the creating agent's environment. So bake absolute paths and
 pinned artifacts into the command at creation time, and never depend on agent-only
 variables such as `CARGO_TARGET_DIR`, `SASE_ARTIFACTS_DIR`, or the agent's workspace
-path.
+path. Commands of an `inherit` gate turn receive `SASE_GATE_WORKSPACE_DIR`, and
+`sase bead close` uses it automatically.
 
 ## Declare The `turn` Block
 
@@ -339,7 +340,7 @@ different next step:
 Write your own `next` and `branches.<key>.{prompt,output,fork,model,status,accent}` the
 same way: one outcome, one follow-up policy.
 
-## Create The Gate Turn, Then Stop
+## Create The Gate Turn
 
 Create the durable gate:
 
@@ -355,25 +356,24 @@ sase gate create --turn \
 everything is also expressible in the JSON request body, which is what keeps this skill
 declarative.
 
-Run this command in the foreground and wait for the process to exit on its own. Never
-invoke it with a yield window, a background flag, or any early-return timeout: an early
-return with no descriptor does not mean the handoff happened, it means you stopped
-watching before the CLI made its first durable write, and nothing was created.
+Run this command in the foreground and wait for it to exit on its own. Never invoke it
+with a yield window, a background flag, or an early-return timeout. Never wrap the
+command in `timeout`, a pipe, or a background job. Read the descriptor and check its
+`status` before deciding what happens next.
 
-**Print the descriptor, then stop. Do not wait, poll, or keep working.** Creating a gate
-turn ends your turn: the runner hands off to the gate turn and kills your process
-immediately after the descriptor prints. Seeing the descriptor is how you know creation
-succeeded; the kill that follows is not a signal you can observe, so never treat an
-early or empty tool result as that signal. If the tool call ever returns something other
-than the descriptor — an error, or output you did not expect — your turn has NOT ended;
-read it and report it instead of assuming the handoff already happened. There is nothing
-after this for you to do — `sase gate wait` is rejected outright for a turn gate under
-an agent runner, with a message pointing back at `--turn`, because waiting is exactly
-the blocking behaviour a gate turn exists to remove. (It still works for non-agent
-scripts and tests answering a non-turn gate.) The reviewer's decision and its command
-results reach the _next_ session member automatically, composed into their prompt's
-labelled sections per the `next` policy above. Never poll bundle files directly. Never
-run bundle commands by hand.
+When the descriptor says `"status": "staged"`, the gate has not been published yet.
+Nothing starts until this turn ends: finish through `/sase_final` so host finalizers can
+settle before publication. Do not wait for your own staged gate; `sase gate wait`
+rejects that request and explains the same timing. Other gates can still be waited on.
+Print the descriptor, then stop. The reviewer's decision and command results reach the
+follow-up member according to the `next` policy above. Never run bundle commands by
+hand. Never poll bundle files directly.
+
+When the descriptor has no staged status and `auto_resolution.state` is `resolved`, the
+gate resolved automatically and this process continues. If it does not report staged and
+did not auto-resolve, the gate was not handed off — read the output and continue or
+retry. An error, unexpected output, timeout, or empty result does not mean the handoff
+succeeded.
 
 If your gate resolves via `"auto": true` before creation even returns, none of this
 costs you a hand-off: creation settles it synchronously and your own process continues
