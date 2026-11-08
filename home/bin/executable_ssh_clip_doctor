@@ -16,6 +16,8 @@
 # Peer host comes from CLIP_PEER (default: mac), the same variable xc/xp use.
 # Poll tuning comes from CLIP_DOCTOR_POLL_TRIES (default 20) and
 # CLIP_DOCTOR_POLL_INTERVAL (default 0.25) so tests run in well under a second.
+# Remote ssh calls are bounded by CLIP_DOCTOR_SSH_TIMEOUT (default 30) via timeout(1)
+# so a hung connection cannot block diagnostics or cleanup forever.
 #
 # Paths tested:  peer  = ssh $CLIP_PEER pbcopy (control: proves the Mac pasteboard is reachable)
 #                x11   = xclip -> forwarded $DISPLAY -> XQuartz pbproxy -> NSPasteboard
@@ -24,6 +26,8 @@
 #                xc    = the xc helper (only when xc is on PATH)
 #                xp    = the xp helper (only when xp is on PATH)
 # Exit status: 0 = no FAIL lines, 1 = at least one FAIL, 2 = usage error / refused run.
+# Signals: INT/TERM restore the saved clipboard once, stop further writes, and exit
+# 130 (INT) or 143 (TERM).
 set -u
 
 MAC="${CLIP_PEER:-mac}"
@@ -56,6 +60,8 @@ Usage: ssh_clip_doctor [--observe] [--repair] [--repro] [--payloads] [--no-resto
 
 Peer host: ${CLIP_PEER:-mac} via CLIP_PEER. Exit status: 0 = no FAIL,
 1 = at least one FAIL, 2 = usage error / refused run.
+INT/TERM: restore the saved clipboard once, stop further test writes, clean up
+diagnostic children that could still write, and exit 130 (INT) or 143 (TERM).
 
 What you see -> meaning -> next step:
   pbproxy armed, all paths PASS ......... healthy; nothing to do
@@ -68,6 +74,8 @@ What you see -> meaning -> next step:
     client and client_termfeatures below
   peer FAIL .............................. Mac unreachable or pasteboard unreadable;
     the other results are inconclusive
+  transport or poll error ................ ssh failed or the poll reply was missing
+    or malformed; the path is inconclusive (distinct from "never arrived")
 EOF
 }
 
@@ -119,11 +127,16 @@ fi
 # Poll tuning for the Mac-side checks (env overrides keep tests fast).
 POLL_TRIES="${CLIP_DOCTOR_POLL_TRIES:-20}"
 POLL_INTERVAL="${CLIP_DOCTOR_POLL_INTERVAL:-0.25}"
+SSH_TIMEOUT="${CLIP_DOCTOR_SSH_TIMEOUT:-30}"
 
 ok() { printf '  \033[32mPASS\033[0m %s\n' "$*"; }
 bad() { printf '  \033[31mFAIL\033[0m %s\n' "$*"; FAILS=$((FAILS + 1)); }
 info() { printf '  .... %s\n' "$*"; }
 macsh() { ssh -x -o BatchMode=yes -o ConnectTimeout=8 "$MAC" "$@"; }
+# Bounded remote call: timeout(1) via PATH so an established-but-hung ssh
+# cannot block diagnostics or cleanup forever. Returns ssh's status (124 on timeout).
+# timeout cannot wrap the macsh shell function, so repeat the ssh invocation here.
+macsh_timed() { timeout "$SSH_TIMEOUT" ssh -x -o BatchMode=yes -o ConnectTimeout=8 "$MAC" "$@"; }
 
 # --- tiny libX11 probe (no compiler needed) -----------------------------------
 PROBE=$(cat <<'PY'
@@ -174,52 +187,120 @@ PY
 )
 probe() { timeout 10 python3 -I -c "$PROBE" "$@"; }
 
-poll_mac() { # $1 sentinel -> prints seconds-to-arrive or NOT_FOUND (one ssh round trip)
-  macsh "s=\$(date +%s); for i in \$(seq 1 $POLL_TRIES); do pbpaste | grep -qxF '$1' && { echo \$(( \$(date +%s)-s ))s; exit 0; }; sleep $POLL_INTERVAL; done; echo NOT_FOUND"
+poll_mac() { # $1 sentinel -> prints timing, NOT_FOUND, or TRANSPORT_ERROR (one ssh round trip)
+  # Returns 0 = arrived, 1 = never arrived, 2 = transport/malformed.
+  # The single ssh round trip runs the poll loop on the Mac; an ssh failure,
+  # timeout, empty reply, or malformed reply must never look like an arrival.
+  local out rc
+  out=$(macsh_timed "s=\$(date +%s); for i in \$(seq 1 $POLL_TRIES); do pbpaste 2>/dev/null | grep -qxF '$1' && { echo \$(( \$(date +%s)-s ))s; exit 0; }; sleep $POLL_INTERVAL; done; echo NOT_FOUND" 2>/dev/null)
+  rc=$?
+  if [ $rc -ne 0 ]; then
+    printf 'TRANSPORT_ERROR\n'
+    return 2
+  fi
+  out=$(printf '%s\n' "$out" | tail -n 1)
+  case "$out" in
+    NOT_FOUND) printf 'NOT_FOUND\n'; return 1 ;;
+    *s)
+      t=${out%s}
+      case "$t" in
+        ''|*[!0-9]*) printf 'TRANSPORT_ERROR\n'; return 2 ;;
+        *) printf '%s\n' "$out"; return 0 ;;
+      esac
+      ;;
+    *) printf 'TRANSPORT_ERROR\n'; return 2 ;;
+  esac
 }
 sentinel() { echo "ssh-clip-doctor-$1-$(hostname -s)-$$-$(date +%s%N | cut -c1-13)"; }
-report() { # $1 label, $2 poll result
-  if [ "$2" != NOT_FOUND ]; then ok "$1: arrived in $2"; else bad "$1: never arrived"; return 1; fi
+report() { # $1 label, $2 poll result string
+  # Validates the poll string so a missing/malformed response never becomes PASS.
+  # Keeps "never arrived" distinct from transport/poll errors. Runs in the parent
+  # shell so FAILS increments are never lost in a command-substitution subshell.
+  case "$2" in
+    NOT_FOUND) bad "$1: never arrived"; return 1 ;;
+    *s)
+      t=${2%s}
+      case "$t" in
+        ''|*[!0-9]*) bad "$1: transport or poll error (malformed response '${2}')"; return 1 ;;
+        *) ok "$1: arrived in $2"; return 0 ;;
+      esac
+      ;;
+    *) bad "$1: transport or poll error (unreadable peer response '${2:-<empty>}')"; return 1 ;;
+  esac
+}
+poll_and_report() { # $1 label, $2 sentinel -> poll then report with explicit rc handling
+  local label="$1" sent="$2" out rc
+  out=$(poll_mac "$sent"); rc=$?
+  if [ $rc -eq 2 ]; then
+    bad "$label: transport or poll error (${out})"
+    return 1
+  fi
+  report "$label" "$out"
 }
 
 test_peer() {
   PEER_SENTINEL=""
-  local s
+  local s poll_out poll_rc
   s=$(sentinel peer)
-  printf '%s\n' "$s" | macsh pbcopy || { bad "peer: ssh $MAC pbcopy failed"; return 1; }
+  printf '%s\n' "$s" | macsh_timed pbcopy || { bad "peer: ssh $MAC pbcopy failed"; return 1; }
   PEER_SENTINEL="$s"
-  report "peer  (ssh $MAC pbcopy -> Mac; control)" "$(poll_mac "$s")"
+  poll_out=$(poll_mac "$s"); poll_rc=$?
+  if [ $poll_rc -eq 2 ]; then
+    bad "peer  (ssh $MAC pbcopy -> Mac; control): transport or poll error (${poll_out})"
+    return 1
+  fi
+  report "peer  (ssh $MAC pbcopy -> Mac; control)" "$poll_out"
 }
 test_x11() {
-  local s
+  local s poll_out poll_rc
   s=$(sentinel x11)
   [ -n "${DISPLAY:-}" ] || { info "x11: DISPLAY unset in this shell (X11 path not in use)"; return 0; }
   setsid -f timeout 60 xclip -quiet -selection clipboard <<<"$s" >/dev/null 2>&1
-  report "x11   (xclip -> $DISPLAY -> XQuartz pbproxy -> Mac)" "$(poll_mac "$s")"
+  poll_out=$(poll_mac "$s"); poll_rc=$?
+  if [ $poll_rc -eq 2 ]; then
+    bad "x11   (xclip -> $DISPLAY -> XQuartz pbproxy -> Mac): transport or poll error (${poll_out})"
+    return 1
+  fi
+  report "x11   (xclip -> $DISPLAY -> XQuartz pbproxy -> Mac)" "$poll_out"
 }
 test_osc52() {
-  local s
+  local s poll_out poll_rc
   s=$(sentinel osc52)
   [ -n "${TMUX:-}" ] || { info "osc52: not inside tmux; skipped"; return 0; }
   printf '%s\n' "$s" | tmux load-buffer -w - || { bad "osc52: tmux load-buffer -w failed"; return 1; }
-  report "osc52 (tmux -> OSC 52 -> kitty -> Mac)" "$(poll_mac "$s")"
+  poll_out=$(poll_mac "$s"); poll_rc=$?
+  if [ $poll_rc -eq 2 ]; then
+    bad "osc52 (tmux -> OSC 52 -> kitty -> Mac): transport or poll error (${poll_out})"
+    return 1
+  fi
+  report "osc52 (tmux -> OSC 52 -> kitty -> Mac)" "$poll_out"
 }
 test_nvim() {
   command -v nvim >/dev/null 2>&1 || { info "nvim: not installed; skipped"; return 0; }
-  local s out prov
+  local s out prov poll_out poll_rc
   s=$(sentinel nvim)
   out=$(mktemp)
   timeout 25 nvim --headless +"lua local ok = pcall(vim.fn.setreg, '+', '$s'); local c = vim.g.clipboard; vim.fn.writefile({(c and c.name) or 'default'}, '$out')" +qa >/dev/null 2>&1
   prov=$(cat "$out" 2>/dev/null)
   rm -f "$out"
-  report "nvim  (provider=${prov:-?})" "$(poll_mac "$s")"
+  poll_out=$(poll_mac "$s"); poll_rc=$?
+  if [ $poll_rc -eq 2 ]; then
+    bad "nvim  (provider=${prov:-?}): transport or poll error (${poll_out})"
+    return 1
+  fi
+  report "nvim  (provider=${prov:-?})" "$poll_out"
 }
 test_xc() {
   command -v xc >/dev/null 2>&1 || { info "xc: not on PATH; skipped"; return 0; }
-  local s
+  local s poll_out poll_rc
   s=$(sentinel xc)
   printf '%s\n' "$s" | xc >/dev/null 2>&1 || { bad "xc: pipeline failed"; return 1; }
-  report "xc    (xc -> Mac)" "$(poll_mac "$s")"
+  poll_out=$(poll_mac "$s"); poll_rc=$?
+  if [ $poll_rc -eq 2 ]; then
+    bad "xc    (xc -> Mac): transport or poll error (${poll_out})"
+    return 1
+  fi
+  report "xc    (xc -> Mac)" "$poll_out"
 }
 test_xp() {
   command -v xp >/dev/null 2>&1 || { info "xp: not on PATH; skipped"; return 0; }
@@ -236,37 +317,58 @@ test_xp() {
   fi
 }
 
-# sha256 comparison of a payload: one ssh round trip (fetch pbpaste, hash locally).
+# sha256 comparison of a payload with polling: one ssh round trip per check.
+# The poll loop runs on the Mac so delayed delivery inside the budget still passes
+# while expiry fails. Each route uses distinct content so an osc52 check can never
+# match leftover peer bytes. Transport/hashing errors never become PASS.
 payload_check() { # $1 label, $2 payload
-  local want got
-  want=$(printf '%s' "$2" | sha256sum | cut -d' ' -f1)
-  got=$(macsh pbpaste 2>/dev/null | sha256sum | cut -d' ' -f1) || { bad "$1: could not read Mac clipboard"; return 1; }
-  if [ "$want" = "$got" ] && [ -n "$want" ]; then
-    ok "$1: sha256 $want"
-  else
-    bad "$1: sha256 mismatch (want $want, got ${got:-<empty>})"
+  local want out rc t
+  want=$(printf '%s' "$2" | sha256sum | cut -d' ' -f1) || { bad "$1: could not hash expected payload"; return 1; }
+  if [ -z "$want" ]; then bad "$1: could not hash expected payload"; return 1; fi
+  out=$(macsh_timed "want='$want'; s=\$(date +%s); for i in \$(seq 1 $POLL_TRIES); do got=\$(pbpaste 2>/dev/null | sha256sum | cut -d' ' -f1); if [ \"\$got\" = \"\$want\" ] && [ -n \"\$got\" ]; then echo \$(( \$(date +%s)-s ))s; exit 0; fi; sleep $POLL_INTERVAL; done; echo NOT_FOUND" 2>/dev/null)
+  rc=$?
+  if [ $rc -ne 0 ]; then
+    bad "$1: transport or poll error (ssh failed, rc=$rc)"
     return 1
   fi
+  out=$(printf '%s\n' "$out" | tail -n 1)
+  case "$out" in
+    NOT_FOUND) bad "$1: sha256 mismatch (want $want, timed out waiting)"; return 1 ;;
+    *s)
+      t=${out%s}
+      case "$t" in
+        ''|*[!0-9]*) bad "$1: transport or poll error (malformed response '${out}')"; return 1 ;;
+        *) ok "$1: sha256 $want (arrived in $out)"; return 0 ;;
+      esac
+      ;;
+    *) bad "$1: transport or poll error (malformed response '${out:-<empty>}')"; return 1 ;;
+  esac
 }
 run_payloads() {
   echo "== payloads (sha256, one ssh round trip per check)"
-  local multi uni big
-  multi=$(printf 'line1\nline2 with spaces\n\ttabbed\ntrailing spaces   \nlast line')
-  uni='héllo wörld 日本語 🎉 test-unicode-ß-Ω'
-  big=$(head -c 65536 /dev/zero | tr '\0' 'X')
-  printf '%s' "$multi" | macsh pbcopy || { bad "peer/multiline: ssh $MAC pbcopy failed"; }
-  payload_check "peer/multiline (LF+tabs, $(printf '%s' "$multi" | wc -c)B)" "$multi"
-  printf '%s' "$uni" | macsh pbcopy || { bad "peer/unicode: ssh $MAC pbcopy failed"; }
-  payload_check "peer/unicode" "$uni"
-  printf '%s' "$big" | macsh pbcopy || { bad "peer/64KiB: ssh $MAC pbcopy failed"; }
-  payload_check "peer/64KiB" "$big"
+  local multi_base uni_base multi_peer multi_osc uni_peer uni_osc big_peer big_osc
+  multi_base=$(printf 'line1\nline2 with spaces\n\ttabbed\ntrailing spaces   \nlast line')
+  uni_base='héllo wörld 日本語 🎉 test-unicode-ß-Ω'
+  # Route-specific content: osc52 payloads must not match leftover peer bytes.
+  multi_peer="peer-multiline:${multi_base}"
+  multi_osc="osc52-multiline:${multi_base}"
+  uni_peer="peer-unicode:${uni_base}"
+  uni_osc="osc52-unicode:${uni_base}"
+  big_peer=$(head -c 65536 /dev/zero | tr '\0' 'X')
+  big_osc=$(head -c 65536 /dev/zero | tr '\0' 'Y')
+  printf '%s' "$multi_peer" | macsh_timed pbcopy || { bad "peer/multiline: ssh $MAC pbcopy failed"; }
+  payload_check "peer/multiline (LF+tabs, $(printf '%s' "$multi_peer" | wc -c)B)" "$multi_peer"
+  printf '%s' "$uni_peer" | macsh_timed pbcopy || { bad "peer/unicode: ssh $MAC pbcopy failed"; }
+  payload_check "peer/unicode" "$uni_peer"
+  printf '%s' "$big_peer" | macsh_timed pbcopy || { bad "peer/64KiB: ssh $MAC pbcopy failed"; }
+  payload_check "peer/64KiB" "$big_peer"
   if [ -n "${TMUX:-}" ]; then
-    printf '%s' "$multi" | tmux load-buffer -w - || { bad "osc52/multiline: tmux load-buffer -w failed"; }
-    payload_check "osc52/multiline" "$multi"
-    printf '%s' "$uni" | tmux load-buffer -w - || { bad "osc52/unicode: tmux load-buffer -w failed"; }
-    payload_check "osc52/unicode" "$uni"
-    printf '%s' "$big" | tmux load-buffer -w - || { bad "osc52/64KiB: tmux load-buffer -w failed"; }
-    payload_check "osc52/64KiB" "$big"
+    printf '%s' "$multi_osc" | tmux load-buffer -w - || { bad "osc52/multiline: tmux load-buffer -w failed"; }
+    payload_check "osc52/multiline" "$multi_osc"
+    printf '%s' "$uni_osc" | tmux load-buffer -w - || { bad "osc52/unicode: tmux load-buffer -w failed"; }
+    payload_check "osc52/unicode" "$uni_osc"
+    printf '%s' "$big_osc" | tmux load-buffer -w - || { bad "osc52/64KiB: tmux load-buffer -w failed"; }
+    payload_check "osc52/64KiB" "$big_osc"
   else
     info "osc52 payloads: not inside tmux; skipped"
   fi
@@ -275,14 +377,55 @@ run_payloads() {
 PEER_SENTINEL=""
 
 saved=""
-restore() {
+RESTORED=0
+# Idempotent EXIT cleanup: restores once, preserves the backup with mode 600 on
+# failure, and ensures a restore failure affects the final status.
+restore_once() {
+  if [ "$RESTORED" = 1 ]; then return 0; fi
+  RESTORED=1
   if [ -n "$saved" ] && [ -f "$saved" ]; then
-    macsh 'pbcopy' <"$saved" >/dev/null 2>&1 && info "restored previous Mac text clipboard"
-    rm -f "$saved"
+    local backup="$saved"
     saved=""
+    if macsh_timed 'pbcopy' <"$backup" >/dev/null 2>&1; then
+      info "restored previous Mac text clipboard"
+      rm -f "$backup"
+    else
+      chmod 600 "$backup" 2>/dev/null || true
+      bad "failed to restore previous Mac clipboard (backup kept at $backup with mode 600; recover with: ssh $MAC pbcopy < $backup)"
+    fi
   fi
 }
-trap restore EXIT INT TERM
+on_exit() {
+  local rc=$?
+  restore_once
+  if [ "$FAILS" -gt 0 ]; then
+    if [ "$rc" -eq 0 ]; then
+      exit 1
+    else
+      exit "$rc"
+    fi
+  else
+    exit "$rc"
+  fi
+}
+kill_write_children() {
+  # Best effort: stop diagnostic children that could still write after restore.
+  pkill -P $$ 2>/dev/null || true
+  jobs -p 2>/dev/null | xargs -r kill 2>/dev/null || true
+}
+on_int() {
+  kill_write_children
+  restore_once
+  exit 130
+}
+on_term() {
+  kill_write_children
+  restore_once
+  exit 143
+}
+trap on_exit EXIT
+trap on_int INT
+trap on_term TERM
 
 echo "== context ($(hostname -s), $(date '+%F %T'))"
 info "DISPLAY=${DISPLAY:-<unset>}  TMUX=${TMUX:+yes}  SSH_CONNECTION=${SSH_CONNECTION:-<none>}"
@@ -313,9 +456,17 @@ if [ -n "${TMUX:-}" ]; then
 fi
 
 echo "== macOS side ($MAC)"
-if macsh true 2>/dev/null; then
-  macsh 'v=$(defaults read /Applications/Utilities/XQuartz.app/Contents/Info.plist CFBundleShortVersionString 2>/dev/null); s=$(ps -axo lstart=,comm= | grep "XQuartz.app/Contents/MacOS/X11.bin" | head -1 | sed "s#  */Applications.*##"); st="not running"; [ -n "$s" ] && st="started $s"; echo "XQuartz ${v:-?} ($st); sync_pasteboard=$(defaults read org.xquartz.X11 sync_pasteboard 2>/dev/null) clipboard_to_pasteboard=$(defaults read org.xquartz.X11 sync_clipboard_to_pasteboard 2>/dev/null)"' | sed 's/^/  .... /'
-  if [ $RESTORE = 1 ]; then saved=$(mktemp); macsh 'pbpaste' >"$saved" 2>/dev/null; fi
+if macsh_timed true 2>/dev/null; then
+  macsh_timed 'v=$(defaults read /Applications/Utilities/XQuartz.app/Contents/Info.plist CFBundleShortVersionString 2>/dev/null); s=$(ps -axo lstart=,comm= | grep "XQuartz.app/Contents/MacOS/X11.bin" | head -1 | sed "s#  */Applications.*##"); st="not running"; [ -n "$s" ] && st="started $s"; echo "XQuartz ${v:-?} ($st); sync_pasteboard=$(defaults read org.xquartz.X11 sync_pasteboard 2>/dev/null) clipboard_to_pasteboard=$(defaults read org.xquartz.X11 sync_clipboard_to_pasteboard 2>/dev/null)"' | sed 's/^/  .... /'
+  if [ $RESTORE = 1 ]; then
+    saved=$(mktemp)
+    chmod 600 "$saved"
+    if ! macsh_timed 'pbpaste' >"$saved" 2>/dev/null; then
+      bad "could not read Mac clipboard for restore (ssh $MAC pbpaste failed); stopping without writing"
+      rm -f "$saved"; saved=""
+      exit 1
+    fi
+  fi
 else bad "cannot ssh to $MAC; E2E tests need it"; exit 1; fi
 
 echo "== X display"
@@ -386,5 +537,5 @@ if [ $OBSERVE = 0 ]; then
     run_payloads
   fi
 fi
-restore
+restore_once
 exit $((FAILS > 0))

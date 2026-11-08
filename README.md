@@ -12,7 +12,7 @@ to the attached terminal. Use xc to copy, xp to read the Mac clipboard over SSH,
 clip2mac to push the last remote tmux copy manually. X11 forwarding is opt-in for GUI
 apps with BAS_X11=1 bas athena. Run ssh_clip_doctor in a broken pane before restarting
 anything. See the
-[tailnet SSH clipboard runbook](https://github.com/bbugyi200/tailnet/blob/master/mac/ssh-clipboard-2026-11.md).
+[tailnet SSH clipboard runbook](https://github.com/bbugyi200/tailnet/blob/main/mac/ssh-clipboard-2026-11.md).
 
 ## DigitalOcean doctl on athena
 

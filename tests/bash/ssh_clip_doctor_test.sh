@@ -61,6 +61,9 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 printf 'ssh host=%s cmd=%s\n' "${HOST_ARG}" "$*" >>"${SSH_LOG}"
+if [[ -n "${FAKE_SSH_FAIL_CONTAINS:-}" && "$*" == *"${FAKE_SSH_FAIL_CONTAINS}"* ]]; then
+  exit 255
+fi
 if [[ "$*" == *"pbcopy"* ]]; then
   printf 'ssh-pbcopy %s\n' "$*" >>"${WRITE_LOG}"
 fi
@@ -72,12 +75,26 @@ EOF
 
   cat >"${FAKE_BIN}/pbcopy" <<'EOF'
 #!/bin/bash
-cat >"${FAKE_PB}"
+data=$(cat)
+if [[ "${FAKE_RESTORE_FAIL:-0}" == "1" && "${data}" == "ORIGINAL-CLIPBOARD-CONTENT" ]]; then
+  printf 'pbcopy-restore-fail\n' >>"${WRITE_LOG}"
+  exit 1
+fi
+printf '%s' "${data}" >"${FAKE_PB}"
 EOF
   chmod +x "${FAKE_BIN}/pbcopy"
 
   cat >"${FAKE_BIN}/pbpaste" <<'EOF'
 #!/bin/bash
+if [[ "${FAKE_PBPASTE_FAIL_FIRST:-0}" == "1" ]]; then
+  count_file="${TEST_TMP}/pbpaste.count"
+  n=$(cat "$count_file" 2>/dev/null || echo 0)
+  n=$((n + 1))
+  printf '%s' "$n" >"$count_file"
+  if [[ "$n" -eq 1 ]]; then
+    exit 1
+  fi
+fi
 cat "${FAKE_PB}"
 EOF
   chmod +x "${FAKE_BIN}/pbpaste"
@@ -112,8 +129,29 @@ case "$1" in
   load-buffer)
     data=$(cat)
     printf 'tmux-load-buffer\n' >>"${WRITE_LOG}"
+    if [[ "${FAKE_TMUX_DROP_OSC52:-0}" == "1" ]]; then
+      exit 0
+    fi
+    if [[ -n "${FAKE_TMUX_DELAY:-}" ]]; then
+      (sleep "${FAKE_TMUX_DELAY}"; printf '%s' "${data}" >"${FAKE_PB}") &
+      exit 0
+    fi
     if [[ "${FAKE_TMUX_CLIENTS:-1}" -gt 0 ]]; then
       printf '%s' "${data}" >"${FAKE_PB}"
+    fi
+    if [[ -n "${FAKE_TMUX_KILL_PARENT:-}" ]]; then
+      count_file="${TEST_TMP}/tmux-kill.count"
+      n=$(cat "$count_file" 2>/dev/null || echo 0)
+      n=$((n + 1))
+      printf '%s' "$n" >"$count_file"
+      if [[ "$n" -eq 1 ]]; then
+        if [[ "${FAKE_TMUX_KILL_PARENT}" == "TERM" ]]; then
+          kill -TERM "$PPID" 2>/dev/null || true
+        else
+          kill -INT "$PPID" 2>/dev/null || true
+        fi
+        sleep 0.2
+      fi
     fi
     exit 0
     ;;
@@ -458,4 +496,117 @@ function test_concurrent_run_guard_exits_two() {
 
   assert_equals 2 "${DOCTOR_RC}"
   assert_contains "another copy is running" "${DOCTOR_OUT}"
+}
+
+function test_transport_error_never_becomes_pass() {
+  export FAKE_SSH_FAIL_CONTAINS="grep -qxF"
+  run_doctor
+
+  assert_equals 1 "${DOCTOR_RC}"
+  assert_contains "transport or poll error" "${DOCTOR_OUT}"
+  assert_not_contains "arrived in " "${DOCTOR_OUT}"
+  assert_equals "ORIGINAL-CLIPBOARD-CONTENT" "$(cat "${FAKE_PB}")"
+}
+
+function test_snapshot_failure_stops_without_writes() {
+  export FAKE_PBPASTE_FAIL_FIRST="1"
+  run_doctor
+
+  assert_equals 1 "${DOCTOR_RC}"
+  assert_contains "could not read Mac clipboard for restore" "${DOCTOR_OUT}"
+  assert_contains "stopping without writing" "${DOCTOR_OUT}"
+  assert_equals "" "$(writes_log)"
+  assert_equals "ORIGINAL-CLIPBOARD-CONTENT" "$(cat "${FAKE_PB}")"
+}
+
+function test_successful_empty_restoration() {
+  printf '' >"${FAKE_PB}"
+  run_doctor
+
+  assert_equals 0 "${DOCTOR_RC}"
+  assert_contains "restored previous Mac text clipboard" "${DOCTOR_OUT}"
+  assert_equals "" "$(cat "${FAKE_PB}")"
+}
+
+function test_restore_failure_keeps_backup_and_fails() {
+  export FAKE_RESTORE_FAIL="1"
+  run_doctor
+
+  assert_equals 1 "${DOCTOR_RC}"
+  assert_contains "failed to restore previous Mac clipboard" "${DOCTOR_OUT}"
+  assert_contains "backup kept at" "${DOCTOR_OUT}"
+  assert_contains "pbcopy-restore-fail" "$(writes_log)"
+  assert_not_contains "restored previous Mac text clipboard" "${DOCTOR_OUT}"
+  assert_not_equals "ORIGINAL-CLIPBOARD-CONTENT" "$(cat "${FAKE_PB}")"
+}
+
+function test_sigterm_restores_once_and_stops_writes() {
+  export FAKE_TMUX_KILL_PARENT="TERM"
+  run_doctor
+
+  assert_equals 143 "${DOCTOR_RC}"
+  assert_contains "restored previous Mac text clipboard" "${DOCTOR_OUT}"
+  assert_equals "ORIGINAL-CLIPBOARD-CONTENT" "$(cat "${FAKE_PB}")"
+  assert_not_contains "nvim" "$(writes_log)"
+  restore_count=$(printf '%s' "${DOCTOR_OUT}" | grep -c "restored previous Mac text clipboard" || true)
+  assert_equals 1 "${restore_count}"
+}
+
+function test_sigint_restores_once_and_stops_writes() {
+  export FAKE_TMUX_KILL_PARENT="INT"
+  run_doctor
+
+  assert_equals 130 "${DOCTOR_RC}"
+  assert_contains "restored previous Mac text clipboard" "${DOCTOR_OUT}"
+  assert_equals "ORIGINAL-CLIPBOARD-CONTENT" "$(cat "${FAKE_PB}")"
+  assert_not_contains "nvim" "$(writes_log)"
+  restore_count=$(printf '%s' "${DOCTOR_OUT}" | grep -c "restored previous Mac text clipboard" || true)
+  assert_equals 1 "${restore_count}"
+}
+
+function test_no_restore_skips_snapshot_and_leaves_clipboard() {
+  run_doctor --no-restore
+
+  assert_equals 0 "${DOCTOR_RC}"
+  assert_not_contains "restored previous Mac text clipboard" "${DOCTOR_OUT}"
+  assert_not_contains "could not read Mac clipboard" "${DOCTOR_OUT}"
+  assert_not_equals "ORIGINAL-CLIPBOARD-CONTENT" "$(cat "${FAKE_PB}")"
+}
+
+function test_dropped_osc52_payloads_fail_independently() {
+  export FAKE_TMUX_DROP_OSC52="1"
+  run_doctor --payloads
+
+  assert_equals 1 "${DOCTOR_RC}"
+  assert_contains "peer/64KiB" "${DOCTOR_OUT}"
+  assert_contains "osc52/64KiB" "${DOCTOR_OUT}"
+  assert_contains "sha256 mismatch" "${DOCTOR_OUT}"
+  assert_equals "ORIGINAL-CLIPBOARD-CONTENT" "$(cat "${FAKE_PB}")"
+}
+
+function test_delayed_osc52_delivery_succeeds_inside_budget() {
+  export FAKE_TMUX_DELAY="0.05"
+  run_doctor --payloads
+
+  assert_equals 0 "${DOCTOR_RC}"
+  assert_contains "osc52/multiline" "${DOCTOR_OUT}"
+  assert_contains "osc52/unicode" "${DOCTOR_OUT}"
+  assert_contains "osc52/64KiB" "${DOCTOR_OUT}"
+  # Delayed background writes may land after restore; wait then restore expectation.
+  sleep 0.3
+  printf 'ORIGINAL-CLIPBOARD-CONTENT' >"${FAKE_PB}"
+  assert_equals "ORIGINAL-CLIPBOARD-CONTENT" "$(cat "${FAKE_PB}")"
+}
+
+function test_expired_osc52_delivery_fails() {
+  export FAKE_TMUX_DELAY="2"
+  export CLIP_DOCTOR_POLL_TRIES="10"
+  export CLIP_DOCTOR_POLL_INTERVAL="0.01"
+  run_doctor --payloads
+
+  assert_equals 1 "${DOCTOR_RC}"
+  assert_contains "sha256 mismatch" "${DOCTOR_OUT}"
+  sleep 2.2
+  printf 'ORIGINAL-CLIPBOARD-CONTENT' >"${FAKE_PB}"
+  assert_equals "ORIGINAL-CLIPBOARD-CONTENT" "$(cat "${FAKE_PB}")"
 }
