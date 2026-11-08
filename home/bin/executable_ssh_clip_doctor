@@ -1,0 +1,390 @@
+#!/usr/bin/env bash
+# ssh_clip_doctor — end-to-end check of "copy on a remote tailnet host -> MacBook clipboard".
+#
+# Run it INSIDE the tmux pane / shell where copying is broken (it inherits that $DISPLAY).
+# Run it BEFORE restarting XQuartz or reconnecting: those actions destroy the evidence.
+#
+#   ssh_clip_doctor --observe    # read-only: env, X display, pbproxy state (no clipboard writes)
+#   ssh_clip_doctor              # also sentinel E2E on all paths; restores the Mac text clipboard
+#                                # afterwards (use --no-restore to skip)
+#   ssh_clip_doctor --repair     # also re-arm/unwedge XQuartz pbproxy if needed, then re-test
+#   ssh_clip_doctor --repro      # deterministically WEDGE pbproxy, prove copies stop syncing,
+#                                # then unwedge it again (root-cause reproduction)
+#   ssh_clip_doctor --payloads   # also send multiline, Unicode, and 64 KiB payloads via peer
+#                                # and osc52, comparing sha256 instead of grep -x
+#
+# Peer host comes from CLIP_PEER (default: mac), the same variable xc/xp use.
+# Poll tuning comes from CLIP_DOCTOR_POLL_TRIES (default 20) and
+# CLIP_DOCTOR_POLL_INTERVAL (default 0.25) so tests run in well under a second.
+#
+# Paths tested:  peer  = ssh $CLIP_PEER pbcopy (control: proves the Mac pasteboard is reachable)
+#                x11   = xclip -> forwarded $DISPLAY -> XQuartz pbproxy -> NSPasteboard
+#                osc52 = tmux load-buffer -w -> OSC 52 -> kitty -> NSPasteboard
+#                nvim  = headless nvim setreg('+') with your config's provider
+#                xc    = the xc helper (only when xc is on PATH)
+#                xp    = the xp helper (only when xp is on PATH)
+# Exit status: 0 = no FAIL lines, 1 = at least one FAIL, 2 = usage error / refused run.
+set -u
+
+MAC="${CLIP_PEER:-mac}"
+RESTORE=1
+REPAIR=0
+REPRO=0
+OBSERVE=0
+PAYLOADS=0
+FAILS=0
+
+usage() {
+  cat <<'EOF'
+ssh_clip_doctor — replicate, diagnose, repair, and reproduce Mac clipboard failures.
+
+Run it INSIDE the broken pane, BEFORE restarting XQuartz or reconnecting:
+those actions destroy the evidence.
+
+Usage: ssh_clip_doctor [--observe] [--repair] [--repro] [--payloads] [--no-restore] [-h|--help]
+
+  --observe     read-only triage (no clipboard writes, no repair, no repro)
+  (default)     sentinel E2E through each path, then restore the Mac text clipboard
+                (--no-restore skips the restore)
+  --repair      re-arm/unwedge pbproxy with the staged synthetic-event kick;
+                prints "was WEDGED" or "was UNARMED"
+  --repro       wedge pbproxy with the "blackhole" owner, prove x11 copies drop,
+                then unwedge it
+  --payloads    additionally send multiline, non-ASCII Unicode, and 64 KiB payloads
+                through osc52 and peer, comparing sha256 of pbpaste output
+  -h, --help    print this help (includes the interpretation table below)
+
+Peer host: ${CLIP_PEER:-mac} via CLIP_PEER. Exit status: 0 = no FAIL,
+1 = at least one FAIL, 2 = usage error / refused run.
+
+What you see -> meaning -> next step:
+  pbproxy armed, all paths PASS ......... healthy; nothing to do
+  pbproxy NOT armed, x11 FAIL, osc52 PASS  XQuartz bridge stopped; re-run with --repair
+  DISPLAY refuses connections / HANGS / differs from the latest attach ... stale
+    pane environment; open a new pane (or re-attach tmux)
+  live X server but NOT XQuartz .......... pane captured the VNC desktop DISPLAY
+    (:1); open a new pane
+  osc52 FAIL inside tmux ................. OSC 52 chain broken; check the attached
+    client and client_termfeatures below
+  peer FAIL .............................. Mac unreachable or pasteboard unreadable;
+    the other results are inconclusive
+EOF
+}
+
+for a in "$@"; do
+  case "$a" in
+    --no-restore) RESTORE=0 ;;
+    --repair) REPAIR=1 ;;
+    --repro) REPRO=1 ;;
+    --observe) OBSERVE=1 ;;
+    --payloads) PAYLOADS=1 ;;
+    -h | --help) usage; exit 0 ;;
+    *) printf 'unknown arg: %s\n' "$a" >&2; exit 2 ;;
+  esac
+done
+if [ "$OBSERVE" = 1 ]; then
+  REPAIR=0
+  REPRO=0
+  RESTORE=0
+fi
+
+# Refuse to run on macOS: the doctor must run on the remote host and reach the
+# Mac over ssh. uname is resolved through PATH so tests can stub the platform.
+if [ "$(uname -s)" = "Darwin" ]; then
+  printf 'ssh_clip_doctor: run this on the remote host (athena/apollo), not on the Mac\n' >&2
+  exit 2
+fi
+
+# Single-instance guard (flock -n on a lock under ${XDG_RUNTIME_DIR:-/tmp}); a
+# concurrent run exits 2, because concurrent sentinel writes fabricate failures.
+#
+# The guard re-execs the script under `flock --close` so the lock FD never
+# reaches child processes: backgrounded or long-lived children (an xclip
+# selection owner, an editor server autostarted by the live nvim probe) would
+# otherwise inherit the FD and pin the lock after this script exits, refusing
+# every later run.
+LOCK_FILE="${XDG_RUNTIME_DIR:-/tmp}/ssh_clip_doctor.lock"
+if [ -z "${CLIP_DOCTOR_LOCKED:-}" ]; then
+  if ! command -v flock >/dev/null 2>&1; then
+    printf 'ssh_clip_doctor: flock is required for the single-instance guard\n' >&2
+    exit 2
+  fi
+  if ! flock -n "$LOCK_FILE" true 2>/dev/null; then
+    printf 'ssh_clip_doctor: another copy is running (concurrent sentinel writes fabricate failures); exiting\n' >&2
+  fi
+  export CLIP_DOCTOR_LOCKED=1
+  exec flock -n -E 2 --close "$LOCK_FILE" "$0" "$@"
+fi
+
+# Poll tuning for the Mac-side checks (env overrides keep tests fast).
+POLL_TRIES="${CLIP_DOCTOR_POLL_TRIES:-20}"
+POLL_INTERVAL="${CLIP_DOCTOR_POLL_INTERVAL:-0.25}"
+
+ok() { printf '  \033[32mPASS\033[0m %s\n' "$*"; }
+bad() { printf '  \033[31mFAIL\033[0m %s\n' "$*"; FAILS=$((FAILS + 1)); }
+info() { printf '  .... %s\n' "$*"; }
+macsh() { ssh -x -o BatchMode=yes -o ConnectTimeout=8 "$MAC" "$@"; }
+
+# --- tiny libX11 probe (no compiler needed) -----------------------------------
+PROBE=$(cat <<'PY'
+import ctypes as C, ctypes.util, sys, time
+X = C.cdll.LoadLibrary(ctypes.util.find_library("X11") or "libX11.so.6")
+VP, UL = C.c_void_p, C.c_ulong
+def sig(f, r, *a): fn = getattr(X, f); fn.restype = r; fn.argtypes = list(a)
+sig("XOpenDisplay", VP, C.c_char_p); sig("XInternAtom", UL, VP, C.c_char_p, C.c_int)
+sig("XGetSelectionOwner", UL, VP, UL); sig("XDefaultRootWindow", UL, VP)
+sig("XCreateSimpleWindow", UL, VP, UL, C.c_int, C.c_int, C.c_uint, C.c_uint, C.c_uint, UL, UL)
+sig("XSetSelectionOwner", C.c_int, VP, UL, UL, UL); sig("XFlush", C.c_int, VP)
+sig("XPending", C.c_int, VP); sig("XNextEvent", C.c_int, VP, VP)
+sig("XSendEvent", C.c_int, VP, UL, C.c_int, C.c_long, VP)
+class Ev(C.Structure):  # XSelectionEvent / XSelectionClearEvent prefix
+    _fields_ = [("type", C.c_int), ("serial", UL), ("send_event", C.c_int), ("display", VP),
+                ("w", UL), ("selection", UL), ("target", UL), ("property", UL), ("time", UL)]
+d = X.XOpenDisplay(None)
+if not d: sys.exit(2)
+A = lambda n: X.XInternAtom(d, n.encode(), 0)
+own = lambda n: X.XGetSelectionOwner(d, A(n))
+def send(win, typ):   # synthetic SelectionNotify(None)=31 or SelectionClear=29 to pbproxy
+    buf = (C.c_char * 192)(); e = Ev.from_buffer(buf)
+    e.type, e.w, e.selection, e.target, e.property = typ, win, A("CLIPBOARD"), A("TARGETS"), 0
+    X.XSendEvent(d, win, 0, 0, C.addressof(buf)); X.XFlush(d)
+cmd = sys.argv[1]
+if cmd == "owners":
+    print(f"0x{own('CLIPBOARD'):x} 0x{own('CLIPBOARD_MANAGER'):x}")
+elif cmd == "kick":
+    # Stage 1: SelectionNotify(None) drains a stuck pending_clipboard counter (wedged).
+    # Stage 2: SelectionClear starts a claim on a proxy that never owned CLIPBOARD (unarmed).
+    # pbproxy's event loop does not check send_event, so it trusts both synthetic events.
+    pb = own("CLIPBOARD_MANAGER")
+    if not pb: print("no-pbproxy"); sys.exit(3)
+    if own("CLIPBOARD") == pb: print("already-armed"); sys.exit(0)
+    for typ, label in ((31, "armed (was WEDGED)"), (29, "armed (was UNARMED)")):
+        send(pb, typ); time.sleep(0.6)
+        if own("CLIPBOARD") == pb: print(label); sys.exit(0)
+    print("still-not-owner")
+elif cmd == "blackhole":  # own CLIPBOARD, swallow pbproxy's request, exit without replying
+    w = X.XCreateSimpleWindow(d, X.XDefaultRootWindow(d), 0, 0, 1, 1, 0, 0, 0)
+    X.XSetSelectionOwner(d, A("CLIPBOARD"), w, 0); X.XFlush(d)
+    buf, n, end = (C.c_char * 192)(), 0, time.time() + float(sys.argv[2])
+    while time.time() < end:
+        while X.XPending(d): X.XNextEvent(d, C.addressof(buf)); n += C.c_int.from_buffer(buf).value == 30
+        time.sleep(0.02)
+    print(f"swallowed {n} SelectionRequest(s)")
+PY
+)
+probe() { timeout 10 python3 -I -c "$PROBE" "$@"; }
+
+poll_mac() { # $1 sentinel -> prints seconds-to-arrive or NOT_FOUND (one ssh round trip)
+  macsh "s=\$(date +%s); for i in \$(seq 1 $POLL_TRIES); do pbpaste | grep -qxF '$1' && { echo \$(( \$(date +%s)-s ))s; exit 0; }; sleep $POLL_INTERVAL; done; echo NOT_FOUND"
+}
+sentinel() { echo "ssh-clip-doctor-$1-$(hostname -s)-$$-$(date +%s%N | cut -c1-13)"; }
+report() { # $1 label, $2 poll result
+  if [ "$2" != NOT_FOUND ]; then ok "$1: arrived in $2"; else bad "$1: never arrived"; return 1; fi
+}
+
+test_peer() {
+  PEER_SENTINEL=""
+  local s
+  s=$(sentinel peer)
+  printf '%s\n' "$s" | macsh pbcopy || { bad "peer: ssh $MAC pbcopy failed"; return 1; }
+  PEER_SENTINEL="$s"
+  report "peer  (ssh $MAC pbcopy -> Mac; control)" "$(poll_mac "$s")"
+}
+test_x11() {
+  local s
+  s=$(sentinel x11)
+  [ -n "${DISPLAY:-}" ] || { info "x11: DISPLAY unset in this shell (X11 path not in use)"; return 0; }
+  setsid -f timeout 60 xclip -quiet -selection clipboard <<<"$s" >/dev/null 2>&1
+  report "x11   (xclip -> $DISPLAY -> XQuartz pbproxy -> Mac)" "$(poll_mac "$s")"
+}
+test_osc52() {
+  local s
+  s=$(sentinel osc52)
+  [ -n "${TMUX:-}" ] || { info "osc52: not inside tmux; skipped"; return 0; }
+  printf '%s\n' "$s" | tmux load-buffer -w - || { bad "osc52: tmux load-buffer -w failed"; return 1; }
+  report "osc52 (tmux -> OSC 52 -> kitty -> Mac)" "$(poll_mac "$s")"
+}
+test_nvim() {
+  command -v nvim >/dev/null 2>&1 || { info "nvim: not installed; skipped"; return 0; }
+  local s out prov
+  s=$(sentinel nvim)
+  out=$(mktemp)
+  timeout 25 nvim --headless +"lua local ok = pcall(vim.fn.setreg, '+', '$s'); local c = vim.g.clipboard; vim.fn.writefile({(c and c.name) or 'default'}, '$out')" +qa >/dev/null 2>&1
+  prov=$(cat "$out" 2>/dev/null)
+  rm -f "$out"
+  report "nvim  (provider=${prov:-?})" "$(poll_mac "$s")"
+}
+test_xc() {
+  command -v xc >/dev/null 2>&1 || { info "xc: not on PATH; skipped"; return 0; }
+  local s
+  s=$(sentinel xc)
+  printf '%s\n' "$s" | xc >/dev/null 2>&1 || { bad "xc: pipeline failed"; return 1; }
+  report "xc    (xc -> Mac)" "$(poll_mac "$s")"
+}
+test_xp() {
+  command -v xp >/dev/null 2>&1 || { info "xp: not on PATH; skipped"; return 0; }
+  # Runs right after the peer test, so the Mac clipboard still holds the peer
+  # sentinel (nothing else has written since).
+  [ -n "${PEER_SENTINEL:-}" ] || { info "xp: peer test did not run; skipped"; return 0; }
+  local got
+  got=$(xp 2>/dev/null) || { bad "xp: xp command failed"; return 1; }
+  if [ "$got" = "$PEER_SENTINEL" ]; then
+    ok "xp    (xp returned the peer sentinel)"
+  else
+    bad "xp: did not return the peer sentinel"
+    return 1
+  fi
+}
+
+# sha256 comparison of a payload: one ssh round trip (fetch pbpaste, hash locally).
+payload_check() { # $1 label, $2 payload
+  local want got
+  want=$(printf '%s' "$2" | sha256sum | cut -d' ' -f1)
+  got=$(macsh pbpaste 2>/dev/null | sha256sum | cut -d' ' -f1) || { bad "$1: could not read Mac clipboard"; return 1; }
+  if [ "$want" = "$got" ] && [ -n "$want" ]; then
+    ok "$1: sha256 $want"
+  else
+    bad "$1: sha256 mismatch (want $want, got ${got:-<empty>})"
+    return 1
+  fi
+}
+run_payloads() {
+  echo "== payloads (sha256, one ssh round trip per check)"
+  local multi uni big
+  multi=$(printf 'line1\nline2 with spaces\n\ttabbed\ntrailing spaces   \nlast line')
+  uni='héllo wörld 日本語 🎉 test-unicode-ß-Ω'
+  big=$(head -c 65536 /dev/zero | tr '\0' 'X')
+  printf '%s' "$multi" | macsh pbcopy || { bad "peer/multiline: ssh $MAC pbcopy failed"; }
+  payload_check "peer/multiline (LF+tabs, $(printf '%s' "$multi" | wc -c)B)" "$multi"
+  printf '%s' "$uni" | macsh pbcopy || { bad "peer/unicode: ssh $MAC pbcopy failed"; }
+  payload_check "peer/unicode" "$uni"
+  printf '%s' "$big" | macsh pbcopy || { bad "peer/64KiB: ssh $MAC pbcopy failed"; }
+  payload_check "peer/64KiB" "$big"
+  if [ -n "${TMUX:-}" ]; then
+    printf '%s' "$multi" | tmux load-buffer -w - || { bad "osc52/multiline: tmux load-buffer -w failed"; }
+    payload_check "osc52/multiline" "$multi"
+    printf '%s' "$uni" | tmux load-buffer -w - || { bad "osc52/unicode: tmux load-buffer -w failed"; }
+    payload_check "osc52/unicode" "$uni"
+    printf '%s' "$big" | tmux load-buffer -w - || { bad "osc52/64KiB: tmux load-buffer -w failed"; }
+    payload_check "osc52/64KiB" "$big"
+  else
+    info "osc52 payloads: not inside tmux; skipped"
+  fi
+}
+
+PEER_SENTINEL=""
+
+saved=""
+restore() {
+  if [ -n "$saved" ] && [ -f "$saved" ]; then
+    macsh 'pbcopy' <"$saved" >/dev/null 2>&1 && info "restored previous Mac text clipboard"
+    rm -f "$saved"
+    saved=""
+  fi
+}
+trap restore EXIT INT TERM
+
+echo "== context ($(hostname -s), $(date '+%F %T'))"
+info "DISPLAY=${DISPLAY:-<unset>}  TMUX=${TMUX:+yes}  SSH_CONNECTION=${SSH_CONNECTION:-<none>}"
+info "peer host: $MAC (CLIP_PEER)"
+if [ -n "${TMUX:-}" ]; then
+  sd=$(tmux show-environment DISPLAY 2>/dev/null) || sd="DISPLAY=<unset>"
+  info "tmux session (last attach): ${sd}"
+  info "tmux $(tmux show-options -s set-clipboard 2>/dev/null || echo 'set-clipboard unknown')"
+  if feats=$(tmux list-clients -F '#{client_termfeatures}' 2>/dev/null) && [ -n "$feats" ]; then
+    nclients=$(printf '%s\n' "$feats" | grep -c . || true)
+    info "tmux attached clients: $nclients"
+    clip_ok=0
+    idx=0
+    while IFS= read -r feat; do
+      idx=$((idx + 1))
+      info "tmux client #$idx termfeatures: ${feat:-<none>}"
+      case "$feat" in *clipboard*) clip_ok=1 ;; esac
+    done <<<"$feats"
+    if [ "$clip_ok" = 0 ]; then
+      bad "no attached tmux client advertises 'clipboard' in termfeatures (OSC 52 cannot deliver)"
+    fi
+  else
+    bad "tmux: no attached clients (OSC 52 cannot deliver without a terminal)"
+  fi
+  if [ -n "${DISPLAY:-}" ] && [ "$sd" != "DISPLAY=$DISPLAY" ]; then
+    bad "this pane's DISPLAY differs from the latest attach -> stale pane env"
+  fi
+fi
+
+echo "== macOS side ($MAC)"
+if macsh true 2>/dev/null; then
+  macsh 'v=$(defaults read /Applications/Utilities/XQuartz.app/Contents/Info.plist CFBundleShortVersionString 2>/dev/null); s=$(ps -axo lstart=,comm= | grep "XQuartz.app/Contents/MacOS/X11.bin" | head -1 | sed "s#  */Applications.*##"); st="not running"; [ -n "$s" ] && st="started $s"; echo "XQuartz ${v:-?} ($st); sync_pasteboard=$(defaults read org.xquartz.X11 sync_pasteboard 2>/dev/null) clipboard_to_pasteboard=$(defaults read org.xquartz.X11 sync_clipboard_to_pasteboard 2>/dev/null)"' | sed 's/^/  .... /'
+  if [ $RESTORE = 1 ]; then saved=$(mktemp); macsh 'pbpaste' >"$saved" 2>/dev/null; fi
+else bad "cannot ssh to $MAC; E2E tests need it"; exit 1; fi
+
+echo "== X display"
+xstate="unset"
+if [ -n "${DISPLAY:-}" ]; then
+  if timeout 4 xdpyinfo >/dev/null 2>&1; then
+    rc=0
+  else
+    rc=$?
+  fi
+  case $rc in
+    0)
+      if xdpyinfo -queryExtensions 2>/dev/null | grep -q 'Apple-WM'; then
+        xstate=xquartz
+        ok "$DISPLAY reaches XQuartz"
+      else
+        xstate=other
+        bad "$DISPLAY is a live X server but NOT XQuartz (VNC/Xorg?) -> copies never reach the Mac"
+      fi
+      ;;
+    124)
+      xstate=hung
+      bad "$DISPLAY HANGS (sshd forwarder of a dead/frozen SSH session) -> clipboard tools block"
+      ;;
+    *)
+      xstate=dead
+      bad "$DISPLAY refuses connections (its SSH session is gone) -> stale DISPLAY"
+      ;;
+  esac
+else
+  info "DISPLAY unset (X11 path not in use; OSC 52 is the only path)"
+fi
+
+if [ "$xstate" = xquartz ]; then
+  read -r cb mgr < <(probe owners)
+  if [ "${mgr:-0x0}" = 0x0 ]; then
+    bad "pbproxy is not CLIPBOARD_MANAGER (sync disabled, thread dead, or another clipboard manager won)"
+  elif [ "$cb" = "$mgr" ]; then
+    ok "pbproxy armed (owns CLIPBOARD $cb)"
+  else
+    bad "pbproxy NOT armed: CLIPBOARD owner=$cb, pbproxy=$mgr (unarmed since launch, or wedged on a dead owner)"
+    if [ $REPAIR = 1 ]; then info "repair: kick -> $(probe kick)"; else info "next: re-run with --repair (says whether it was WEDGED or UNARMED)"; fi
+  fi
+  if [ $REPRO = 1 ]; then
+    echo "== repro: wedge pbproxy with an owner that never answers"
+    [ "$(probe owners | cut -d' ' -f1)" = "$mgr" ] || info "arming first: $(probe kick)"
+    info "blackhole: $(probe blackhole 2)"
+    before=$FAILS
+    if test_x11; then
+      bad "expected the x11 path to FAIL while wedged"
+    else
+      FAILS=$before
+      ok "reproduced: x11 copies silently dropped while pbproxy waits forever"
+    fi
+    info "unwedge: $(probe kick)"
+  fi
+fi
+
+if [ $OBSERVE = 0 ]; then
+  echo "== end-to-end"
+  test_peer
+  test_xp
+  test_x11
+  test_osc52
+  test_nvim
+  test_xc
+  if [ $PAYLOADS = 1 ]; then
+    run_payloads
+  fi
+fi
+restore
+exit $((FAILS > 0))
