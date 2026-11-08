@@ -1,7 +1,50 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Copy stdin to the clipboard and echo the copied text to stderr.
+#
+# Remote copies prefer tmux OSC 52 (or a raw OSC 52 write to $SSH_TTY) so they
+# never depend on X11 selection forwarding. Headless sessions push to the Mac
+# with `ssh ${CLIP_PEER:-mac} pbcopy`.
 
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    tee /dev/stderr | pbcopy
-else
-    tee /dev/stderr | xclip -sel clipboard
+set -euo pipefail
+
+tmp="$(mktemp "${TMPDIR:-/tmp}/xc.XXXXXX")"
+trap 'rm -f "${tmp}"' EXIT
+# Write the payload to stderr via the existing fd rather than reopening
+# /dev/stderr, which truncates when stderr is a redirected file.
+tee "${tmp}" >&2
+
+os="$(uname -s)"
+
+headless_push() {
+  local peer="${CLIP_PEER:-mac}"
+  printf 'xc: no attached terminal; pushed via ssh %s pbcopy\n' "${peer}" >&2
+  ssh -x -T -o BatchMode=yes -o ConnectTimeout=3 "${peer}" pbcopy <"${tmp}"
+}
+
+if [[ "${os}" == Darwin ]]; then
+  pbcopy <"${tmp}"
+  exit 0
 fi
+
+if [[ -n "${TMUX:-}" ]]; then
+  if [[ -n "$(tmux list-clients 2>/dev/null || true)" ]]; then
+    tmux load-buffer -w - <"${tmp}"
+    exit 0
+  fi
+  tmux load-buffer - <"${tmp}"
+  headless_push
+  exit 0
+fi
+
+if [[ -n "${SSH_TTY:-}" && -w "${SSH_TTY}" ]]; then
+  b64="$(base64 <"${tmp}" | tr -d '\n')"
+  printf '\033]52;c;%s\a' "${b64}" >"${SSH_TTY}"
+  exit 0
+fi
+
+if [[ -n "${DISPLAY:-}" && "${DISPLAY}" != localhost:* ]]; then
+  xclip -selection clipboard <"${tmp}"
+  exit 0
+fi
+
+headless_push

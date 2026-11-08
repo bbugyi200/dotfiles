@@ -1,8 +1,3 @@
 #!/bin/bash
 
-if [[ "$(uname)" == "Darwin" ]]; then
-  COPY_CMD="pbcopy"
-else
-  COPY_CMD="xclip -sel clipboard"
-fi
-zorg template "$@" | tee /dev/stderr | ${COPY_CMD}
+zorg template "$@" | xc

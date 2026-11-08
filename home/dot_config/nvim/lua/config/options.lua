@@ -26,6 +26,13 @@ vo.tagfunc = "v:lua.vim.lsp.tagfunc"
 vo.ignorecase = true
 vo.smartcase = true
 
+-- Pin the clipboard provider before Neovim auto-detects xsel/xclip from DISPLAY.
+-- Built-in tmux/osc52 providers paste via OSC 52 reads, which makes kitty prompt.
+vim.g.clipboard = require("config.clipboard")({
+	is_mac = vim.fn.has("mac") == 1,
+	tmux = (vim.env.TMUX or "") ~= "",
+})
+
 -- Configure system clipboard (deferred to avoid blocking startup with clipboard provider check)
 vim.api.nvim_create_autocmd("UIEnter", {
 	callback = function()

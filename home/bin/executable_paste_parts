@@ -98,26 +98,14 @@ function run() {
   log::info "Done. Original clipboard restored."
 }
 
-# Print contents of system clipboard to STDOUT.
+# Print contents of the Mac clipboard to STDOUT.
 function paste_clip() {
-  if command -v pbpaste &>/dev/null; then
-    pbpaste
-  elif command -v xclip &>/dev/null; then
-    xclip -selection clipboard -out
-  else
-    die "At least one of pbpaste OR xclip MUST be installed."
-  fi
+  xp
 }
 
-# Copy STDIN to system clipboard.
+# Copy STDIN to the clipboard.
 function copy_clip() {
-  if command -v pbcopy &>/dev/null; then
-    pbcopy
-  elif command -v xclip &>/dev/null; then
-    xclip -selection clipboard
-  else
-    die "At least one of pbcopy OR xclip MUST be installed."
-  fi
+  xc
 }
 
 # Simulate pressing Shift+Enter to insert a newline without submitting forms.

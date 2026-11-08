@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Paste the Mac clipboard to stdout.
+# On macOS this is pbpaste; elsewhere it is `ssh ${CLIP_PEER:-mac} pbpaste`.
+
+set -euo pipefail
+
+if [[ "$(uname -s)" == Darwin ]]; then
+  exec pbpaste
+fi
+
+exec ssh -x -T -o BatchMode=yes -o ConnectTimeout=3 "${CLIP_PEER:-mac}" pbpaste

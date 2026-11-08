@@ -32,15 +32,9 @@ function run() {
   echo "${parent_dir}/${child_dir}"
 }
 
-# Print contents of system clipboard to STDOUT.
+# Print contents of the Mac clipboard to STDOUT.
 function paste_clip() {
-  if command -v xclip &>/dev/null; then
-    xclip -selection clipboard -out
-  elif command -v pbpaste &>/dev/null; then
-    pbpaste
-  else
-    die "At least one of xclip OR pbpaste MUST be installed."
-  fi
+  xp
 }
 
 if [[ "${SCRIPTNAME}" == "$(basename "${BASH_SOURCE[0]}")" ]]; then

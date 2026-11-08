@@ -209,9 +209,9 @@ alias chez='chezmoi --no-pager'
 cho() { sudo chown -R "${2:-bryan}":"${2:-bryan}" "$1"; }
 alias chx='sudo chmod +x'
 alias clip2hera='DISPLAY=:0 xclip -o -sel clip | tee /dev/stderr | hera DISPLAY=:0 xclip -sel clip'
-alias clip2mac='xclip -o -sel clip | tee /dev/stderr | mac pbcopy'
+alias clip2mac='tmux save-buffer - | tee /dev/stderr | ssh -x -T -o BatchMode=yes -o ConnectTimeout=3 "${CLIP_PEER:-mac}" pbcopy'
 alias clip3hera='hera DISPLAY=:0 xclip -o -sel clip | tee /dev/stderr | DISPLAY=:0 xclip -sel clip'
-alias clip3mac='mac pbpaste | tee /dev/stderr | xclip -sel clip'
+alias clip3mac='xp | tee /dev/stderr | tmux load-buffer -'
 cmd_exists() { command -v "$1" &>/dev/null; }
 alias cower='cower -c'
 alias cp="cp -i"
@@ -406,7 +406,7 @@ alias mkgrub='sudo grub-mkconfig -o /boot/grub/grub.cfg'
 alias mkpkg='makepkg -si'
 alias mkpp='make_python_package'
 alias mlog='macros log'
-mov() { tman add -w "${MOV}" "${1:-"$(xclip -selection clipboard -out)"}"; }
+mov() { tman add -w "${MOV}" "${1:-"$(xp)"}"; }
 alias mpvlc='xspawn -w mpv mpvlc'
 alias mrun='macrun'
 alias multivisor-cli='multivisor-cli --url athena:8100'
@@ -514,16 +514,16 @@ tqm() {
 }
 tsm-add() { transmission-remote -a "$@"; }
 tsm-boost() { transmission-remote -t"$1" -Bh -phall -pr250; }
-tsm-mov() { tsm-add "${@:-$(xclip -sel clip -o)}" -w "$MOV"; }
+tsm-mov() { tsm-add "${@:-$(xp)}" -w "$MOV"; }
 tsm-purge() { transmission-remote -t"$1" -rad; }
 tsm-rm() { transmission-remote -t"$1" -r; }
 tsm-start() { sudo service transmission-daemon start; }
 tsm-stop() { sudo service transmission-daemon stop; }
-tsm-tv() { tsm-add "${@:-$(xclip -sel clip -o)}" -w "$TV"; }
+tsm-tv() { tsm-add "${@:-$(xp)}" -w "$TV"; }
 tsm-watch() { watch -n "${1:-1}" tsm-status; }
 alias tsm='transmission-remote'
 alias turl='tmux capture-pane -p | urlview'
-tv() { tman add -w "${TV}" "${1:-"$(xclip -selection clipboard -out)"}"; }
+tv() { tman add -w "${TV}" "${1:-"$(xp)"}"; }
 u() { echo -e "\u$1"; }
 alias undow='dow --undo'
 alias unfreeze='icebox --unfreeze /tmp/icebox'
@@ -560,7 +560,7 @@ vimo() {
 }
 vimx() {
   local temp_file="$(mktemp --suffix='.clip.txt')"
-  xclip -sel clip -out >"${temp_file}"
+  xp >"${temp_file}"
   vim "${temp_file}"
 }
 alias vipy='vim -c "/c.InteractiveShellApp.exec_lines" ~/.ipython/profile_default/ipython_config.py'
@@ -601,7 +601,7 @@ alias wrep='watson report -w'
 alias wsensors='watch -n 1 sensors -f'
 alias wttr='clear && curl "wttr.in/?T"'
 alias wwat='watch -n 1 "{ wpoll; echo; watson log; }"'
-xco() { xclip -o -sel clipboard; }
+xco() { xp; }
 alias xc_commit='git log -1 --format=%H | xc'
 alias xcpwd='pwd | perl -nE "print s{$HOME}{~}gr" | xc'
 alias xdokey='xev -event keyboard'
@@ -622,7 +622,7 @@ ytd() {
     GET_CLIP="pbpaste"
     NOTIFY="terminal-notifier -title 'shell::zsh | function::ytd()' -message"
   else
-    GET_CLIP="xclip -sel clipboard -out"
+    GET_CLIP="xp"
     NOTIFY="notify-send -t 0 'shell::zsh | function::ytd()'"
   fi
 
