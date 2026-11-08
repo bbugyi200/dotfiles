@@ -16,6 +16,10 @@
 # tmux server's stored PATH/NVM environment so that tmux key bindings and
 # run-shell callbacks (e.g. tmux_ai_window and its cleanup helpers) resolve
 # commands from that same full environment rather than tmux's stale stored PATH.
+#
+# X11 forwarding is opt-in: plain `bas athena` forwards no X11, so remote panes
+# start without DISPLAY and clipboard traffic stays on the OSC 52 route. Run
+# `BAS_X11=1 bas athena` to forward GUI apps (-X -Y).
 
 host="$1"
 shift
@@ -67,6 +71,7 @@ prelude+=' tmux set-environment -g PATH "$PATH";'
 prelude+=' [ -n "${NVM_DIR:-}" ] && tmux set-environment -g NVM_DIR "$NVM_DIR";'
 prelude+=' [ -n "${NVM_BIN:-}" ] && tmux set-environment -g NVM_BIN "$NVM_BIN";'
 prelude+=' [ -n "${NVM_INC:-}" ] && tmux set-environment -g NVM_INC "$NVM_INC";'
+prelude+=' tmux set-environment -g -u DISPLAY;'
 prelude+=' fi; '
 
 # The command string the remote interactive login shell runs: refresh the tmux
@@ -87,9 +92,16 @@ remote_cmd+=' [ -x "$__bas_sh" ] || __bas_sh=/bin/bash;'
 remote_cmd+=' case "$__bas_sh" in *zsh) set -- -lic ;; *) set -- -lc ;; esac;'
 remote_cmd+=" exec \"\$__bas_sh\" \"\$@\" $(single_quote "${inner}")"
 
+# X11 forwarding is opt-in via BAS_X11=1, so clipboard traffic stays off X11
+# unless the caller explicitly needs a forwarded GUI app.
+x11=()
+if [[ "${BAS_X11:-}" == "1" ]]; then
+  x11=(-X -Y)
+fi
+
 # Server-alive probes make SSH exit promptly when the connection stops
 # responding, so the existing autossh wrapper can restart it.
-autossh -M 0 -X -Y -t \
+autossh -M 0 "${x11[@]}" -t \
   -o ServerAliveInterval=5 \
   -o ServerAliveCountMax=2 \
   "${host}" "${remote_cmd}"

@@ -116,12 +116,40 @@ function test_wrapper_refreshes_tmux_environment_before_exec() {
   assert_contains "fi; exec tm sase" "${cmd}"
 }
 
+function test_prelude_clears_tmux_stored_display_before_exec() {
+  local cmd
+  cmd="$(remote_cmd_for athena)"
+
+  # A long-running tmux server forgets the forwarded display so new panes and
+  # agents start without DISPLAY once X11 forwarding is off.
+  assert_contains 'tmux set-environment -g -u DISPLAY' "${cmd}"
+
+  # The DISPLAY unset runs inside the has-session guard, before the exec.
+  local inner
+  inner="$(decode_inner_for athena)"
+  assert_contains 'tmux set-environment -g -u DISPLAY' "${inner}"
+  assert_contains "fi; exec tm sase" "${inner}"
+}
+
 function test_keepalive_tty_and_host_are_forwarded_to_autossh_before_remote_command() {
+  unset BAS_X11
   run_bas myhost
 
   # A TTY is allocated (-t) so the remote interactive shell behaves correctly.
   # Server-alive probes make the SSH child exit promptly after an established
   # connection stops responding, giving autossh a chance to restart it.
+  # X11 forwarding is opt-in, so -X -Y are absent by default.
+  assert_same "$(printf '%s\n' \
+    -M 0 \
+    -t \
+    -o ServerAliveInterval=5 \
+    -o ServerAliveCountMax=2 \
+    myhost)" "$(autossh_args_before_remote)"
+}
+
+function test_bas_x11_opt_in_forwards_x11_in_position() {
+  BAS_X11=1 run_bas myhost
+
   assert_same "$(printf '%s\n' \
     -M 0 \
     -X \
@@ -132,10 +160,39 @@ function test_keepalive_tty_and_host_are_forwarded_to_autossh_before_remote_comm
     myhost)" "$(autossh_args_before_remote)"
 }
 
+function test_bas_x11_zero_disables_forwarding() {
+  BAS_X11=0 run_bas myhost
+
+  assert_same "$(printf '%s\n' \
+    -M 0 \
+    -t \
+    -o ServerAliveInterval=5 \
+    -o ServerAliveCountMax=2 \
+    myhost)" "$(autossh_args_before_remote)"
+}
+
+function test_bas_x11_unset_disables_forwarding() {
+  unset BAS_X11
+  run_bas myhost
+
+  assert_same "$(printf '%s\n' \
+    -M 0 \
+    -t \
+    -o ServerAliveInterval=5 \
+    -o ServerAliveCountMax=2 \
+    myhost)" "$(autossh_args_before_remote)"
+}
+
 # Helper: run bas for HOST and echo the captured remote command.
 function remote_cmd_for() {
   run_bas "$1"
   remote_cmd
+}
+
+# Helper: run bas for HOST and echo the decoded inner command string.
+function decode_inner_for() {
+  run_bas "$1" >/dev/null
+  decode_inner
 }
 
 # Recover the inner command string the remote interactive login shell receives.
