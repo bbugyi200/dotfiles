@@ -328,6 +328,113 @@ describe("Highlights page keys", function()
 		end)
 	end)
 
+	describe("page URL requests", function()
+		it("accepts an absolute PDF path and a bounded decimal page", function()
+			assert.same(
+				{ path = "/papers/a b.PDF", page = 999999 },
+				M.parse_page_request({
+					path = "/papers/a b.PDF",
+					page = "999999",
+				})
+			)
+		end)
+
+		it("rejects missing, relative, non-PDF, NUL, and malformed page parameters", function()
+			local missing, missing_reason = M.parse_page_request(nil)
+			assert.is_nil(missing)
+			assert.is_string(missing_reason)
+			for _, params in ipairs({
+				{},
+				{ path = "paper.pdf", page = "1" },
+				{ path = "/papers/paper.txt", page = "1" },
+				{ path = "/papers/paper.pdf\0bad", page = "1" },
+				{ path = "/papers/paper.pdf" },
+				{ path = "/papers/paper.pdf", page = "0" },
+				{ path = "/papers/paper.pdf", page = "4a" },
+				{ path = "/papers/paper.pdf", page = "1000000" },
+				{ path = "/papers/paper.pdf", page = 4 },
+			}) do
+				local request, reason = M.parse_page_request(params)
+				assert.is_nil(request)
+				assert.is_string(reason)
+			end
+		end)
+
+		it("matches device and inode, and falls back to decoded path strings", function()
+			local ids = {
+				["/real/paper.pdf"] = { dev = 3, ino = 9 },
+				["/alias/paper.pdf"] = { dev = 3, ino = 9 },
+				["/other/paper.pdf"] = { dev = 3, ino = 10 },
+			}
+			local attributes = function(path)
+				return ids[path]
+			end
+			assert.is_true(M.same_file("/real/paper.pdf", "/alias/paper.pdf", attributes))
+			assert.is_false(M.same_file("/real/paper.pdf", "/other/paper.pdf", attributes))
+			assert.is_true(M.same_file("/real/paper.pdf", "/real/paper.pdf", function()
+				return nil
+			end))
+			assert.is_false(M.same_file("/real/paper.pdf", "/other/paper.pdf", function()
+				error("unavailable")
+			end))
+		end)
+
+		it("waits for a matching settled PDF and cancels only after it leaves the front", function()
+			local state = {}
+			local status = M.page_request_step(state, { frontmost = false })
+			assert.equals("wait", status)
+			assert.equals(
+				"wait",
+				M.page_request_step(state, {
+					frontmost = true,
+					same_document = true,
+					has_pdf_view = true,
+					title_valid = true,
+					page = 30,
+				})
+			)
+			local ready, page = M.page_request_step(state, {
+				frontmost = true,
+				same_document = true,
+				has_pdf_view = true,
+				title_valid = true,
+				page = 30,
+			})
+			assert.equals("ready", ready)
+			assert.equals(30, page)
+			assert.equals("cancel", M.page_request_step(state, { frontmost = false }))
+		end)
+
+		it("keeps waiting when busy or the PDF identity, view, or title is not ready", function()
+			local state = {}
+			local ready_snapshot = {
+				frontmost = true,
+				same_document = true,
+				has_pdf_view = true,
+				title_valid = true,
+				page = 30,
+			}
+			for _, changes in ipairs({
+				{ busy = true },
+				{ same_document = false },
+				{ has_pdf_view = false },
+				{ title_valid = false },
+			}) do
+				local observation = {}
+				for key, value in pairs(ready_snapshot) do
+					observation[key] = value
+				end
+				for key, value in pairs(changes) do
+					observation[key] = value
+				end
+				assert.equals("wait", M.page_request_step(state, observation))
+			end
+			assert.equals("wait", M.page_request_step(state, ready_snapshot))
+			local status = M.page_request_step(state, ready_snapshot)
+			assert.equals("ready", status)
+		end)
+	end)
+
 	describe("jump history", function()
 		it("keeps order per document and skips duplicate newest entries", function()
 			local jumps = {}
@@ -594,6 +701,66 @@ describe("Highlights page keys", function()
 			assert.equals("done", result.status)
 			assert.same({ 10 }, state.history.back["/paper.pdf"])
 		end)
+
+		it("re-jumps once after a late restore without replacing the restored-page history", function()
+			local state = { page = 30, count = 44, document = "/paper.pdf", history = M.new_history() }
+			local env = { now = 0, queue = {}, scroll_calls = 0 }
+			local deps = {
+				page_info = function()
+					return { page = state.page, count = state.count, document = state.document }
+				end,
+				scroll_to = function(page)
+					env.scroll_calls = env.scroll_calls + 1
+					state.page = page
+					return true
+				end,
+				scroll_to_visible = function()
+					return false
+				end,
+				landed = function(page)
+					return state.page == page
+				end,
+				same_document = function(path_a, path_b)
+					return path_a == path_b
+				end,
+				after = function(seconds, fn)
+					table.insert(env.queue, { seconds = seconds, fn = fn })
+				end,
+				now = function()
+					return env.now
+				end,
+			}
+			local result = nil
+			M.run(
+				{ kind = "goto", target = 4, origin = "url", document = "/paper.pdf" },
+				state.history,
+				deps,
+				function(value)
+					result = value
+				end
+			)
+			-- Highlights restores page 30 after the first successful scroll.
+			state.page = 30
+			local steps = 0
+			while #env.queue > 0 and steps < 20 do
+				steps = steps + 1
+				local item = table.remove(env.queue, 1)
+				env.now = env.now + item.seconds
+				item.fn()
+			end
+			assert.is_true(steps < 20)
+			assert.equals("done", result.status)
+			assert.equals("url", result.origin)
+			assert.equals(4, state.page)
+			assert.equals(2, env.scroll_calls)
+			assert.same({ 30 }, state.history.back["/paper.pdf"])
+			local back_result = nil
+			M.run({ kind = "back" }, state.history, deps, function(value)
+				back_result = value
+			end)
+			assert.equals("done", back_result.status)
+			assert.equals(30, state.page)
+		end)
 	end)
 
 	describe("alert copy", function()
@@ -626,6 +793,29 @@ describe("Highlights page keys", function()
 			assert.equals(
 				"Couldn't go forward to page 2: didn't reach page 2",
 				M.message({ status = "failed", kind = "forward", page = 2, reason = "didn't reach page 2" })
+			)
+		end)
+
+		it("confirms URL jumps and explains the Ctrl-O return page", function()
+			assert.equals(
+				"Page 4 of 44 · ⌃O back to p. 30",
+				M.message({
+					status = "done",
+					origin = "url",
+					page = 4,
+					count = 44,
+					from = 30,
+				})
+			)
+			assert.equals(
+				"Page 1 of 44",
+				M.message({
+					status = "done",
+					origin = "url",
+					page = 1,
+					count = 44,
+					from = 1,
+				})
 			)
 		end)
 	end)

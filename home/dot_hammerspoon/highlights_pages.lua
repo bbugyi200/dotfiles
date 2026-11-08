@@ -6,6 +6,9 @@ M.MAX_COUNT_DIGITS = 6
 M.MAX_JUMPS = 100
 M.POLL_SECONDS = 0.05
 M.LAND_TIMEOUT_SECONDS = 0.75
+M.PAGE_REQUEST_POLL_SECONDS = 0.1
+M.PAGE_REQUEST_TIMEOUT_SECONDS = 8
+M.PAGE_REQUEST_RECHECK_SECONDS = 0.4
 M.BUSY_MESSAGE = "Still jumping pages"
 
 local function safe_can_arm(can_arm)
@@ -156,6 +159,84 @@ function M.parse_title(title)
 		return nil
 	end
 	return page, count
+end
+
+--- Parse the decoded query parameters from a bob-highlights-page URL.
+function M.parse_page_request(params)
+	if type(params) ~= "table" then
+		return nil, "missing parameters"
+	end
+	local path = params.path
+	if type(path) ~= "string" or path == "" then
+		return nil, "missing path"
+	end
+	if path:sub(1, 1) ~= "/" or path:find("\0", 1, true) ~= nil or path:lower():sub(-4) ~= ".pdf" then
+		return nil, "invalid path"
+	end
+	local page = params.page
+	if type(page) ~= "string" or page:match("^%d+$") == nil then
+		return nil, "invalid page"
+	end
+	page = tonumber(page)
+	if page == nil or page < 1 or page > 999999 then
+		return nil, "invalid page"
+	end
+	return { path = path, page = page }
+end
+
+--- Compare two decoded paths by device/inode when available, otherwise by path.
+function M.same_file(path_a, path_b, attributes)
+	if type(path_a) ~= "string" or type(path_b) ~= "string" then
+		return false
+	end
+	if type(attributes) == "function" then
+		local ok_a, attrs_a = pcall(attributes, path_a)
+		local ok_b, attrs_b = pcall(attributes, path_b)
+		if
+			ok_a
+			and ok_b
+			and type(attrs_a) == "table"
+			and type(attrs_b) == "table"
+			and attrs_a.dev ~= nil
+			and attrs_a.ino ~= nil
+			and attrs_b.dev ~= nil
+			and attrs_b.ino ~= nil
+		then
+			return attrs_a.dev == attrs_b.dev and attrs_a.ino == attrs_b.ino
+		end
+	end
+	return path_a == path_b
+end
+
+--- Advance the URL request's wait state using one front/document/page snapshot.
+function M.page_request_step(state, observation)
+	state = type(state) == "table" and state or {}
+	observation = type(observation) == "table" and observation or {}
+	if observation.frontmost ~= true then
+		if state.saw_front == true then
+			return "cancel"
+		end
+		state.stable_page = nil
+		return "wait"
+	end
+	state.saw_front = true
+	if
+		observation.busy == true
+		or observation.same_document ~= true
+		or observation.has_pdf_view ~= true
+		or observation.title_valid ~= true
+		or type(observation.page) ~= "number"
+		or observation.page < 1
+		or observation.page % 1 ~= 0
+	then
+		state.stable_page = nil
+		return "wait"
+	end
+	if state.stable_page == observation.page then
+		return "ready", observation.page
+	end
+	state.stable_page = observation.page
+	return "wait"
 end
 
 --- Add a page to one document's bounded, duplicate-free jump stack.
@@ -320,55 +401,93 @@ function M.run(command, history, deps, on_done)
 		{ name = "scroll_bar", fn = deps.scroll_to },
 		{ name = "scroll_to_visible", fn = deps.scroll_to_visible },
 	}
-	local attempt_index = 0
-	local started_count = 0
-	local function attempt_next()
-		attempt_index = attempt_index + 1
-		local attempt = attempts[attempt_index]
-		if attempt == nil then
-			failed(started_count == 0 and "couldn't find the PDF view" or "didn't reach page " .. tostring(target))
+	local function complete(via)
+		record_landed()
+		finish({
+			status = "done",
+			kind = command.kind,
+			page = target,
+			count = info.count,
+			from = info.page,
+			via = via,
+			origin = command.origin,
+		})
+	end
+	local run_attempts
+	local function on_landed(via, allow_recheck)
+		if command.origin ~= "url" or not allow_recheck then
+			complete(via)
 			return
 		end
-		local ok, started = call(attempt.fn, target)
-		if not ok or started ~= true then
-			attempt_next()
-			return
-		end
-		started_count = started_count + 1
-		local deadline = safe_now(deps) + M.LAND_TIMEOUT_SECONDS
-		local function poll()
+		local function recheck()
 			if completed then
 				return
 			end
 			local current = read_page_info(deps)
-			local landed_ok, landed = call(deps.landed, target)
-			if (current ~= nil and current.page == target) or (landed_ok and landed == true) then
-				if attempt.name == "scroll_to_visible" then
-					call(deps.log, "Highlights page scroll-bar jump missed; AXScrollToVisible landed")
+			local same_document = false
+			if current ~= nil then
+				if type(deps.same_document) == "function" then
+					local same_ok, same = call(deps.same_document, current.document, command.document or info.document)
+					same_document = same_ok and same == true
+				else
+					same_document = current.document == (command.document or info.document)
 				end
-				record_landed()
-				finish({
-					status = "done",
-					kind = command.kind,
-					page = target,
-					count = info.count,
-					from = info.page,
-					via = attempt.name,
-				})
+			end
+			if same_document and current.page ~= target then
+				run_attempts(false)
 				return
 			end
-			if safe_now(deps) >= deadline then
-				attempt_next()
-				return
-			end
-			local after_ok = call(deps.after, M.POLL_SECONDS, poll)
-			if not after_ok then
-				attempt_next()
-			end
+			complete(via)
 		end
-		poll()
+		local recheck_ok = call(deps.after, M.PAGE_REQUEST_RECHECK_SECONDS, recheck)
+		if not recheck_ok then
+			complete(via)
+		end
 	end
-	attempt_next()
+	run_attempts = function(allow_recheck)
+		local attempt_index = 0
+		local started_count = 0
+		local function attempt_next()
+			attempt_index = attempt_index + 1
+			local attempt = attempts[attempt_index]
+			if attempt == nil then
+				failed(started_count == 0 and "couldn't find the PDF view" or "didn't reach page " .. tostring(target))
+				return
+			end
+			local ok, started = call(attempt.fn, target)
+			if not ok or started ~= true then
+				attempt_next()
+				return
+			end
+			started_count = started_count + 1
+			local deadline = safe_now(deps) + M.LAND_TIMEOUT_SECONDS
+			local function poll()
+				if completed then
+					return
+				end
+				local current = read_page_info(deps)
+				local landed_ok, landed = call(deps.landed, target)
+				if (current ~= nil and current.page == target) or (landed_ok and landed == true) then
+					if attempt.name == "scroll_to_visible" then
+						call(deps.log, "Highlights page scroll-bar jump missed; AXScrollToVisible landed")
+					end
+					on_landed(attempt.name, allow_recheck)
+					return
+				end
+				if safe_now(deps) >= deadline then
+					attempt_next()
+					return
+				end
+				local after_ok = call(deps.after, M.POLL_SECONDS, poll)
+				if not after_ok then
+					attempt_next()
+				end
+			end
+			poll()
+		end
+		attempt_next()
+	end
+	run_attempts(true)
 end
 
 --- One-line alert copy. Successful jumps deliberately return nil (quiet success).
@@ -377,6 +496,13 @@ function M.message(result)
 	if result.status == "busy" then
 		return M.BUSY_MESSAGE
 	elseif result.status == "done" then
+		if result.origin == "url" then
+			local message = string.format("Page %s of %s", tostring(result.page), tostring(result.count))
+			if type(result.from) == "number" and result.from ~= result.page then
+				message = message .. string.format(" · ⌃O back to p. %s", tostring(result.from))
+			end
+			return message
+		end
 		return nil
 	elseif result.status == "out_of_range" then
 		local noun = result.count == 1 and "page" or "pages"

@@ -7,6 +7,7 @@ local HighlightsPages = require("highlights_pages")
 local M = {}
 
 M.BUNDLE_ID = HighlightsTabs.BUNDLE_ID
+M.PAGE_URL_EVENT = "bob-highlights-page"
 
 if type(BobHighlightsTabKeys) ~= "table" then
 	BobHighlightsTabKeys = {}
@@ -554,6 +555,11 @@ local function make_real_adapter(H)
 		return M.find_pdf_view(window)
 	end
 
+	local function has_pdf_view()
+		local area, shared_document = current_pdf_view()
+		return area ~= nil and shared_document ~= nil
+	end
+
 	local function vertical_scrollbar(area)
 		local bar = ax_attr(area, "AXVerticalScrollBar")
 		if bar ~= nil then
@@ -639,6 +645,7 @@ local function make_real_adapter(H)
 		document = document,
 		has_document = has_document,
 		page_info = page_info,
+		has_pdf_view = has_pdf_view,
 		scroll_to = scroll_to,
 		scroll_to_visible = scroll_to_visible,
 		landed = landed,
@@ -729,6 +736,21 @@ end
 
 --- Stop the tap, watcher, and pending timers. Keeps `lastBatch` and jump history in memory.
 function M.stop()
+	runtime.page_request_generation = (tonumber(runtime.page_request_generation) or 0) + 1
+	runtime.pending_page_request = nil
+	local url_timer = runtime.url_timer
+	runtime.url_timer = nil
+	if url_timer ~= nil and type(url_timer.stop) == "function" then
+		pcall(function()
+			url_timer:stop()
+		end)
+	end
+	if runtime.url_event ~= nil and type(runtime.url_event.bind) == "function" then
+		pcall(function()
+			runtime.url_event.bind(M.PAGE_URL_EVENT, nil)
+		end)
+	end
+	runtime.url_event = nil
 	if runtime.tap ~= nil and type(runtime.tap.stop) == "function" then
 		pcall(function()
 			runtime.tap:stop()
@@ -743,7 +765,7 @@ function M.stop()
 	runtime.watcher = nil
 	if type(runtime.timers) == "table" then
 		for _, timer in ipairs(runtime.timers) do
-			if timer ~= nil and type(timer.stop) == "function" then
+			if timer ~= nil and timer ~= url_timer and type(timer.stop) == "function" then
 				pcall(function()
 					timer:stop()
 				end)
@@ -889,6 +911,16 @@ function M.start(options)
 			landed = adapter.landed,
 			after = after_fn,
 			now = now_fn,
+			same_document = function(path_a, path_b)
+				local fs = H.fs
+				local attributes = fs
+						and type(fs.attributes) == "function"
+						and function(path)
+							return fs.attributes(path)
+						end
+					or nil
+				return HighlightsPages.same_file(path_a, path_b, attributes)
+			end,
 			log = function(message)
 				H.printf("%s", message)
 			end,
@@ -917,6 +949,152 @@ function M.start(options)
 			show(HighlightsPages.message(result))
 			pcall(function()
 				H.printf("Bob Highlights page keys %s failed: %s", tostring(result.kind), tostring(err))
+			end)
+		end
+	end
+
+	local function safe_read(fn)
+		if type(fn) ~= "function" then
+			return nil
+		end
+		local ok, value = pcall(fn)
+		if ok then
+			return value
+		end
+		return nil
+	end
+
+	local function stop_url_timer()
+		local timer = runtime.url_timer
+		runtime.url_timer = nil
+		if timer ~= nil and type(timer.stop) == "function" then
+			pcall(function()
+				timer:stop()
+			end)
+		end
+		if type(runtime.timers) == "table" then
+			for index, pending in ipairs(runtime.timers) do
+				if pending == timer then
+					table.remove(runtime.timers, index)
+					break
+				end
+			end
+		end
+	end
+
+	local function schedule_page_request_poll(generation, poll)
+		local timer = nil
+		timer = after_fn(HighlightsPages.PAGE_REQUEST_POLL_SECONDS, function()
+			if generation ~= runtime.page_request_generation then
+				return
+			end
+			if runtime.url_timer == timer then
+				runtime.url_timer = nil
+			end
+			poll()
+		end)
+		runtime.url_timer = timer
+	end
+
+	local function handle_page_url(params)
+		runtime.page_request_generation = (tonumber(runtime.page_request_generation) or 0) + 1
+		stop_url_timer()
+		runtime.pending_page_request = nil
+		local request, reason = HighlightsPages.parse_page_request(params)
+		if request == nil then
+			pcall(function()
+				H.printf("Bob Highlights page request rejected: %s", tostring(reason))
+			end)
+			return
+		end
+
+		local generation = runtime.page_request_generation
+		local wait_state = { saw_front = false, stable_page = nil }
+		local deadline = now_fn() + HighlightsPages.PAGE_REQUEST_TIMEOUT_SECONDS
+		runtime.pending_page_request = request
+
+		local function poll()
+			if generation ~= runtime.page_request_generation then
+				return
+			end
+			local frontmost = frontmost_bundle_id(H) == M.BUNDLE_ID
+			local observation = {
+				frontmost = frontmost,
+				busy = runtime.running == true or runtime.page_running == true,
+				same_document = false,
+				has_pdf_view = false,
+				title_valid = false,
+			}
+			if frontmost then
+				local current_path = safe_read(adapter.document)
+				local fs = H.fs
+				local attributes = fs
+						and type(fs.attributes) == "function"
+						and function(path)
+							return fs.attributes(path)
+						end
+					or nil
+				observation.same_document = HighlightsPages.same_file(request.path, current_path, attributes)
+				local info = safe_read(adapter.page_info)
+				if type(info) == "table" then
+					observation.page = info.page
+					observation.title_valid = type(info.page) == "number"
+						and type(info.count) == "number"
+						and info.page >= 1
+						and info.page <= info.count
+						and info.page % 1 == 0
+				end
+				observation.has_pdf_view = safe_read(adapter.has_pdf_view) == true
+			end
+			local status = HighlightsPages.page_request_step(wait_state, observation)
+			if status == "cancel" then
+				runtime.pending_page_request = nil
+				stop_url_timer()
+				return
+			elseif status == "ready" then
+				runtime.pending_page_request = nil
+				stop_url_timer()
+				dispatch_page({
+					kind = "goto",
+					target = request.page,
+					origin = "url",
+					document = request.path,
+				})
+				return
+			end
+			if now_fn() >= deadline then
+				runtime.pending_page_request = nil
+				stop_url_timer()
+				show(HighlightsPages.message({
+					status = "failed",
+					kind = "goto",
+					page = request.page,
+					reason = "the PDF didn't come to the front",
+				}))
+				return
+			end
+			schedule_page_request_poll(generation, poll)
+		end
+
+		poll()
+	end
+
+	-- hs.urlevent callbacks receive (eventName, params, senderPID): params is the
+	-- second argument, already percent-decoded by Hammerspoon.
+	local function on_page_url(_event_name, params)
+		handle_page_url(params)
+	end
+
+	local url_event = options.urlevent or H.urlevent
+	if url_event ~= nil and type(url_event.bind) == "function" then
+		runtime.url_event = url_event
+		local ok, err = pcall(function()
+			url_event.bind(M.PAGE_URL_EVENT, on_page_url)
+		end)
+		if not ok then
+			runtime.url_event = nil
+			pcall(function()
+				H.printf("Bob Highlights page URL binding failed: %s", tostring(err))
 			end)
 		end
 	end
@@ -1139,6 +1317,7 @@ function M.start(options)
 	runtime._can_arm_pages_for_tests = can_arm_pages
 	runtime._dispatch_for_tests = dispatch
 	runtime._page_dispatch_for_tests = dispatch_page
+	runtime._page_url_handler_for_tests = handle_page_url
 	runtime._handle_key_for_tests = handle_key
 end
 

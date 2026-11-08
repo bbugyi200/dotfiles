@@ -211,6 +211,15 @@ These keys type normally in text fields, the Bob Refs panel, and windows without
 Keep Bob Mac Capture's “In Highlights, open Bob Refs with” setting at Command-O or Off;
 Control-O would collide with `⌃O`.
 
+### Open at a page from Obsidian
+
+Obsidian can request a physical page with
+`hammerspoon://bob-highlights-page?path=<encoded absolute PDF path>&page=<N>`. The
+handler acts only on that exact PDF when it is already in front in Highlights; it never
+opens files or launches apps. After the verified jump, Highlights alerts `Page 4 of 44`.
+When the jump moved from another page, the alert adds ` · ⌃O back to p. 30`, and `⌃O`
+returns to the page Highlights had restored before the request.
+
 ## Internet ping menu bar
 
 Hammerspoon shows internet connectivity as one status item beside the Pomodoro item. The

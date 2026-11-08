@@ -77,6 +77,8 @@ local function setup(options)
 		tap_stop_calls = 0,
 		watcher_start_calls = 0,
 		watcher_stop_calls = 0,
+		url_handlers = {},
+		url_unbinds = {},
 	}
 	if env.frontmost_bundle == nil then
 		env.frontmost_bundle = BUNDLE_ID
@@ -146,6 +148,23 @@ local function setup(options)
 		env.watcher = watcher
 		return watcher
 	end
+	hs.urlevent = {}
+	function hs.urlevent.bind(name, handler)
+		if handler == nil then
+			env.url_unbinds[name] = (env.url_unbinds[name] or 0) + 1
+			env.url_handlers[name] = nil
+		else
+			env.url_handlers[name] = handler
+		end
+	end
+	hs.fs = {
+		attributes = function(path)
+			if type(options.attributes) == "function" then
+				return options.attributes(path)
+			end
+			return nil
+		end,
+	}
 	hs.axuielement = {}
 	function hs.axuielement.systemWideElement()
 		if env.system_wide_error then
@@ -235,11 +254,19 @@ local function setup(options)
 		local ticks = 0
 		while #env.queue > 0 and ticks < limit do
 			ticks = ticks + 1
-			local item = table.remove(env.queue, 1)
-			env.now = env.now + (tonumber(item.seconds) or 0)
-			item.fn()
+			env.tick()
 		end
 		return ticks
+	end
+
+	function env.tick()
+		local item = table.remove(env.queue, 1)
+		if item == nil then
+			return false
+		end
+		env.now = env.now + (tonumber(item.seconds) or 0)
+		item.fn()
+		return true
 	end
 
 	function env.tap_key(payload)
@@ -275,6 +302,7 @@ local function start_with_adapter(env, adapter, extra)
 		open = extra.open or function(paths)
 			table.insert(env.open_calls, paths)
 		end,
+		urlevent = extra.urlevent,
 	})
 end
 
@@ -311,6 +339,38 @@ local function make_adapter(state)
 			return "/pdfs/" .. title
 		end,
 	}
+end
+
+local function make_page_adapter(state)
+	local adapter = make_adapter({ titles = { "paper.pdf" }, selected = 1 })
+	adapter.document = function()
+		return state.document
+	end
+	adapter.page_info = function()
+		return { page = state.page, count = state.count, document = state.document }
+	end
+	adapter.has_pdf_view = function()
+		return state.has_pdf_view ~= false
+	end
+	adapter.scroll_to = function(page)
+		state.scroll_calls = (state.scroll_calls or 0) + 1
+		state.page = page
+		return true
+	end
+	adapter.scroll_to_visible = function()
+		return false
+	end
+	adapter.landed = function(page)
+		return state.page == page
+	end
+	return adapter
+end
+
+-- Mirror hs.urlevent's real callback order: (eventName, params, senderPID).
+local function request_page(env, params)
+	local handler = env.url_handlers["bob-highlights-page"]
+	assert.is_function(handler)
+	handler("bob-highlights-page", params, 4242)
 end
 
 local function start_with_real_adapter(env, extra)
@@ -1035,5 +1095,161 @@ describe("Highlights tab keys runtime", function()
 		assert.is_true(env.tap_key({ chars = "g", plain = "g", flags = {}, keycode = 0 }))
 		env.drain()
 		assert.is_true(alert_saw(env, "Still closing Highlights tabs"))
+	end)
+
+	it("binds the URL handler, logs invalid reasons without paths, and never opens files", function()
+		env = setup({})
+		local state = { document = "/papers/paper.pdf", page = 30, count = 44 }
+		local bound = {}
+		local unbound = {}
+		local urlevent = {
+			bind = function(name, handler)
+				if handler == nil then
+					unbound[name] = (unbound[name] or 0) + 1
+				else
+					bound[name] = handler
+				end
+			end,
+		}
+		start_with_adapter(env, make_page_adapter(state), {
+			urlevent = urlevent,
+			open = function(paths)
+				table.insert(env.open_calls, paths)
+			end,
+		})
+		assert.is_function(bound["bob-highlights-page"])
+		bound["bob-highlights-page"]("bob-highlights-page", { path = "/private/secret.txt", page = "1" }, 4242)
+		local log_text = ""
+		for _, call in ipairs(env.logs) do
+			for _, part in ipairs(call) do
+				log_text = log_text .. tostring(part)
+			end
+		end
+		assert.is_false(log_text:find("/private/secret.txt", 1, true) ~= nil)
+		assert.is_truthy(log_text:find("invalid path", 1, true))
+
+		bound["bob-highlights-page"]("bob-highlights-page", { path = "/papers/paper.pdf", page = "4" }, 4242)
+		env.drain()
+		assert.equals(4, state.page)
+		assert.equals("Page 4 of 44 · ⌃O back to p. 30", env.alerts[#env.alerts].message)
+		assert.equals(0, #env.open_calls)
+		env.keys.stop()
+		assert.equals(1, unbound["bob-highlights-page"])
+	end)
+
+	it("reads params from the second hs.urlevent callback argument", function()
+		env = setup({})
+		local state = { document = "/papers/paper.pdf", page = 30, count = 44 }
+		start_with_adapter(env, make_page_adapter(state))
+		local handler = env.url_handlers["bob-highlights-page"]
+		assert.is_function(handler)
+		-- Hammerspoon calls fn(eventName, params, senderPID); the event name is not params.
+		handler("bob-highlights-page", { path = "/papers/paper.pdf", page = "4" }, 4242)
+		env.drain()
+		assert.equals(4, state.page)
+		assert.equals(1, state.scroll_calls)
+		assert.is_true(alert_saw(env, "Page 4 of 44 · ⌃O back to p. 30"))
+	end)
+
+	it("waits for Highlights and matches an inode alias before jumping", function()
+		env = setup({
+			frontmost_bundle = "com.other.app",
+			attributes = function(path)
+				if path == "/alias/paper.pdf" or path == "/real/paper.pdf" then
+					return { dev = 1, ino = 22 }
+				end
+				return nil
+			end,
+		})
+		local state = { document = "/real/paper.pdf", page = 30, count = 44 }
+		start_with_adapter(env, make_page_adapter(state))
+		request_page(env, { path = "/alias/paper.pdf", page = "4" })
+		assert.equals(0, state.scroll_calls or 0)
+		env.tick() -- Cold launch is still waiting before Highlights first comes forward.
+		assert.equals(0, state.scroll_calls or 0)
+		env.frontmost_bundle = BUNDLE_ID
+		env.tick() -- First stable-title sample.
+		assert.equals(0, state.scroll_calls or 0)
+		env.tick() -- Second matching sample dispatches the jump.
+		env.drain()
+		assert.equals(4, state.page)
+		assert.equals(1, state.scroll_calls)
+		assert.is_true(alert_saw(env, "Page 4 of 44"))
+	end)
+
+	it("does not accept a same-named PDF with a different inode", function()
+		env = setup({
+			attributes = function(path)
+				if path == "/requested/paper.pdf" then
+					return { dev = 1, ino = 10 }
+				end
+				return { dev = 1, ino = 11 }
+			end,
+		})
+		local state = { document = "/other/paper.pdf", page = 30, count = 44 }
+		start_with_adapter(env, make_page_adapter(state))
+		request_page(env, { path = "/requested/paper.pdf", page = "4" })
+		env.drain()
+		assert.equals(0, state.scroll_calls or 0)
+		assert.is_true(alert_saw(env, "the PDF didn't come to the front"))
+	end)
+
+	it("cancels silently if another app takes focus after Highlights came forward", function()
+		env = setup({})
+		local state = { document = "/other/paper.pdf", page = 30, count = 44 }
+		start_with_adapter(env, make_page_adapter(state))
+		request_page(env, { path = "/requested/paper.pdf", page = "4" })
+		assert.equals(1, #env.queue)
+		env.frontmost_bundle = "com.other.app"
+		env.tick()
+		assert.equals(0, #env.queue)
+		assert.equals(0, #env.alerts)
+		assert.equals(0, state.scroll_calls or 0)
+	end)
+
+	it("lets the latest request win while a page run is busy", function()
+		env = setup({})
+		local state = { document = "/second/paper.pdf", page = 30, count = 44 }
+		start_with_adapter(env, make_page_adapter(state))
+		local runtime = _G.BobHighlightsTabKeys
+		runtime.page_running = true
+		request_page(env, { path = "/first/paper.pdf", page = "4" })
+		request_page(env, { path = "/second/paper.pdf", page = "7" })
+		env.tick()
+		assert.equals(0, state.scroll_calls or 0)
+		runtime.page_running = false
+		env.drain()
+		assert.equals(7, state.page)
+		assert.equals(1, state.scroll_calls)
+	end)
+
+	it("keeps waiting for a busy tab-close run to finish", function()
+		env = setup({})
+		local state = { document = "/papers/paper.pdf", page = 30, count = 44 }
+		start_with_adapter(env, make_page_adapter(state))
+		local runtime = _G.BobHighlightsTabKeys
+		runtime.running = true
+		request_page(env, { path = "/papers/paper.pdf", page = "4" })
+		env.tick()
+		assert.equals(0, state.scroll_calls or 0)
+		runtime.running = false
+		env.drain()
+		assert.equals(4, state.page)
+		assert.equals(1, state.scroll_calls)
+	end)
+
+	it("unbinding cancels an outstanding URL wait", function()
+		env = setup({ frontmost_bundle = "com.other.app" })
+		local state = { document = "/papers/paper.pdf", page = 30, count = 44 }
+		start_with_adapter(env, make_page_adapter(state))
+		request_page(env, { path = "/papers/paper.pdf", page = "4" })
+		assert.equals(1, #env.queue)
+		env.keys.stop()
+		local ticks = env.drain()
+		assert.equals(1, ticks)
+		assert.equals(0, #env.queue)
+		assert.equals(0, #env.alerts)
+		assert.equals(0, state.scroll_calls or 0)
+		assert.is_nil(env.url_handlers["bob-highlights-page"])
 	end)
 end)
