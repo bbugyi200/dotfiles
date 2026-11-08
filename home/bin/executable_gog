@@ -1,12 +1,41 @@
 #!/bin/bash
 
+path_contains() {
+  case ":${PATH-}:" in
+    *":$1:"*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+for directory in /opt/homebrew/bin /usr/local/bin; do
+  if [[ -d "$directory" ]] && ! path_contains "$directory"; then
+    PATH="${PATH:+$PATH:}$directory"
+  fi
+done
+export PATH
+
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+
 if [[ -x ~/.local/bin/gog ]]; then
   GOG=~/.local/bin/gog
 elif [[ -x /opt/homebrew/bin/gog ]]; then
   GOG=/opt/homebrew/bin/gog
 else
-  echo "gog executable not found"
+  echo "gog wrapper: gog executable not found" >&2
   exit 1
 fi
-GOG_KEYRING_PASSWORD="$(pass show gogcli/keyring-password | sed -n '1p')" \
-  $GOG "$@"
+
+if [[ -n "${GOG_KEYRING_PASSWORD:-}" ]]; then
+  exec "$GOG" "$@"
+fi
+
+if PASSWORD="$(pass show gogcli/keyring-password 2>/dev/null)"; then
+  PASSWORD="${PASSWORD%%$'\n'*}"
+  if [[ -n "$PASSWORD" ]]; then
+    GOG_KEYRING_PASSWORD="$PASSWORD" exec "$GOG" "$@"
+  fi
+fi
+
+echo "gog wrapper: could not read gogcli/keyring-password from pass; gog will ask for the keyring password" >&2
+unset GOG_KEYRING_PASSWORD
+exec "$GOG" "$@"
