@@ -67,6 +67,8 @@ cron:
     # mac: staggered five minutes apart so their vault writes do not collide
     # with each other or with the 15-second bob-vault-sync LaunchAgent (see
     # bob-cli docs/vault-git-sync.md, "Mac scheduled maintenance").
+    # bob-gmail-sync runs at :07, two minutes after projects sync and three
+    # before task reconcile, so reconcile tidies the same rows minutes later.
     - name: bob-highlights-sync
       machines: [mac]
       schedule: "0,15,30,45 * * * *"
@@ -82,6 +84,12 @@ cron:
       schedule: "10,25,40,55 * * * *"
       description: Bob task-status reconciliation with a 2-minute retry budget
       command: bob task reconcile --retry-timeout 120
+    - name: bob-gmail-sync
+      machines: [mac]
+      schedule: "7,22,37,52 * * * *"
+      description: File bob-labelled Gmail threads as tasks and watch them for replies
+      enabled: false
+      command: bob gmail sync -q
   # TEMPORARY migration aid: exact legacy lines (keyed by machine) that
   # cronctl sync removes from outside the block in the same install as the
   # block that replaces them. Delete entries once cronctl status reports that
