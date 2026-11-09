@@ -106,7 +106,7 @@ gcal:
 # until its task closes; see "Sync" in bob-cli docs/gmail.md. Routing labels are
 # Gmail nested labels under route_prefixes: `#/job` and `+/job` both file into job.md.
 gmail:
-# GUI-launched bob has no login-shell PATH or keyring password.
+  # GUI-launched bob has no login-shell PATH or keyring password.
   gog: ~/bin/gog
   account: bryanbugyi34@gmail.com
   # writer: kellys-macbook-pro-local # set only after pinning the Mac's HostName (bob-cli-ew); confirm with `bob gmail doctor`
@@ -122,7 +122,7 @@ freshness:
   # PRE/POST checklist stages (bob-cli docs/freshness.md §4). A stage is a tag written
   # right after #pre/#post (`#task #gtd #pre #browser`). Stages walk in list order, ahead
   # of unstaged rows; inside a stage, rows keep file order. Names omit '#'.
-  pre_stages: [terminal, periods, browser, sync]
+  pre_stages: [sync, terminal, periods, browser]
   post_stages: [periods]
   interval: 3 # Ready backlog review cadence
   pending_interval: 1 # [/] lane daily review; false = not walked
