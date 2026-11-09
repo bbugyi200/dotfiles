@@ -122,7 +122,7 @@ freshness:
   # PRE/POST checklist stages (bob-cli docs/freshness.md §4). A stage is a tag written
   # right after #pre/#post (`#task #gtd #pre #browser`). Stages walk in list order, ahead
   # of unstaged rows; inside a stage, rows keep file order. Names omit '#'.
-  pre_stages: [sync, terminal, periods, browser]
+  pre_stages: [init, terminal, periods, browser, sync]
   post_stages: [periods]
   interval: 3 # Ready backlog review cadence
   pending_interval: 1 # [/] lane daily review; false = not walked
