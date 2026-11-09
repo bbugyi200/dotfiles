@@ -67,8 +67,8 @@ cron:
     # mac: staggered five minutes apart so their vault writes do not collide
     # with each other or with the 15-second bob-vault-sync LaunchAgent (see
     # bob-cli docs/vault-git-sync.md, "Mac scheduled maintenance").
-    # bob-gmail-sync runs at :07, two minutes after projects sync and three
-    # before task reconcile, so reconcile tidies the same rows minutes later.
+    # bob-gmail-sync runs hourly at :07, two minutes after projects sync and
+    # three before task reconcile, so reconcile tidies the same rows minutes later.
     - name: bob-highlights-sync
       machines: [mac]
       schedule: "0,15,30,45 * * * *"
@@ -86,33 +86,6 @@ cron:
       command: bob task reconcile --retry-timeout 120
     - name: bob-gmail-sync
       machines: [mac]
-      schedule: "7,22,37,52 * * * *"
+      schedule: "7 * * * *"
       description: File bob-labelled Gmail threads as tasks and watch them for replies
-      enabled: false
       command: bob gmail sync -q
-  # TEMPORARY migration aid: exact legacy lines (keyed by machine) that
-  # cronctl sync removes from outside the block in the same install as the
-  # block that replaces them. Delete entries once cronctl status reports that
-  # none remain.
-  retire:
-    # Copied from athena's `crontab -l` on 2026-11-07. The epic watchdog line
-    # (# sase-epic-watchdog:...) is ephemeral automation, not data: never list
-    # it here.
-    athena:
-      - "DISPLAY=:0"
-      - "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus"
-      - "HOME=/home/bryan"
-      - "MAILTO=bryanbugyi34@gmail.com"
-      - "XDG_RUNTIME_DIR=/run/user/1000"
-      - "# Run `tman` at 4AM every night."
-      - '# 0 4 * * * bash -c ". $HOME/.profile; tman --log=stdout:INFO@nocolor --log=/var/tmp/tman.log:DEBUG@json start > /var/tmp/tman.out"'
-      - '# 5 * * * * bash -c ". $HOME/.profile; init-bg"'
-      - "# Nightly Bob Obsidian maintenance: shared sync, then collect-done + sync push."
-      - '30 3 * * * bash -c ". $HOME/.profile; . $HOME/.config/nvm/nvm.sh; nvm use --silent default; bob nightly" >> /var/tmp/bob_nightly.log 2>&1'
-      - "# Sync password-store with upstream every hour (pull then push)."
-      - '0 * * * * bash -o pipefail -c ". $HOME/.profile; pass_git_sync 2>&1 | cat >> /var/tmp/pass_git_sync.log"'
-    # Copied from `ssh mac crontab -l` on 2026-11-07.
-    mac:
-      - "*/15 * * * * ~/bin/maybe_bob_highlights_sync -w >> /var/tmp/maybe_bob_highlights_sync.log"
-      - "*/15 * * * * ~/.cargo/bin/bob projects sync >> /var/tmp/bob_projects.log"
-      - "*/15 * * * * ~/.cargo/bin/bob task reconcile >> /var/tmp/bob_task_status_hooks.log"
