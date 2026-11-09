@@ -102,11 +102,11 @@ gcal:
 #   tentative: context # context | task
 #   timeout_secs: 60 # optional gog request timeout
 
-# GUI-launched bob has no login-shell PATH or keyring password.
 # `bob gmail sync` files bob-labelled Gmail threads as tasks and watches each one
 # until its task closes; see "Sync" in bob-cli docs/gmail.md. Routing labels are
 # Gmail nested labels under route_prefixes: `#/job` and `+/job` both file into job.md.
 gmail:
+# GUI-launched bob has no login-shell PATH or keyring password.
   gog: ~/bin/gog
   account: bryanbugyi34@gmail.com
   # writer: kellys-macbook-pro-local # set only after pinning the Mac's HostName (bob-cli-ew); confirm with `bob gmail doctor`
