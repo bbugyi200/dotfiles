@@ -200,3 +200,38 @@ types:
   PLAN: auto
   READ: green
   WRITE: violet
+
+# Record types: one note per thing in its own folder (docs/records.md).
+# Capture creates one with `<title> @<dir>/`; `bob records check` lints every folder.
+records:
+  restaurant: # id = type-note stem → type: "[[restaurant]]"
+    dir: eat # one folder segment; also the capture spelling @eat/
+    label: Restaurant
+    emoji: 🍽️
+    dated_notes: true # first-level note bullets become "- YYYY-MM-DD: …"
+    fields: # frontmatter order follows this order
+      status:
+        required: true
+        values: { to_try: 🔖 To try, liked: 💚 Liked, not_liked: 🚫 Not liked }
+      category: { required: true, suggest: true }
+      location: { required: true, suggest: true }
+      companions: { values: link, list: true, default: ["[[kelly]]"] }
+      visited: { values: date }
+      url: { values: url }
+    legacy: [lid, source_*] # tolerated by check on old notes; never written
+  podcast:
+    dir: podcasts
+    label: Podcast
+    emoji: 🎙️
+    fields:
+      status:
+        required: true
+        values:
+          {
+            to_try: 🔖 To try,
+            subscribed: 🎧 Subscribed,
+            unsubscribed: 🚫 Unsubscribed,
+          }
+      category: { required: true, suggest: true }
+      url: { values: url }
+    legacy: [zorg_id, source_*]
