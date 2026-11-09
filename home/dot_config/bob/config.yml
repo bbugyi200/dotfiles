@@ -235,3 +235,48 @@ records:
       category: { required: true, suggest: true }
       url: { values: url }
     legacy: [zorg_id, source_*]
+  show:
+    dir: tv
+    label: TV show
+    emoji: 📺
+    dated_notes: true
+    fields:
+      status:
+        required: true
+        values:
+          {
+            to_watch: 🔖 To watch,
+            watching: ▶️ Watching,
+            watched: ✅ Watched,
+            dropped: 🚫 Dropped,
+          }
+      service: { suggest: true }
+      recommended_by: { suggest: true }
+      verdict:
+        {
+          values:
+            { loved: 😍 Loved, liked: 💚 Liked, meh: 😐 Meh, disliked: 👎 Disliked },
+        }
+      companions: { values: link, list: true, default: ["[[kelly]]"] }
+      watched_on: { values: date }
+      url: { values: url }
+  movie:
+    dir: movies
+    label: Movie
+    emoji: 🎬
+    dated_notes: true
+    fields:
+      status:
+        required: true
+        values: { to_watch: 🔖 To watch, watched: ✅ Watched }
+      year: { values: number, min: 1888, max: 2100 }
+      service: { suggest: true }
+      recommended_by: { suggest: true }
+      verdict:
+        {
+          values:
+            { loved: 😍 Loved, liked: 💚 Liked, meh: 😐 Meh, disliked: 👎 Disliked },
+        }
+      companions: { values: link, list: true, default: ["[[kelly]]"] }
+      watched_on: { values: date }
+      url: { values: url }
