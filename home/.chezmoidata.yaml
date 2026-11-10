@@ -37,8 +37,12 @@ cron:
   #   athena's `mynetworks` allows the Mac's /32 (`100.108.201.99/32`) and
   #   never the whole 100.64.0.0/10 range. macOS upgrades can reset
   #   `/etc/postfix/main.cf`; reapply with:
-  #     postconf -e 'relayhost = [100.87.31.114]:25'
-  #     postconf -e 'sender_canonical_maps = inline:{ bbugyi=bryan@bbugyi.ddns.net }'
+  #     sudo postconf -e 'relayhost = [100.87.31.114]:25'
+  #     sudo postconf -e 'sender_canonical_maps = inline:{ bbugyi=bryan@bbugyi.ddns.net }'
+  #     sudo scutil --set HostName Kellys-MacBook-Pro.local
+  #   macOS 26 TCC blocks root writes under `/etc/postfix` from SSH unless
+  #   Remote Login has "Allow full disk access for remote users"; without it,
+  #   the commands must run in a Full Disk Access terminal on the Mac.
   env:
     MAILTO: bryanbugyi34@gmail.com
   # Each job is rendered as:
