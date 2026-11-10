@@ -215,7 +215,6 @@ records:
         values: { to_try: 🔖 To try, liked: 💚 Liked, not_liked: 🚫 Not liked }
       category: { required: true, suggest: true }
       location: { required: true, suggest: true }
-      companions: { values: link, list: true, default: ["[[kelly]]"] }
       visited: { values: date }
       url: { values: url }
     legacy: [lid, source_*] # tolerated by check on old notes; never written
@@ -257,7 +256,6 @@ records:
           values:
             { loved: 😍 Loved, liked: 💚 Liked, meh: 😐 Meh, disliked: 👎 Disliked },
         }
-      companions: { values: link, list: true, default: ["[[kelly]]"] }
       watched_on: { values: date }
       url: { values: url }
   movie:
@@ -277,6 +275,5 @@ records:
           values:
             { loved: 😍 Loved, liked: 💚 Liked, meh: 😐 Meh, disliked: 👎 Disliked },
         }
-      companions: { values: link, list: true, default: ["[[kelly]]"] }
       watched_on: { values: date }
       url: { values: url }
