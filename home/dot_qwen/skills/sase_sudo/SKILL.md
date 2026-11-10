@@ -35,6 +35,18 @@ same operations on a remote machine.
   prefer targeted commands (for example `nft list chain ...` or filtered `ss`) over
   whole-system dumps.
 - Set `machine` for remote targets. Leave it out for the local host.
+- Executables are snapshotted and write-guarded on the host that will run them. Use
+  absolute paths that exist on that target. Do not wrap a target-only binary in an
+  interpreter script so the request can be created from another machine.
+- The target must be reachable over SSH, with sase upgraded far enough to advertise
+  `executable_snapshot`, when the request is created. An unreachable or outdated target
+  fails `sase sudo request`; retry when the host is online.
+- On macOS targets, `Operation not permitted` from a root command is TCC (the SSH
+  session lacks Full Disk Access), not SIP. Stop and ask Bryan to enable System Settings
+  → General → Sharing → Remote Login ⓘ → "Allow full disk access for remote users". Do
+  not work around the denial. Pre-flight with
+  `ssh -o BatchMode=yes <host> head -c1 '/Library/Application Support/com.apple.TCC/TCC.db'`;
+  `Operation not permitted` means Full Disk Access is missing.
 - The request stays reviewable for `gate_timeout_seconds` (default one day). If nobody
   approves in that window, the gate times out, no successor runs, and the session ends.
   Set a shorter window only when the batch would be unsafe to run later. Top-level
