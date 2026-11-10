@@ -25,6 +25,20 @@ cron:
     mac: [Kellys-MacBook-Pro]
   # Written at the top of every managed block, sorted by key. Cron env lines
   # are positional, so they also apply to unmanaged lines below the block.
+  #
+  # Cron mail leaves each machine through that machine's own Postfix. Gmail
+  # rejects unauthenticated direct delivery (550 5.7.26), so every enrolled
+  # machine needs an authenticated relay:
+  # - athena uses Mailjet (`/etc/postfix/sasl_passwd`,
+  #   `relayhost = in-v3.mailjet.com:587`).
+  # - mac relays to athena over the tailnet
+  #   (`relayhost = [100.87.31.114]:25`) and rewrites the local sender with
+  #   `sender_canonical_maps = inline:{ bbugyi=bryan@bbugyi.ddns.net }`.
+  #   athena's `mynetworks` allows the Mac's /32 (`100.108.201.99/32`) and
+  #   never the whole 100.64.0.0/10 range. macOS upgrades can reset
+  #   `/etc/postfix/main.cf`; reapply with:
+  #     postconf -e 'relayhost = [100.87.31.114]:25'
+  #     postconf -e 'sender_canonical_maps = inline:{ bbugyi=bryan@bbugyi.ddns.net }'
   env:
     MAILTO: bryanbugyi34@gmail.com
   # Each job is rendered as:
