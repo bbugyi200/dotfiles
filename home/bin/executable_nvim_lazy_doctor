@@ -1,0 +1,257 @@
+#!/usr/bin/env bash
+# nvim_lazy_doctor — check and repair lazy.nvim plugins stuck in an interrupted checkout.
+#
+# lazy.nvim clones plugins with --filter=blob:none (blobless). When a checkout is
+# interrupted (fetch failure, sleep, Neovim exiting during :Lazy update), git leaves
+# exactly the deleted paths behind without moving HEAD. lazy.nvim's update pipeline
+# then refuses to touch that plugin ("You have local changes …"), so :Lazy update
+# can never heal it.
+#
+#   nvim_lazy_doctor           # read-only: one line per non-ok plugin (exit 0/1)
+#   nvim_lazy_doctor --fix     # also restore interrupted plugins from HEAD
+#   nvim_lazy_doctor --update  # --fix, then :Lazy update the repaired plugins
+#
+# Root is $NVIM_LAZY_ROOT, else ${XDG_DATA_HOME:-$HOME/.local/share}/nvim/lazy.
+# Exit status: 0 = all ok (or --fix/--update healed everything), 1 = problems
+# remain, 2 = usage error.
+set -u
+
+DO_FIX=0
+DO_UPDATE=0
+
+usage() {
+  cat <<'EOF'
+nvim_lazy_doctor — check and repair interrupted lazy.nvim checkouts.
+
+Usage: nvim_lazy_doctor [--fix] [--update] [-h|--help]
+
+  (default)   read-only report: one line per non-ok plugin with its class,
+              HEAD short SHA, and paths. Exit 0 when all are ok, 1 otherwise.
+  --fix       for interrupted plugins only, restore the deleted paths from
+              HEAD (NUL-safe), then re-check. Exit 0 only if every repaired
+              plugin is now ok and no local-edits remain.
+  --update    implies --fix, then runs
+              nvim --headless "+Lazy! update <repaired names>" +qa
+              (nvim from PATH) and re-checks those plugins. If the update
+              leaves a plugin interrupted again, restore it once more so it is
+              consistent at its old HEAD, and exit 1.
+  -h, --help  print this help.
+
+Interrupted-checkout signature: every path from `git ls-files -m` is also in
+`git ls-files -d` (deletions only) and the index matches HEAD
+(`git diff --cached --quiet`). `doc/tags` is ignored (lazy restores it).
+Why :Lazy update refuses it: lazy runs `git status` before `git checkout`,
+so any plugin with deleted files fails with "You have local changes …
+Please remove them to update" and that plugin's pipeline stops.
+EOF
+}
+
+for a in "$@"; do
+  case "$a" in
+    --fix) DO_FIX=1 ;;
+    --update) DO_FIX=1; DO_UPDATE=1 ;;
+    -h | --help) usage; exit 0 ;;
+    *) printf 'unknown arg: %s\n' "$a" >&2; exit 2 ;;
+  esac
+done
+
+lazy_root() {
+  if [ -n "${NVIM_LAZY_ROOT:-}" ]; then
+    printf '%s\n' "$NVIM_LAZY_ROOT"
+  else
+    printf '%s\n' "${XDG_DATA_HOME:-$HOME/.local/share}/nvim/lazy"
+  fi
+}
+
+plugin_sha() {
+  git -C "$1" rev-parse --short HEAD 2>/dev/null || printf 'unknown\n'
+}
+
+plugin_files() {
+  git -C "$1" ls-files -d -m 2>/dev/null | grep -v '^doc/tags$' | sort -u | tr '\n' ' ' | sed 's/ *$//'
+}
+
+plugin_class() {
+  dir="$1"
+  if ! git -C "$dir" rev-parse --git-dir >/dev/null 2>&1; then
+    printf 'local-edits\n'
+    return
+  fi
+  deleted=$(git -C "$dir" ls-files -d 2>/dev/null | grep -v '^doc/tags$' || true)
+  modified=$(git -C "$dir" ls-files -m 2>/dev/null | grep -v '^doc/tags$' || true)
+  if [ -z "$deleted" ] && [ -z "$modified" ]; then
+    printf 'ok\n'
+    return
+  fi
+  if [ -z "$deleted" ]; then
+    printf 'local-edits\n'
+    return
+  fi
+  subset=1
+  while IFS= read -r line; do
+    if [ -z "$line" ]; then
+      continue
+    fi
+    if ! printf '%s\n' "$deleted" | grep -Fxq -- "$line"; then
+      subset=0
+      break
+    fi
+  done <<EOF
+$modified
+EOF
+  if [ "$subset" = 1 ]; then
+    if git -C "$dir" diff --cached --quiet 2>/dev/null; then
+      printf 'interrupted\n'
+      return
+    fi
+  fi
+  printf 'local-edits\n'
+}
+
+restore_plugin() {
+  dir="$1"
+  if [ -n "$(git -C "$dir" ls-files -d 2>/dev/null)" ]; then
+    git -C "$dir" ls-files -z -d | xargs -0 git -C "$dir" checkout HEAD --
+  fi
+}
+
+report_line() {
+  dir="$1"
+  class="$2"
+  name=$(basename "$dir")
+  sha=$(plugin_sha "$dir")
+  files=$(plugin_files "$dir")
+  if [ -n "$files" ]; then
+    printf '%s: %s %s %s\n' "$name" "$class" "$sha" "$files"
+  else
+    printf '%s: %s %s\n' "$name" "$class" "$sha"
+  fi
+}
+
+ROOT=$(lazy_root)
+if [ ! -d "$ROOT" ]; then
+  printf 'nvim_lazy_doctor: lazy root not found: %s\n' "$ROOT" >&2
+  exit 1
+fi
+
+if [ "$DO_FIX" = 0 ]; then
+  fails=0
+  for entry in "$ROOT"/*; do
+    if [ ! -e "$entry" ]; then
+      continue
+    fi
+    if [ ! -d "$entry/.git" ]; then
+      continue
+    fi
+    class=$(plugin_class "$entry")
+    if [ "$class" != "ok" ]; then
+      report_line "$entry" "$class"
+      fails=$((fails + 1))
+    fi
+  done
+  if [ "$fails" = 0 ]; then
+    exit 0
+  else
+    exit 1
+  fi
+fi
+
+TMP_LIST=$(mktemp /tmp/nvim_lazy_doctor.XXXXXX)
+trap 'rm -f "$TMP_LIST" "$TMP_LIST.names"' EXIT
+
+: >"$TMP_LIST"
+for entry in "$ROOT"/*; do
+  if [ ! -e "$entry" ]; then
+    continue
+  fi
+  if [ ! -d "$entry/.git" ]; then
+    continue
+  fi
+  class=$(plugin_class "$entry")
+  if [ "$class" = "interrupted" ]; then
+    printf '%s\n' "$entry" >>"$TMP_LIST"
+  fi
+done
+
+while IFS= read -r pdir; do
+  if [ -z "$pdir" ]; then
+    continue
+  fi
+  restore_plugin "$pdir"
+done <"$TMP_LIST"
+
+if [ "$DO_UPDATE" = 1 ]; then
+  if [ -s "$TMP_LIST" ]; then
+    names=""
+    while IFS= read -r pdir; do
+      if [ -z "$pdir" ]; then
+        continue
+      fi
+      n=$(basename "$pdir")
+      if [ -z "$names" ]; then
+        names="$n"
+      else
+        names="$names $n"
+      fi
+    done <"$TMP_LIST"
+    if ! command -v nvim >/dev/null 2>&1; then
+      printf 'nvim_lazy_doctor: nvim not found on PATH, cannot --update\n' >&2
+      exit 1
+    fi
+    # shellcheck disable=SC2086
+    nvim --headless "+Lazy! update $names" +qa
+  fi
+  rebroken=0
+  while IFS= read -r pdir; do
+    if [ -z "$pdir" ]; then
+      continue
+    fi
+    class=$(plugin_class "$pdir")
+    if [ "$class" = "interrupted" ]; then
+      restore_plugin "$pdir"
+      rebroken=1
+    fi
+  done <"$TMP_LIST"
+  fails=0
+  for entry in "$ROOT"/*; do
+    if [ ! -e "$entry" ]; then
+      continue
+    fi
+    if [ ! -d "$entry/.git" ]; then
+      continue
+    fi
+    class=$(plugin_class "$entry")
+    if [ "$class" != "ok" ]; then
+      report_line "$entry" "$class"
+      fails=$((fails + 1))
+    fi
+  done
+  if [ "$rebroken" = 1 ]; then
+    exit 1
+  fi
+  if [ "$fails" = 0 ]; then
+    exit 0
+  else
+    exit 1
+  fi
+fi
+
+fails=0
+for entry in "$ROOT"/*; do
+  if [ ! -e "$entry" ]; then
+    continue
+  fi
+  if [ ! -d "$entry/.git" ]; then
+    continue
+  fi
+  class=$(plugin_class "$entry")
+  if [ "$class" != "ok" ]; then
+    report_line "$entry" "$class"
+    fails=$((fails + 1))
+  fi
+done
+if [ "$fails" = 0 ]; then
+  exit 0
+else
+  exit 1
+fi
