@@ -1,4 +1,4 @@
--- Hammerspoon Highlights tab-close and page keys runtime (hs glue).
+-- Hammerspoon Highlights tab-close, page, and scroll keys runtime (hs glue).
 -- Pure state machines and runners live in `highlights_tabs.lua` and
 -- `highlights_pages.lua`; this module wires one event tap, watchers, and AX.
 local HighlightsTabs = require("highlights_tabs")
@@ -607,6 +607,42 @@ local function make_real_adapter(H)
 		return ok and result ~= nil
 	end
 
+	local function scroll_geometry()
+		local area, shared_document = current_pdf_view()
+		if area == nil or shared_document == nil then
+			return nil, "couldn't find the PDF view"
+		end
+		local area_frame = element_frame(area)
+		local document_frame = element_frame(shared_document)
+		local bar = vertical_scrollbar(area)
+		local value = tonumber(ax_attr(bar, "AXValue"))
+		if area_frame == nil or document_frame == nil or bar == nil or value == nil then
+			return nil, "couldn't read the scroll position"
+		end
+		return { value = value, view_h = area_frame.h, document_h = document_frame.h, bar = bar }
+	end
+
+	local function set_scroll_value(geometry, value)
+		local bar = geometry and geometry.bar
+		if bar == nil or type(bar.setAttributeValue) ~= "function" then
+			return false, "couldn't set the scroll bar"
+		end
+		local ok, result = pcall(function()
+			return bar:setAttributeValue("AXValue", value)
+		end)
+		if not ok or result == nil or result == false then
+			return false, "couldn't set the scroll bar"
+		end
+		local new_value = tonumber(ax_attr(bar, "AXValue"))
+		if new_value == nil then
+			return false, "couldn't read the scroll position"
+		end
+		if math.abs(new_value - geometry.value) < 1e-6 then
+			return false, "the scroll bar didn't move"
+		end
+		return true
+	end
+
 	local function scroll_to_visible(page_number)
 		local _, shared_document = current_pdf_view()
 		local page = pdf_page_element(shared_document, page_number)
@@ -647,6 +683,8 @@ local function make_real_adapter(H)
 		page_info = page_info,
 		has_pdf_view = has_pdf_view,
 		scroll_to = scroll_to,
+		scroll_geometry = scroll_geometry,
+		set_scroll_value = set_scroll_value,
 		scroll_to_visible = scroll_to_visible,
 		landed = landed,
 	}
@@ -775,6 +813,8 @@ function M.stop()
 	runtime.timers = {}
 	runtime.running = false
 	runtime.page_running = false
+	runtime.scroll_batch = nil
+	runtime.scroll_scheduled = false
 	if runtime.leader ~= nil and type(runtime.leader.cancel) == "function" then
 		pcall(function()
 			runtime.leader:cancel()
@@ -950,6 +990,43 @@ function M.start(options)
 			pcall(function()
 				H.printf("Bob Highlights page keys %s failed: %s", tostring(result.kind), tostring(err))
 			end)
+		end
+	end
+
+	local scroll_deps = {
+		scroll_geometry = adapter.scroll_geometry,
+		set_scroll_value = adapter.set_scroll_value,
+	}
+
+	local function flush_scroll()
+		runtime.scroll_scheduled = false
+		local batch = runtime.scroll_batch
+		runtime.scroll_batch = nil
+		if batch == nil or runtime.running or runtime.page_running then
+			return
+		end
+		local ok, result = pcall(HighlightsPages.scroll, batch, scroll_deps)
+		if not ok then
+			result = { status = "failed", kind = "scroll", reason = tostring(result) }
+		end
+		if type(result) == "table" and result.status == "failed" then
+			pcall(function()
+				H.printf("Bob Highlights scroll keys failed: %s", tostring(result.reason))
+			end)
+			if batch.fresh == true then
+				show(HighlightsPages.message(result))
+			end
+		end
+	end
+
+	local function queue_scroll(command)
+		if runtime.running or runtime.page_running then
+			return
+		end
+		runtime.scroll_batch = HighlightsPages.add_scroll(runtime.scroll_batch, command)
+		if not runtime.scroll_scheduled then
+			runtime.scroll_scheduled = true
+			after_fn(0, flush_scroll)
 		end
 	end
 
@@ -1187,9 +1264,13 @@ function M.start(options)
 		local page_outcome = runtime.page_keys:on_key(key, now, can_arm_pages)
 		if page_outcome ~= nil and (page_outcome.swallow or page_outcome.command ~= nil) then
 			if page_outcome.command ~= nil then
-				after_fn(0, function()
-					dispatch_page(page_outcome.command)
-				end)
+				if page_outcome.command.kind == "scroll" then
+					queue_scroll(page_outcome.command)
+				else
+					after_fn(0, function()
+						dispatch_page(page_outcome.command)
+					end)
+				end
 			end
 			return page_outcome.swallow == true
 		end
@@ -1313,6 +1394,7 @@ function M.start(options)
 		after = after_fn,
 		now = now_fn,
 	}
+	runtime._scroll_deps_for_tests = scroll_deps
 	runtime._can_arm_for_tests = can_arm
 	runtime._can_arm_pages_for_tests = can_arm_pages
 	runtime._dispatch_for_tests = dispatch

@@ -613,6 +613,17 @@ local function tap_ctrl_i(env)
 	return env.tap_key({ chars = "\9", plain = "i", flags = { ctrl = true }, keycode = 34 })
 end
 
+local function tap_ctrl(env, letter, options)
+	options = options or {}
+	return env.tap_key({
+		chars = string.char(letter:byte() - 96),
+		plain = letter,
+		flags = { ctrl = true },
+		autorepeat = options.autorepeat == true,
+		keycode = 0,
+	})
+end
+
 local function tap_page_keys(env, chars)
 	for _, value in ipairs(chars) do
 		assert.is_true(env.tap_key({ chars = value, plain = value, flags = {}, keycode = 0 }))
@@ -924,6 +935,154 @@ describe("Highlights tab keys runtime", function()
 		env.drain()
 		assert.is_true(alert_saw(env, "No later page"))
 		assert.equals(offset, state.offset)
+	end)
+
+	it("scrolls half a view and one line through the real adapter", function()
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		local state = make_pdf_view(env, { page = 10, count = 44 })
+		start_with_real_adapter(env)
+		assert.is_true(tap_ctrl(env, "d"))
+		env.drain()
+		assert.equals(7630, state.offset)
+		assert.is_true(tap_ctrl(env, "u"))
+		env.drain()
+		assert.equals(7380, state.offset)
+		assert.is_true(tap_ctrl(env, "e"))
+		env.drain()
+		assert.equals(7400, state.offset)
+		assert.is_true(tap_ctrl(env, "y"))
+		env.drain()
+		assert.equals(7380, state.offset)
+		assert.equals(0, #env.alerts)
+		assert.equals(0, #env.logs)
+	end)
+
+	it("coalesces held line scrolls into one AX write", function()
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		local state = make_pdf_view(env, { page = 10, count = 44 })
+		start_with_real_adapter(env)
+		local writes = 0
+		local set_value = env.pdf_bar.setAttributeValue
+		env.pdf_bar.setAttributeValue = function(bar, name, value)
+			writes = writes + 1
+			return set_value(bar, name, value)
+		end
+		assert.is_true(tap_ctrl(env, "e"))
+		assert.is_true(tap_ctrl(env, "e", { autorepeat = true }))
+		assert.is_true(tap_ctrl(env, "e", { autorepeat = true }))
+		env.drain()
+		assert.equals(1, writes)
+		assert.equals(7440, state.offset)
+	end)
+
+	it("keeps top and bottom edge scrolls quiet", function()
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		local state = make_pdf_view(env, { page = 1, count = 44 })
+		start_with_real_adapter(env)
+		local writes = 0
+		local set_value = env.pdf_bar.setAttributeValue
+		env.pdf_bar.setAttributeValue = function(bar, name, value)
+			writes = writes + 1
+			return set_value(bar, name, value)
+		end
+		assert.is_true(tap_ctrl(env, "y"))
+		assert.is_true(tap_ctrl(env, "u"))
+		env.drain()
+		assert.equals(0, writes)
+		state.offset = 35560
+		assert.is_true(tap_ctrl(env, "d"))
+		env.drain()
+		assert.equals(0, writes)
+		assert.equals(0, #env.alerts)
+		assert.equals(0, #env.logs)
+	end)
+
+	it("passes scroll keys in text fields, other processes, and windows without a PDF", function()
+		local cases = {
+			{ focused = make_focused(111, "AXTextField") },
+			{ focused = make_focused(222, "AXUnknown") },
+			{ focused = make_focused(111, "AXUnknown"), no_document = true },
+		}
+		for _, case in ipairs(cases) do
+			env = setup({ focused = case.focused })
+			local state = make_pdf_view(env, { no_document = case.no_document })
+			start_with_real_adapter(env)
+			assert.is_false(tap_ctrl(env, "d"))
+			env.drain()
+			assert.equals(7380, state.offset)
+			assert.equals(0, #env.alerts)
+			env.restore()
+			env = nil
+		end
+	end)
+
+	it("logs every failed scroll but alerts only for a fresh press", function()
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		make_pdf_view(env, { page = 10, count = 44, ignore_bar = true })
+		start_with_real_adapter(env)
+		assert.is_true(tap_ctrl(env, "d"))
+		env.drain()
+		assert.equals(1, #env.alerts)
+		assert.equals("Couldn't scroll the PDF: the scroll bar didn't move", env.alerts[1].message)
+		assert.equals(1, #env.logs)
+		assert.equals("Bob Highlights scroll keys failed: %s", env.logs[1][1])
+		assert.equals("the scroll bar didn't move", env.logs[1][2])
+		assert.is_true(tap_ctrl(env, "d", { autorepeat = true }))
+		env.drain()
+		assert.equals(1, #env.alerts)
+		assert.equals(2, #env.logs)
+	end)
+
+	it("drops scroll keys while a page jump or tab close is running", function()
+		for _, field in ipairs({ "page_running", "running" }) do
+			env = setup({ focused = make_focused(111, "AXUnknown") })
+			local state = make_pdf_view(env, { page = 10, count = 44 })
+			start_with_real_adapter(env)
+			_G.BobHighlightsTabKeys[field] = true
+			assert.is_true(tap_ctrl(env, "d"))
+			env.drain()
+			assert.equals(7380, state.offset)
+			assert.equals(0, #env.alerts)
+			_G.BobHighlightsTabKeys[field] = false
+			env.restore()
+			env = nil
+		end
+	end)
+
+	it("does not add scrolling to Ctrl-O jump history", function()
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		local state = make_pdf_view(env, { page = 10, count = 44 })
+		start_with_real_adapter(env)
+		assert.is_true(tap_ctrl(env, "d"))
+		env.drain()
+		assert.equals(7630, state.offset)
+		assert.is_true(tap_ctrl_o(env))
+		env.drain()
+		assert.is_true(alert_saw(env, "No earlier page"))
+		assert.equals(7630, state.offset)
+	end)
+
+	it("schedules scrolls after a restart with an earlier flush pending", function()
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		local state = make_pdf_view(env, { page = 10, count = 44 })
+		start_with_real_adapter(env)
+		assert.is_true(tap_ctrl(env, "e"))
+		env.keys.start({ hs = env.hs })
+		-- The real timer is stopped by M.stop; discard the equivalent fake timer here.
+		env.queue = {}
+		assert.is_true(tap_ctrl(env, "e"))
+		env.drain()
+		assert.equals(7400, state.offset)
+	end)
+
+	it("cancels a pending tab leader and scrolls on Ctrl-Y", function()
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		local state = make_pdf_view(env, { page = 10, count = 44 })
+		start_with_real_adapter(env)
+		assert.is_true(env.tap_key({ chars = "\\", plain = "\\", flags = {}, keycode = 0 }))
+		assert.is_true(tap_ctrl(env, "y"))
+		env.drain()
+		assert.is_true(math.abs(7360 - state.offset) < 1e-6)
 	end)
 
 	it("clears the pages ahead on a new jump after going back", function()

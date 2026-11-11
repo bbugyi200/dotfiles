@@ -216,6 +216,94 @@ describe("Highlights page keys", function()
 			end
 		end)
 
+		it("recognizes half-page and one-line scroll chords", function()
+			local cases = {
+				{ "d", "down", "half" },
+				{ "u", "up", "half" },
+				{ "e", "down", "line" },
+				{ "y", "up", "line" },
+			}
+			for _, case in ipairs(cases) do
+				local letter = case[1]
+				local result = M.new_keys():on_key(
+					key(string.char(letter:byte() - 96), { plain = letter, ctrl = true }),
+					1,
+					function()
+						return true
+					end
+				)
+				assert.is_true(result.swallow)
+				assert.same({
+					kind = "scroll",
+					direction = case[2],
+					amount = case[3],
+					autorepeat = false,
+				}, result.command)
+			end
+		end)
+
+		it("accepts autorepeat only for scroll chords", function()
+			local scroll = M.new_keys():on_key(key("\4", { plain = "d", ctrl = true, autorepeat = true }), 1, function()
+				return true
+			end)
+			assert.is_true(scroll.swallow)
+			assert.is_true(scroll.command.autorepeat)
+			for _, repeated in ipairs({
+				key("g", { autorepeat = true }),
+				key("G", { shift = true, autorepeat = true }),
+				key("\15", { plain = "o", ctrl = true, autorepeat = true }),
+				key("5", { autorepeat = true }),
+			}) do
+				assert.is_false(M.new_keys():on_key(repeated, 1, function()
+					return true
+				end).swallow)
+			end
+		end)
+
+		it("passes modified scroll chords and scrolls when can_arm allows it", function()
+			for _, overrides in ipairs({
+				{ plain = "d", ctrl = true, shift = true },
+				{ plain = "d", ctrl = true, cmd = true },
+				{ plain = "d", ctrl = true, alt = true },
+			}) do
+				assert.is_false(M.new_keys():on_key(key("\4", overrides), 1, function()
+					return true
+				end).swallow)
+			end
+			assert.is_false(M.new_keys():on_key(key("\4", { plain = "d", ctrl = true }), 1, function()
+				return false
+			end).swallow)
+		end)
+
+		it("cancels pending prefixes and counts before scrolling", function()
+			local keys = M.new_keys()
+			keys:on_key(key("g"), 1, function()
+				return true
+			end)
+			local scroll = keys:on_key(key("\4", { plain = "d", ctrl = true }), 1.1, function()
+				return true
+			end)
+			assert.same({ kind = "scroll", direction = "down", amount = "half", autorepeat = false }, scroll.command)
+			local lone_g = keys:on_key(key("g"), 1.2, function()
+				return true
+			end)
+			assert.is_nil(lone_g.command)
+			assert.is_true(keys:is_pending())
+
+			keys = M.new_keys()
+			keys:on_key(key("5"), 2, function()
+				return true
+			end)
+			local counted_scroll = keys:on_key(key("\5", { plain = "e", ctrl = true }), 2.1, function()
+				return true
+			end)
+			assert.same(
+				{ kind = "scroll", direction = "down", amount = "line", autorepeat = false },
+				counted_scroll.command
+			)
+			assert.is_false(keys:is_pending())
+		end)
+
 		it("passes Tab and Ctrl-Tab through without calling can_arm", function()
 			for _, overrides in ipairs({
 				{ plain = "\t", chars = "\t" },
@@ -460,6 +548,124 @@ describe("Highlights page keys", function()
 			local jumps = { ["/paper.pdf"] = { 1, 2, 3, 3 } }
 			assert.equals(2, M.pop_jump(jumps, "/paper.pdf", 3))
 			assert.same({ 1 }, jumps["/paper.pdf"])
+		end)
+	end)
+
+	describe("scroll batches", function()
+		it("sums signed half and line steps and tracks fresh presses", function()
+			local batch = M.add_scroll(nil, { amount = "half", direction = "down", autorepeat = false })
+			batch = M.add_scroll(batch, { amount = "half", direction = "up", autorepeat = true })
+			batch = M.add_scroll(batch, { amount = "line", direction = "down", autorepeat = true })
+			batch = M.add_scroll(batch, { amount = "line", direction = "up", autorepeat = true })
+			assert.same({ half = 0, line = 0, fresh = true }, batch)
+			assert.same(
+				{ half = 0, line = 1, fresh = false },
+				M.add_scroll(nil, {
+					amount = "line",
+					direction = "down",
+					autorepeat = true,
+				})
+			)
+		end)
+
+		it("moves by half a view, one line, and mixed steps", function()
+			local geometry = { value = 0.25, view_h = 500, document_h = 1500 }
+			local written = nil
+			local deps = {
+				scroll_geometry = function()
+					return geometry
+				end,
+				set_scroll_value = function(_, value)
+					written = value
+					return true
+				end,
+			}
+			local half = M.scroll({ half = 1 }, deps)
+			assert.equals("done", half.status)
+			assert.equals(0.5, half.to)
+			assert.equals(half.to, written)
+
+			deps.scroll_geometry = function()
+				return geometry
+			end
+			local line = M.scroll({ line = 1 }, deps)
+			assert.equals("done", line.status)
+			assert.equals(0.27, line.to)
+			local mixed = M.scroll({ half = 1, line = -1 }, deps)
+			assert.equals("done", mixed.status)
+			assert.equals(0.48, mixed.to)
+		end)
+
+		it("clamps to edges without writing when already at an edge", function()
+			local writes = 0
+			local deps = {
+				scroll_geometry = function()
+					return { value = 0.9, view_h = 500, document_h = 1500 }
+				end,
+				set_scroll_value = function()
+					writes = writes + 1
+					return true
+				end,
+			}
+			assert.equals(1, M.scroll({ half = 1 }, deps).to)
+			deps.scroll_geometry = function()
+				return { value = 0.1, view_h = 500, document_h = 1500 }
+			end
+			assert.equals(0, M.scroll({ half = -1 }, deps).to)
+			assert.equals(2, writes)
+			deps.scroll_geometry = function()
+				return { value = 0, view_h = 500, document_h = 1500 }
+			end
+			assert.equals("edge", M.scroll({ half = -1 }, deps).status)
+			assert.equals(2, writes)
+			deps.scroll_geometry = function()
+				return { value = 0.5, view_h = 500, document_h = 400 }
+			end
+			assert.equals("edge", M.scroll({ half = 1 }, deps).status)
+			assert.equals(2, writes)
+		end)
+
+		it("reports geometry, setter, and thrown dependency failures", function()
+			local missing = M.scroll({}, {
+				scroll_geometry = function()
+					return nil, "view unavailable"
+				end,
+			})
+			assert.equals("failed", missing.status)
+			assert.equals("view unavailable", missing.reason)
+			local rejected = M.scroll({ line = 1 }, {
+				scroll_geometry = function()
+					return { value = 0, view_h = 500, document_h = 1500 }
+				end,
+				set_scroll_value = function()
+					return false, "bar rejected"
+				end,
+			})
+			assert.equals("failed", rejected.status)
+			assert.equals("bar rejected", rejected.reason)
+			local thrown = M.scroll({ line = 1 }, {
+				scroll_geometry = function()
+					return { value = 0, view_h = 500, document_h = 1500 }
+				end,
+				set_scroll_value = function()
+					error("AX failed")
+				end,
+			})
+			assert.equals("failed", thrown.status)
+			assert.is_truthy(thrown.reason:find("AX failed", 1, true))
+		end)
+
+		it("keeps successful scrolls quiet and formats failures", function()
+			assert.is_nil(M.message({ kind = "scroll", status = "done" }))
+			assert.is_nil(M.message({ kind = "scroll", status = "edge" }))
+			assert.equals(
+				"Couldn't scroll the PDF: bar rejected",
+				M.message({
+					kind = "scroll",
+					status = "failed",
+					reason = "bar rejected",
+				})
+			)
 		end)
 	end)
 

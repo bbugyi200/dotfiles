@@ -184,7 +184,7 @@ because a full apply restarts Hammerspoon while the app would need a signed rebu
 ## Highlights page keys
 
 While the PDF view in Highlights has focus, use these keys to move between physical PDF
-pages:
+pages and scroll through the document:
 
 | Keys   | Action                        |
 | ------ | ----------------------------- |
@@ -210,6 +210,20 @@ Control-I, so Highlights' `⌃⇥` tab switching still works.
 These keys type normally in text fields, the Bob Refs panel, and windows without a PDF.
 Keep Bob Mac Capture's “In Highlights, open Bob Refs with” setting at Command-O or Off;
 Control-O would collide with `⌃O`.
+
+### Scroll keys
+
+| Keys        | Action                                       |
+| ----------- | -------------------------------------------- |
+| `⌃D` / `⌃U` | Scroll down or up half the visible height    |
+| `⌃E` / `⌃Y` | Scroll down or up about one line (20 points) |
+
+Holding a key keeps scrolling. The top and bottom stop scrolling quietly. These scrolls
+are not jumps, so `⌃O` does not return across them. A count before a scroll key is
+ignored, and scroll keys do nothing while a page jump or tab close is running.
+
+Scroll keys pass through in text fields, the Bob Refs panel, and windows without a PDF.
+Control-D, Control-E, and Control-Y keep their usual text-editing meaning there.
 
 ### Open at a page from Obsidian
 

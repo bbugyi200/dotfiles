@@ -10,6 +10,15 @@ M.PAGE_REQUEST_POLL_SECONDS = 0.1
 M.PAGE_REQUEST_TIMEOUT_SECONDS = 8
 M.PAGE_REQUEST_RECHECK_SECONDS = 0.4
 M.BUSY_MESSAGE = "Still jumping pages"
+M.SCROLL_HALF_FRACTION = 0.5
+M.SCROLL_LINE_POINTS = 20
+
+local SCROLL_KEYS = {
+	d = { direction = "down", amount = "half" },
+	u = { direction = "up", amount = "half" },
+	e = { direction = "down", amount = "line" },
+	y = { direction = "up", amount = "line" },
+}
 
 local function safe_can_arm(can_arm)
 	local ok, result = pcall(can_arm)
@@ -28,7 +37,21 @@ local function key_plain(key)
 end
 
 local function idle_command(key)
-	if key.autorepeat or has_cmd_or_alt(key) then
+	if has_cmd_or_alt(key) then
+		return nil
+	end
+	if key.ctrl and not key.shift then
+		local scroll = SCROLL_KEYS[key_plain(key)]
+		if scroll ~= nil then
+			return {
+				kind = "scroll",
+				direction = scroll.direction,
+				amount = scroll.amount,
+				autorepeat = key.autorepeat == true,
+			}
+		end
+	end
+	if key.autorepeat then
 		return nil
 	end
 	if key.chars == "g" and not key.shift and not key.ctrl then
@@ -49,7 +72,7 @@ local function idle_command(key)
 	return nil
 end
 
---- Create the `gg` / `G` / count / Ctrl-O / Ctrl-I key state machine.
+--- Create the `gg` / `G` / count / Ctrl-O / Ctrl-I / scroll key state machine.
 function M.new_keys(opts)
 	opts = opts or {}
 	local timeout = tonumber(opts.timeout) or M.KEY_TIMEOUT_SECONDS
@@ -262,6 +285,75 @@ end
 --- Create an empty back/forward jump history (one stack per PDF per side).
 function M.new_history()
 	return { back = {}, forward = {} }
+end
+
+--- Add a half-page or line scroll command to a coalesced batch.
+function M.add_scroll(batch, command)
+	if type(batch) ~= "table" then
+		batch = { half = 0, line = 0, fresh = false }
+	end
+	batch.half = tonumber(batch.half) or 0
+	batch.line = tonumber(batch.line) or 0
+	batch.fresh = batch.fresh == true
+	command = type(command) == "table" and command or {}
+	local amount = command.amount
+	local direction = command.direction
+	if (amount == "half" or amount == "line") and (direction == "up" or direction == "down") then
+		local sign = direction == "down" and 1 or -1
+		batch[amount] = batch[amount] + sign
+	end
+	if command.autorepeat ~= true then
+		batch.fresh = true
+	end
+	return batch
+end
+
+--- Apply a coalesced signed scroll batch using current PDF geometry.
+function M.scroll(batch, deps)
+	batch = type(batch) == "table" and batch or {}
+	deps = type(deps) == "table" and deps or {}
+	local geometry, reason
+	if type(deps.scroll_geometry) == "function" then
+		local ok, value, why = pcall(deps.scroll_geometry)
+		if ok then
+			geometry, reason = value, why
+		else
+			reason = tostring(value)
+		end
+	end
+	if
+		type(geometry) ~= "table"
+		or type(geometry.value) ~= "number"
+		or type(geometry.view_h) ~= "number"
+		or type(geometry.document_h) ~= "number"
+	then
+		return { status = "failed", kind = "scroll", reason = reason or "couldn't find the PDF view" }
+	end
+	local delta = (tonumber(batch.half) or 0) * geometry.view_h * M.SCROLL_HALF_FRACTION
+		+ (tonumber(batch.line) or 0) * M.SCROLL_LINE_POINTS
+	local maximum = geometry.document_h - geometry.view_h
+	if maximum <= 0 or delta == 0 then
+		return { status = "edge", kind = "scroll" }
+	end
+	local target = math.max(0, math.min(1, geometry.value + delta / maximum))
+	if math.abs(target - geometry.value) < 1e-6 then
+		return { status = "edge", kind = "scroll" }
+	end
+	local ok, result, set_reason = pcall(function()
+		if type(deps.set_scroll_value) ~= "function" then
+			return false, "the PDF didn't scroll"
+		end
+		return deps.set_scroll_value(geometry, target)
+	end)
+	if ok and result == true then
+		return { status = "done", kind = "scroll", from = geometry.value, to = target }
+	end
+	if not ok then
+		set_reason = tostring(result)
+	elseif type(result) == "string" and set_reason == nil then
+		set_reason = result
+	end
+	return { status = "failed", kind = "scroll", reason = set_reason or "the PDF didn't scroll" }
 end
 
 --- Pop the newest page not equal to the current page.
@@ -490,9 +582,15 @@ function M.run(command, history, deps, on_done)
 	run_attempts(true)
 end
 
---- One-line alert copy. Successful jumps deliberately return nil (quiet success).
+--- Alert copy. Successful jumps and scrolls deliberately return nil.
 function M.message(result)
 	result = result or {}
+	if result.kind == "scroll" then
+		if result.status == "failed" then
+			return string.format("Couldn't scroll the PDF: %s", tostring(result.reason or "the PDF didn't scroll"))
+		end
+		return nil
+	end
 	if result.status == "busy" then
 		return M.BUSY_MESSAGE
 	elseif result.status == "done" then
