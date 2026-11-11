@@ -196,7 +196,7 @@ copy:
   templates:
     - label: Task ref
       key: t
-      template: "the ^{block_id} task in the {path}"
+      template: "the ^{block_id} task in the {path} file"
 
 # Period stats strips chart the 5 biggest root parents; the rest fold into
 # "N more". Current bob ignores unknown `stats:` keys, so this is safe before
