@@ -186,6 +186,18 @@ relations:
 capture:
   clipboard_history: alfred
 
+# Obsidian Cmd+Y Copy card (bob-navigation-hotkeys; docs/copy-card.md in
+# bob-plugins). bob-cli ignores this block. Variables are the card's row labels:
+# {path} (~/…), {absolute_path}, {file_name}, {note_name}, and {block_id}
+# (bare, so write ^{block_id}). {{ and }} are literal braces. Always quote
+# templates. `key` is one letter or digit; without it, an entry's key is its
+# 1-based position (1–9). A template using {block_id} shows only in a task.
+copy:
+  templates:
+    - label: Task ref
+      key: t
+      template: "the ^{block_id} task in the {path}"
+
 # Period stats strips chart the 5 biggest root parents; the rest fold into
 # "N more". Current bob ignores unknown `stats:` keys, so this is safe before
 # the next bob release.
