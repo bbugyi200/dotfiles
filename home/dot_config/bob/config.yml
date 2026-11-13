@@ -198,6 +198,25 @@ copy:
       key: t
       template: "the ^{block_id} task in the {path} file"
 
+# `bob plugins sync` deploys only these plugin ids. Add a new bob-plugins
+# plugin here before running the sync, or the sync skips it (and refuses it
+# under `-p`). See "Bob Plugins" in bob-cli docs/plugins.md. Older bob builds
+# ignore this key, so it is safe on every host before the release train ships
+# the new bob.
+plugins:
+  sync:
+    - block-id-prompt
+    - bob-articles
+    - bob-command-mode
+    - bob-emoji
+    - bob-ledger-tools
+    - bob-mail
+    - bob-navigation-hotkeys
+    - bob-project-tasks
+    - bob-vim-surround
+    - bob-vim-yank-flash
+    - task-status-cycler
+
 # Period stats strips chart the 5 biggest root parents; the rest fold into
 # "N more". Current bob ignores unknown `stats:` keys, so this is safe before
 # the next bob release.
