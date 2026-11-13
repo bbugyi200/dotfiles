@@ -62,17 +62,17 @@ axe:
         enough to refresh. Documentation-only proposal jobs belong here; quality audits and file-splitting maintenance
         stay in their own lanes.
 
-        The current job fans out across enabled projects and checkpoints only after the documentation agents succeed,
-        which keeps failed refreshes eligible for a later tick.
+        The current job fans out across allowlisted code projects and checkpoints only after the documentation agents
+        succeed, which keeps failed refreshes eligible for a later tick.
       interval: 60
       wait_runners: 1
       jobs:
         refresh_docs:
           script: sase_job_refresh_docs
           description: |-
-            Refresh documentation for enabled projects after meaningful repository drift
+            Refresh documentation for allowlisted code projects after meaningful repository drift
 
-            Runs `sase_job_refresh_docs` every three hours for each enabled project, but only after
+            Runs `sase_job_refresh_docs` every three hours for each allowlisted code project, but only after
             `git.commits_since` reports 100 commits since the last successful refresh.
 
             The job emits an update proposal followed by a polish proposal that waits on the update.
@@ -85,6 +85,9 @@ axe:
               checkpoint: on_action_success
           for_each:
             source: projects
+            # Code-project allowlist; bbugyi200 area-note repos (body, cash, dev, job, love, and future ones) are
+            # intentionally excluded. Add new code projects here when they should receive documentation refreshes.
+            names: [actstat, bob-cli, sase, sase-spotify, tailnet]
     ci_watch:
       description: |-
         Watch GitHub Actions health across SASE repos and submit guarded releases
