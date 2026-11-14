@@ -113,6 +113,11 @@ gmail:
   sync:
     route_prefixes: ["#", "+"] # quoted: a bare # starts a YAML comment
     reply_wait_days: 3 # after you send, nudge in 3 calendar days unless they reply
+    # Archive a bob-labelled thread once, when every task linking its mail note is
+    # closed (bob-cli docs/gmail.md "Archive on close"). Only the host holding the
+    # `bob gmail login -s modify` grant (the Mac) can archive; receipt label
+    # bob/closed and archive_max 10 stay at their defaults. Undo: bob gmail unarchive.
+    archive: on
 
 # Daily review cadence (`bob freshness list`, ledger-tools walk tiers, nav
 # refresh row); see `docs/freshness.md` §2 in bob-cli. The block is optional:
