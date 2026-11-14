@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# CHEZMOI WILL RUN THIS SCRIPT MONTHLY: {{ output "date" "+%Y-%m" | trim }}
+
+{{ if or (eq .chezmoi.hostname "athena") (eq .chezmoi.hostname "apollo") }}
+source ~/.local/share/chezmoi/lib/chezmoi_utils.sh
+
+# Install the agent video tools with uv. System packages (ffmpeg, tesseract,
+# mediainfo, exiftool, mkvtoolnix, auto-editor) come from a reviewed
+# /sase_sudo request, never from here.
+
+function install_ytdlp() {
+  chez::log "INSTALLING YT-DLP"
+  uv tool install --upgrade yt-dlp
+}
+
+function install_whisper() {
+  chez::log "INSTALLING WHISPER-CTRANSLATE2"
+{{ if eq .chezmoi.hostname "athena" }}
+  uv tool install whisper-ctranslate2 --with 'ctranslate2>=4.5,<5' --with nvidia-cublas-cu12 --with 'nvidia-cudnn-cu12==9.*'
+{{ else }}
+  uv tool install whisper-ctranslate2 --with 'ctranslate2>=4.5,<5'
+{{ end }}
+}
+
+function install_scenedetect() {
+  chez::log "INSTALLING PYSCENEDETECT"
+  uv tool install 'scenedetect[opencv-headless]'
+}
+
+function install_video_tools() {
+  install_ytdlp || return 1
+  install_whisper || return 1
+  install_scenedetect || return 1
+}
+
+install_video_tools
+chez::exit_install "$?"
+{{ end }}

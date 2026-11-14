@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+# whisper_run: host-agnostic wrapper around whisper-ctranslate2.
+#
+# Picks CUDA on GPU hosts and CPU elsewhere so the shared /video skill can name
+# one binary on both athena and apollo.
+#
+# Environment:
+#   WHISPER_DEVICE  auto (default), cuda, or cpu.
+#   WHISPER_MODEL   model name (default: large-v3-turbo).
+#
+# User arguments come last so a caller's own --model or --device still wins.
+
+set -euo pipefail
+
+DEVICE="${WHISPER_DEVICE:-auto}"
+MODEL="${WHISPER_MODEL:-large-v3-turbo}"
+
+resolve_tool_dir() {
+  local dir=""
+  if command -v uv >/dev/null 2>&1; then
+    dir="$(uv tool dir 2>/dev/null || true)"
+  fi
+  if [[ -z "${dir}" ]]; then
+    dir="${HOME}/.local/share/uv/tools"
+  fi
+  printf '%s' "${dir}"
+}
+
+find_nvidia_dir() {
+  local tool_dir="$1"
+  local candidate
+  # The glob must not fail when nothing matches.
+  for candidate in "${tool_dir}"/whisper-ctranslate2/lib/python3*/site-packages/nvidia; do
+    if [[ -d "${candidate}" ]]; then
+      printf '%s' "${candidate}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+has_cuda_libs() {
+  local nv="$1"
+  [[ -n "${nv}" && -d "${nv}" ]]
+}
+
+smi_ok() {
+  nvidia-smi -L >/dev/null 2>&1
+}
+
+cpu_threads() {
+  local nprocs=1
+  if command -v nproc >/dev/null 2>&1; then
+    nprocs="$(nproc 2>/dev/null || printf '1')"
+  fi
+  if ! [[ "${nprocs}" =~ ^[0-9]+$ ]] || [[ "${nprocs}" -lt 1 ]]; then
+    nprocs=1
+  fi
+  local threads=$((nprocs / 2))
+  if [[ "${threads}" -lt 1 ]]; then
+    threads=1
+  fi
+  printf '%s' "${threads}"
+}
+
+main() {
+  local tool_dir nv_dir="" device="${DEVICE}" model="${MODEL}"
+  tool_dir="$(resolve_tool_dir)"
+  if nv_dir="$(find_nvidia_dir "${tool_dir}")"; then
+    :
+  else
+    nv_dir=""
+  fi
+
+  local use_device="cpu"
+  if [[ "${device}" == "cuda" ]]; then
+    if ! has_cuda_libs "${nv_dir}" || ! smi_ok; then
+      printf 'whisper_run: CUDA requested (WHISPER_DEVICE=cuda) but no CUDA libraries/GPU found (tool dir: %s)\n' "${tool_dir}" >&2
+      return 1
+    fi
+    use_device="cuda"
+  elif [[ "${device}" == "cpu" ]]; then
+    use_device="cpu"
+  else
+    # auto: cuda only when the nvidia dir exists AND nvidia-smi succeeds.
+    if has_cuda_libs "${nv_dir}" && smi_ok; then
+      use_device="cuda"
+    else
+      use_device="cpu"
+    fi
+  fi
+
+  if [[ "${use_device}" == "cuda" ]]; then
+    local compute="float16"
+    printf 'whisper_run: device=%s compute=%s model=%s\n' "${use_device}" "${compute}" "${model}" >&2
+    export LD_LIBRARY_PATH="${nv_dir}/cublas/lib:${nv_dir}/cudnn/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+    exec whisper-ctranslate2 --device cuda --compute_type "${compute}" --model "${model}" "$@"
+  else
+    local compute="int8"
+    local threads
+    threads="$(cpu_threads)"
+    printf 'whisper_run: device=%s compute=%s model=%s\n' "${use_device}" "${compute}" "${model}" >&2
+    exec nice -n 10 whisper-ctranslate2 --device cpu --compute_type "${compute}" --threads "${threads}" --model "${model}" "$@"
+  fi
+}
+
+main "$@"

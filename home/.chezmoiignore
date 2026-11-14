@@ -30,3 +30,6 @@ lib/poseidon_cache.sh
 {{ if and (ne .chezmoi.hostname "athena") (ne .chezmoi.hostname "apollo") (ne .chezmoi.hostname "Kellys-MacBook-Pro") }}
 .ssh/tailnet.conf
 {{ end }}
+{{ if and (ne .chezmoi.hostname "athena") (ne .chezmoi.hostname "apollo") }}
+bin/whisper_run
+{{ end }}

@@ -22,6 +22,16 @@ On athena, `doctl_login` sets up or re-checks the token used for Apollo recovery
 DigitalOcean control panel. Agents may run bare `doctl_login`; without a terminal, it
 performs a read-only connection check.
 
+## Agent video tools
+
+On athena and apollo, agents probe, view, OCR, transcribe, and edit video with a shared
+`/video` skill. `whisper_run` wraps `whisper-ctranslate2` (CUDA on athena, CPU on
+apollo, default model `large-v3-turbo`). The monthly `run_onchange_install_video_tools`
+installer keeps `yt-dlp`, Whisper, and PySceneDetect current via `uv tool`; system
+packages (ffmpeg, tesseract, mediainfo, exiftool, mkvtoolnix, auto-editor) come from
+reviewed `/sase_sudo` requests. Both hosts get the extras (PySceneDetect and
+auto-editor); apollo also gets ffmpeg and tesseract, which athena already had.
+
 ## Bob Mac Capture cutover
 
 Control-Shift-Command-I (capture) and Control-Shift-Command-O (Bob Refs) are owned by
