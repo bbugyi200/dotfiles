@@ -1,6 +1,6 @@
 {
-  "deployed_at": "2026-11-14T22:19:30.821397Z",
-  "macro_set_sha256": "2b4d8494cbaabfe5304ab82cb74a72fb30ef2b296e70beee7683db9b0840a0c4",
+  "deployed_at": "2026-11-14T22:21:56.941120Z",
+  "macro_set_sha256": "6932e01e71c4382b415ac1449ea5a5ae0c03f1974f4bb712eb776105959806fe",
   "managed_files": [
     {
       "home_path": ".gemini/antigravity-cli/skills/bob_query/SKILL.md",
@@ -189,6 +189,13 @@
       "provider": "agy",
       "skill_name": "sase_var",
       "source_path": "dot_gemini/antigravity-cli/skills/sase_var/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".gemini/antigravity-cli/skills/video/SKILL.md",
+      "provider": "agy",
+      "skill_name": "video",
+      "source_path": "dot_gemini/antigravity-cli/skills/video/SKILL.md",
       "state": "active"
     },
     {
@@ -388,6 +395,13 @@
       "state": "active"
     },
     {
+      "home_path": ".claude/skills/video/SKILL.md",
+      "provider": "claude",
+      "skill_name": "video",
+      "source_path": "dot_claude/skills/video/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".codex/skills/bob_query/SKILL.md",
       "provider": "codex",
       "skill_name": "bob_query",
@@ -581,6 +595,13 @@
       "provider": "codex",
       "skill_name": "sase_var",
       "source_path": "dot_codex/skills/sase_var/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".codex/skills/video/SKILL.md",
+      "provider": "codex",
+      "skill_name": "video",
+      "source_path": "dot_codex/skills/video/SKILL.md",
       "state": "active"
     },
     {
@@ -878,6 +899,13 @@
       "state": "active"
     },
     {
+      "home_path": ".grok/skills/video/SKILL.md",
+      "provider": "grok",
+      "skill_name": "video",
+      "source_path": "dot_grok/skills/video/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".config/muse/skills/bob_query/SKILL.md",
       "provider": "muse",
       "skill_name": "bob_query",
@@ -1067,6 +1095,13 @@
       "state": "active"
     },
     {
+      "home_path": ".config/muse/skills/video/SKILL.md",
+      "provider": "muse",
+      "skill_name": "video",
+      "source_path": "dot_config/muse/skills/video/SKILL.md",
+      "state": "active"
+    },
+    {
       "home_path": ".config/opencode/skills/bob_query/SKILL.md",
       "provider": "opencode",
       "skill_name": "bob_query",
@@ -1253,6 +1288,13 @@
       "provider": "opencode",
       "skill_name": "sase_var",
       "source_path": "dot_config/opencode/skills/sase_var/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".config/opencode/skills/video/SKILL.md",
+      "provider": "opencode",
+      "skill_name": "video",
+      "source_path": "dot_config/opencode/skills/video/SKILL.md",
       "state": "active"
     },
     {
@@ -1449,6 +1491,13 @@
       "provider": "qwen",
       "skill_name": "sase_var",
       "source_path": "dot_qwen/skills/sase_var/SKILL.md",
+      "state": "active"
+    },
+    {
+      "home_path": ".qwen/skills/video/SKILL.md",
+      "provider": "qwen",
+      "skill_name": "video",
+      "source_path": "dot_qwen/skills/video/SKILL.md",
       "state": "active"
     }
   ],
