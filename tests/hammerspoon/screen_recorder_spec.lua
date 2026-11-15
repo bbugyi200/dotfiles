@@ -1,4 +1,5 @@
 local RECORDER_PATH = "home/dot_hammerspoon/screen_recorder.lua"
+local MODEL_PATH = "home/dot_hammerspoon/screen_recording_model.lua"
 
 local function json_decode(text)
 	local source = tostring(text or "")
@@ -165,19 +166,51 @@ end
 local function make_hs(env)
 	local hs = {}
 
+	local function make_screen()
+		return {
+			frame = function()
+				return {
+					x = env.frame.x,
+					y = env.frame.y,
+					w = env.frame.w,
+					h = env.frame.h,
+				}
+			end,
+			id = function()
+				return env.screen_id or 1
+			end,
+			name = function()
+				return env.screen_name or "Built-in Retina Display"
+			end,
+		}
+	end
+
 	hs.screen = {
 		mainScreen = function()
-			return {
-				frame = function()
-					return {
-						x = env.frame.x,
-						y = env.frame.y,
-						w = env.frame.w,
-						h = env.frame.h,
-					}
-				end,
-			}
+			return make_screen()
 		end,
+		allScreens = function()
+			return { make_screen() }
+		end,
+		watcher = {
+			new = function(callback)
+				local watcher = {
+					callback = callback,
+					started = false,
+					stop_calls = 0,
+				}
+				function watcher:start()
+					self.started = true
+					return self
+				end
+				function watcher:stop()
+					self.started = false
+					self.stop_calls = self.stop_calls + 1
+				end
+				table.insert(env.screen_watchers, watcher)
+				return watcher
+			end,
+		},
 	}
 
 	hs.fs = {
@@ -244,6 +277,7 @@ local function make_hs(env)
 			end
 			function task:complete(exit_code, stdout, stderr)
 				self.running = false
+				self.completed = true
 				if self.callback then
 					self.callback(exit_code, stdout, stderr)
 				end
@@ -272,6 +306,44 @@ local function make_hs(env)
 			end
 			table.insert(env.timers, timer)
 			return timer
+		end,
+		doAfter = function(delay, callback)
+			local timer = {
+				delay = delay,
+				callback = callback,
+				started = true,
+				stop_calls = 0,
+			}
+			function timer:stop()
+				self.started = false
+				self.stop_calls = self.stop_calls + 1
+			end
+			table.insert(env.do_after, timer)
+			return timer
+		end,
+		delayed = {
+			new = function(delay, callback)
+				local timer = {
+					delay = delay,
+					fn = callback,
+					started = false,
+					stop_calls = 0,
+				}
+				function timer:start()
+					self.started = true
+					return self
+				end
+				function timer:stop()
+					self.started = false
+					self.stop_calls = self.stop_calls + 1
+					return self
+				end
+				table.insert(env.delayed_timers, timer)
+				return timer
+			end,
+		},
+		secondsSinceEpoch = function()
+			return env.now
 		end,
 	}
 
@@ -357,6 +429,40 @@ local function make_hs(env)
 				info = info,
 			})
 		end,
+		new = function(callback, info)
+			if type(callback) == "table" then
+				info = callback
+				callback = nil
+			end
+			local note = {
+				callback = callback,
+				info = info,
+				sent = false,
+				withdrawn = false,
+				image = nil,
+			}
+			function note:contentImage(image)
+				self.image = image
+				return self
+			end
+			function note:send()
+				self.sent = true
+				table.insert(env.rich_notifications, self)
+				return self
+			end
+			function note:withdraw()
+				self.withdrawn = true
+				return self
+			end
+			function note:getActivationType()
+				return self.activation_type or 1
+			end
+			return note
+		end,
+		activationTypes = {
+			contentsClicked = 1,
+			actionButtonClicked = 2,
+		},
 	}
 
 	hs.caffeinate = {
@@ -366,7 +472,137 @@ local function make_hs(env)
 			end
 			return env.session_properties
 		end,
+		watcher = {
+			systemWillSleep = 1,
+			screensDidLock = 2,
+			systemWillPowerOff = 3,
+			systemDidWake = 4,
+			screensDidWake = 5,
+			screensDidUnlock = 6,
+			new = function(callback)
+				local watcher = {
+					callback = callback,
+					started = false,
+					stop_calls = 0,
+				}
+				function watcher:start()
+					self.started = true
+					return self
+				end
+				function watcher:stop()
+					self.started = false
+					self.stop_calls = self.stop_calls + 1
+				end
+				table.insert(env.caffeine_watchers, watcher)
+				return watcher
+			end,
+		},
 	}
+
+	hs.menubar = {
+		new = function(in_menu_bar, autosave_name)
+			local menu = {
+				in_menu_bar = in_menu_bar,
+				autosave_name = autosave_name,
+				title = nil,
+				menu_builder = nil,
+				removed = true,
+				returned = false,
+			}
+			function menu:setTitle(title)
+				self.title = title
+				table.insert(env.menu_titles, title)
+				return self
+			end
+			function menu:setMenu(builder)
+				self.menu_builder = builder
+				return self
+			end
+			function menu:removeFromMenuBar()
+				self.removed = true
+				self.returned = false
+				return self
+			end
+			function menu:returnToMenuBar()
+				self.returned = true
+				self.removed = false
+				return self
+			end
+			table.insert(env.menus, menu)
+			return menu
+		end,
+	}
+
+	hs.pasteboard = {
+		changeCount = function()
+			return env.pasteboard_count
+		end,
+		setContents = function(value)
+			env.pasteboard_value = value
+			table.insert(env.pasteboard_writes, value)
+		end,
+	}
+
+	hs.dialog = {
+		blockAlert = function(message, informative, button1, button2)
+			table.insert(env.alerts, {
+				message = message,
+				informative = informative,
+				button1 = button1,
+				button2 = button2,
+			})
+			return env.alert_result or button2
+		end,
+	}
+
+	hs.image = {
+		imageFromPath = function(path)
+			table.insert(env.images, path)
+			return { path = path }
+		end,
+	}
+
+	local styled_mt = {
+		__concat = function(a, b)
+			local a_text = type(a) == "table" and a.text or tostring(a)
+			local b_text = type(b) == "table" and b.text or tostring(b)
+			local composed = { text = a_text .. b_text, is_styledtext = true }
+			setmetatable(composed, styled_mt)
+			return composed
+		end,
+	}
+	hs.styledtext = {
+		defaultFonts = { menuBar = { name = ".AppleSystemUIFont", size = 13 } },
+		validFont = function()
+			return true
+		end,
+		new = function(text, attributes)
+			local object = {
+				text = text,
+				attributes = attributes,
+				is_styledtext = true,
+			}
+			setmetatable(object, styled_mt)
+			return object
+		end,
+	}
+
+	hs.keycodes = {
+		map = {
+			escape = 53,
+			["return"] = 36,
+			v = 9,
+			m = 46,
+		},
+	}
+
+	function hs.execute(command)
+		table.insert(env.execute_calls, command)
+		if tostring(command):find("reduceMotion", 1, true) then
+			return env.reduce_motion and "1\n" or "0\n"
+		end
+		return ""
+	end
 
 	hs.json = {
 		decode = function(text)
@@ -393,22 +629,39 @@ local function setup(options)
 	local env = {
 		previous_hs = _G.hs,
 		previous_runtime = _G.BobScreenRecorder,
+		previous_model = package.loaded.screen_recording_model,
+		previous_picker = package.loaded.screenshot_region,
 		tmp = tmp_base,
 		now = options.now or 1e9,
 		frame = options.frame or { x = 0, y = 0, w = 1440, h = 900 },
 		session_properties = options.session_properties or {},
 		session_throw = options.session_throw,
 		json_decode_error = options.json_decode_error,
+		pasteboard_count = options.pasteboard_count or 10,
+		reduce_motion = options.reduce_motion,
+		alert_result = options.alert_result,
 		mtimes = {},
 		mkdir_calls = {},
 		fs_attribute_calls = {},
 		tasks = {},
 		timers = {},
+		do_after = {},
+		delayed_timers = {},
 		path_watchers = {},
 		canvases = {},
 		notifications = {},
+		rich_notifications = {},
 		json_decode_calls = {},
 		printf_calls = {},
+		menus = {},
+		menu_titles = {},
+		pasteboard_writes = {},
+		alerts = {},
+		images = {},
+		execute_calls = {},
+		screen_watchers = {},
+		caffeine_watchers = {},
+		picks = {},
 	}
 
 	function env.now_fn()
@@ -447,12 +700,32 @@ local function setup(options)
 		_G.hs = env.previous_hs
 		_G.BobScreenRecorder = env.previous_runtime
 		package.loaded.screen_recorder = nil
+		package.loaded.screen_recording_model = env.previous_model
+		package.loaded.screenshot_region = env.previous_picker
 		os.execute(string.format("rm -rf %q", env.tmp))
 	end
 
 	_G.hs = make_hs(env)
 	_G.BobScreenRecorder = nil
 	package.loaded.screen_recorder = nil
+	package.loaded.screen_recording_model = assert(loadfile(MODEL_PATH))()
+	package.loaded.screenshot_region = {
+		pick = function(onConfirm, opts)
+			local pick = {
+				onConfirm = onConfirm,
+				opts = opts,
+				cancelled = false,
+			}
+			function pick.cancel()
+				pick.cancelled = true
+				if opts and type(opts.onCancel) == "function" then
+					opts.onCancel("key")
+				end
+			end
+			table.insert(env.picks, pick)
+			return pick
+		end,
+	}
 	local recorder = assert(loadfile(RECORDER_PATH))()
 	return env, recorder
 end
@@ -461,8 +734,212 @@ local function start_recorder(env, recorder)
 	recorder.start({
 		home = env.tmp,
 		doctor_path = env.tmp .. "/bin/macrec_doctor",
+		macrec_path = env.tmp .. "/bin/macrec",
 		now = env.now_fn,
 	})
+end
+
+local function doctor_tasks(env)
+	local tasks = {}
+	for _, task in ipairs(env.tasks) do
+		if tostring(task.command):find("macrec_doctor", 1, true) then
+			table.insert(tasks, task)
+		end
+	end
+	return tasks
+end
+
+local function macrec_tasks(env)
+	local tasks = {}
+	for _, task in ipairs(env.tasks) do
+		if tostring(task.command):match("macrec$") then
+			table.insert(tasks, task)
+		end
+	end
+	return tasks
+end
+
+local function tasks_with_arg(env, arg)
+	local tasks = {}
+	for _, task in ipairs(env.tasks) do
+		for _, value in ipairs(task.args or {}) do
+			if value == arg then
+				table.insert(tasks, task)
+				break
+			end
+		end
+	end
+	return tasks
+end
+
+local function watcher_for(env, suffix)
+	local found
+	for _, watcher in ipairs(env.path_watchers) do
+		if type(watcher.path) == "string" and watcher.path:sub(-#suffix) == suffix then
+			found = watcher
+		end
+	end
+	return found
+end
+
+local function json_encode(value)
+	local value_type = type(value)
+	if value == nil then
+		return "null"
+	end
+	if value_type == "boolean" then
+		return value and "true" or "false"
+	end
+	if value_type == "number" then
+		return tostring(value)
+	end
+	if value_type == "string" then
+		return '"' .. value:gsub("\\", "\\\\"):gsub('"', '\\"') .. '"'
+	end
+	if value_type ~= "table" then
+		error("cannot encode " .. value_type)
+	end
+	if #value > 0 then
+		local parts = {}
+		for index, item in ipairs(value) do
+			parts[index] = json_encode(item)
+		end
+		return "[" .. table.concat(parts, ",") .. "]"
+	end
+	local parts = {}
+	for key, item in pairs(value) do
+		table.insert(parts, json_encode(tostring(key)) .. ":" .. json_encode(item))
+	end
+	table.sort(parts)
+	return "{" .. table.concat(parts, ",") .. "}"
+end
+
+local REGION = { x = 100, y = 80, w = 640, h = 360 }
+
+local function session_fields(overrides)
+	local session = {
+		schema = 1,
+		id = "sess1",
+		name = "20261115_142233",
+		status = "done",
+		region = { x = REGION.x, y = REGION.y, w = REGION.w, h = REGION.h },
+		mic = false,
+		probe = false,
+		started_at = 1000,
+		cap_seconds = 600,
+		orphaned = false,
+		log = "/tmp/screencasts/.macrec/sessions/sess1/log",
+		acked = { notified = false, adopted = false },
+		duration_s = 42,
+		bytes = 4800000,
+		mp4 = "/tmp/screencasts/20261115_142233.mp4",
+		poster = "/tmp/screencasts/.macrec/sessions/sess1/poster.jpg",
+		hosts = { apollo = "ok", athena = "ok" },
+		stop_reason = "chord",
+	}
+	for key, value in pairs(overrides or {}) do
+		session[key] = value
+	end
+	return session
+end
+
+local function active_fields(overrides)
+	local active = {
+		id = "sess1",
+		name = "20261115_142233",
+		state = "recording",
+		region = { x = REGION.x, y = REGION.y, w = REGION.w, h = REGION.h },
+		mic = false,
+		probe = false,
+		started_at = 1000,
+		cap_seconds = 600,
+		recorder_alive = true,
+	}
+	for key, value in pairs(overrides or {}) do
+		active[key] = value
+	end
+	return active
+end
+
+local function status_json(overrides)
+	local status = {
+		schema = 1,
+		active = nil,
+		sessions = {},
+	}
+	for key, value in pairs(overrides or {}) do
+		status[key] = value
+	end
+	return json_encode(status)
+end
+
+local function pending_task(env, arg)
+	local found
+	for _, task in ipairs(tasks_with_arg(env, arg)) do
+		if not task.completed then
+			found = task
+		end
+	end
+	return found
+end
+
+local function complete_status(env, overrides)
+	local task = pending_task(env, "--json")
+	if not task then
+		local debounce = env.delayed_timers[#env.delayed_timers]
+		assert.is_not_nil(debounce)
+		debounce.fn()
+		task = pending_task(env, "--json")
+	end
+	assert.is_not_nil(task)
+	task:complete(0, status_json(overrides), "")
+end
+
+local function complete_start(env, overrides)
+	local tasks = tasks_with_arg(env, "start")
+	assert.is_true(#tasks >= 1)
+	local payload = {
+		id = "sess1",
+		name = "20261115_142233",
+		started_at = env.now,
+	}
+	for key, value in pairs(overrides or {}) do
+		payload[key] = value
+	end
+	tasks[#tasks]:complete(0, json_encode(payload), "")
+end
+
+local function title_text(title)
+	if type(title) == "string" then
+		return title
+	end
+	if type(title) == "table" and type(title.text) == "string" then
+		return title.text
+	end
+	return tostring(title)
+end
+
+local function menu_items(env)
+	local menu = env.menus[#env.menus]
+	if not menu or type(menu.menu_builder) ~= "function" then
+		return {}
+	end
+	return menu.menu_builder()
+end
+
+local function make_key_event(chars, mods, key_code, is_repeat)
+	return {
+		getCharacters = function()
+			return chars
+		end,
+		getFlags = function()
+			return mods or {}
+		end,
+		getKeyCode = function()
+			return key_code
+		end,
+		["repeat"] = is_repeat,
+	}
 end
 
 describe("screen recorder doctor inbox", function()
@@ -520,18 +997,20 @@ describe("screen recorder doctor inbox", function()
 		env, recorder = setup()
 		start_recorder(env, recorder)
 
-		assert.equals(1, #env.path_watchers)
-		assert.equals(env.requests_dir(), env.path_watchers[1].path)
-		assert.is_true(env.path_watchers[1].started)
+		local requests_watcher = watcher_for(env, "/requests")
+		assert.is_not_nil(requests_watcher)
+		assert.equals(env.requests_dir(), requests_watcher.path)
+		assert.is_true(requests_watcher.started)
+		assert.is_not_nil(watcher_for(env, "/.macrec"))
 		assert.equals("dir", path_kind(env.requests_dir()))
 		assert.equals("dir", path_kind(env.doctor_dir()))
 
-		local first_watcher = env.path_watchers[1]
 		start_recorder(env, recorder)
-		assert.equals(1, first_watcher.stop_calls)
-		assert.equals(2, #env.path_watchers)
-		assert.is_true(env.path_watchers[2].started)
-		assert.not_equals(first_watcher, env.path_watchers[2])
+		assert.equals(1, requests_watcher.stop_calls)
+		local next_requests = watcher_for(env, "/requests")
+		assert.is_not_nil(next_requests)
+		assert.is_true(next_requests.started)
+		assert.not_equals(requests_watcher, next_requests)
 	end)
 
 	it("processes a fresh request at start, deletes it, and launches run with argv and env", function()
@@ -540,8 +1019,9 @@ describe("screen recorder doctor inbox", function()
 		start_recorder(env, recorder)
 
 		assert.is_nil((io.open(env.requests_dir() .. "/doctor-abc.json", "r")))
-		assert.equals(1, #env.tasks)
-		local task = env.tasks[1]
+		local tasks = doctor_tasks(env)
+		assert.equals(1, #tasks)
+		local task = tasks[1]
 		assert.equals(env.tmp .. "/bin/macrec_doctor", task.command)
 		assert.same({
 			"run",
@@ -573,16 +1053,22 @@ describe("screen recorder doctor inbox", function()
 		assert.equals(1, #env.notifications)
 		assert.equals("Recording self-test running", env.notifications[1].title)
 		assert.equals("≈8 s · nothing leaves this Mac", env.notifications[1].info)
-		assert.equals(1, #env.timers)
-		assert.equals(1, env.timers[1].interval)
-		assert.is_true(env.timers[1].started)
+		local blink
+		for _, timer in ipairs(env.timers) do
+			if timer.interval == 1 then
+				blink = timer
+				break
+			end
+		end
+		assert.is_not_nil(blink)
+		assert.is_true(blink.started)
 	end)
 
 	it("refuses a stale request present at start", function()
 		env, recorder = setup()
 		env.write_request("old", '{"action":"doctor","id":"old","probes":["env"]}', env.now - 200)
 		start_recorder(env, recorder)
-		assert.equals(0, #env.tasks)
+		assert.equals(0, #doctor_tasks(env))
 		local result = json_decode(env.read_result("old"))
 		assert.equals("invalid", result.refused)
 		assert.equals("old", result.id)
@@ -592,8 +1078,8 @@ describe("screen recorder doctor inbox", function()
 		env, recorder = setup({ session_properties = { CGSSessionScreenIsLocked = true } })
 		start_recorder(env, recorder)
 		env.write_request("lock1", '{"action":"doctor","id":"lock1","probes":["env"]}', env.now)
-		env.path_watchers[1].callback({ env.requests_dir() .. "/doctor-lock1.json" })
-		assert.equals(0, #env.tasks)
+		watcher_for(env, "/requests").callback({ env.requests_dir() .. "/doctor-lock1.json" })
+		assert.equals(0, #doctor_tasks(env))
 		assert.equals("locked", json_decode(env.read_result("lock1")).refused)
 	end)
 
@@ -601,10 +1087,10 @@ describe("screen recorder doctor inbox", function()
 		env, recorder = setup()
 		env.write_request("one", '{"action":"doctor","id":"one","probes":["env"]}', env.now)
 		start_recorder(env, recorder)
-		assert.equals(1, #env.tasks)
+		assert.equals(1, #doctor_tasks(env))
 		env.write_request("two", '{"action":"doctor","id":"two","probes":["env"]}', env.now)
-		env.path_watchers[1].callback({ env.requests_dir() .. "/doctor-two.json" })
-		assert.equals(1, #env.tasks)
+		watcher_for(env, "/requests").callback({ env.requests_dir() .. "/doctor-two.json" })
+		assert.equals(1, #doctor_tasks(env))
 		assert.equals("busy", json_decode(env.read_result("two")).refused)
 	end)
 
@@ -614,7 +1100,7 @@ describe("screen recorder doctor inbox", function()
 		start_recorder(env, recorder)
 		local canvas = env.canvases[1]
 		local timer = env.timers[1]
-		env.tasks[1]:complete(0, "{}", "")
+		doctor_tasks(env)[1]:complete(0, "{}", "")
 		assert.is_true(canvas.hidden)
 		assert.is_true(canvas.deleted)
 		assert.equals(1, timer.stop_calls)
@@ -625,10 +1111,10 @@ describe("screen recorder doctor inbox", function()
 		env, recorder = setup()
 		env.write_request("live", '{"action":"doctor","id":"live","probes":["capture"]}', env.now)
 		start_recorder(env, recorder)
-		local task = env.tasks[1]
+		local task = doctor_tasks(env)[1]
 		local canvas = env.canvases[1]
 		local timer = env.timers[1]
-		local watcher = env.path_watchers[1]
+		local watcher = watcher_for(env, "/requests")
 		start_recorder(env, recorder)
 		assert.is_true(task.terminated)
 		assert.is_true(canvas.deleted)
@@ -640,8 +1126,379 @@ describe("screen recorder doctor inbox", function()
 		env, recorder = setup()
 		start_recorder(env, recorder)
 		env.write_request("badjson", "{not-json", env.now)
-		env.path_watchers[1].callback({ env.requests_dir() .. "/doctor-badjson.json" })
-		assert.equals(0, #env.tasks)
+		watcher_for(env, "/requests").callback({ env.requests_dir() .. "/doctor-badjson.json" })
+		assert.equals(0, #doctor_tasks(env))
 		assert.equals("invalid", json_decode(env.read_result("badjson")).refused)
+	end)
+end)
+
+describe("screen recorder runtime", function()
+	local env, recorder
+
+	after_each(function()
+		if env then
+			env.restore()
+			env = nil
+			recorder = nil
+		end
+	end)
+
+	local function boot()
+		env, recorder = setup({ now = 1000, pasteboard_count = 7 })
+		start_recorder(env, recorder)
+		complete_status(env)
+		return env, recorder
+	end
+
+	local function confirm_region(region)
+		local pick = env.picks[#env.picks]
+		assert.is_not_nil(pick)
+		pick.onConfirm(region or REGION)
+	end
+
+	it("walks idle → selecting → starting → recording → stopping → shipping → done", function()
+		boot()
+		assert.equals("idle", _G.BobScreenRecorder.model.state)
+		assert.equals(1, #env.menus)
+		assert.is_true(env.menus[1].removed)
+
+		recorder.onChord()
+		assert.equals("selecting", _G.BobScreenRecorder.model.state)
+		assert.equals(1, #env.picks)
+		assert.equals("macrecLastRegion", env.picks[1].opts.settingsKey)
+		assert.equals("macscrotLastRegion", env.picks[1].opts.fallbackSettingsKey)
+		assert.equals(0.15, env.picks[1].opts.captureDelay)
+		assert.equals("#E3413B", env.picks[1].opts.accent.hex)
+		assert.equals("● REC", env.picks[1].opts.badge({ mic = false }))
+		assert.is_true(env.picks[1].opts.hint({ mic = false }):find("M: mic off", 1, true) ~= nil)
+
+		confirm_region()
+		assert.equals("starting", _G.BobScreenRecorder.model.state)
+		assert.is_true(env.picks[1].cancelled)
+		local start_tasks = tasks_with_arg(env, "start")
+		assert.equals(1, #start_tasks)
+		assert.same({
+			"start",
+			"100,80,640,360",
+			"--max-seconds",
+			"600",
+		}, start_tasks[1].args)
+		assert.same({
+			PATH = "/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+			HOME = env.tmp,
+		}, start_tasks[1].environment)
+
+		complete_start(env)
+		assert.equals("recording", _G.BobScreenRecorder.model.state)
+		assert.is_true(#env.canvases >= 5)
+		assert.is_false(env.menus[1].removed)
+		assert.is_true(title_text(env.menus[1].title):find("●", 1, true) ~= nil)
+
+		env.now = 1042
+		recorder.onChord()
+		assert.equals("stopping", _G.BobScreenRecorder.model.state)
+		local stop_tasks = tasks_with_arg(env, "stop")
+		assert.equals(1, #stop_tasks)
+		assert.same({ "stop", "--reason", "chord" }, stop_tasks[1].args)
+
+		stop_tasks[1]:complete(0, '{"id":"sess1","stopped_by":"chord"}', "")
+		assert.equals("shipping", _G.BobScreenRecorder.model.state)
+
+		complete_status(env, {
+			sessions = {
+				session_fields({
+					status = "done",
+					acked = { notified = false, adopted = true },
+				}),
+			},
+		})
+		assert.equals("done", _G.BobScreenRecorder.model.state)
+		assert.equals(1, #env.rich_notifications)
+		assert.equals("Recording uploaded", env.rich_notifications[1].info.title)
+		assert.equals(1, #env.pasteboard_writes)
+		assert.equals("/tmp/screencasts/20261115_142233.mp4", env.pasteboard_writes[1])
+		assert.equals(1, #tasks_with_arg(env, "notified"))
+		assert.is_true(title_text(env.menus[1].title):find("✓", 1, true) ~= nil)
+		local done_timer
+		for _, timer in ipairs(env.do_after) do
+			if timer.delay == 3 then
+				done_timer = timer
+			end
+		end
+		assert.is_not_nil(done_timer)
+		done_timer.callback()
+		assert.equals("idle", _G.BobScreenRecorder.model.state)
+		assert.is_true(env.menus[1].removed)
+	end)
+
+	it("debounces a picker key and the hotkey firing together", function()
+		boot()
+		recorder.onChord()
+		assert.equals("selecting", _G.BobScreenRecorder.model.state)
+		local pick = env.picks[1]
+		pick.opts.onKey(
+			make_key_event("v", { ctrl = true, alt = true, shift = true }, 9),
+			{ state = pick.opts.state, redraw = function() end }
+		)
+		assert.equals("selecting", _G.BobScreenRecorder.model.state)
+		assert.equals(1, #env.picks)
+		env.now = 1000.2
+		recorder.onChord()
+		assert.equals("idle", _G.BobScreenRecorder.model.state)
+	end)
+
+	it("discards when the chord is pressed during starting", function()
+		boot()
+		recorder.onChord()
+		confirm_region()
+		env.now = env.now + 0.2
+		recorder.onChord()
+		assert.equals("starting", _G.BobScreenRecorder.model.state)
+		complete_start(env)
+		assert.equals("stopping", _G.BobScreenRecorder.model.state)
+		assert.equals(1, #tasks_with_arg(env, "discard"))
+	end)
+
+	it("notifies and returns to idle when start fails", function()
+		boot()
+		recorder.onChord()
+		confirm_region()
+		tasks_with_arg(env, "start")[1]:complete(4, "", "Screen Recording is off for Hammerspoon")
+		assert.equals("idle", _G.BobScreenRecorder.model.state)
+		assert.equals(1, #env.rich_notifications)
+		assert.equals("Recording didn't start", env.rich_notifications[1].info.title)
+		assert.is_true(env.rich_notifications[1].info.informativeText:find("Screen Recording is off", 1, true) ~= nil)
+	end)
+
+	it("discards after a confirmed dialog and keeps recording when cancelled", function()
+		env, recorder = setup({ now = 1000, alert_result = "Keep Recording" })
+		start_recorder(env, recorder)
+		complete_status(env)
+		recorder.onChord()
+		confirm_region()
+		complete_start(env)
+		local items = menu_items(env)
+		local discard
+		for _, item in ipairs(items) do
+			if item.title:find("Discard", 1, true) then
+				discard = item
+			end
+		end
+		assert.is_not_nil(discard)
+		discard.fn()
+		assert.equals("recording", _G.BobScreenRecorder.model.state)
+		assert.equals(0, #tasks_with_arg(env, "discard"))
+
+		env.alert_result = "Discard"
+		discard.fn()
+		assert.equals("stopping", _G.BobScreenRecorder.model.state)
+		assert.equals(1, #tasks_with_arg(env, "discard"))
+		assert.equals("Discard this recording?", env.alerts[#env.alerts].message)
+	end)
+
+	it("stops for the cap, sleep, and a display change", function()
+		boot()
+		recorder.onChord()
+		confirm_region()
+		complete_start(env)
+		env.now = 1600
+		for _, timer in ipairs(env.timers) do
+			if timer.interval == 1 and timer.started and timer.callback then
+				timer.callback()
+			end
+		end
+		assert.equals("cap", _G.BobScreenRecorder.model.stopReason)
+		assert.same({ "stop", "--reason", "cap" }, tasks_with_arg(env, "stop")[1].args)
+
+		env, recorder = setup({ now = 1000 })
+		start_recorder(env, recorder)
+		complete_status(env)
+		recorder.onChord()
+		confirm_region()
+		complete_start(env)
+		env.caffeine_watchers[1].callback(hs.caffeinate.watcher.systemWillSleep)
+		assert.equals("sleep", _G.BobScreenRecorder.model.stopReason)
+
+		env, recorder = setup({ now = 1000 })
+		start_recorder(env, recorder)
+		complete_status(env)
+		recorder.onChord()
+		confirm_region()
+		complete_start(env)
+		env.frame = { x = 0, y = 0, w = 800, h = 600 }
+		env.screen_watchers[1].callback()
+		assert.equals("display", _G.BobScreenRecorder.model.stopReason)
+	end)
+
+	it("copies the path only when the clipboard has not changed", function()
+		env, recorder = setup({ now = 1000, pasteboard_count = 3 })
+		start_recorder(env, recorder)
+		complete_status(env)
+		recorder.onChord()
+		confirm_region()
+		complete_start(env)
+		env.now = env.now + 0.2
+		recorder.onChord()
+		tasks_with_arg(env, "stop")[1]:complete(0, "{}", "")
+		env.pasteboard_count = 4
+		complete_status(env, {
+			sessions = {
+				session_fields({
+					status = "done",
+					acked = { notified = false, adopted = true },
+				}),
+			},
+		})
+		assert.equals(0, #env.pasteboard_writes)
+		assert.equals("Copy path", env.rich_notifications[1].info.actionButtonTitle)
+	end)
+
+	it("re-adopts a live recording, a shipping session, and an orphan", function()
+		env, recorder = setup({ now = 1042 })
+		start_recorder(env, recorder)
+		complete_status(env, { active = active_fields({ started_at = 1000 }) })
+		assert.equals("recording", _G.BobScreenRecorder.model.state)
+		assert.is_true(#env.canvases >= 4)
+		assert.equals(1, #tasks_with_arg(env, "adopted"))
+		assert.same({ "ack", "sess1", "adopted" }, tasks_with_arg(env, "adopted")[1].args)
+		assert.is_true(title_text(env.menus[1].title):find("0:42", 1, true) ~= nil)
+
+		env, recorder = setup({ now = 1000 })
+		start_recorder(env, recorder)
+		complete_status(env, {
+			sessions = {
+				session_fields({
+					status = "uploading",
+					acked = { notified = false, adopted = true },
+				}),
+			},
+		})
+		assert.equals("shipping", _G.BobScreenRecorder.model.state)
+		assert.is_true(title_text(env.menus[1].title):find("⇡", 1, true) ~= nil)
+
+		env, recorder = setup({ now = 1000 })
+		start_recorder(env, recorder)
+		complete_status(env, {
+			sessions = {
+				session_fields({
+					status = "encoding",
+					orphaned = true,
+					acked = { notified = false, adopted = false },
+				}),
+			},
+		})
+		assert.equals(1, #tasks_with_arg(env, "recover"))
+		assert.same({ "recover", "sess1" }, tasks_with_arg(env, "recover")[1].args)
+	end)
+
+	it("tears down canvases, timers, and watchers on reload", function()
+		boot()
+		recorder.onChord()
+		confirm_region()
+		complete_start(env)
+		local chrome = {}
+		for _, canvas in ipairs(env.canvases) do
+			table.insert(chrome, canvas)
+		end
+		local timers = {}
+		for _, timer in ipairs(env.timers) do
+			table.insert(timers, timer)
+		end
+		local watchers = {}
+		for _, watcher in ipairs(env.path_watchers) do
+			table.insert(watchers, watcher)
+		end
+		start_recorder(env, recorder)
+		for _, canvas in ipairs(chrome) do
+			assert.is_true(canvas.deleted)
+		end
+		for _, timer in ipairs(timers) do
+			assert.equals(1, timer.stop_calls)
+		end
+		for _, watcher in ipairs(watchers) do
+			assert.equals(1, watcher.stop_calls)
+		end
+	end)
+
+	it("skips breathing, blinking, and spinner under Reduce Motion", function()
+		env, recorder = setup({ now = 1000, reduce_motion = true })
+		start_recorder(env, recorder)
+		complete_status(env)
+		recorder.onChord()
+		confirm_region()
+		complete_start(env)
+		local saw_breath = false
+		for _, timer in ipairs(env.timers) do
+			if timer.interval == 0.1 or timer.interval == 0.25 then
+				saw_breath = true
+			end
+		end
+		assert.is_false(saw_breath)
+		assert.equals(1, #env.execute_calls)
+	end)
+
+	it("routes failed-menu actions to the matching argv", function()
+		boot()
+		complete_status(env, {
+			sessions = {
+				session_fields({
+					status = "failed",
+					acked = { notified = true, adopted = true },
+					log = "/tmp/session.log",
+					mp4 = "/tmp/clip.mp4",
+				}),
+			},
+		})
+		assert.equals("failed", _G.BobScreenRecorder.model.state)
+		local items = menu_items(env)
+		local by_title = {}
+		for _, item in ipairs(items) do
+			by_title[item.title] = item
+		end
+		by_title["Retry"].fn()
+		assert.same({ "retry", "sess1" }, tasks_with_arg(env, "retry")[1].args)
+		by_title["Reveal"].fn()
+		local reveal
+		for _, task in ipairs(env.tasks) do
+			if task.command == "/usr/bin/open" and task.args[1] == "/tmp/clip.mp4" then
+				reveal = task
+			end
+		end
+		assert.is_not_nil(reveal)
+		by_title["Show Log"].fn()
+		local log
+		for _, task in ipairs(env.tasks) do
+			if task.command == "/usr/bin/open" and task.args[2] == "/tmp/session.log" then
+				log = task
+			end
+		end
+		assert.is_not_nil(log)
+		assert.same({ "-t", "/tmp/session.log" }, log.args)
+		by_title["Dismiss"].fn()
+		assert.equals("idle", _G.BobScreenRecorder.model.state)
+	end)
+
+	it("toggles the mic from the selector and passes --mic to start", function()
+		boot()
+		recorder.onChord()
+		local pick = env.picks[1]
+		local redraws = 0
+		pick.opts.onKey(make_key_event("m", {}, 46), {
+			state = pick.opts.state,
+			redraw = function()
+				redraws = redraws + 1
+			end,
+		})
+		assert.is_true(pick.opts.state.mic)
+		assert.equals(1, redraws)
+		assert.equals("● REC · MIC", pick.opts.badge(pick.opts.state))
+		confirm_region()
+		assert.same({
+			"start",
+			"100,80,640,360",
+			"--mic",
+			"--max-seconds",
+			"600",
+		}, tasks_with_arg(env, "start")[1].args)
 	end)
 end)

@@ -467,6 +467,7 @@ local function setup_hammerspoon_init_environment(options)
 		ping_start_calls = {},
 		highlights_start_calls = {},
 		screen_recorder_start_calls = {},
+		screen_recorder_chord_calls = {},
 		tasks = {},
 		timers = {},
 		delayed_timers = {},
@@ -518,11 +519,15 @@ local function setup_hammerspoon_init_environment(options)
 		end,
 	}
 	package.loaded.screen_recorder = {
+		CHORD = { mods = { "ctrl", "alt", "shift" }, key = "v" },
 		start = function(...)
 			table.insert(env.screen_recorder_start_calls, { ... })
 			if options.screen_recorder_start_error then
 				error(options.screen_recorder_start_error)
 			end
+		end,
+		onChord = function(...)
+			table.insert(env.screen_recorder_chord_calls, { ... })
 		end,
 	}
 	env.screenshot_pick_callbacks = {}
@@ -700,7 +705,7 @@ describe("Hammerspoon init", function()
 		assert.equals(0.5, runtime.tickTimer.interval)
 		assert.is_true(runtime.syncTimer.started)
 		assert.is_true(runtime.wakeWatcher.started)
-		assert.equals(2, #env.hotkeys)
+		assert.equals(3, #env.hotkeys)
 		assert.equals(1, #env.menus)
 		assert.equals(2, #env.timers)
 		assert.equals(1, #env.wake_watchers)
@@ -731,6 +736,18 @@ describe("Hammerspoon init", function()
 		assert.equals(1, #env.screen_recorder_start_calls)
 	end)
 
+	it("binds the region-recording chord next to the screenshot chord", function()
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+		assert.equals(3, #env.hotkeys)
+		assert.same({ "ctrl", "alt", "shift" }, env.hotkeys[2].mods)
+		assert.equals("s", env.hotkeys[2].key)
+		assert.same({ "ctrl", "alt", "shift" }, env.hotkeys[3].mods)
+		assert.equals("v", env.hotkeys[3].key)
+		env.hotkeys[3].fn()
+		assert.equals(1, #env.screen_recorder_chord_calls)
+	end)
+
 	it("logs a throwing Highlights start and still installs the Pomodoro runtime", function()
 		local ok, error_message, env = load_init_with({ highlights_start_error = "boom" })
 		assert.is_true(ok, error_message)
@@ -754,7 +771,7 @@ describe("Hammerspoon init", function()
 		assert.equals(2, #env.timers)
 		assert.equals(1, #env.wake_watchers)
 		assert.equals(1, #env.path_watchers)
-		assert.equals(2, #env.hotkeys)
+		assert.equals(3, #env.hotkeys)
 	end)
 
 	it("logs a throwing screen recorder start and still installs the Pomodoro runtime", function()
@@ -780,7 +797,7 @@ describe("Hammerspoon init", function()
 		assert.equals(2, #env.timers)
 		assert.equals(1, #env.wake_watchers)
 		assert.equals(1, #env.path_watchers)
-		assert.equals(2, #env.hotkeys)
+		assert.equals(3, #env.hotkeys)
 	end)
 
 	it("logs a throwing ping start and still installs the Pomodoro runtime", function()

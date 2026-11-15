@@ -48,6 +48,15 @@ hs.hotkey.bind({ "ctrl", "alt", "shift" }, "s", nil, function()
 	end)
 end)
 
+-- Record a selected screen region and upload it via ~/bin/macrec.
+-- The selector preloads the last recording rectangle, seeded from the screenshot
+-- default on first use. Enter starts; ⌘Enter also saves that rectangle as the
+-- default. Press the chord again to stop. Then macrec owns capture, encode,
+-- upload, clipboard, and success notification behavior.
+hs.hotkey.bind(ScreenRecorder.CHORD.mods, ScreenRecorder.CHORD.key, nil, function()
+	ScreenRecorder.onChord()
+end)
+
 if type(BobPomodoroCountdown) ~= "table" then
 	BobPomodoroCountdown = {}
 end

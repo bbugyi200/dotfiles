@@ -69,6 +69,53 @@ the hook's hash list: `tests/bash/hammerspoon_restart_hook_test.sh` fails until 
 targeted `chezmoi apply ~/.hammerspoon` does not run scripts, so use Hammerspoon's
 menu-bar **Reload Config** or run a full apply instead.
 
+## Region screen recording
+
+Press **⌃⌥⇧V** to record a selected screen region. The selector is the same drag /
+⌘-drag / corner-handle picker as the screenshot chord (**⌃⌥⇧S**), drawn in recording
+red. Enter starts the recording; ⌘Enter also saves that rectangle as the default. **M**
+toggles the microphone (off by default). Esc or ⌃⌥⇧V cancels the selector. Press ⌃⌥⇧V
+again while recording to stop and upload.
+
+Selector keys:
+
+| Key     | Action                                       |
+| ------- | -------------------------------------------- |
+| Drag    | Draw a new box                               |
+| ⌘-drag  | Move the box                                 |
+| Corners | Resize                                       |
+| ⏎       | Start recording                              |
+| ⌘⏎      | Start and save this rectangle as the default |
+| M       | Toggle microphone for this clip              |
+| Esc     | Cancel                                       |
+| ⌃⌥⇧V    | Cancel (same chord)                          |
+
+The recording chrome (corner brackets, hairline, and timer pill) sits outside the
+recorded pixels. Cursor and click flashes are on; system audio is not captured. A
+10-minute cap stops the clip automatically, with an orange warning from 9:00. The menu
+bar shows the timer, a spinner while the clip encodes and uploads, then a green check
+for 3 seconds.
+
+Clips land at `~/tmp/screencasts/YYYYMMDD_HHMMSS.mp4` on the Mac, apollo, and athena.
+Apollo is skipped below 5 GiB free and pruned to at most 2 GiB of clips. Agents fetch
+clips with `svid_fetch` or the `#svid` macro.
+
+`macrec` is the detached recorder. Useful commands:
+
+| Command          | What it does                              |
+| ---------------- | ----------------------------------------- |
+| `macrec status`  | Live session plus recent clips            |
+| `macrec retry`   | Re-upload the newest failed session       |
+| `macrec recover` | Take over an orphaned session and ship it |
+| `macrec doctor`  | Run the on-device capture probes          |
+
+A recording survives a Hammerspoon restart: `screen_recorder.lua` re-adopts a live
+session from `macrec status`, or recovers an orphan, and never overwrites newer
+clipboard content.
+
+See the
+[tailnet screen recording runbook](https://github.com/bbugyi200/tailnet/blob/main/mac/screen-recording-2026-11.md).
+
 ## Pomodoro menu bar
 
 Hammerspoon shows the current Bob Pomodoro as one status item in the fixed order
