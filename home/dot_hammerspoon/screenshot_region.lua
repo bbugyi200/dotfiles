@@ -100,24 +100,36 @@ local function clampRegionToFrame(rect, frame)
 	return { x = x, y = y, w = width, h = height }
 end
 
-local function loadInitialRegion()
-	local screen = activeScreen()
-	local frame = screen:frame()
-	local saved = hs.settings.get(SETTINGS_KEY)
-
-	if type(saved) == "table" then
-		local rect = copyRect(saved)
-		if rect.w >= MIN_SIZE and rect.h >= MIN_SIZE then
-			local savedScreen = screenForRect(rect)
-			if savedScreen then
-				screen = savedScreen
-				frame = screen:frame()
-				return screen, clampRegionToFrame(rect, frame)
-			end
-		end
+local function regionFromSettings(key)
+	if type(key) ~= "string" or key == "" then
+		return nil
 	end
+	local saved = hs.settings.get(key)
+	if type(saved) ~= "table" then
+		return nil
+	end
+	local rect = copyRect(saved)
+	if rect.w < MIN_SIZE or rect.h < MIN_SIZE then
+		return nil
+	end
+	local savedScreen = screenForRect(rect)
+	if not savedScreen then
+		return nil
+	end
+	return savedScreen, clampRegionToFrame(rect, savedScreen:frame())
+end
 
-	return screen, defaultRegion(frame)
+local function loadInitialRegion(settingsKey, fallbackSettingsKey)
+	local savedScreen, savedRegion = regionFromSettings(settingsKey)
+	if savedScreen then
+		return savedScreen, savedRegion
+	end
+	savedScreen, savedRegion = regionFromSettings(fallbackSettingsKey)
+	if savedScreen then
+		return savedScreen, savedRegion
+	end
+	local screen = activeScreen()
+	return screen, defaultRegion(screen:frame())
 end
 
 local function toLocal(rect, frame)
@@ -154,6 +166,80 @@ local labelColor = { white = 0, alpha = 0.72 }
 local textColor = { white = 1, alpha = 0.98 }
 local blue = { red = 0.04, green = 0.52, blue = 1, alpha = 1 }
 local handleFill = { white = 1, alpha = 0.96 }
+local BADGE_DOT_RADIUS = 4
+
+local function resolveText(value, state, fallback)
+	if type(value) == "function" then
+		local ok, result = pcall(value, state)
+		if ok and type(result) == "string" then
+			return result
+		end
+		return fallback
+	end
+	if type(value) == "string" then
+		return value
+	end
+	return fallback
+end
+
+local function sizeLabelText(region, badge)
+	local width = round(region.w)
+	local height = round(region.h)
+	if type(badge) == "string" and badge ~= "" then
+		return string.format("%s · %d × %d", badge, width, height)
+	end
+	return string.format("%d x %d", width, height)
+end
+
+local function measureText(canvas, spec)
+	if canvas == nil or type(canvas.minimumTextSize) ~= "function" then
+		return nil
+	end
+	local ok, size = pcall(function()
+		return canvas:minimumTextSize(spec)
+	end)
+	if not ok or type(size) ~= "table" then
+		return nil
+	end
+	local width = tonumber(size.w) or tonumber(size.width)
+	local height = tonumber(size.h) or tonumber(size.height)
+	if not width or not height then
+		return nil
+	end
+	return width, height
+end
+
+local function longestLineLen(text)
+	local longest = 0
+	local lines = 1
+	for line in string.gmatch(text, "[^\n]+") do
+		if #line > longest then
+			longest = #line
+		end
+	end
+	for _ in string.gmatch(text, "\n") do
+		lines = lines + 1
+	end
+	return longest, lines
+end
+
+local function fittedPillSize(canvas, text, fontSize, defaultW, defaultH, shouldFit, extraW)
+	if not shouldFit then
+		return defaultW, defaultH
+	end
+	extraW = extraW or 0
+	local spec = {
+		text = text,
+		textSize = fontSize,
+		textFont = ".AppleSystemUIFont",
+	}
+	local width, height = measureText(canvas, spec)
+	if width then
+		return math.max(defaultW, math.ceil(width) + 16 + extraW), math.max(defaultH, math.ceil(height) + 10)
+	end
+	local longest, lines = longestLineLen(text)
+	return math.max(defaultW, longest * 7 + 16 + extraW), math.max(defaultH, lines * 16 + 10)
+end
 
 local function rectangle(frame, color)
 	return {
@@ -164,20 +250,31 @@ local function rectangle(frame, color)
 	}
 end
 
-local function buildElements(region, screenFrame)
+local function buildElements(region, screenFrame, style)
+	style = style or {}
+	local accent = style.accent or blue
+	local hintText = style.hint or HINT_TEXT
+	local labelText = sizeLabelText(region, style.badge)
+	local showBadgeDot = style.accent ~= nil
+	local extraBadge = 0
+	if showBadgeDot then
+		extraBadge = (BADGE_DOT_RADIUS * 2) + 8
+	end
+	local labelWidth, labelHeight = fittedPillSize(style.canvas, labelText, 13, 116, 24, style.fitBadge, extraBadge)
+	local hintWidth, hintHeight = fittedPillSize(style.canvas, hintText, 12, HINT_WIDTH, HINT_HEIGHT, style.fitHint, 0)
+	hintWidth = math.min(hintWidth, math.max(1, screenFrame.w - 16))
+
 	local rect = toLocal(region, screenFrame)
 	local right = rect.x + rect.w
 	local bottom = rect.y + rect.h
-	local labelText = string.format("%d x %d", round(region.w), round(region.h))
-	local labelFrame = floatingFrame(screenFrame, rect.x, rect.y - 32, 116, 24)
+	local labelFrame = floatingFrame(screenFrame, rect.x, rect.y - 32, labelWidth, labelHeight)
 	if rect.y < 40 then
-		labelFrame = floatingFrame(screenFrame, rect.x, bottom + 8, 116, 24)
+		labelFrame = floatingFrame(screenFrame, rect.x, bottom + 8, labelWidth, labelHeight)
 	end
 
-	local hintWidth = math.min(HINT_WIDTH, math.max(1, screenFrame.w - 16))
-	local hintFrame = floatingFrame(screenFrame, rect.x, bottom + 38, hintWidth, HINT_HEIGHT)
+	local hintFrame = floatingFrame(screenFrame, rect.x, bottom + 38, hintWidth, hintHeight)
 	if hintFrame.y + hintFrame.h > screenFrame.h - 8 then
-		hintFrame = floatingFrame(screenFrame, rect.x, rect.y - (HINT_HEIGHT + 38), hintWidth, HINT_HEIGHT)
+		hintFrame = floatingFrame(screenFrame, rect.x, rect.y - (hintHeight + 38), hintWidth, hintHeight)
 	end
 
 	local handleOffset = HANDLE_SIZE / 2
@@ -190,7 +287,7 @@ local function buildElements(region, screenFrame)
 		}
 	end
 
-	return {
+	local elements = {
 		rectangle(localFrame({ x = 0, y = 0, w = screenFrame.w, h = rect.y }, screenFrame), dimColor),
 		rectangle(localFrame({ x = 0, y = rect.y, w = rect.x, h = rect.h }, screenFrame), dimColor),
 		rectangle(localFrame({ x = right, y = rect.y, w = screenFrame.w - right, h = rect.h }, screenFrame), dimColor),
@@ -202,7 +299,7 @@ local function buildElements(region, screenFrame)
 			type = "rectangle",
 			action = "stroke",
 			frame = rect,
-			strokeColor = blue,
+			strokeColor = accent,
 			strokeWidth = 2,
 		},
 		{
@@ -218,7 +315,7 @@ local function buildElements(region, screenFrame)
 			id = "nw",
 			frame = handleFrame(rect.x, rect.y),
 			fillColor = handleFill,
-			strokeColor = blue,
+			strokeColor = accent,
 			strokeWidth = 1,
 		},
 		{
@@ -227,7 +324,7 @@ local function buildElements(region, screenFrame)
 			id = "ne",
 			frame = handleFrame(right, rect.y),
 			fillColor = handleFill,
-			strokeColor = blue,
+			strokeColor = accent,
 			strokeWidth = 1,
 		},
 		{
@@ -236,7 +333,7 @@ local function buildElements(region, screenFrame)
 			id = "sw",
 			frame = handleFrame(rect.x, bottom),
 			fillColor = handleFill,
-			strokeColor = blue,
+			strokeColor = accent,
 			strokeWidth = 1,
 		},
 		{
@@ -245,34 +342,58 @@ local function buildElements(region, screenFrame)
 			id = "se",
 			frame = handleFrame(right, bottom),
 			fillColor = handleFill,
-			strokeColor = blue,
+			strokeColor = accent,
 			strokeWidth = 1,
 		},
 		rectangle(labelFrame, labelColor),
-		{
-			type = "text",
-			action = "fill",
-			frame = { x = labelFrame.x, y = labelFrame.y + 3, w = labelFrame.w, h = labelFrame.h },
-			text = labelText,
-			textColor = textColor,
-			textFont = ".AppleSystemUIFont",
-			textSize = 13,
-			textAlignment = "center",
-			textLineBreak = "clip",
-		},
-		rectangle(hintFrame, labelColor),
-		{
-			type = "text",
-			action = "fill",
-			frame = { x = hintFrame.x + 8, y = hintFrame.y + 5, w = hintFrame.w - 16, h = hintFrame.h - 5 },
-			text = HINT_TEXT,
-			textColor = textColor,
-			textFont = ".AppleSystemUIFont",
-			textSize = 12,
-			textAlignment = "center",
-			textLineBreak = "clip",
-		},
 	}
+
+	if showBadgeDot then
+		table.insert(elements, {
+			type = "circle",
+			action = "fill",
+			id = "badgeDot",
+			center = {
+				x = labelFrame.x + 8 + BADGE_DOT_RADIUS,
+				y = labelFrame.y + (labelFrame.h / 2),
+			},
+			radius = BADGE_DOT_RADIUS,
+			fillColor = accent,
+		})
+	end
+
+	local labelTextX = labelFrame.x
+	local labelTextW = labelFrame.w
+	if showBadgeDot then
+		local inset = 8 + (BADGE_DOT_RADIUS * 2) + 6
+		labelTextX = labelFrame.x + inset
+		labelTextW = math.max(0, labelFrame.w - inset - 8)
+	end
+
+	table.insert(elements, {
+		type = "text",
+		action = "fill",
+		frame = { x = labelTextX, y = labelFrame.y + 3, w = labelTextW, h = labelFrame.h },
+		text = labelText,
+		textColor = textColor,
+		textFont = ".AppleSystemUIFont",
+		textSize = 13,
+		textAlignment = "center",
+		textLineBreak = "clip",
+	})
+	table.insert(elements, rectangle(hintFrame, labelColor))
+	table.insert(elements, {
+		type = "text",
+		action = "fill",
+		frame = { x = hintFrame.x + 8, y = hintFrame.y + 5, w = hintFrame.w - 16, h = hintFrame.h - 5 },
+		text = hintText,
+		textColor = textColor,
+		textFont = ".AppleSystemUIFont",
+		textSize = 12,
+		textAlignment = "center",
+		textLineBreak = "clip",
+	})
+	return elements
 end
 
 local function pointInRect(point, rect)
@@ -322,25 +443,54 @@ local function resizeFromHandle(rect, handle, point, frame)
 	return { x = left, y = top, w = right - left, h = bottom - top }
 end
 
-function M.pick(onConfirm)
+function M.pick(onConfirm, opts)
+	opts = opts or {}
 	if activeSession then
-		activeSession.cancel()
+		activeSession.cancel("superseded")
 	end
 
-	local screen, region = loadInitialRegion()
+	local settingsKey = opts.settingsKey or SETTINGS_KEY
+	local fallbackSettingsKey = opts.fallbackSettingsKey
+	local captureDelay = CAPTURE_DELAY
+	if opts.captureDelay ~= nil then
+		captureDelay = opts.captureDelay
+	end
+	local failureTitle = opts.failureTitle or "Screenshot failed"
+	local onCancel = opts.onCancel
+	local onKey = opts.onKey
+	local callerState
+	if type(opts.state) == "table" then
+		callerState = opts.state
+	else
+		callerState = {}
+	end
+
+	local screen, region = loadInitialRegion(settingsKey, fallbackSettingsKey)
 	local screenFrame = screen:frame()
 	local canvas = hs.canvas.new(screenFrame)
 	if not canvas then
-		hs.notify.show("Screenshot failed", "", "Could not create screenshot selector")
-		return
+		hs.notify.show(failureTitle, "", "Could not create screenshot selector")
+		return {
+			cancel = function() end,
+		}
 	end
 
 	local drag = nil
 	local finished = false
 	local tap = nil
+	local ctx = nil
 
 	local function redraw()
-		local elements = buildElements(region, screenFrame)
+		local badge = resolveText(opts.badge, callerState, nil)
+		local hint = resolveText(opts.hint, callerState, HINT_TEXT)
+		local elements = buildElements(region, screenFrame, {
+			accent = opts.accent,
+			badge = badge,
+			hint = hint,
+			canvas = canvas,
+			fitBadge = opts.badge ~= nil or opts.accent ~= nil,
+			fitHint = opts.hint ~= nil,
+		})
 		canvas:replaceElements(unpackTable(elements))
 	end
 
@@ -357,7 +507,7 @@ function M.pick(onConfirm)
 		activeSession = nil
 	end
 
-	local function finish(confirm, saveDefault)
+	local function finish(confirm, saveDefault, cancelReason)
 		if finished then
 			return
 		end
@@ -366,17 +516,39 @@ function M.pick(onConfirm)
 		local finalRegion = roundedRect(clampRegionToFrame(region, screenFrame))
 		cleanup()
 
-		if not confirm then
+		if confirm then
+			if saveDefault then
+				hs.settings.set(settingsKey, finalRegion)
+			end
+			hs.timer.doAfter(captureDelay, function()
+				if onConfirm then
+					onConfirm(finalRegion)
+				end
+			end)
 			return
 		end
 
-		if saveDefault then
-			hs.settings.set(SETTINGS_KEY, finalRegion)
+		if type(onCancel) == "function" then
+			onCancel(cancelReason)
 		end
-		hs.timer.doAfter(CAPTURE_DELAY, function()
-			onConfirm(finalRegion)
-		end)
 	end
+
+	ctx = {
+		state = callerState,
+		region = function()
+			return copyRect(region)
+		end,
+		redraw = redraw,
+		cancel = function()
+			finish(false, nil, "key")
+		end,
+		confirm = function(saveDefault)
+			if drag then
+				return
+			end
+			finish(region.w >= MIN_SIZE and region.h >= MIN_SIZE, saveDefault == true)
+		end,
+	}
 
 	local function eventPoint(event)
 		return event:location()
@@ -438,9 +610,15 @@ function M.pick(onConfirm)
 			local eventType = event:getType()
 
 			if eventType == eventTypes.keyDown then
+				if type(onKey) == "function" then
+					local consumed = onKey(event, ctx)
+					if consumed == true or finished then
+						return true
+					end
+				end
 				local code = event:getKeyCode()
 				if code == hs.keycodes.map.escape then
-					finish(false)
+					finish(false, nil, "esc")
 					return true
 				end
 				if code == hs.keycodes.map["return"] or code == hs.keycodes.map.padenter then
@@ -457,7 +635,7 @@ function M.pick(onConfirm)
 			local point = eventPoint(event)
 			if eventType == eventTypes.leftMouseDown then
 				if not frameContainsPoint(screenFrame, point) then
-					finish(false)
+					finish(false, nil, "offscreen")
 					return true
 				end
 
@@ -524,8 +702,14 @@ function M.pick(onConfirm)
 	canvas:bringToFront(true)
 
 	activeSession = {
+		cancel = function(reason)
+			finish(false, nil, reason or "superseded")
+		end,
+	}
+
+	return {
 		cancel = function()
-			finish(false)
+			finish(false, nil, "key")
 		end,
 	}
 end

@@ -87,7 +87,28 @@ local function make_hs(env)
 			function canvas:delete()
 				self.deleted = true
 			end
+			function canvas:minimumTextSize(spec)
+				local text = spec
+				if type(spec) == "table" then
+					text = spec.text or ""
+				end
+				text = tostring(text)
+				local longest = 0
+				local lines = 1
+				for line in string.gmatch(text, "[^\n]+") do
+					if #line > longest then
+						longest = #line
+					end
+				end
+				for _ in string.gmatch(text, "\n") do
+					lines = lines + 1
+				end
+				return { w = longest * 7, h = lines * 16 }
+			end
 			env.canvas = canvas
+			if env.canvasFails then
+				return nil
+			end
 			return canvas
 		end,
 	}
@@ -121,6 +142,7 @@ local function make_hs(env)
 			escape = 53,
 			["return"] = 36,
 			padenter = 76,
+			m = 46,
 		},
 	}
 
@@ -178,19 +200,46 @@ local function setup(options)
 		confirmed = {},
 		doAfterCalls = {},
 		notifications = {},
+		cancelReasons = {},
 		canvas = nil,
 		tap = nil,
 		tapCallback = nil,
+		canvasFails = options.canvas_fails == true,
+		handle = nil,
 	}
 	if saved then
 		env.settings[SETTINGS_KEY] = copy_rect(saved)
 	end
+	if options.settings then
+		for key, value in pairs(options.settings) do
+			if type(value) == "table" then
+				env.settings[key] = copy_rect(value)
+			else
+				env.settings[key] = value
+			end
+		end
+	end
 	_G.hs = make_hs(env)
 	local picker = assert(loadfile(PICKER_PATH))()
+	local pickOpts = options.opts
+	if pickOpts then
+		local copied = {}
+		for key, value in pairs(pickOpts) do
+			copied[key] = value
+		end
+		local userCancel = copied.onCancel
+		copied.onCancel = function(reason)
+			table.insert(env.cancelReasons, reason)
+			if userCancel then
+				userCancel(reason)
+			end
+		end
+		pickOpts = copied
+	end
 	local function pick()
-		picker.pick(function(finalRegion)
+		env.handle = picker.pick(function(finalRegion)
 			table.insert(env.confirmed, copy_rect(finalRegion))
-		end)
+		end, pickOpts)
 	end
 	function env.repick()
 		pick()
@@ -639,5 +688,297 @@ describe("screenshot region picker draw-first gestures", function()
 		key(env, "return", { cmd = true })
 		assert_region(env.confirmed[1], 200, 201, 150, 80)
 		assert_region(env.settings[SETTINGS_KEY], 200, 201, 150, 80)
+	end)
+end)
+
+local function stroke_color(env)
+	for _, element in ipairs(latest_elements(env)) do
+		if element.action == "stroke" and element.strokeWidth == 2 then
+			return element.strokeColor
+		end
+	end
+	error("stroke element not found")
+end
+
+local function handle_stroke_color(env)
+	for _, element in ipairs(latest_elements(env)) do
+		if element.id == "nw" then
+			return element.strokeColor
+		end
+	end
+	error("handle element not found")
+end
+
+local function badge_dot_color(env)
+	for _, element in ipairs(latest_elements(env)) do
+		if element.id == "badgeDot" then
+			return element.fillColor
+		end
+	end
+	error("badge dot not found")
+end
+
+local function label_text(env)
+	for _, element in ipairs(latest_elements(env)) do
+		if element.type == "text" and type(element.text) == "string" and not element.text:find("\n", 1, true) then
+			return element.text
+		end
+	end
+	error("label text not found")
+end
+
+local function hint_background(env)
+	local elements = latest_elements(env)
+	for index, element in ipairs(elements) do
+		if element.type == "text" and type(element.text) == "string" and element.text:find("\n", 1, true) then
+			return elements[index - 1], element
+		end
+		if element.type == "text" and type(element.text) == "string" and element.text ~= label_text(env) then
+			return elements[index - 1], element
+		end
+	end
+	error("hint background not found")
+end
+
+describe("screenshot region picker opts", function()
+	local active = nil
+	local red = { red = 0.89, green = 0.25, blue = 0.23, alpha = 1 }
+
+	after_each(function()
+		if active then
+			active.restore()
+			active = nil
+		end
+	end)
+
+	local function open(options)
+		active = setup(options)
+		return active
+	end
+
+	it("accent colors the stroke, handles, and badge dot", function()
+		local env = open({ opts = { accent = red } })
+		assert.same(red, stroke_color(env))
+		assert.same(red, handle_stroke_color(env))
+		assert.same(red, badge_dot_color(env))
+		assert.equals("600 x 400", label_text(env))
+	end)
+
+	it("badge prefixes the size label", function()
+		local env = open({ opts = { badge = "● REC" } })
+		assert.equals("● REC · 600 × 400", label_text(env))
+	end)
+
+	it("hint override sizes the pill to the text", function()
+		local longHint = "Drag: new box · ⌘-drag: move · Corners: resize\n"
+			.. "⏎: record · ⌘⏎: record + save default · M: mic off · Esc or ⌃⌥⇧V: cancel"
+		local env = open({ opts = { hint = longHint } })
+		local background, text = hint_background(env)
+		assert.equals(longHint, text.text)
+		local longest = 0
+		for line in string.gmatch(longHint, "[^\n]+") do
+			if #line > longest then
+				longest = #line
+			end
+		end
+		assert.is_true(background.frame.w > 420)
+		assert.equals(longest * 7 + 16, background.frame.w)
+	end)
+
+	it("badge and hint functions re-render from ctx.state", function()
+		local env = open({
+			opts = {
+				state = { mic = "off" },
+				badge = function(state)
+					return "● REC " .. state.mic
+				end,
+				hint = function(state)
+					return "line one\nmic " .. state.mic
+				end,
+				onKey = function(event, ctx)
+					if event:getKeyCode() == _G.hs.keycodes.map.m then
+						ctx.state.mic = "on"
+						ctx.redraw()
+						return true
+					end
+				end,
+			},
+		})
+		assert.equals("● REC off · 600 × 400", label_text(env))
+		assert.equals("line one\nmic off", hint_text(env))
+		key(env, "m")
+		assert.equals("● REC on · 600 × 400", label_text(env))
+		assert.equals("line one\nmic on", hint_text(env))
+		assert_picker_open(env)
+	end)
+
+	it("fallbackSettingsKey seeds only when settingsKey is empty", function()
+		local env = open({
+			saved = false,
+			settings = { macscrotLastRegion = { x = 100, y = 100, w = 600, h = 400 } },
+			opts = {
+				settingsKey = "macrecLastRegion",
+				fallbackSettingsKey = "macscrotLastRegion",
+			},
+		})
+		assert_region(rendered_region(env), 100, 100, 600, 400)
+		key(env, "return", { cmd = true })
+		assert_region(env.confirmed[1], 100, 100, 600, 400)
+		assert_region(env.settings.macrecLastRegion, 100, 100, 600, 400)
+		assert_region(env.settings.macscrotLastRegion, 100, 100, 600, 400)
+		assert.equals(1, env.settingsWrites)
+	end)
+
+	it("settingsKey wins over fallback and writes stay isolated", function()
+		local env = open({
+			saved = false,
+			settings = {
+				macrecLastRegion = { x = 50, y = 60, w = 200, h = 180 },
+				macscrotLastRegion = { x = 100, y = 100, w = 600, h = 400 },
+			},
+			opts = {
+				settingsKey = "macrecLastRegion",
+				fallbackSettingsKey = "macscrotLastRegion",
+			},
+		})
+		assert_region(rendered_region(env), 50, 60, 200, 180)
+		press(env, 200, 200)
+		drag(env, 350, 280)
+		release(env, 350, 280)
+		key(env, "return", { cmd = true })
+		assert_region(env.confirmed[1], 200, 200, 150, 80)
+		assert_region(env.settings.macrecLastRegion, 200, 200, 150, 80)
+		assert_region(env.settings.macscrotLastRegion, 100, 100, 600, 400)
+	end)
+
+	it("onKey can consume Escape before default handling", function()
+		local env = open({
+			opts = {
+				onKey = function(_event, _ctx)
+					return true
+				end,
+			},
+		})
+		key(env, "escape")
+		assert_picker_open(env)
+		assert.same({}, env.cancelReasons)
+	end)
+
+	it("onKey fall-through still runs Escape and Enter", function()
+		local env = open({
+			opts = {
+				onKey = function(_event, _ctx)
+					return nil
+				end,
+			},
+		})
+		key(env, "escape")
+		assert.same({ "esc" }, env.cancelReasons)
+		assert.equals(0, #env.confirmed)
+	end)
+
+	it("ctx.cancel fires onCancel with reason key", function()
+		local env = open({
+			opts = {
+				onKey = function(_event, ctx)
+					ctx.cancel()
+					return true
+				end,
+			},
+		})
+		key(env, "m")
+		assert.same({ "key" }, env.cancelReasons)
+		assert.is_true(env.tap.stopped)
+		assert.equals(0, #env.confirmed)
+	end)
+
+	it("ctx.confirm(false) captures without saving", function()
+		local env = open({
+			opts = {
+				onKey = function(_event, ctx)
+					ctx.confirm(false)
+					return true
+				end,
+			},
+		})
+		key(env, "m")
+		assert_region(env.confirmed[1], 100, 100, 600, 400)
+		assert.equals(0, env.settingsWrites)
+		assert.same({}, env.cancelReasons)
+	end)
+
+	it("ctx.confirm(true) captures and saves the settingsKey", function()
+		local env = open({
+			opts = {
+				onKey = function(_event, ctx)
+					ctx.confirm(true)
+					return true
+				end,
+			},
+		})
+		key(env, "m")
+		assert_region(env.confirmed[1], 100, 100, 600, 400)
+		assert_region(env.settings[SETTINGS_KEY], 100, 100, 600, 400)
+		assert.equals(1, env.settingsWrites)
+	end)
+
+	it("onCancel reason is esc", function()
+		local env = open({ opts = {} })
+		key(env, "escape")
+		assert.same({ "esc" }, env.cancelReasons)
+	end)
+
+	it("onCancel reason is offscreen", function()
+		local env = open({ opts = {} })
+		press(env, 1200, 100)
+		assert.same({ "offscreen" }, env.cancelReasons)
+	end)
+
+	it("onCancel reason is superseded and fires once", function()
+		local env = open({ opts = {} })
+		env.repick()
+		assert.same({ "superseded" }, env.cancelReasons)
+		key(env, "escape")
+		assert.same({ "superseded", "esc" }, env.cancelReasons)
+	end)
+
+	it("handle.cancel uses reason key and does not double-fire", function()
+		local env = open({ opts = {} })
+		env.handle.cancel()
+		assert.same({ "key" }, env.cancelReasons)
+		env.handle.cancel()
+		assert.same({ "key" }, env.cancelReasons)
+	end)
+
+	it("captureDelay override is used on confirm", function()
+		local env = open({ opts = { captureDelay = 0.15 } })
+		key(env, "return")
+		assert.equals(0.15, env.doAfterCalls[1].delay)
+		assert_region(env.confirmed[1], 100, 100, 600, 400)
+	end)
+
+	it("failureTitle is used when the canvas cannot be created", function()
+		local env = open({
+			canvas_fails = true,
+			opts = { failureTitle = "Recording selector failed" },
+		})
+		assert.same({
+			{ "Recording selector failed", "", "Could not create screenshot selector" },
+		}, env.notifications)
+		assert.equals(0, #env.confirmed)
+	end)
+
+	it("defaults stay identical when opts is omitted", function()
+		local env = open()
+		assert.equals(HINT_TEXT, hint_text(env))
+		assert.equals("600 x 400", label_text(env))
+		local background = hint_background(env)
+		assert.equals(420, background.frame.w)
+		assert.equals(42, background.frame.h)
+		assert.same({ red = 0.04, green = 0.52, blue = 1, alpha = 1 }, stroke_color(env))
+		key(env, "return")
+		assert.equals(0.08, env.doAfterCalls[1].delay)
+		assert.equals(0, env.settingsWrites)
+		assert.same({}, env.cancelReasons)
 	end)
 end)
