@@ -1,7 +1,7 @@
 local PICKER_PATH = "home/dot_hammerspoon/screenshot_region.lua"
 local SETTINGS_KEY = "macscrotLastRegion"
 local HINT_TEXT =
-	"Drag: new box · ⌘-drag: move · Corners: resize\nEnter: capture · ⌘Enter: capture + save default · Esc: cancel"
+	"Drag: new box · ⌘-drag: move · Corners: resize · F: full screen · W: window\nEnter: capture · ⌘Enter: capture + save default · Esc: cancel"
 
 local function copy_rect(rect)
 	return { x = rect.x, y = rect.y, w = rect.w, h = rect.h }
@@ -17,6 +17,30 @@ end
 
 local function make_hs(env)
 	local hs = {}
+	local mousePoint = env.mousePoint or { x = 200, y = 200 }
+	local windows = {}
+	for _, spec in ipairs(env.windows or {}) do
+		local window = {}
+		function window:isStandard()
+			return spec.standard ~= false
+		end
+		function window:frame()
+			return copy_rect(spec.frame)
+		end
+		function window:application()
+			return {
+				bundleID = function()
+					return spec.bundleID
+				end,
+			}
+		end
+		table.insert(windows, window)
+	end
+	hs.window = {
+		orderedWindows = function()
+			return windows
+		end,
+	}
 
 	hs.screen = {
 		allScreens = function()
@@ -30,6 +54,9 @@ local function make_hs(env)
 	hs.mouse = {
 		getCurrentScreen = function()
 			return make_screen(env)
+		end,
+		absolutePosition = function()
+			return mousePoint
 		end,
 	}
 
@@ -143,13 +170,25 @@ local function make_hs(env)
 			["return"] = 36,
 			padenter = 76,
 			m = 46,
+			f = 3,
+			w = 13,
+			s = 1,
 		},
 	}
 
 	hs.timer = {
 		doAfter = function(delay, fn)
-			table.insert(env.doAfterCalls, { delay = delay })
-			fn()
+			local timer = { delay = delay, stopped = false }
+			function timer:stop()
+				self.stopped = true
+			end
+			table.insert(env.doAfterCalls, timer)
+			if delay <= 1 then
+				fn()
+			else
+				timer.callback = fn
+			end
+			return timer
 		end,
 	}
 
@@ -202,6 +241,8 @@ local function setup(options)
 		notifications = {},
 		cancelReasons = {},
 		canvas = nil,
+		windows = options.windows or {},
+		mousePoint = options.mousePoint,
 		tap = nil,
 		tapCallback = nil,
 		canvasFails = options.canvas_fails == true,
@@ -293,7 +334,11 @@ end
 
 local function hint_text(env)
 	for _, element in ipairs(latest_elements(env)) do
-		if element.type == "text" and type(element.text) == "string" and element.text:find("\n", 1, true) then
+		if
+			element.type == "text"
+			and type(element.text) == "string"
+			and (element.text:find("\n", 1, true) or element.text == "W: no window here")
+		then
 			return element.text
 		end
 	end
@@ -580,7 +625,7 @@ describe("screenshot region picker draw-first gestures", function()
 		assert_region(env.confirmed[1], -1440, 0, 400, 300)
 	end)
 
-	it("22. the hint shows both lines on a 42x420 background", function()
+	it("22. the hint shows selector shortcuts on a fitted background", function()
 		local env = open()
 		assert.equals(HINT_TEXT, hint_text(env))
 		local elements = latest_elements(env)
@@ -593,7 +638,7 @@ describe("screenshot region picker draw-first gestures", function()
 		assert.is_not_nil(hintIndex)
 		local background = elements[hintIndex - 1]
 		assert.equals("rectangle", background.type)
-		assert.equals(420, background.frame.w)
+		assert.is_true(background.frame.w > 420)
 		assert.equals(42, background.frame.h)
 	end)
 
@@ -688,6 +733,51 @@ describe("screenshot region picker draw-first gestures", function()
 		key(env, "return", { cmd = true })
 		assert_region(env.confirmed[1], 200, 201, 150, 80)
 		assert_region(env.settings[SETTINGS_KEY], 200, 201, 150, 80)
+	end)
+end)
+
+describe("picker full-screen and window shortcuts", function()
+	local env
+	after_each(function()
+		if env then
+			env.restore()
+			env = nil
+		end
+	end)
+
+	it("F selects the whole screen", function()
+		env = setup({ frame = { x = -1000, y = 0, w = 1000, h = 800 } })
+		key(env, "f")
+		assert_region(rendered_region(env), -1000, 0, 1000, 800)
+		assert_picker_open(env)
+	end)
+
+	it("W snaps to the frontmost standard window under the pointer and clamps it", function()
+		env = setup({
+			frame = { x = 0, y = 0, w = 1000, h = 800 },
+			mousePoint = { x = 900, y = 400 },
+			windows = {
+				{ frame = { x = 850, y = 250, w = 400, h = 400 } },
+				{ frame = { x = 800, y = 200, w = 150, h = 300 } },
+			},
+		})
+		key(env, "w")
+		assert_region(rendered_region(env), 600, 250, 400, 400)
+		assert_picker_open(env)
+	end)
+
+	it("W ignores Hammerspoon windows and briefly reports an empty pointer", function()
+		env = setup({
+			windows = {
+				{ frame = { x = 100, y = 100, w = 400, h = 300 }, bundleID = "org.hammerspoon.Hammerspoon" },
+				{ frame = { x = 100, y = 100, w = 400, h = 300 }, standard = false },
+			},
+		})
+		key(env, "w")
+		assert.equals("W: no window here", hint_text(env))
+		assert.is_not_nil(env.doAfterCalls[#env.doAfterCalls].callback)
+		env.doAfterCalls[#env.doAfterCalls].callback()
+		assert.equals(HINT_TEXT, hint_text(env))
 	end)
 end)
 
@@ -973,7 +1063,7 @@ describe("screenshot region picker opts", function()
 		assert.equals(HINT_TEXT, hint_text(env))
 		assert.equals("600 x 400", label_text(env))
 		local background = hint_background(env)
-		assert.equals(420, background.frame.w)
+		assert.is_true(background.frame.w > 420)
 		assert.equals(42, background.frame.h)
 		assert.same({ red = 0.04, green = 0.52, blue = 1, alpha = 1 }, stroke_color(env))
 		key(env, "return")

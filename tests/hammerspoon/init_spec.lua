@@ -468,6 +468,8 @@ local function setup_hammerspoon_init_environment(options)
 		highlights_start_calls = {},
 		screen_recorder_start_calls = {},
 		screen_recorder_chord_calls = {},
+		screen_recorder_region_calls = {},
+		screenshot_pick_options = {},
 		tasks = {},
 		timers = {},
 		delayed_timers = {},
@@ -498,8 +500,9 @@ local function setup_hammerspoon_init_environment(options)
 		package.loaded.pomodoro_countdown = load_real_presentation()
 	end
 	package.loaded.screenshot_region = {
-		pick = function(callback)
+		pick = function(callback, opts)
 			table.insert(env.screenshot_pick_callbacks, callback)
+			table.insert(env.screenshot_pick_options, opts)
 		end,
 	}
 	package.loaded.ping_indicator = {
@@ -520,6 +523,12 @@ local function setup_hammerspoon_init_environment(options)
 	}
 	package.loaded.screen_recorder = {
 		CHORD = { mods = { "ctrl", "alt", "shift" }, key = "v" },
+		isChordEvent = function(event)
+			return event and event.key == "v" and event.mods == "video"
+		end,
+		startRegion = function(region)
+			table.insert(env.screen_recorder_region_calls, region)
+		end,
 		start = function(...)
 			table.insert(env.screen_recorder_start_calls, { ... })
 			if options.screen_recorder_start_error then
@@ -746,6 +755,26 @@ describe("Hammerspoon init", function()
 		assert.equals("v", env.hotkeys[3].key)
 		env.hotkeys[3].fn()
 		assert.equals(1, #env.screen_recorder_chord_calls)
+	end)
+
+	it("cross-triggers a recording from the screenshot picker selection", function()
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+		env.hotkeys[2].fn()
+		local opts = env.screenshot_pick_options[1]
+		assert.is_function(opts.onKey)
+		local cancelled = false
+		local region = { x = 30, y = 40, w = 250, h = 180 }
+		assert.is_true(opts.onKey({ key = "v", mods = "video" }, {
+			region = function()
+				return region
+			end,
+			cancel = function()
+				cancelled = true
+			end,
+		}))
+		assert.is_true(cancelled)
+		assert.same(region, env.screen_recorder_region_calls[1])
 	end)
 
 	it("logs a throwing Highlights start and still installs the Pomodoro runtime", function()

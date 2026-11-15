@@ -780,8 +780,13 @@ local function event_flag(flags, name)
 	return type(flags) == "table" and flags[name] == true
 end
 
+local function is_event_object(event)
+	local kind = type(event)
+	return kind == "table" or kind == "userdata"
+end
+
 local function event_matches_chord(event)
-	if type(event) ~= "table" then
+	if not is_event_object(event) then
 		return false
 	end
 	local flags = {}
@@ -822,8 +827,48 @@ local function event_matches_chord(event)
 	return false
 end
 
+local function event_matches_still_chord(event)
+	if not is_event_object(event) then
+		return false
+	end
+	local flags = {}
+	if type(event.getFlags) == "function" then
+		local ok, value = pcall(function()
+			return event:getFlags()
+		end)
+		if ok and type(value) == "table" then
+			flags = value
+		end
+	end
+	if
+		type(flags) ~= "table"
+		or flags.ctrl ~= true
+		or flags.alt ~= true
+		or flags.shift ~= true
+		or flags.cmd
+		or flags.fn
+	then
+		return false
+	end
+	if type(event.getCharacters) == "function" then
+		local ok, chars = pcall(function()
+			return event:getCharacters()
+		end)
+		if ok and type(chars) == "string" and chars:lower() == "s" then
+			return true
+		end
+	end
+	if type(event.getKeyCode) == "function" and hs.keycodes and hs.keycodes.map then
+		local ok, code = pcall(function()
+			return event:getKeyCode()
+		end)
+		return ok and code == hs.keycodes.map.s
+	end
+	return false
+end
+
 local function event_is_repeat(event)
-	if type(event) ~= "table" then
+	if not is_event_object(event) then
 		return false
 	end
 	if event["repeat"] == true then
@@ -844,7 +889,7 @@ local function event_is_repeat(event)
 end
 
 local function event_is_m(event)
-	if type(event) ~= "table" then
+	if not is_event_object(event) then
 		return false
 	end
 	if type(event.getCharacters) == "function" then
@@ -898,6 +943,14 @@ local function open_selector()
 			if event_is_m(event) then
 				ctx.state.mic = not ctx.state.mic
 				ctx.redraw()
+				return true
+			end
+			if event_matches_still_chord(event) then
+				local region = ctx.region()
+				ctx.cancel()
+				if type(M.captureStill) == "function" then
+					M.captureStill(region)
+				end
 				return true
 			end
 			if event_matches_chord(event) then
@@ -1802,6 +1855,19 @@ function M.onChord(event)
 		change_count = pasteboard_count(),
 		["repeat"] = event_is_repeat(event),
 	})
+end
+
+function M.isChordEvent(event)
+	return event_matches_chord(event)
+end
+
+function M.isStillChordEvent(event)
+	return event_matches_still_chord(event)
+end
+
+function M.startRegion(region)
+	M.onChord()
+	dispatch({ type = "enter", region = copy_rect(region), mic = false })
 end
 
 function M.start(options)

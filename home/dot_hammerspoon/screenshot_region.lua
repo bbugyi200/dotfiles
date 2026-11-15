@@ -9,7 +9,7 @@ local CAPTURE_DELAY = 0.08
 local HINT_WIDTH = 420
 local HINT_HEIGHT = 42
 local HINT_TEXT =
-	"Drag: new box · ⌘-drag: move · Corners: resize\nEnter: capture · ⌘Enter: capture + save default · Esc: cancel"
+	"Drag: new box · ⌘-drag: move · Corners: resize · F: full screen · W: window\nEnter: capture · ⌘Enter: capture + save default · Esc: cancel"
 
 local activeSession = nil
 local unpackTable = table.unpack or unpack
@@ -98,6 +98,48 @@ local function clampRegionToFrame(rect, frame)
 	local x = clamp(rect.x, frame.x, frame.x + frame.w - width)
 	local y = clamp(rect.y, frame.y, frame.y + frame.h - height)
 	return { x = x, y = y, w = width, h = height }
+end
+
+local function keyIs(event, name)
+	if type(event.getCharacters) == "function" then
+		local ok, chars = pcall(function()
+			return event:getCharacters()
+		end)
+		if ok and type(chars) == "string" and chars:lower() == name then
+			return true
+		end
+	end
+	return type(event.getKeyCode) == "function"
+		and hs.keycodes
+		and hs.keycodes.map
+		and event:getKeyCode() == hs.keycodes.map[name]
+end
+
+local function frontmostWindowAt(point, frame)
+	if not hs.window or type(hs.window.orderedWindows) ~= "function" then
+		return nil
+	end
+	local ok, windows = pcall(hs.window.orderedWindows)
+	if not ok or type(windows) ~= "table" then
+		return nil
+	end
+	for _, window in ipairs(windows) do
+		local standard, hammerspoon, windowFrame = false, false, nil
+		pcall(function()
+			standard = window:isStandard() == true
+		end)
+		pcall(function()
+			local app = window:application()
+			hammerspoon = app and app:bundleID() == "org.hammerspoon.Hammerspoon"
+		end)
+		pcall(function()
+			windowFrame = window:frame()
+		end)
+		if standard and not hammerspoon and windowFrame and frameContainsPoint(windowFrame, point) then
+			return clampRegionToFrame(windowFrame, frame)
+		end
+	end
+	return nil
 end
 
 local function regionFromSettings(key)
@@ -479,22 +521,27 @@ function M.pick(onConfirm, opts)
 	local finished = false
 	local tap = nil
 	local ctx = nil
+	local feedbackTimer = nil
 
 	local function redraw()
 		local badge = resolveText(opts.badge, callerState, nil)
-		local hint = resolveText(opts.hint, callerState, HINT_TEXT)
+		local hint = callerState.windowHint or resolveText(opts.hint, callerState, HINT_TEXT)
 		local elements = buildElements(region, screenFrame, {
 			accent = opts.accent,
 			badge = badge,
 			hint = hint,
 			canvas = canvas,
 			fitBadge = opts.badge ~= nil or opts.accent ~= nil,
-			fitHint = opts.hint ~= nil,
+			fitHint = true,
 		})
 		canvas:replaceElements(unpackTable(elements))
 	end
 
 	local function cleanup()
+		if feedbackTimer then
+			feedbackTimer:stop()
+			feedbackTimer = nil
+		end
 		if tap then
 			tap:stop()
 			tap = nil
@@ -549,6 +596,21 @@ function M.pick(onConfirm, opts)
 			finish(region.w >= MIN_SIZE and region.h >= MIN_SIZE, saveDefault == true)
 		end,
 	}
+
+	local function showNoWindowHint()
+		callerState.windowHint = "W: no window here"
+		redraw()
+		if feedbackTimer then
+			feedbackTimer:stop()
+		end
+		feedbackTimer = hs.timer.doAfter(1.5, function()
+			feedbackTimer = nil
+			callerState.windowHint = nil
+			if not finished then
+				redraw()
+			end
+		end)
+	end
 
 	local function eventPoint(event)
 		return event:location()
@@ -610,6 +672,24 @@ function M.pick(onConfirm, opts)
 			local eventType = event:getType()
 
 			if eventType == eventTypes.keyDown then
+				local flags = event:getFlags() or {}
+				local plainKey = not flags.cmd and not flags.ctrl and not flags.alt and not flags.shift and not flags.fn
+				if plainKey and keyIs(event, "f") then
+					region = copyRect(screenFrame)
+					redraw()
+					return true
+				elseif plainKey and keyIs(event, "w") then
+					local point = hs.mouse.absolutePosition()
+					local snapped = frontmostWindowAt(point, screenFrame)
+					if snapped then
+						region = snapped
+						callerState.windowHint = nil
+						redraw()
+					else
+						showNoWindowHint()
+					end
+					return true
+				end
 				if type(onKey) == "function" then
 					local consumed = onKey(event, ctx)
 					if consumed == true or finished then

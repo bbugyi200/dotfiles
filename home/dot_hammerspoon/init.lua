@@ -38,6 +38,8 @@ local function runMacscrot(region)
 		:start()
 end
 
+ScreenRecorder.captureStill = runMacscrot
+
 -- Capture a selected screen region and upload it to Apollo and Athena via ~/bin/macscrot.
 -- The selector preloads the saved default rectangle. ⌘Enter saves a new default;
 -- plain Enter captures without changing it. Then macscrot owns capture, upload,
@@ -45,7 +47,16 @@ end
 hs.hotkey.bind({ "ctrl", "alt", "shift" }, "s", nil, function()
 	ScreenshotRegion.pick(function(region)
 		runMacscrot(region)
-	end)
+	end, {
+		onKey = function(event, ctx)
+			if ScreenRecorder.isChordEvent(event) then
+				local region = ctx.region()
+				ctx.cancel()
+				ScreenRecorder.startRegion(region)
+				return true
+			end
+		end,
+	})
 end)
 
 -- Record a selected screen region and upload it via ~/bin/macrec.

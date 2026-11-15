@@ -1247,6 +1247,36 @@ describe("screen recorder runtime", function()
 		assert.equals("idle", _G.BobScreenRecorder.model.state)
 	end)
 
+	it("takes a still of the exact recording selection on the screenshot chord", function()
+		boot()
+		recorder.onChord()
+		local pick = env.picks[1]
+		local captured
+		recorder.captureStill = function(region)
+			captured = region
+		end
+		local ctx = {
+			state = pick.opts.state,
+			region = function()
+				return { x = 25, y = 35, w = 250, h = 160 }
+			end,
+			cancel = function()
+				pick.opts.onCancel("key")
+			end,
+			redraw = function() end,
+		}
+		assert.is_true(pick.opts.onKey(make_key_event("s", { ctrl = true, alt = true, shift = true }, 1), ctx))
+		assert.same({ x = 25, y = 35, w = 250, h = 160 }, captured)
+		assert.equals("idle", _G.BobScreenRecorder.model.state)
+	end)
+
+	it("starts recording directly from a screenshot selection", function()
+		boot()
+		recorder.startRegion({ x = 25, y = 35, w = 250, h = 160 })
+		assert.equals("starting", _G.BobScreenRecorder.model.state)
+		assert.same({ "start", "25,35,250,160", "--max-seconds", "600" }, tasks_with_arg(env, "start")[1].args)
+	end)
+
 	it("discards when the chord is pressed during starting", function()
 		boot()
 		recorder.onChord()

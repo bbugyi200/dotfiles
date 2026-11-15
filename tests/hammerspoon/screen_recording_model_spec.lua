@@ -397,6 +397,7 @@ describe("screen recording presentation helpers", function()
 		)
 		assert.is_truthy(model.selectorHint({ mic = false }):find("M: mic off", 1, true))
 		assert.is_truthy(model.selectorHint({ mic = true }):find("M: mic on", 1, true))
+		assert.is_truthy(model.selectorHint({}):find("F: full screen · W: window", 1, true))
 		assert.is_truthy(model.selectorHint({}):find("Esc or " .. model.CHORD_LABEL .. ": cancel", 1, true))
 	end)
 

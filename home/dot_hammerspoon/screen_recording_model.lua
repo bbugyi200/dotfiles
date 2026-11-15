@@ -683,7 +683,7 @@ end
 function M.selectorHint(state)
 	state = type(state) == "table" and state or {}
 	local mic = state.mic == true or (state.selection and state.selection.mic == true)
-	return "Drag: new box · ⌘-drag: move · Corners: resize\n⏎: record · ⌘⏎: record + save default · M: mic "
+	return "Drag: new box · ⌘-drag: move · Corners: resize · F: full screen · W: window\n⏎: record · ⌘⏎: record + save default · M: mic "
 		.. (mic and "on" or "off")
 		.. " · Esc or "
 		.. M.CHORD_LABEL

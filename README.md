@@ -79,16 +79,21 @@ again while recording to stop and upload.
 
 Selector keys:
 
-| Key     | Action                                       |
-| ------- | -------------------------------------------- |
-| Drag    | Draw a new box                               |
-| ⌘-drag  | Move the box                                 |
-| Corners | Resize                                       |
-| ⏎       | Start recording                              |
-| ⌘⏎      | Start and save this rectangle as the default |
-| M       | Toggle microphone for this clip              |
-| Esc     | Cancel                                       |
-| ⌃⌥⇧V    | Cancel (same chord)                          |
+| Key     | Action                                         |
+| ------- | ---------------------------------------------- |
+| Drag    | Draw a new box                                 |
+| ⌘-drag  | Move the box                                   |
+| Corners | Resize                                         |
+| F       | Select the whole screen                        |
+| W       | Snap to the frontmost window under the pointer |
+| ⏎       | Start recording                                |
+| ⌘⏎      | Start and save this rectangle as the default   |
+| M       | Toggle microphone for this clip                |
+| Esc     | Cancel                                         |
+| ⌃⌥⇧V    | Cancel (same chord)                            |
+
+While the screenshot picker is open, ⌃⌥⇧V starts a recording of that exact region. While
+the recording picker is open, ⌃⌥⇧S captures a still of that exact region.
 
 The recording chrome (corner brackets, hairline, and timer pill) sits outside the
 recorded pixels. Cursor and click flashes are on; system audio is not captured. A
