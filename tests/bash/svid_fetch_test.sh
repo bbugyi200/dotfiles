@@ -25,6 +25,7 @@ function set_up() {
   FFPROBE_DURATION="42.5"
   FFPROBE_DIMS="2560,1600"
   FFPROBE_AUDIO="0"
+  DRAIN_STDIN=""
   RUN_RC=0
 
   mkdir -p "${FAKE_BIN}" "${TEST_HOME}/tmp/screencasts"
@@ -54,6 +55,10 @@ EOF
 function write_ssh_stub() {
   cat >"${FAKE_BIN}/ssh" <<'EOF'
 #!/bin/bash
+if [[ "${DRAIN_STDIN:-}" == ssh ]]; then
+  cat >/dev/null
+  printf 'stdin-drained|ssh\n' >>"${EVENT_LOG}"
+fi
 host=""
 while (($# > 0)); do
   case "$1" in
@@ -118,6 +123,10 @@ EOF
 function write_ffmpeg_stub() {
   cat >"${FAKE_BIN}/ffmpeg" <<'EOF'
 #!/bin/bash
+if [[ "${DRAIN_STDIN:-}" == ffmpeg ]]; then
+  cat >/dev/null
+  printf 'stdin-drained|ffmpeg\n' >>"${EVENT_LOG}"
+fi
 has_filters=0
 vf=""
 last=""
@@ -186,6 +195,7 @@ function run_fetch() {
     FFPROBE_DURATION="${FFPROBE_DURATION}" \
     FFPROBE_DIMS="${FFPROBE_DIMS}" \
     FFPROBE_AUDIO="${FFPROBE_AUDIO}" \
+    DRAIN_STDIN="${DRAIN_STDIN}" \
     bash "${SCRIPT}" "$@" >"${STDOUT_FILE}" 2>"${STDERR_FILE}"
   RUN_RC=$?
 }
@@ -285,4 +295,28 @@ function test_summary_reports_mic_when_audio_present() {
   run_fetch 1 --sheet
   assert_equals "0" "${RUN_RC}"
   assert_contains "· mic" "$(cat "${STDOUT_FILE}")"
+}
+
+function check_caller_stdin_is_preserved() {
+  local remaining=""
+  printf 'clip\n' >"${TEST_HOME}/tmp/screencasts/20260919_150000.mp4"
+  printf 'caller-still-running\n' >"${TEST_TMP}/stdin"
+  {
+    run_fetch 1 --sheet
+    IFS= read -r remaining || true
+  } <"${TEST_TMP}/stdin"
+  assert_equals "0" "${RUN_RC}"
+  assert_contains "stdin-drained|${DRAIN_STDIN}" "$(cat "${EVENT_LOG}")"
+  assert_contains "sheet_path=" "$(cat "${STDOUT_FILE}")"
+  assert_equals "caller-still-running" "${remaining}"
+}
+
+function test_ssh_preserves_caller_stdin() {
+  DRAIN_STDIN=ssh
+  check_caller_stdin_is_preserved
+}
+
+function test_ffmpeg_preserves_caller_stdin() {
+  DRAIN_STDIN=ffmpeg
+  check_caller_stdin_is_preserved
 }

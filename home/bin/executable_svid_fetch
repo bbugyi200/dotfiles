@@ -10,6 +10,10 @@
 
 set -euo pipefail
 
+# This file-based helper never needs caller input. Keep SSH and FFmpeg from
+# consuming the rest of a piped shell script or an agent's input stream.
+exec </dev/null
+
 SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=8 -o ConnectionAttempts=1)
 screencast_dir="$HOME/tmp/screencasts"
 sheet_dir="${screencast_dir}/.sheets"
