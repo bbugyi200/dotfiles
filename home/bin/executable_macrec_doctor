@@ -20,6 +20,9 @@ UUIDGEN_BIN="${UUIDGEN_BIN:-/usr/bin/uuidgen}"
 SW_VERS_BIN="${SW_VERS_BIN:-/usr/bin/sw_vers}"
 HOSTNAME_BIN="${HOSTNAME_BIN:-/bin/hostname}"
 NOHUP_BIN="${NOHUP_BIN:-/usr/bin/nohup}"
+MACREC_BIN="${MACREC_BIN:-}"
+LIFECYCLE_CAP="${MACREC_DOCTOR_LIFECYCLE_CAP:-8}"
+LIFECYCLE_HOLD="${MACREC_DOCTOR_LIFECYCLE_HOLD:-1}"
 
 # Accent fill of the Hammerspoon test card (#E3413B).
 CARD_R=227
@@ -135,7 +138,7 @@ split_probes() {
 
 probe_allowed() {
 	case "$1" in
-	env | capture | stop | cap | encode | detach) return 0 ;;
+	env | capture | stop | cap | encode | detach | lifecycle) return 0 ;;
 	*) return 1 ;;
 	esac
 }
@@ -783,6 +786,84 @@ probe_detach() {
 	KEEP_SESSION=1
 }
 
+resolve_macrec_bin() {
+	if [ -n "$MACREC_BIN" ]; then
+		printf '%s\n' "$MACREC_BIN"
+		return
+	fi
+	local dir
+	dir="$(cd "$(dirname "$0")" && pwd)"
+	if [ -x "${dir}/macrec" ]; then
+		printf '%s\n' "${dir}/macrec"
+		return
+	fi
+	if [ -x "${dir}/executable_macrec" ]; then
+		printf '%s\n' "${dir}/executable_macrec"
+		return
+	fi
+	if [ -x "${HOME}/bin/macrec" ]; then
+		printf '%s\n' "${HOME}/bin/macrec"
+		return
+	fi
+	printf '\n'
+}
+
+probe_lifecycle() {
+	local jsonl="$1"
+	local rect="$2"
+	local macrec start_out stop_out start_rc stop_rc id ok detail metrics
+	local start_ok=false stop_ok=false
+	macrec="$(resolve_macrec_bin)"
+	ok=true
+	detail=""
+	id=""
+	start_out=""
+	stop_out=""
+	start_rc=127
+	stop_rc=127
+	if [ -z "$macrec" ] || [ ! -e "$macrec" ]; then
+		ok=false
+		detail="macrec binary not found"
+		write_probe "$jsonl" lifecycle false '{"start_ok":false,"stop_ok":false}' "$detail"
+		return
+	fi
+	set +e
+	start_out="$("$macrec" start "$rect" --probe --max-seconds "$LIFECYCLE_CAP" 2>"${jsonl}.lifecycle.err")"
+	start_rc=$?
+	set -e
+	if [ "$start_rc" -eq 0 ]; then
+		start_ok=true
+		id="$(printf '%s' "$start_out" | "$JQ_BIN" -r '.id // empty' 2>/dev/null || true)"
+	else
+		ok=false
+		detail="macrec start failed (exit ${start_rc})"
+		if [ -s "${jsonl}.lifecycle.err" ]; then
+			detail="${detail}: $(tr '\n' ' ' <"${jsonl}.lifecycle.err")"
+		fi
+	fi
+	if [ "$start_ok" = true ]; then
+		sleep_s "$LIFECYCLE_HOLD"
+		set +e
+		stop_out="$("$macrec" stop --reason probe 2>>"${jsonl}.lifecycle.err")"
+		stop_rc=$?
+		set -e
+		if [ "$stop_rc" -eq 0 ]; then
+			stop_ok=true
+		else
+			ok=false
+			detail="${detail:+$detail; }macrec stop failed (exit ${stop_rc})"
+		fi
+	fi
+	metrics="$("$JQ_BIN" -n -c \
+		--argjson start_ok "$start_ok" \
+		--argjson stop_ok "$stop_ok" \
+		--arg id "$id" \
+		--argjson start_exit "$start_rc" \
+		--argjson stop_exit "$stop_rc" \
+		'{start_ok:$start_ok,stop_ok:$stop_ok,id:$id,start_exit:$start_exit,stop_exit:$stop_exit}')"
+	write_probe "$jsonl" lifecycle "$( [ "$ok" = true ] && echo true || echo false )" "$metrics" "$detail"
+}
+
 cleanup_work() {
 	local work="$1"
 	local keep="$2"
@@ -866,6 +947,7 @@ cmd_run() {
 		cap) probe_cap "$jsonl" "$work" "$rect" ;;
 		encode) probe_encode "$jsonl" "$work" ;;
 		detach) probe_detach "$jsonl" "$work" "$rect" ;;
+		lifecycle) probe_lifecycle "$jsonl" "$rect" ;;
 		esac
 	done
 	finished="$(now_s)"

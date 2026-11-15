@@ -268,6 +268,7 @@ function doctor_env() {
     MACREC_DOCTOR_READY_WAIT_SECONDS="${MACREC_DOCTOR_READY_WAIT_SECONDS}" \
     MACREC_DOCTOR_DETACH_READY_SECONDS="${MACREC_DOCTOR_DETACH_READY_SECONDS}" \
     MACREC_DOCTOR_ID="${MACREC_DOCTOR_ID}" \
+    MACREC_BIN="${MACREC_BIN:-}" \
     bash "${SCRIPT}" "$@"
 }
 
@@ -512,6 +513,15 @@ function test_request_timeout_after_pickup() {
 function test_request_invalid_probes() {
   run_doctor request --probes nope
   assert_equals "2" "${RUN_RC}"
+}
+
+function test_lifecycle_probe_is_allowed_and_fails_without_macrec() {
+  MACREC_BIN="${FAKE_BIN}/no-such-macrec"
+  run_doctor run --id life0 --rect 0,0,240,150 --probes lifecycle
+  assert_equals "1" "${RUN_RC}"
+  assert_equals "lifecycle" "$(jq -r '.probes[0].name' "${STDOUT_FILE}")"
+  assert_equals "false" "$(jq -r '.probes[0].ok' "${STDOUT_FILE}")"
+  assert_contains "macrec binary not found" "$(jq -r '.probes[0].detail' "${STDOUT_FILE}")"
 }
 
 function test_detach_and_detach_stop() {

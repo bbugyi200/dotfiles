@@ -1,0 +1,1091 @@
+#!/usr/bin/env bash
+#
+# macrec — detached region-recording engine. Hammerspoon talks to this CLI
+# with argv only; session files under ~/tmp/screencasts/.macrec are the source
+# of truth. Capture backend lives in fill_recorder_argv / stop_recorder so a
+# ScreenCaptureKit helper can drop in later.
+
+if [ -z "${MACREC_NO_REEXEC:-}" ] && [ "${BASH_VERSINFO[0]}" -lt 4 ] && [ -x /opt/homebrew/bin/bash ]; then
+	exec /opt/homebrew/bin/bash "$0" "$@"
+fi
+
+set -eu
+set -o pipefail
+
+SCREENCAPTURE_BIN="${SCREENCAPTURE_BIN:-/usr/sbin/screencapture}"
+FFPROBE_BIN="${FFPROBE_BIN:-/opt/homebrew/bin/ffprobe}"
+JQ_BIN="${JQ_BIN:-/usr/bin/jq}"
+PERL_BIN="${PERL_BIN:-/usr/bin/perl}"
+UUIDGEN_BIN="${UUIDGEN_BIN:-/usr/bin/uuidgen}"
+NOHUP_BIN="${NOHUP_BIN:-/usr/bin/nohup}"
+DF_BIN="${DF_BIN:-/bin/df}"
+PS_BIN="${PS_BIN:-/bin/ps}"
+MKFIFO_BIN="${MKFIFO_BIN:-/usr/bin/mkfifo}"
+
+DEFAULT_CAP_SECONDS="${MACREC_CAP_SECONDS:-600}"
+MIN_FREE_KB="${MACREC_MIN_FREE_KB:-2097152}"
+STOP_INT_WAIT="${MACREC_STOP_INT_WAIT:-3}"
+STOP_TERM_WAIT="${MACREC_STOP_TERM_WAIT:-2}"
+READY_WAIT_SECONDS="${MACREC_READY_WAIT:-5}"
+READY_GRACE_SECONDS="${MACREC_READY_GRACE:-1}"
+WATCHDOG_GRACE_SECONDS="${MACREC_WATCHDOG_GRACE:-30}"
+POLL_INTERVAL="${MACREC_POLL_INTERVAL:-0.1}"
+LOG_MAX_BYTES=1048576
+PERMISSION_HINT="Screen Recording is off for Hammerspoon — System Settings › Privacy & Security"
+
+usage() {
+	cat <<'EOF'
+Usage:
+  macrec start X,Y,W,H [--mic] [--max-seconds N] [--probe]
+  macrec stop [--reason R]
+  macrec discard
+  macrec status [--json]
+  macrec retry [ID]
+  macrec recover [ID]
+  macrec ack ID notified|adopted
+  macrec ship [args...]
+  macrec doctor [args...]
+
+Exit codes (start): 2 usage, 3 busy, 4 recorder failed to start, 5 low disk.
+EOF
+}
+
+self_path() {
+	case "$0" in
+	/*) printf '%s\n' "$0" ;;
+	*) printf '%s\n' "$(pwd)/$0" ;;
+	esac
+}
+
+macrec_ship_bin() {
+	if [ -n "${MACREC_SHIP_BIN:-}" ]; then
+		printf '%s\n' "$MACREC_SHIP_BIN"
+		return
+	fi
+	local dir
+	dir="$(dirname "$(self_path)")"
+	printf '%s\n' "${dir}/macrec_ship"
+}
+
+macrec_doctor_bin() {
+	if [ -n "${MACREC_DOCTOR_BIN:-}" ]; then
+		printf '%s\n' "$MACREC_DOCTOR_BIN"
+		return
+	fi
+	local dir
+	dir="$(dirname "$(self_path)")"
+	printf '%s\n' "${dir}/macrec_doctor"
+}
+
+now_s() {
+	if [ -x "$PERL_BIN" ]; then
+		"$PERL_BIN" -MTime::HiRes=time -e 'printf "%.3f\n", time'
+	else
+		date +%s
+	fi
+}
+
+perl_sub() {
+	"$PERL_BIN" -e 'printf "%.3f\n", $ARGV[0] - $ARGV[1]' "$1" "$2"
+}
+
+perl_ge() {
+	"$PERL_BIN" -e 'exit($ARGV[0] + 0 >= $ARGV[1] + 0 ? 0 : 1)' "$1" "$2"
+}
+
+sleep_s() {
+	sleep "$1"
+}
+
+macrec_root() {
+	printf '%s\n' "${HOME}/tmp/screencasts/.macrec"
+}
+
+screencasts_dir() {
+	printf '%s\n' "${HOME}/tmp/screencasts"
+}
+
+ensure_dirs() {
+	local root casts sessions
+	casts="$(screencasts_dir)"
+	root="$(macrec_root)"
+	sessions="${root}/sessions"
+	mkdir -p "$casts" "$root" "$sessions"
+	chmod 700 "$casts" "$root" "$sessions" 2>/dev/null || true
+}
+
+log_line() {
+	local root log size
+	root="$(macrec_root)"
+	log="${root}/macrec.log"
+	mkdir -p "$root"
+	if [ -f "$log" ]; then
+		size="$(wc -c <"$log" | tr -d ' ')"
+		if [ "${size:-0}" -gt "$LOG_MAX_BYTES" ]; then
+			mv "$log" "${log}.1"
+		fi
+	fi
+	printf '%s %s\n' "$(now_s)" "$*" >>"$log"
+}
+
+atomic_write() {
+	local path="$1"
+	local dir tmp
+	dir="$(dirname "$path")"
+	mkdir -p "$dir"
+	tmp="${path}.tmp.$$"
+	cat >"$tmp"
+	mv "$tmp" "$path"
+	chmod 600 "$path" 2>/dev/null || true
+}
+
+session_dir() {
+	printf '%s\n' "$(macrec_root)/sessions/$1"
+}
+
+active_path() {
+	printf '%s\n' "$(macrec_root)/active.json"
+}
+
+new_id() {
+	if [ -n "${MACREC_ID:-}" ]; then
+		printf '%s\n' "$MACREC_ID"
+		return
+	fi
+	if [ -x "$UUIDGEN_BIN" ]; then
+		"$UUIDGEN_BIN" | tr 'A-Z' 'a-z'
+		return
+	fi
+	"$PERL_BIN" -MTime::HiRes=time -e 'printf "e%x%x\n", int(time()*1000), int(rand()*1e9)'
+}
+
+valid_id() {
+	printf '%s' "$1" | grep -Eq '^[A-Za-z0-9_-]{1,64}$'
+}
+
+valid_region() {
+	printf '%s' "$1" | grep -Eq '^-?[0-9]+,-?[0-9]+,[1-9][0-9]*,[1-9][0-9]*$'
+}
+
+parse_region_json() {
+	local region="$1"
+	local x y w h
+	x="${region%%,*}"
+	region="${region#*,}"
+	y="${region%%,*}"
+	region="${region#*,}"
+	w="${region%%,*}"
+	h="${region#*,}"
+	"$JQ_BIN" -n -c --argjson x "$x" --argjson y "$y" --argjson w "$w" --argjson h "$h" \
+		'{x:$x,y:$y,w:$w,h:$h}'
+}
+
+disk_free_kb() {
+	local path="$1"
+	"$DF_BIN" -Pk "$path" 2>/dev/null | awk 'NR==2 {print $4}'
+}
+
+file_bytes() {
+	if [ ! -f "$1" ]; then
+		printf '0\n'
+		return
+	fi
+	wc -c <"$1" | tr -d ' '
+}
+
+pid_args() {
+	"$PS_BIN" -p "$1" -o args= 2>/dev/null || true
+}
+
+pid_matches_recorder() {
+	local pid="$1"
+	local base args
+	if [ -z "$pid" ] || ! kill -0 "$pid" 2>/dev/null; then
+		return 1
+	fi
+	base="$(basename "$SCREENCAPTURE_BIN")"
+	args="$(pid_args "$pid")"
+	case "$args" in
+	*"$base"* | *screencapture*) return 0 ;;
+	esac
+	return 1
+}
+
+pid_is_owner() {
+	local pid="$1"
+	local args
+	if [ -z "$pid" ] || ! kill -0 "$pid" 2>/dev/null; then
+		return 1
+	fi
+	args="$(pid_args "$pid")"
+	case "$args" in
+	*_wrapper* | *macrec_ship* | *executable_macrec* | *macrec*) return 0 ;;
+	esac
+	return 1
+}
+
+wait_pid_seconds() {
+	local pid="$1"
+	local budget="$2"
+	local start now
+	if [ -z "$pid" ]; then
+		return 0
+	fi
+	start="$(now_s)"
+	while kill -0 "$pid" 2>/dev/null; do
+		now="$(now_s)"
+		if perl_ge "$(perl_sub "$now" "$start")" "$budget"; then
+			return 1
+		fi
+		sleep_s "$POLL_INTERVAL"
+	done
+	return 0
+}
+
+wait_file_seconds() {
+	local path="$1"
+	local budget="$2"
+	local start now
+	start="$(now_s)"
+	while [ ! -f "$path" ]; do
+		now="$(now_s)"
+		if perl_ge "$(perl_sub "$now" "$start")" "$budget"; then
+			return 1
+		fi
+		sleep_s "$POLL_INTERVAL"
+	done
+	return 0
+}
+
+# Capture backend (swap with a ScreenCaptureKit helper after a NO-GO).
+fill_recorder_argv() {
+	local raw="$1"
+	local rect="$2"
+	local cap="$3"
+	local mic="$4"
+	RECORDER_ARGV=("$SCREENCAPTURE_BIN" -v -x -k -C -V "$cap" -R "$rect")
+	if [ "$mic" = "1" ]; then
+		RECORDER_ARGV+=(-g)
+	fi
+	RECORDER_ARGV+=("$raw")
+}
+
+stop_recorder() {
+	local pid="$1"
+	if [ -z "$pid" ]; then
+		return 0
+	fi
+	if pid_matches_recorder "$pid"; then
+		log_line "stop SIGINT pid=${pid}"
+		kill -INT "$pid" 2>/dev/null || true
+	fi
+	if wait_pid_seconds "$pid" "$STOP_INT_WAIT"; then
+		return 0
+	fi
+	if pid_matches_recorder "$pid"; then
+		log_line "stop SIGTERM pid=${pid}"
+		kill -TERM "$pid" 2>/dev/null || true
+	fi
+	wait_pid_seconds "$pid" "$STOP_TERM_WAIT" || true
+}
+
+launch_recorder() {
+	local raw="$1"
+	local rect="$2"
+	local cap="$3"
+	local mic="$4"
+	local fifo="$5"
+	rm -f "$fifo"
+	"$MKFIFO_BIN" "$fifo" 2>/dev/null || mkfifo "$fifo"
+	exec 3<>"$fifo"
+	fill_recorder_argv "$raw" "$rect" "$cap" "$mic"
+	(
+		trap - INT QUIT
+		exec "${RECORDER_ARGV[@]}"
+	) <"$fifo" &
+	REC_PID=$!
+}
+
+read_pidfile() {
+	if [ ! -f "$1" ]; then
+		printf '\n'
+		return
+	fi
+	tr -d ' \n' <"$1"
+}
+
+owner_pid() {
+	read_pidfile "$1/owner.lock/pid"
+}
+
+recorder_pid() {
+	read_pidfile "$1/recorder.pid"
+}
+
+acquire_owner_lock() {
+	local sdir="$1"
+	local lock="${sdir}/owner.lock"
+	local tries=0
+	local old
+	mkdir -p "$sdir"
+	while [ "$tries" -lt 25 ]; do
+		if mkdir "$lock" 2>/dev/null; then
+			printf '%s\n' "$$" >"${lock}/pid"
+			return 0
+		fi
+		old="$(read_pidfile "${lock}/pid")"
+		if [ -n "$old" ] && pid_is_owner "$old"; then
+			return 1
+		fi
+		rm -rf "$lock"
+		tries=$((tries + 1))
+		sleep_s "$POLL_INTERVAL"
+	done
+	return 1
+}
+
+release_owner_lock() {
+	local sdir="$1"
+	local lock="${sdir}/owner.lock"
+	local old
+	old="$(read_pidfile "${lock}/pid")"
+	if [ "$old" = "$$" ]; then
+		rm -rf "$lock"
+	fi
+}
+
+patch_session() {
+	local sdir="$1"
+	local patch_json="$2"
+	local sj now
+	sj="${sdir}/session.json"
+	now="$(now_s)"
+	"$JQ_BIN" --argjson patch "$patch_json" --argjson now "$now" \
+		'. * $patch | .updated_at = $now' "$sj" | atomic_write "$sj"
+}
+
+session_field() {
+	local sj="$1/session.json"
+	local key="$2"
+	if [ ! -f "$sj" ]; then
+		printf '\n'
+		return
+	fi
+	"$JQ_BIN" -r --arg key "$key" '.[$key] // empty' "$sj" 2>/dev/null || true
+}
+
+terminal_status() {
+	case "$1" in
+	done | failed | discarded) return 0 ;;
+	esac
+	return 1
+}
+
+video_valid() {
+	local file="$1"
+	local json
+	if [ ! -s "$file" ]; then
+		return 1
+	fi
+	json="$("$FFPROBE_BIN" -v error -show_streams -show_format -of json "$file" 2>/dev/null || true)"
+	if [ -z "$json" ]; then
+		return 1
+	fi
+	printf '%s' "$json" | "$JQ_BIN" -e '
+		(.streams // []) | map(select(.codec_type == "video" or .width != null)) | length > 0
+	' >/dev/null 2>&1
+}
+
+name_taken() {
+	local candidate="$1"
+	local d
+	if [ -e "$(screencasts_dir)/${candidate}.mp4" ]; then
+		return 0
+	fi
+	for d in "$(macrec_root)/sessions"/*; do
+		[ -f "${d}/session.json" ] || continue
+		if [ "$(session_field "$d" name)" = "$candidate" ]; then
+			return 0
+		fi
+	done
+	return 1
+}
+
+allocate_name() {
+	local base name n
+	base="$(date +%Y%m%d_%H%M%S)"
+	name="$base"
+	n=1
+	while name_taken "$name"; do
+		n=$((n + 1))
+		name="${base}_${n}"
+	done
+	printf '%s\n' "$name"
+}
+
+looks_like_permission_error() {
+	local log="$1"
+	if [ ! -f "$log" ]; then
+		return 1
+	fi
+	grep -qiE 'not authorized|permission|tcc|screen recording' "$log"
+}
+
+live_recording() {
+	local active sdir rec wrap started now
+	active="$(active_path)"
+	if [ ! -f "$active" ]; then
+		return 1
+	fi
+	sdir="$(session_dir "$("$JQ_BIN" -r '.id' "$active")")"
+	rec="$(recorder_pid "$sdir")"
+	wrap="$(owner_pid "$sdir")"
+	if pid_matches_recorder "$rec" || pid_is_owner "$wrap"; then
+		return 0
+	fi
+	started="$("$JQ_BIN" -r '.started_at // 0' "$active")"
+	now="$(now_s)"
+	# Treat a brand-new active.json as live even before pids land.
+	if ! perl_ge "$(perl_sub "$now" "$started")" "$(awk -v a="$READY_WAIT_SECONDS" -v b="$READY_GRACE_SECONDS" 'BEGIN { print a + b + 1 }')"; then
+		return 0
+	fi
+	return 1
+}
+
+wait_until_ready() {
+	local sdir="$1"
+	local recfile="${sdir}/recorder.pid"
+	local pid start now
+	if ! wait_file_seconds "$recfile" "$READY_WAIT_SECONDS"; then
+		return 1
+	fi
+	start="$(now_s)"
+	while :; do
+		pid="$(read_pidfile "$recfile")"
+		if pid_matches_recorder "$pid"; then
+			sleep_s "$READY_GRACE_SECONDS"
+			if pid_matches_recorder "$pid"; then
+				return 0
+			fi
+			return 1
+		fi
+		now="$(now_s)"
+		if perl_ge "$(perl_sub "$now" "$start")" "$READY_WAIT_SECONDS"; then
+			return 1
+		fi
+		if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then
+			return 1
+		fi
+		sleep_s "$POLL_INTERVAL"
+	done
+}
+
+write_initial_session() {
+	local sdir="$1"
+	local id="$2"
+	local name="$3"
+	local region_json="$4"
+	local mic="$5"
+	local probe="$6"
+	local cap="$7"
+	local started="$8"
+	"$JQ_BIN" -n -c \
+		--argjson schema 1 \
+		--arg id "$id" \
+		--arg name "$name" \
+		--argjson region "$region_json" \
+		--argjson mic "$mic" \
+		--argjson probe "$probe" \
+		--argjson cap_seconds "$cap" \
+		--argjson started_at "$started" \
+		'{
+			schema:$schema,
+			id:$id,
+			name:$name,
+			region:$region,
+			mic:$mic,
+			probe:$probe,
+			cap_seconds:$cap_seconds,
+			started_at:$started_at,
+			updated_at:$started_at,
+			status:"recording",
+			hosts:{},
+			host_detail:{},
+			recovered:false
+		}' | atomic_write "${sdir}/session.json"
+}
+
+cmd_start() {
+	local region="" mic=0 probe=0 cap="$DEFAULT_CAP_SECONDS"
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		--mic)
+			mic=1
+			shift
+			;;
+		--probe)
+			probe=1
+			shift
+			;;
+		--max-seconds)
+			cap="$2"
+			shift 2
+			;;
+		-h | --help)
+			usage
+			exit 0
+			;;
+		-*)
+			printf 'macrec: unknown option %s\n' "$1" >&2
+			usage >&2
+			exit 2
+			;;
+		*)
+			if [ -n "$region" ]; then
+				printf 'macrec: unexpected argument %s\n' "$1" >&2
+				usage >&2
+				exit 2
+			fi
+			region="$1"
+			shift
+			;;
+		esac
+	done
+	if [ -z "$region" ] || ! valid_region "$region"; then
+		printf 'macrec: invalid region (expected X,Y,W,H)\n' >&2
+		usage >&2
+		exit 2
+	fi
+	if ! printf '%s' "$cap" | grep -Eq '^[1-9][0-9]*$'; then
+		printf 'macrec: invalid --max-seconds\n' >&2
+		exit 2
+	fi
+	ensure_dirs
+	local casts free
+	casts="$(screencasts_dir)"
+	free="$(disk_free_kb "$casts" || true)"
+	if [ -z "$free" ] || [ "$free" -lt "$MIN_FREE_KB" ]; then
+		printf 'macrec: low disk (%s KB free, need %s KB)\n' "${free:-0}" "$MIN_FREE_KB" >&2
+		exit 5
+	fi
+	if live_recording; then
+		printf 'macrec: already recording\n' >&2
+		exit 3
+	fi
+	if [ -f "$(active_path)" ]; then
+		rm -f "$(active_path)"
+	fi
+
+	local id name sdir started region_json mic_json probe_json log
+	id="$(new_id)"
+	if ! valid_id "$id"; then
+		printf 'macrec: could not allocate id\n' >&2
+		exit 2
+	fi
+	name="$(allocate_name)"
+	sdir="$(session_dir "$id")"
+	mkdir -p "$sdir"
+	chmod 700 "$sdir" 2>/dev/null || true
+	started="$(now_s)"
+	region_json="$(parse_region_json "$region")"
+	mic_json=false
+	probe_json=false
+	[ "$mic" = "1" ] && mic_json=true
+	[ "$probe" = "1" ] && probe_json=true
+	log="${sdir}/log"
+	: >"$log"
+	write_initial_session "$sdir" "$id" "$name" "$region_json" "$mic_json" "$probe_json" "$cap" "$started"
+	"$JQ_BIN" -n -c --arg id "$id" --arg name "$name" --argjson started_at "$started" \
+		--argjson region "$region_json" --argjson mic "$mic_json" --argjson probe "$probe_json" \
+		--argjson cap_seconds "$cap" \
+		'{id:$id,name:$name,started_at:$started_at,region:$region,mic:$mic,probe:$probe,cap_seconds:$cap_seconds}' \
+		| atomic_write "$(active_path)"
+	log_line "start id=${id} name=${name} rect=${region} cap=${cap} mic=${mic} probe=${probe}"
+
+	local this bash_bin
+	this="$(self_path)"
+	bash_bin="${BASH:-/usr/bin/env bash}"
+	"$NOHUP_BIN" "$PERL_BIN" -MPOSIX -e 'POSIX::setsid(); exec @ARGV' \
+		"$bash_bin" "$this" _wrapper "$id" \
+		</dev/null >>"$log" 2>&1 &
+
+	if ! wait_until_ready "$sdir"; then
+		printf 'macrec: recorder failed to start\n' >&2
+		if looks_like_permission_error "$log"; then
+			printf '%s\n' "$PERMISSION_HINT" >&2
+		fi
+		exit 4
+	fi
+
+	"$JQ_BIN" -n -c --arg id "$id" --arg name "$name" --argjson started_at "$started" \
+		'{id:$id,name:$name,started_at:$started_at}'
+	printf '\n'
+}
+
+cmd_wrapper() {
+	local id="$1"
+	if [ -z "$id" ] || ! valid_id "$id"; then
+		printf 'macrec: wrapper needs a session id\n' >&2
+		exit 2
+	fi
+	ensure_dirs
+	local sdir sj raw fifo log rec_exit ended started cap mic probe
+	local region_str watchdog_budget wd_pid
+	sdir="$(session_dir "$id")"
+	sj="${sdir}/session.json"
+	raw="${sdir}/raw.mov"
+	fifo="${sdir}/fifo"
+	log="${sdir}/log"
+	if [ ! -f "$sj" ]; then
+		printf 'macrec: missing session %s\n' "$id" >&2
+		exit 1
+	fi
+	if ! acquire_owner_lock "$sdir"; then
+		printf 'macrec: could not acquire owner.lock for %s\n' "$id" >&2
+		exit 1
+	fi
+	trap 'release_owner_lock "'"$sdir"'"' EXIT
+
+	started="$(session_field "$sdir" started_at)"
+	cap="$(session_field "$sdir" cap_seconds)"
+	mic=0
+	probe=0
+	[ "$(session_field "$sdir" mic)" = "true" ] && mic=1
+	[ "$(session_field "$sdir" probe)" = "true" ] && probe=1
+	region_str="$("$JQ_BIN" -r '[.region.x,.region.y,.region.w,.region.h] | join(",")' "$sj")"
+
+	launch_recorder "$raw" "$region_str" "$cap" "$mic" "$fifo"
+	printf '%s\n' "$REC_PID" >"${sdir}/recorder.pid"
+	log_line "wrapper id=${id} recorder=${REC_PID}"
+
+	watchdog_budget="$(awk -v c="$cap" -v g="$WATCHDOG_GRACE_SECONDS" 'BEGIN { print c + g }')"
+	(
+		local start now
+		start="$(now_s)"
+		while kill -0 "$REC_PID" 2>/dev/null; do
+			now="$(now_s)"
+			if [ -f "${sdir}/stop.request" ] || [ -f "${sdir}/discard" ]; then
+				stop_recorder "$REC_PID"
+				break
+			fi
+			if perl_ge "$(perl_sub "$now" "$start")" "$watchdog_budget"; then
+				log_line "watchdog id=${id}"
+				stop_recorder "$REC_PID"
+				break
+			fi
+			sleep_s "$POLL_INTERVAL"
+		done
+	) &
+	wd_pid=$!
+
+	rec_exit=0
+	wait "$REC_PID" 2>/dev/null || rec_exit=$?
+	kill "$wd_pid" 2>/dev/null || true
+	wait "$wd_pid" 2>/dev/null || true
+	exec 3>&- || true
+	ended="$(now_s)"
+	local elapsed reason
+	elapsed="$(perl_sub "$ended" "$started")"
+	if [ -f "${sdir}/discard" ]; then
+		reason="discard"
+	elif [ -f "${sdir}/stop.request" ]; then
+		reason="$(tr -d '\n' <"${sdir}/stop.request")"
+		[ -n "$reason" ] || reason="chord"
+	elif perl_ge "$elapsed" "$(awk -v c="$cap" 'BEGIN { print c - 1 }')"; then
+		reason="cap"
+	elif [ "$rec_exit" -eq 0 ]; then
+		reason="system"
+	else
+		reason="crash"
+	fi
+	log_line "recorder exit id=${id} status=${rec_exit} reason=${reason} elapsed=${elapsed}"
+	rm -f "$(active_path)"
+
+	if [ "$reason" = "discard" ]; then
+		rm -f "$raw"
+		patch_session "$sdir" "$("$JQ_BIN" -n -c --arg reason "$reason" --argjson ended "$ended" \
+			'{status:"discarded",stop_reason:$reason,ended_at:$ended}')"
+		exit 0
+	fi
+
+	if [ "$probe" = "1" ]; then
+		local st err
+		st="done"
+		err=""
+		if ! video_valid "$raw"; then
+			st="failed"
+			err="probe capture was not a valid video"
+		fi
+		rm -f "$raw"
+		patch_session "$sdir" "$("$JQ_BIN" -n -c --arg status "$st" --arg reason "$reason" \
+			--argjson ended "$ended" --arg error "$err" \
+			'{status:$status,stop_reason:$reason,ended_at:$ended} + (if $error == "" then {} else {error:$error} end)')"
+		exit 0
+	fi
+
+	patch_session "$sdir" "$("$JQ_BIN" -n -c --arg reason "$reason" --argjson ended "$ended" \
+		'{status:"finalizing",stop_reason:$reason,ended_at:$ended}')"
+	local ship
+	ship="$(macrec_ship_bin)"
+	if [ ! -x "$ship" ]; then
+		patch_session "$sdir" '{"status":"failed","error":"macrec_ship not found"}'
+		printf 'macrec: macrec_ship not found at %s\n' "$ship" >&2
+		exit 1
+	fi
+	trap - EXIT
+	exec "$ship" --session "$id"
+}
+
+active_id() {
+	local active
+	active="$(active_path)"
+	if [ ! -f "$active" ]; then
+		printf '\n'
+		return
+	fi
+	"$JQ_BIN" -r '.id // empty' "$active" 2>/dev/null || true
+}
+
+cmd_stop() {
+	local reason="chord"
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		--reason)
+			reason="$2"
+			shift 2
+			;;
+		-h | --help)
+			usage
+			exit 0
+			;;
+		*)
+			printf 'macrec: unknown argument %s\n' "$1" >&2
+			usage >&2
+			exit 2
+			;;
+		esac
+	done
+	if ! printf '%s' "$reason" | grep -Eq '^[A-Za-z0-9_]+$'; then
+		printf 'macrec: invalid stop reason\n' >&2
+		exit 2
+	fi
+	ensure_dirs
+	local id sdir rec budget
+	id="$(active_id)"
+	if [ -z "$id" ]; then
+		printf '%s\n' '{"state":"idle"}'
+		exit 0
+	fi
+	sdir="$(session_dir "$id")"
+	printf '%s' "$reason" >"${sdir}/stop.request"
+	rec="$(recorder_pid "$sdir")"
+	stop_recorder "$rec"
+	budget="$(awk -v a="$STOP_INT_WAIT" -v b="$STOP_TERM_WAIT" 'BEGIN { print a + b + 2 }')"
+	wait_file_gone_or_dead "$sdir" "$budget" || true
+	"$JQ_BIN" -n -c --arg id "$id" --arg stopped_by "$reason" '{id:$id,stopped_by:$stopped_by}'
+	printf '\n'
+}
+
+wait_file_gone_or_dead() {
+	local sdir="$1"
+	local budget="$2"
+	local start now rec
+	start="$(now_s)"
+	while [ -f "$(active_path)" ]; do
+		rec="$(recorder_pid "$sdir")"
+		if [ -n "$rec" ] && ! kill -0 "$rec" 2>/dev/null; then
+			# Recorder is gone; wrapper should drop active.json shortly.
+			sleep_s "$POLL_INTERVAL"
+		fi
+		now="$(now_s)"
+		if perl_ge "$(perl_sub "$now" "$start")" "$budget"; then
+			return 1
+		fi
+		sleep_s "$POLL_INTERVAL"
+	done
+	return 0
+}
+
+cmd_discard() {
+	ensure_dirs
+	local id sdir
+	id="$(active_id)"
+	if [ -z "$id" ]; then
+		printf '%s\n' '{"state":"idle"}'
+		exit 0
+	fi
+	sdir="$(session_dir "$id")"
+	: >"${sdir}/discard"
+	cmd_stop --reason discard
+}
+
+session_acked_json() {
+	local sdir="$1"
+	local notified=false adopted=false
+	[ -f "${sdir}/ack.notified" ] && notified=true
+	[ -f "${sdir}/ack.adopted" ] && adopted=true
+	"$JQ_BIN" -n -c --argjson notified "$notified" --argjson adopted "$adopted" \
+		'{notified:$notified,adopted:$adopted}'
+}
+
+session_orphaned() {
+	local sdir="$1"
+	local status wrap
+	status="$(session_field "$sdir" status)"
+	if terminal_status "$status"; then
+		return 1
+	fi
+	wrap="$(owner_pid "$sdir")"
+	if pid_is_owner "$wrap"; then
+		return 1
+	fi
+	return 0
+}
+
+session_status_entry() {
+	local sdir="$1"
+	local sj orphaned acked log
+	sj="${sdir}/session.json"
+	if [ ! -f "$sj" ]; then
+		return 1
+	fi
+	if session_orphaned "$sdir"; then
+		orphaned=true
+	else
+		orphaned=false
+	fi
+	acked="$(session_acked_json "$sdir")"
+	log="${sdir}/log"
+	"$JQ_BIN" -c --argjson orphaned "$orphaned" --argjson acked "$acked" --arg log "$log" \
+		'. + {orphaned:$orphaned,acked:$acked,log:$log}' "$sj"
+}
+
+active_state_json() {
+	local active sdir id rec_alive state
+	active="$(active_path)"
+	if [ ! -f "$active" ]; then
+		printf 'null\n'
+		return
+	fi
+	id="$("$JQ_BIN" -r '.id' "$active")"
+	sdir="$(session_dir "$id")"
+	if [ ! -d "$sdir" ]; then
+		printf 'null\n'
+		return
+	fi
+	rec_alive=false
+	if pid_matches_recorder "$(recorder_pid "$sdir")"; then
+		rec_alive=true
+	fi
+	if [ -f "${sdir}/stop.request" ] || [ -f "${sdir}/discard" ]; then
+		state="stopping"
+	elif [ "$rec_alive" = "true" ]; then
+		state="recording"
+	else
+		state="starting"
+	fi
+	"$JQ_BIN" -n -c \
+		--argjson base "$("$JQ_BIN" -c '{id,name,region,mic,probe,started_at,cap_seconds}' "$active")" \
+		--arg state "$state" \
+		--argjson recorder_alive "$rec_alive" \
+		'$base + {state:$state,recorder_alive:$recorder_alive}'
+}
+
+cmd_status() {
+	ensure_dirs
+	local root jsonl d entries active
+	root="$(macrec_root)"
+	jsonl="$(mktemp "${TMPDIR:-/tmp}/macrec-status.XXXXXX")"
+	: >"$jsonl"
+	if [ -d "${root}/sessions" ]; then
+		for d in "${root}/sessions"/*; do
+			[ -d "$d" ] || continue
+			session_status_entry "$d" >>"$jsonl" 2>/dev/null || true
+		done
+	fi
+	if [ -s "$jsonl" ]; then
+		entries="$("$JQ_BIN" -s 'sort_by(.started_at) | reverse | .[0:10]' "$jsonl")"
+	else
+		entries='[]'
+	fi
+	rm -f "$jsonl"
+	active="$(active_state_json)"
+	"$JQ_BIN" -n -c --argjson schema 1 --argjson active "$active" --argjson sessions "$entries" \
+		'{schema:$schema,active:$active,sessions:$sessions}'
+	printf '\n'
+}
+
+newest_session_with() {
+	local want="$1"
+	local root d best best_ts ts status
+	root="$(macrec_root)/sessions"
+	best=""
+	best_ts=""
+	[ -d "$root" ] || return 0
+	for d in "$root"/*; do
+		[ -d "$d" ] || continue
+		status="$(session_field "$d" status)"
+		case "$want" in
+		failed)
+			[ "$status" = "failed" ] || continue
+			;;
+		orphaned)
+			session_orphaned "$d" || continue
+			;;
+		esac
+		ts="$(session_field "$d" started_at)"
+		if [ -z "$best" ] || perl_ge "$ts" "$best_ts"; then
+			best="$(basename "$d")"
+			best_ts="$ts"
+		fi
+	done
+	printf '%s\n' "$best"
+}
+
+run_ship_under_lock() {
+	local id="$1"
+	shift
+	local sdir ship
+	sdir="$(session_dir "$id")"
+	if [ ! -f "${sdir}/session.json" ]; then
+		printf 'macrec: no session %s\n' "$id" >&2
+		exit 1
+	fi
+	if ! acquire_owner_lock "$sdir"; then
+		printf 'macrec: session %s is owned by a live process\n' "$id" >&2
+		exit 1
+	fi
+	ship="$(macrec_ship_bin)"
+	if [ ! -x "$ship" ]; then
+		release_owner_lock "$sdir"
+		printf 'macrec: macrec_ship not found\n' >&2
+		exit 1
+	fi
+	trap 'release_owner_lock "'"$sdir"'"' EXIT
+	"$ship" --session "$id" "$@"
+}
+
+cmd_retry() {
+	local id="${1:-}"
+	ensure_dirs
+	if [ -z "$id" ]; then
+		id="$(newest_session_with failed)"
+	fi
+	if [ -z "$id" ] || ! valid_id "$id"; then
+		printf 'macrec: no failed session to retry\n' >&2
+		exit 1
+	fi
+	run_ship_under_lock "$id" --retry
+}
+
+cmd_recover() {
+	local id="${1:-}"
+	ensure_dirs
+	if [ -z "$id" ]; then
+		id="$(newest_session_with orphaned)"
+	fi
+	if [ -z "$id" ] || ! valid_id "$id"; then
+		printf 'macrec: no orphaned session to recover\n' >&2
+		exit 1
+	fi
+	local sdir
+	sdir="$(session_dir "$id")"
+	if [ ! -f "${sdir}/session.json" ]; then
+		printf 'macrec: no session %s\n' "$id" >&2
+		exit 1
+	fi
+	if ! session_orphaned "$sdir"; then
+		printf 'macrec: session %s is not orphaned\n' "$id" >&2
+		exit 1
+	fi
+	if ! acquire_owner_lock "$sdir"; then
+		printf 'macrec: could not take ownership of %s\n' "$id" >&2
+		exit 1
+	fi
+	patch_session "$sdir" '{"recovered":true,"stop_reason":"recovered"}'
+	local ship
+	ship="$(macrec_ship_bin)"
+	if [ ! -x "$ship" ]; then
+		release_owner_lock "$sdir"
+		printf 'macrec: macrec_ship not found\n' >&2
+		exit 1
+	fi
+	trap 'release_owner_lock "'"$sdir"'"' EXIT
+	"$ship" --session "$id"
+}
+
+cmd_ack() {
+	local id="${1:-}"
+	local which="${2:-}"
+	if [ -z "$id" ] || ! valid_id "$id"; then
+		usage >&2
+		exit 2
+	fi
+	case "$which" in
+	notified | adopted) ;;
+	*)
+		usage >&2
+		exit 2
+		;;
+	esac
+	ensure_dirs
+	local sdir
+	sdir="$(session_dir "$id")"
+	if [ ! -d "$sdir" ]; then
+		printf 'macrec: no session %s\n' "$id" >&2
+		exit 1
+	fi
+	touch "${sdir}/ack.${which}"
+}
+
+cmd_ship_alias() {
+	local ship
+	ship="$(macrec_ship_bin)"
+	if [ ! -x "$ship" ]; then
+		printf 'macrec: macrec_ship not found\n' >&2
+		exit 1
+	fi
+	exec "$ship" "$@"
+}
+
+cmd_doctor_alias() {
+	local doctor
+	doctor="$(macrec_doctor_bin)"
+	if [ ! -x "$doctor" ]; then
+		printf 'macrec: macrec_doctor not found\n' >&2
+		exit 1
+	fi
+	exec "$doctor" "$@"
+}
+
+main() {
+	if [ $# -lt 1 ]; then
+		usage >&2
+		exit 2
+	fi
+	local cmd="$1"
+	shift
+	case "$cmd" in
+	start) cmd_start "$@" ;;
+	stop) cmd_stop "$@" ;;
+	discard) cmd_discard "$@" ;;
+	status) cmd_status "$@" ;;
+	retry) cmd_retry "$@" ;;
+	recover) cmd_recover "$@" ;;
+	ack) cmd_ack "$@" ;;
+	ship) cmd_ship_alias "$@" ;;
+	doctor) cmd_doctor_alias "$@" ;;
+	_wrapper) cmd_wrapper "$@" ;;
+	-h | --help)
+		usage
+		exit 0
+		;;
+	*)
+		printf 'macrec: unknown command %s\n' "$cmd" >&2
+		usage >&2
+		exit 2
+		;;
+	esac
+}
+
+main "$@"

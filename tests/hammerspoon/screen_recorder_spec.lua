@@ -508,6 +508,12 @@ describe("screen recorder doctor inbox", function()
 		assert.is_nil(reason)
 		assert.equals("ok_1", id)
 		assert.same({ "env", "capture" }, probes)
+		local life_ok, life_reason, life_id, life_probes =
+			recorder.validateRequest({ action = "doctor", id = "life1", probes = { "lifecycle" } }, now, now)
+		assert.is_true(life_ok)
+		assert.is_nil(life_reason)
+		assert.equals("life1", life_id)
+		assert.same({ "lifecycle" }, life_probes)
 	end)
 
 	it("creates the inbox, watches it, and is idempotent on restart", function()

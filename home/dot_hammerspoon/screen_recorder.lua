@@ -18,6 +18,7 @@ M.ALLOWED_PROBES = {
 	cap = true,
 	encode = true,
 	detach = true,
+	lifecycle = true,
 }
 M.TASK_PATH = "/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 -- Plan regex is ^[A-Za-z0-9_-]{1,64}$. Lua patterns have no {n,m} quantifier,
@@ -30,6 +31,7 @@ M.PROBE_SECONDS = {
 	cap = 6,
 	encode = 90,
 	detach = 5,
+	lifecycle = 20,
 }
 
 if type(BobScreenRecorder) ~= "table" then
