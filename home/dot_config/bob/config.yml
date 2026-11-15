@@ -93,7 +93,7 @@ gcal:
   gog: ~/bin/gog
 #   account: bryanbugyi34@gmail.com # optional when gog holds exactly one account
 #   writer: kellys-macbook-pro # the one host label allowed to sync
-#   root: meet # default [root::] for Event Tasks
+  root: meet_inbox # default [root::] for Event Tasks
 #   calendars: # default: [primary]
 #     - id: primary
 #     # - id: <calendar id from `bob gcal calendars`>
