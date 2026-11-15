@@ -67,20 +67,23 @@ list_remote() {
 		2>/dev/null || true
 }
 
-declare -A have=()
-declare -A sources=()
 names=()
+name_sources=()
 
 add_name() {
 	local source="$1"
 	local name="$2"
+	local i
 	[[ -z "$name" ]] && return 0
 	[[ "$name" == *.mp4 ]] || return 0
-	if [[ -z "${have[$name]:-}" ]]; then
-		have[$name]=1
-		names+=("$name")
-	fi
-	sources[$name]+="${source} "
+	for ((i = 0; i < ${#names[@]}; i++)); do
+		if [[ "${names[$i]}" == "$name" ]]; then
+			name_sources[$i]+="${source} "
+			return 0
+		fi
+	done
+	names+=("$name")
+	name_sources+=("${source} ")
 }
 
 while IFS= read -r name; do
@@ -100,7 +103,10 @@ if [[ ${#names[@]} -eq 0 ]]; then
 	exit 1
 fi
 
-mapfile -t sorted < <(printf '%s\n' "${names[@]}" | sort -r)
+sorted=()
+while IFS= read -r name; do
+	sorted+=("$name")
+done < <(printf '%s\n' "${names[@]}" | sort -r)
 if [[ "$n" -gt ${#sorted[@]} ]]; then
 	echo "ERROR: no screen recording #$n found (local/apollo/athena ~/tmp/screencasts)" >&2
 	exit 1
@@ -108,12 +114,19 @@ fi
 
 basename="${sorted[$((n - 1))]}"
 local_path="${screencast_dir}/${basename}"
+basename_sources=""
+for i in "${!names[@]}"; do
+	if [[ "${names[$i]}" == "$basename" ]]; then
+		basename_sources="${name_sources[$i]}"
+		break
+	fi
+done
 
 mkdir -p "$screencast_dir"
 
 if ! [[ -s "$local_path" ]]; then
 	tried=()
-	for source in ${sources[$basename]}; do
+	for source in $basename_sources; do
 		case "$source" in
 		local | mac) continue ;;
 		esac

@@ -778,10 +778,16 @@ cmd_stop() {
 	fi
 	sdir="$(session_dir "$id")"
 	printf '%s' "$reason" >"${sdir}/stop.request"
-	rec="$(recorder_pid "$sdir")"
-	stop_recorder "$rec"
 	budget="$(awk -v a="$STOP_INT_WAIT" -v b="$STOP_TERM_WAIT" 'BEGIN { print a + b + 2 }')"
-	wait_file_gone_or_dead "$sdir" "$budget" || true
+	if ! wait_file_gone_or_dead "$sdir" "$budget"; then
+		# The wrapper watchdog is the normal stop owner. Signal directly only if
+		# it failed to process stop.request within the full escalation window.
+		rec="$(recorder_pid "$sdir")"
+		if pid_matches_recorder "$rec"; then
+			stop_recorder "$rec"
+		fi
+		wait_file_gone_or_dead "$sdir" "$budget" || true
+	fi
 	"$JQ_BIN" -n -c --arg id "$id" --arg stopped_by "$reason" '{id:$id,stopped_by:$stopped_by}'
 	printf '\n'
 }

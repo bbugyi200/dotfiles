@@ -19,6 +19,7 @@ function set_up() {
   FAKE_CAPTURE_CRASH=0
   FAKE_CAPTURE_SYSTEM=0
   FAKE_CAPTURE_IGNORE_INT=0
+  FAKE_CAPTURE_INVALID=0
   FAKE_V_SLEEP=2
   FAKE_DF_AVAIL=99999999
   FAKE_SHIP_FAIL=0
@@ -102,9 +103,9 @@ write_out() {
 if [[ "${FAKE_CAPTURE_IGNORE_INT:-0}" == "1" ]]; then
   trap 'printf "signal|INT\n" >>"${EVENT_LOG}"' INT
 else
-  trap 'printf "signal|INT\n" >>"${EVENT_LOG}"; write_out; exit 0' INT
+  trap 'printf "signal|INT\n" >>"${EVENT_LOG}"; [[ "${FAKE_CAPTURE_INVALID:-0}" == "1" ]] || write_out; exit 0' INT
 fi
-trap 'printf "signal|TERM\n" >>"${EVENT_LOG}"; write_out; exit 143' TERM
+trap 'printf "signal|TERM\n" >>"${EVENT_LOG}"; [[ "${FAKE_CAPTURE_INVALID:-0}" == "1" ]] || write_out; exit 143' TERM
 
 if [[ "${FAKE_CAPTURE_CRASH:-0}" == "1" ]]; then
   write_out
@@ -320,6 +321,7 @@ function test_start_stop_ships() {
   wait_session_field "${LAST_ID}" status done
   assert_equals "0" "$?"
   assert_contains "screencapture|" "$(cat "${EVENT_LOG}")"
+  assert_equals "1" "$(grep -c '^signal|INT' "${EVENT_LOG}")"
   assert_contains "--session ${LAST_ID}" "$(cat "${EVENT_LOG}")"
 }
 
@@ -538,4 +540,40 @@ function test_lifecycle_probe_round_trip() {
   assert_equals "true" "$(jq -r '.probes[0].ok' "${STDOUT_FILE}")"
   assert_equals "true" "$(jq -r '.probes[0].metrics.start_ok' "${STDOUT_FILE}")"
   assert_equals "true" "$(jq -r '.probes[0].metrics.stop_ok' "${STDOUT_FILE}")"
+}
+
+function test_lifecycle_probe_rejects_failed_session() {
+  PATH="${FAKE_BIN}:${PATH}" \
+    HOME="${TEST_HOME}" \
+    SCREENCAPTURE_BIN="${FAKE_BIN}/screencapture" \
+    FFPROBE_BIN="${FAKE_BIN}/ffprobe" \
+    JQ_BIN="$(command -v jq)" \
+    PERL_BIN="$(command -v perl)" \
+    UUIDGEN_BIN="${FAKE_BIN}/uuidgen" \
+    NOHUP_BIN="$(command -v nohup)" \
+    DF_BIN="${FAKE_BIN}/df" \
+    PS_BIN="$(command -v ps)" \
+    MKFIFO_BIN="$(command -v mkfifo)" \
+    MACREC_BIN="${SCRIPT}" \
+    MACREC_SHIP_BIN="${FAKE_BIN}/macrec_ship" \
+    MACREC_NO_REEXEC=1 \
+    MACREC_DOCTOR_NO_REEXEC=1 \
+    MACREC_POLL_INTERVAL=0.02 \
+    MACREC_READY_WAIT=2 \
+    MACREC_READY_GRACE=0.05 \
+    MACREC_STOP_INT_WAIT=0.4 \
+    MACREC_STOP_TERM_WAIT=0.3 \
+    MACREC_DOCTOR_LIFECYCLE_CAP=2 \
+    MACREC_DOCTOR_LIFECYCLE_HOLD=0.1 \
+    MACREC_DOCTOR_POLL_INTERVAL=0.02 \
+    EVENT_LOG="${EVENT_LOG}" \
+    FAKE_V_SLEEP=2 \
+    FAKE_CAPTURE_INVALID=1 \
+    bash "${DOCTOR}" run --id life-failed --rect 0,0,240,150 --probes lifecycle \
+    >"${STDOUT_FILE}" 2>"${STDERR_FILE}"
+  RUN_RC=$?
+  assert_equals "1" "${RUN_RC}"
+  assert_equals "false" "$(jq -r '.probes[0].ok' "${STDOUT_FILE}")"
+  assert_equals "failed" "$(jq -r '.probes[0].metrics.session_status' "${STDOUT_FILE}")"
+  assert_contains "probe capture was not a valid video" "$(jq -r '.probes[0].detail' "${STDOUT_FILE}")"
 }

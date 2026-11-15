@@ -812,7 +812,7 @@ probe_lifecycle() {
 	local jsonl="$1"
 	local rect="$2"
 	local macrec start_out stop_out start_rc stop_rc id ok detail metrics
-	local start_ok=false stop_ok=false
+	local start_ok=false stop_ok=false session_status="" session_error=""
 	macrec="$(resolve_macrec_bin)"
 	ok=true
 	detail=""
@@ -848,7 +848,41 @@ probe_lifecycle() {
 		stop_rc=$?
 		set -e
 		if [ "$stop_rc" -eq 0 ]; then
-			stop_ok=true
+			local stop_id session_file started now
+			stop_id="$(printf '%s' "$stop_out" | "$JQ_BIN" -r '.id // empty' 2>/dev/null || true)"
+			if [ "$stop_id" != "$id" ]; then
+				ok=false
+				detail="macrec stop returned session ${stop_id:-none}, expected ${id}"
+			else
+				session_file="$(macrec_root)/sessions/${id}/session.json"
+				started="$(now_s)"
+				while [ -f "$session_file" ]; do
+					session_status="$("$JQ_BIN" -r '.status // empty' "$session_file" 2>/dev/null || true)"
+					case "$session_status" in
+					done)
+						stop_ok=true
+						break
+						;;
+					failed | discarded)
+						session_error="$("$JQ_BIN" -r '.error // .status' "$session_file" 2>/dev/null || echo "$session_status")"
+						ok=false
+						detail="probe session ${session_status}: ${session_error}"
+						break
+						;;
+					esac
+					now="$(now_s)"
+					if perl_ge "$(perl_sub "$now" "$started")" 5; then
+						ok=false
+						detail="probe session did not finish (status: ${session_status:-missing})"
+						break
+					fi
+					sleep_s "$POLL_INTERVAL"
+				done
+				if [ ! -f "$session_file" ] && [ "$stop_ok" != true ] && [ "$ok" = true ]; then
+					ok=false
+					detail="probe session record disappeared before completion"
+				fi
+			fi
 		else
 			ok=false
 			detail="${detail:+$detail; }macrec stop failed (exit ${stop_rc})"
@@ -860,7 +894,9 @@ probe_lifecycle() {
 		--arg id "$id" \
 		--argjson start_exit "$start_rc" \
 		--argjson stop_exit "$stop_rc" \
-		'{start_ok:$start_ok,stop_ok:$stop_ok,id:$id,start_exit:$start_exit,stop_exit:$stop_exit}')"
+		--arg session_status "$session_status" \
+		--arg session_error "$session_error" \
+		'{start_ok:$start_ok,stop_ok:$stop_ok,id:$id,start_exit:$start_exit,stop_exit:$stop_exit,session_status:$session_status,session_error:$session_error}')"
 	write_probe "$jsonl" lifecycle "$( [ "$ok" = true ] && echo true || echo false )" "$metrics" "$detail"
 }
 
