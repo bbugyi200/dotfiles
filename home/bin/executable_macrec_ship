@@ -1,0 +1,961 @@
+#!/usr/bin/env bash
+#
+# macrec_ship — validate, encode, poster, publish, and notify for region
+# screen recordings. Runs inside the detached macrec wrapper after the
+# recorder exits (the wrapper holds owner.lock), or standalone for
+# --import and --retry. Only this process writes its session.json while it
+# runs; everyone else talks through flag files (stop.request, discard,
+# ack.notified, ack.adopted). Every session.json write is atomic.
+
+if [ -z "${MACREC_SHIP_NO_REEXEC:-}" ] && [ "${BASH_VERSINFO[0]}" -lt 4 ] && [ -x /opt/homebrew/bin/bash ]; then
+	exec /opt/homebrew/bin/bash "$0" "$@"
+fi
+
+set -eu
+set -o pipefail
+
+FFMPEG_BIN="${FFMPEG_BIN:-/opt/homebrew/bin/ffmpeg}"
+FFPROBE_BIN="${FFPROBE_BIN:-/opt/homebrew/bin/ffprobe}"
+JQ_BIN="${JQ_BIN:-/usr/bin/jq}"
+PERL_BIN="${PERL_BIN:-/usr/bin/perl}"
+UUIDGEN_BIN="${UUIDGEN_BIN:-/usr/bin/uuidgen}"
+OSASCRIPT_BIN="${OSASCRIPT_BIN:-/usr/bin/osascript}"
+SSH_BIN="${SSH_BIN:-ssh}"
+SCP_BIN="${SCP_BIN:-scp}"
+PGREP_BIN="${PGREP_BIN:-/usr/bin/pgrep}"
+
+SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=8 -o ConnectionAttempts=1 -o ServerAliveInterval=15 -o ServerAliveCountMax=4)
+
+# Spike parameters (tailnet runbook mac/screen-recording-2026-11.md).
+DURATION_TOLERANCE="${MACREC_SHIP_TOLERANCE:-2.0}"
+APOLLO_MIN_FREE_KB=$((5 * 1024 * 1024))
+PRUNE_LIMIT_BYTES=$((2 * 1024 * 1024 * 1024))
+RETRY_DELAY="${MACREC_SHIP_RETRY_DELAY:-5}"
+ACK_WAIT="${MACREC_SHIP_ACK_WAIT:-8}"
+POLL_INTERVAL="${MACREC_SHIP_POLL_INTERVAL:-0.1}"
+LOG_MAX_BYTES=1048576
+
+usage() {
+	cat <<'EOF'
+Usage:
+  macrec_ship --session ID [--retry] [--no-notify]
+  macrec_ship --import FILE [--name NAME] [--no-notify]
+
+Exit codes: 0 at least one host accepted the clip; 1 every host failed;
+2 usage.
+EOF
+}
+
+now_s() {
+	if [ -x "$PERL_BIN" ]; then
+		"$PERL_BIN" -MTime::HiRes=time -e 'printf "%.3f\n", time'
+	else
+		date +%s
+	fi
+}
+
+perl_sub() {
+	"$PERL_BIN" -e 'printf "%.3f\n", $ARGV[0] - $ARGV[1]' "$1" "$2"
+}
+
+perl_ge() {
+	"$PERL_BIN" -e 'exit($ARGV[0] + 0 >= $ARGV[1] + 0 ? 0 : 1)' "$1" "$2"
+}
+
+sleep_s() {
+	sleep "$1"
+}
+
+macrec_root() {
+	printf '%s\n' "${HOME}/tmp/screencasts/.macrec"
+}
+
+cast_dir() {
+	printf '%s\n' "${HOME}/tmp/screencasts"
+}
+
+ensure_dirs() {
+	root="$(macrec_root)"
+	mkdir -p "$root" "$(cast_dir)"
+	chmod 700 "$root" 2>/dev/null || true
+}
+
+log_line() {
+	root="$(macrec_root)"
+	log="${root}/macrec.log"
+	mkdir -p "$root"
+	if [ -f "$log" ]; then
+		size="$(wc -c <"$log" | tr -d ' ')"
+		if [ "${size:-0}" -gt "$LOG_MAX_BYTES" ]; then
+			mv "$log" "${log}.1"
+		fi
+	fi
+	printf '%s %s\n' "$(now_s)" "$*" >>"$log"
+}
+
+atomic_write() {
+	path="$1"
+	dir="$(dirname "$path")"
+	mkdir -p "$dir"
+	tmp="${path}.tmp.$$"
+	cat >"$tmp"
+	mv "$tmp" "$path"
+}
+
+file_bytes() {
+	if [ ! -f "$1" ]; then
+		printf '0\n'
+		return
+	fi
+	wc -c <"$1" | tr -d ' '
+}
+
+valid_id() {
+	printf '%s' "$1" | grep -Eq '^[A-Za-z0-9_-]{1,64}$'
+}
+
+valid_basename() {
+	printf '%s' "$1" | grep -Eq '^[A-Za-z0-9_.-]+\.(mp4|mov)$'
+}
+
+new_id() {
+	if [ -n "${MACREC_SHIP_ID:-}" ]; then
+		printf '%s\n' "$MACREC_SHIP_ID"
+		return
+	fi
+	if [ -x "$UUIDGEN_BIN" ]; then
+		"$UUIDGEN_BIN" | tr 'A-Z' 'a-z'
+		return
+	fi
+	"$PERL_BIN" -MTime::HiRes=time -e 'printf "d%x%x\n", int(time()*1000), int(rand()*1e9)'
+}
+
+session_get() {
+	dir="$1"
+	prog="$2"
+	"$JQ_BIN" -r "$prog" "${dir}/session.json"
+}
+
+# session_set <dir> <jq-prog> [jq-args...] — apply the filter,
+# bump updated_at, write atomically.
+session_set() {
+	dir="$1"
+	shift
+	prog="$1"
+	shift
+	now="$(now_s)"
+	tmp="${dir}/session.json.tmp.$$"
+	"$JQ_BIN" "$@" --argjson now "$now" "$prog | .updated_at = \$now" \
+		"${dir}/session.json" >"$tmp"
+	mv "$tmp" "${dir}/session.json"
+}
+
+set_status() {
+	session_set "$1" '.status = $status' --arg status "$2"
+}
+
+# Mirrors screen_recording_model.formatElapsed: M:SS from floor(seconds).
+format_elapsed() {
+	awk -v d="$1" 'BEGIN {
+		t = int(d + 0); if (t < 0) t = 0
+		printf "%d:%02d", int(t / 60), t % 60
+	}'
+}
+
+# Mirrors screen_recording_model.formatBytes (1000-based).
+format_bytes() {
+	awk -v b="$1" 'BEGIN {
+		b += 0
+		if (b < 1000) printf "%d B", int(b)
+		else if (b < 1000000) printf "%.1f kB", b / 1000
+		else if (b < 1000000000) printf "%.1f MB", b / 1000000
+		else printf "%.1f GB", b / 1000000000
+	}'
+}
+
+host_display() {
+	case "$1" in
+	apollo) printf 'Apollo\n' ;;
+	athena) printf 'Athena\n' ;;
+	*) printf '%s\n' "$1" ;;
+	esac
+}
+
+# Mirrors screen_recording_model.hostsLabel for the apollo/athena pair.
+hosts_label() {
+	apollo_status="$1"
+	athena_status="$2"
+	apollo_detail="$3"
+	athena_detail="$4"
+	successful=""
+	other=""
+	if [ "$apollo_status" = "ok" ]; then
+		successful="Apollo"
+	fi
+	if [ "$athena_status" = "ok" ]; then
+		if [ -n "$successful" ]; then
+			successful="${successful} + Athena"
+		else
+			successful="Athena"
+		fi
+	fi
+	if [ "$apollo_status" = "failed" ]; then
+		other="apollo failed"
+	elif [ "$apollo_status" = "skipped" ]; then
+		if [ -n "$apollo_detail" ]; then
+			other="apollo skipped (${apollo_detail})"
+		else
+			other="apollo skipped"
+		fi
+	fi
+	if [ "$athena_status" = "failed" ]; then
+		if [ -n "$other" ]; then
+			other="${other} · athena failed"
+		else
+			other="athena failed"
+		fi
+	elif [ "$athena_status" = "skipped" ]; then
+		if [ -n "$athena_detail" ]; then
+			part="athena skipped (${athena_detail})"
+		else
+			part="athena skipped"
+		fi
+		if [ -n "$other" ]; then
+			other="${other} · ${part}"
+		else
+			other="$part"
+		fi
+	fi
+	if [ -n "$successful" ] && [ -n "$other" ]; then
+		printf '%s · %s\n' "$successful" "$other"
+	elif [ -n "$successful" ]; then
+		printf '%s\n' "$successful"
+	elif [ -n "$other" ]; then
+		printf '%s\n' "$other"
+	else
+		printf 'No hosts\n'
+	fi
+}
+
+# True when ffprobe sees a video stream in the file.
+ffprobe_video_ok() {
+	out="$("$FFPROBE_BIN" -v error -show_entries stream=codec_type \
+		-of csv=p=0 "$1" 2>/dev/null || true)"
+	printf '%s' "$out" | grep -q '^video$'
+}
+
+ffprobe_duration() {
+	"$FFPROBE_BIN" -v error -show_entries format=duration \
+		-of default=nw=1:nk=1 "$1" 2>/dev/null || true
+}
+
+ffprobe_dims() {
+	"$FFPROBE_BIN" -v error -select_streams v:0 \
+		-show_entries stream=width,height -of csv=p=0 "$1" 2>/dev/null || true
+}
+
+ffprobe_has_audio() {
+	out="$("$FFPROBE_BIN" -v error -show_entries stream=codec_type \
+		-of csv=p=0 "$1" 2>/dev/null || true)"
+	printf '%s' "$out" | grep -q '^audio$'
+}
+
+# resolve_final <stem> <ext> — first non-colliding ~/tmp/screencasts name.
+resolve_final() {
+	stem="$1"
+	ext="$2"
+	cast="$(cast_dir)"
+	candidate="${stem}.${ext}"
+	if [ ! -e "${cast}/${candidate}" ]; then
+		printf '%s\n' "$candidate"
+		return
+	fi
+	n=2
+	while [ -e "${cast}/${stem}_${n}.${ext}" ]; do
+		n=$((n + 1))
+	done
+	printf '%s\n' "${stem}_${n}.${ext}"
+}
+
+# Encode raw.mov into the local cast directory. Prints the final basename.
+# Falls back: libx264 -> h264_videotoolbox -> -c copy remux -> raw .mov.
+encode_raw() {
+	raw="$1"
+	stem="$2"
+	cast="$(cast_dir)"
+	vf="fps=30,scale=w='if(gt(iw,ih),2560,-2)':h='if(gt(iw,ih),-2,2560)':flags=lanczos,format=yuv420p"
+
+	final="$(resolve_final "$stem" mp4)"
+	tmp="${cast}/${final%.mp4}.part.mp4"
+	log_line "encode ${raw} -> ${final}: trying libx264"
+	if "$FFMPEG_BIN" -y -hide_banner -loglevel error -i "$raw" \
+		-map 0:v:0 -map '0:a?' -vf "$vf" \
+		-c:v libx264 -preset veryfast -crf 23 \
+		-c:a aac -ac 1 -b:a 96k -movflags +faststart "$tmp" 2>/dev/null; then
+		mv -f "$tmp" "${cast}/${final}"
+		chmod 600 "${cast}/${final}" 2>/dev/null || true
+		printf '%s\n' "$final"
+		return 0
+	fi
+	rm -f "$tmp"
+	log_line "encode ${raw}: libx264 failed, trying h264_videotoolbox"
+	if "$FFMPEG_BIN" -y -hide_banner -loglevel error -i "$raw" \
+		-map 0:v:0 -map '0:a?' -vf "$vf" \
+		-c:v h264_videotoolbox -c:a aac -ac 1 -b:a 96k \
+		-movflags +faststart "$tmp" 2>/dev/null; then
+		mv -f "$tmp" "${cast}/${final}"
+		chmod 600 "${cast}/${final}" 2>/dev/null || true
+		printf '%s\n' "$final"
+		return 0
+	fi
+	rm -f "$tmp"
+	log_line "encode ${raw}: videotoolbox failed, trying -c copy remux"
+	if "$FFMPEG_BIN" -y -hide_banner -loglevel error -i "$raw" \
+		-map 0:v:0 -map '0:a?' -c copy -movflags +faststart "$tmp" 2>/dev/null; then
+		mv -f "$tmp" "${cast}/${final}"
+		chmod 600 "${cast}/${final}" 2>/dev/null || true
+		printf '%s\n' "$final"
+		return 0
+	fi
+	rm -f "$tmp"
+	log_line "encode ${raw}: remux failed, shipping raw .mov"
+	mov_final="$(resolve_final "$stem" mov)"
+	mov_tmp="${cast}/${mov_final%.mov}.part.mov"
+	if cp "$raw" "$mov_tmp" 2>/dev/null; then
+		mv -f "$mov_tmp" "${cast}/${mov_final}"
+		chmod 600 "${cast}/${mov_final}" 2>/dev/null || true
+		printf '%s\n' "$mov_final"
+		return 0
+	fi
+	rm -f "$mov_tmp"
+	return 1
+}
+
+# Build a 640px-wide poster from the middle of the clip. Never fatal.
+make_poster() {
+	final_path="$1"
+	poster="$2"
+	duration="$(ffprobe_duration "$final_path" | tr -d ' \n')"
+	case "$duration" in
+	'' | *[!0-9.]* | . | *.*.*) duration="10" ;;
+	esac
+	mid="$(awk -v d="$duration" 'BEGIN { m = d / 2; if (m < 0) m = 0; printf "%.3f", m }')"
+	if "$FFMPEG_BIN" -hide_banner -loglevel error -ss "$mid" -i "$final_path" \
+		-frames:v 1 -vf "scale=640:-1" "$poster" 2>/dev/null; then
+		chmod 600 "$poster" 2>/dev/null || true
+		return 0
+	fi
+	rm -f "$poster"
+	return 1
+}
+
+# One SSH probe per host: make the cast dir and report free KB.
+remote_free_kb() {
+	"$SSH_BIN" "${SSH_OPTS[@]}" "$1" \
+		"mkdir -p ~/tmp/screencasts && df -Pk ~/tmp/screencasts" 2>/dev/null \
+		| awk 'NR==2 {print $4}'
+}
+
+# Sweep remote .part files older than 24h. Best-effort.
+remote_sweep_parts() {
+	"$SSH_BIN" "${SSH_OPTS[@]}" "$1" \
+		'find ~/tmp/screencasts -maxdepth 1 -name ".*.part" -mmin +1440 -delete' \
+		2>/dev/null || true
+}
+
+# Prune apollo's timestamped clips to 2 GiB, never deleting just_uploaded.
+remote_prune_apollo() {
+	just_uploaded="$1"
+	if ! valid_basename "$just_uploaded"; then
+		return 0
+	fi
+	"$SSH_BIN" "${SSH_OPTS[@]}" apollo \
+		"just_uploaded='${just_uploaded}'
+		cd ~/tmp/screencasts || exit 0
+		total=0
+		for f in [0-9]*_[0-9]*.mp4; do
+			[ -f \"\$f\" ] || continue
+			sz=\$(wc -c <\"\$f\" 2>/dev/null || echo 0)
+			total=\$((total + sz))
+		done
+		if [ \"\$total\" -gt ${PRUNE_LIMIT_BYTES} ]; then
+			for f in [0-9]*_[0-9]*.mp4; do
+				[ \"\$total\" -le ${PRUNE_LIMIT_BYTES} ] && break
+				[ \"\$f\" = \"\$just_uploaded\" ] && continue
+				[ -f \"\$f\" ] || continue
+				sz=\$(wc -c <\"\$f\" 2>/dev/null || echo 0)
+				rm -f \"\$f\"
+				total=\$((total - sz))
+			done
+		fi" 2>/dev/null || true
+}
+
+# Upload one attempt: scp -p to .NAME.part, then mv + chmod into place.
+try_upload_once() {
+	host="$1"
+	local_path="$2"
+	base="$3"
+	if ! "$SCP_BIN" "${SSH_OPTS[@]}" -p "$local_path" \
+		"${host}:~/tmp/screencasts/.${base}.part" 2>/dev/null; then
+		return 1
+	fi
+	if ! "$SSH_BIN" "${SSH_OPTS[@]}" "$host" \
+		"mv -f ~/tmp/screencasts/.${base}.part ~/tmp/screencasts/${base} && chmod 600 ~/tmp/screencasts/${base}" \
+		2>/dev/null; then
+		return 1
+	fi
+	return 0
+}
+
+# upload_one_host <host> <local_path> <base> <resultfile>
+# Writes "<ok|failed|skipped>|<detail>" to the result file.
+upload_one_host() {
+	host="$1"
+	local_path="$2"
+	base="$3"
+	result="$4"
+	free=""
+	if ! free="$(remote_free_kb "$host")"; then
+		printf 'failed|ssh probe failed\n' >"$result"
+		return 0
+	fi
+	if [ -z "$free" ]; then
+		printf 'failed|ssh probe failed\n' >"$result"
+		return 0
+	fi
+	if [ "$host" = "apollo" ]; then
+		case "$free" in
+		'' | *[!0-9]*) free=0 ;;
+		esac
+		if [ "$free" -lt "$APOLLO_MIN_FREE_KB" ]; then
+			gib="$(awk -v k="$free" 'BEGIN { printf "%.1f", k / 1048576 }')"
+			printf 'skipped|low disk (%s GiB free)\n' "$gib" >"$result"
+			return 0
+		fi
+	fi
+	remote_sweep_parts "$host"
+	if try_upload_once "$host" "$local_path" "$base"; then
+		:
+	else
+		sleep_s "$RETRY_DELAY"
+		if ! try_upload_once "$host" "$local_path" "$base"; then
+			printf 'failed|upload failed\n' >"$result"
+			return 0
+		fi
+	fi
+	if [ "$host" = "apollo" ]; then
+		remote_prune_apollo "$base"
+	fi
+	printf 'ok|\n' >"$result"
+	return 0
+}
+
+# osascript fallback: same wording as the Hammerspoon notification, but this
+# path never touches the clipboard. Title varies, so unlike macscrot it takes
+# the title as argv instead of hardcoding it.
+notify_osascript() {
+	title="$1"
+	subtitle="$2"
+	body="$3"
+	if [ -x "$OSASCRIPT_BIN" ]; then
+		bin="$OSASCRIPT_BIN"
+	elif command -v osascript >/dev/null 2>&1; then
+		bin="osascript"
+	else
+		return 1
+	fi
+	"$bin" -e 'on run argv
+display notification (item 3 of argv) with title (item 1 of argv) subtitle (item 2 of argv)
+end run' "$title" "$subtitle" "$body"
+}
+
+hammerspoon_running() {
+	"$PGREP_BIN" -x Hammerspoon >/dev/null 2>&1
+}
+
+# notify_stage <session-dir> — ack wait, then the osascript fallback.
+notify_stage() {
+	dir="$1"
+	if [ "$NOTIFY" = "0" ]; then
+		return 0
+	fi
+	id="$(session_get "$dir" '.id')"
+	status="$(session_get "$dir" '.status')"
+	stop_reason="$(session_get "$dir" '.stop_reason // ""')"
+	recovered="$(session_get "$dir" '.recovered // false')"
+	duration="$(session_get "$dir" '.duration_s // 0')"
+	bytes="$(session_get "$dir" '.bytes // 0')"
+	apollo_status="$(session_get "$dir" '.hosts.apollo // "pending"')"
+	athena_status="$(session_get "$dir" '.hosts.athena // "pending"')"
+	apollo_detail="$(session_get "$dir" '.host_detail.apollo // ""')"
+	athena_detail="$(session_get "$dir" '.host_detail.athena // ""')"
+	mp4="$(session_get "$dir" '.mp4 // ""')"
+	name="$(session_get "$dir" '.name // ""')"
+	if [ -n "$mp4" ]; then
+		base="$(basename "$mp4")"
+		path="~/tmp/screencasts/${base}"
+	elif [ -n "$name" ]; then
+		path="~/tmp/screencasts/${name}.mp4"
+	else
+		path="the saved recording"
+	fi
+	label="$(hosts_label "$apollo_status" "$athena_status" "$apollo_detail" "$athena_detail")"
+	details="$(format_elapsed "$duration") · $(format_bytes "$bytes") · ${label}"
+	if [ "$status" = "failed" ]; then
+		title="Recording not uploaded"
+		body="Saved locally: ${path} · Retry from the menu bar"
+		subtitle="$details"
+	else
+		if [ "$recovered" = "true" ]; then
+			title="Recovered recording uploaded"
+		else
+			title="Recording uploaded"
+		fi
+		if [ "$stop_reason" = "cap" ]; then
+			details="Stopped at $(format_elapsed "$duration") cap · ${details}"
+		fi
+		subtitle="$details"
+		body="$path"
+	fi
+	if hammerspoon_running; then
+		start="$(now_s)"
+		while [ ! -f "${dir}/ack.notified" ]; do
+			now="$(now_s)"
+			if perl_ge "$(perl_sub "$now" "$start")" "$ACK_WAIT"; then
+				break
+			fi
+			sleep_s "$POLL_INTERVAL"
+		done
+		if [ -f "${dir}/ack.notified" ]; then
+			return 0
+		fi
+	fi
+	notify_osascript "$title" "$subtitle" "$body" || \
+		log_line "notify ${id}: osascript unavailable"
+	return 0
+}
+
+# Finalizing: the raw file must hold a video stream whose duration covers
+# the recorded wall clock within the spike's tolerance.
+finalize_stage() {
+	dir="$1"
+	raw="${dir}/raw.mov"
+	set_status "$dir" finalizing
+	if [ ! -s "$raw" ]; then
+		set_status "$dir" failed
+		session_set "$dir" '.error = "raw is missing or empty"'
+		log_line "finalize ${dir}: raw missing or empty"
+		return 1
+	fi
+	if ! ffprobe_video_ok "$raw"; then
+		set_status "$dir" failed
+		session_set "$dir" '.error = "raw has no video stream (truncated capture)"'
+		log_line "finalize ${dir}: no video stream"
+		return 1
+	fi
+	duration="$(ffprobe_duration "$raw" | tr -d ' \n')"
+	case "$duration" in
+	'' | *[!0-9.]* | . | *.*.*)
+		set_status "$dir" failed
+		session_set "$dir" '.error = "raw has no readable duration (truncated capture)"'
+		log_line "finalize ${dir}: unreadable duration"
+		return 1
+		;;
+	esac
+	started="$(session_get "$dir" '.started_at // empty')"
+	ended="$(session_get "$dir" '.ended_at // empty')"
+	if [ -z "$ended" ] || [ "$ended" = "null" ]; then
+		ended="$(now_s)"
+		session_set "$dir" '.ended_at = $t' --argjson t "$ended"
+		started="$(session_get "$dir" '.started_at // empty')"
+	fi
+	wall="$(perl_sub "$ended" "${started:-$ended}")"
+	bound="$(perl_sub "$wall" "$DURATION_TOLERANCE")"
+	if perl_ge "$bound" "0"; then
+		:
+	else
+		bound="0"
+	fi
+	if ! perl_ge "$duration" "$bound"; then
+		set_status "$dir" failed
+		session_set "$dir" '.error = $e' --arg e "raw is truncated (duration ${duration}s, wall ${wall}s)"
+		log_line "finalize ${dir}: truncated duration=${duration} wall=${wall}"
+		return 1
+	fi
+	session_set "$dir" '.duration_s = $d' --argjson d "$duration"
+	log_line "finalize ${dir}: ok duration=${duration} wall=${wall}"
+	return 0
+}
+
+# Encoding: spike's libx264 flags with the fallback chain. Records the
+# output stats on the session.
+encode_stage() {
+	dir="$1"
+	raw="${dir}/raw.mov"
+	set_status "$dir" encoding
+	stem="$(session_get "$dir" '.name')"
+	if [ -z "$stem" ] || [ "$stem" = "null" ]; then
+		set_status "$dir" failed
+		session_set "$dir" '.error = "session has no name"'
+		return 1
+	fi
+	final=""
+	if ! final="$(encode_raw "$raw" "$stem")"; then
+		set_status "$dir" failed
+		session_set "$dir" '.error = "encoding failed on every encoder"'
+		log_line "encode ${dir}: every encoder failed"
+		return 1
+	fi
+	if ! valid_basename "$final"; then
+		set_status "$dir" failed
+		session_set "$dir" '.error = "encoder produced an unsafe name"'
+		return 1
+	fi
+	final_stem="${final%.*}"
+	if [ "$final_stem" != "$stem" ]; then
+		session_set "$dir" '.name = $n' --arg n "$final_stem"
+	fi
+	final_path="$(cast_dir)/${final}"
+	duration="$(ffprobe_duration "$final_path" | tr -d ' \n')"
+	case "$duration" in
+	'' | *[!0-9.]* | . | *.*.*) duration="$(session_get "$dir" '.duration_s // 0')" ;;
+	esac
+	dims="$(ffprobe_dims "$final_path" | tr -d ' \n')"
+	width=0
+	height=0
+	case "$dims" in
+	*,*)
+		width="${dims%,*}"
+		height="${dims#*,}"
+		;;
+	esac
+	case "$width$height" in
+	'' | *[!0-9]*) width=0; height=0 ;;
+	esac
+	has_audio=false
+	if ffprobe_has_audio "$final_path"; then
+		has_audio=true
+	fi
+	bytes="$(file_bytes "$final_path")"
+	session_set "$dir" '.mp4 = $p | .duration_s = $d | .width = $w | .height = $h | .has_audio = $a | .bytes = $b' \
+		--arg p "$final_path" --argjson d "$duration" \
+		--argjson w "$width" --argjson h "$height" \
+		--argjson a "$has_audio" --argjson b "$bytes"
+	poster="${dir}/poster.jpg"
+	if make_poster "$final_path" "$poster"; then
+		session_set "$dir" '.poster = $p' --arg p "$poster"
+	else
+		session_set "$dir" '.poster = ""'
+		log_line "encode ${dir}: poster failed, continuing"
+	fi
+	log_line "encode ${dir}: ${final} duration=${duration} ${width}x${height} audio=${has_audio} bytes=${bytes}"
+	return 0
+}
+
+# True when the session already points at a valid local MP4 (retry skip).
+valid_mp4_present() {
+	dir="$1"
+	mp4="$(session_get "$dir" '.mp4 // ""')"
+	if [ -z "$mp4" ] || [ "$mp4" = "null" ]; then
+		return 1
+	fi
+	if [ ! -s "$mp4" ]; then
+		return 1
+	fi
+	ffprobe_video_ok "$mp4"
+}
+
+# Uploading: per host in parallel, one result file each. Updates hosts and
+# host_detail, then marks done (>=1 ok, raw deleted) or failed (raw kept).
+upload_stage() {
+	dir="$1"
+	only_pending="$2"
+	set_status "$dir" uploading
+	mp4="$(session_get "$dir" '.mp4 // ""')"
+	if [ -z "$mp4" ] || [ "$mp4" = "null" ] || [ ! -s "$mp4" ]; then
+		set_status "$dir" failed
+		session_set "$dir" '.error = "no local MP4 to upload"'
+		return 1
+	fi
+	base="$(basename "$mp4")"
+	apollo_want=1
+	athena_want=1
+	if [ "$only_pending" = "1" ]; then
+		if [ "$(session_get "$dir" '.hosts.apollo // "pending"')" = "ok" ]; then
+			apollo_want=0
+		fi
+		if [ "$(session_get "$dir" '.hosts.athena // "pending"')" = "ok" ]; then
+			athena_want=0
+		fi
+	fi
+	results="${dir}/upload.results"
+	rm -rf "$results"
+	mkdir -p "$results"
+	if [ "$apollo_want" = "1" ]; then
+		upload_one_host apollo "$mp4" "$base" "${results}/apollo" &
+		apollo_pid=$!
+	else
+		printf 'ok|\n' >"${results}/apollo"
+		apollo_pid=""
+	fi
+	if [ "$athena_want" = "1" ]; then
+		upload_one_host athena "$mp4" "$base" "${results}/athena" &
+		athena_pid=$!
+	else
+		printf 'ok|\n' >"${results}/athena"
+		athena_pid=""
+	fi
+	if [ -n "$apollo_pid" ]; then
+		wait "$apollo_pid" || true
+	fi
+	if [ -n "$athena_pid" ]; then
+		wait "$athena_pid" || true
+	fi
+	apollo_line="$(cat "${results}/apollo" 2>/dev/null || printf 'failed|upload lost\n')"
+	athena_line="$(cat "${results}/athena" 2>/dev/null || printf 'failed|upload lost\n')"
+	apollo_status="${apollo_line%%|*}"
+	apollo_detail="${apollo_line#*|}"
+	athena_status="${athena_line%%|*}"
+	athena_detail="${athena_line#*|}"
+	if [ "$apollo_want" = "0" ]; then
+		apollo_status="ok"
+		apollo_detail="$(session_get "$dir" '.host_detail.apollo // ""')"
+	fi
+	if [ "$athena_want" = "0" ]; then
+		athena_status="ok"
+		athena_detail="$(session_get "$dir" '.host_detail.athena // ""')"
+	fi
+	session_set "$dir" '.hosts.apollo = $a | .hosts.athena = $t | .host_detail.apollo = $ad | .host_detail.athena = $td' \
+		--arg a "$apollo_status" --arg t "$athena_status" \
+		--arg ad "$apollo_detail" --arg td "$athena_detail"
+	rm -rf "$results"
+	ok_count=0
+	if [ "$apollo_status" = "ok" ]; then
+		ok_count=$((ok_count + 1))
+	fi
+	if [ "$athena_status" = "ok" ]; then
+		ok_count=$((ok_count + 1))
+	fi
+	log_line "upload ${dir}: apollo=${apollo_status} athena=${athena_status}"
+	if [ "$ok_count" -gt 0 ]; then
+		set_status "$dir" done
+		session_set "$dir" '.error = ""'
+		rm -f "${dir}/raw.mov"
+		return 0
+	fi
+	set_status "$dir" failed
+	session_set "$dir" '.error = $e' --arg e "upload failed (apollo: ${apollo_status}, athena: ${athena_status})"
+	return 1
+}
+
+# Run the full pipeline for an existing session dir. Prints a summary JSON.
+run_pipeline() {
+	dir="$1"
+	skip_encode="$2"
+	id="$(session_get "$dir" '.id')"
+	if [ "$skip_encode" = "1" ]; then
+		log_line "ship ${id}: retry reuses existing MP4"
+	else
+		if ! finalize_stage "$dir"; then
+			notify_stage "$dir"
+			return 1
+		fi
+		if ! encode_stage "$dir"; then
+			notify_stage "$dir"
+			return 1
+		fi
+	fi
+	if upload_stage "$dir" "$ONLY_PENDING"; then
+		notify_stage "$dir"
+		return 0
+	fi
+	notify_stage "$dir"
+	return 1
+}
+
+print_summary() {
+	dir="$1"
+	"$JQ_BIN" -c '{id, name, status}' "${dir}/session.json"
+}
+
+cmd_session() {
+	id=""
+	retry=0
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		--retry)
+			retry=1
+			shift
+			;;
+		--no-notify)
+			NOTIFY=0
+			shift
+			;;
+		--session)
+			shift
+			;;
+		-*)
+			printf 'macrec_ship: unknown argument %s\n' "$1" >&2
+			usage >&2
+			exit 2
+			;;
+		*)
+			if [ -z "$id" ]; then
+				id="$1"
+				shift
+			else
+				printf 'macrec_ship: unexpected argument %s\n' "$1" >&2
+				usage >&2
+				exit 2
+			fi
+			;;
+		esac
+	done
+	if [ -z "$id" ] || ! valid_id "$id"; then
+		printf 'macrec_ship: invalid session id\n' >&2
+		usage >&2
+		exit 2
+	fi
+	ensure_dirs
+	dir="$(macrec_root)/sessions/${id}"
+	if [ ! -f "${dir}/session.json" ]; then
+		printf 'macrec_ship: no such session %s\n' "$id" >&2
+		exit 2
+	fi
+	ONLY_PENDING=0
+	skip_encode=0
+	if [ "$retry" = "1" ]; then
+		ONLY_PENDING=1
+		if valid_mp4_present "$dir"; then
+			skip_encode=1
+		fi
+		session_set "$dir" '.recovered = false'
+	else
+		ONLY_PENDING=0
+	fi
+	if [ "$skip_encode" = "1" ]; then
+		set_status "$dir" uploading
+	fi
+	if run_pipeline "$dir" "$skip_encode"; then
+		print_summary "$dir"
+		exit 0
+	fi
+	print_summary "$dir"
+	exit 1
+}
+
+cmd_import() {
+	file=""
+	name=""
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		--import)
+			shift
+			;;
+		--name)
+			name="$2"
+			shift 2
+			;;
+		--no-notify)
+			NOTIFY=0
+			shift
+			;;
+		-*)
+			printf 'macrec_ship: unknown argument %s\n' "$1" >&2
+			usage >&2
+			exit 2
+			;;
+		*)
+			if [ -z "$file" ]; then
+				file="$1"
+				shift
+			else
+				printf 'macrec_ship: unexpected argument %s\n' "$1" >&2
+				usage >&2
+				exit 2
+			fi
+			;;
+		esac
+	done
+	if [ -z "$file" ] || [ ! -f "$file" ]; then
+		printf 'macrec_ship: import file not found: %s\n' "$file" >&2
+		usage >&2
+		exit 2
+	fi
+	if [ -z "$name" ]; then
+		name="$(basename "$file")"
+		name="${name%.*}"
+	fi
+	case "$name" in
+	'' | *[!A-Za-z0-9_.-]*)
+		printf 'macrec_ship: invalid name %s\n' "$name" >&2
+		exit 2
+		;;
+	esac
+	ensure_dirs
+	id="$(new_id)"
+	if ! valid_id "$id"; then
+		printf 'macrec_ship: could not allocate id\n' >&2
+		exit 2
+	fi
+	dir="$(macrec_root)/sessions/${id}"
+	mkdir -p "$dir"
+	chmod 700 "$dir" 2>/dev/null || true
+	if ! cp "$file" "${dir}/raw.mov" 2>/dev/null; then
+		printf 'macrec_ship: could not copy %s\n' "$file" >&2
+		exit 1
+	fi
+	now="$(now_s)"
+	"$JQ_BIN" -n -c --argjson schema 1 --arg id "$id" --arg name "$name" \
+		--argjson started_at "$now" --argjson ended_at "$now" --argjson updated_at "$now" \
+		'{
+			schema: $schema, id: $id, name: $name,
+			region: {x: 0, y: 0, w: 0, h: 0},
+			mic: false, probe: false, cap_seconds: 600,
+			started_at: $started_at, ended_at: $ended_at, updated_at: $updated_at,
+			status: "recording", stop_reason: "import",
+			duration_s: 0, bytes: 0, width: 0, height: 0,
+			has_audio: false, mp4: "", poster: "",
+			hosts: {apollo: "pending", athena: "pending"},
+			host_detail: {apollo: "", athena: ""},
+			error: "", recovered: false
+		}' | atomic_write "${dir}/session.json"
+	chmod 600 "${dir}/session.json" 2>/dev/null || true
+	log_line "import ${id}: ${file} as ${name}"
+	ONLY_PENDING=0
+	if run_pipeline "$dir" "0"; then
+		print_summary "$dir"
+		exit 0
+	fi
+	print_summary "$dir"
+	exit 1
+}
+
+NOTIFY=1
+ONLY_PENDING=0
+
+main() {
+	if [ $# -lt 1 ]; then
+		usage >&2
+		exit 2
+	fi
+	case "$1" in
+	--session)
+		cmd_session "$@"
+		;;
+	--import)
+		cmd_import "$@"
+		;;
+	-h | --help)
+		usage
+		exit 0
+		;;
+	*)
+		printf 'macrec_ship: unknown command %s\n' "$1" >&2
+		usage >&2
+		exit 2
+		;;
+	esac
+}
+
+main "$@"
