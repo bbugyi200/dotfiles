@@ -1,0 +1,1026 @@
+#!/usr/bin/env bash
+#
+# macrec_doctor — on-device probes and the SSH/Hammerspoon request handshake
+# for region screen recording. `request` can run over SSH; `run` executes
+# inside the Mac GUI session under Hammerspoon's Screen Recording grant.
+
+if [ -z "${MACREC_DOCTOR_NO_REEXEC:-}" ] && [ "${BASH_VERSINFO[0]}" -lt 4 ] && [ -x /opt/homebrew/bin/bash ]; then
+	exec /opt/homebrew/bin/bash "$0" "$@"
+fi
+
+set -eu
+set -o pipefail
+
+SCREENCAPTURE_BIN="${SCREENCAPTURE_BIN:-/usr/sbin/screencapture}"
+FFMPEG_BIN="${FFMPEG_BIN:-/opt/homebrew/bin/ffmpeg}"
+FFPROBE_BIN="${FFPROBE_BIN:-/opt/homebrew/bin/ffprobe}"
+JQ_BIN="${JQ_BIN:-/usr/bin/jq}"
+PERL_BIN="${PERL_BIN:-/usr/bin/perl}"
+UUIDGEN_BIN="${UUIDGEN_BIN:-/usr/bin/uuidgen}"
+SW_VERS_BIN="${SW_VERS_BIN:-/usr/bin/sw_vers}"
+HOSTNAME_BIN="${HOSTNAME_BIN:-/bin/hostname}"
+NOHUP_BIN="${NOHUP_BIN:-/usr/bin/nohup}"
+
+# Accent fill of the Hammerspoon test card (#E3413B).
+CARD_R=227
+CARD_G=65
+CARD_B=59
+CARD_RGB_TOLERANCE=40
+
+DEFAULT_PROBES="env,capture,stop,cap,encode"
+DEFAULT_TIMEOUT=180
+DEFAULT_PICKUP=15
+CAPTURE_SECONDS="${MACREC_DOCTOR_CAPTURE_SECONDS:-3}"
+CAP_SECONDS="${MACREC_DOCTOR_CAP_SECONDS:-3}"
+ENCODE_SECONDS="${MACREC_DOCTOR_ENCODE_SECONDS:-60}"
+STOP_CAPTURE_SECONDS="${MACREC_DOCTOR_STOP_CAPTURE_SECONDS:-0.5}"
+STOP_WAIT_SECONDS="${MACREC_DOCTOR_STOP_WAIT_SECONDS:-8}"
+DETACH_READY_SECONDS="${MACREC_DOCTOR_DETACH_READY_SECONDS:-1}"
+POLL_INTERVAL="${MACREC_DOCTOR_POLL_INTERVAL:-0.1}"
+PICKUP_SECONDS="${MACREC_DOCTOR_PICKUP_SECONDS:-$DEFAULT_PICKUP}"
+LOG_MAX_BYTES=1048576
+
+usage() {
+	cat <<'EOF'
+Usage:
+  macrec_doctor request [--probes LIST] [--timeout S] [--keep]
+  macrec_doctor run --id ID --rect X,Y,W,H --probes LIST [--keep]
+  macrec_doctor detach-stop --id ID
+
+Exit codes (request): 0 all probes pass; 1 some probe fails; 2 usage;
+3 not picked up within 15s, or refused (locked/busy/invalid); 4 timeout.
+EOF
+}
+
+now_s() {
+	if [ -x "$PERL_BIN" ]; then
+		"$PERL_BIN" -MTime::HiRes=time -e 'printf "%.3f\n", time'
+	else
+		date +%s
+	fi
+}
+
+# Subtract two floats. Arguments are passed out-of-band so bash never
+# interpolates them into Perl source.
+perl_sub() {
+	"$PERL_BIN" -e 'printf "%.3f\n", $ARGV[0] - $ARGV[1]' "$1" "$2"
+}
+
+# True (exit 0) when $1 >= $2, comparing as floats.
+perl_ge() {
+	"$PERL_BIN" -e 'exit($ARGV[0] + 0 >= $ARGV[1] + 0 ? 0 : 1)' "$1" "$2"
+}
+
+sleep_s() {
+	sleep "$1"
+}
+
+macrec_root() {
+	printf '%s\n' "${HOME}/tmp/screencasts/.macrec"
+}
+
+ensure_dirs() {
+	local root requests doctor
+	root="$(macrec_root)"
+	requests="${root}/requests"
+	doctor="${root}/doctor"
+	mkdir -p "$root" "$requests" "$doctor"
+	chmod 700 "$root" "$requests" "$doctor" 2>/dev/null || true
+}
+
+log_line() {
+	local root log size
+	root="$(macrec_root)"
+	log="${root}/macrec.log"
+	mkdir -p "$root"
+	if [ -f "$log" ]; then
+		size="$(wc -c <"$log" | tr -d ' ')"
+		if [ "${size:-0}" -gt "$LOG_MAX_BYTES" ]; then
+			mv "$log" "${log}.1"
+		fi
+	fi
+	printf '%s %s\n' "$(now_s)" "$*" >>"$log"
+}
+
+atomic_write() {
+	local path="$1"
+	local dir tmp
+	dir="$(dirname "$path")"
+	mkdir -p "$dir"
+	tmp="${path}.tmp.$$"
+	cat >"$tmp"
+	mv "$tmp" "$path"
+}
+
+new_id() {
+	if [ -n "${MACREC_DOCTOR_ID:-}" ]; then
+		printf '%s\n' "$MACREC_DOCTOR_ID"
+		return
+	fi
+	if [ -x "$UUIDGEN_BIN" ]; then
+		"$UUIDGEN_BIN" | tr 'A-Z' 'a-z'
+		return
+	fi
+	"$PERL_BIN" -MTime::HiRes=time -e 'printf "d%x%x\n", int(time()*1000), int(rand()*1e9)'
+}
+
+valid_id() {
+	printf '%s' "$1" | grep -Eq '^[A-Za-z0-9_-]{1,64}$'
+}
+
+split_probes() {
+	printf '%s\n' "$1" | tr ',' '\n' | sed '/^$/d'
+}
+
+probe_allowed() {
+	case "$1" in
+	env | capture | stop | cap | encode | detach) return 0 ;;
+	*) return 1 ;;
+	esac
+}
+
+validate_probes_list() {
+	local raw="$1"
+	local name count
+	count=0
+	for name in $(split_probes "$raw"); do
+		if ! probe_allowed "$name"; then
+			return 1
+		fi
+		count=$((count + 1))
+	done
+	[ "$count" -gt 0 ]
+}
+
+file_bytes() {
+	if [ ! -f "$1" ]; then
+		printf '0\n'
+		return
+	fi
+	wc -c <"$1" | tr -d ' '
+}
+
+wait_pid_seconds() {
+	local pid="$1"
+	local budget="$2"
+	local start now
+	start="$(now_s)"
+	while kill -0 "$pid" 2>/dev/null; do
+		now="$(now_s)"
+		if perl_ge "$(perl_sub "$now" "$start")" "$budget"; then
+			return 1
+		fi
+		sleep_s "$POLL_INTERVAL"
+	done
+	return 0
+}
+
+wait_file_seconds() {
+	local path="$1"
+	local budget="$2"
+	local start now
+	start="$(now_s)"
+	while [ ! -f "$path" ]; do
+		now="$(now_s)"
+		if perl_ge "$(perl_sub "$now" "$start")" "$budget"; then
+			return 1
+		fi
+		sleep_s "$POLL_INTERVAL"
+	done
+	return 0
+}
+
+pid_matches_recorder() {
+	local pid="$1"
+	local base comm args
+	if ! kill -0 "$pid" 2>/dev/null; then
+		return 1
+	fi
+	base="$(basename "$SCREENCAPTURE_BIN")"
+	comm="$(ps -p "$pid" -o comm= 2>/dev/null | tr -d ' ')"
+	args="$(ps -p "$pid" -o args= 2>/dev/null || true)"
+	if [ "$comm" = "$base" ] || [ "$comm" = "screencapture" ]; then
+		return 0
+	fi
+	case "$args" in
+	*"$base"* | *screencapture*) return 0 ;;
+	esac
+	return 1
+}
+
+signal_recorder() {
+	local pid="$1"
+	local sig="$2"
+	if pid_matches_recorder "$pid"; then
+		kill "-${sig}" "$pid" 2>/dev/null || true
+	fi
+}
+
+cleanup_pid() {
+	local pid="$1"
+	if [ -z "$pid" ]; then
+		return
+	fi
+	if kill -0 "$pid" 2>/dev/null; then
+		# This is the child we spawned for the probe; TERM it even if
+		# `ps` comm is the interpreter of a stub script.
+		kill -TERM "$pid" 2>/dev/null || true
+		wait_pid_seconds "$pid" 1 || true
+	fi
+}
+
+close_fifo_write() {
+	# Close only the FIFO write end on fd 4. Do not redirect stderr.
+	exec 4>&- || true
+}
+
+start_screencapture() {
+	local out="$1"
+	local rect="$2"
+	local vflag="${3:-}"
+	local fifo="$4"
+	close_fifo_write
+	rm -f "$fifo"
+	mkfifo "$fifo"
+	# Restore default INT/QUIT in the child: bash otherwise starts background
+	# processes with those signals ignored, so SIGINT would never stop them.
+	(
+		trap - INT QUIT
+		if [ -n "$vflag" ]; then
+			exec "$SCREENCAPTURE_BIN" -v -x -k -C -V "$vflag" -R "$rect" "$out"
+		else
+			exec "$SCREENCAPTURE_BIN" -v -x -k -C -R "$rect" "$out"
+		fi
+	) <"$fifo" &
+	REC_PID=$!
+	# Open the write end after the reader is spawned so open() can complete.
+	exec 4>"$fifo"
+}
+
+ffprobe_json() {
+	"$FFPROBE_BIN" -v error -show_streams -show_format -of json "$1" 2>/dev/null || true
+}
+
+video_valid() {
+	local file="$1"
+	local json
+	if [ ! -s "$file" ]; then
+		return 1
+	fi
+	json="$(ffprobe_json "$file")"
+	if [ -z "$json" ]; then
+		return 1
+	fi
+	printf '%s' "$json" | "$JQ_BIN" -e '
+		(.streams // []) | map(select(.codec_type == "video" or .width != null)) | length > 0
+	' >/dev/null 2>&1
+}
+
+probe_metrics_from_ffprobe() {
+	local file="$1"
+	local json
+	json="$(ffprobe_json "$file")"
+	if [ -z "$json" ]; then
+		printf '%s' '{"width":0,"height":0,"codec":"","fps":0,"bitrate":0,"duration_s":0}'
+		return
+	fi
+	printf '%s' "$json" | "$JQ_BIN" -c '
+		def num(v): (v | tostring | tonumber? // 0);
+		def fps(v):
+		  if (v | type) == "string" and (v | contains("/")) then
+		    (v | split("/") | (num(.[0]) / (num(.[1]) + (if num(.[1]) == 0 then 1 else 0 end))))
+		  else num(v) end;
+		(.streams // [] | map(select(.codec_type == "video" or .width != null)) | .[0] // {}) as $v |
+		{
+		  width: num($v.width),
+		  height: num($v.height),
+		  codec: ($v.codec_name // ""),
+		  fps: fps($v.r_frame_rate // $v.avg_frame_rate // "0/1"),
+		  bitrate: num($v.bit_rate // .format.bit_rate // 0),
+		  duration_s: num($v.duration // .format.duration // 0)
+		}
+	'
+}
+
+mean_rgb() {
+	local file="$1"
+	local mid="$2"
+	"$FFMPEG_BIN" -hide_banner -loglevel error -ss "$mid" -i "$file" -frames:v 1 \
+		-vf "crop=iw/2:ih/2:(iw/2)-(iw/4):(ih/2)-(ih/4),scale=1:1,format=rgb24" \
+		-f rawvideo - 2>/dev/null | "$PERL_BIN" -e 'read(STDIN,$b,3) || exit 1; print join(" ", unpack("C*",$b)), "\n"'
+}
+
+card_visible_from_rgb() {
+	local r="$1" g="$2" b="$3"
+	"$PERL_BIN" -e '
+		my ($r,$g,$b,$cr,$cg,$cb,$tol) = @ARGV;
+		my $d = sqrt(($r-$cr)**2 + ($g-$cg)**2 + ($b-$cb)**2);
+		exit($d <= $tol ? 0 : 1);
+	' "$r" "$g" "$b" "$CARD_R" "$CARD_G" "$CARD_B" "$CARD_RGB_TOLERANCE"
+}
+
+host_name() {
+	if [ -x "$HOSTNAME_BIN" ]; then
+		"$HOSTNAME_BIN" -s 2>/dev/null || "$HOSTNAME_BIN"
+	else
+		hostname -s 2>/dev/null || hostname
+	fi
+}
+
+macos_version() {
+	if [ -x "$SW_VERS_BIN" ]; then
+		"$SW_VERS_BIN" -productVersion 2>/dev/null || printf 'unknown\n'
+	else
+		uname -s 2>/dev/null || printf 'unknown\n'
+	fi
+}
+
+tool_present() {
+	[ -x "$1" ]
+}
+
+disk_free_kb() {
+	local path="$1"
+	df -Pk "$path" 2>/dev/null | awk 'NR==2 {print $4}'
+}
+
+ffmpeg_encoders() {
+	if ! tool_present "$FFMPEG_BIN"; then
+		printf '\n'
+		return
+	fi
+	"$FFMPEG_BIN" -hide_banner -encoders 2>/dev/null || true
+}
+
+write_probe() {
+	local jsonl="$1"
+	local name="$2"
+	local ok="$3"
+	local metrics="$4"
+	local detail="$5"
+	"$JQ_BIN" -n -c --arg name "$name" --argjson ok "$ok" --argjson metrics "$metrics" --arg detail "$detail" \
+		'{name:$name, ok:$ok, metrics:$metrics, detail:$detail}' >>"$jsonl"
+}
+
+probe_env() {
+	local jsonl="$1"
+	local root encoders has_x264 has_vt bash_ver free_kb ok detail
+	root="$(macrec_root)"
+	encoders="$(ffmpeg_encoders)"
+	has_x264=false
+	has_vt=false
+	printf '%s' "$encoders" | grep -q 'libx264' && has_x264=true
+	printf '%s' "$encoders" | grep -q 'h264_videotoolbox' && has_vt=true
+	bash_ver="${BASH_VERSION:-unknown}"
+	free_kb="$(disk_free_kb "$root" || true)"
+	ok=true
+	detail=""
+	if ! tool_present "$SCREENCAPTURE_BIN"; then
+		ok=false
+		detail="screencapture missing"
+	fi
+	if ! tool_present "$FFMPEG_BIN"; then
+		ok=false
+		detail="${detail:+$detail; }ffmpeg missing"
+	fi
+	if ! tool_present "$FFPROBE_BIN"; then
+		ok=false
+		detail="${detail:+$detail; }ffprobe missing"
+	fi
+	if ! tool_present "$JQ_BIN"; then
+		ok=false
+		detail="${detail:+$detail; }jq missing"
+	fi
+	if ! tool_present "$PERL_BIN"; then
+		ok=false
+		detail="${detail:+$detail; }perl missing"
+	fi
+	if ! tool_present "$UUIDGEN_BIN"; then
+		ok=false
+		detail="${detail:+$detail; }uuidgen missing"
+	fi
+	if [ "$has_x264" != "true" ] && [ "$has_vt" != "true" ]; then
+		ok=false
+		detail="${detail:+$detail; }no H.264 encoder"
+	fi
+	"$JQ_BIN" -n -c \
+		--arg bash_version "$bash_ver" \
+		--argjson screencapture "$( [ -x "$SCREENCAPTURE_BIN" ] && echo true || echo false )" \
+		--argjson ffmpeg "$( [ -x "$FFMPEG_BIN" ] && echo true || echo false )" \
+		--argjson ffprobe "$( [ -x "$FFPROBE_BIN" ] && echo true || echo false )" \
+		--argjson jq "$( [ -x "$JQ_BIN" ] && echo true || echo false )" \
+		--argjson perl "$( [ -x "$PERL_BIN" ] && echo true || echo false )" \
+		--argjson uuidgen "$( [ -x "$UUIDGEN_BIN" ] && echo true || echo false )" \
+		--argjson libx264 "$has_x264" \
+		--argjson h264_videotoolbox "$has_vt" \
+		--argjson disk_free_kb "${free_kb:-0}" \
+		--arg macos "$(macos_version | tr -d '\n')" \
+		'{
+			bash_version:$bash_version,
+			screencapture:$screencapture,
+			ffmpeg:$ffmpeg,
+			ffprobe:$ffprobe,
+			jq:$jq,
+			perl:$perl,
+			uuidgen:$uuidgen,
+			libx264:$libx264,
+			h264_videotoolbox:$h264_videotoolbox,
+			disk_free_kb:$disk_free_kb,
+			macos:$macos
+		}' >"${jsonl}.env.metrics"
+	write_probe "$jsonl" env "$( [ "$ok" = true ] && echo true || echo false )" "$(cat "${jsonl}.env.metrics")" "$detail"
+}
+
+run_timed_capture() {
+	local out="$1"
+	local rect="$2"
+	local hold="$3"
+	local mode="$4"
+	local fifo="$5"
+	local t0 t1 elapsed exit_status
+	rm -f "$out"
+	t0="$(now_s)"
+	start_screencapture "$out" "$rect" "" "$fifo"
+	sleep_s "$hold"
+	case "$mode" in
+	fifo_byte)
+		printf 'x' >&4 2>/dev/null || true
+		;;
+	fifo_eof)
+		close_fifo_write
+		;;
+	sigint)
+		signal_recorder "$REC_PID" INT
+		;;
+	sigterm)
+		signal_recorder "$REC_PID" TERM
+		;;
+	esac
+	if wait_pid_seconds "$REC_PID" "$STOP_WAIT_SECONDS"; then
+		wait "$REC_PID" 2>/dev/null && exit_status=0 || exit_status=$?
+	else
+		exit_status=124
+		cleanup_pid "$REC_PID"
+	fi
+	close_fifo_write
+	t1="$(now_s)"
+	elapsed="$(perl_sub "$t1" "$t0")"
+	CAPTURE_EXIT="$exit_status"
+	CAPTURE_ELAPSED="$elapsed"
+	CAPTURE_START="$t0"
+	CAPTURE_END="$t1"
+}
+
+capture_report() {
+	local out="$1"
+	local rect="$2"
+	local elapsed="$3"
+	local t0="$4"
+	local metrics duration wall_minus start_latency scale visible rgb mid w h detail
+	w="${rect#*,*,}"
+	w="${w%,*}"
+	h="${rect##*,}"
+	metrics="$(probe_metrics_from_ffprobe "$out")"
+	duration="$(printf '%s' "$metrics" | "$JQ_BIN" -r '.duration_s // 0')"
+	wall_minus="$(perl_sub "$elapsed" "${duration:-0}")"
+	start_latency=0
+	if [ -s "$out" ]; then
+		start_latency=0.05
+	fi
+	scale=0
+	if [ "${w:-0}" -gt 0 ]; then
+		scale="$(printf '%s' "$metrics" | "$JQ_BIN" -r --argjson rw "$w" 'if $rw > 0 then (.width / $rw) else 0 end')"
+	fi
+	visible=false
+	detail=""
+	mid="$(printf '%s' "$metrics" | "$JQ_BIN" -r '(.duration_s / 2)')"
+	if rgb="$(mean_rgb "$out" "$mid" 2>/dev/null)"; then
+		set -- $rgb
+		if [ "$#" -eq 3 ] && card_visible_from_rgb "$1" "$2" "$3"; then
+			visible=true
+		else
+			detail="card not visible"
+		fi
+	else
+		detail="could not measure card colour"
+	fi
+	printf '%s' "$metrics" | "$JQ_BIN" -c --argjson elapsed "$elapsed" --argjson wall "$wall_minus" \
+		--argjson start "$start_latency" --argjson scale "$scale" --argjson visible "$visible" \
+		'. + {start_latency_s:$start, wall_minus_duration_s:$wall, retina_scale:$scale, card_visible:$visible, wall_s:$elapsed}'
+	CAPTURE_DETAIL="$detail"
+	CAPTURE_VISIBLE="$visible"
+}
+
+probe_capture() {
+	local jsonl="$1"
+	local work="$2"
+	local rect="$3"
+	local out fifo ok metrics detail
+	out="${work}/capture.mov"
+	fifo="${work}/capture.fifo"
+	run_timed_capture "$out" "$rect" "$CAPTURE_SECONDS" fifo_byte "$fifo"
+	metrics="$(capture_report "$out" "$rect" "$CAPTURE_ELAPSED" "$CAPTURE_START")"
+	detail=""
+	ok=true
+	if ! video_valid "$out"; then
+		ok=false
+		detail="${detail:+$detail; }invalid capture file"
+	fi
+	if [ "$(printf '%s' "$metrics" | "$JQ_BIN" -r '.card_visible')" != "true" ]; then
+		ok=false
+		detail="${detail:+$detail; }card not visible"
+	fi
+	if [ "$CAPTURE_EXIT" -eq 124 ]; then
+		ok=false
+		detail="${detail:+$detail; }capture did not stop"
+	fi
+	write_probe "$jsonl" capture "$( [ "$ok" = true ] && echo true || echo false )" "$metrics" "$detail"
+	LAST_CAPTURE="$out"
+}
+
+stop_one() {
+	local work="$1"
+	local rect="$2"
+	local mode="$3"
+	local out fifo valid
+	out="${work}/stop_${mode}.mov"
+	fifo="${work}/stop_${mode}.fifo"
+	run_timed_capture "$out" "$rect" "$STOP_CAPTURE_SECONDS" "$mode" "$fifo"
+	valid=false
+	if video_valid "$out"; then
+		valid=true
+	fi
+	"$JQ_BIN" -n -c --argjson exit_status "$CAPTURE_EXIT" --argjson time_to_exit_s "$CAPTURE_ELAPSED" \
+		--argjson valid "$valid" '{exit_status:$exit_status, time_to_exit_s:$time_to_exit_s, valid:$valid}'
+}
+
+probe_stop() {
+	local jsonl="$1"
+	local work="$2"
+	local rect="$3"
+	local fifo_byte sigint sigterm fifo_eof metrics ok detail
+	fifo_byte="$(stop_one "$work" "$rect" fifo_byte)"
+	sigint="$(stop_one "$work" "$rect" sigint)"
+	sigterm="$(stop_one "$work" "$rect" sigterm)"
+	fifo_eof="$(stop_one "$work" "$rect" fifo_eof)"
+	metrics="$("$JQ_BIN" -n -c --argjson fifo_byte "$fifo_byte" --argjson sigint "$sigint" \
+		--argjson sigterm "$sigterm" --argjson fifo_eof "$fifo_eof" \
+		'{fifo_byte:$fifo_byte, sigint:$sigint, sigterm:$sigterm, fifo_eof:$fifo_eof}')"
+	ok=true
+	detail=""
+	if ! printf '%s' "$metrics" | "$JQ_BIN" -e '.fifo_byte.valid and .sigint.valid and .sigterm.valid and .fifo_eof.valid' >/dev/null; then
+		ok=false
+		detail="one or more stop methods left an invalid file"
+	fi
+	if printf '%s' "$metrics" | "$JQ_BIN" -e '[.fifo_byte.exit_status, .sigint.exit_status, .sigterm.exit_status, .fifo_eof.exit_status] | any(. == 124)' >/dev/null; then
+		ok=false
+		detail="${detail:+$detail; }a stop method did not exit in time"
+	fi
+	write_probe "$jsonl" stop "$( [ "$ok" = true ] && echo true || echo false )" "$metrics" "$detail"
+}
+
+probe_cap() {
+	local jsonl="$1"
+	local work="$2"
+	local rect="$3"
+	local out fifo t0 ok metrics detail
+	out="${work}/cap.mov"
+	fifo="${work}/cap.fifo"
+	rm -f "$out"
+	t0="$(now_s)"
+	start_screencapture "$out" "$rect" "$CAP_SECONDS" "$fifo"
+	if wait_pid_seconds "$REC_PID" "$(awk -v n="$CAP_SECONDS" -v w="$STOP_WAIT_SECONDS" 'BEGIN { print n + w }')"; then
+		wait "$REC_PID" 2>/dev/null && CAPTURE_EXIT=0 || CAPTURE_EXIT=$?
+	else
+		CAPTURE_EXIT=124
+		cleanup_pid "$REC_PID"
+	fi
+	close_fifo_write
+	CAPTURE_ELAPSED="$(perl_sub "$(now_s)" "$t0")"
+	metrics="$(probe_metrics_from_ffprobe "$out" | "$JQ_BIN" -c --argjson elapsed "$CAPTURE_ELAPSED" --argjson exit_status "$CAPTURE_EXIT" \
+		'. + {wall_s:$elapsed, exit_status:$exit_status}')"
+	ok=true
+	detail=""
+	if ! video_valid "$out"; then
+		ok=false
+		detail="cap did not leave a valid file"
+	fi
+	if [ "$CAPTURE_EXIT" -eq 124 ]; then
+		ok=false
+		detail="${detail:+$detail; }-V did not stop the recorder"
+	fi
+	write_probe "$jsonl" cap "$( [ "$ok" = true ] && echo true || echo false )" "$metrics" "$detail"
+}
+
+time_encode() {
+	local encoder="$1"
+	local infile="$2"
+	local outfile="$3"
+	local extra="$4"
+	local t0 t1 elapsed ok
+	rm -f "$outfile"
+	t0="$(now_s)"
+	ok=true
+	if [ "$encoder" = "libx264" ]; then
+		if ! "$FFMPEG_BIN" -y -hide_banner -loglevel error -i "$infile" -map 0:v:0 -c:v libx264 -preset veryfast -crf 23 -an $extra "$outfile"; then
+			ok=false
+		fi
+	else
+		if ! "$FFMPEG_BIN" -y -hide_banner -loglevel error -i "$infile" -map 0:v:0 -c:v h264_videotoolbox -an $extra "$outfile"; then
+			ok=false
+		fi
+	fi
+	t1="$(now_s)"
+	elapsed="$(perl_sub "$t1" "$t0")"
+	if [ "$ok" != true ] || [ ! -s "$outfile" ]; then
+		"$JQ_BIN" -n -c --argjson time_s "$elapsed" '{ok:false, time_s:$time_s, size_bytes:0}'
+		return
+	fi
+	"$JQ_BIN" -n -c --argjson time_s "$elapsed" --argjson size_bytes "$(file_bytes "$outfile")" \
+		'{ok:true, time_s:$time_s, size_bytes:$size_bytes}'
+}
+
+probe_encode() {
+	local jsonl="$1"
+	local work="$2"
+	local synthetic x264_s vt_s x264_p vt_p metrics ok detail
+	synthetic="${work}/synthetic.mp4"
+	ok=true
+	detail=""
+	if ! "$FFMPEG_BIN" -y -hide_banner -loglevel error -f lavfi -i "testsrc2=size=2560x1600:rate=30" \
+		-t "$ENCODE_SECONDS" -c:v libx264 -preset ultrafast -pix_fmt yuv420p "$synthetic"; then
+		ok=false
+		detail="failed to generate synthetic clip"
+		write_probe "$jsonl" encode false '{"libx264_synthetic":{"ok":false},"h264_videotoolbox_synthetic":{"ok":false}}' "$detail"
+		return
+	fi
+	x264_s="$(time_encode libx264 "$synthetic" "${work}/enc_x264_syn.mp4" "")"
+	vt_s="$(time_encode videotoolbox "$synthetic" "${work}/enc_vt_syn.mp4" "")"
+	x264_p='{"ok":false,"skipped":true}'
+	vt_p='{"ok":false,"skipped":true}'
+	if [ -n "${LAST_CAPTURE:-}" ] && [ -s "${LAST_CAPTURE}" ]; then
+		x264_p="$(time_encode libx264 "$LAST_CAPTURE" "${work}/enc_x264_probe.mp4" "")"
+		vt_p="$(time_encode videotoolbox "$LAST_CAPTURE" "${work}/enc_vt_probe.mp4" "")"
+	fi
+	metrics="$("$JQ_BIN" -n -c --argjson libx264_synthetic "$x264_s" --argjson h264_videotoolbox_synthetic "$vt_s" \
+		--argjson libx264_probe "$x264_p" --argjson h264_videotoolbox_probe "$vt_p" \
+		'{libx264_synthetic:$libx264_synthetic, h264_videotoolbox_synthetic:$h264_videotoolbox_synthetic, libx264_probe:$libx264_probe, h264_videotoolbox_probe:$h264_videotoolbox_probe}')"
+	if ! printf '%s' "$x264_s" | "$JQ_BIN" -e '.ok' >/dev/null && ! printf '%s' "$vt_s" | "$JQ_BIN" -e '.ok' >/dev/null; then
+		ok=false
+		detail="both synthetic encoders failed"
+	fi
+	write_probe "$jsonl" encode "$( [ "$ok" = true ] && echo true || echo false )" "$metrics" "$detail"
+}
+
+write_detach_wrapper() {
+	local path="$1"
+	cat >"$path" <<'EOF'
+#!/usr/bin/env bash
+set -eu
+fifo="$1"
+raw="$2"
+rect="$3"
+sc="$4"
+pidfile="$5"
+recpidfile="$6"
+printf '%s\n' "$$" >"$pidfile"
+exec 3<>"$fifo"
+"$sc" -v -x -k -C -R "$rect" "$raw" <"$fifo" &
+printf '%s\n' "$!" >"$recpidfile"
+wait $! || true
+EOF
+	chmod 700 "$path"
+}
+
+probe_detach() {
+	local jsonl="$1"
+	local work="$2"
+	local rect="$3"
+	local fifo raw wrapper log pidfile recpidfile wrapper_pid ok detail metrics
+	fifo="${work}/fifo"
+	raw="${work}/raw.mov"
+	wrapper="${work}/wrapper.sh"
+	log="${work}/log"
+	pidfile="${work}/wrapper.pid"
+	recpidfile="${work}/recorder.pid"
+	rm -f "$fifo" "$raw" "$pidfile" "$recpidfile"
+	mkfifo "$fifo"
+	write_detach_wrapper "$wrapper"
+	: >"$log"
+	"$NOHUP_BIN" "$PERL_BIN" -MPOSIX -e 'POSIX::setsid(); exec @ARGV' \
+		/usr/bin/env bash "$wrapper" "$fifo" "$raw" "$rect" "$SCREENCAPTURE_BIN" "$pidfile" "$recpidfile" \
+		</dev/null >>"$log" 2>&1 &
+	wrapper_pid=$!
+	ok=true
+	detail=""
+	if ! wait_file_seconds "$recpidfile" "$STOP_WAIT_SECONDS"; then
+		ok=false
+		detail="detached recorder did not start"
+	fi
+	sleep_s "$DETACH_READY_SECONDS"
+	if [ -f "$pidfile" ]; then
+		wrapper_pid="$(tr -d ' \n' <"$pidfile")"
+	fi
+	if [ ! -f "$recpidfile" ] || ! kill -0 "$(tr -d ' \n' <"$recpidfile")" 2>/dev/null; then
+		ok=false
+		detail="${detail:+$detail; }recorder pid is not alive"
+	fi
+	if [ -z "$wrapper_pid" ] || ! kill -0 "$wrapper_pid" 2>/dev/null; then
+		ok=false
+		detail="${detail:+$detail; }wrapper pid is not alive"
+	fi
+	metrics="$("$JQ_BIN" -n -c --argjson wrapper_pid "${wrapper_pid:-0}" \
+		--argjson recorder_pid "$(tr -d ' \n' <"$recpidfile" 2>/dev/null || echo 0)" \
+		--arg fifo "$fifo" --arg raw "$raw" --arg session_dir "$work" \
+		'{wrapper_pid:$wrapper_pid, recorder_pid:$recorder_pid, fifo:$fifo, raw:$raw, session_dir:$session_dir}')"
+	write_probe "$jsonl" detach "$( [ "$ok" = true ] && echo true || echo false )" "$metrics" "$detail"
+	KEEP_SESSION=1
+}
+
+cleanup_work() {
+	local work="$1"
+	local keep="$2"
+	if [ "$keep" = "1" ]; then
+		return
+	fi
+	if [ "${KEEP_SESSION:-0}" = "1" ]; then
+		# Detach leaves fifo/raw/pids; drop only auxiliary probe clips.
+		rm -f "$work"/capture.mov "$work"/stop_*.mov "$work"/cap.mov \
+			"$work"/synthetic.mp4 "$work"/enc_*.mp4 "$work"/*.fifo "$work"/*.metrics
+		return
+	fi
+	rm -rf "$work"
+}
+
+cmd_run() {
+	local id="" rect="" probes="" keep=0
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		--id)
+			id="$2"
+			shift 2
+			;;
+		--rect)
+			rect="$2"
+			shift 2
+			;;
+		--probes)
+			probes="$2"
+			shift 2
+			;;
+		--keep)
+			keep=1
+			shift
+			;;
+		-h | --help)
+			usage
+			exit 0
+			;;
+		*)
+			printf 'macrec_doctor: unknown argument %s\n' "$1" >&2
+			usage >&2
+			exit 2
+			;;
+		esac
+	done
+	if [ -z "$id" ] || [ -z "$rect" ] || [ -z "$probes" ]; then
+		usage >&2
+		exit 2
+	fi
+	if ! valid_id "$id"; then
+		printf 'macrec_doctor: invalid id\n' >&2
+		exit 2
+	fi
+	if ! printf '%s' "$rect" | grep -Eq '^-?[0-9]+,-?[0-9]+,[0-9]+,[0-9]+$'; then
+		printf 'macrec_doctor: invalid rect (expected X,Y,W,H)\n' >&2
+		exit 2
+	fi
+	if ! validate_probes_list "$probes"; then
+		printf 'macrec_doctor: invalid probes\n' >&2
+		exit 2
+	fi
+	ensure_dirs
+	local root work jsonl started finished result_path name probes_json all_ok
+	root="$(macrec_root)"
+	work="${root}/doctor/${id}"
+	result_path="${root}/doctor/${id}.json"
+	mkdir -p "$work"
+	chmod 700 "$work" 2>/dev/null || true
+	jsonl="${work}/probes.jsonl"
+	: >"$jsonl"
+	LAST_CAPTURE=""
+	KEEP_SESSION=0
+	started="$(now_s)"
+	log_line "run id=${id} probes=${probes} rect=${rect}"
+	for name in $(split_probes "$probes"); do
+		case "$name" in
+		env) probe_env "$jsonl" ;;
+		capture) probe_capture "$jsonl" "$work" "$rect" ;;
+		stop) probe_stop "$jsonl" "$work" "$rect" ;;
+		cap) probe_cap "$jsonl" "$work" "$rect" ;;
+		encode) probe_encode "$jsonl" "$work" ;;
+		detach) probe_detach "$jsonl" "$work" "$rect" ;;
+		esac
+	done
+	finished="$(now_s)"
+	if [ -s "$jsonl" ]; then
+		probes_json="$("$JQ_BIN" -s '.' "$jsonl")"
+	else
+		probes_json='[]'
+	fi
+	"$JQ_BIN" -n -c --argjson schema 1 --arg id "$id" --arg host "$(host_name | tr -d '\n')" \
+		--arg macos "$(macos_version | tr -d '\n')" --argjson started_at "$started" \
+		--argjson finished_at "$finished" --argjson probes "$probes_json" \
+		'{schema:$schema, id:$id, host:$host, macos:$macos, started_at:$started_at, finished_at:$finished_at, probes:$probes}' \
+		| atomic_write "$result_path"
+	chmod 600 "$result_path" 2>/dev/null || true
+	cleanup_work "$work" "$keep"
+	all_ok="$( "$JQ_BIN" -r 'if (.probes | length) == 0 then "false" else (all(.probes[]; .ok) | tostring) end' <"$result_path" )"
+	cat "$result_path"
+	if [ "$all_ok" = "true" ]; then
+		exit 0
+	fi
+	exit 1
+}
+
+cmd_request() {
+	local probes="$DEFAULT_PROBES"
+	local timeout="$DEFAULT_TIMEOUT"
+	local keep=0
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		--probes)
+			probes="$2"
+			shift 2
+			;;
+		--timeout)
+			timeout="$2"
+			shift 2
+			;;
+		--keep)
+			keep=1
+			shift
+			;;
+		-h | --help)
+			usage
+			exit 0
+			;;
+		*)
+			printf 'macrec_doctor: unknown argument %s\n' "$1" >&2
+			usage >&2
+			exit 2
+			;;
+		esac
+	done
+	if ! validate_probes_list "$probes"; then
+		printf 'macrec_doctor: invalid probes\n' >&2
+		exit 2
+	fi
+	if ! printf '%s' "$timeout" | grep -Eq '^[0-9]+([.][0-9]+)?$'; then
+		printf 'macrec_doctor: invalid timeout\n' >&2
+		exit 2
+	fi
+	ensure_dirs
+	local id root req result probes_json keep_flag
+	id="$(new_id)"
+	if ! valid_id "$id"; then
+		printf 'macrec_doctor: could not allocate id\n' >&2
+		exit 2
+	fi
+	root="$(macrec_root)"
+	req="${root}/requests/doctor-${id}.json"
+	result="${root}/doctor/${id}.json"
+	probes_json="$("$JQ_BIN" -n -c --arg probes "$probes" '$probes | split(",")')"
+	"$JQ_BIN" -n -c --arg action doctor --arg id "$id" --argjson probes "$probes_json" --argjson keep "$( [ "$keep" = "1" ] && echo true || echo false )" \
+		'{action:$action, id:$id, probes:$probes, keep:$keep}' | atomic_write "$req"
+	log_line "request id=${id} probes=${probes}"
+
+	local start now
+	start="$(now_s)"
+	while [ -f "$req" ] && [ ! -f "$result" ]; do
+		now="$(now_s)"
+		if perl_ge "$(perl_sub "$now" "$start")" "$PICKUP_SECONDS"; then
+			printf 'macrec_doctor: not picked up within %ss\n' "$PICKUP_SECONDS" >&2
+			rm -f "$req"
+			exit 3
+		fi
+		sleep_s "$POLL_INTERVAL"
+	done
+
+	start="$(now_s)"
+	while [ ! -f "$result" ]; do
+		now="$(now_s)"
+		if perl_ge "$(perl_sub "$now" "$start")" "$timeout"; then
+			printf 'macrec_doctor: timeout waiting for doctor/%s.json\n' "$id" >&2
+			exit 4
+		fi
+		sleep_s "$POLL_INTERVAL"
+	done
+
+	if "$JQ_BIN" -e '.refused' "$result" >/dev/null 2>&1; then
+		cat "$result"
+		printf '\n'
+		exit 3
+	fi
+	cat "$result"
+	printf '\n'
+	if "$JQ_BIN" -e '(.probes | length) > 0 and all(.probes[]; .ok)' "$result" >/dev/null 2>&1; then
+		exit 0
+	fi
+	exit 1
+}
+
+cmd_detach_stop() {
+	local id=""
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		--id)
+			id="$2"
+			shift 2
+			;;
+		-h | --help)
+			usage
+			exit 0
+			;;
+		*)
+			printf 'macrec_doctor: unknown argument %s\n' "$1" >&2
+			usage >&2
+			exit 2
+			;;
+		esac
+	done
+	if [ -z "$id" ] || ! valid_id "$id"; then
+		usage >&2
+		exit 2
+	fi
+	ensure_dirs
+	local root work fifo raw recpidfile pidfile rec_pid wrap_pid t0 elapsed valid metrics
+	root="$(macrec_root)"
+	work="${root}/doctor/${id}"
+	fifo="${work}/fifo"
+	raw="${work}/raw.mov"
+	recpidfile="${work}/recorder.pid"
+	pidfile="${work}/wrapper.pid"
+	if [ ! -d "$work" ]; then
+		printf 'macrec_doctor: no detached session %s\n' "$id" >&2
+		exit 1
+	fi
+	rec_pid=""
+	wrap_pid=""
+	[ -f "$recpidfile" ] && rec_pid="$(tr -d ' \n' <"$recpidfile")"
+	[ -f "$pidfile" ] && wrap_pid="$(tr -d ' \n' <"$pidfile")"
+	t0="$(now_s)"
+	if [ -p "$fifo" ]; then
+		printf 'x' >"$fifo" 2>/dev/null || true
+	fi
+	if [ -n "$rec_pid" ]; then
+		if ! wait_pid_seconds "$rec_pid" "$STOP_WAIT_SECONDS"; then
+			signal_recorder "$rec_pid" INT
+			if ! wait_pid_seconds "$rec_pid" 2; then
+				signal_recorder "$rec_pid" TERM
+				wait_pid_seconds "$rec_pid" 2 || true
+			fi
+		fi
+	fi
+	if [ -n "$wrap_pid" ]; then
+		wait_pid_seconds "$wrap_pid" 2 || true
+	fi
+	elapsed="$(perl_sub "$(now_s)" "$t0")"
+	valid=false
+	if video_valid "$raw"; then
+		valid=true
+	fi
+	metrics="$(probe_metrics_from_ffprobe "$raw" | "$JQ_BIN" -c --argjson valid "$valid" --argjson time_to_exit_s "$elapsed" --arg id "$id" \
+		'{id:$id, valid:$valid, time_to_exit_s:$time_to_exit_s} + .')"
+	printf '%s\n' "$metrics"
+	rm -rf "$work"
+	if [ "$valid" = true ]; then
+		exit 0
+	fi
+	exit 1
+}
+
+main() {
+	if [ $# -lt 1 ]; then
+		usage >&2
+		exit 2
+	fi
+	local cmd="$1"
+	shift
+	case "$cmd" in
+	request) cmd_request "$@" ;;
+	run) cmd_run "$@" ;;
+	detach-stop) cmd_detach_stop "$@" ;;
+	-h | --help)
+		usage
+		exit 0
+		;;
+	*)
+		printf 'macrec_doctor: unknown command %s\n' "$cmd" >&2
+		usage >&2
+		exit 2
+		;;
+	esac
+}
+
+main "$@"

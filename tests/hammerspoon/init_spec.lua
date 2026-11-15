@@ -462,9 +462,11 @@ local function setup_hammerspoon_init_environment(options)
 		previous_screenshot_module = package.loaded.screenshot_region,
 		previous_ping_module = package.loaded.ping_indicator,
 		previous_highlights_module = package.loaded.highlights_tab_keys,
+		previous_screen_recorder_module = package.loaded.screen_recorder,
 		hotkeys = {},
 		ping_start_calls = {},
 		highlights_start_calls = {},
+		screen_recorder_start_calls = {},
 		tasks = {},
 		timers = {},
 		delayed_timers = {},
@@ -515,6 +517,14 @@ local function setup_hammerspoon_init_environment(options)
 			end
 		end,
 	}
+	package.loaded.screen_recorder = {
+		start = function(...)
+			table.insert(env.screen_recorder_start_calls, { ... })
+			if options.screen_recorder_start_error then
+				error(options.screen_recorder_start_error)
+			end
+		end,
+	}
 	env.screenshot_pick_callbacks = {}
 
 	function env.load_init()
@@ -528,6 +538,7 @@ local function setup_hammerspoon_init_environment(options)
 		package.loaded.screenshot_region = env.previous_screenshot_module
 		package.loaded.ping_indicator = env.previous_ping_module
 		package.loaded.highlights_tab_keys = env.previous_highlights_module
+		package.loaded.screen_recorder = env.previous_screen_recorder_module
 	end
 
 	return env
@@ -714,6 +725,12 @@ describe("Hammerspoon init", function()
 		assert.equals(1, #env.highlights_start_calls)
 	end)
 
+	it("starts the screen recorder exactly once", function()
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+		assert.equals(1, #env.screen_recorder_start_calls)
+	end)
+
 	it("logs a throwing Highlights start and still installs the Pomodoro runtime", function()
 		local ok, error_message, env = load_init_with({ highlights_start_error = "boom" })
 		assert.is_true(ok, error_message)
@@ -722,6 +739,32 @@ describe("Hammerspoon init", function()
 		local logged = false
 		for _, call in ipairs(env.printf_calls) do
 			if tostring(call[1]):find("Bob Highlights tab keys start failed", 1, true) ~= nil then
+				logged = true
+			end
+		end
+		assert.is_true(logged)
+
+		local runtime = _G.BobPomodoroCountdown
+		assert.equals("table", type(runtime))
+		assert.is_not_nil(runtime.menu)
+		assert.is_not_nil(runtime.tickTimer)
+		assert.is_not_nil(runtime.syncTimer)
+		assert.is_not_nil(runtime.wakeWatcher)
+		assert.equals(1, #env.menus)
+		assert.equals(2, #env.timers)
+		assert.equals(1, #env.wake_watchers)
+		assert.equals(1, #env.path_watchers)
+		assert.equals(2, #env.hotkeys)
+	end)
+
+	it("logs a throwing screen recorder start and still installs the Pomodoro runtime", function()
+		local ok, error_message, env = load_init_with({ screen_recorder_start_error = "boom" })
+		assert.is_true(ok, error_message)
+		assert.equals(1, #env.screen_recorder_start_calls)
+
+		local logged = false
+		for _, call in ipairs(env.printf_calls) do
+			if tostring(call[1]):find("Bob screen recorder start failed", 1, true) ~= nil then
 				logged = true
 			end
 		end

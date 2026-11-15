@@ -1,6 +1,7 @@
 local HighlightsTabKeys = require("highlights_tab_keys")
 local PingIndicator = require("ping_indicator")
 local PomodoroCountdown = require("pomodoro_countdown")
+local ScreenRecorder = require("screen_recorder")
 local ScreenshotRegion = require("screenshot_region")
 
 hs.hotkey.bind({ "cmd", "alt", "ctrl" }, "V", nil, function()
@@ -978,4 +979,13 @@ local highlightsTabKeysStartOk, highlightsTabKeysStartError = xpcall(function()
 end, debug.traceback)
 if not highlightsTabKeysStartOk then
 	hs.printf("Bob Highlights tab keys start failed: %s", highlightsTabKeysStartError)
+end
+
+-- Doctor inbox and recording runtime. A throwing start must never break the
+-- other hotkeys or the Pomodoro item, so it is logged and swallowed.
+local screenRecorderStartOk, screenRecorderStartError = xpcall(function()
+	ScreenRecorder.start()
+end, debug.traceback)
+if not screenRecorderStartOk then
+	hs.printf("Bob screen recorder start failed: %s", screenRecorderStartError)
 end
