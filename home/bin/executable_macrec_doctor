@@ -35,6 +35,7 @@ CAP_SECONDS="${MACREC_DOCTOR_CAP_SECONDS:-3}"
 ENCODE_SECONDS="${MACREC_DOCTOR_ENCODE_SECONDS:-60}"
 STOP_CAPTURE_SECONDS="${MACREC_DOCTOR_STOP_CAPTURE_SECONDS:-0.5}"
 STOP_WAIT_SECONDS="${MACREC_DOCTOR_STOP_WAIT_SECONDS:-8}"
+READY_WAIT_SECONDS="${MACREC_DOCTOR_READY_WAIT_SECONDS:-5}"
 DETACH_READY_SECONDS="${MACREC_DOCTOR_DETACH_READY_SECONDS:-1}"
 POLL_INTERVAL="${MACREC_DOCTOR_POLL_INTERVAL:-0.1}"
 PICKUP_SECONDS="${MACREC_DOCTOR_PICKUP_SECONDS:-$DEFAULT_PICKUP}"
@@ -190,6 +191,33 @@ wait_file_seconds() {
 	return 0
 }
 
+wait_recorder_ready() {
+	# Poll until the recorder pid from start_screencapture is observable.
+	# Sets CAPTURE_READY to seconds from spawn, or to "timeout".
+	local pid="$1"
+	local start now
+	start="$(now_s)"
+	while ! kill -0 "$pid" 2>/dev/null; do
+		now="$(now_s)"
+		if perl_ge "$(perl_sub "$now" "$start")" "$READY_WAIT_SECONDS"; then
+			CAPTURE_READY="timeout"
+			return 1
+		fi
+		sleep_s "$POLL_INTERVAL"
+	done
+	CAPTURE_READY="$(perl_sub "$(now_s)" "$start")"
+	return 0
+}
+
+ready_json() {
+	# Print CAPTURE_READY as a JSON number, or null when it timed out.
+	if [ "${CAPTURE_READY:-timeout}" = "timeout" ]; then
+		printf 'null\n'
+	else
+		printf '%s\n' "$CAPTURE_READY"
+	fi
+}
+
 pid_matches_recorder() {
 	local pid="$1"
 	local base comm args
@@ -303,10 +331,14 @@ probe_metrics_from_ffprobe() {
 }
 
 mean_rgb() {
+	# Sample the bottom-right corner, not the center: the card's white 1 Hz
+	# blink square sits in the middle, so a center crop's mean flips with the
+	# blink phase and the card check becomes a coin flip. The bottom-right
+	# corner is pure accent fill on every blink phase.
 	local file="$1"
 	local mid="$2"
 	"$FFMPEG_BIN" -hide_banner -loglevel error -ss "$mid" -i "$file" -frames:v 1 \
-		-vf "crop=iw/2:ih/2:(iw/2)-(iw/4):(ih/2)-(ih/4),scale=1:1,format=rgb24" \
+		-vf "crop=iw/4:ih/4:3*iw/4:3*ih/4,scale=1:1,format=rgb24" \
 		-f rawvideo - 2>/dev/null | "$PERL_BIN" -e 'read(STDIN,$b,3) || exit 1; print join(" ", unpack("C*",$b)), "\n"'
 }
 
@@ -441,6 +473,7 @@ run_timed_capture() {
 	rm -f "$out"
 	t0="$(now_s)"
 	start_screencapture "$out" "$rect" "" "$fifo"
+	wait_recorder_ready "$REC_PID" || true
 	sleep_s "$hold"
 	case "$mode" in
 	fifo_byte)
@@ -483,10 +516,7 @@ capture_report() {
 	metrics="$(probe_metrics_from_ffprobe "$out")"
 	duration="$(printf '%s' "$metrics" | "$JQ_BIN" -r '.duration_s // 0')"
 	wall_minus="$(perl_sub "$elapsed" "${duration:-0}")"
-	start_latency=0
-	if [ -s "$out" ]; then
-		start_latency=0.05
-	fi
+	start_latency="$(ready_json)"
 	scale=0
 	if [ "${w:-0}" -gt 0 ]; then
 		scale="$(printf '%s' "$metrics" | "$JQ_BIN" -r --argjson rw "$w" 'if $rw > 0 then (.width / $rw) else 0 end')"
@@ -518,7 +548,9 @@ probe_capture() {
 	local out fifo ok metrics detail
 	out="${work}/capture.mov"
 	fifo="${work}/capture.fifo"
-	run_timed_capture "$out" "$rect" "$CAPTURE_SECONDS" fifo_byte "$fifo"
+	# Stop with SIGINT: the spike measured that screencapture ignores stdin
+	# (FIFO byte and EOF never stop it) while SIGINT finalizes a valid file.
+	run_timed_capture "$out" "$rect" "$CAPTURE_SECONDS" sigint "$fifo"
 	metrics="$(capture_report "$out" "$rect" "$CAPTURE_ELAPSED" "$CAPTURE_START")"
 	detail=""
 	ok=true
@@ -542,7 +574,7 @@ stop_one() {
 	local work="$1"
 	local rect="$2"
 	local mode="$3"
-	local out fifo valid
+	local out fifo valid start_latency
 	out="${work}/stop_${mode}.mov"
 	fifo="${work}/stop_${mode}.fifo"
 	run_timed_capture "$out" "$rect" "$STOP_CAPTURE_SECONDS" "$mode" "$fifo"
@@ -550,15 +582,17 @@ stop_one() {
 	if video_valid "$out"; then
 		valid=true
 	fi
+	start_latency="$(ready_json)"
 	"$JQ_BIN" -n -c --argjson exit_status "$CAPTURE_EXIT" --argjson time_to_exit_s "$CAPTURE_ELAPSED" \
-		--argjson valid "$valid" '{exit_status:$exit_status, time_to_exit_s:$time_to_exit_s, valid:$valid}'
+		--argjson valid "$valid" --argjson start_latency "$start_latency" \
+		'{exit_status:$exit_status, time_to_exit_s:$time_to_exit_s, valid:$valid, start_latency_s:$start_latency}'
 }
 
 probe_stop() {
 	local jsonl="$1"
 	local work="$2"
 	local rect="$3"
-	local fifo_byte sigint sigterm fifo_eof metrics ok detail
+	local fifo_byte sigint sigterm fifo_eof metrics ok detail aux_failed
 	fifo_byte="$(stop_one "$work" "$rect" fifo_byte)"
 	sigint="$(stop_one "$work" "$rect" sigint)"
 	sigterm="$(stop_one "$work" "$rect" sigterm)"
@@ -568,13 +602,21 @@ probe_stop() {
 		'{fifo_byte:$fifo_byte, sigint:$sigint, sigterm:$sigterm, fifo_eof:$fifo_eof}')"
 	ok=true
 	detail=""
-	if ! printf '%s' "$metrics" | "$JQ_BIN" -e '.fifo_byte.valid and .sigint.valid and .sigterm.valid and .fifo_eof.valid' >/dev/null; then
+	# The gate is the spike-verified primary stop: SIGINT must exit promptly
+	# with a valid file. The FIFO and SIGTERM methods are still measured for
+	# the runbook, but their failure does not fail the probe: the spike
+	# measured that screencapture ignores stdin and SIGTERM corrupts the file.
+	if ! printf '%s' "$metrics" | "$JQ_BIN" -e '.sigint.valid' >/dev/null; then
 		ok=false
-		detail="one or more stop methods left an invalid file"
+		detail="SIGINT stop left an invalid file"
 	fi
-	if printf '%s' "$metrics" | "$JQ_BIN" -e '[.fifo_byte.exit_status, .sigint.exit_status, .sigterm.exit_status, .fifo_eof.exit_status] | any(. == 124)' >/dev/null; then
+	if printf '%s' "$metrics" | "$JQ_BIN" -e '.sigint.exit_status == 124' >/dev/null; then
 		ok=false
-		detail="${detail:+$detail; }a stop method did not exit in time"
+		detail="${detail:+$detail; }SIGINT stop did not exit in time"
+	fi
+	aux_failed="$(printf '%s' "$metrics" | "$JQ_BIN" -r '[to_entries[] | select(.key != "sigint") | select((.value.valid != true) or (.value.exit_status == 124)) | .key] | join(", ")')"
+	if [ -n "$aux_failed" ]; then
+		detail="${detail:+$detail; }auxiliary methods without a clean stop: $aux_failed"
 	fi
 	write_probe "$jsonl" stop "$( [ "$ok" = true ] && echo true || echo false )" "$metrics" "$detail"
 }
@@ -677,6 +719,10 @@ write_detach_wrapper() {
 	cat >"$path" <<'EOF'
 #!/usr/bin/env bash
 set -eu
+# No trap reset is needed here: the spike measured that screencapture installs
+# its own SIGINT handler even when detached with INT ignored on entry, so
+# SIGINT finalizes a valid file. Never signal by name: match the recorder pid
+# with a command check, since its ps comm is truncated ("/usr/sbin/screen").
 fifo="$1"
 raw="$2"
 rect="$3"
@@ -954,10 +1000,9 @@ cmd_detach_stop() {
 		exit 2
 	fi
 	ensure_dirs
-	local root work fifo raw recpidfile pidfile rec_pid wrap_pid t0 elapsed valid metrics
+	local root work raw recpidfile pidfile rec_pid wrap_pid t0 elapsed valid metrics
 	root="$(macrec_root)"
 	work="${root}/doctor/${id}"
-	fifo="${work}/fifo"
 	raw="${work}/raw.mov"
 	recpidfile="${work}/recorder.pid"
 	pidfile="${work}/wrapper.pid"
@@ -970,16 +1015,13 @@ cmd_detach_stop() {
 	[ -f "$recpidfile" ] && rec_pid="$(tr -d ' \n' <"$recpidfile")"
 	[ -f "$pidfile" ] && wrap_pid="$(tr -d ' \n' <"$pidfile")"
 	t0="$(now_s)"
-	if [ -p "$fifo" ]; then
-		printf 'x' >"$fifo" 2>/dev/null || true
-	fi
+	# SIGINT first: the spike measured that screencapture ignores stdin, so a
+	# FIFO byte only burns the wait budget. SIGTERM is the last resort.
 	if [ -n "$rec_pid" ]; then
+		signal_recorder "$rec_pid" INT
 		if ! wait_pid_seconds "$rec_pid" "$STOP_WAIT_SECONDS"; then
-			signal_recorder "$rec_pid" INT
-			if ! wait_pid_seconds "$rec_pid" 2; then
-				signal_recorder "$rec_pid" TERM
-				wait_pid_seconds "$rec_pid" 2 || true
-			fi
+			signal_recorder "$rec_pid" TERM
+			wait_pid_seconds "$rec_pid" 2 || true
 		fi
 	fi
 	if [ -n "$wrap_pid" ]; then

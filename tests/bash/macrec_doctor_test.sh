@@ -39,6 +39,7 @@ function set_up() {
   export MACREC_DOCTOR_ENCODE_SECONDS=1
   export MACREC_DOCTOR_STOP_CAPTURE_SECONDS=0.05
   export MACREC_DOCTOR_STOP_WAIT_SECONDS=2
+  export MACREC_DOCTOR_READY_WAIT_SECONDS=2
   export MACREC_DOCTOR_DETACH_READY_SECONDS=0.05
   export MACREC_DOCTOR_ID=testid
 
@@ -66,6 +67,13 @@ function tear_down() {
 function write_screencapture_stub() {
   cat >"${FAKE_BIN}/screencapture" <<'EOF'
 #!/bin/bash
+# Model a C recorder: re-exec with default INT/QUIT dispositions. A backgrounded
+# bash cannot trap signals ignored on entry, while the real screencapture
+# installs its own SIGINT handler even when detached (device-spike finding).
+if [[ -z "${FAKE_TRAPS_FIXED:-}" ]]; then
+  export FAKE_TRAPS_FIXED=1
+  exec "${PERL_BIN:-perl}" -e '$SIG{INT}="DEFAULT"; $SIG{QUIT}="DEFAULT"; exec @ARGV' -- "$0" "$@"
+fi
 out=""
 cap=""
 prev=""
@@ -77,6 +85,11 @@ for arg in "$@"; do
   out="${arg}"
 done
 printf 'screencapture|%s\n' "$*" >>"${EVENT_LOG}"
+
+# Model progressive output: a real recorder's file exists while it runs.
+if [[ -n "${out}" && "${FAKE_CAPTURE_FAIL:-0}" != "1" && "${FAKE_CAPTURE_EMPTY:-0}" != "1" && "${FAKE_CAPTURE_HANG:-0}" != "1" ]]; then
+  printf 'fake-mov-bytes\n' >"${out}"
+fi
 
 write_out() {
   if [[ "${FAKE_CAPTURE_FAIL:-0}" == "1" ]]; then
@@ -252,6 +265,7 @@ function doctor_env() {
     MACREC_DOCTOR_ENCODE_SECONDS="${MACREC_DOCTOR_ENCODE_SECONDS}" \
     MACREC_DOCTOR_STOP_CAPTURE_SECONDS="${MACREC_DOCTOR_STOP_CAPTURE_SECONDS}" \
     MACREC_DOCTOR_STOP_WAIT_SECONDS="${MACREC_DOCTOR_STOP_WAIT_SECONDS}" \
+    MACREC_DOCTOR_READY_WAIT_SECONDS="${MACREC_DOCTOR_READY_WAIT_SECONDS}" \
     MACREC_DOCTOR_DETACH_READY_SECONDS="${MACREC_DOCTOR_DETACH_READY_SECONDS}" \
     MACREC_DOCTOR_ID="${MACREC_DOCTOR_ID}" \
     bash "${SCRIPT}" "$@"
@@ -310,6 +324,8 @@ function test_capture_probe_pass_and_card_visible() {
   assert_equals "true" "$(jq -r '.probes[0].metrics.card_visible' "${STDOUT_FILE}")"
   assert_equals "480" "$(jq -r '.probes[0].metrics.width' "${STDOUT_FILE}")"
   assert_equals "2" "$(jq -r '.probes[0].metrics.retina_scale' "${STDOUT_FILE}")"
+  assert_equals "number" "$(jq -r '.probes[0].metrics.start_latency_s | type' "${STDOUT_FILE}")"
+  assert_contains "signal|INT" "$(cat "${EVENT_LOG}")"
 }
 
 function test_capture_probe_fails_when_card_not_visible() {
@@ -341,11 +357,23 @@ function test_stop_probe_honours_fifo_signals_and_eof() {
   assert_contains "stdin|eof" "$(cat "${EVENT_LOG}")"
 }
 
-function test_stop_probe_fails_when_fifo_byte_ignored() {
+function test_stop_probe_passes_when_only_fifo_methods_fail() {
   FAKE_CAPTURE_IGNORE_FIFO=1
-  run_doctor run --id stopfail --rect 0,0,240,150 --probes stop
+  run_doctor run --id stopsigint --rect 0,0,240,150 --probes stop
+  assert_equals "0" "${RUN_RC}"
+  assert_equals "true" "$(jq -r '.probes[0].ok' "${STDOUT_FILE}")"
+  assert_equals "true" "$(jq -r '.probes[0].metrics.sigint.valid' "${STDOUT_FILE}")"
+  assert_equals "number" "$(jq -r '.probes[0].metrics.sigint.start_latency_s | type' "${STDOUT_FILE}")"
+  assert_equals "124" "$(jq -r '.probes[0].metrics.fifo_byte.exit_status' "${STDOUT_FILE}")"
+  assert_contains "auxiliary methods" "$(jq -r '.probes[0].detail' "${STDOUT_FILE}")"
+}
+
+function test_stop_probe_fails_when_sigint_leaves_invalid_file() {
+  FAKE_FFPROBE_INVALID=1
+  run_doctor run --id stopbad --rect 0,0,240,150 --probes stop
   assert_equals "1" "${RUN_RC}"
   assert_equals "false" "$(jq -r '.probes[0].ok' "${STDOUT_FILE}")"
+  assert_contains "SIGINT" "$(jq -r '.probes[0].detail' "${STDOUT_FILE}")"
 }
 
 function test_cap_probe_stops_with_dash_v() {
@@ -496,6 +524,7 @@ function test_detach_and_detach_stop() {
   run_doctor detach-stop --id det1
   assert_equals "0" "${RUN_RC}"
   assert_equals "true" "$(jq -r '.valid' "${STDOUT_FILE}")"
+  assert_contains "signal|INT" "$(cat "${EVENT_LOG}")"
   if [ -d "$(macrec_dir)/doctor/det1" ]; then
     assert_equals "gone" "present"
   fi
