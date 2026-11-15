@@ -94,10 +94,11 @@ gcal:
 #   account: bryanbugyi34@gmail.com # optional when gog holds exactly one account
 #   writer: kellys-macbook-pro # the one host label allowed to sync
   root: meet_inbox # default [root::] for Event Tasks
-#   calendars: # default: [primary]
-#     - id: primary
-#     # - id: <calendar id from `bob gcal calendars`>
-#     #   root: body
+  calendars: # default: [primary]; every other calendar needs a unique mark
+    - id: primary # unmarked: your own calendar
+    - id: kjs04hafl3btrilujllivid3s8@group.calendar.google.com # Birthdays
+      mark: 🎂
+      # root: love # optional; affects only timed events on this calendar
 #   colors: {} # e.g. {tomato: job, sage: body}
 #   tentative: context # context | task
 #   timeout_secs: 60 # optional gog request timeout
