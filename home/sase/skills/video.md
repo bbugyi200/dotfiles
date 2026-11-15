@@ -92,6 +92,13 @@ Build a new contact sheet and confirm duration for every output:
 ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1 in.mp4
 ```
 
+## Mac screen recordings
+
+Mac screen recordings land in `~/tmp/screencasts` as `YYYYMMDD_HHMMSS.mp4`. Fetch the
+nth newest with `svid_fetch N` (or `#svid` in an agent prompt); add `--sheet` for a
+cached timestamped contact sheet plus a one-line summary. Clips are silent unless the
+mic was on for that clip.
+
 ## Host notes
 
 - athena is the GPU box; send heavy jobs there.

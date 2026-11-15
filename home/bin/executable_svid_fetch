@@ -1,0 +1,201 @@
+#!/usr/bin/env bash
+#
+# Resolve the nth newest MacBook screen recording by basename across the local
+# ~/tmp/screencasts directory plus apollo and athena. Print local_path=... for
+# the #svid macro. Failed remote listings are empty, not fatal.
+#
+# With --sheet, also build (and cache) a timestamped contact sheet and print
+# sheet_path= plus a one-line summary= of the form
+# "0:42 · 4.8 MB · 2560×1600 · silent".
+
+set -euo pipefail
+
+SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=8 -o ConnectionAttempts=1)
+screencast_dir="$HOME/tmp/screencasts"
+sheet_dir="${screencast_dir}/.sheets"
+
+if command -v ffmpeg >/dev/null 2>&1; then
+	FFMPEG_BIN="${FFMPEG_BIN:-ffmpeg}"
+else
+	FFMPEG_BIN="${FFMPEG_BIN:-/opt/homebrew/bin/ffmpeg}"
+fi
+if command -v ffprobe >/dev/null 2>&1; then
+	FFPROBE_BIN="${FFPROBE_BIN:-ffprobe}"
+else
+	FFPROBE_BIN="${FFPROBE_BIN:-/opt/homebrew/bin/ffprobe}"
+fi
+
+n=""
+want_sheet=0
+for arg in "$@"; do
+	case "$arg" in
+	--sheet | --contact-sheet) want_sheet=1 ;;
+	*)
+		if [[ -z "$n" ]]; then
+			n="$arg"
+		else
+			echo "ERROR: unexpected argument '${arg}' (usage: svid_fetch n [--sheet])" >&2
+			exit 1
+		fi
+		;;
+	esac
+done
+
+if [[ -z "$n" || ! "$n" =~ ^[0-9]+$ || "$n" -lt 1 ]]; then
+	echo "ERROR: n must be >= 1 (got '${n:-}')" >&2
+	exit 1
+fi
+
+current_host="$(hostname -s 2>/dev/null || hostname)"
+
+list_local() {
+	local path
+	shopt -s nullglob
+	for path in "${screencast_dir}"/*.mp4; do
+		printf '%s\n' "$(basename "$path")"
+	done
+	shopt -u nullglob
+}
+
+list_remote() {
+	local host="$1"
+	if [[ "$host" == "$current_host" ]]; then
+		return 0
+	fi
+	ssh "${SSH_OPTS[@]}" "$host" \
+		"cd ~/tmp/screencasts 2>/dev/null && ls -1 -- *.mp4 2>/dev/null" \
+		2>/dev/null || true
+}
+
+declare -A have=()
+declare -A sources=()
+names=()
+
+add_name() {
+	local source="$1"
+	local name="$2"
+	[[ -z "$name" ]] && return 0
+	[[ "$name" == *.mp4 ]] || return 0
+	if [[ -z "${have[$name]:-}" ]]; then
+		have[$name]=1
+		names+=("$name")
+	fi
+	sources[$name]+="${source} "
+}
+
+while IFS= read -r name; do
+	add_name local "$name"
+done < <(list_local)
+
+while IFS= read -r name; do
+	add_name apollo "$name"
+done < <(list_remote apollo)
+
+while IFS= read -r name; do
+	add_name athena "$name"
+done < <(list_remote athena)
+
+if [[ ${#names[@]} -eq 0 ]]; then
+	echo "ERROR: no screen recording #$n found (local/apollo/athena ~/tmp/screencasts)" >&2
+	exit 1
+fi
+
+mapfile -t sorted < <(printf '%s\n' "${names[@]}" | sort -r)
+if [[ "$n" -gt ${#sorted[@]} ]]; then
+	echo "ERROR: no screen recording #$n found (local/apollo/athena ~/tmp/screencasts)" >&2
+	exit 1
+fi
+
+basename="${sorted[$((n - 1))]}"
+local_path="${screencast_dir}/${basename}"
+
+mkdir -p "$screencast_dir"
+
+if ! [[ -s "$local_path" ]]; then
+	tried=()
+	for source in ${sources[$basename]}; do
+		case "$source" in
+		local | mac) continue ;;
+		esac
+		tried+=("$source")
+		if scp "${SSH_OPTS[@]}" -pq "${source}:~/tmp/screencasts/${basename}" "$local_path" >&2; then
+			break
+		fi
+	done
+	if ! [[ -s "$local_path" ]]; then
+		echo "ERROR: failed to copy '${basename}' from ${tried[*]:-any host}" >&2
+		exit 1
+	fi
+fi
+
+echo "local_path=${local_path}"
+
+if [[ "$want_sheet" -eq 0 ]]; then
+	exit 0
+fi
+
+sheet_path="${sheet_dir}/${basename%.mp4}.jpg"
+mkdir -p "$sheet_dir"
+
+if ! [[ -s "$sheet_path" && "$sheet_path" -nt "$local_path" ]]; then
+	duration="$("$FFPROBE_BIN" -v error -show_entries format=duration \
+		-of default=nw=1:nk=1 "$local_path" 2>/dev/null || true)"
+	if [[ ! "$duration" =~ ^[0-9]+(\.[0-9]+)?$ ]] || [[ "$duration" == 0* && "$duration" != *[^0.]* ]]; then
+		duration="30"
+	fi
+	dur_int="$(awk -v d="$duration" 'BEGIN { i = int(d + 0.5); if (i < 1) i = 1; print i }')"
+	if "$FFMPEG_BIN" -hide_banner -filters 2>/dev/null | grep -q '[[:space:]]drawtext[[:space:]]'; then
+		vf="fps=10/${dur_int},scale=384:-1,drawtext=text='%{pts\\:hms}':x=8:y=h-th-8:fontsize=22:fontcolor=white:box=1:boxcolor=black@0.65,tile=5x2"
+	else
+		vf="fps=10/${dur_int},scale=384:-1,tile=5x2"
+	fi
+	tmp_sheet="$(mktemp "${sheet_dir}/.sheet.XXXXXX.jpg")"
+	if ! "$FFMPEG_BIN" -hide_banner -loglevel error -y -i "$local_path" \
+		-vf "$vf" -frames:v 1 "$tmp_sheet" 2>/dev/null; then
+		rm -f "$tmp_sheet"
+		echo "ERROR: failed to build contact sheet for '${basename}'" >&2
+		exit 1
+	fi
+	mv -f "$tmp_sheet" "$sheet_path"
+fi
+
+echo "sheet_path=${sheet_path}"
+
+duration="$("$FFPROBE_BIN" -v error -show_entries format=duration \
+	-of default=nw=1:nk=1 "$local_path" 2>/dev/null || true)"
+dims="$("$FFPROBE_BIN" -v error -select_streams v:0 \
+	-show_entries stream=width,height -of csv=p=0 "$local_path" 2>/dev/null || true)"
+has_audio=0
+if "$FFPROBE_BIN" -v error -show_entries stream=codec_type \
+	-of csv=p=0 "$local_path" 2>/dev/null | grep -q '^audio$'; then
+	has_audio=1
+fi
+
+elapsed="0:00"
+if [[ "$duration" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+	elapsed="$(awk -v d="$duration" 'BEGIN {
+		t = int(d); h = int(t / 3600); m = int((t % 3600) / 60); s = t % 60
+		if (h > 0) printf "%d:%02d:%02d", h, m, s
+		else printf "%d:%02d", m, s
+	}')"
+fi
+
+size_bytes="$(wc -c <"$local_path" 2>/dev/null || echo 0)"
+size_human="$(awk -v b="$size_bytes" 'BEGIN {
+	if (b >= 1073741824) printf "%.1f GB", b / 1073741824
+	else if (b >= 1048576) printf "%.1f MB", b / 1048576
+	else if (b >= 1024) printf "%.1f KB", b / 1024
+	else printf "%d B", b
+}')"
+
+dims_human="?"
+if [[ "$dims" =~ ^([0-9]+),([0-9]+)$ ]]; then
+	dims_human="${BASH_REMATCH[1]}×${BASH_REMATCH[2]}"
+fi
+
+audio_human="silent"
+if [[ "$has_audio" -eq 1 ]]; then
+	audio_human="mic"
+fi
+
+echo "summary=${elapsed} · ${size_human} · ${dims_human} · ${audio_human}"

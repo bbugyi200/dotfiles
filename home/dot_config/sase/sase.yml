@@ -12,6 +12,9 @@ artifact_refs:
       - name: screenshots
         path: ~/tmp/screenshots
         path_globs: ["*.png"]
+      - name: screencasts
+        path: ~/tmp/screencasts
+        path_globs: ["*.mp4", ".sheets/*.jpg"]
 commit_hooks:
   before: "sase_git_fix"
 file_hooks:

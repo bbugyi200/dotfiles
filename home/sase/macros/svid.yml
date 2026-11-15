@@ -1,0 +1,23 @@
+description:
+  Reference a recent MacBook screen recording (local, apollo, or athena) as an inline contact sheet plus clip path.
+
+input:
+  - name: n
+    type: int
+    default: 1
+    description:
+      Which recording to fetch, counting back from the newest (1 = most recent).
+
+steps:
+  - name: fetch
+    hidden: true
+    bash: |
+      n="{{ n }}"
+      svid_fetch "$n" --sheet
+    output: { local_path: path, sheet_path: path, summary: line }
+
+  - name: inject
+    prompt_part: |
+      @file:{{ fetch.sheet_path }}
+      Clip: {{ fetch.local_path }} ({{ fetch.summary }})
+      For frames, OCR, or a transcript of this clip, use the /video skill (ffmpeg contact sheets, tesseract, whisper_run). Recordings are silent unless the mic was on.
