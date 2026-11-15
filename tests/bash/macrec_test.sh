@@ -36,7 +36,6 @@ function set_up() {
   export MACREC_READY_GRACE=0.05
   export MACREC_STOP_INT_WAIT=0.4
   export MACREC_STOP_TERM_WAIT=0.3
-  export MACREC_WATCHDOG_GRACE=1
   export MACREC_MIN_FREE_KB=2097152
 
   write_screencapture_stub
@@ -103,7 +102,8 @@ write_out() {
 if [[ "${FAKE_CAPTURE_IGNORE_INT:-0}" == "1" ]]; then
   trap 'printf "signal|INT\n" >>"${EVENT_LOG}"' INT
 else
-  trap 'printf "signal|INT\n" >>"${EVENT_LOG}"; [[ "${FAKE_CAPTURE_INVALID:-0}" == "1" ]] || write_out; exit 0' INT
+  # Real macOS timed (-V) captures cannot be finalized early with SIGINT.
+  trap 'printf "signal|INT\n" >>"${EVENT_LOG}"; [[ "${FAKE_CAPTURE_INVALID:-0}" == "1" || -n "${cap}" ]] || write_out; exit 0' INT
 fi
 trap 'printf "signal|TERM\n" >>"${EVENT_LOG}"; [[ "${FAKE_CAPTURE_INVALID:-0}" == "1" ]] || write_out; exit 143' TERM
 
@@ -244,7 +244,6 @@ function macrec_env() {
     MACREC_READY_GRACE="${MACREC_READY_GRACE}" \
     MACREC_STOP_INT_WAIT="${MACREC_STOP_INT_WAIT}" \
     MACREC_STOP_TERM_WAIT="${MACREC_STOP_TERM_WAIT}" \
-    MACREC_WATCHDOG_GRACE="${MACREC_WATCHDOG_GRACE}" \
     MACREC_MIN_FREE_KB="${MACREC_MIN_FREE_KB}" \
     bash "${SCRIPT}" "$@"
 }
@@ -417,6 +416,21 @@ function test_cap_system_and_crash_classification() {
   LAST_ID="$(jq -r '.id' "${STDOUT_FILE}")"
   wait_session_field "${LAST_ID}" stop_reason crash
   assert_equals "0" "$?"
+}
+
+function test_watchdog_cap_finalizes_without_native_timed_capture() {
+  FAKE_V_SLEEP=30
+  run_macrec start 0,0,80,80 --probe --max-seconds 1
+  assert_equals "0" "${RUN_RC}"
+  LAST_ID="$(jq -r '.id' "${STDOUT_FILE}")"
+  wait_session_field "${LAST_ID}" status done
+  assert_equals "0" "$?"
+  local session
+  session="$(session_path "${LAST_ID}")/session.json"
+  assert_equals "cap" "$(jq -r '.stop_reason' "${session}")"
+  assert_equals "true" "$(jq '.ended_at - .started_at < 3' "${session}")"
+  assert_contains "signal|INT" "$(cat "${EVENT_LOG}")"
+  assert_file_not_exists "$(session_path "${LAST_ID}")/raw.mov"
 }
 
 function test_orphan_detection_and_recover() {

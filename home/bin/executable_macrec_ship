@@ -55,11 +55,11 @@ now_s() {
 }
 
 perl_sub() {
-	"$PERL_BIN" -e 'printf "%.3f\n", $ARGV[0] - $ARGV[1]' "$1" "$2"
+	"$PERL_BIN" -e 'printf "%.3f\n", $ARGV[0] - $ARGV[1]' -- "$1" "$2"
 }
 
 perl_ge() {
-	"$PERL_BIN" -e 'exit($ARGV[0] + 0 >= $ARGV[1] + 0 ? 0 : 1)' "$1" "$2"
+	"$PERL_BIN" -e 'exit($ARGV[0] + 0 >= $ARGV[1] + 0 ? 0 : 1)' -- "$1" "$2"
 }
 
 sleep_s() {
@@ -124,7 +124,7 @@ new_id() {
 		return
 	fi
 	if [ -x "$UUIDGEN_BIN" ]; then
-		"$UUIDGEN_BIN" | tr 'A-Z' 'a-z'
+		"$UUIDGEN_BIN" | tr '[:upper:]' '[:lower:]'
 		return
 	fi
 	"$PERL_BIN" -MTime::HiRes=time -e 'printf "d%x%x\n", int(time()*1000), int(rand()*1e9)'
@@ -171,14 +171,6 @@ format_bytes() {
 		else if (b < 1000000000) printf "%.1f MB", b / 1000000
 		else printf "%.1f GB", b / 1000000000
 	}'
-}
-
-host_display() {
-	case "$1" in
-	apollo) printf 'Apollo\n' ;;
-	athena) printf 'Athena\n' ;;
-	*) printf '%s\n' "$1" ;;
-	esac
 }
 
 # Mirrors screen_recording_model.hostsLabel for the apollo/athena pair.
@@ -283,7 +275,7 @@ encode_raw() {
 	raw="$1"
 	stem="$2"
 	cast="$(cast_dir)"
-	vf="fps=30,scale=w='if(gt(iw,ih),2560,-2)':h='if(gt(iw,ih),-2,2560)':flags=lanczos,format=yuv420p"
+	vf="fps=30,scale=w='if(gte(iw,ih),trunc(min(iw,2560)/2)*2,-2)':h='if(gte(iw,ih),-2,trunc(min(ih,2560)/2)*2)':flags=lanczos,format=yuv420p"
 
 	final="$(resolve_final "$stem" mp4)"
 	tmp="${cast}/${final%.mp4}.part.mp4"
@@ -493,8 +485,11 @@ notify_stage() {
 	name="$(session_get "$dir" '.name // ""')"
 	if [ -n "$mp4" ]; then
 		base="$(basename "$mp4")"
+		# Display a portable home-relative path in the notification.
+		# shellcheck disable=SC2088
 		path="~/tmp/screencasts/${base}"
 	elif [ -n "$name" ]; then
+		# shellcheck disable=SC2088
 		path="~/tmp/screencasts/${name}.mp4"
 	else
 		path="the saved recording"
@@ -738,7 +733,7 @@ upload_stage() {
 	fi
 	log_line "upload ${dir}: apollo=${apollo_status} athena=${athena_status}"
 	if [ "$ok_count" -gt 0 ]; then
-		set_status "$dir" done
+		set_status "$dir" "done"
 		session_set "$dir" '.error = ""'
 		rm -f "${dir}/raw.mov"
 		return 0

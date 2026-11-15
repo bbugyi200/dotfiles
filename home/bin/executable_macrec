@@ -28,7 +28,6 @@ STOP_INT_WAIT="${MACREC_STOP_INT_WAIT:-3}"
 STOP_TERM_WAIT="${MACREC_STOP_TERM_WAIT:-2}"
 READY_WAIT_SECONDS="${MACREC_READY_WAIT:-5}"
 READY_GRACE_SECONDS="${MACREC_READY_GRACE:-1}"
-WATCHDOG_GRACE_SECONDS="${MACREC_WATCHDOG_GRACE:-30}"
 POLL_INTERVAL="${MACREC_POLL_INTERVAL:-0.1}"
 LOG_MAX_BYTES=1048576
 PERMISSION_HINT="Screen Recording is off for Hammerspoon — System Settings › Privacy & Security"
@@ -153,7 +152,7 @@ new_id() {
 		return
 	fi
 	if [ -x "$UUIDGEN_BIN" ]; then
-		"$UUIDGEN_BIN" | tr 'A-Z' 'a-z'
+		"$UUIDGEN_BIN" | tr '[:upper:]' '[:lower:]'
 		return
 	fi
 	"$PERL_BIN" -MTime::HiRes=time -e 'printf "e%x%x\n", int(time()*1000), int(rand()*1e9)'
@@ -261,9 +260,10 @@ wait_file_seconds() {
 fill_recorder_argv() {
 	local raw="$1"
 	local rect="$2"
-	local cap="$3"
-	local mic="$4"
-	RECORDER_ARGV=("$SCREENCAPTURE_BIN" -v -x -k -C -V "$cap" -R "$rect")
+	local mic="$3"
+	# macOS -V produces an invalid movie when SIGINT stops it before the cap.
+	# Use the same clean SIGINT path for manual stops and the wrapper's cap.
+	RECORDER_ARGV=("$SCREENCAPTURE_BIN" -v -x -k -C -R "$rect")
 	if [ "$mic" = "1" ]; then
 		RECORDER_ARGV+=(-g)
 	fi
@@ -292,13 +292,12 @@ stop_recorder() {
 launch_recorder() {
 	local raw="$1"
 	local rect="$2"
-	local cap="$3"
-	local mic="$4"
-	local fifo="$5"
+	local mic="$3"
+	local fifo="$4"
 	rm -f "$fifo"
 	"$MKFIFO_BIN" "$fifo" 2>/dev/null || mkfifo "$fifo"
 	exec 3<>"$fifo"
-	fill_recorder_argv "$raw" "$rect" "$cap" "$mic"
+	fill_recorder_argv "$raw" "$rect" "$mic"
 	(
 		trap - INT QUIT
 		exec "${RECORDER_ARGV[@]}"
@@ -654,11 +653,11 @@ cmd_wrapper() {
 	[ "$(session_field "$sdir" probe)" = "true" ] && probe=1
 	region_str="$("$JQ_BIN" -r '[.region.x,.region.y,.region.w,.region.h] | join(",")' "$sj")"
 
-	launch_recorder "$raw" "$region_str" "$cap" "$mic" "$fifo"
+	launch_recorder "$raw" "$region_str" "$mic" "$fifo"
 	printf '%s\n' "$REC_PID" >"${sdir}/recorder.pid"
 	log_line "wrapper id=${id} recorder=${REC_PID}"
 
-	watchdog_budget="$(awk -v c="$cap" -v g="$WATCHDOG_GRACE_SECONDS" 'BEGIN { print c + g }')"
+	watchdog_budget="$cap"
 	(
 		local start now
 		start="$(now_s)"

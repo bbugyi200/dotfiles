@@ -28,6 +28,8 @@ function set_up() {
   DF_FREE_ATHENA_KB="20000000"
   PGREP_RC="1"
   IMPORT_ID="importid1"
+  REAL_FFMPEG=""
+  REAL_FFPROBE=""
 
   mkdir -p "${FAKE_BIN}" "${TEST_HOME}"
   mkdir -p "${TEST_TMP}/remote/apollo/home/tmp/screencasts"
@@ -225,8 +227,8 @@ function run_ship() {
     HOME="${TEST_HOME}" \
     TEST_TMP="${TEST_TMP}" \
     EVENT_LOG="${EVENT_LOG}" \
-    FFMPEG_BIN="${FAKE_BIN}/ffmpeg" \
-    FFPROBE_BIN="${FAKE_BIN}/ffprobe" \
+    FFMPEG_BIN="${REAL_FFMPEG:-${FAKE_BIN}/ffmpeg}" \
+    FFPROBE_BIN="${REAL_FFPROBE:-${FAKE_BIN}/ffprobe}" \
     SSH_BIN="${FAKE_BIN}/ssh" \
     SCP_BIN="${FAKE_BIN}/scp" \
     OSASCRIPT_BIN="${FAKE_BIN}/osascript" \
@@ -457,6 +459,7 @@ function test_import_builds_session_and_ships() {
   assert_file_exists "${TEST_HOME}/tmp/screencasts/acceptance_77.mp4"
   assert_contains "acceptance_77" "$(cat "${STDOUT_FILE}")"
   assert_contains "scp|apollo|" "$(cat "${EVENT_LOG}")"
+  assert_equals "" "$(cat "${STDERR_FILE}")"
 }
 
 function test_import_defaults_name_from_basename() {
@@ -466,6 +469,33 @@ function test_import_defaults_name_from_basename() {
   assert_equals "0" "${RUN_RC}"
   assert_equals "done" "$(sget importid2 '.status')"
   assert_file_exists "${TEST_HOME}/tmp/screencasts/myclip.mp4"
+}
+
+function test_real_encode_preserves_small_regions_and_caps_large_regions() {
+  REAL_FFMPEG="$(command -v ffmpeg || true)"
+  REAL_FFPROBE="$(command -v ffprobe || true)"
+  if [[ -z "${REAL_FFMPEG}" || -z "${REAL_FFPROBE}" ]]; then
+    bashunit::skip "ffmpeg and ffprobe are required for the real media regression"
+    return
+  fi
+  local size expected output
+  for size in 640x360 3000x1800 1800x3000; do
+    case "${size}" in
+      640x360) expected="640,360" ;;
+      3000x1800) expected="2560,1536" ;;
+      1800x3000) expected="1536,2560" ;;
+    esac
+    "${REAL_FFMPEG}" -v error -f lavfi -i "color=size=${size}:rate=30:duration=0.2" \
+      -c:v libx264 -threads 1 "${TEST_TMP}/${size}.mov"
+    assert_equals "0" "$?"
+    IMPORT_ID="real_${size}"
+    run_ship --import "${TEST_TMP}/${size}.mov" --name "real_${size}" --no-notify
+    assert_equals "0" "${RUN_RC}"
+    assert_equals "" "$(cat "${STDERR_FILE}")"
+    output="${TEST_HOME}/tmp/screencasts/real_${size}.mp4"
+    assert_equals "${expected}" "$("${REAL_FFPROBE}" -v error -select_streams v:0 \
+      -show_entries stream=width,height -of csv=p=0 "${output}")"
+  done
 }
 
 function test_ack_received_skips_osascript() {
