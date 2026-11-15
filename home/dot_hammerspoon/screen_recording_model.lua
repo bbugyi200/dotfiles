@@ -863,7 +863,20 @@ local function validate_session(session)
 	if session.schema ~= 1 then
 		return false
 	end
-	if not valid_region(session.region) or type(session.mic) ~= "boolean" or type(session.probe) ~= "boolean" then
+	-- macrec_ship imports have no screen coordinates, including while encoding.
+	-- Accept their exact sentinel without allowing empty live capture regions.
+	local region = session.region
+	local regionless_import = session.stop_reason == "import"
+		and type(region) == "table"
+		and region.x == 0
+		and region.y == 0
+		and region.w == 0
+		and region.h == 0
+	if
+		(not valid_region(region) and not regionless_import)
+		or type(session.mic) ~= "boolean"
+		or type(session.probe) ~= "boolean"
+	then
 		return false
 	end
 	if not is_number(session.started_at) or not is_number(session.cap_seconds) or session.cap_seconds <= 0 then

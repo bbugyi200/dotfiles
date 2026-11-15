@@ -531,6 +531,50 @@ describe("screen recording status parser", function()
 		assert.equals("sessions is not an array", model.parseStatus(invalid_array).reason)
 	end)
 
+	it("accepts regionless imports through shipping and acknowledges their notification", function()
+		local imported = status_session({
+			id = "imported",
+			stop_reason = "import",
+			region = rect(0, 0, 0, 0),
+			mp4 = "/tmp/screencasts/imported.mp4",
+		})
+		for _, phase in ipairs({ "recording", "finalizing", "encoding", "uploading", "done", "failed" }) do
+			imported.status = phase
+			local parsed = model.parseStatus({ schema = 1, sessions = { imported, status_session() } })
+			assert.is_nil(parsed.reason)
+			assert.equals(2, #parsed.sessions)
+		end
+		imported.status = "done"
+		local parsed = model.parseStatus({ schema = 1, sessions = { imported } })
+		local _, effects = model.reduce(state("idle"), { type = "status_refresh", status = parsed }, 120)
+		assert.equals("imported", effect_of(effects, "notify").session_id)
+		assert.same({ type = "ack", session_id = "imported", kind = "notified" }, effect_of(effects, "ack"))
+		assert.is_nil(effect_of(effects, "copy_path"))
+	end)
+
+	it("keeps invalid capture regions and malformed import sentinels invalid", function()
+		local session = status_session({ region = rect(0, 0, 0, 0), stop_reason = "chord" })
+		assert.equals("invalid session at index 1", model.parseStatus({ schema = 1, sessions = { session } }).reason)
+		session.stop_reason = "import"
+		for _, region in ipairs({ rect(0, 0, -1, 0), rect(1, 0, 0, 0), rect(0, 0, 0, 10), {} }) do
+			session.region = region
+			assert.equals(
+				"invalid session at index 1",
+				model.parseStatus({ schema = 1, sessions = { session } }).reason
+			)
+		end
+		local active = {}
+		for key, value in pairs(valid_active) do
+			active[key] = value
+		end
+		active.region = rect(0, 0, 0, 0)
+		active.stop_reason = "import"
+		assert.equals(
+			"invalid active recording",
+			model.parseStatus({ schema = 1, active = active, sessions = {} }).reason
+		)
+	end)
+
 	it("validates session upload states, host results, and acknowledgement types", function()
 		local session = status_session({
 			id = "done",
