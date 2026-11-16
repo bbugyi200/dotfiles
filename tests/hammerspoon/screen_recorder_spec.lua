@@ -1531,4 +1531,73 @@ describe("screen recorder runtime", function()
 			"600",
 		}, tasks_with_arg(env, "start")[1].args)
 	end)
+
+	it("keeps doctor probes out of the UI but still acknowledges their adoption", function()
+		env, recorder = setup({ now = 1001 })
+		start_recorder(env, recorder)
+		complete_status(env, { active = active_fields({ probe = true, started_at = 1000, cap_seconds = 8 }) })
+		assert.equals("idle", _G.BobScreenRecorder.model.state)
+		assert.equals(0, #env.canvases)
+		-- The restart-survival drill proves re-adoption through this flag.
+		assert.same({ "ack", "sess1", "adopted" }, tasks_with_arg(env, "adopted")[1].args)
+
+		env, recorder = setup({ now = 1000 })
+		start_recorder(env, recorder)
+		complete_status(env, {
+			sessions = {
+				session_fields({ id = "probe-done", probe = true, hosts = {} }),
+				session_fields({
+					id = "probe-failed",
+					probe = true,
+					status = "failed",
+					acked = { notified = true, adopted = true },
+				}),
+			},
+		})
+		assert.equals("idle", _G.BobScreenRecorder.model.state)
+		assert.equals(0, #env.rich_notifications)
+		assert.equals(0, #tasks_with_arg(env, "notified"))
+	end)
+
+	it("persists Dismiss so a failed recording does not resurface", function()
+		local failed = session_fields({
+			status = "failed",
+			acked = { notified = true, adopted = true },
+		})
+		boot()
+		complete_status(env, { sessions = { failed } })
+		assert.equals("failed", _G.BobScreenRecorder.model.state)
+		for _, item in ipairs(menu_items(env)) do
+			if item.title == "Dismiss" then
+				item.fn()
+			end
+		end
+		assert.equals("idle", _G.BobScreenRecorder.model.state)
+		local dismiss = tasks_with_arg(env, "dismissed")
+		assert.equals(1, #dismiss)
+		assert.same({ "ack", "sess1", "dismissed" }, dismiss[1].args)
+		dismiss[1]:complete(0, "", "")
+		complete_status(env, {
+			sessions = {
+				session_fields({
+					status = "failed",
+					acked = { notified = true, adopted = true, dismissed = true },
+				}),
+			},
+		})
+		assert.equals("idle", _G.BobScreenRecorder.model.state)
+
+		env.restore()
+		env, recorder = setup({ now = 1000 })
+		start_recorder(env, recorder)
+		complete_status(env, {
+			sessions = {
+				session_fields({
+					status = "failed",
+					acked = { notified = true, adopted = true, dismissed = true },
+				}),
+			},
+		})
+		assert.equals("idle", _G.BobScreenRecorder.model.state)
+	end)
 end)

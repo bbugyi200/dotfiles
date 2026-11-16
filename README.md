@@ -118,6 +118,12 @@ A recording survives a Hammerspoon restart: `screen_recorder.lua` re-adopts a li
 session from `macrec status`, or recovers an orphan, and never overwrites newer
 clipboard content.
 
+A failed upload leaves `⚠ rec` in the menu bar with Retry, Reveal, Show Log, and
+Dismiss. Dismiss records `macrec ack ID dismissed`, so that failure stays resolved
+across status refreshes and Hammerspoon restarts. `macrec doctor` probe sessions are
+self-tests: they never draw recording chrome, notify, or count as failed or orphaned
+recordings, and `macrec retry`/`recover` skip them when picking the newest session.
+
 See the
 [tailnet screen recording runbook](https://github.com/bbugyi200/tailnet/blob/main/mac/screen-recording-2026-11.md).
 

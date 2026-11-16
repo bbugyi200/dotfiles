@@ -272,6 +272,77 @@ describe("screen recording reducer", function()
 		assert.equals("shipping", again.state)
 		assert.is_nil(effect_of(again_effects, "recover"))
 	end)
+
+	it("keeps doctor probe sessions out of the recording UI", function()
+		local probe_active = {
+			id = "probe",
+			name = "clip",
+			state = "recording",
+			region = rect(10, 20, 240, 150),
+			mic = false,
+			probe = true,
+			started_at = 10,
+			cap_seconds = 8,
+			recorder_alive = true,
+		}
+		local live, live_effects = model.reduce(state("idle"), {
+			type = "status_refresh",
+			status = { state = "recording", active = probe_active, sessions = {} },
+		}, 11)
+		assert.equals("idle", live.state)
+		assert.is_nil(effect_of(live_effects, "show_chrome"))
+
+		local terminal_probes = {
+			status_session({ id = "probe-done", probe = true }),
+			status_session({ id = "probe-failed", probe = true, status = "failed" }),
+			status_session({ id = "probe-orphan", probe = true, status = "recording", orphaned = true }),
+		}
+		local after, after_effects = model.reduce(state("idle"), {
+			type = "status_refresh",
+			status = { state = "idle", sessions = terminal_probes },
+		}, 12)
+		assert.equals("idle", after.state)
+		assert.is_nil(effect_of(after_effects, "notify"))
+		assert.is_nil(effect_of(after_effects, "ack"))
+		assert.is_nil(effect_of(after_effects, "recover"))
+
+		local view = model.userStatus({
+			state = "recording",
+			active = probe_active,
+			sessions = { terminal_probes[1], status_session({ id = "real" }) },
+		})
+		assert.equals("idle", view.state)
+		assert.is_nil(view.active)
+		assert.equals(1, #view.sessions)
+		assert.equals("real", view.sessions[1].id)
+	end)
+
+	it("keeps a dismissed failure resolved across status refreshes", function()
+		local failed = status_session({
+			id = "failed",
+			status = "failed",
+			acked = { notified = true, adopted = true },
+		})
+		local shown = model.reduce(state("idle", { session = { id = "failed" } }), {
+			type = "status_refresh",
+			status = { state = "idle", sessions = { failed } },
+		}, 1)
+		assert.equals("failed", shown.state)
+
+		local dismissed = status_session({
+			id = "failed",
+			status = "failed",
+			acked = { notified = true, adopted = true, dismissed = true },
+		})
+		assert.is_true(model.isDismissed(dismissed))
+		assert.is_false(model.isDismissed(failed))
+		local resolved, effects = model.reduce(state("idle", { session = { id = "failed" } }), {
+			type = "status_refresh",
+			status = { state = "idle", sessions = { dismissed } },
+		}, 2)
+		assert.equals("idle", resolved.state)
+		assert.is_nil(effect_of(effects, "notify"))
+	end)
 end)
 
 describe("screen recording chrome geometry", function()
@@ -588,6 +659,10 @@ describe("screen recording status parser", function()
 		assert.equals("invalid session at index 1", model.parseStatus({ schema = 1, sessions = { session } }).reason)
 		session.hosts.apollo = "ok"
 		session.acked.notified = "false"
+		assert.equals("invalid session at index 1", model.parseStatus({ schema = 1, sessions = { session } }).reason)
+		session.acked = { notified = true, adopted = true, dismissed = true }
+		assert.equals(1, #model.parseStatus({ schema = 1, sessions = { session } }).sessions)
+		session.acked.dismissed = "yes"
 		assert.equals("invalid session at index 1", model.parseStatus({ schema = 1, sessions = { session } }).reason)
 	end)
 end)

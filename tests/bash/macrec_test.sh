@@ -511,9 +511,27 @@ function test_ack_retry_and_aliases() {
   assert_file_exists "${sdir}/ack.notified"
   run_macrec ack fail1 adopted
   assert_file_exists "${sdir}/ack.adopted"
+  run_macrec ack fail1 dismissed
+  assert_equals "0" "${RUN_RC}"
+  assert_file_exists "${sdir}/ack.dismissed"
+  run_macrec ack fail1 bogus
+  assert_equals "2" "${RUN_RC}"
+  : >"${sdir}/log"
+  run_macrec status --json
+  assert_equals "true" "$(jq -r '.sessions[] | select(.id=="fail1") | .acked.dismissed' "${STDOUT_FILE}")"
+  # A newer failed doctor probe must never become the default retry target.
+  local probe_dir
+  probe_dir="$(session_path probefail)"
+  mkdir -p "${probe_dir}"
+  jq -n -c '{
+    schema:1,id:"probefail",name:"probe",status:"failed",
+    region:{x:0,y:0,w:80,h:80},mic:false,probe:true,
+    started_at:90,cap_seconds:8,hosts:{},host_detail:{}
+  }' >"${probe_dir}/session.json"
   run_macrec retry
   assert_equals "0" "${RUN_RC}"
   assert_contains "ship|--session fail1 --retry" "$(cat "${EVENT_LOG}")"
+  assert_not_contains "probefail" "$(cat "${EVENT_LOG}")"
   run_macrec ship --session fail1 --retry
   assert_equals "0" "${RUN_RC}"
   run_macrec doctor -h

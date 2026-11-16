@@ -24,7 +24,9 @@ MKFIFO_BIN="${MKFIFO_BIN:-/usr/bin/mkfifo}"
 
 DEFAULT_CAP_SECONDS="${MACREC_CAP_SECONDS:-600}"
 MIN_FREE_KB="${MACREC_MIN_FREE_KB:-2097152}"
-STOP_INT_WAIT="${MACREC_STOP_INT_WAIT:-3}"
+# SIGTERM leaves no usable movie, so give SIGINT ample time to finalize a large
+# or long region before escalating (probe clips finish in well under 1 s).
+STOP_INT_WAIT="${MACREC_STOP_INT_WAIT:-10}"
 STOP_TERM_WAIT="${MACREC_STOP_TERM_WAIT:-2}"
 READY_WAIT_SECONDS="${MACREC_READY_WAIT:-5}"
 READY_GRACE_SECONDS="${MACREC_READY_GRACE:-1}"
@@ -41,7 +43,7 @@ Usage:
   macrec status [--json]
   macrec retry [ID]
   macrec recover [ID]
-  macrec ack ID notified|adopted
+  macrec ack ID notified|adopted|dismissed
   macrec ship [args...]
   macrec doctor [args...]
 
@@ -826,11 +828,13 @@ cmd_discard() {
 
 session_acked_json() {
 	local sdir="$1"
-	local notified=false adopted=false
+	local notified=false adopted=false dismissed=false
 	[ -f "${sdir}/ack.notified" ] && notified=true
 	[ -f "${sdir}/ack.adopted" ] && adopted=true
+	[ -f "${sdir}/ack.dismissed" ] && dismissed=true
 	"$JQ_BIN" -n -c --argjson notified "$notified" --argjson adopted "$adopted" \
-		'{notified:$notified,adopted:$adopted}'
+		--argjson dismissed "$dismissed" \
+		'{notified:$notified,adopted:$adopted,dismissed:$dismissed}'
 }
 
 session_orphaned() {
@@ -929,6 +933,8 @@ newest_session_with() {
 	[ -d "$root" ] || return 0
 	for d in "$root"/*; do
 		[ -d "$d" ] || continue
+		# Doctor probes are self-tests, never user clips to retry or recover.
+		[ "$(session_field "$d" probe)" = "true" ] && continue
 		status="$(session_field "$d" status)"
 		case "$want" in
 		failed)
@@ -1027,7 +1033,7 @@ cmd_ack() {
 		exit 2
 	fi
 	case "$which" in
-	notified | adopted) ;;
+	notified | adopted | dismissed) ;;
 	*)
 		usage >&2
 		exit 2

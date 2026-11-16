@@ -1460,10 +1460,18 @@ local function handle_menu_action(action)
 	elseif action == "show_log" then
 		open_path(session_log(), true)
 	elseif action == "dismiss" then
+		local id = runtime.model and runtime.model.session and runtime.model.session.id
 		if runtime.model then
 			runtime.model.state = Model.STATES.idle
 		end
 		render_menu()
+		-- Persist the dismissal so the next status refresh or reload does not
+		-- resurface the same failure.
+		if id then
+			run_macrec({ "ack", id, "dismissed" }, function()
+				refresh_status()
+			end)
+		end
 	end
 end
 
@@ -1705,6 +1713,7 @@ local function adopt_unbound_sessions(status)
 	if not runtime.model or runtime.model.state ~= Model.STATES.idle then
 		return
 	end
+	status = Model.userStatus(status) or {}
 	for _, session in ipairs(status.sessions or {}) do
 		local session_status = session.status
 		if session_status == "finalizing" or session_status == "encoding" or session_status == "uploading" then
@@ -1717,7 +1726,7 @@ local function adopt_unbound_sessions(status)
 		end
 	end
 	for _, session in ipairs(status.sessions or {}) do
-		if session.status == "failed" then
+		if session.status == "failed" and not Model.isDismissed(session) then
 			runtime.model.state = Model.STATES.failed
 			runtime.model.session = session
 			render_menu()

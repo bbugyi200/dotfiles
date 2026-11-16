@@ -119,7 +119,7 @@ end
 local function notify_terminal_session(model, effects, session, event)
 	local acked = type(session.acked) == "table" and session.acked.notified == true
 	model.notifiedSessions = model.notifiedSessions or {}
-	if acked or model.notifiedSessions[session.id] then
+	if acked or M.isDismissed(session) or model.notifiedSessions[session.id] then
 		return
 	end
 	local recovered = session.recovered == true
@@ -197,6 +197,7 @@ local function refresh_from_status(model, effects, event)
 		effect(effects, "update_menu")
 		return
 	end
+	status = M.userStatus(status)
 	for _, session in ipairs(status.sessions or {}) do
 		if TERMINAL_SESSION_STATES[session.status] and session.status ~= "discarded" then
 			notify_terminal_session(model, effects, session, event)
@@ -243,7 +244,7 @@ local function refresh_from_status(model, effects, event)
 		return
 	end
 	if found and TERMINAL_SESSION_STATES[found.status] then
-		if found.status == "discarded" then
+		if found.status == "discarded" or M.isDismissed(found) then
 			model.state = M.STATES.idle
 			model.session = copy_table(found)
 			model.discardPending = false
@@ -805,7 +806,7 @@ local function valid_ack(acked)
 	if type(acked) ~= "table" then
 		return false
 	end
-	for _, key in ipairs({ "notified", "adopted" }) do
+	for _, key in ipairs({ "notified", "adopted", "dismissed" }) do
 		if acked[key] ~= nil and type(acked[key]) ~= "boolean" then
 			return false
 		end
@@ -924,6 +925,36 @@ end
 
 local function is_null_sentinel(value)
 	return type(value) == "userdata" and tostring(value):lower():find("null", 1, true) ~= nil
+end
+
+-- True once the user dismissed a session's failure (`macrec ack ID dismissed`).
+function M.isDismissed(session)
+	return type(session) == "table" and type(session.acked) == "table" and session.acked.dismissed == true
+end
+
+-- The user-facing view of a parsed status. Doctor probes run through macrec but
+-- are self-tests, not recordings: they never draw chrome, update the menu bar,
+-- notify, or surface as failed or orphaned sessions.
+function M.userStatus(status)
+	if type(status) ~= "table" then
+		return status
+	end
+	local view = {}
+	for key, value in pairs(status) do
+		view[key] = value
+	end
+	if type(status.active) == "table" and status.active.probe == true then
+		view.active = nil
+		view.state = M.STATES.idle
+	end
+	local sessions = {}
+	for _, session in ipairs(status.sessions or {}) do
+		if not (type(session) == "table" and session.probe == true) then
+			table.insert(sessions, session)
+		end
+	end
+	view.sessions = sessions
+	return view
 end
 
 -- Validate `macrec status --json` schema 1. Invalid or absent data always
