@@ -6,9 +6,10 @@
 -- via hs.task.
 --
 -- Live UI: executes screen_recording_model effects with selector, chrome,
--- menu bar, notifications, clipboard guard, watchers, and re-adoption.
+-- menu bar, osascript notifications, clipboard guard, watchers, and re-adoption.
 local Model = require("screen_recording_model")
 local ScreenshotRegion = require("screenshot_region")
+local MacNotify = require("mac_notify")
 
 local M = {}
 
@@ -326,7 +327,7 @@ end
 local function show_notification(probes)
 	local seconds = M.estimateSeconds(probes)
 	local body = string.format("≈%d s · nothing leaves this Mac", seconds)
-	hs.notify.show("Recording self-test running", "", body)
+	MacNotify.post("Recording self-test running", "", body)
 	runtime.lastNotification = {
 		title = "Recording self-test running",
 		body = body,
@@ -1539,75 +1540,18 @@ end
 
 local function show_session_notification(item)
 	local notification = item.notification or {}
-	local info = {
-		title = notification.title or "Recording uploaded",
-		subTitle = notification.subtitle or "",
-		informativeText = notification.body or "",
-		actionButtonTitle = notification.action or "Reveal",
-		hasActionButton = true,
-		withdrawAfter = 0,
-	}
-	local path = notification.path
-	local tilde = notification.copy_path or notification.path
-	local action = notification.action
-	local callback = function(object)
-		local activation = 1
-		if object and type(object.getActivationType) == "function" then
-			local ok, value = pcall(function()
-				return object:getActivationType()
-			end)
-			if ok and type(value) == "number" then
-				activation = value
+	-- Hammerspoon's notify API is silently accepted but not presented here.
+	-- Ack only after osascript exits successfully; macrec_ship owns fallback.
+	MacNotify.post(
+		notification.title or "Recording uploaded",
+		notification.subtitle or "",
+		notification.body or "",
+		function(ok)
+			if ok and item.session_id then
+				run_macrec({ "ack", item.session_id, "notified" })
 			end
 		end
-		local action_clicked = 2
-		if hs.notify and hs.notify.activationTypes then
-			action_clicked = hs.notify.activationTypes.actionButtonClicked or action_clicked
-		end
-		if activation == action_clicked then
-			if action == "Copy path" then
-				copy_path(tilde)
-			else
-				open_path(path)
-			end
-		else
-			open_path(path)
-		end
-	end
-	local note
-	if hs.notify and type(hs.notify.new) == "function" then
-		note = hs.notify.new(callback, info)
-	end
-	if note then
-		if notification.poster and hs.image and type(hs.image.imageFromPath) == "function" then
-			local ok, image = pcall(hs.image.imageFromPath, notification.poster)
-			if ok and image and type(note.contentImage) == "function" then
-				note:contentImage(image)
-			end
-		end
-		runtime.notifications = runtime.notifications or {}
-		table.insert(runtime.notifications, note)
-		pcall(function()
-			note:send()
-		end)
-		-- Verified delivery: only ack when the system confirms the banner
-		-- was delivered. Undelivered banners stay unacked so the ship
-		-- osascript fallback owns the notification (~8 s ACK_WAIT).
-		if item.session_id and hs.timer and type(hs.timer.doAfter) == "function" then
-			local note_ref = note
-			local session_id = item.session_id
-			hs.timer.doAfter(2, function()
-				local ok, delivered = pcall(function()
-					return note_ref:delivered()
-				end)
-				if ok and delivered == true then
-					run_macrec({ "ack", session_id, "notified" })
-				end
-			end)
-		end
-	else
-		hs.notify.show(info.title, info.subTitle, info.informativeText)
-	end
+	)
 	runtime.lastRecordingNotification = notification
 end
 

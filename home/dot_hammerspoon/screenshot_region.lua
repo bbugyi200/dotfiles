@@ -1,3 +1,5 @@
+local MacNotify = require("mac_notify")
+
 local M = {}
 
 local SETTINGS_KEY = "macscrotLastRegion"
@@ -511,7 +513,7 @@ function M.pick(onConfirm, opts)
 	local screenFrame = screen:frame()
 	local canvas = hs.canvas.new(screenFrame)
 	if not canvas then
-		hs.notify.show(failureTitle, "", "Could not create screenshot selector")
+		MacNotify.post(failureTitle, "", "Could not create screenshot selector")
 		return {
 			cancel = function() end,
 		}

@@ -1047,6 +1047,7 @@ cmd_ack() {
 		exit 1
 	fi
 	touch "${sdir}/ack.${which}"
+	log_line "ack ${id} ${which}"
 }
 
 cmd_ship_alias() {

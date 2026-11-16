@@ -116,7 +116,7 @@ local function elapsed_for(model, now)
 	return math.max(0, now - started_at)
 end
 
--- Forward declaration: defined below with notification_path.
+-- Forward declaration: defined below with display_path.
 local display_path
 
 local function notify_terminal_session(model, effects, session, event)
@@ -759,10 +759,6 @@ function M.clipboardDecision(baselineChangeCount, nowChangeCount, recovered)
 		and baselineChangeCount == nowChangeCount
 end
 
-local function notification_path(session)
-	return session.mp4 or session.path or session.name or "the saved recording"
-end
-
 -- Portable home-relative display path. Mirrors notify_stage in
 -- executable_macrec_ship exactly: basename of the encoded file under
 -- ~/tmp/screencasts, falling back to the session name, else the sentinel.
@@ -805,7 +801,6 @@ function M.notification(session, context)
 	if recovered and not failed then
 		title = "Recovered recording uploaded"
 	end
-	local path = notification_path(session)
 	local tilde = display_path(session)
 	local copied = context.copied == true
 	local body
@@ -815,17 +810,14 @@ function M.notification(session, context)
 		if session.stop_reason == "cap" then
 			details = "Stopped at " .. M.formatElapsed(session.duration_s or M.CAP_SECONDS) .. " cap · " .. details
 		end
-		body = tilde .. (copied and " · path copied" or "")
+		body = tilde .. (copied and " · path copied" or " · clipboard kept")
 	end
 	return {
 		kind = kind,
 		title = title,
 		subtitle = details,
 		body = body,
-		path = path,
 		copy_path = tilde,
-		action = copied and "Reveal" or "Copy path",
-		poster = session.poster,
 	}
 end
 

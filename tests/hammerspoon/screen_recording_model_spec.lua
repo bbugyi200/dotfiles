@@ -249,14 +249,12 @@ describe("screen recording reducer", function()
 		assert.is_truthy(effect_of(done_effects, "hide_chrome"))
 		-- The baseline is absent, so status adoption never overwrites the clipboard.
 		assert.is_truthy(effect_of(done_effects, "notify"))
-		-- Verified delivery: the model never acks notified; the runtime acks
-		-- only after hs.notify delivered() is true and the ship fallback acks
-		-- after its osascript attempt.
+		-- The model never acks notified; runtime acks only after osascript exits 0.
 		assert.is_nil(effect_of(done_effects, "ack"))
 		assert.is_nil(effect_of(done_effects, "copy_path"))
 	end)
 
-	it("copies the tilde path and keeps the absolute path for reveal", function()
+	it("uses the portable path in notification and clipboard details", function()
 		local session = status_session({
 			id = "tilde",
 			name = "20261115_195328",
@@ -267,7 +265,6 @@ describe("screen recording reducer", function()
 		local notification = model.notification(session, { copied = true })
 		assert.equals("~/tmp/screencasts/20261115_195328.mp4", notification.copy_path)
 		assert.equals("~/tmp/screencasts/20261115_195328.mp4", notification.body:match("~/tmp/screencasts/[^ ]+%.mp4"))
-		assert.equals("/Users/bbugyi/tmp/screencasts/20261115_195328.mp4", notification.path)
 		assert.is_truthy(notification.body:find("path copied", 1, true))
 
 		local failed = status_session({
@@ -279,13 +276,12 @@ describe("screen recording reducer", function()
 		local failed_notification = model.notification(failed, {})
 		assert.equals("~/tmp/screencasts/20261115_195328.mp4", failed_notification.copy_path)
 		assert.is_truthy(failed_notification.body:find("~/tmp/screencasts/20261115_195328.mp4", 1, true))
-		assert.equals("/Users/bbugyi/tmp/screencasts/20261115_195328.mp4", failed_notification.path)
 
 		assert.equals("~/tmp/screencasts/clip.mp4", model.displayPath({ mp4 = "/tmp/clip.mp4", name = "clip" }))
 		assert.equals("~/tmp/screencasts/clip.mp4", model.displayPath({ name = "clip" }))
 		assert.equals("the saved recording", model.displayPath({}))
 
-		-- End-to-end through the reducer: tilde copy_path, tilde body, absolute path.
+		-- End-to-end through the reducer: the tilde path reaches copy and notification.
 		local recording = state("shipping", { session = { id = "tilde" }, clipboardBaseline = 7 })
 		local done, effects = model.reduce(recording, {
 			type = "status_refresh",
@@ -306,7 +302,6 @@ describe("screen recording reducer", function()
 		assert.equals("~/tmp/screencasts/20261115_195328.mp4", copied.path)
 		local notified = assert(effect_of(effects, "notify"))
 		assert.equals("~/tmp/screencasts/20261115_195328.mp4", notified.notification.copy_path)
-		assert.equals("/Users/bbugyi/tmp/screencasts/20261115_195328.mp4", notified.notification.path)
 		assert.is_nil(effect_of(effects, "ack"))
 	end)
 
@@ -558,10 +553,10 @@ describe("screen recording presentation helpers", function()
 		local done = model.notification(base, { copied = true })
 		assert.equals("done", done.kind)
 		assert.equals("Recording uploaded", done.title)
-		assert.equals("Reveal", done.action)
 		assert.is_truthy(done.body:find("path copied", 1, true))
+		assert.is_nil(done.action)
+		assert.is_nil(done.poster)
 		assert.equals("~/tmp/screencasts/clip.mp4", done.copy_path)
-		assert.equals("/Users/bbugyi/tmp/screencasts/clip.mp4", done.path)
 		assert.is_truthy(done.body:find("~/tmp/screencasts/clip.mp4", 1, true))
 
 		local partial_session = {}
@@ -572,6 +567,7 @@ describe("screen recording presentation helpers", function()
 		local partial = model.notification(partial_session, {})
 		assert.equals("partial", partial.kind)
 		assert.is_truthy(partial.subtitle:find("Athena · apollo failed", 1, true))
+		assert.equals("~/tmp/screencasts/clip.mp4 · clipboard kept", partial.body)
 
 		local skipped_session = {}
 		for key, value in pairs(base) do

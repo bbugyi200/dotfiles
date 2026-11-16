@@ -3,6 +3,7 @@ local PingIndicator = require("ping_indicator")
 local PomodoroCountdown = require("pomodoro_countdown")
 local ScreenRecorder = require("screen_recorder")
 local ScreenshotRegion = require("screenshot_region")
+local MacNotify = require("mac_notify")
 
 hs.hotkey.bind({ "cmd", "alt", "ctrl" }, "V", nil, function()
 	local paste_parts = os.getenv("HOME") .. "/bin/paste_parts"
@@ -32,7 +33,7 @@ local function runMacscrot(region)
 				if detail == "" then
 					detail = tidy(stdOut)
 				end
-				hs.notify.show("Screenshot failed", "", detail)
+				MacNotify.post("Screenshot failed", "", detail)
 			end
 		end, { "-l", "-c", command })
 		:start()

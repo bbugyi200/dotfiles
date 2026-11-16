@@ -192,12 +192,6 @@ local function make_hs(env)
 		end,
 	}
 
-	hs.notify = {
-		show = function(...)
-			table.insert(env.notifications, { ... })
-		end,
-	}
-
 	return hs
 end
 
@@ -233,6 +227,7 @@ local function setup(options)
 	end
 	local env = {
 		previous_hs = _G.hs,
+		previous_mac_notify = package.loaded.mac_notify,
 		frame = copy_rect(frame),
 		settings = {},
 		settingsWrites = 0,
@@ -261,6 +256,11 @@ local function setup(options)
 		end
 	end
 	_G.hs = make_hs(env)
+	package.loaded.mac_notify = {
+		post = function(...)
+			table.insert(env.notifications, { ... })
+		end,
+	}
 	local picker = assert(loadfile(PICKER_PATH))()
 	local pickOpts = options.opts
 	if pickOpts then
@@ -287,6 +287,7 @@ local function setup(options)
 	end
 	function env.restore()
 		_G.hs = env.previous_hs
+		package.loaded.mac_notify = env.previous_mac_notify
 	end
 	pick()
 	return env

@@ -249,6 +249,12 @@ local function make_hs(env)
 
 	hs.task = {
 		new = function(command, callback, args)
+			if command == "/usr/bin/osascript" and env.options.notification_create_error then
+				error(env.options.notification_create_error)
+			end
+			if command == "/usr/bin/osascript" and env.options.notification_create_nil then
+				return nil
+			end
 			local task = {
 				command = command,
 				callback = callback,
@@ -262,6 +268,10 @@ local function make_hs(env)
 				self.started = true
 				self.running = true
 				self.start_calls = (self.start_calls or 0) + 1
+				if self.command == "/usr/bin/osascript" and env.options.notification_start_fail then
+					self.running = false
+					return false
+				end
 				return self
 			end
 			function task:terminate()
@@ -419,61 +429,6 @@ local function make_hs(env)
 			table.insert(env.canvases, canvas)
 			return canvas
 		end,
-	}
-
-	hs.notify = {
-		show = function(title, subtitle, info)
-			table.insert(env.notifications, {
-				title = title,
-				subtitle = subtitle,
-				info = info,
-			})
-		end,
-		new = function(callback, info)
-			if type(callback) == "table" then
-				info = callback
-				callback = nil
-			end
-			local note = {
-				callback = callback,
-				info = info,
-				sent = false,
-				withdrawn = false,
-				image = nil,
-				delivered_result = env.notification_delivered,
-				delivered_error = env.notification_delivered_error,
-			}
-			function note:contentImage(image)
-				self.image = image
-				return self
-			end
-			function note:send()
-				self.sent = true
-				table.insert(env.rich_notifications, self)
-				return self
-			end
-			function note:withdraw()
-				self.withdrawn = true
-				return self
-			end
-			function note:delivered()
-				if self.delivered_error ~= nil then
-					error(self.delivered_error)
-				end
-				if self.delivered_result ~= nil then
-					return self.delivered_result
-				end
-				return true
-			end
-			function note:getActivationType()
-				return self.activation_type or 1
-			end
-			return note
-		end,
-		activationTypes = {
-			contentsClicked = 1,
-			actionButtonClicked = 2,
-		},
 	}
 
 	hs.caffeinate = {
@@ -642,6 +597,8 @@ local function setup(options)
 		previous_runtime = _G.BobScreenRecorder,
 		previous_model = package.loaded.screen_recording_model,
 		previous_picker = package.loaded.screenshot_region,
+		previous_mac_notify = package.loaded.mac_notify,
+		options = options,
 		tmp = tmp_base,
 		now = options.now or 1e9,
 		frame = options.frame or { x = 0, y = 0, w = 1440, h = 900 },
@@ -651,8 +608,6 @@ local function setup(options)
 		pasteboard_count = options.pasteboard_count or 10,
 		reduce_motion = options.reduce_motion,
 		alert_result = options.alert_result,
-		notification_delivered = options.notification_delivered,
-		notification_delivered_error = options.notification_delivered_error,
 		mtimes = {},
 		mkdir_calls = {},
 		fs_attribute_calls = {},
@@ -662,8 +617,6 @@ local function setup(options)
 		delayed_timers = {},
 		path_watchers = {},
 		canvases = {},
-		notifications = {},
-		rich_notifications = {},
 		json_decode_calls = {},
 		printf_calls = {},
 		menus = {},
@@ -715,6 +668,7 @@ local function setup(options)
 		package.loaded.screen_recorder = nil
 		package.loaded.screen_recording_model = env.previous_model
 		package.loaded.screenshot_region = env.previous_picker
+		package.loaded.mac_notify = env.previous_mac_notify
 		os.execute(string.format("rm -rf %q", env.tmp))
 	end
 
@@ -739,6 +693,7 @@ local function setup(options)
 			return pick
 		end,
 	}
+	package.loaded.mac_notify = nil
 	local recorder = assert(loadfile(RECORDER_PATH))()
 	return env, recorder
 end
@@ -780,6 +735,16 @@ local function tasks_with_arg(env, arg)
 				table.insert(tasks, task)
 				break
 			end
+		end
+	end
+	return tasks
+end
+
+local function notification_tasks(env)
+	local tasks = {}
+	for _, task in ipairs(env.tasks) do
+		if task.command == "/usr/bin/osascript" then
+			table.insert(tasks, task)
 		end
 	end
 	return tasks
@@ -1063,9 +1028,11 @@ describe("screen recorder doctor inbox", function()
 		local elements = env.canvases[1].replaceCalls[1]
 		assert.equals("macrec self-test", elements[2].text)
 		assert.equals("#E3413B", elements[1].fillColor.hex)
-		assert.equals(1, #env.notifications)
-		assert.equals("Recording self-test running", env.notifications[1].title)
-		assert.equals("≈8 s · nothing leaves this Mac", env.notifications[1].info)
+		assert.equals(1, #notification_tasks(env))
+		assert.equals("/usr/bin/osascript", notification_tasks(env)[1].command)
+		assert.equals("Recording self-test running", notification_tasks(env)[1].args[3])
+		assert.equals("", notification_tasks(env)[1].args[4])
+		assert.equals("≈8 s · nothing leaves this Mac", notification_tasks(env)[1].args[5])
 		local blink
 		for _, timer in ipairs(env.timers) do
 			if timer.interval == 1 then
@@ -1169,6 +1136,31 @@ describe("screen recorder runtime", function()
 		pick.onConfirm(region or REGION)
 	end
 
+	local function finish_upload(options, overrides)
+		options = options or {}
+		env, recorder = setup(options)
+		start_recorder(env, recorder)
+		complete_status(env)
+		recorder.onChord()
+		confirm_region()
+		complete_start(env)
+		env.now = env.now + 0.2
+		recorder.onChord()
+		tasks_with_arg(env, "stop")[1]:complete(0, "{}", "")
+		if options.clipboard_changed then
+			env.pasteboard_count = env.pasteboard_count + 1
+		end
+		local session = {
+			status = "done",
+			acked = { notified = false, adopted = true },
+		}
+		for key, value in pairs(overrides or {}) do
+			session[key] = value
+		end
+		complete_status(env, { sessions = { session_fields(session) } })
+		return notification_tasks(env)[1]
+	end
+
 	it("walks idle → selecting → starting → recording → stopping → shipping → done", function()
 		boot()
 		assert.equals("idle", _G.BobScreenRecorder.model.state)
@@ -1226,23 +1218,14 @@ describe("screen recorder runtime", function()
 			},
 		})
 		assert.equals("done", _G.BobScreenRecorder.model.state)
-		assert.equals(1, #env.rich_notifications)
-		assert.equals("Recording uploaded", env.rich_notifications[1].info.title)
-		assert.is_truthy(
-			env.rich_notifications[1].info.informativeText:find("~/tmp/screencasts/20261115_142233.mp4", 1, true)
-		)
+		assert.equals(1, #notification_tasks(env))
+		assert.equals("Recording uploaded", notification_tasks(env)[1].args[3])
+		assert.is_truthy(notification_tasks(env)[1].args[5]:find("~/tmp/screencasts/20261115_142233.mp4", 1, true))
 		assert.equals(1, #env.pasteboard_writes)
 		assert.equals("~/tmp/screencasts/20261115_142233.mp4", env.pasteboard_writes[1])
-		-- Verified delivery: the notified ack waits for delivered().
+		-- The ship fallback owns the ack until osascript exits successfully.
 		assert.equals(0, #tasks_with_arg(env, "notified"))
-		local delivery_timer
-		for _, timer in ipairs(env.do_after) do
-			if timer.delay == 2 then
-				delivery_timer = timer
-			end
-		end
-		assert.is_not_nil(delivery_timer)
-		delivery_timer.callback()
+		notification_tasks(env)[1]:complete(0, "", "")
 		assert.equals(1, #tasks_with_arg(env, "notified"))
 		assert.is_true(title_text(env.menus[1].title):find("✓", 1, true) ~= nil)
 		local done_timer
@@ -1321,9 +1304,9 @@ describe("screen recorder runtime", function()
 		confirm_region()
 		tasks_with_arg(env, "start")[1]:complete(4, "", "Screen Recording is off for Hammerspoon")
 		assert.equals("idle", _G.BobScreenRecorder.model.state)
-		assert.equals(1, #env.rich_notifications)
-		assert.equals("Recording didn't start", env.rich_notifications[1].info.title)
-		assert.is_true(env.rich_notifications[1].info.informativeText:find("Screen Recording is off", 1, true) ~= nil)
+		assert.equals(1, #notification_tasks(env))
+		assert.equals("Recording didn't start", notification_tasks(env)[1].args[3])
+		assert.is_true(notification_tasks(env)[1].args[5]:find("Screen Recording is off", 1, true) ~= nil)
 	end)
 
 	it("discards after a confirmed dialog and keeps recording when cancelled", function()
@@ -1386,224 +1369,74 @@ describe("screen recorder runtime", function()
 		assert.equals("display", _G.BobScreenRecorder.model.stopReason)
 	end)
 
-	it("copies the path only when the clipboard has not changed", function()
-		env, recorder = setup({ now = 1000, pasteboard_count = 3 })
-		start_recorder(env, recorder)
-		complete_status(env)
-		recorder.onChord()
-		confirm_region()
-		complete_start(env)
-		env.now = env.now + 0.2
-		recorder.onChord()
-		tasks_with_arg(env, "stop")[1]:complete(0, "{}", "")
-		env.pasteboard_count = 4
-		complete_status(env, {
-			sessions = {
-				session_fields({
-					status = "done",
-					acked = { notified = false, adopted = true },
-				}),
-			},
-		})
-		assert.equals(0, #env.pasteboard_writes)
-		assert.equals("Copy path", env.rich_notifications[1].info.actionButtonTitle)
-	end)
-
-	it("acks notified only after delivered() is true", function()
-		env, recorder = setup({ now = 1000, pasteboard_count = 10 })
-		start_recorder(env, recorder)
-		complete_status(env)
-		recorder.onChord()
-		confirm_region()
-		complete_start(env)
-		env.now = env.now + 0.2
-		recorder.onChord()
-		tasks_with_arg(env, "stop")[1]:complete(0, "{}", "")
-		complete_status(env, {
-			sessions = {
-				session_fields({
-					status = "done",
-					acked = { notified = false, adopted = true },
-				}),
-			},
-		})
+	it("posts the uploaded banner through osascript and acks only after exit 0", function()
+		local notification = finish_upload({ pasteboard_count = 10 })
+		assert.is_not_nil(notification)
+		assert.equals("/usr/bin/osascript", notification.command)
+		assert.equals("Recording uploaded", notification.args[3])
+		assert.equals("0:42 · 4.8 MB · Apollo + Athena", notification.args[4])
+		assert.equals("~/tmp/screencasts/20261115_142233.mp4 · path copied", notification.args[5])
+		assert.is_truthy(notification.args[2]:find("item 3 of argv", 1, true))
+		assert.is_nil(notification.args[2]:find("Recording uploaded", 1, true))
 		assert.equals(0, #tasks_with_arg(env, "notified"))
-		local delivery_timer
-		for _, timer in ipairs(env.do_after) do
-			if timer.delay == 2 then
-				delivery_timer = timer
-			end
-		end
-		assert.is_not_nil(delivery_timer)
-		delivery_timer.callback()
-		assert.equals(1, #tasks_with_arg(env, "notified"))
+		notification:complete(0, "", "")
 		assert.same({ "ack", "sess1", "notified" }, tasks_with_arg(env, "notified")[1].args)
 	end)
 
-	it("never acks notified when delivered() is false", function()
-		env, recorder = setup({ now = 1000, pasteboard_count = 10, notification_delivered = false })
-		start_recorder(env, recorder)
-		complete_status(env)
-		recorder.onChord()
-		confirm_region()
-		complete_start(env)
-		env.now = env.now + 0.2
-		recorder.onChord()
-		tasks_with_arg(env, "stop")[1]:complete(0, "{}", "")
-		complete_status(env, {
-			sessions = {
-				session_fields({
-					status = "done",
-					acked = { notified = false, adopted = true },
-				}),
-			},
-		})
-		assert.equals(1, #env.rich_notifications)
-		assert.equals(0, #tasks_with_arg(env, "notified"))
-		local delivery_timer
-		for _, timer in ipairs(env.do_after) do
-			if timer.delay == 2 then
-				delivery_timer = timer
-			end
-		end
-		assert.is_not_nil(delivery_timer)
-		delivery_timer.callback()
+	it("leaves notified unacked when osascript exits nonzero", function()
+		local notification = finish_upload({ pasteboard_count = 10 })
+		notification:complete(1, "", "notification denied")
 		assert.equals(0, #tasks_with_arg(env, "notified"))
 	end)
 
-	it("never acks notified when delivered() errors", function()
-		env, recorder = setup({ now = 1000, pasteboard_count = 10, notification_delivered_error = "gone" })
-		start_recorder(env, recorder)
-		complete_status(env)
-		recorder.onChord()
-		confirm_region()
-		complete_start(env)
-		env.now = env.now + 0.2
-		recorder.onChord()
-		tasks_with_arg(env, "stop")[1]:complete(0, "{}", "")
-		complete_status(env, {
-			sessions = {
-				session_fields({
-					status = "done",
-					acked = { notified = false, adopted = true },
-				}),
-			},
-		})
-		assert.equals(1, #env.rich_notifications)
-		local delivery_timer
-		for _, timer in ipairs(env.do_after) do
-			if timer.delay == 2 then
-				delivery_timer = timer
-			end
-		end
-		assert.is_not_nil(delivery_timer)
-		delivery_timer.callback()
+	it("leaves notified unacked when the osascript task cannot be created", function()
+		local notification = finish_upload({ pasteboard_count = 10, notification_create_nil = true })
+		assert.is_nil(notification)
 		assert.equals(0, #tasks_with_arg(env, "notified"))
 	end)
 
-	it("copies the tilde path on the Copy path action and reveals the absolute path", function()
-		env, recorder = setup({ now = 1000, pasteboard_count = 10 })
+	it("leaves notified unacked and terminates a timed-out osascript task", function()
+		local notification = finish_upload({ pasteboard_count = 10 })
+		local timeout
+		for _, timer in ipairs(env.do_after) do
+			if timer.delay == 5 then
+				timeout = timer
+			end
+		end
+		assert.is_not_nil(timeout)
+		timeout.callback()
+		assert.is_true(notification.terminated)
+		assert.equals(0, #tasks_with_arg(env, "notified"))
+		notification:complete(0, "", "")
+		assert.equals(0, #tasks_with_arg(env, "notified"))
+	end)
+
+	it("posts start-failure and invalid-region banners through osascript without ack", function()
+		env, recorder = setup({ now = 1000 })
 		start_recorder(env, recorder)
 		complete_status(env)
 		recorder.onChord()
 		confirm_region()
-		complete_start(env)
-		env.now = env.now + 0.2
-		recorder.onChord()
-		tasks_with_arg(env, "stop")[1]:complete(0, "{}", "")
-		-- Keep the clipboard unchanged so the runtime copies immediately.
-		complete_status(env, {
-			sessions = {
-				session_fields({
-					status = "done",
-					mp4 = "/Users/bbugyi/tmp/screencasts/20261115_142233.mp4",
-					acked = { notified = false, adopted = true },
-				}),
-			},
-		})
-		assert.equals("~/tmp/screencasts/20261115_142233.mp4", env.pasteboard_writes[1])
-		local note = env.rich_notifications[1]
-		assert.equals("Reveal", note.info.actionButtonTitle)
-		-- Reveal opens the absolute path.
-		note.callback({
-			getActivationType = function()
-				return 1
-			end,
-		})
-		local opened = false
-		for _, task in ipairs(env.tasks) do
-			if
-				task.command == "/usr/bin/open"
-				and task.args[1] == "/Users/bbugyi/tmp/screencasts/20261115_142233.mp4"
-			then
-				opened = true
-			end
-		end
-		assert.is_true(opened)
+		tasks_with_arg(env, "start")[1]:complete(4, "", "Screen Recording is off for Hammerspoon")
+		assert.equals("Recording didn't start", notification_tasks(env)[1].args[3])
+		assert.is_truthy(notification_tasks(env)[1].args[5]:find("Screen Recording is off", 1, true))
+		assert.equals(0, #tasks_with_arg(env, "notified"))
 
 		env.restore()
-		env, recorder = setup({ now = 1000, pasteboard_count = 3 })
+		env, recorder = setup({ now = 1000 })
 		start_recorder(env, recorder)
 		complete_status(env)
 		recorder.onChord()
-		confirm_region()
-		complete_start(env)
-		env.now = env.now + 0.2
-		recorder.onChord()
-		tasks_with_arg(env, "stop")[1]:complete(0, "{}", "")
-		env.pasteboard_count = 4
-		complete_status(env, {
-			sessions = {
-				session_fields({
-					status = "done",
-					mp4 = "/Users/bbugyi/tmp/screencasts/20261115_142233.mp4",
-					acked = { notified = false, adopted = true },
-				}),
-			},
-		})
-		local copy_note = env.rich_notifications[1]
-		assert.equals("Copy path", copy_note.info.actionButtonTitle)
-		copy_note.callback({
-			getActivationType = function()
-				return 2
-			end,
-		})
-		assert.equals("~/tmp/screencasts/20261115_142233.mp4", env.pasteboard_writes[#env.pasteboard_writes])
+		env.picks[1].onConfirm({ x = 100, y = 100, w = 0, h = 30 })
+		assert.equals("Recording didn't start", notification_tasks(env)[1].args[3])
+		assert.equals("The selected region is invalid.", notification_tasks(env)[1].args[5])
+		assert.equals(0, #tasks_with_arg(env, "notified"))
 	end)
 
-	it("never acks notified when no notification object exists", function()
-		env, recorder = setup({ now = 1000, pasteboard_count = 10 })
-		local saved_new = hs.notify.new
-		hs.notify.new = function()
-			return nil
-		end
-		start_recorder(env, recorder)
-		complete_status(env)
-		recorder.onChord()
-		confirm_region()
-		complete_start(env)
-		env.now = env.now + 0.2
-		recorder.onChord()
-		tasks_with_arg(env, "stop")[1]:complete(0, "{}", "")
-		complete_status(env, {
-			sessions = {
-				session_fields({
-					status = "done",
-					acked = { notified = false, adopted = true },
-				}),
-			},
-		})
-		hs.notify.new = saved_new
-		assert.equals(0, #env.rich_notifications)
-		assert.equals(1, #env.notifications)
-		assert.equals(0, #tasks_with_arg(env, "notified"))
-		local saw_delivery = false
-		for _, timer in ipairs(env.do_after) do
-			if timer.delay == 2 then
-				saw_delivery = true
-			end
-		end
-		assert.is_false(saw_delivery)
+	it("keeps a changed clipboard and states that in the banner body", function()
+		local notification = finish_upload({ pasteboard_count = 10, clipboard_changed = true })
+		assert.equals("~/tmp/screencasts/20261115_142233.mp4 · clipboard kept", notification.args[5])
+		assert.equals(0, #env.pasteboard_writes)
 	end)
 
 	it("re-adopts a live recording, a shipping session, and an orphan", function()
@@ -1778,7 +1611,7 @@ describe("screen recorder runtime", function()
 			},
 		})
 		assert.equals("idle", _G.BobScreenRecorder.model.state)
-		assert.equals(0, #env.rich_notifications)
+		assert.equals(0, #notification_tasks(env))
 		assert.equals(0, #tasks_with_arg(env, "notified"))
 	end)
 

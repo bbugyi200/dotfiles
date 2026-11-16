@@ -409,12 +409,6 @@ local function make_hs(env)
 		end,
 	}
 
-	hs.notify = {
-		show = function(...)
-			table.insert(env.notifications, { ... })
-		end,
-	}
-
 	hs.styledtext = make_styledtext(env)
 
 	hs.json = {
@@ -463,6 +457,7 @@ local function setup_hammerspoon_init_environment(options)
 		previous_ping_module = package.loaded.ping_indicator,
 		previous_highlights_module = package.loaded.highlights_tab_keys,
 		previous_screen_recorder_module = package.loaded.screen_recorder,
+		previous_mac_notify_module = package.loaded.mac_notify,
 		hotkeys = {},
 		ping_start_calls = {},
 		highlights_start_calls = {},
@@ -493,6 +488,11 @@ local function setup_hammerspoon_init_environment(options)
 	}
 
 	_G.hs = make_hs(env)
+	package.loaded.mac_notify = {
+		post = function(title, subtitle, body)
+			table.insert(env.notifications, { title, subtitle, body })
+		end,
+	}
 	_G.BobPomodoroCountdown = options.runtime
 	if options.presentation ~= nil then
 		package.loaded.pomodoro_countdown = { presentation = options.presentation }
@@ -553,6 +553,7 @@ local function setup_hammerspoon_init_environment(options)
 		package.loaded.ping_indicator = env.previous_ping_module
 		package.loaded.highlights_tab_keys = env.previous_highlights_module
 		package.loaded.screen_recorder = env.previous_screen_recorder_module
+		package.loaded.mac_notify = env.previous_mac_notify_module
 	end
 
 	return env
@@ -719,6 +720,14 @@ describe("Hammerspoon init", function()
 		assert.equals(2, #env.timers)
 		assert.equals(1, #env.wake_watchers)
 		assert.equals(1, #env.path_watchers)
+	end)
+
+	it("posts screenshot failures through the shared notification module", function()
+		local ok, error_message, env = load_init_with()
+		assert.is_true(ok, error_message)
+		env.task_completion = { exit_code = 7, stdout = "", stderr = "upload failed" }
+		package.loaded.screen_recorder.captureStill({ x = 10, y = 20, w = 30, h = 40 })
+		assert.same({ { "Screenshot failed", "", "upload failed" } }, env.notifications)
 	end)
 
 	it("replaces a stale non-table Pomodoro runtime global", function()

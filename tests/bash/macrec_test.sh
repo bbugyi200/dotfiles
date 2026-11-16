@@ -509,6 +509,7 @@ function test_ack_retry_and_aliases() {
   run_macrec ack fail1 notified
   assert_equals "0" "${RUN_RC}"
   assert_file_exists "${sdir}/ack.notified"
+  assert_contains "ack fail1 notified" "$(cat "$(macrec_dir)/macrec.log")"
   run_macrec ack fail1 adopted
   assert_file_exists "${sdir}/ack.adopted"
   run_macrec ack fail1 dismissed
