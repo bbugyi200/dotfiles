@@ -116,6 +116,9 @@ local function elapsed_for(model, now)
 	return math.max(0, now - started_at)
 end
 
+-- Forward declaration: defined below with notification_path.
+local display_path
+
 local function notify_terminal_session(model, effects, session, event)
 	local acked = type(session.acked) == "table" and session.acked.notified == true
 	model.notifiedSessions = model.notifiedSessions or {}
@@ -131,14 +134,16 @@ local function notify_terminal_session(model, effects, session, event)
 	end
 	local copied = M.clipboardDecision(baseline, event and event.clipboard_change_count, recovered)
 	notification_context.copied = copied
-	if copied and type(session.mp4) == "string" then
-		effect(effects, "copy_path", { path = session.mp4, session_id = session.id })
+	if copied then
+		local tilde = display_path(session)
+		if tilde ~= "the saved recording" then
+			effect(effects, "copy_path", { path = tilde, session_id = session.id })
+		end
 	end
 	effect(effects, "notify", {
 		notification = M.notification(session, notification_context),
 		session_id = session.id,
 	})
-	effect(effects, "ack", { session_id = session.id, kind = "notified" })
 	model.notifiedSessions[session.id] = true
 end
 
@@ -758,6 +763,29 @@ local function notification_path(session)
 	return session.mp4 or session.path or session.name or "the saved recording"
 end
 
+-- Portable home-relative display path. Mirrors notify_stage in
+-- executable_macrec_ship exactly: basename of the encoded file under
+-- ~/tmp/screencasts, falling back to the session name, else the sentinel.
+display_path = function(session)
+	if type(session) ~= "table" then
+		return "the saved recording"
+	end
+	local mp4 = session.mp4
+	if type(mp4) == "string" and mp4 ~= "" then
+		local base = mp4:match("[^/]+$")
+		if type(base) == "string" and base ~= "" then
+			return "~/tmp/screencasts/" .. base
+		end
+	end
+	if type(session.name) == "string" and session.name ~= "" then
+		return "~/tmp/screencasts/" .. session.name .. ".mp4"
+	end
+	return "the saved recording"
+end
+
+-- Exposed for tests and for the runtime copy_path effect.
+M.displayPath = display_path
+
 function M.notification(session, context)
 	session = type(session) == "table" and session or {}
 	context = type(context) == "table" and context or {}
@@ -778,15 +806,16 @@ function M.notification(session, context)
 		title = "Recovered recording uploaded"
 	end
 	local path = notification_path(session)
+	local tilde = display_path(session)
 	local copied = context.copied == true
 	local body
 	if failed then
-		body = "Saved locally: " .. path .. " · Retry from the menu bar"
+		body = "Saved locally: " .. tilde .. " · Retry from the menu bar"
 	else
 		if session.stop_reason == "cap" then
 			details = "Stopped at " .. M.formatElapsed(session.duration_s or M.CAP_SECONDS) .. " cap · " .. details
 		end
-		body = path .. (copied and " · path copied" or "")
+		body = tilde .. (copied and " · path copied" or "")
 	end
 	return {
 		kind = kind,
@@ -794,6 +823,7 @@ function M.notification(session, context)
 		subtitle = details,
 		body = body,
 		path = path,
+		copy_path = tilde,
 		action = copied and "Reveal" or "Copy path",
 		poster = session.poster,
 	}

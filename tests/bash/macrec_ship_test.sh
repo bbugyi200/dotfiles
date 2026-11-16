@@ -508,6 +508,41 @@ function test_ack_received_skips_osascript() {
   assert_not_contains "osascript|" "$(cat "${EVENT_LOG}")"
 }
 
+function test_fallback_creates_ack_and_logs_when_hammerspoon_absent() {
+  PGREP_RC="1"
+  make_session s1
+  rm -f "${TEST_HOME}/tmp/screencasts/.macrec/sessions/s1/ack.notified"
+  run_ship --session s1
+  assert_equals "0" "${RUN_RC}"
+  assert_equals "done" "$(sget s1 '.status')"
+  assert_contains "osascript|" "$(cat "${EVENT_LOG}")"
+  assert_file_exists "${TEST_HOME}/tmp/screencasts/.macrec/sessions/s1/ack.notified"
+  assert_contains "osascript fallback" "$(cat "${TEST_HOME}/tmp/screencasts/.macrec/macrec.log")"
+}
+
+function test_fallback_creates_ack_when_hammerspoon_undelivered() {
+  PGREP_RC="0"
+  make_session s1
+  rm -f "${TEST_HOME}/tmp/screencasts/.macrec/sessions/s1/ack.notified"
+  run_ship --session s1
+  assert_equals "0" "${RUN_RC}"
+  assert_equals "done" "$(sget s1 '.status')"
+  assert_contains "osascript|" "$(cat "${EVENT_LOG}")"
+  assert_file_exists "${TEST_HOME}/tmp/screencasts/.macrec/sessions/s1/ack.notified"
+  assert_contains "osascript fallback" "$(cat "${TEST_HOME}/tmp/screencasts/.macrec/macrec.log")"
+}
+
+function test_preexisting_ack_suppresses_fallback_log() {
+  PGREP_RC="0"
+  make_session s1
+  touch "${TEST_HOME}/tmp/screencasts/.macrec/sessions/s1/ack.notified"
+  : >"${TEST_HOME}/tmp/screencasts/.macrec/macrec.log"
+  run_ship --session s1
+  assert_equals "0" "${RUN_RC}"
+  assert_not_contains "osascript|" "$(cat "${EVENT_LOG}")"
+  assert_not_contains "osascript fallback" "$(cat "${TEST_HOME}/tmp/screencasts/.macrec/macrec.log")"
+}
+
 function test_no_notify_skips_osascript() {
   make_session s1
   run_ship --session s1 --no-notify

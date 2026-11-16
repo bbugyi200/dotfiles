@@ -20,6 +20,8 @@ UUIDGEN_BIN="${UUIDGEN_BIN:-/usr/bin/uuidgen}"
 SW_VERS_BIN="${SW_VERS_BIN:-/usr/bin/sw_vers}"
 HOSTNAME_BIN="${HOSTNAME_BIN:-/bin/hostname}"
 NOHUP_BIN="${NOHUP_BIN:-/usr/bin/nohup}"
+OSASCRIPT_BIN="${OSASCRIPT_BIN:-/usr/bin/osascript}"
+PLUTIL_BIN="${PLUTIL_BIN:-/usr/bin/plutil}"
 MACREC_BIN="${MACREC_BIN:-}"
 LIFECYCLE_CAP="${MACREC_DOCTOR_LIFECYCLE_CAP:-8}"
 LIFECYCLE_HOLD="${MACREC_DOCTOR_LIFECYCLE_HOLD:-1}"
@@ -400,6 +402,7 @@ write_probe() {
 probe_env() {
 	local jsonl="$1"
 	local root encoders has_x264 has_vt bash_ver free_kb ok detail
+	local hammerspoon_registered osascript_exit ncprefs
 	root="$(macrec_root)"
 	encoders="$(ffmpeg_encoders)"
 	has_x264=false
@@ -438,6 +441,28 @@ probe_env() {
 		ok=false
 		detail="${detail:+$detail; }no H.264 encoder"
 	fi
+	# Informational notification diagnostics: never fail the probe.
+	hammerspoon_registered=false
+	ncprefs="${HOME}/Library/Preferences/com.apple.ncprefs.plist"
+	if [ -x "$PLUTIL_BIN" ] && [ -f "$ncprefs" ]; then
+		if "$PLUTIL_BIN" -p "$ncprefs" 2>/dev/null | grep -q 'org.hammerspoon.Hammerspoon'; then
+			hammerspoon_registered=true
+		fi
+	fi
+	osascript_exit=127
+	if [ -x "$OSASCRIPT_BIN" ]; then
+		if "$OSASCRIPT_BIN" -e 'display notification "macrec doctor self-test" with title "macrec doctor"' >/dev/null 2>&1; then
+			osascript_exit=0
+		else
+			osascript_exit=$?
+		fi
+	elif command -v osascript >/dev/null 2>&1; then
+		if osascript -e 'display notification "macrec doctor self-test" with title "macrec doctor"' >/dev/null 2>&1; then
+			osascript_exit=0
+		else
+			osascript_exit=$?
+		fi
+	fi
 	"$JQ_BIN" -n -c \
 		--arg bash_version "$bash_ver" \
 		--argjson screencapture "$( [ -x "$SCREENCAPTURE_BIN" ] && echo true || echo false )" \
@@ -450,6 +475,8 @@ probe_env() {
 		--argjson h264_videotoolbox "$has_vt" \
 		--argjson disk_free_kb "${free_kb:-0}" \
 		--arg macos "$(macos_version | tr -d '\n')" \
+		--argjson hammerspoon_notifications_registered "$hammerspoon_registered" \
+		--argjson osascript_notify_exit "$osascript_exit" \
 		'{
 			bash_version:$bash_version,
 			screencapture:$screencapture,
@@ -461,7 +488,9 @@ probe_env() {
 			libx264:$libx264,
 			h264_videotoolbox:$h264_videotoolbox,
 			disk_free_kb:$disk_free_kb,
-			macos:$macos
+			macos:$macos,
+			hammerspoon_notifications_registered:$hammerspoon_notifications_registered,
+			osascript_notify_exit:$osascript_notify_exit
 		}' >"${jsonl}.env.metrics"
 	write_probe "$jsonl" env "$( [ "$ok" = true ] && echo true || echo false )" "$(cat "${jsonl}.env.metrics")" "$detail"
 }

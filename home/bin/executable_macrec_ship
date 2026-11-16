@@ -525,8 +525,10 @@ notify_stage() {
 			return 0
 		fi
 	fi
+	log_line "notify ${id}: osascript fallback"
 	notify_osascript "$title" "$subtitle" "$body" || \
 		log_line "notify ${id}: osascript unavailable"
+	: >"${dir}/ack.notified"
 	return 0
 }
 

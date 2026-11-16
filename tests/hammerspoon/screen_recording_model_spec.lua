@@ -249,7 +249,65 @@ describe("screen recording reducer", function()
 		assert.is_truthy(effect_of(done_effects, "hide_chrome"))
 		-- The baseline is absent, so status adoption never overwrites the clipboard.
 		assert.is_truthy(effect_of(done_effects, "notify"))
-		assert.is_truthy(effect_of(done_effects, "ack"))
+		-- Verified delivery: the model never acks notified; the runtime acks
+		-- only after hs.notify delivered() is true and the ship fallback acks
+		-- after its osascript attempt.
+		assert.is_nil(effect_of(done_effects, "ack"))
+		assert.is_nil(effect_of(done_effects, "copy_path"))
+	end)
+
+	it("copies the tilde path and keeps the absolute path for reveal", function()
+		local session = status_session({
+			id = "tilde",
+			name = "20261115_195328",
+			mp4 = "/Users/bbugyi/tmp/screencasts/20261115_195328.mp4",
+			duration_s = 42,
+			bytes = 4800000,
+		})
+		local notification = model.notification(session, { copied = true })
+		assert.equals("~/tmp/screencasts/20261115_195328.mp4", notification.copy_path)
+		assert.equals("~/tmp/screencasts/20261115_195328.mp4", notification.body:match("~/tmp/screencasts/[^ ]+%.mp4"))
+		assert.equals("/Users/bbugyi/tmp/screencasts/20261115_195328.mp4", notification.path)
+		assert.is_truthy(notification.body:find("path copied", 1, true))
+
+		local failed = status_session({
+			id = "failed-tilde",
+			name = "20261115_195328",
+			status = "failed",
+			mp4 = "/Users/bbugyi/tmp/screencasts/20261115_195328.mp4",
+		})
+		local failed_notification = model.notification(failed, {})
+		assert.equals("~/tmp/screencasts/20261115_195328.mp4", failed_notification.copy_path)
+		assert.is_truthy(failed_notification.body:find("~/tmp/screencasts/20261115_195328.mp4", 1, true))
+		assert.equals("/Users/bbugyi/tmp/screencasts/20261115_195328.mp4", failed_notification.path)
+
+		assert.equals("~/tmp/screencasts/clip.mp4", model.displayPath({ mp4 = "/tmp/clip.mp4", name = "clip" }))
+		assert.equals("~/tmp/screencasts/clip.mp4", model.displayPath({ name = "clip" }))
+		assert.equals("the saved recording", model.displayPath({}))
+
+		-- End-to-end through the reducer: tilde copy_path, tilde body, absolute path.
+		local recording = state("shipping", { session = { id = "tilde" }, clipboardBaseline = 7 })
+		local done, effects = model.reduce(recording, {
+			type = "status_refresh",
+			status = {
+				state = "idle",
+				sessions = {
+					status_session({
+						id = "tilde",
+						name = "20261115_195328",
+						mp4 = "/Users/bbugyi/tmp/screencasts/20261115_195328.mp4",
+					}),
+				},
+			},
+			clipboard_change_count = 7,
+		}, 60)
+		assert.equals("done", done.state)
+		local copied = assert(effect_of(effects, "copy_path"))
+		assert.equals("~/tmp/screencasts/20261115_195328.mp4", copied.path)
+		local notified = assert(effect_of(effects, "notify"))
+		assert.equals("~/tmp/screencasts/20261115_195328.mp4", notified.notification.copy_path)
+		assert.equals("/Users/bbugyi/tmp/screencasts/20261115_195328.mp4", notified.notification.path)
+		assert.is_nil(effect_of(effects, "ack"))
 	end)
 
 	it("requests orphan recovery and ignores subsequent duplicate recovery requests", function()
@@ -492,7 +550,7 @@ describe("screen recording presentation helpers", function()
 			id = "done",
 			name = "clip",
 			status = "done",
-			mp4 = "~/tmp/screencasts/clip.mp4",
+			mp4 = "/Users/bbugyi/tmp/screencasts/clip.mp4",
 			duration_s = 42,
 			bytes = 4800000,
 			hosts = { apollo = "ok", athena = "ok" },
@@ -502,6 +560,9 @@ describe("screen recording presentation helpers", function()
 		assert.equals("Recording uploaded", done.title)
 		assert.equals("Reveal", done.action)
 		assert.is_truthy(done.body:find("path copied", 1, true))
+		assert.equals("~/tmp/screencasts/clip.mp4", done.copy_path)
+		assert.equals("/Users/bbugyi/tmp/screencasts/clip.mp4", done.path)
+		assert.is_truthy(done.body:find("~/tmp/screencasts/clip.mp4", 1, true))
 
 		local partial_session = {}
 		for key, value in pairs(base) do
@@ -545,6 +606,8 @@ describe("screen recording presentation helpers", function()
 		assert.equals("Recording not uploaded", failed.title)
 		assert.is_truthy(failed.body:find("Saved locally:", 1, true))
 		assert.is_truthy(failed.body:find("Retry from the menu bar", 1, true))
+		assert.is_truthy(failed.body:find("~/tmp/screencasts/clip.mp4", 1, true))
+		assert.equals("~/tmp/screencasts/clip.mp4", failed.copy_path)
 	end)
 end)
 
@@ -602,7 +665,7 @@ describe("screen recording status parser", function()
 		assert.equals("sessions is not an array", model.parseStatus(invalid_array).reason)
 	end)
 
-	it("accepts regionless imports through shipping and acknowledges their notification", function()
+	it("accepts regionless imports through shipping and notifies without an ack", function()
 		local imported = status_session({
 			id = "imported",
 			stop_reason = "import",
@@ -619,7 +682,7 @@ describe("screen recording status parser", function()
 		local parsed = model.parseStatus({ schema = 1, sessions = { imported } })
 		local _, effects = model.reduce(state("idle"), { type = "status_refresh", status = parsed }, 120)
 		assert.equals("imported", effect_of(effects, "notify").session_id)
-		assert.same({ type = "ack", session_id = "imported", kind = "notified" }, effect_of(effects, "ack"))
+		assert.is_nil(effect_of(effects, "ack"))
 		assert.is_nil(effect_of(effects, "copy_path"))
 	end)
 

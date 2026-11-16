@@ -1548,6 +1548,7 @@ local function show_session_notification(item)
 		withdrawAfter = 0,
 	}
 	local path = notification.path
+	local tilde = notification.copy_path or notification.path
 	local action = notification.action
 	local callback = function(object)
 		local activation = 1
@@ -1565,7 +1566,7 @@ local function show_session_notification(item)
 		end
 		if activation == action_clicked then
 			if action == "Copy path" then
-				copy_path(path)
+				copy_path(tilde)
 			else
 				open_path(path)
 			end
@@ -1589,6 +1590,21 @@ local function show_session_notification(item)
 		pcall(function()
 			note:send()
 		end)
+		-- Verified delivery: only ack when the system confirms the banner
+		-- was delivered. Undelivered banners stay unacked so the ship
+		-- osascript fallback owns the notification (~8 s ACK_WAIT).
+		if item.session_id and hs.timer and type(hs.timer.doAfter) == "function" then
+			local note_ref = note
+			local session_id = item.session_id
+			hs.timer.doAfter(2, function()
+				local ok, delivered = pcall(function()
+					return note_ref:delivered()
+				end)
+				if ok and delivered == true then
+					run_macrec({ "ack", session_id, "notified" })
+				end
+			end)
+		end
 	else
 		hs.notify.show(info.title, info.subTitle, info.informativeText)
 	end

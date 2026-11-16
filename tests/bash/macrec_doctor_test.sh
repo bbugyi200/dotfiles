@@ -26,6 +26,8 @@ function set_up() {
   FAKE_FFPROBE_WIDTH=480
   FAKE_FFPROBE_HEIGHT=300
   FAKE_FFPROBE_DURATION=1.0
+  FAKE_PLUTIL_HAS_HAMMERSPOON=0
+  FAKE_OSASCRIPT_FAIL=0
 
   mkdir -p "${FAKE_BIN}" "${TEST_HOME}"
   : >"${EVENT_LOG}"
@@ -49,6 +51,8 @@ function set_up() {
   write_uuidgen_stub
   write_sw_vers_stub
   write_hostname_stub
+  write_plutil_stub
+  write_osascript_stub
 }
 
 function tear_down() {
@@ -231,6 +235,32 @@ EOF
   chmod +x "${FAKE_BIN}/hostname"
 }
 
+function write_plutil_stub() {
+  cat >"${FAKE_BIN}/plutil" <<'EOF'
+#!/bin/bash
+printf 'plutil|%s\n' "$*" >>"${EVENT_LOG}"
+if [[ "${FAKE_PLUTIL_HAS_HAMMERSPOON:-0}" == "1" ]]; then
+  printf '  "org.hammerspoon.Hammerspoon" => 1\n'
+else
+  printf '  "com.apple.Safari" => 1\n'
+fi
+exit 0
+EOF
+  chmod +x "${FAKE_BIN}/plutil"
+}
+
+function write_osascript_stub() {
+  cat >"${FAKE_BIN}/osascript" <<'EOF'
+#!/bin/bash
+printf 'osascript|%s\n' "$*" >>"${EVENT_LOG}"
+if [[ "${FAKE_OSASCRIPT_FAIL:-0}" == "1" ]]; then
+  exit 1
+fi
+exit 0
+EOF
+  chmod +x "${FAKE_BIN}/osascript"
+}
+
 function doctor_env() {
   PATH="${FAKE_BIN}:${PATH}" \
     HOME="${TEST_HOME}" \
@@ -242,6 +272,8 @@ function doctor_env() {
     UUIDGEN_BIN="${FAKE_BIN}/uuidgen" \
     SW_VERS_BIN="${FAKE_BIN}/sw_vers" \
     HOSTNAME_BIN="${FAKE_BIN}/hostname" \
+    OSASCRIPT_BIN="${FAKE_BIN}/osascript" \
+    PLUTIL_BIN="${FAKE_BIN}/plutil" \
     NOHUP_BIN="$(command -v nohup)" \
     TEST_TMP="${TEST_TMP}" \
     EVENT_LOG="${EVENT_LOG}" \
@@ -257,6 +289,8 @@ function doctor_env() {
     FAKE_FFPROBE_WIDTH="${FAKE_FFPROBE_WIDTH}" \
     FAKE_FFPROBE_HEIGHT="${FAKE_FFPROBE_HEIGHT}" \
     FAKE_FFPROBE_DURATION="${FAKE_FFPROBE_DURATION}" \
+    FAKE_PLUTIL_HAS_HAMMERSPOON="${FAKE_PLUTIL_HAS_HAMMERSPOON}" \
+    FAKE_OSASCRIPT_FAIL="${FAKE_OSASCRIPT_FAIL}" \
     MACREC_DOCTOR_NO_REEXEC=1 \
     MACREC_DOCTOR_POLL_INTERVAL="${MACREC_DOCTOR_POLL_INTERVAL}" \
     MACREC_DOCTOR_PICKUP_SECONDS="${MACREC_DOCTOR_PICKUP_SECONDS}" \
@@ -300,6 +334,37 @@ function test_env_probe_passes_with_tools_present() {
   assert_equals "env" "$(jq -r '.probes[0].name' "${STDOUT_FILE}")"
   assert_equals "true" "$(jq -r '.probes[0].metrics.libx264' "${STDOUT_FILE}")"
   assert_equals "26.5" "$(jq -r '.macos' "${STDOUT_FILE}")"
+  assert_equals "boolean" "$(jq -r '.probes[0].metrics.hammerspoon_notifications_registered | type' "${STDOUT_FILE}")"
+  assert_equals "number" "$(jq -r '.probes[0].metrics.osascript_notify_exit | type' "${STDOUT_FILE}")"
+}
+
+function test_env_probe_reports_hammerspoon_registered() {
+  FAKE_PLUTIL_HAS_HAMMERSPOON=1
+  mkdir -p "${TEST_HOME}/Library/Preferences"
+  printf 'dummy\n' >"${TEST_HOME}/Library/Preferences/com.apple.ncprefs.plist"
+  run_doctor run --id envreg --rect 0,0,240,150 --probes env
+  assert_equals "0" "${RUN_RC}"
+  assert_equals "true" "$(jq -r '.probes[0].ok' "${STDOUT_FILE}")"
+  assert_equals "true" "$(jq -r '.probes[0].metrics.hammerspoon_notifications_registered' "${STDOUT_FILE}")"
+  assert_equals "0" "$(jq -r '.probes[0].metrics.osascript_notify_exit' "${STDOUT_FILE}")"
+}
+
+function test_env_probe_reports_hammerspoon_unregistered_without_failing() {
+  FAKE_PLUTIL_HAS_HAMMERSPOON=0
+  mkdir -p "${TEST_HOME}/Library/Preferences"
+  printf 'dummy\n' >"${TEST_HOME}/Library/Preferences/com.apple.ncprefs.plist"
+  run_doctor run --id envunreg --rect 0,0,240,150 --probes env
+  assert_equals "0" "${RUN_RC}"
+  assert_equals "true" "$(jq -r '.probes[0].ok' "${STDOUT_FILE}")"
+  assert_equals "false" "$(jq -r '.probes[0].metrics.hammerspoon_notifications_registered' "${STDOUT_FILE}")"
+}
+
+function test_env_probe_reports_osascript_failure_without_failing() {
+  FAKE_OSASCRIPT_FAIL=1
+  run_doctor run --id envosa --rect 0,0,240,150 --probes env
+  assert_equals "0" "${RUN_RC}"
+  assert_equals "true" "$(jq -r '.probes[0].ok' "${STDOUT_FILE}")"
+  assert_equals "1" "$(jq -r '.probes[0].metrics.osascript_notify_exit' "${STDOUT_FILE}")"
 }
 
 function test_env_probe_fails_when_screencapture_missing() {

@@ -440,6 +440,8 @@ local function make_hs(env)
 				sent = false,
 				withdrawn = false,
 				image = nil,
+				delivered_result = env.notification_delivered,
+				delivered_error = env.notification_delivered_error,
 			}
 			function note:contentImage(image)
 				self.image = image
@@ -453,6 +455,15 @@ local function make_hs(env)
 			function note:withdraw()
 				self.withdrawn = true
 				return self
+			end
+			function note:delivered()
+				if self.delivered_error ~= nil then
+					error(self.delivered_error)
+				end
+				if self.delivered_result ~= nil then
+					return self.delivered_result
+				end
+				return true
 			end
 			function note:getActivationType()
 				return self.activation_type or 1
@@ -640,6 +651,8 @@ local function setup(options)
 		pasteboard_count = options.pasteboard_count or 10,
 		reduce_motion = options.reduce_motion,
 		alert_result = options.alert_result,
+		notification_delivered = options.notification_delivered,
+		notification_delivered_error = options.notification_delivered_error,
 		mtimes = {},
 		mkdir_calls = {},
 		fs_attribute_calls = {},
@@ -1215,8 +1228,21 @@ describe("screen recorder runtime", function()
 		assert.equals("done", _G.BobScreenRecorder.model.state)
 		assert.equals(1, #env.rich_notifications)
 		assert.equals("Recording uploaded", env.rich_notifications[1].info.title)
+		assert.is_truthy(
+			env.rich_notifications[1].info.informativeText:find("~/tmp/screencasts/20261115_142233.mp4", 1, true)
+		)
 		assert.equals(1, #env.pasteboard_writes)
-		assert.equals("/tmp/screencasts/20261115_142233.mp4", env.pasteboard_writes[1])
+		assert.equals("~/tmp/screencasts/20261115_142233.mp4", env.pasteboard_writes[1])
+		-- Verified delivery: the notified ack waits for delivered().
+		assert.equals(0, #tasks_with_arg(env, "notified"))
+		local delivery_timer
+		for _, timer in ipairs(env.do_after) do
+			if timer.delay == 2 then
+				delivery_timer = timer
+			end
+		end
+		assert.is_not_nil(delivery_timer)
+		delivery_timer.callback()
 		assert.equals(1, #tasks_with_arg(env, "notified"))
 		assert.is_true(title_text(env.menus[1].title):find("✓", 1, true) ~= nil)
 		local done_timer
@@ -1381,6 +1407,203 @@ describe("screen recorder runtime", function()
 		})
 		assert.equals(0, #env.pasteboard_writes)
 		assert.equals("Copy path", env.rich_notifications[1].info.actionButtonTitle)
+	end)
+
+	it("acks notified only after delivered() is true", function()
+		env, recorder = setup({ now = 1000, pasteboard_count = 10 })
+		start_recorder(env, recorder)
+		complete_status(env)
+		recorder.onChord()
+		confirm_region()
+		complete_start(env)
+		env.now = env.now + 0.2
+		recorder.onChord()
+		tasks_with_arg(env, "stop")[1]:complete(0, "{}", "")
+		complete_status(env, {
+			sessions = {
+				session_fields({
+					status = "done",
+					acked = { notified = false, adopted = true },
+				}),
+			},
+		})
+		assert.equals(0, #tasks_with_arg(env, "notified"))
+		local delivery_timer
+		for _, timer in ipairs(env.do_after) do
+			if timer.delay == 2 then
+				delivery_timer = timer
+			end
+		end
+		assert.is_not_nil(delivery_timer)
+		delivery_timer.callback()
+		assert.equals(1, #tasks_with_arg(env, "notified"))
+		assert.same({ "ack", "sess1", "notified" }, tasks_with_arg(env, "notified")[1].args)
+	end)
+
+	it("never acks notified when delivered() is false", function()
+		env, recorder = setup({ now = 1000, pasteboard_count = 10, notification_delivered = false })
+		start_recorder(env, recorder)
+		complete_status(env)
+		recorder.onChord()
+		confirm_region()
+		complete_start(env)
+		env.now = env.now + 0.2
+		recorder.onChord()
+		tasks_with_arg(env, "stop")[1]:complete(0, "{}", "")
+		complete_status(env, {
+			sessions = {
+				session_fields({
+					status = "done",
+					acked = { notified = false, adopted = true },
+				}),
+			},
+		})
+		assert.equals(1, #env.rich_notifications)
+		assert.equals(0, #tasks_with_arg(env, "notified"))
+		local delivery_timer
+		for _, timer in ipairs(env.do_after) do
+			if timer.delay == 2 then
+				delivery_timer = timer
+			end
+		end
+		assert.is_not_nil(delivery_timer)
+		delivery_timer.callback()
+		assert.equals(0, #tasks_with_arg(env, "notified"))
+	end)
+
+	it("never acks notified when delivered() errors", function()
+		env, recorder = setup({ now = 1000, pasteboard_count = 10, notification_delivered_error = "gone" })
+		start_recorder(env, recorder)
+		complete_status(env)
+		recorder.onChord()
+		confirm_region()
+		complete_start(env)
+		env.now = env.now + 0.2
+		recorder.onChord()
+		tasks_with_arg(env, "stop")[1]:complete(0, "{}", "")
+		complete_status(env, {
+			sessions = {
+				session_fields({
+					status = "done",
+					acked = { notified = false, adopted = true },
+				}),
+			},
+		})
+		assert.equals(1, #env.rich_notifications)
+		local delivery_timer
+		for _, timer in ipairs(env.do_after) do
+			if timer.delay == 2 then
+				delivery_timer = timer
+			end
+		end
+		assert.is_not_nil(delivery_timer)
+		delivery_timer.callback()
+		assert.equals(0, #tasks_with_arg(env, "notified"))
+	end)
+
+	it("copies the tilde path on the Copy path action and reveals the absolute path", function()
+		env, recorder = setup({ now = 1000, pasteboard_count = 10 })
+		start_recorder(env, recorder)
+		complete_status(env)
+		recorder.onChord()
+		confirm_region()
+		complete_start(env)
+		env.now = env.now + 0.2
+		recorder.onChord()
+		tasks_with_arg(env, "stop")[1]:complete(0, "{}", "")
+		-- Keep the clipboard unchanged so the runtime copies immediately.
+		complete_status(env, {
+			sessions = {
+				session_fields({
+					status = "done",
+					mp4 = "/Users/bbugyi/tmp/screencasts/20261115_142233.mp4",
+					acked = { notified = false, adopted = true },
+				}),
+			},
+		})
+		assert.equals("~/tmp/screencasts/20261115_142233.mp4", env.pasteboard_writes[1])
+		local note = env.rich_notifications[1]
+		assert.equals("Reveal", note.info.actionButtonTitle)
+		-- Reveal opens the absolute path.
+		note.callback({
+			getActivationType = function()
+				return 1
+			end,
+		})
+		local opened = false
+		for _, task in ipairs(env.tasks) do
+			if
+				task.command == "/usr/bin/open"
+				and task.args[1] == "/Users/bbugyi/tmp/screencasts/20261115_142233.mp4"
+			then
+				opened = true
+			end
+		end
+		assert.is_true(opened)
+
+		env.restore()
+		env, recorder = setup({ now = 1000, pasteboard_count = 3 })
+		start_recorder(env, recorder)
+		complete_status(env)
+		recorder.onChord()
+		confirm_region()
+		complete_start(env)
+		env.now = env.now + 0.2
+		recorder.onChord()
+		tasks_with_arg(env, "stop")[1]:complete(0, "{}", "")
+		env.pasteboard_count = 4
+		complete_status(env, {
+			sessions = {
+				session_fields({
+					status = "done",
+					mp4 = "/Users/bbugyi/tmp/screencasts/20261115_142233.mp4",
+					acked = { notified = false, adopted = true },
+				}),
+			},
+		})
+		local copy_note = env.rich_notifications[1]
+		assert.equals("Copy path", copy_note.info.actionButtonTitle)
+		copy_note.callback({
+			getActivationType = function()
+				return 2
+			end,
+		})
+		assert.equals("~/tmp/screencasts/20261115_142233.mp4", env.pasteboard_writes[#env.pasteboard_writes])
+	end)
+
+	it("never acks notified when no notification object exists", function()
+		env, recorder = setup({ now = 1000, pasteboard_count = 10 })
+		local saved_new = hs.notify.new
+		hs.notify.new = function()
+			return nil
+		end
+		start_recorder(env, recorder)
+		complete_status(env)
+		recorder.onChord()
+		confirm_region()
+		complete_start(env)
+		env.now = env.now + 0.2
+		recorder.onChord()
+		tasks_with_arg(env, "stop")[1]:complete(0, "{}", "")
+		complete_status(env, {
+			sessions = {
+				session_fields({
+					status = "done",
+					acked = { notified = false, adopted = true },
+				}),
+			},
+		})
+		hs.notify.new = saved_new
+		assert.equals(0, #env.rich_notifications)
+		assert.equals(1, #env.notifications)
+		assert.equals(0, #tasks_with_arg(env, "notified"))
+		local saw_delivery = false
+		for _, timer in ipairs(env.do_after) do
+			if timer.delay == 2 then
+				saw_delivery = true
+			end
+		end
+		assert.is_false(saw_delivery)
 	end)
 
 	it("re-adopts a live recording, a shipping session, and an orphan", function()
