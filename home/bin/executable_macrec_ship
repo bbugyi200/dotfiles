@@ -685,9 +685,10 @@ upload_stage() {
 			athena_want=0
 		fi
 	fi
-	results="${dir}/upload.results"
-	rm -rf "$results"
-	mkdir -p "$results"
+	# A retry can overlap an earlier ship attempt for the same session. Keep
+	# worker results private to this invocation so one attempt cannot remove
+	# another attempt's files while its upload workers are still running.
+	results="$(mktemp -d "${dir}/upload.results.XXXXXX")"
 	if [ "$apollo_want" = "1" ]; then
 		upload_one_host apollo "$mp4" "$base" "${results}/apollo" &
 		apollo_pid=$!
