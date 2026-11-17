@@ -26,6 +26,19 @@ local TIMEOUT_TRANSCRIPT = table.concat({
 	"",
 }, "\n")
 
+local SLOW_TRANSCRIPT = table.concat({
+	"PING 8.8.8.8 (8.8.8.8): 56 data bytes",
+	"64 bytes from 8.8.8.8: icmp_seq=0 ttl=117 time=2100.000 ms",
+	"",
+	"--- 8.8.8.8 ping statistics ---",
+	"1 packets transmitted, 1 packets received, 0.0% packet loss",
+	"round-trip min/avg/max/stddev = 2050.000/2100.000/2150.000/25.000 ms",
+	"",
+}, "\n")
+
+local CURL_OK = "Success\n__PING_WINDOW__ 200 0.010 0.130"
+local CURL_PORTAL = "Sign in\n__PING_WINDOW__ 302 0.010 0.020"
+
 local function make_task(env, command, callback, args)
 	local task = {
 		command = command,
@@ -38,8 +51,14 @@ local function make_task(env, command, callback, args)
 	}
 
 	function task:start()
+		if env.task_start_throw_command == self.command then
+			error("injected task start failure")
+		end
 		self.started = true
 		self.start_calls = self.start_calls + 1
+		if env.task_start_false_command == self.command then
+			return false
+		end
 		return self
 	end
 
@@ -135,7 +154,7 @@ local function make_hs(env)
 
 	hs.task = {
 		new = function(command, callback, args)
-			if env.task_new_nil then
+			if env.task_new_nil or env.task_new_nil_command == command then
 				return nil
 			end
 			return make_task(env, command, callback, args)
@@ -287,10 +306,14 @@ local function setup(options)
 		mkdir_calls = {},
 		now = options.now or 1759680002,
 		state_path = tmp_base .. "_ping_state",
+		events_path = tmp_base .. "_ping_events",
 		config_path = tmp_base .. "_ping_config",
 		session_properties = options.session_properties,
 		session_throw = options.session_throw,
 		task_new_nil = options.task_new_nil,
+		task_new_nil_command = options.task_new_nil_command,
+		task_start_false_command = options.task_start_false_command,
+		task_start_throw_command = options.task_start_throw_command,
 		fs_attributes_nil = options.fs_attributes_nil,
 		fs_mkdir_fail = options.fs_mkdir_fail,
 		fail_styling = false,
@@ -307,6 +330,8 @@ local function setup(options)
 		package.loaded.ping_indicator = nil
 		pcall(os.remove, env.state_path)
 		pcall(os.remove, env.state_path .. ".tmp.hammerspoon")
+		pcall(os.remove, env.events_path)
+		pcall(os.remove, env.events_path .. ".tmp.hammerspoon")
 		pcall(os.remove, env.config_path)
 	end
 
@@ -320,6 +345,7 @@ end
 local function start_indicator(env, indicator)
 	indicator.start({
 		state_path = env.state_path,
+		events_path = env.events_path,
 		ping_path = "/sbin/ping",
 		config_path = env.config_path,
 		now = env.now_fn,
@@ -354,6 +380,45 @@ end
 
 local function complete_latest(env, exit_code, stdout, stderr)
 	env.tasks[#env.tasks]:complete(exit_code, stdout, stderr or "")
+end
+
+local function latest_task(env, command)
+	for index = #env.tasks, 1, -1 do
+		if command == nil or env.tasks[index].command == command then
+			return env.tasks[index]
+		end
+	end
+	error("task not found: " .. tostring(command))
+end
+
+local function complete_task(task, exit_code, stdout, stderr)
+	task:complete(exit_code, stdout, stderr or "")
+end
+
+local function read_events(env)
+	local handle = io.open(env.events_path, "r")
+	if not handle then
+		return ""
+	end
+	local text = handle:read("*a")
+	handle:close()
+	return text
+end
+
+local function event_lines(env)
+	local lines = {}
+	for line in read_events(env):gmatch("([^\n]+)") do
+		table.insert(lines, line)
+	end
+	return lines
+end
+
+local function write_events(env, count)
+	local handle = assert(io.open(env.events_path, "w"))
+	for index = 1, count do
+		handle:write(string.format("old-%d\tseed\tvalue=%d\n", index, index))
+	end
+	handle:close()
 end
 
 local function title_text(title)
@@ -454,7 +519,7 @@ describe("Hammerspoon ping indicator startup", function()
 		start_indicator(env, indicator)
 		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
 
-		assert.equals(string.format("%d hammerspoon %d 1\n", env.now, env.now), read_state_file(env))
+		assert.equals(string.format("%d hammerspoon %d 1 rtt=18\n", env.now, env.now), read_state_file(env))
 
 		local text = title_text(env.menus[1].title)
 		assert.equals(NBSP .. "✓" .. " " .. FIGURE_SPACE .. FIGURE_SPACE .. "1/1" .. NBSP, text)
@@ -469,7 +534,7 @@ describe("Hammerspoon ping indicator startup", function()
 		assert.equals("Internet: online · 1 of 1 pings answered (100%) · last reply 18 ms", env.menus[1].tooltip)
 	end)
 
-	it("paints a red failure and escalates to the pill after three misses", function()
+	it("waits for a web verdict before escalating three misses to the pill", function()
 		local indicator
 		env, indicator = setup()
 		start_indicator(env, indicator)
@@ -490,7 +555,19 @@ describe("Hammerspoon ping indicator startup", function()
 			complete_latest(env, 2, TIMEOUT_TRANSCRIPT)
 		end
 
-		assert.equals(string.format("%d hammerspoon %d 000\n", env.now, env.now), read_state_file(env))
+		assert.equals(
+			string.format("%d hammerspoon %d 000 check=%d\n", env.now, env.now, env.now - 4),
+			read_state_file(env)
+		)
+		assert.is_true(title_text(env.menus[1].title):find("✗", 1, true) ~= nil)
+		local checking_spans = assert(title_spans(env.menus[1].title))
+		assert.is_nil(checking_spans[1].attributes.backgroundColor)
+
+		complete_task(latest_task(env, "/usr/bin/curl"), 28, "")
+		assert.equals(
+			string.format("%d hammerspoon %d 000 web=fail,%d,-\n", env.now, env.now, env.now),
+			read_state_file(env)
+		)
 		local pill_spans = assert(title_spans(env.menus[1].title))
 		assert.equals(5, #pill_spans)
 		for _, span in ipairs(pill_spans) do
@@ -529,7 +606,7 @@ describe("Hammerspoon ping indicator producer loop", function()
 		start_indicator(env, indicator)
 		assert.equals(1, #env.tasks)
 		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
-		assert.equals(string.format("%d hammerspoon %d 01111\n", env.now, env.now), read_state_file(env))
+		assert.equals(string.format("%d hammerspoon %d 01111 rtt=18\n", env.now, env.now), read_state_file(env))
 	end)
 
 	it("appends at the gap edge and resets past it", function()
@@ -539,7 +616,7 @@ describe("Hammerspoon ping indicator producer loop", function()
 		start_indicator(env, indicator)
 		assert.equals(1, #env.tasks)
 		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
-		assert.equals(string.format("%d hammerspoon %d 01111\n", env.now, env.now), read_state_file(env))
+		assert.equals(string.format("%d hammerspoon %d 01111 rtt=18\n", env.now, env.now), read_state_file(env))
 	end)
 
 	it("resets the window after a long gap", function()
@@ -549,7 +626,7 @@ describe("Hammerspoon ping indicator producer loop", function()
 		start_indicator(env, indicator)
 		assert.equals(1, #env.tasks)
 		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
-		assert.equals(string.format("%d hammerspoon %d 1\n", env.now, env.now), read_state_file(env))
+		assert.equals(string.format("%d hammerspoon %d 1 rtt=18\n", env.now, env.now), read_state_file(env))
 	end)
 
 	it("starts no new task while one is running and terminates it after 3 intervals", function()
@@ -665,6 +742,423 @@ describe("Hammerspoon ping indicator producer loop", function()
 		assert.equals(2, #env.tasks)
 		assert.equals(2, old_menu.set_menu_calls)
 		assert.equals("function", type(old_menu.menu_builder))
+	end)
+end)
+
+describe("Hammerspoon v2 producer", function()
+	local env = nil
+
+	after_each(function()
+		if env then
+			env.restore()
+			env = nil
+		end
+	end)
+
+	it("records slow samples and RTTs, then skips tool errors", function()
+		local indicator
+		env, indicator = setup()
+		write_state_file(env, string.format("%d hammerspoon %d 1 rtt=480\n", env.now - 2, env.now - 2))
+		start_indicator(env, indicator)
+		complete_latest(env, 0, SLOW_TRANSCRIPT)
+		assert.equals(string.format("%d hammerspoon %d 1s rtt=480,2100\n", env.now, env.now), read_state_file(env))
+
+		env.now = env.now + 2
+		fire_tick(env)
+		complete_latest(env, 64, "ping: invalid option")
+		assert.equals(string.format("%d hammerspoon %d 1s rtt=480,2100\n", env.now, env.now - 2), read_state_file(env))
+		assert.is_true(read_events(env):find("\tprobe\ttool=ping exit=64", 1, true) ~= nil)
+
+		env.now = env.now + 2
+		fire_tick(env)
+		complete_latest(env, 0, "1 packets transmitted, 1 packets received")
+		assert.equals(string.format("%d hammerspoon %d 1s1 rtt=480,2100\n", env.now, env.now), read_state_file(env))
+	end)
+
+	it("rate-limits repeated probe errors by exit code", function()
+		local indicator
+		env, indicator = setup()
+		local first_error_at = env.now
+		start_indicator(env, indicator)
+		complete_latest(env, 64, "ping: invalid option")
+		env.now = env.now + 2
+		fire_tick(env)
+		complete_latest(env, 64, "ping: invalid option")
+		assert.equals(1, count_logs(env, "probe\ttool=ping exit=64"))
+
+		env.now = first_error_at + 600
+		fire_tick(env)
+		complete_latest(env, 64, "ping: invalid option")
+		assert.equals(2, count_logs(env, "probe\ttool=ping exit=64"))
+	end)
+
+	it("starts a rate-limited web check with the miss write and carries it while in flight", function()
+		local indicator
+		env, indicator = setup()
+		start_indicator(env, indicator)
+		local first_check_at = env.now
+		complete_latest(env, 2, TIMEOUT_TRANSCRIPT)
+		local curl = latest_task(env, "/usr/bin/curl")
+		assert.same(package.loaded.ping_window.CURL_ARGS, curl.args)
+		assert.equals(
+			string.format("%d hammerspoon %d 0 check=%d\n", env.now, env.now, first_check_at),
+			read_state_file(env)
+		)
+
+		env.now = env.now + 2
+		fire_tick(env)
+		complete_latest(env, 2, TIMEOUT_TRANSCRIPT)
+		local curl_count = 0
+		for _, task in ipairs(env.tasks) do
+			if task.command == "/usr/bin/curl" then
+				curl_count = curl_count + 1
+			end
+		end
+		assert.equals(1, curl_count)
+		assert.is_true(read_state_file(env):find("check=" .. first_check_at, 1, true) ~= nil)
+
+		complete_task(curl, 0, CURL_OK)
+		assert.is_true(read_state_file(env):find("web=ok," .. env.now .. ",120", 1, true) ~= nil)
+		assert.is_nil(read_state_file(env):find("check=", 1, true))
+
+		env.now = first_check_at + 9
+		fire_tick(env)
+		complete_latest(env, 2, TIMEOUT_TRANSCRIPT)
+		assert.equals(
+			1,
+			(function()
+				local count = 0
+				for _, task in ipairs(env.tasks) do
+					if task.command == "/usr/bin/curl" then
+						count = count + 1
+					end
+				end
+				return count
+			end)()
+		)
+
+		env.now = first_check_at + 10
+		fire_tick(env)
+		complete_latest(env, 2, TIMEOUT_TRANSCRIPT)
+		local curl_count = 0
+		for _, task in ipairs(env.tasks) do
+			if task.command == "/usr/bin/curl" then
+				curl_count = curl_count + 1
+			end
+		end
+		assert.equals(2, curl_count)
+		assert.is_true(read_state_file(env):find("check=" .. env.now, 1, true) ~= nil)
+	end)
+
+	it("does not persist a check token when curl cannot be launched", function()
+		local indicator
+		env, indicator = setup({ task_new_nil_command = "/usr/bin/curl" })
+		start_indicator(env, indicator)
+		complete_latest(env, 2, TIMEOUT_TRANSCRIPT)
+		assert.is_nil(read_state_file(env):find("check=", 1, true))
+		assert.equals(1, count_logs(env, "probe\ttool=curl exit=launch"))
+		assert.equals(1, #env.tasks)
+	end)
+
+	it("lands an OK verdict and stores its handshake RTT", function()
+		local indicator
+		env, indicator = setup()
+		start_indicator(env, indicator)
+		complete_latest(env, 2, TIMEOUT_TRANSCRIPT)
+		complete_task(latest_task(env, "/usr/bin/curl"), 0, CURL_OK)
+
+		local state = package.loaded.ping_window.parse_state(read_state_file(env))
+		assert.same({ verdict = "ok", at = env.now, ms = 120 }, state.web)
+		assert.is_nil(state.check)
+		assert.equals(NBSP .. "✓ web" .. NBSP, title_text(env.menus[1].title))
+		assert.is_true(read_events(env):find("\tweb\tverdict=ok ms=120 http=200 exit=0", 1, true) ~= nil)
+
+		env.now = BobPingIndicator.webStartedAt + 10
+		fire_tick(env)
+		complete_latest(env, 2, TIMEOUT_TRANSCRIPT)
+		complete_task(latest_task(env, "/usr/bin/curl"), 0, CURL_OK)
+		local _, verdict_events = read_events(env):gsub("\tweb\t", "")
+		assert.equals(1, verdict_events)
+	end)
+
+	it("lands portal and failed verdict details", function()
+		local indicator
+		env, indicator = setup()
+		start_indicator(env, indicator)
+		complete_latest(env, 2, TIMEOUT_TRANSCRIPT)
+		complete_task(latest_task(env, "/usr/bin/curl"), 0, CURL_PORTAL)
+		local portal = package.loaded.ping_window.parse_state(read_state_file(env))
+		assert.equals("portal", portal.web.verdict)
+		assert.is_nil(portal.check)
+		local portal_rows = env.menus[1].menu_builder()
+		local portal_row = nil
+		for _, row in ipairs(portal_rows) do
+			if row.title:find("Web check hit a sign-in page", 1, true) then
+				portal_row = row
+			end
+		end
+		assert.is_not_nil(portal_row)
+
+		env.restore()
+		env = nil
+		env, indicator = setup()
+		start_indicator(env, indicator)
+		complete_latest(env, 2, TIMEOUT_TRANSCRIPT)
+		complete_task(latest_task(env, "/usr/bin/curl"), 6, "")
+		local failed = package.loaded.ping_window.parse_state(read_state_file(env))
+		assert.equals("fail", failed.web.verdict)
+		assert.is_nil(failed.web.ms)
+		assert.is_nil(failed.check)
+		local rows = env.menus[1].menu_builder()
+		local web_row = nil
+		for _, row in ipairs(rows) do
+			if row.title:find("Web check failed", 1, true) then
+				web_row = row
+			end
+		end
+		assert.is_not_nil(web_row)
+		assert.is_true(web_row.title:find("DNS lookup failed", 1, true) ~= nil)
+	end)
+
+	it("clears the in-flight token without replacing a verdict for curl tool errors", function()
+		local indicator
+		env, indicator = setup()
+		write_state_file(
+			env,
+			string.format("%d hammerspoon %d 0 web=fail,%d,-\n", env.now - 20, env.now - 20, env.now - 20)
+		)
+		start_indicator(env, indicator)
+		complete_latest(env, 2, TIMEOUT_TRANSCRIPT)
+		complete_task(latest_task(env, "/usr/bin/curl"), 127, "")
+		local state = package.loaded.ping_window.parse_state(read_state_file(env))
+		assert.same({ verdict = "fail", at = env.now - 20 }, state.web)
+		assert.is_nil(state.check)
+		assert.is_true(read_events(env):find("\tprobe\ttool=curl exit=127", 1, true) ~= nil)
+		assert.is_nil(read_events(env):find("\tweb\t", 1, true))
+	end)
+
+	it("renders the ICMP-blind incident and slow-link web result without a pill", function()
+		local indicator
+		env, indicator = setup()
+		write_state_file(env, string.format("%d hammerspoon %d %s\n", env.now - 2, env.now - 2, string.rep("0", 29)))
+		start_indicator(env, indicator)
+		complete_latest(env, 2, TIMEOUT_TRANSCRIPT)
+		assert.is_true(title_text(env.menus[1].title):find("✓ web", 1, true) == nil)
+		for _, span in ipairs(title_spans(env.menus[1].title)) do
+			assert.is_nil(span.attributes.backgroundColor)
+		end
+		complete_task(latest_task(env, "/usr/bin/curl"), 0, CURL_OK)
+		assert.equals(NBSP .. "✓ web" .. NBSP, title_text(env.menus[1].title))
+
+		env.restore()
+		env = nil
+		env, indicator = setup()
+		write_state_file(env, string.format("%d hammerspoon %d 00\n", env.now - 4, env.now - 4))
+		start_indicator(env, indicator)
+		complete_latest(env, 2, TIMEOUT_TRANSCRIPT)
+		assert.is_true(title_text(env.menus[1].title):find("✗", 1, true) ~= nil)
+		for _, span in ipairs(title_spans(env.menus[1].title)) do
+			assert.is_nil(span.attributes.backgroundColor)
+		end
+		complete_task(latest_task(env, "/usr/bin/curl"), 0, "Success\n__PING_WINDOW__ 200 0.010 2.110")
+		assert.is_true(title_text(env.menus[1].title):find("✓", 1, true) ~= nil)
+		assert.is_true(title_text(env.menus[1].title):find("2.1s", 1, true) ~= nil)
+		for _, span in ipairs(title_spans(env.menus[1].title)) do
+			assert.is_nil(span.attributes.backgroundColor)
+		end
+	end)
+
+	it("walks healthy, ICMP-blind, outage, pill, and recovery states", function()
+		local indicator
+		env, indicator = setup()
+		write_state_file(env, string.format("%d hammerspoon %d %s\n", env.now - 2, env.now - 2, string.rep("1", 30)))
+		start_indicator(env, indicator)
+		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
+		assert.equals(NBSP .. "✓" .. NBSP, title_text(env.menus[1].title))
+
+		local curl_count = 0
+		for missed = 1, 30 do
+			env.now = env.now + 2
+			fire_tick(env)
+			complete_latest(env, 2, TIMEOUT_TRANSCRIPT)
+			local found = 0
+			for _, task in ipairs(env.tasks) do
+				if task.command == "/usr/bin/curl" then
+					found = found + 1
+				end
+			end
+			if found > curl_count then
+				curl_count = found
+				complete_task(latest_task(env, "/usr/bin/curl"), 0, CURL_OK)
+			end
+			if missed == 4 then
+				assert.equals(NBSP .. "✓ web" .. NBSP, title_text(env.menus[1].title))
+			end
+		end
+		assert.equals(NBSP .. "✓ web" .. NBSP, title_text(env.menus[1].title))
+
+		env.now = BobPingIndicator.webStartedAt + 10
+		fire_tick(env)
+		complete_latest(env, 2, TIMEOUT_TRANSCRIPT)
+		assert.equals(NBSP .. "✓ web" .. NBSP, title_text(env.menus[1].title))
+		complete_task(latest_task(env, "/usr/bin/curl"), 28, "")
+		assert.is_true(title_text(env.menus[1].title):find("✗", 1, true) ~= nil)
+		assert.is_true(title_text(env.menus[1].title):find("0/30", 1, true) ~= nil)
+		for _, span in ipairs(title_spans(env.menus[1].title)) do
+			assert.same({ hex = "#E3413B", alpha = 1 }, span.attributes.backgroundColor)
+		end
+
+		for recovered = 1, 30 do
+			env.now = env.now + 2
+			fire_tick(env)
+			complete_latest(env, 0, SUCCESS_TRANSCRIPT)
+			if recovered == 1 then
+				assert.is_true(title_text(env.menus[1].title):find("✓", 1, true) ~= nil)
+			end
+		end
+		assert.equals(NBSP .. "✓" .. NBSP, title_text(env.menus[1].title))
+		local events = read_events(env)
+		assert.is_true(events:find("transition=online→web", 1, true) ~= nil)
+		assert.is_true(events:find("\tweb\tverdict=ok", 1, true) ~= nil)
+		assert.is_true(events:find("\tweb\tverdict=fail", 1, true) ~= nil)
+		assert.is_true(events:find("transition=web→offline", 1, true) ~= nil)
+		assert.is_true(events:find("transition=offline→lossy", 1, true) ~= nil)
+		assert.is_true(events:find("transition=lossy→online", 1, true) ~= nil)
+	end)
+
+	it("keeps the offline pill until the web check fails and does not check while paused", function()
+		local indicator
+		env, indicator = setup()
+		write_state_file(env, string.format("%d hammerspoon %d 00\n", env.now - 4, env.now - 4))
+		start_indicator(env, indicator)
+		complete_latest(env, 2, TIMEOUT_TRANSCRIPT)
+		for _, span in ipairs(title_spans(env.menus[1].title)) do
+			assert.is_nil(span.attributes.backgroundColor)
+		end
+		complete_task(latest_task(env, "/usr/bin/curl"), 28, "")
+		assert.is_true(title_text(env.menus[1].title):find("✗", 1, true) ~= nil)
+		assert.is_true(title_text(env.menus[1].title):find("0/3", 1, true) ~= nil)
+		for _, span in ipairs(title_spans(env.menus[1].title)) do
+			assert.same({ hex = "#E3413B", alpha = 1 }, span.attributes.backgroundColor)
+		end
+
+		env.restore()
+		env = nil
+		env, indicator = setup({
+			session_properties = { CGSSessionScreenIsLocked = true, kCGSSessionOnConsoleKey = true },
+		})
+		write_state_file(env, string.format("%d hammerspoon %d 00\n", env.now - 4, env.now - 4))
+		start_indicator(env, indicator)
+		assert.equals(0, #env.tasks)
+		assert.is_nil(read_state_file(env):find("check=", 1, true))
+	end)
+
+	it("carries rtt, web, and check through paused and tmux heartbeat claims", function()
+		local indicator
+		env, indicator = setup({
+			task_new_nil = true,
+			session_properties = { CGSSessionScreenIsLocked = true, kCGSSessionOnConsoleKey = true },
+		})
+		start_indicator(env, indicator)
+		local sample_at = env.now
+		local web_at = env.now - 2
+		write_state_file(
+			env,
+			string.format(
+				"%d hammerspoon %d s0 rtt=480,1200 web=ok,%d,125 check=%d\n",
+				env.now - 2,
+				sample_at,
+				web_at,
+				web_at
+			)
+		)
+		env.now = env.now + 2
+		fire_tick(env)
+		assert.equals(
+			string.format(
+				"%d hammerspoon %d s0 rtt=480,1200 web=ok,%d,125 check=%d\n",
+				env.now,
+				sample_at,
+				web_at,
+				web_at
+			),
+			read_state_file(env)
+		)
+
+		env.restore()
+		env = nil
+		env, indicator = setup({ task_new_nil = true })
+		start_indicator(env, indicator)
+		local tmux_at = env.now
+		write_state_file(
+			env,
+			string.format("%d tmux %d s0 rtt=480,1200 web=ok,%d,125 check=%d\n", tmux_at, tmux_at, tmux_at, tmux_at)
+		)
+		fire_tick(env)
+		assert.equals(
+			string.format(
+				"%d hammerspoon %d s0 rtt=480,1200 web=ok,%d,125 check=%d\n",
+				env.now,
+				tmux_at,
+				tmux_at,
+				tmux_at
+			),
+			read_state_file(env)
+		)
+	end)
+
+	it("terminates an expired check and stops both tasks on reload", function()
+		local indicator
+		env, indicator = setup()
+		start_indicator(env, indicator)
+		complete_latest(env, 2, TIMEOUT_TRANSCRIPT)
+		local curl = latest_task(env, "/usr/bin/curl")
+		env.now = env.now + 11
+		fire_tick(env)
+		assert.is_true(curl.terminated)
+		assert.is_nil(read_state_file(env):find("check=", 1, true))
+		assert.is_true(read_events(env):find("\tprobe\ttool=curl exit=grace", 1, true) ~= nil)
+
+		env.restore()
+		env = nil
+		env, indicator = setup()
+		start_indicator(env, indicator)
+		complete_latest(env, 2, TIMEOUT_TRANSCRIPT)
+		local active_curl = latest_task(env, "/usr/bin/curl")
+		env.now = env.now + 2
+		fire_tick(env)
+		local active_ping = latest_task(env, "/sbin/ping")
+		start_indicator(env, indicator)
+		assert.is_true(active_curl.terminated)
+		assert.is_true(active_ping.terminated)
+		assert.is_true(read_state_file(env):find("check=", 1, true) == nil)
+		assert.equals("/sbin/ping", latest_task(env, "/sbin/ping").command)
+	end)
+
+	it("logs start and tier transitions, trims at startup, and caps later growth", function()
+		local indicator
+		env, indicator = setup()
+		write_events(env, package.loaded.ping_window.EVENTS_KEEP_LINES + 2)
+		start_indicator(env, indicator)
+		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
+		local initial_lines = event_lines(env)
+		assert.equals(package.loaded.ping_window.EVENTS_KEEP_LINES + 2, #initial_lines)
+		assert.is_true(initial_lines[1]:find("old%-3\tseed") ~= nil)
+		assert.is_true(initial_lines[1001]:find("\tstart\targs=", 1, true) ~= nil)
+		assert.is_true(initial_lines[1001]:find("-n -q -c 1 -W 500 8.8.8.8", 1, true) ~= nil)
+		assert.is_true(initial_lines[1002]:find("\ttier\ttransition=unknown→online", 1, true) ~= nil)
+		assert.is_true(initial_lines[1002]:find("title=", 1, true) ~= nil)
+
+		write_events(env, 2000)
+		BobPingIndicator.eventLineCount = 2000
+		env.now = env.now + 2
+		fire_tick(env)
+		complete_latest(env, 2, TIMEOUT_TRANSCRIPT)
+		local capped_lines = event_lines(env)
+		assert.equals(1000, #capped_lines)
+		assert.equals("old-1002\tseed\tvalue=1002", capped_lines[1])
+		assert.is_true(capped_lines[1000]:find("\ttier\ttransition=online→down", 1, true) ~= nil)
+		assert.is_true(logged_message(env, "transition=online→down"))
 	end)
 end)
 
@@ -814,7 +1308,7 @@ describe("Hammerspoon ping indicator dropdown", function()
 		assert.equals(1, #env.tasks)
 		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
 		assert.equals(
-			string.format("%d hammerspoon %d %s\n", env.now, env.now, string.rep("1", 20)),
+			string.format("%d hammerspoon %d %s rtt=18\n", env.now, env.now, string.rep("1", 20)),
 			read_state_file(env)
 		)
 		local items = env.menus[1].menu_builder()
@@ -876,7 +1370,7 @@ describe("Hammerspoon ping indicator dropdown", function()
 		assert.equals(1, #env.tasks)
 		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
 		assert.equals(
-			string.format("%d hammerspoon %d %s\n", env.now, env.now, string.rep("1", 30)),
+			string.format("%d hammerspoon %d %s rtt=18\n", env.now, env.now, string.rep("1", 30)),
 			read_state_file(env)
 		)
 		write_config_file(env, "window_size=20\n")
@@ -885,7 +1379,7 @@ describe("Hammerspoon ping indicator dropdown", function()
 		assert.equals(2, #env.tasks)
 		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
 		assert.equals(
-			string.format("%d hammerspoon %d %s\n", env.now, env.now, string.rep("1", 20)),
+			string.format("%d hammerspoon %d %s rtt=18,18\n", env.now, env.now, string.rep("1", 20)),
 			read_state_file(env)
 		)
 	end)
@@ -903,7 +1397,7 @@ describe("Hammerspoon ping indicator dropdown", function()
 		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
 		assert.equals(1, count_logs(env, "invalid window_size"))
 		assert.equals(
-			string.format("%d hammerspoon %d %s\n", env.now, env.now, string.rep("1", 22)),
+			string.format("%d hammerspoon %d %s rtt=18,18\n", env.now, env.now, string.rep("1", 22)),
 			read_state_file(env)
 		)
 		write_config_file(env, "window_size=20\n")

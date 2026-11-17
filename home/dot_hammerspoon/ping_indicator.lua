@@ -20,6 +20,7 @@ M.NETWORK_SETTINGS_URL = "x-apple.systempreferences:com.apple.Network-Settings.e
 M.SYSTEM_SETTINGS_BUNDLE_ID = "com.apple.systempreferences"
 M.TMP_SUFFIX = ".tmp.hammerspoon"
 M.TASK_TIMEOUT_TICKS = 3
+M.PROBE_LOG_COOLDOWN_SECONDS = 600
 
 if type(BobPingIndicator) ~= "table" then
 	BobPingIndicator = {}
@@ -29,6 +30,10 @@ local runtime = BobPingIndicator
 
 local function default_state_path()
 	return os.getenv("HOME") .. "/tmp/" .. PingWindow.STATE_BASENAME
+end
+
+local function default_events_path()
+	return os.getenv("HOME") .. "/tmp/" .. PingWindow.EVENTS_BASENAME
 end
 
 local function log_message(format, ...)
@@ -132,7 +137,123 @@ local function heartbeat_claim(now, state)
 		producer = "hammerspoon",
 		sampled = (state and state.sampled) or 0,
 		results = (state and state.results) or "",
+		rtt = state and state.rtt or nil,
+		web = state and state.web or nil,
+		check = state and state.check or nil,
 	}
+end
+
+local function event_timestamp(now)
+	local value = os.date("%Y-%m-%dT%H:%M:%S%z", now)
+	return value:gsub("([+-]%d%d)(%d%d)$", "%1:%2")
+end
+
+local function event_quote(value)
+	value = tostring(value or "")
+	value = value:gsub("\\", "\\\\"):gsub('"', '\\"'):gsub("[\r\n\t]", " ")
+	return '"' .. value .. '"'
+end
+
+local function read_event_lines(path)
+	local handle = io.open(path, "r")
+	if not handle then
+		return {}, false
+	end
+	local text = handle:read("*a") or ""
+	handle:close()
+	local lines = {}
+	for line in (text .. "\n"):gmatch("(.-)\n") do
+		if line ~= "" then
+			table.insert(lines, line)
+		end
+	end
+	return lines, true
+end
+
+local function event_log_error(reason)
+	if runtime.eventLogErrorReported then
+		return
+	end
+	runtime.eventLogErrorReported = true
+	log_message("event log unavailable: %s", reason)
+end
+
+local function write_event_lines(path, lines)
+	if not ensure_parent_directory(path) then
+		return false, "could not create parent directory"
+	end
+	local tmp_path = path .. M.TMP_SUFFIX
+	local handle = io.open(tmp_path, "w")
+	if not handle then
+		return false, "could not open temporary log"
+	end
+	for _, line in ipairs(lines) do
+		handle:write(line, "\n")
+	end
+	handle:close()
+	local renamed = os.rename(tmp_path, path)
+	if not renamed then
+		pcall(os.remove, tmp_path)
+		return false, "could not replace log"
+	end
+	return true
+end
+
+local function trim_event_log(path, keep_lines)
+	local lines, exists = read_event_lines(path)
+	if not exists then
+		runtime.eventLineCount = 0
+		return true
+	end
+	if #lines > keep_lines then
+		local newest = {}
+		for index = #lines - keep_lines + 1, #lines do
+			table.insert(newest, lines[index])
+		end
+		local ok, reason = write_event_lines(path, newest)
+		if not ok then
+			event_log_error(reason)
+			return false
+		end
+		lines = newest
+	end
+	runtime.eventLineCount = #lines
+	return true
+end
+
+local function append_event(event, detail, now)
+	local line = event_timestamp(now or runtime.nowFn()) .. "\t" .. event .. "\t" .. detail
+	log_message("event %s", line)
+	local path = runtime.eventsPath
+	if not path then
+		return
+	end
+	if not ensure_parent_directory(path) then
+		event_log_error("could not create parent directory")
+		return
+	end
+	local handle = io.open(path, "a")
+	if not handle then
+		event_log_error("could not open log for append")
+		return
+	end
+	handle:write(line, "\n")
+	handle:close()
+	runtime.eventLineCount = (runtime.eventLineCount or 0) + 1
+	if runtime.eventLineCount > PingWindow.EVENTS_MAX_LINES then
+		trim_event_log(path, PingWindow.EVENTS_KEEP_LINES)
+	end
+end
+
+local function log_probe(tool, exit_code, reason, now)
+	local key = tostring(exit_code == nil and "launch" or exit_code)
+	runtime.probeLoggedAt = runtime.probeLoggedAt or {}
+	local last = runtime.probeLoggedAt[key]
+	if last and now - last < M.PROBE_LOG_COOLDOWN_SECONDS then
+		return
+	end
+	runtime.probeLoggedAt[key] = now
+	append_event("probe", "tool=" .. tool .. " exit=" .. key .. " reason=" .. event_quote(reason), now)
 end
 
 -- Locked means the Metal session is locked or we are off the console. An
@@ -298,9 +419,8 @@ local function build_menu_items()
 	local now = runtime.nowFn()
 	local state = read_state_file(runtime.statePath)
 	local presentation = PingWindow.presentation(state, now, {
-		rtt_ms = runtime.rttMs,
-		rtt_sent_at = runtime.rttSentAt,
 		window_size = runtime.windowSize or PingWindow.DEFAULT_WINDOW_SIZE,
+		web_detail = runtime.webDetail,
 	})
 	local items = {}
 	for _, row in ipairs(presentation.menu) do
@@ -329,6 +449,39 @@ local function menu_builder()
 	return items
 end
 
+local function log_tier_transition(state, presentation, now)
+	if runtime.lastTier == presentation.tier then
+		return
+	end
+	local assessment = PingWindow.assess(state, now, runtime.windowSize or PingWindow.DEFAULT_WINDOW_SIZE)
+	local summary = assessment.summary
+	local median = "-"
+	if state and state.rtt and #state.rtt >= PingWindow.SLOW_MIN_REPLIES then
+		median = tostring(PingWindow.upper_median(state.rtt))
+	end
+	local web = "-"
+	if state and state.web then
+		web = string.format("%s,%d,%s", state.web.verdict, state.web.at, state.web.ms or "-")
+	end
+	local check = state and state.check and tostring(state.check) or "-"
+	local previous = runtime.lastTier or "unknown"
+	local detail = string.format(
+		"transition=%s→%s title=%s replies=%d/%d trailing=%d median=%s web=%s check=%s producer=%s",
+		previous,
+		presentation.tier,
+		event_quote(presentation.title),
+		summary.successes,
+		summary.total,
+		summary.trailing,
+		median,
+		web,
+		check,
+		(state and state.producer) or "unknown"
+	)
+	runtime.lastTier = presentation.tier
+	append_event("tier", detail, now)
+end
+
 local function render_menu_bar()
 	local menu = runtime.menu
 	if not menu then
@@ -337,10 +490,10 @@ local function render_menu_bar()
 	local now = runtime.nowFn()
 	local state = read_state_file(runtime.statePath)
 	local presentation = PingWindow.presentation(state, now, {
-		rtt_ms = runtime.rttMs,
-		rtt_sent_at = runtime.rttSentAt,
 		window_size = runtime.windowSize or PingWindow.DEFAULT_WINDOW_SIZE,
+		web_detail = runtime.webDetail,
 	})
+	log_tier_transition(state, presentation, now)
 	local ok, composed = pcall(compose_title, presentation)
 	if ok and composed ~= nil then
 		menu:setTitle(composed)
@@ -368,6 +521,110 @@ local function guarded_callback(context, callback)
 	end
 end
 
+local function web_completed(task, exit_code, std_out)
+	if runtime.webTask ~= task then
+		return
+	end
+	runtime.webTask = nil
+	runtime.webTaskStartedAt = nil
+	local now = runtime.nowFn()
+	local fresh = read_state_file(runtime.statePath)
+	local verdict, problem = PingWindow.web_outcome(exit_code, std_out, now)
+	local next_state = heartbeat_claim(now, fresh)
+	next_state.check = nil
+	if verdict == nil then
+		log_probe("curl", exit_code, problem, now)
+		if not write_state_file(runtime.statePath, next_state) then
+			log_message("web result not written")
+		end
+		render_menu_bar()
+		return
+	end
+
+	local previous_verdict = fresh and fresh.web and fresh.web.verdict or nil
+	next_state.web = {
+		verdict = verdict.verdict,
+		at = verdict.at,
+		ms = verdict.ms,
+	}
+	runtime.webDetail = {
+		at = verdict.at,
+		reason = verdict.reason,
+		http_code = verdict.http_code,
+		exit_code = exit_code,
+	}
+	if previous_verdict ~= verdict.verdict then
+		append_event(
+			"web",
+			string.format(
+				"verdict=%s ms=%s http=%s exit=%s reason=%s",
+				verdict.verdict,
+				verdict.ms or "-",
+				verdict.http_code or "-",
+				exit_code == nil and "-" or tostring(exit_code),
+				event_quote(verdict.reason or "-")
+			),
+			now
+		)
+	end
+	if not write_state_file(runtime.statePath, next_state) then
+		log_message("web result not written")
+	end
+	render_menu_bar()
+end
+
+local function web_check_allowed(state, sample, now)
+	if sample ~= "0" or task_in_flight(runtime.webTask) or session_paused() then
+		return false
+	end
+	if state and state.check and now >= state.check and now - state.check <= PingWindow.WEB_CHECK_GRACE_SECONDS then
+		return false
+	end
+	local last_started = runtime.webStartedAt
+	if last_started == nil and state and state.web then
+		last_started = state.web.at
+	end
+	return last_started == nil or now - last_started >= PingWindow.WEB_RECHECK_SECONDS
+end
+
+local function create_web_task(now)
+	runtime.webStartedAt = now
+	local task = nil
+	local completion = guarded_callback("web task completion", function(exit_code, std_out, std_err)
+		web_completed(task, exit_code, std_out, std_err)
+	end)
+	local ok, result = xpcall(function()
+		return hs.task.new(PingWindow.CURL_PATH, completion, PingWindow.CURL_ARGS)
+	end, debug.traceback)
+	if not ok or result == nil then
+		log_probe("curl", nil, ok and "curl task could not be created" or result, now)
+		return nil
+	end
+	task = result
+	return task
+end
+
+local function start_web_task(task, now, state)
+	runtime.webTask = task
+	runtime.webTaskStartedAt = now
+	local start_ok, start_result = xpcall(function()
+		return task:start()
+	end, debug.traceback)
+	if start_ok and start_result then
+		return true
+	end
+	runtime.webTask = nil
+	runtime.webTaskStartedAt = nil
+	local reason = start_ok and "curl task could not be started" or start_result
+	log_probe("curl", nil, reason, now)
+	local next_state = heartbeat_claim(now, state)
+	next_state.check = nil
+	if not write_state_file(runtime.statePath, next_state) then
+		log_message("web launch failure not written")
+	end
+	return false
+end
+
 local function ping_completed(task, sent_at, exit_code, std_out)
 	if runtime.task ~= task then
 		return
@@ -377,27 +634,80 @@ local function ping_completed(task, sent_at, exit_code, std_out)
 	runtime.taskSentAt = nil
 	-- Re-read the file so the read-modify-write is one synchronous step.
 	local fresh = read_state_file(runtime.statePath)
-	local results =
-		PingWindow.append_sample(fresh, exit_code == 0, sent_at, runtime.windowSize or PingWindow.DEFAULT_WINDOW_SIZE)
-	runtime.rttMs = PingWindow.parse_rtt_ms(std_out)
-	runtime.rttSentAt = sent_at
+	local sample, rtt_or_problem = PingWindow.ping_outcome(exit_code, std_out)
 	local now = runtime.nowFn()
-	if
-		not write_state_file(runtime.statePath, {
-			heartbeat = now,
-			producer = "hammerspoon",
-			sampled = sent_at,
-			results = results,
-		})
-	then
+	if sample == nil then
+		log_probe("ping", exit_code, rtt_or_problem, now)
+		if not write_state_file(runtime.statePath, heartbeat_claim(now, fresh)) then
+			log_message("ping tool error claim not written")
+		end
+		render_menu_bar()
+		return
+	end
+
+	local results =
+		PingWindow.append_sample(fresh, sample, sent_at, runtime.windowSize or PingWindow.DEFAULT_WINDOW_SIZE)
+	local next_state = {
+		heartbeat = now,
+		producer = "hammerspoon",
+		sampled = sent_at,
+		results = results,
+		rtt = PingWindow.append_rtt(
+			fresh,
+			rtt_or_problem,
+			sent_at,
+			runtime.windowSize or PingWindow.DEFAULT_WINDOW_SIZE
+		),
+		web = fresh and fresh.web or nil,
+		check = fresh and fresh.check or nil,
+	}
+	local web_task = nil
+	if web_check_allowed(fresh, sample, now) then
+		web_task = create_web_task(now)
+		if web_task then
+			next_state.check = now
+		end
+	end
+	if not write_state_file(runtime.statePath, next_state) then
+		if web_task then
+			stop_runtime_object("web task", web_task)
+		end
 		log_message("ping result not written")
+		render_menu_bar()
+		return
+	end
+	if web_task then
+		start_web_task(web_task, now, next_state)
 	end
 	render_menu_bar()
+end
+
+local function stop_expired_web_task(now)
+	local task = runtime.webTask
+	local started = runtime.webTaskStartedAt
+	if not task_in_flight(task) or not started or now - started <= PingWindow.WEB_CHECK_GRACE_SECONDS then
+		return false
+	end
+	runtime.webTask = nil
+	runtime.webTaskStartedAt = nil
+	stop_runtime_object("web task", task)
+	local fresh = read_state_file(runtime.statePath)
+	if fresh and fresh.check == started then
+		local next_state = heartbeat_claim(now, fresh)
+		next_state.check = nil
+		if not write_state_file(runtime.statePath, next_state) then
+			log_message("expired web check claim not written")
+		end
+	end
+	log_probe("curl", "grace", "web task exceeded its grace period", now)
+	render_menu_bar()
+	return true
 end
 
 local function ping_tick()
 	refresh_window_size()
 	local now = runtime.nowFn()
+	stop_expired_web_task(now)
 	if task_in_flight(runtime.task) then
 		local timeout = PingWindow.INTERVAL_SECONDS * M.TASK_TIMEOUT_TICKS
 		local elapsed = runtime.taskStartedAt and (now - runtime.taskStartedAt) or 0
@@ -443,12 +753,16 @@ local function ping_tick()
 	local on_completion = guarded_callback("task completion", function(exit_code, std_out, std_err)
 		ping_completed(task, sent_at, exit_code, std_out)
 	end)
-	task = hs.task.new(runtime.pingPath, on_completion, PingWindow.PING_ARGS)
-	if not task then
+	local create_ok, created_task = xpcall(function()
+		return hs.task.new(runtime.pingPath, on_completion, PingWindow.PING_ARGS)
+	end, debug.traceback)
+	if not create_ok or not created_task then
 		log_message("ping task could not be created")
+		log_probe("ping", nil, create_ok and "ping task could not be created" or created_task, now)
 		render_menu_bar()
 		return
 	end
+	task = created_task
 	runtime.task = task
 	runtime.taskStartedAt = now
 	runtime.taskSentAt = sent_at
@@ -461,33 +775,61 @@ local function ping_tick()
 		runtime.taskSentAt = nil
 		if start_ok then
 			log_message("ping task could not be started")
+			log_probe("ping", nil, "ping task could not be started", now)
 		else
 			log_message("ping task start failed: %s", start_result)
+			log_probe("ping", nil, start_result, now)
 		end
 		render_menu_bar()
 	end
 end
 
 -- Start (or restart) the producer loop. All options are optional and exist for
--- tests: state_path, ping_path, config_path, and now (a clock function,
--- default os.time).
+-- tests: state_path, events_path, ping_path, config_path, and now (a clock
+-- function, default os.time).
 function M.start(options)
 	options = options or {}
+	local previous_timer = runtime.timer
+	local previous_ping_task = runtime.task
+	local previous_web_task = runtime.webTask
+	local previous_web_started_at = runtime.webStartedAt
+	-- Detach first so callbacks caused by stop/terminate cannot write stale data.
+	runtime.timer = nil
+	runtime.task = nil
+	runtime.webTask = nil
+	runtime.taskStartedAt = nil
+	runtime.taskSentAt = nil
+	runtime.webTaskStartedAt = nil
+	stop_runtime_object("timer", previous_timer)
+	stop_runtime_object("task", previous_ping_task)
+	stop_runtime_object("web task", previous_web_task)
+
 	runtime.statePath = options.state_path or default_state_path()
+	runtime.eventsPath = options.events_path or default_events_path()
 	runtime.pingPath = options.ping_path or PingWindow.PING_PATH
 	runtime.configPath = options.config_path or (os.getenv("HOME") .. "/" .. PingWindow.CONFIG_RELATIVE_PATH)
 	runtime.nowFn = options.now or os.time
-	runtime.rttMs = nil
-	runtime.rttSentAt = nil
+	runtime.webDetail = nil
 	runtime.windowSize = PingWindow.DEFAULT_WINDOW_SIZE
 	runtime.configProblem = nil
+	runtime.probeLoggedAt = runtime.probeLoggedAt or {}
+	runtime.eventLogErrorReported = runtime.eventLogErrorReported or false
+	runtime.eventLineCount = 0
 
-	stop_runtime_object("timer", runtime.timer)
-	stop_runtime_object("task", runtime.task)
-	runtime.timer = nil
-	runtime.task = nil
-	runtime.taskStartedAt = nil
-	runtime.taskSentAt = nil
+	local now = runtime.nowFn()
+	local previous_state = read_state_file(runtime.statePath)
+	runtime.webStartedAt = previous_web_started_at
+		or (previous_state and (previous_state.check or (previous_state.web and previous_state.web.at)))
+		or nil
+	if previous_state and previous_state.check then
+		local cleared = heartbeat_claim(now, previous_state)
+		cleared.check = nil
+		if not write_state_file(runtime.statePath, cleared) then
+			log_message("stale web check claim not cleared on start")
+		end
+	end
+	refresh_window_size()
+	trim_event_log(runtime.eventsPath, PingWindow.EVENTS_KEEP_LINES)
 
 	runtime.menu = runtime.menu or hs.menubar.new(true, "BobPingIndicator")
 
@@ -497,6 +839,15 @@ function M.start(options)
 	-- while a menu is open.
 	runtime.menu:setMenu(menu_builder)
 	runtime.menu:returnToMenuBar()
+	append_event(
+		"start",
+		string.format(
+			"args=%s window_size=%d state=v2",
+			event_quote(table.concat(PingWindow.PING_ARGS, " ")),
+			runtime.windowSize
+		),
+		now
+	)
 
 	run_guarded("initial tick", ping_tick)
 	runtime.timer = hs.timer.new(PingWindow.INTERVAL_SECONDS, guarded_callback("tick", ping_tick), true)
