@@ -305,60 +305,168 @@ returns to the page Highlights had restored before the request.
 ## Internet ping menu bar
 
 Hammerspoon shows internet connectivity as one status item beside the Pomodoro item. The
-title is a glyph plus a `successes/total` count over the last 30 pings (`✓ 27/30`),
-padded to a fixed width whenever it shows. When every one of the last 30 pings answered,
-the title is just a green `✓` and the item narrows. The count comes back as soon as a
-miss enters the window, and it also shows while a fresh window is still filling (after
-start or a sleep reset). The tooltip and dropdown still give the score. The count uses
-Menlo regular; the glyph uses the default menu bar face, and nothing is bold. The
-tooltip names the score and the last round-trip time. Opening the item shows the tier, a
-30-cell history strip, the score over its span, the last ping, and a Network Settings
-shortcut that opens System Settings → Network. If the shortcut cannot open Settings, it
-shows a brief alert naming the manual fallback and logs the failure. The dropdown shows
-a snapshot taken when it opens, stays open while the title keeps updating, and shows
-fresh details when reopened.
+glyph is the verdict (`✓` usable, `✗` not, `◌` unknown), color is quality (green good,
+amber impaired, red broken, gray unknown), and the text is the one fact that explains
+the color: a ping count, a latency, or `web`. The red pill means pings are dark and the
+web check failed. Counts are always ping evidence; the copy never claims ICMP is
+blocked, and it never uses offline wording for the web tier. A single dropped ping never
+flips the title, a web verdict stands until the next one lands, and nothing is bold
+except the pill, so the Pomodoro item stays primary.
 
 One ping stream feeds both this item and the tmux status bar. Hammerspoon is the
-preferred producer: it pings 8.8.8.8 every 2 s, and both displays render the same shared
-30-sample window, so they always agree. `tmux_ping` only reads while a fresh Hammerspoon
-heartbeat exists and falls back to pinging when Hammerspoon is not running, broken, or
-unable to write. Handover is self-healing in both directions: Hammerspoon claims the
-stream by writing its heartbeat and tmux backs off on its next redraw, while tmux
+preferred producer: it pings 8.8.8.8 every 2 s with `-W 500` (about 1.5 s on this
+macOS), records each reply's RTT, and both displays render the same shared 30-sample
+window, so they always agree. `tmux_ping` only reads while a fresh Hammerspoon heartbeat
+exists and falls back to pinging when Hammerspoon is not running, broken, or unable to
+write. That fallback is ping-only: it can show the slow tier from recorded RTTs, and it
+never runs a web check. Handover is self-healing in both directions: Hammerspoon claims
+the stream by writing its heartbeat and tmux backs off on its next redraw, while tmux
 resumes pinging within about 6 s when Hammerspoon stops. At most one extra ping happens
 during a handover. Nobody pings while the Mac is locked: Hammerspoon stops pinging but
 keeps refreshing its heartbeat, so tmux does not take over either. With Hammerspoon not
 running, tmux keeps working on its own.
+
+The title is a glyph plus a field padded to five code points whenever it shows a count
+or a latency (`✓ 27/30`, `✓ 1.4s`), so those titles never jitter. When every one of the
+last 30 pings answered and the window is online, the title is just a green `✓` and the
+item narrows. The count comes back as soon as a miss enters the window, and it also
+shows while a fresh window is still filling (after start or a sleep reset). `web` is a
+fixed word, so it is not padded and the item narrows the same way. The count and latency
+use Menlo regular; the glyph uses the default menu bar face. Latency uses one decimal
+under 10 s (`0.5s`–`9.9s`) and whole seconds above (`10s`). The tooltip names the
+header, the ping score (`N of M pings answered (P%)`), and the last round-trip time when
+the newest sample was a reply.
+
+Opening the item shows a snapshot taken when it opens: a tier-colored header glyph, a
+colored 30-cell history strip (`●` fast, `◐` slow, `○` no reply, `·` empty), the ping
+score over its span, the last ping, a web-check row when a verdict is at most 300 s old,
+a Network Settings shortcut that opens System Settings → Network, and Copy Diagnostics.
+The dropdown stays open while the title keeps updating, and shows fresh details when
+reopened. If styled text fails, rows fall back to plain text. If the shortcut cannot
+open Settings, it shows a brief alert naming the manual fallback and logs the failure.
 
 To change the size, edit `window_size` in `~/.config/ping_window/config` (chezmoi source
 `home/dot_config/ping_window/config`), keep it in 3–99, and both displays switch within
 one 2 s tick with no reload. A window older than the new span is not reset by a size
 change.
 
-| Situation                      | Traffic              |
-| ------------------------------ | -------------------- |
-| Unlocked, tmux client attached | 1 ping / 2 s         |
-| Locked, tmux client attached   | none                 |
-| Unlocked, no tmux client       | 1 ping / 2 s         |
-| Hammerspoon not running        | tmux pings as before |
-| Mac asleep                     | none                 |
+### Title vocabulary
 
-Health tiers, checked in this order from the newest sample backward:
+| Tier            | Menu bar                                                         | tmux (exact)                                            |
+| --------------- | ---------------------------------------------------------------- | ------------------------------------------------------- |
+| online, perfect | green `✓`                                                        | `#[fg=green]✓#[default] \| `                            |
+| online          | green `✓` + `29/30` (Menlo, label color)                         | `#[fg=green]✓#[default] 29/30 \| `                      |
+| slow            | amber `✓` + `1.4s` (Menlo, label color, padded to 5 code points) | `#[fg=#ffc777]✓#[default] 1.4s \| `                     |
+| web             | green `✓` + `web` (menu bar font, secondary label, no padding)   | `#[fg=green]✓#[default] #[fg=#828bb8]web#[default] \| ` |
+| lossy           | amber `✓` + `26/30`                                              | `#[fg=#ffc777]✓#[default] 26/30 \| `                    |
+| down            | red `✗` + red `29/30`                                            | `#[fg=red]✗#[default] 29/30 \| `                        |
+| offline         | white bold `✗ 0/30` on a red pill                                | `#[fg=white,bg=red,bold] ✗ 0/30 #[default] \| `         |
+| stale           | gray `◌` + gray `27/30` (or `–`)                                 | `#[fg=#828bb8]◌ 27/30#[default] \| `                    |
 
-| Tier      | Rule                                 | Menu bar                                                  | tmux status                                               |
-| --------- | ------------------------------------ | --------------------------------------------------------- | --------------------------------------------------------- |
-| `stale`   | empty window, or no sample for > 6 s | `◌ 27/30` in gray                                         | `◌ 27/30` in blue-gray                                    |
-| `offline` | 3 or more trailing misses            | white `✗ 0/30` on red                                     | white `✗ 0/30` on red                                     |
-| `down`    | newest ping missed, under 3 trailing | red `✗ 29/30`                                             | red `✗ 29/30`                                             |
-| `lossy`   | newest answered, under 90% answered  | orange `✓ 26/30`                                          | amber `✓ 26/30`                                           |
-| `online`  | newest answered, 90%+ answered       | green `✓` when all 30 answered, otherwise green `✓ 29/30` | green `✓` when all 30 answered, otherwise green `✓ 29/30` |
+Slow is the upper median of the last 3–5 reply RTTs at or above 500 ms, or a fresh
+`web=ok` whose TCP handshake is at or above 500 ms while pings are dark. Web is a dark
+or lossy ping window with a fresh `ok` web verdict (a single dropped ping stays a green
+count; the title says `web` only below 90%). Offline is 3 or more trailing misses once
+the web check has failed, or in tmux-only mode where no web checker runs.
+
+### Web check
+
+When Hammerspoon records a missed ping and the session is not paused, it starts an HTTP
+check against `http://captive.apple.com/hotspot-detect.html` unless a check is already
+in flight or one started in the last 10 s. The check is `/usr/bin/curl` with an 8 s
+overall deadline, a 6 s connect timeout, no redirects, and no proxy. A 200 response
+whose body contains `Success` is `ok`; any other HTTP response is treated as a captive
+portal (`sign-in required?` in the header); a timeout, connect failure, or DNS failure
+is `fail`. The handshake time (`time_connect − time_namelookup`) is the web RTT,
+comparable to a ping RTT, so `✓ 2.1s` means the same thing on either channel. A verdict
+stays current for 15 s, and an in-flight `check=` token lets the last verdict stand
+until the next one lands so a re-check never opens a gap that would flash the pill.
+
+### Traffic
+
+| Situation                             | Traffic                                                              |
+| ------------------------------------- | -------------------------------------------------------------------- |
+| Unlocked, tmux client attached        | 1 ping / 2 s                                                         |
+| Unlocked, pings failing (Hammerspoon) | 1 ping / 2 s + at most 1 web check / ~10 s (~1–2 KB, under 0.7 MB/h) |
+| Locked, tmux client attached          | none                                                                 |
+| Unlocked, no tmux client              | 1 ping / 2 s                                                         |
+| Hammerspoon not running (ping-only)   | tmux pings 8.8.8.8 every 2 s; no web checks                          |
+| Mac asleep                            | none                                                                 |
+
+Web-check traffic is zero on a healthy network. Checks run only after a missed ping, and
+never while the Mac is locked or asleep.
+
+### State v2
 
 The shared window lives in `~/tmp/tmux_ping_state`: one LF-terminated line of
-`<heartbeat> <producer> <sampled> <results>`, where `heartbeat` is the producer's latest
-write, `producer` is `hammerspoon` or `tmux`, `sampled` is when the newest sample was
-sent (`0` when empty), and `results` is 1–99 `0` / `1` characters, oldest first (`-`
-when empty). Writers replace the file atomically, so readers never lock. A window older
-than the window span (size × 2 s, 60 s by default) is dropped on the next sample, so no
-window spans a sleep or a long pause.
+
+```text
+<heartbeat> <producer> <sampled> <results>[ <key>=<value>]...
+```
+
+`heartbeat` is the producer's latest write, `producer` is `hammerspoon` or `tmux`,
+`sampled` is when the newest sample was sent (`0` when empty), and `results` is 1–99
+characters of `1` (fast reply), `s` (reply at or above 500 ms), or `0` (no reply),
+oldest first (`-` when empty). Optional tokens, emitted in this order and omitted when
+absent:
+
+```text
+rtt=<ms>[,<ms>]…       1–5 integers: the newest reply RTTs, oldest first
+web=<v>,<at>,<ms|->    v ∈ ok|fail|portal; at = epoch the verdict landed;
+                       ms = TCP handshake ms
+check=<epoch>          a web check started at <epoch> and has not landed yet
+```
+
+Unknown keys are ignored. A known key with a malformed value counts as absent; the line
+stays valid, and the last occurrence wins. Every write carries `web=` and `check=`
+forward unchanged unless that writer is the one setting them. Writers replace the file
+atomically, so readers never lock. A window older than the window span (size × 2 s, 60 s
+by default) is dropped on the next sample, so no window spans a sleep or a long pause. A
+v1 four-field line is a valid v2 line.
+
+### Events log and diagnostics
+
+Hammerspoon appends every start, tier change, web-verdict change, and ping/curl tool
+error to `~/tmp/ping_window_events.tsv`. Each line is `<time>\t<event>\t<detail>`
+(ISO-8601 local time with offset). The file is capped at 2000 lines and trimmed to the
+newest 1000 at startup and whenever it grows past the cap. Every event is also mirrored
+to the Hammerspoon console.
+
+**Copy Diagnostics** copies a plain-text report to the pasteboard and alerts
+`Ping diagnostics copied`. The report is a timestamp, the tier, title, and header, the
+raw state line, the ping argv and last ping exit/RTT, the web verdict and its detail,
+and the last 20 event lines.
+
+Hold ⌥ while opening the menu for **Preview All States**. It steps the title through
+perfect, count, slow, web, lossy, down/checking, offline, offline/portal, and stale for
+2.5 s each with an alert naming the label, then restores the live title. The preview
+never writes the state file or the events log.
+
+### Troubleshooting
+
+If the title looks wrong while pages still load, run these before the condition clears:
+
+```sh
+gw=$(route -n get default | awk '/gateway/{print $2}')
+ping -n -c 5 -W 5000 8.8.8.8 | tail -3     # replies 1200+ ms → late; none → lost
+ping -n -c 3 -W 1500 "$gw"   | tail -2     # the Wi-Fi/hotspot hop itself
+curl -s -o /dev/null --max-time 10 \
+  -w 'http %{http_code} connect %{time_connect}s total %{time_total}s\n' \
+  http://captive.apple.com/hotspot-detect.html
+# 200+fast → ICMP-blind; 200+slow → slow; 000 → outage
+```
+
+Then Copy Diagnostics and keep `~/tmp/ping_window_events.tsv`.
+
+### Limits
+
+- tmux-only mode is ping-only: the slow tier works from RTTs, there is no web tier, and
+  the pill still fires after 3 trailing misses.
+- An outage that starts while showing `✓ web` stays `✓ web` until the next check fails
+  (within about 20 s).
+- Links with RTT above about 3 s may fail the 8 s web check and show red.
+- The cause of ICMP silence (late replies versus a path that drops ICMP) cannot be
+  determined from here.
 
 ## Deleting things under `/tmp`
 
