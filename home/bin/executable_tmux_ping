@@ -13,11 +13,21 @@
 #  own when Hammerspoon is not running.                                      #
 #                                                                            #
 #  State file: `$HOME/tmp/tmux_ping_state`, one LF-terminated line:          #
-#      <heartbeat> <producer> <sampled> <results>                             #
-#  `heartbeat` is the producer's latest write (its claim on the stream),     #
+#      <heartbeat> <producer> <sampled> <results>[ <key>=<value>]...         #
+#  `heartbeat` is the producer's latest write (its claim on the stream),    #
 #  `producer` is `hammerspoon` or `tmux`, `sampled` is when the newest       #
-#  sample was sent (`0` when empty), and `results` is 1-99 `0`/`1` chars,    #
+#  sample was sent (`0` when empty), and `results` is 1-99 chars of          #
+#  `1` (fast reply), `s` (slow reply, RTT >= 500 ms), `0` (no reply),       #
 #  oldest first (`-` when empty). Anything else counts as "no state".        #
+#  Optional tokens (canonical order `rtt`, `web`, `check`):                  #
+#      rtt=<ms>[,<ms>]...   1-5 reply RTTs in ms, oldest first               #
+#      web=<v>,<at>,<ms|->  v in ok|fail|portal, at = verdict epoch,         #
+#                           ms = TCP handshake ms (`-` when unknown)         #
+#      check=<epoch>        a web check started at <epoch>                   #
+#  Unknown tokens are ignored. A known token with a malformed value is       #
+#  absent (the line stays valid); the last occurrence wins. Writers emit     #
+#  tokens in the order `rtt`, `web`, `check` and every write carries `web`  #
+#  and `check` forward unchanged.                                            #
 #                                                                            #
 #  Configuration: `$HOME/.config/ping_window/config` holds `window_size`,    #
 #  how many recent pings (one every 2 s) both displays count (default 30,    #
@@ -27,16 +37,25 @@
 #  readers never lock. The old `~/tmp/tmux_ping_results*` files are         #
 #  abandoned: nothing reads or writes them anymore.                         #
 #                                                                            #
-#  Health tiers, checked in this order: stale (empty window, or unsampled   #
-#  for > 6 s), offline (3+ trailing misses), down (newest is a miss),       #
-#  lossy (newest replied but < 90% replied), online (>= 90% replied). A     #
-#  full window with every ping answered renders just the check mark.        #
+#  Health tiers, checked in this order (first match wins): stale (empty     #
+#  window, or unsampled for > 6 s), slow (median of the last 3-5 reply      #
+#  RTTs >= 500 ms, or a fresh `web=ok` with handshake >= 500 ms on a dark   #
+#  window), online (>= 90% replied, blips excused by fresh `web=ok`), web  #
+#  (dark or lossy window with a fresh `web=ok`), lossy (newest replied but  #
+#  < 90% replied), down (newest missed, fewer than 3 trailing misses, or a  #
+#  `check=` in flight holds the pill), offline (3+ trailing misses without  #
+#  a covering web verdict or in-flight check). A full window with every     #
+#  ping answered renders just the check mark.                               #
 #                                                                            #
 #  Shared ping-stream constants. Mirrored in                                 #
 #  `home/dot_hammerspoon/ping_window.lua`; keep both sides in sync.          #
+#  The Lua side also holds the web-probe and event-log settings.             #
 #                                                                            #
 #  tmux runs this every `status-interval` (2s), so the reader path forks     #
-#  only `date`, and this deliberately does not source ~/lib/bugyi.sh.       #
+#  only `date`, and this deliberately does not source ~/lib/bugyi.sh.        #
+#  Bash 3.2 compatible: no associative arrays, mapfile/readarray,            #
+#  ${x,,}/${x^^}, local -n, EPOCHSECONDS, printf '%(...)T', ;&/;;&, or       #
+#  negative array subscripts.                                                #
 ##############################################################################
 
 set -e
@@ -51,10 +70,18 @@ readonly CONFIG_RELATIVE_PATH='.config/ping_window/config'
 readonly HANDOFF_SECONDS=6
 readonly STALE_SECONDS=6
 readonly OFFLINE_AFTER_FAILURES=3
+readonly SLOW_MS=500
+readonly RTT_KEEP=5
+readonly SLOW_MIN_REPLIES=3
+readonly PING_WAIT_MS=500
+readonly WEB_FRESH_SECONDS=15
+readonly WEB_CHECK_GRACE_SECONDS=10
 readonly STATE_BASENAME='tmux_ping_state'
 WINDOW_SIZE="${DEFAULT_WINDOW_SIZE}"
 readonly STYLE_STALE='fg=#828bb8'
 readonly STYLE_LOSSY='fg=#ffc777'
+CLASS_LATENCY_MS=''
+CLASS_LATENCY_SOURCE=''
 
 function usage() {
   cat <<EOM
@@ -69,6 +96,10 @@ shared window; otherwise, as a fallback, it pings ${PING_TARGET} (at most
 once per ${INTERVAL_SECONDS} s across clients, under an flock guard),
 appends the sample to the shared window, and renders. On non-macOS hosts
 this prints nothing.
+
+State v2 carries 's' (slow reply) samples plus 'rtt', 'web', and 'check'
+tokens. Tiers are stale (gray), online (green), slow (amber latency),
+web (green web), lossy (amber count), down (red), and offline (red pill).
 
 Configuration
 -------------
@@ -137,26 +168,128 @@ function load_window_size() {
 }
 
 # Parse one state line. Sets STATE_HEARTBEAT, STATE_PRODUCER, STATE_SAMPLED,
-# and STATE_RESULTS (empty for `-`). Returns non-zero for anything the
-# contract calls invalid. Tolerates one trailing newline.
+# STATE_RESULTS (empty for `-`), STATE_RTT (space-separated RTTs or empty),
+# STATE_WEB_V, STATE_WEB_AT, STATE_WEB_MS (each empty when absent), and
+# STATE_CHECK (empty when absent). Returns non-zero for anything the
+# contract calls invalid. Tolerates one trailing newline. Uses [[ =~ ]]
+# only, so the reader path forks nothing beyond `date`.
 function parse_state_line() {
   local line="$1"
   line="${line%$'\n'}"
 
-  local pattern="^([0-9]+) (hammerspoon|tmux) ([0-9]+) (-|[01]{1,${MAX_WINDOW_SIZE}})$"
-  if [[ "${line}" =~ ${pattern} ]]; then
-    STATE_HEARTBEAT="${BASH_REMATCH[1]}"
-    STATE_PRODUCER="${BASH_REMATCH[2]}"
-    STATE_SAMPLED="${BASH_REMATCH[3]}"
-    if [[ "${BASH_REMATCH[4]}" == '-' ]]; then
-      STATE_RESULTS=''
-    else
-      STATE_RESULTS="${BASH_REMATCH[4]}"
-    fi
-    return 0
+  local pattern="^([0-9]+) (hammerspoon|tmux) ([0-9]+) (-|[01s]{1,${MAX_WINDOW_SIZE}})(.*)$"
+  if [[ ! "${line}" =~ ${pattern} ]]; then
+    return 1
   fi
+  STATE_HEARTBEAT="${BASH_REMATCH[1]}"
+  STATE_PRODUCER="${BASH_REMATCH[2]}"
+  STATE_SAMPLED="${BASH_REMATCH[3]}"
+  if [[ "${BASH_REMATCH[4]}" == '-' ]]; then
+    STATE_RESULTS=''
+  else
+    STATE_RESULTS="${BASH_REMATCH[4]}"
+  fi
+  local extra="${BASH_REMATCH[5]}"
+  STATE_RTT=''
+  STATE_WEB_V=''
+  STATE_WEB_AT=''
+  STATE_WEB_MS=''
+  STATE_CHECK=''
 
-  return 1
+  local token_pattern='^ ([a-z][a-z0-9_]*)=([^[:space:]]*)(.*)$'
+  while [[ -n "${extra}" ]]; do
+    local key='' value='' rest=''
+    if [[ "${extra}" =~ ${token_pattern} ]]; then
+      key="${BASH_REMATCH[1]}"
+      value="${BASH_REMATCH[2]}"
+      rest="${BASH_REMATCH[3]}"
+    else
+      return 1
+    fi
+    extra="${rest}"
+    case "${key}" in
+    rtt)
+      local rtt_rest="${value}" rtt_count=0 rtt_ok=1 rtt_norm=''
+      if [[ -z "${rtt_rest}" ]]; then
+        rtt_ok=0
+      else
+        while true; do
+          local part=''
+          if [[ "${rtt_rest}" == *","* ]]; then
+            part="${rtt_rest%%,*}"
+            rtt_rest="${rtt_rest#*,}"
+          else
+            part="${rtt_rest}"
+            rtt_rest='__DONE__'
+          fi
+          if [[ "${part}" =~ ^[0-9]+$ ]] && ((${#part} >= 1 && ${#part} <= 6)); then
+            rtt_count=$((rtt_count + 1))
+            if ((rtt_count > 5)); then
+              rtt_ok=0
+              break
+            fi
+            if [[ -z "${rtt_norm}" ]]; then
+              rtt_norm="${part}"
+            else
+              rtt_norm="${rtt_norm} ${part}"
+            fi
+          else
+            rtt_ok=0
+            break
+          fi
+          if [[ "${rtt_rest}" == '__DONE__' ]]; then
+            break
+          fi
+        done
+      fi
+      if ((rtt_ok == 1 && rtt_count >= 1 && rtt_count <= 5)); then
+        STATE_RTT="${rtt_norm}"
+      else
+        STATE_RTT=''
+      fi
+      ;;
+    web)
+      local wv='' wat='' wms=''
+      if [[ "${value}" =~ ^([a-z]+),([0-9]+),([^,]+)$ ]]; then
+        wv="${BASH_REMATCH[1]}"
+        wat="${BASH_REMATCH[2]}"
+        wms="${BASH_REMATCH[3]}"
+      else
+        STATE_WEB_V=''
+        STATE_WEB_AT=''
+        STATE_WEB_MS=''
+        continue
+      fi
+      if [[ "${wv}" != 'ok' && "${wv}" != 'fail' && "${wv}" != 'portal' ]]; then
+        STATE_WEB_V=''
+        STATE_WEB_AT=''
+        STATE_WEB_MS=''
+        continue
+      fi
+      if [[ "${wms}" == '-' ]]; then
+        wms=''
+      elif [[ ! "${wms}" =~ ^[0-9]+$ ]]; then
+        STATE_WEB_V=''
+        STATE_WEB_AT=''
+        STATE_WEB_MS=''
+        continue
+      fi
+      STATE_WEB_V="${wv}"
+      STATE_WEB_AT="${wat}"
+      STATE_WEB_MS="${wms}"
+      ;;
+    check)
+      if [[ "${value}" =~ ^[0-9]+$ ]]; then
+        STATE_CHECK="${value}"
+      else
+        STATE_CHECK=''
+      fi
+      ;;
+    *)
+      ;;
+    esac
+  done
+  return 0
 }
 
 # Read and validate the state file at the given path. Sets the STATE_*
@@ -172,8 +305,9 @@ function read_state_file() {
 }
 
 # Refresh the CUR_* globals from the state file: CUR_VALID is `1` with
-# CUR_HEARTBEAT, CUR_PRODUCER, CUR_SAMPLED, and CUR_RESULTS set when the
-# file holds valid state, else `0` with the rest empty.
+# CUR_HEARTBEAT, CUR_PRODUCER, CUR_SAMPLED, CUR_RESULTS, CUR_RTT,
+# CUR_WEB_V, CUR_WEB_AT, CUR_WEB_MS, and CUR_CHECK set when the file holds
+# valid state, else `0` with the rest empty.
 function refresh_state() {
   local path="$1"
 
@@ -182,6 +316,11 @@ function refresh_state() {
   CUR_PRODUCER=''
   CUR_SAMPLED=''
   CUR_RESULTS=''
+  CUR_RTT=''
+  CUR_WEB_V=''
+  CUR_WEB_AT=''
+  CUR_WEB_MS=''
+  CUR_CHECK=''
 
   if read_state_file "${path}"; then
     CUR_VALID=1
@@ -189,11 +328,17 @@ function refresh_state() {
     CUR_PRODUCER="${STATE_PRODUCER}"
     CUR_SAMPLED="${STATE_SAMPLED}"
     CUR_RESULTS="${STATE_RESULTS}"
+    CUR_RTT="${STATE_RTT}"
+    CUR_WEB_V="${STATE_WEB_V}"
+    CUR_WEB_AT="${STATE_WEB_AT}"
+    CUR_WEB_MS="${STATE_WEB_MS}"
+    CUR_CHECK="${STATE_CHECK}"
   fi
 }
 
 # Summarize a results window. Sets SUM_SUCCESSES, SUM_TOTAL,
-# SUM_TRAILING_FAILURES, and SUM_NEWEST_OK (`1` or `0`).
+# SUM_TRAILING_FAILURES, and SUM_NEWEST_OK (`1` or `0`). Counts `s` as a
+# reply alongside `1`.
 function summarize() {
   local results="$1"
 
@@ -209,68 +354,315 @@ function summarize() {
   done
 
   SUM_NEWEST_OK=0
-  if [[ -n "${results}" && "${results}" == *1 ]]; then
+  if [[ -n "${results}" && ( "${results}" == *1 || "${results}" == *s ) ]]; then
     SUM_NEWEST_OK=1
   fi
 }
 
-# Append one sample (`ok` is `1` for a reply, `0` for a miss) sent at
-# `sent_at` to `results`. When there is no previous window, or
+# Append one sample (`1` fast, `s` slow, `0` miss) sent at `sent_at` to
+# `results`. When there is no previous window, or
 # `sent_at - prev_sampled > WINDOW_SIZE * INTERVAL_SECONDS`, start a fresh
 # one-sample window so no window spans a sleep or a long pause; otherwise
 # append and trim to WINDOW_SIZE. Sets REPLY.
 function window_append() {
-  local results="$1" ok="$2" sent_at="$3" prev_sampled="$4"
+  local results="$1" sample="$2" sent_at="$3" prev_sampled="$4"
 
   if [[ -z "${results}" || -z "${prev_sampled}" || "${prev_sampled}" == '0' ]] \
     || ((sent_at - prev_sampled > 10#${WINDOW_SIZE} * INTERVAL_SECONDS)); then
-    REPLY="${ok}"
+    REPLY="${sample}"
     return 0
   fi
 
-  results="${results}${ok}"
+  results="${results}${sample}"
   if ((${#results} > 10#${WINDOW_SIZE})); then
     results="${results:$(( ${#results} - 10#${WINDOW_SIZE} ))}"
   fi
   REPLY="${results}"
 }
 
-# Classify a window into stale, offline, down, lossy, or online. Sets REPLY.
-function classify() {
-  local results="$1" sampled="$2" now="$3"
-
-  if [[ -z "${results}" ]] || ((now - sampled > STALE_SECONDS)); then
-    REPLY='stale'
-    return 0
+# Append an RTT to the RTT list with exactly the same fresh-window rule as
+# window_append. `prev_rtt` is space-separated (or empty), `prev_results`
+# decides freshness with `sent_at`/`prev_sampled`, and `new_ms` is an
+# integer or empty. Keeps only the newest RTT_KEEP entries. Sets REPLY to
+# space-separated RTTs or empty when there are none.
+function rtt_append() {
+  local prev_rtt="$1" prev_results="$2" new_ms="$3" sent_at="$4" prev_sampled="$5"
+  local fresh=0
+  if [[ -z "${prev_results}" || -z "${prev_sampled}" || "${prev_sampled}" == '0' ]] \
+    || ((sent_at - prev_sampled > 10#${WINDOW_SIZE} * INTERVAL_SECONDS)); then
+    fresh=1
   fi
-
-  summarize "${results}"
-
-  if ((SUM_TRAILING_FAILURES >= OFFLINE_AFTER_FAILURES)); then
-    REPLY='offline'
-  elif [[ "${SUM_NEWEST_OK}" == '0' ]]; then
-    REPLY='down'
-  elif ((SUM_SUCCESSES * 10 < SUM_TOTAL * 9)); then
-    REPLY='lossy'
+  local list=''
+  if ((fresh == 0)) && [[ -n "${prev_rtt}" ]]; then
+    list="${prev_rtt}"
+  fi
+  if [[ -n "${new_ms}" ]] && [[ "${new_ms}" =~ ^[0-9]+$ ]]; then
+    if [[ -z "${list}" ]]; then
+      list="${new_ms}"
+    else
+      list="${list} ${new_ms}"
+    fi
+  fi
+  if [[ -n "${list}" ]]; then
+    local -a arr
+    arr=(${list})
+    local n=${#arr[@]}
+    if ((n > RTT_KEEP)); then
+      local start=$((n - RTT_KEEP))
+      local trimmed=''
+      local i
+      for ((i = start; i < n; i++)); do
+        if [[ -z "${trimmed}" ]]; then
+          trimmed="${arr[i]}"
+        else
+          trimmed="${trimmed} ${arr[i]}"
+        fi
+      done
+      list="${trimmed}"
+    fi
+    REPLY="${list}"
   else
-    REPLY='online'
+    REPLY=''
   fi
+  return 0
 }
 
-# Render one window as tmux status markup with no trailing newline. An
-# empty window counts as –. Clamps to the newest WINDOW_SIZE samples first,
-# so a larger state from a bigger window never breaks a smaller one. A full
-# window with every ping answered renders just the check mark.
-function render_state() {
+# Upper median of a space-separated integer list. Sorts a copy ascending
+# and returns element floor(n/2)+1 (1-indexed), so 3 picks the middle and 4
+# picks the upper middle. Sets REPLY; empty input sets REPLY empty.
+function upper_median() {
+  local list="$1"
+  if [[ -z "${list}" ]]; then
+    REPLY=''
+    return 0
+  fi
+  local -a arr
+  arr=(${list})
+  local n=${#arr[@]}
+  if ((n == 0)); then
+    REPLY=''
+    return 0
+  fi
+  local i j tmp
+  for ((i = 0; i < n - 1; i++)); do
+    for ((j = 0; j < n - i - 1; j++)); do
+      if ((10#${arr[j]} > 10#${arr[j + 1]})); then
+        tmp="${arr[j]}"
+        arr[j]="${arr[j + 1]}"
+        arr[j + 1]="${tmp}"
+      fi
+    done
+  done
+  local idx=$((n / 2))
+  REPLY="${arr[idx]}"
+  return 0
+}
+
+# Format an integer millisecond count per the shared contract: one decimal
+# under 10 s (`0.5s`-`9.9s`), whole seconds at or above (`10s`). Sets REPLY.
+function format_latency() {
+  local ms="$1"
+  local tenths=$(((10#${ms} + 50) / 100))
+  if ((tenths < 100)); then
+    local whole=$((tenths / 10))
+    local frac=$((tenths % 10))
+    REPLY="${whole}.${frac}s"
+  else
+    local secs=$(((10#${ms} + 500) / 1000))
+    REPLY="${secs}s"
+  fi
+  return 0
+}
+
+# Round a dotted average RTT (for example `18.345`) to integer ms. Sets
+# REPLY to the rounded integer, or empty when the input is not numeric.
+function round_avg() {
+  local avg="$1"
+  local int_part='' frac_part=''
+  if [[ "${avg}" == *.* ]]; then
+    int_part="${avg%%.*}"
+    frac_part="${avg#*.}"
+  else
+    int_part="${avg}"
+    frac_part=''
+  fi
+  if [[ -z "${int_part}" ]]; then
+    int_part='0'
+    if [[ -z "${frac_part}" ]]; then
+      REPLY=''
+      return 0
+    fi
+  fi
+  if [[ ! "${int_part}" =~ ^[0-9]+$ ]]; then
+    REPLY=''
+    return 0
+  fi
+  if [[ -z "${frac_part}" ]]; then
+    REPLY="$((10#${int_part}))"
+    return 0
+  fi
+  local first="${frac_part:0:1}"
+  if [[ ! "${first}" =~ ^[0-9]$ ]]; then
+    REPLY="$((10#${int_part}))"
+    return 0
+  fi
+  if ((10#${first} >= 5)); then
+    REPLY=$((10#${int_part} + 1))
+  else
+    REPLY=$((10#${int_part}))
+  fi
+  return 0
+}
+
+# Classify a window into stale, online, slow, web, lossy, down, or offline.
+# Mirrors ping_window.assess first-match order. Args: results sampled now
+# [rtt web_v web_at web_ms check], where rtt is space-separated and the web
+# fields are empty when absent. Sets REPLY to the tier plus
+# CLASS_LATENCY_MS and CLASS_LATENCY_SOURCE for slow tiers.
+function classify() {
   local results="$1" sampled="$2" now="$3"
+  local rtt_list="${4:-}"
+  local web_v="${5:-}"
+  local web_at="${6:-}"
+  local web_ms="${7:-}"
+  local check="${8:-}"
+
+  CLASS_LATENCY_MS=''
+  CLASS_LATENCY_SOURCE=''
 
   local window_n=$((10#${WINDOW_SIZE}))
   if ((${#results} > window_n)); then
     results="${results:$(( ${#results} - window_n ))}"
   fi
 
-  classify "${results}" "${sampled}" "${now}"
+  if [[ -z "${results}" ]]; then
+    REPLY='stale'
+    return 0
+  fi
+  if [[ -n "${sampled}" ]] && ((10#${now} - 10#${sampled} > 10#${STALE_SECONDS})); then
+    REPLY='stale'
+    return 0
+  fi
+
+  summarize "${results}"
+
+  local healthy=0
+  if ((SUM_SUCCESSES * 10 >= SUM_TOTAL * 9)); then
+    healthy=1
+  fi
+
+  local median='' ping_slow=0
+  if [[ -n "${rtt_list}" ]]; then
+    local -a _rtt_arr
+    _rtt_arr=(${rtt_list})
+    local _rtt_n=${#_rtt_arr[@]}
+    if (( _rtt_n >= SLOW_MIN_REPLIES )); then
+      upper_median "${rtt_list}"
+      median="${REPLY}"
+      if [[ -n "${median}" ]] && ((10#${median} >= 10#${SLOW_MS})); then
+        ping_slow=1
+      fi
+    fi
+  fi
+
+  local checking=0
+  if [[ -n "${check}" ]] && [[ "${check}" =~ ^[0-9]+$ ]]; then
+    local _diff=$((10#${now} - 10#${check}))
+    if (( _diff >= 0 && _diff <= 10#${WEB_CHECK_GRACE_SECONDS} )); then
+      checking=1
+    fi
+  fi
+
+  local current=0
+  if [[ -n "${web_v}" && -n "${web_at}" ]] && [[ "${web_at}" =~ ^[0-9]+$ ]]; then
+    local _age=$((10#${now} - 10#${web_at}))
+    if (( _age <= 10#${WEB_FRESH_SECONDS} )); then
+      current=1
+    elif ((checking == 1)) && [[ -n "${check}" ]] && [[ "${check}" =~ ^[0-9]+$ ]]; then
+      local _held=$((10#${check} - 10#${web_at}))
+      if (( _held <= 10#${WEB_FRESH_SECONDS} )); then
+        current=1
+      fi
+    fi
+  fi
+
+  local web_ok=0 web_bad=0
+  if ((current == 1)); then
+    if [[ "${web_v}" == 'ok' ]]; then
+      web_ok=1
+    elif [[ "${web_v}" == 'fail' || "${web_v}" == 'portal' ]]; then
+      web_bad=1
+    fi
+  fi
+
+  if [[ "${SUM_NEWEST_OK}" == '1' ]]; then
+    if ((ping_slow == 1)); then
+      REPLY='slow'
+      CLASS_LATENCY_MS="${median}"
+      CLASS_LATENCY_SOURCE='ping'
+      return 0
+    fi
+    if ((healthy == 1)); then
+      REPLY='online'
+      return 0
+    fi
+    if ((web_ok == 1)); then
+      REPLY='web'
+      return 0
+    fi
+    REPLY='lossy'
+    return 0
+  else
+    if ((web_ok == 1)); then
+      if [[ -n "${web_ms}" ]] && [[ "${web_ms}" =~ ^[0-9]+$ ]] && ((10#${web_ms} >= 10#${SLOW_MS})); then
+        REPLY='slow'
+        CLASS_LATENCY_MS="${web_ms}"
+        CLASS_LATENCY_SOURCE='web'
+        return 0
+      fi
+      if ((healthy == 1)); then
+        if ((ping_slow == 1)); then
+          REPLY='slow'
+          CLASS_LATENCY_MS="${median}"
+          CLASS_LATENCY_SOURCE='ping'
+          return 0
+        fi
+        REPLY='online'
+        return 0
+      fi
+      REPLY='web'
+      return 0
+    fi
+    if ((SUM_TRAILING_FAILURES >= OFFLINE_AFTER_FAILURES)) && { ((web_bad == 1)) || ((checking == 0)); }; then
+      REPLY='offline'
+      return 0
+    fi
+    REPLY='down'
+    return 0
+  fi
+}
+
+# Render one window as tmux status markup with no trailing newline. An
+# empty window counts as –. Clamps to the newest WINDOW_SIZE samples first,
+# so a larger state from a bigger window never breaks a smaller one. A full
+# window with every ping answered renders just the check mark. Args mirror
+# classify: results sampled now [rtt web_v web_at web_ms check].
+function render_state() {
+  local results="$1" sampled="$2" now="$3"
+  local rtt_list="${4:-}"
+  local web_v="${5:-}"
+  local web_at="${6:-}"
+  local web_ms="${7:-}"
+  local check="${8:-}"
+
+  local window_n=$((10#${WINDOW_SIZE}))
+  if ((${#results} > window_n)); then
+    results="${results:$(( ${#results} - window_n ))}"
+  fi
+
+  classify "${results}" "${sampled}" "${now}" "${rtt_list}" "${web_v}" "${web_at}" "${web_ms}" "${check}"
   local tier="${REPLY}"
+  local latency_ms="${CLASS_LATENCY_MS}"
 
   local count='–'
   if [[ -n "${results}" ]]; then
@@ -291,6 +683,14 @@ function render_state() {
   lossy)
     printf '#[%s]✓#[default] %s | ' "${STYLE_LOSSY}" "${count}"
     ;;
+  slow)
+    format_latency "${latency_ms}"
+    local lat="${REPLY}"
+    printf '#[%s]✓#[default] %s | ' "${STYLE_LOSSY}" "${lat}"
+    ;;
+  web)
+    printf '#[fg=green]✓#[default] #[%s]web#[default] | ' "${STYLE_STALE}"
+    ;;
   online)
     if ((10#${SUM_TOTAL} == window_n && 10#${SUM_SUCCESSES} == 10#${SUM_TOTAL})); then
       printf '#[fg=green]✓#[default] | '
@@ -299,11 +699,6 @@ function render_state() {
     fi
     ;;
   esac
-}
-
-# Send one contract ping. Succeeds on a reply.
-function do_ping() {
-  ping -n -q -c 1 -t 1 "${PING_TARGET}" >/dev/null 2>&1
 }
 
 # Atomically write one state line. Leaves no temp file behind.
@@ -319,6 +714,30 @@ function write_state() {
 
   rm -f "${tmp}"
   return 1
+}
+
+# Build a v2 state line from parts in canonical token order, omitting
+# absent tokens. `rtt_sp` is space-separated (or empty); web fields are
+# empty when absent. Sets REPLY.
+function build_state_line() {
+  local heartbeat="$1" producer="$2" sampled="$3" results="$4"
+  local rtt_sp="$5" web_v="$6" web_at="$7" web_ms="$8" check="$9"
+  local line="${heartbeat} ${producer} ${sampled} ${results}"
+  if [[ -n "${rtt_sp}" ]]; then
+    line="${line} rtt=${rtt_sp// /,}"
+  fi
+  if [[ -n "${web_v}" ]]; then
+    local ms_part='-'
+    if [[ -n "${web_ms}" ]]; then
+      ms_part="${web_ms}"
+    fi
+    line="${line} web=${web_v},${web_at},${ms_part}"
+  fi
+  if [[ -n "${check}" ]]; then
+    line="${line} check=${check}"
+  fi
+  REPLY="${line}"
+  return 0
 }
 
 function run() {
@@ -358,7 +777,7 @@ function run() {
   # window and return without locking or pinging.
   if [[ "${CUR_VALID}" == '1' && "${CUR_PRODUCER}" == 'hammerspoon' ]] \
     && ((now - CUR_HEARTBEAT < HANDOFF_SECONDS)); then
-    render_state "${CUR_RESULTS}" "${CUR_SAMPLED}" "${now}"
+    render_state "${CUR_RESULTS}" "${CUR_SAMPLED}" "${now}" "${CUR_RTT}" "${CUR_WEB_V}" "${CUR_WEB_AT}" "${CUR_WEB_MS}" "${CUR_CHECK}"
     exit 0
   fi
 
@@ -366,12 +785,12 @@ function run() {
   # flock there is nothing to take; continue unlocked.
   local locked=0
   if ! mkdir -p "${HOME}/tmp" 2>/dev/null; then
-    render_state "${CUR_RESULTS}" "${CUR_SAMPLED}" "${now}"
+    render_state "${CUR_RESULTS}" "${CUR_SAMPLED}" "${now}" "${CUR_RTT}" "${CUR_WEB_V}" "${CUR_WEB_AT}" "${CUR_WEB_MS}" "${CUR_CHECK}"
     exit 0
   fi
   if command -v flock >/dev/null 2>&1; then
     if ! exec 9>"${lock_file}"; then
-      render_state "${CUR_RESULTS}" "${CUR_SAMPLED}" "${now}"
+      render_state "${CUR_RESULTS}" "${CUR_SAMPLED}" "${now}" "${CUR_RTT}" "${CUR_WEB_V}" "${CUR_WEB_AT}" "${CUR_WEB_MS}" "${CUR_CHECK}"
       exit 0
     fi
     if flock -n 9; then
@@ -379,7 +798,7 @@ function run() {
     else
       # Another client is pinging; render what it has written so far.
       exec 9>&-
-      render_state "${CUR_RESULTS}" "${CUR_SAMPLED}" "${now}"
+      render_state "${CUR_RESULTS}" "${CUR_SAMPLED}" "${now}" "${CUR_RTT}" "${CUR_WEB_V}" "${CUR_WEB_AT}" "${CUR_WEB_MS}" "${CUR_CHECK}"
       exit 0
     fi
   fi
@@ -393,29 +812,92 @@ function run() {
     if ((locked == 1)); then
       exec 9>&-
     fi
-    render_state "${CUR_RESULTS}" "${CUR_SAMPLED}" "${now}"
+    render_state "${CUR_RESULTS}" "${CUR_SAMPLED}" "${now}" "${CUR_RTT}" "${CUR_WEB_V}" "${CUR_WEB_AT}" "${CUR_WEB_MS}" "${CUR_CHECK}"
     exit 0
   fi
 
-  local ok=0
-  if do_ping; then
-    ok=1
+  # Single-packet ping with a 500 ms deadline. Late replies still count:
+  # a reply that arrives after 500 ms but before exit still prints the
+  # round-trip summary and exits 0. Capture stdout; a bare assignment under
+  # set -e would exit on a miss, so branch on the conditional.
+  local out='' rc=0
+  if out="$(ping -n -q -c 1 -W "${PING_WAIT_MS}" "${PING_TARGET}" 2>/dev/null)"; then
+    rc=0
   else
-    ok=0
+    rc=$?
   fi
 
-  window_append "${CUR_RESULTS}" "${ok}" "${now}" "${CUR_SAMPLED}"
-  local new_results="${REPLY}"
+  if ((rc == 0)); then
+    local sample='1' rounded=''
+    local avg=''
+    if [[ "${out}" =~ round-trip\ min/avg/max/stddev\ =\ [0-9.]+/([0-9.]+)/[0-9.]+/[0-9.]+\ ms ]]; then
+      avg="${BASH_REMATCH[1]}"
+      round_avg "${avg}"
+      rounded="${REPLY}"
+      if [[ -n "${rounded}" ]]; then
+        local int_part="${avg%%.*}"
+        if [[ "${avg}" != *.* ]]; then
+          int_part="${avg}"
+        fi
+        if [[ -z "${int_part}" ]]; then
+          int_part='0'
+        fi
+        if [[ "${int_part}" =~ ^[0-9]+$ ]] && ((10#${int_part} >= 10#${SLOW_MS})); then
+          sample='s'
+        else
+          sample='1'
+        fi
+      else
+        sample='1'
+        rounded=''
+      fi
+    else
+      sample='1'
+      rounded=''
+    fi
+    window_append "${CUR_RESULTS}" "${sample}" "${now}" "${CUR_SAMPLED}"
+    local new_results="${REPLY}"
+    rtt_append "${CUR_RTT}" "${CUR_RESULTS}" "${rounded}" "${now}" "${CUR_SAMPLED}"
+    local new_rtt_sp="${REPLY}"
+    build_state_line "${now}" 'tmux' "${now}" "${new_results}" "${new_rtt_sp}" "${CUR_WEB_V}" "${CUR_WEB_AT}" "${CUR_WEB_MS}" "${CUR_CHECK}"
+    local new_line="${REPLY}"
+    write_state "${state_file}" "${new_line}" || true
+    if ((locked == 1)); then
+      exec 9>&-
+    fi
+    render_state "${new_results}" "${now}" "${now}" "${new_rtt_sp}" "${CUR_WEB_V}" "${CUR_WEB_AT}" "${CUR_WEB_MS}" "${CUR_CHECK}"
+    exit 0
+  fi
 
-  write_state "${state_file}" "${now} tmux ${now} ${new_results}" || true
+  if ((rc == 2)); then
+    window_append "${CUR_RESULTS}" '0' "${now}" "${CUR_SAMPLED}"
+    local new_results="${REPLY}"
+    rtt_append "${CUR_RTT}" "${CUR_RESULTS}" '' "${now}" "${CUR_SAMPLED}"
+    local new_rtt_sp="${REPLY}"
+    build_state_line "${now}" 'tmux' "${now}" "${new_results}" "${new_rtt_sp}" "${CUR_WEB_V}" "${CUR_WEB_AT}" "${CUR_WEB_MS}" "${CUR_CHECK}"
+    local new_line="${REPLY}"
+    write_state "${state_file}" "${new_line}" || true
+    if ((locked == 1)); then
+      exec 9>&-
+    fi
+    render_state "${new_results}" "${now}" "${now}" "${new_rtt_sp}" "${CUR_WEB_V}" "${CUR_WEB_AT}" "${CUR_WEB_MS}" "${CUR_CHECK}"
+    exit 0
+  fi
 
+  # Tool error (usage, permissions, missing binary, launch failure):
+  # record no sample, write nothing, and render the current window so a
+  # broken tool reads as stale rather than as an outage.
   if ((locked == 1)); then
     exec 9>&-
   fi
-  render_state "${new_results}" "${now}" "${now}"
+  render_state "${CUR_RESULTS}" "${CUR_SAMPLED}" "${now}" "${CUR_RTT}" "${CUR_WEB_V}" "${CUR_WEB_AT}" "${CUR_WEB_MS}" "${CUR_CHECK}"
   exit 0
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
   run "$@"
 fi
+
+
+
+

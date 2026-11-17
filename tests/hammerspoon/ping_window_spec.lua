@@ -110,6 +110,18 @@ describe("Hammerspoon ping window shared constants", function()
 		assert.equals(tostring(ping_window.MIN_WINDOW_SIZE), readonly_value("MIN_WINDOW_SIZE"))
 		assert.equals(tostring(ping_window.MAX_WINDOW_SIZE), readonly_value("MAX_WINDOW_SIZE"))
 		assert.equals(ping_window.CONFIG_RELATIVE_PATH, readonly_value("CONFIG_RELATIVE_PATH"))
+		assert.equals(tostring(ping_window.SLOW_MS), readonly_value("SLOW_MS"))
+		assert.equals(tostring(ping_window.RTT_KEEP), readonly_value("RTT_KEEP"))
+		assert.equals(tostring(ping_window.SLOW_MIN_REPLIES), readonly_value("SLOW_MIN_REPLIES"))
+		assert.equals(tostring(ping_window.PING_WAIT_MS), readonly_value("PING_WAIT_MS"))
+		assert.equals(tostring(ping_window.WEB_FRESH_SECONDS), readonly_value("WEB_FRESH_SECONDS"))
+		assert.equals(tostring(ping_window.WEB_CHECK_GRACE_SECONDS), readonly_value("WEB_CHECK_GRACE_SECONDS"))
+		assert.equals("-W", ping_window.PING_ARGS[5])
+		assert.equals(tostring(ping_window.PING_WAIT_MS), ping_window.PING_ARGS[6])
+		assert.is_not_nil(
+			text:find('ping %-n %-q %-c 1 %-W "%$%{PING_WAIT_MS}"', 1, false),
+			"tmux pinger must use PING_WAIT_MS with -W"
+		)
 	end)
 end)
 

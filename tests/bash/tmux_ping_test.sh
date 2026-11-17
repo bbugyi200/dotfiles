@@ -48,7 +48,26 @@ EOF
   cat >"${FAKE_BIN}/ping" <<'EOF'
 #!/bin/bash
 printf 'ping %s\n' "$*" >>"${CALL_LOG}"
-exit "${PING_EXIT:-0}"
+if (( ${PING_EXIT:-0} == 0 )); then
+  if [[ -n "${PING_RTT:-}" ]]; then
+    printf 'PING 8.8.8.8 (8.8.8.8): 56 data bytes\n'
+    printf '64 bytes from 8.8.8.8: icmp_seq=0 ttl=117 time=%s ms\n' "${PING_RTT}"
+    printf '\n--- 8.8.8.8 ping statistics ---\n'
+    printf '1 packets transmitted, 1 packets received, 0.0%% packet loss\n'
+    printf 'round-trip min/avg/max/stddev = %s/%s/%s/0.000 ms\n' "${PING_RTT}" "${PING_RTT}" "${PING_RTT}"
+  else
+    printf 'reply without summary\n'
+  fi
+  exit 0
+elif (( ${PING_EXIT:-0} == 2 )); then
+  printf 'PING 8.8.8.8 (8.8.8.8): 56 data bytes\n'
+  printf '\n--- 8.8.8.8 ping statistics ---\n'
+  printf '1 packets transmitted, 0 packets received, 100.0%% packet loss\n'
+  exit 2
+else
+  printf 'ping: usage error\n' >&2
+  exit "${PING_EXIT}"
+fi
 EOF
 
   cat >"${FAKE_BIN}/flock" <<'EOF'
@@ -83,6 +102,7 @@ EOF
   export TEST_NOW=1759680010
   export TEST_OSTYPE='darwin23'
   export PING_EXIT=0
+  export PING_RTT=''
   export FLOCK_EXIT=0
 }
 
@@ -144,13 +164,51 @@ function parse_state_fields() {
 }
 
 function classify_of() {
-  "${BASH_BIN}" -c 'source "$1"; classify "$2" "$3" "$4"; printf "%s" "${REPLY}"' \
-    bash "${SCRIPT}" "$1" "$2" "$3"
+  "${BASH_BIN}" -c 'source "$1"; WINDOW_SIZE=30; classify "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9"; printf "%s" "${REPLY}"' \
+    bash "${SCRIPT}" "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8"
+}
+
+function classify_full_of() {
+  "${BASH_BIN}" -c 'source "$1"; WINDOW_SIZE=30; classify "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9"; printf "%s|%s|%s" "${REPLY}" "${CLASS_LATENCY_MS}" "${CLASS_LATENCY_SOURCE}"' \
+    bash "${SCRIPT}" "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8"
 }
 
 function append_of() {
   "${BASH_BIN}" -c 'source "$1"; window_append "$2" "$3" "$4" "$5"; printf "%s" "${REPLY}"' \
     bash "${SCRIPT}" "$1" "$2" "$3" "$4"
+}
+
+function rtt_append_of() {
+  "${BASH_BIN}" -c 'source "$1"; WINDOW_SIZE="$2"; rtt_append "$3" "$4" "$5" "$6" "$7"; printf "%s" "${REPLY}"' \
+    bash "${SCRIPT}" "$1" "$2" "$3" "$4" "$5" "$6"
+}
+
+function median_of() {
+  "${BASH_BIN}" -c 'source "$1"; upper_median "$2"; printf "%s" "${REPLY}"' \
+    bash "${SCRIPT}" "$1"
+}
+
+function latency_of() {
+  "${BASH_BIN}" -c 'source "$1"; format_latency "$2"; printf "%s" "${REPLY}"' \
+    bash "${SCRIPT}" "$1"
+}
+
+function round_of() {
+  "${BASH_BIN}" -c 'source "$1"; round_avg "$2"; printf "%s" "${REPLY}"' \
+    bash "${SCRIPT}" "$1"
+}
+
+function build_line_of() {
+  "${BASH_BIN}" -c 'source "$1"; build_state_line "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}"; printf "%s" "${REPLY}"' \
+    bash "${SCRIPT}" "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9"
+}
+
+function tokens_of() {
+  "${BASH_BIN}" -c '
+    source "$1"
+    parse_state_line "$2" || exit 1
+    printf "[%s][%s][%s]" "${STATE_RTT}" "${STATE_WEB_V},${STATE_WEB_AT},${STATE_WEB_MS}" "${STATE_CHECK}"
+  ' bash "${SCRIPT}" "$1"
 }
 
 function window_size_of() {
@@ -173,8 +231,8 @@ function summarize_of() {
 }
 
 function render_of() {
-  "${BASH_BIN}" -c 'source "$1"; render_state "$2" "$3" "$4"' \
-    bash "${SCRIPT}" "$1" "$2" "$3"
+  "${BASH_BIN}" -c 'source "$1"; WINDOW_SIZE=30; render_state "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9"' \
+    bash "${SCRIPT}" "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8"
 }
 
 # Assert the script's stdout is exactly the expected markup: no trailing
@@ -182,11 +240,20 @@ function render_of() {
 function assert_exact_output() {
   local expected="$1"
   local out_file="$2"
+  local message="${3:-}"
 
-  assert_equals "${expected}" "$(cat "${out_file}")"
-  assert_equals \
-    "$(printf '%s' "${expected}" | wc -c | tr -d ' ')" \
-    "$(wc -c <"${out_file}" | tr -d ' ')"
+  if [[ -n "${message}" ]]; then
+    assert_equals "${expected}" "$(cat "${out_file}")" "${message}"
+    assert_equals \
+      "$(printf '%s' "${expected}" | wc -c | tr -d ' ')" \
+      "$(wc -c <"${out_file}" | tr -d ' ')" \
+      "${message} (byte count)"
+  else
+    assert_equals "${expected}" "$(cat "${out_file}")"
+    assert_equals \
+      "$(printf '%s' "${expected}" | wc -c | tr -d ' ')" \
+      "$(wc -c <"${out_file}" | tr -d ' ')"
+  fi
 }
 
 ################################################################################
@@ -384,7 +451,7 @@ function test_hammerspoon_heartbeat_at_handoff_age_pings_and_claims_tmux() {
   assert_equals "0" "$?"
 
   assert_equals "1" "$(call_count 'ping ')"
-  assert_contains "ping -n -q -c 1 -t 1 8.8.8.8" "$(calls)"
+  assert_contains "ping -n -q -c 1 -W 500 8.8.8.8" "$(calls)"
   assert_exact_output '#[fg=green]✓#[default] 3/3 | ' "${out}"
   assert_equals "${TEST_NOW} tmux ${TEST_NOW} 111" "$(read_state)"
 }
@@ -736,6 +803,273 @@ function test_render_helper_exact_strings() {
 }
 
 ################################################################################
+# Shared fixture table (v2 contract mirror)
+################################################################################
+
+function test_fixture_table_exact_tmux_output() {
+  local tsv="${PWD}/tests/fixtures/ping_window_cases.tsv"
+  local data_file="${TEST_TMP}/cases.tsv"
+  grep -v '^#' "${tsv}" | grep -v '^$' | tail -n +2 >"${data_file}"
+  local row_count
+  row_count="$(wc -l <"${data_file}" | tr -d ' ')"
+
+  local idx
+  for ((idx = 1; idx <= row_count; idx++)); do
+    local name now size state tier value tmux
+    name="$(awk -F'\t' -v r="${idx}" 'NR==r {print $1}' "${data_file}")"
+    now="$(awk -F'\t' -v r="${idx}" 'NR==r {print $2}' "${data_file}")"
+    size="$(awk -F'\t' -v r="${idx}" 'NR==r {print $3}' "${data_file}")"
+    state="$(awk -F'\t' -v r="${idx}" 'NR==r {print $4}' "${data_file}")"
+    tier="$(awk -F'\t' -v r="${idx}" 'NR==r {print $5}' "${data_file}")"
+    value="$(awk -F'\t' -v r="${idx}" 'NR==r {print $6}' "${data_file}")"
+    tmux="$(awk -F'\t' -v r="${idx}" 'NR==r {print $7}' "${data_file}")"
+
+    rm -f "${CALL_LOG}"
+    : >"${CALL_LOG}"
+    export TEST_NOW="${now}"
+    write_config "window_size=${size}"
+    write_state "${state}"
+
+    local out="${TEST_TMP}/out-${idx}"
+    run_tmux_ping >"${out}"
+    assert_equals "0" "$?" "${name}: exit code"
+    assert_exact_output "${tmux}" "${out}" "${name}: tmux markup"
+
+    local hb prod
+    hb=''
+    prod=''
+    if [[ "${state}" =~ ^([0-9]+)[[:space:]](hammerspoon|tmux)[[:space:]] ]]; then
+      hb="${BASH_REMATCH[1]}"
+      prod="${BASH_REMATCH[2]}"
+    fi
+    if [[ "${prod}" == 'hammerspoon' ]] && [[ -n "${hb}" ]] && ((10#${now} - 10#${hb} < 6)); then
+      assert_equals "0" "$(call_count 'ping ')" "${name}: fresh Hammerspoon must not ping"
+    fi
+  done
+}
+
+################################################################################
+# Token parsing, median, latency, and pinger paths
+################################################################################
+
+function test_v2_tokens_parse_and_carry() {
+  assert_equals \
+    '[1 1400][ok,995,0][999]' \
+    "$(tokens_of '1000 tmux 998 1s0 rtt=1,1400 web=ok,995,0 check=999')"
+  assert_equals \
+    '[1 1400][ok,995,0][999]' \
+    "$(tokens_of '1000 tmux 998 1s0 check=999 ignored= rtt=1,1400 web=ok,995,0')"
+  assert_equals \
+    '[][,,][]' \
+    "$(tokens_of '1000 hammerspoon 1000 111')"
+  assert_equals \
+    '[][ok,995,0][]' \
+    "$(tokens_of '1000 hammerspoon 1000 111 unknown=anything rtt= web=ok,995,0')"
+  assert_equals \
+    '[][,,][]' \
+    "$(tokens_of '1000 hammerspoon 1000 111 future=anything foo_2=')"
+}
+
+function test_malformed_known_values_are_absent_but_valid() {
+  local bad
+  for bad in \
+    'rtt=' 'rtt=,' 'rtt=1,' 'rtt=,1' 'rtt=1,,2' 'rtt=-1' 'rtt=1.2' 'rtt=1000000' 'rtt=1,2,3,4,5,6' 'rtt=a' \
+    'web=' 'web=OK,1,2' 'web=no,1,2' 'web=ok,x,2' 'web=ok,1,x' 'web=ok,-1,2' 'web=ok,1,-2' 'web=ok,1,1.2' 'web=ok,1,' 'web=ok,1,2,3' \
+    'check=' 'check=-1' 'check=1.2' 'check=x' 'check=1,2'; do
+    local key="${bad%%=*}"
+    local line="1000 hammerspoon 1000 111 ${bad}"
+    local exit_code=0
+    parse_state_exit "${line}" >/dev/null 2>&1 || exit_code=$?
+    assert_equals "0" "${exit_code}" "${bad}: malformed known value stays valid"
+    if [[ "${key}" == 'rtt' ]]; then
+      assert_equals '[][,,][]' "$(tokens_of "${line}")" "${bad}: rtt absent"
+    elif [[ "${key}" == 'web' ]]; then
+      assert_equals '[][,,][]' "$(tokens_of "${line}")" "${bad}: web absent"
+    else
+      assert_equals '[][,,][]' "$(tokens_of "${line}")" "${bad}: check absent"
+    fi
+  done
+  assert_equals '[500][ok,2,0][2]' "$(tokens_of '1000 hammerspoon 1000 s rtt=1 rtt=500 web=fail,1,- web=ok,2,0 check=1 check=2')"
+  assert_equals '[][,,][]' "$(tokens_of '1000 hammerspoon 1000 s rtt=1 rtt= web=ok,1,2 web=bad check=1 check=x')"
+}
+
+function test_invalid_extension_grammar_rejected() {
+  local base='1000 hammerspoon 1000 1s0'
+  local suffix
+  for suffix in \
+    ' ' '  rtt=1' ' extra' ' 1key=x' ' X=x' ' _key=x' ' foo-bar=x' ' foo=x '; do
+    local exit_code=0
+    parse_state_exit "${base}${suffix}" >/dev/null 2>&1 || exit_code=$?
+    assert_equals "1" "${exit_code}" "invalid suffix: [${suffix}]"
+  done
+  local exit_code=0
+  parse_state_exit "${base}	foo=x" >/dev/null 2>&1 || exit_code=$?
+  assert_equals "1" "${exit_code}" "tab separator invalid"
+  exit_code=0
+  parse_state_exit "1000 hammerspoon 1000 $(printf 's%.0s' {1..100})" >/dev/null 2>&1 || exit_code=$?
+  assert_equals "1" "${exit_code}" "100 s samples invalid"
+  exit_code=0
+  parse_state_exit "1000 hammerspoon 1000 $(printf 's%.0s' {1..99})" >/dev/null 2>&1 || exit_code=$?
+  assert_equals "0" "${exit_code}" "99 s samples valid"
+  exit_code=0
+  parse_state_exit '1000 hammerspoon 1000 11 ' >/dev/null 2>&1 || exit_code=$?
+  assert_equals "1" "${exit_code}" "trailing space invalid"
+  exit_code=0
+  parse_state_exit '1000  hammerspoon 1000 11' >/dev/null 2>&1 || exit_code=$?
+  assert_equals "1" "${exit_code}" "double space invalid"
+}
+
+function test_upper_median_and_latency_boundaries() {
+  assert_equals '20' "$(median_of '30 10 20')"
+  assert_equals '1400' "$(median_of '1400 20 2000 21')"
+  assert_equals '500' "$(median_of '499 500 501')"
+  assert_equals '' "$(median_of '')"
+  assert_equals '0.5s' "$(latency_of '500')"
+  assert_equals '1.4s' "$(latency_of '1449')"
+  assert_equals '1.5s' "$(latency_of '1450')"
+  assert_equals '9.9s' "$(latency_of '9949')"
+  assert_equals '10s' "$(latency_of '9950')"
+  assert_equals '10s' "$(latency_of '10499')"
+  assert_equals '11s' "$(latency_of '10500')"
+  assert_equals '1000s' "$(latency_of '999999')"
+  assert_equals '18' "$(round_of '18.345')"
+  assert_equals '19' "$(round_of '18.678')"
+  assert_equals '500' "$(round_of '499.999')"
+  assert_equals '500' "$(round_of '500.000')"
+  assert_equals '0' "$(round_of '0.4')"
+}
+
+function test_slow_fast_miss_tool_error_pinger() {
+  export PING_EXIT=0
+  export PING_RTT='18.345'
+  write_state "$((TEST_NOW - 5)) tmux $((TEST_NOW - 5)) 11"
+  local out="${TEST_TMP}/out-fast"
+  run_tmux_ping >"${out}"
+  assert_equals "0" "$?"
+  assert_contains "ping -n -q -c 1 -W 500 8.8.8.8" "$(calls)"
+  assert_exact_output '#[fg=green]✓#[default] 3/3 | ' "${out}"
+  assert_equals "${TEST_NOW} tmux ${TEST_NOW} 111 rtt=18" "$(read_state)"
+
+  rm -f "${CALL_LOG}"
+  : >"${CALL_LOG}"
+  export PING_RTT='1400.123'
+  write_state "$((TEST_NOW - 5)) tmux $((TEST_NOW - 5)) 11 rtt=1400,1400"
+  out="${TEST_TMP}/out-slow"
+  run_tmux_ping >"${out}"
+  assert_equals "0" "$?"
+  assert_exact_output '#[fg=#ffc777]✓#[default] 1.4s | ' "${out}"
+  assert_equals "${TEST_NOW} tmux ${TEST_NOW} 11s rtt=1400,1400,1400" "$(read_state)"
+
+  rm -f "${CALL_LOG}"
+  : >"${CALL_LOG}"
+  export PING_EXIT=2
+  export PING_RTT=''
+  write_state "$((TEST_NOW - 5)) tmux $((TEST_NOW - 5)) 11"
+  out="${TEST_TMP}/out-miss"
+  run_tmux_ping >"${out}"
+  assert_equals "0" "$?"
+  assert_exact_output '#[fg=red]✗#[default] 2/3 | ' "${out}"
+  assert_equals "${TEST_NOW} tmux ${TEST_NOW} 110" "$(read_state)"
+
+  rm -f "${CALL_LOG}"
+  : >"${CALL_LOG}"
+  export PING_EXIT=64
+  write_state "$((TEST_NOW - 5)) tmux $((TEST_NOW - 5)) 11"
+  local before
+  before="$(read_state)"
+  out="${TEST_TMP}/out-tool"
+  run_tmux_ping >"${out}"
+  assert_equals "0" "$?"
+  assert_equals "1" "$(call_count 'ping ')"
+  assert_exact_output '#[fg=green]✓#[default] 2/2 | ' "${out}"
+  assert_equals "${before}" "$(read_state)"
+  export PING_EXIT=0
+}
+
+function test_pinger_carries_tokens_and_updates_rtt() {
+  export PING_EXIT=0
+  export PING_RTT='20'
+  write_state "$((TEST_NOW - 5)) tmux $((TEST_NOW - 5)) 11 rtt=10,20 web=ok,${TEST_NOW},120 check=${TEST_NOW}"
+  local out="${TEST_TMP}/out-carry"
+  run_tmux_ping_noflock >"${out}"
+  assert_equals "0" "$?"
+  local line
+  line="$(read_state)"
+  assert_contains "rtt=10,20,20" "${line}"
+  assert_contains "web=ok,${TEST_NOW},120" "${line}"
+  assert_contains "check=${TEST_NOW}" "${line}"
+  local pattern='^[0-9]+ tmux [0-9]+ 111 rtt=10,20,20 web=ok,[0-9]+,120 check=[0-9]+$'
+  local mismatch=''
+  if [[ ! "${line}" =~ ${pattern} ]]; then
+    mismatch="carry-forward line breaks canonical order: '${line}'"
+  fi
+  assert_empty "${mismatch}"
+  export PING_RTT=''
+}
+
+function test_rtt_append_gap_and_keep() {
+  assert_equals '1 2 5' "$(rtt_append_of 30 '1 2' '11' '5' "${TEST_NOW}" "$((TEST_NOW - 5))")"
+  assert_equals '1 2 3 4 5' "$(rtt_append_of 30 '1 2 3 4 5' '11111' '' "${TEST_NOW}" "$((TEST_NOW - 5))")"
+  assert_equals '2 3 4 5 6' "$(rtt_append_of 30 '1 2 3 4 5' '11111' '6' "${TEST_NOW}" "$((TEST_NOW - 5))")"
+  assert_equals '' "$(rtt_append_of 30 '' '' '' "${TEST_NOW}" 0)"
+  assert_equals '7' "$(rtt_append_of 30 '1 2' '11' '7' "${TEST_NOW}" "$((TEST_NOW - 61))")"
+}
+
+function test_v2_classify_tiers() {
+  local now="${TEST_NOW}"
+  assert_equals 'slow' "$(classify_of 'sss' "${now}" "${now}" '499 500 501' '' '' '' '')"
+  assert_equals 'online' "$(classify_of '111' "${now}" "${now}" '498 499 500' '' '' '' '')"
+  assert_equals 'online' "$(classify_of 'ss' "${now}" "${now}" '1400 1400' '' '' '' '')"
+  assert_equals 'web' "$(classify_of '000' "${now}" "${now}" '' 'ok' "${now}" '120' '')"
+  assert_equals 'slow' "$(classify_of '000' "${now}" "${now}" '' 'ok' "${now}" '500' '')"
+  assert_equals 'offline' "$(classify_of '000' "${now}" "${now}" '' 'fail' "${now}" '' '')"
+  assert_equals 'down' "$(classify_of '100' "${now}" "${now}" '' 'fail' "${now}" '' '')"
+  assert_equals 'down' "$(classify_of '000' "${now}" "${now}" '' '' '' '' "${now}")"
+  assert_equals 'offline' "$(classify_of '000' "${now}" "${now}" '' '' '' '' "$((now - 11))")"
+  assert_equals 'slow|500|ping' "$(classify_full_of 'sss' "${now}" "${now}" '499 500 501' '' '' '' '')"
+  assert_equals 'slow|2100|web' "$(classify_full_of '000' "${now}" "${now}" '' 'ok' "${now}" '2100' '')"
+}
+
+function test_v2_render_exact_strings() {
+  local now="${TEST_NOW}"
+  assert_equals \
+    '#[fg=#ffc777]✓#[default] 0.5s | ' \
+    "$(render_of 'sss' "${now}" "${now}" '499 500 501' '' '' '' '')"
+  assert_equals \
+    '#[fg=green]✓#[default] #[fg=#828bb8]web#[default] | ' \
+    "$(render_of '000' "${now}" "${now}" '' 'ok' "${now}" '120' '')"
+  assert_equals \
+    '#[fg=#ffc777]✓#[default] 2.1s | ' \
+    "$(render_of '000' "${now}" "${now}" '' 'ok' "${now}" '2100' '')"
+  assert_equals \
+    '#[fg=white,bg=red,bold] ✗ 0/3 #[default] | ' \
+    "$(render_of '000' "${now}" "${now}" '' 'fail' "${now}" '' '')"
+  assert_equals \
+    '#[fg=red]✗#[default] 0/3 | ' \
+    "$(render_of '000' "${now}" "${now}" '' '' '' '' "${now}")"
+}
+
+function test_bash_32_compatibility() {
+  local code
+  code="$(grep -v '^[[:space:]]*#' "${SCRIPT}" | grep -v 'Bash 3.2 compatible' || true)"
+  local bad
+  bad="$(printf '%s\n' "${code}" | grep -En 'declare[[:space:]]+-A|typeset[[:space:]]+-A|local[[:space:]]+-A|mapfile|readarray|\$\{[^}]*,,|\$\{[^}]*\^\^|local[[:space:]]+-n|EPOCHSECONDS|printf[[:space:]]+.%\(|;;&|;&|\[- *[0-9]|\: -[0-9]' || true)"
+  assert_empty "${bad}"
+}
+
+function test_build_state_line_canonical_order() {
+  assert_equals \
+    '1000 tmux 1000 11' \
+    "$(build_line_of 1000 tmux 1000 11 '' '' '' '' '')"
+  assert_equals \
+    '1000 tmux 1000 11 rtt=1,2 web=ok,999,120 check=1000' \
+    "$(build_line_of 1000 tmux 1000 11 '1 2' ok 999 120 1000)"
+  assert_equals \
+    '1000 tmux 1000 11 web=fail,999,-' \
+    "$(build_line_of 1000 tmux 1000 11 '' fail 999 '' '')"
+}
+
+################################################################################
 # Written state contract
 ################################################################################
 
@@ -745,7 +1079,7 @@ function test_written_state_matches_contract_and_leaves_no_temp_files() {
 
   local line
   line="$(read_state)"
-  local pattern='^[0-9]+ (hammerspoon|tmux) [0-9]+ ([01]{1,99}|-)$'
+  local pattern='^[0-9]+ (hammerspoon|tmux) [0-9]+ (-|[01s]{1,99})( [a-z][a-z0-9_]*=[^[:space:]]*)*$'
   local mismatch=''
   if [[ ! "${line}" =~ ${pattern} ]]; then
     mismatch="written state breaks the contract: '${line}'"
