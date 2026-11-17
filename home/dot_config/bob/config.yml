@@ -129,7 +129,7 @@ freshness:
   # right after #pre/#post (`#task #gtd #pre #browser`). Stages walk in list order, ahead
   # of unstaged rows; inside a stage, rows keep file order. Names omit '#'.
   pre_stages: [init, terminal, periods, browser, sync]
-  post_stages: [periods]
+  post_stages: [periods, headline]
   interval: 3 # Ready backlog review cadence
   pending_interval: 1 # [/] lane daily review; false = not walked
   next_interval: 1 # [*] lane daily review; false = not walked
