@@ -181,6 +181,24 @@ local function make_hs(env)
 			table.insert(env.timers, timer)
 			return timer
 		end,
+		doAfter = function(delay, callback)
+			local timer = {
+				delay = delay,
+				callback = callback,
+				started = true,
+				stop_calls = 0,
+			}
+			function timer:start()
+				self.started = true
+				return self
+			end
+			function timer:stop()
+				self.started = false
+				self.stop_calls = self.stop_calls + 1
+			end
+			table.insert(env.do_after, timer)
+			return timer
+		end,
 	}
 
 	hs.menubar = {
@@ -266,9 +284,33 @@ local function make_hs(env)
 	}
 
 	hs.alert = {
-		show = function(message)
+		show = function(message, duration)
 			table.insert(env.alerts, message)
+			table.insert(env.alert_calls, { message = message, duration = duration })
 			return true
+		end,
+	}
+
+	hs.pasteboard = {
+		setContents = function(text)
+			if env.pasteboard_throw then
+				error(env.pasteboard_throw)
+			end
+			if env.pasteboard_false then
+				return false
+			end
+			env.pasteboard_value = text
+			table.insert(env.pasteboard_writes, text)
+			return true
+		end,
+	}
+
+	hs.eventtap = {
+		checkKeyboardModifiers = function()
+			if env.modifiers_throw then
+				error(env.modifiers_throw)
+			end
+			return env.held_modifiers or {}
 		end,
 	}
 
@@ -291,6 +333,7 @@ local function setup(options)
 		previous_window_module = package.loaded.ping_window,
 		tasks = {},
 		timers = {},
+		do_after = {},
 		menus = {},
 		menu_titles = {},
 		printf_calls = {},
@@ -300,6 +343,9 @@ local function setup(options)
 		valid_font_calls = {},
 		opened_bundle_urls = {},
 		alerts = {},
+		alert_calls = {},
+		pasteboard_writes = {},
+		held_modifiers = {},
 		open_bundle_result = options.open_bundle_result,
 		open_bundle_throw = options.open_bundle_throw,
 		fs_attribute_calls = {},
@@ -471,15 +517,31 @@ local function count_logs(env, needle)
 	return count
 end
 
-local function network_settings_item(env, indicator)
-	local menu = env.menus[1]
-	local items = menu.menu_builder()
+local function item_title(item)
+	return title_text(item and item.title)
+end
+
+local function find_menu_item(items, title)
 	for i = #items, 1, -1 do
-		if items[i].title == "Network Settings…" then
+		if item_title(items[i]) == title then
 			return items[i]
 		end
 	end
-	error("Network Settings item not found")
+	error(title .. " item not found")
+end
+
+local function network_settings_item(env, indicator)
+	return find_menu_item(env.menus[1].menu_builder(), "Network Settings…")
+end
+
+local function copy_diagnostics_item(env)
+	return find_menu_item(env.menus[1].menu_builder(), "Copy Diagnostics")
+end
+
+local function fire_do_after(env)
+	local timer = env.do_after[#env.do_after]
+	assert.is_not_nil(timer)
+	timer.callback()
 end
 
 describe("Hammerspoon ping indicator startup", function()
@@ -893,7 +955,7 @@ describe("Hammerspoon v2 producer", function()
 		local portal_rows = env.menus[1].menu_builder()
 		local portal_row = nil
 		for _, row in ipairs(portal_rows) do
-			if row.title:find("Web check hit a sign-in page", 1, true) then
+			if item_title(row):find("Web check hit a sign-in page", 1, true) then
 				portal_row = row
 			end
 		end
@@ -912,12 +974,12 @@ describe("Hammerspoon v2 producer", function()
 		local rows = env.menus[1].menu_builder()
 		local web_row = nil
 		for _, row in ipairs(rows) do
-			if row.title:find("Web check failed", 1, true) then
+			if item_title(row):find("Web check failed", 1, true) then
 				web_row = row
 			end
 		end
 		assert.is_not_nil(web_row)
-		assert.is_true(web_row.title:find("DNS lookup failed", 1, true) ~= nil)
+		assert.is_true(item_title(web_row):find("DNS lookup failed", 1, true) ~= nil)
 	end)
 
 	it("clears the in-flight token without replacing a verdict for curl tool errors", function()
@@ -1181,23 +1243,29 @@ describe("Hammerspoon ping indicator dropdown", function()
 		local menu = env.menus[1]
 		assert.equals("function", type(menu.menu_builder))
 		local items = menu.menu_builder()
-		assert.equals(8, #items)
+		assert.equals(9, #items)
 
-		assert.equals("✓ Online", items[1].title)
+		assert.equals("✓ Online", item_title(items[1]))
 		assert.is_true(items[1].disabled)
-		assert.equals("●" .. string.rep("·", 29) .. "  now", items[2].title)
+		assert.equals("●" .. string.rep("·", 29) .. "  now", item_title(items[2]))
 		assert.is_true(items[2].disabled)
-		assert.equals("1 of 1 pings answered (100%) · last 2 s", items[3].title)
+		assert.equals("1 of 1 pings answered (100%) · last 2 s", item_title(items[3]))
 		assert.is_true(items[3].disabled)
-		assert.equals("Last reply 18 ms · " .. os.date("%H:%M:%S", env.now), items[4].title)
+		assert.equals("Last reply 18 ms · " .. os.date("%H:%M:%S", env.now), item_title(items[4]))
 		assert.is_true(items[4].disabled)
 		assert.equals("-", items[5].title)
-		assert.equals("Pinging 8.8.8.8 every 2 s · web check when pings fail · shared with tmux", items[6].title)
+		assert.equals(
+			"Pinging 8.8.8.8 every 2 s · web check when pings fail · shared with tmux",
+			item_title(items[6])
+		)
 		assert.is_true(items[6].disabled)
 		assert.equals("-", items[7].title)
-		assert.equals("Network Settings…", items[8].title)
+		assert.equals("Network Settings…", item_title(items[8]))
 		assert.is_nil(items[8].disabled)
 		assert.equals("function", type(items[8].fn))
+		assert.equals("Copy Diagnostics", item_title(items[9]))
+		assert.is_nil(items[9].disabled)
+		assert.equals("function", type(items[9].fn))
 
 		items[8].fn()
 		assert.equals(1, #env.opened_bundle_urls)
@@ -1295,8 +1363,8 @@ describe("Hammerspoon ping indicator dropdown", function()
 		assert.is_true(#env.menu_titles > titles_before)
 
 		local items = builder()
-		assert.equals("●●○" .. string.rep("·", 27) .. "  now", items[2].title)
-		assert.is_true(items[3].title:find("2 of 3", 1, true) ~= nil)
+		assert.equals("●●○" .. string.rep("·", 27) .. "  now", item_title(items[2]))
+		assert.is_true(item_title(items[3]):find("2 of 3", 1, true) ~= nil)
 	end)
 
 	it("renders a 20-cell window when configured", function()
@@ -1312,7 +1380,7 @@ describe("Hammerspoon ping indicator dropdown", function()
 			read_state_file(env)
 		)
 		local items = env.menus[1].menu_builder()
-		assert.equals(string.rep("●", 20) .. "  now", items[2].title)
+		assert.equals(string.rep("●", 20) .. "  now", item_title(items[2]))
 		assert.equals(NBSP .. "✓" .. NBSP, title_text(env.menus[1].title))
 	end)
 
@@ -1454,5 +1522,178 @@ describe("Hammerspoon slow and web title styles", function()
 		assert.same({ list = "System", name = "secondaryLabelColor", alpha = 1 }, note.color)
 		assert.is_nil(note.backgroundColor)
 		assert.equals(state, read_state_file(env))
+	end)
+end)
+
+local function has_menu_item(items, title)
+	for _, item in ipairs(items) do
+		if item_title(item) == title then
+			return true
+		end
+	end
+	return false
+end
+
+describe("Hammerspoon ping dropdown styling, diagnostics, and preview", function()
+	local env
+	after_each(function()
+		if env then
+			env.restore()
+			env = nil
+		end
+	end)
+
+	it("colors the header glyph and history strip by role", function()
+		local indicator
+		env, indicator = setup({ task_new_nil = true })
+		write_state_file(env, string.format("%d hammerspoon %d 1s0\n", env.now, env.now))
+		start_indicator(env, indicator)
+		local items = env.menus[1].menu_builder()
+		local header = title_spans(items[1].title)
+		assert.same({ hex = "#E3413B", alpha = 1 }, span_with_text(header, "✗").attributes.color)
+		assert.equals(".AppleSystemUIFont", header[1].attributes.font.name)
+		local strip = title_spans(items[2].title)
+		assert.equals("●◐○" .. string.rep("·", 27) .. "  now", item_title(items[2]))
+		assert.same({ hex = "#30d158", alpha = 1 }, strip[1].attributes.color)
+		assert.same({ hex = "#FF9F0A", alpha = 1 }, strip[2].attributes.color)
+		assert.same({ list = "System", name = "secondaryLabelColor", alpha = 1 }, strip[3].attributes.color)
+		assert.same({ list = "System", name = "tertiaryLabelColor", alpha = 1 }, strip[4].attributes.color)
+		assert.same({ list = "System", name = "secondaryLabelColor", alpha = 1 }, strip[#strip].attributes.color)
+		assert.equals(".AppleSystemUIFont", strip[1].attributes.font.name)
+		assert.equals(".AppleSystemUIFont", strip[#strip].attributes.font.name)
+	end)
+
+	it("falls back to plain row text when styling throws", function()
+		local indicator
+		env, indicator = setup()
+		start_indicator(env, indicator)
+		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
+		env.fail_styling = true
+		local items = env.menus[1].menu_builder()
+		assert.equals("string", type(items[1].title))
+		assert.equals("✓ Online", items[1].title)
+		assert.equals("string", type(items[2].title))
+		assert.equals("●" .. string.rep("·", 29) .. "  now", items[2].title)
+		assert.equals("string", type(items[9].title))
+		assert.equals("Copy Diagnostics", items[9].title)
+		assert.equals("function", type(items[9].fn))
+	end)
+
+	it("copies a diagnostics report with state, ping, web, and recent events", function()
+		local indicator
+		env, indicator = setup()
+		start_indicator(env, indicator)
+		complete_latest(env, 2, TIMEOUT_TRANSCRIPT)
+		complete_task(latest_task(env, "/usr/bin/curl"), 0, CURL_OK)
+		write_events(env, 25)
+		copy_diagnostics_item(env).fn()
+		assert.equals(1, #env.pasteboard_writes)
+		local report = env.pasteboard_writes[1]
+		assert.is_true(report:find("Ping diagnostics · ", 1, true) ~= nil)
+		assert.is_true(report:find("tier: web", 1, true) ~= nil)
+		assert.is_true(report:find("title: ✓ web", 1, true) ~= nil)
+		assert.is_true(report:find("header: ✓ Online · pings unanswered", 1, true) ~= nil)
+		assert.is_true(report:find("state: " .. read_state_file(env):gsub("\n$", ""), 1, true) ~= nil)
+		assert.is_true(report:find("ping: /sbin/ping -n -q -c 1 -W 500 8.8.8.8", 1, true) ~= nil)
+		assert.is_true(report:find("last ping: exit=2 rtt=-", 1, true) ~= nil)
+		assert.is_true(report:find("web: ok at=" .. tostring(env.now) .. " ms=120", 1, true) ~= nil)
+		assert.is_true(
+			report:find("web detail: at=" .. tostring(env.now) .. " reason=- http=200 exit=0", 1, true) ~= nil
+		)
+		assert.is_nil(report:find("old-5\t", 1, true))
+		assert.is_true(report:find("old-6\tseed\tvalue=6", 1, true) ~= nil)
+		assert.is_true(report:find("old-25\tseed\tvalue=25", 1, true) ~= nil)
+		assert.equals("Ping diagnostics copied", env.alerts[#env.alerts])
+		assert.equals(1.5, env.alert_calls[#env.alert_calls].duration)
+		assert.equals(0, count_logs(env, "copy diagnostics failed"))
+	end)
+
+	it("logs and alerts when the pasteboard rejects diagnostics", function()
+		local indicator
+		env, indicator = setup()
+		start_indicator(env, indicator)
+		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
+		env.pasteboard_false = true
+		assert.has_no.errors(function()
+			copy_diagnostics_item(env).fn()
+		end)
+		assert.equals(0, #env.pasteboard_writes)
+		assert.equals(1, count_logs(env, "copy diagnostics failed"))
+		assert.equals("Ping diagnostics could not be copied", env.alerts[#env.alerts])
+	end)
+
+	it("shows Preview All States only while option is held", function()
+		local indicator
+		env, indicator = setup()
+		start_indicator(env, indicator)
+		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
+		assert.is_false(has_menu_item(env.menus[1].menu_builder(), "Preview All States"))
+		assert.is_true(has_menu_item(env.menus[1].menu_builder({ alt = true }), "Preview All States"))
+		env.held_modifiers = { alt = true }
+		assert.is_true(has_menu_item(env.menus[1].menu_builder(), "Preview All States"))
+	end)
+
+	it("steps titles on a 2.5 s timer, skips live setTitle, and never writes", function()
+		local indicator
+		env, indicator = setup()
+		start_indicator(env, indicator)
+		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
+		local menu = env.menus[1]
+		local builder = menu.menu_builder
+		local set_menu_calls = menu.set_menu_calls
+		local state_before = read_state_file(env)
+		local events_before = read_events(env)
+		find_menu_item(menu.menu_builder({ alt = true }), "Preview All States").fn()
+		assert.equals(state_before, read_state_file(env))
+		assert.equals(events_before, read_events(env))
+		assert.equals(1, #env.do_after)
+		assert.equals(indicator.PREVIEW_STEP_SECONDS, env.do_after[1].delay)
+		assert.equals("Preview · perfect", env.alerts[#env.alerts])
+		assert.equals(2, env.alert_calls[#env.alert_calls].duration)
+		assert.equals(NBSP .. "✓" .. NBSP, title_text(menu.title))
+		local preview_title = menu.title
+		env.now = env.now + 2
+		fire_tick(env)
+		assert.equals(preview_title, menu.title)
+		assert.equals(state_before, read_state_file(env))
+		local labels = {
+			"count",
+			"slow",
+			"web",
+			"lossy",
+			"down/checking",
+			"offline",
+			"offline/portal",
+			"stale",
+		}
+		for _, label in ipairs(labels) do
+			fire_do_after(env)
+			assert.equals("Preview · " .. label, env.alerts[#env.alerts])
+			assert.equals(state_before, read_state_file(env))
+			assert.equals(events_before, read_events(env))
+		end
+		assert.is_true(title_text(menu.title):find("◌", 1, true) ~= nil)
+		fire_do_after(env)
+		assert.is_false(BobPingIndicator.previewing)
+		assert.equals(state_before, read_state_file(env))
+		assert.equals(events_before, read_events(env))
+		assert.is_true(title_text(menu.title):find("✓", 1, true) ~= nil)
+		assert.is_true(title_text(menu.title):find("1/1", 1, true) ~= nil)
+		assert.equals(set_menu_calls, menu.set_menu_calls)
+		assert.is_true(menu.menu_builder == builder)
+	end)
+
+	it("cancels an in-flight preview when start runs again", function()
+		local indicator
+		env, indicator = setup()
+		start_indicator(env, indicator)
+		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
+		find_menu_item(env.menus[1].menu_builder({ alt = true }), "Preview All States").fn()
+		local preview_timer = env.do_after[1]
+		assert.is_true(BobPingIndicator.previewing)
+		start_indicator(env, indicator)
+		assert.is_false(BobPingIndicator.previewing)
+		assert.equals(1, preview_timer.stop_calls)
+		assert.is_nil(BobPingIndicator.previewTimer)
 	end)
 end)

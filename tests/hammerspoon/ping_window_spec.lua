@@ -560,14 +560,27 @@ describe("Hammerspoon ping window presentation", function()
 		local now = 1759680010
 		local state = { heartbeat = now, producer = "hammerspoon", sampled = now, results = string.rep("1", 30) }
 		local menu = ping_window.presentation(state, now, {}).menu
-		assert.same(
-			{ "header", "history", "summary", "last", "separator", "info", "separator", "action" },
-			menu_kinds(menu)
-		)
-		assert.same(
-			{ "header", "history", "summary", "separator", "info", "separator", "action" },
-			menu_kinds(ping_window.presentation(nil, now, {}).menu)
-		)
+		assert.same({
+			"header",
+			"history",
+			"summary",
+			"last",
+			"separator",
+			"info",
+			"separator",
+			"action",
+			"action",
+		}, menu_kinds(menu))
+		assert.same({
+			"header",
+			"history",
+			"summary",
+			"separator",
+			"info",
+			"separator",
+			"action",
+			"action",
+		}, menu_kinds(ping_window.presentation(nil, now, {}).menu))
 		local info = find_row(menu, "info")
 		assert.equals(
 			"Pinging 8.8.8.8 every 2 s · web check when pings fail · shared with tmux",
@@ -576,6 +589,10 @@ describe("Hammerspoon ping window presentation", function()
 		local action = find_row(menu, "action")
 		assert.equals("Network Settings…", concat_segments(action.segments))
 		assert.equals("network_settings", action.action)
+		local copy = menu[#menu]
+		assert.equals("action", copy.kind)
+		assert.equals("Copy Diagnostics", concat_segments(copy.segments))
+		assert.equals("copy_diagnostics", copy.action)
 	end)
 end)
 
@@ -889,10 +906,18 @@ describe("v2 connectivity presentation", function()
 		local clock = os.date("%H:%M:%S", 1000)
 		local presentation = present("000", "web=ok,1000,120")
 		assert.equals("Web check OK · 120 ms round trip · " .. clock, row_text(presentation, "web"))
-		assert.same(
-			{ "header", "history", "summary", "last", "web", "separator", "info", "separator", "action" },
-			menu_kinds(presentation.menu)
-		)
+		assert.same({
+			"header",
+			"history",
+			"summary",
+			"last",
+			"web",
+			"separator",
+			"info",
+			"separator",
+			"action",
+			"action",
+		}, menu_kinds(presentation.menu))
 		assert.equals("Web check OK · " .. clock, row_text(present("000", "web=ok,1000,-"), "web"))
 		assert.equals(
 			"Web check OK · 1.4 s round trip · " .. clock,
@@ -950,5 +975,44 @@ describe("v2 connectivity presentation", function()
 			assert.equals(case[2], sample)
 			assert.equals(tonumber(case[1]), ms)
 		end
+	end)
+end)
+
+describe("preview_states walk-through", function()
+	it("returns the nine named states in order and classifies each as its tier", function()
+		local now = 1759680010
+		local steps = ping_window.preview_states(now)
+		local expected = {
+			{ "perfect", "online" },
+			{ "count", "online" },
+			{ "slow", "slow" },
+			{ "web", "web" },
+			{ "lossy", "lossy" },
+			{ "down/checking", "down" },
+			{ "offline", "offline" },
+			{ "offline/portal", "offline" },
+			{ "stale", "stale" },
+		}
+		assert.equals(#expected, #steps)
+		for index, case in ipairs(expected) do
+			assert.equals(case[1], steps[index].label)
+			local presentation = ping_window.presentation(steps[index].state, now, {})
+			assert.equals(case[2], presentation.tier, case[1])
+			assert.equals(case[2], ping_window.assess(steps[index].state, now).tier, case[1])
+		end
+		assert.equals(NBSP .. "✓" .. NBSP, ping_window.presentation(steps[1].state, now, {}).title)
+		assert.is_true(ping_window.presentation(steps[2].state, now, {}).title:find("29/30", 1, true) ~= nil)
+		assert.equals(
+			"✓ Online · pings unanswered",
+			concat_segments(find_row(ping_window.presentation(steps[4].state, now, {}).menu, "header").segments)
+		)
+		assert.equals(
+			"✗ Ping failed · checking the web…",
+			concat_segments(find_row(ping_window.presentation(steps[6].state, now, {}).menu, "header").segments)
+		)
+		assert.equals(
+			"✗ Offline · sign-in required?",
+			concat_segments(find_row(ping_window.presentation(steps[8].state, now, {}).menu, "header").segments)
+		)
 	end)
 end)

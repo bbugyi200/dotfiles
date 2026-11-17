@@ -672,6 +672,11 @@ function M.presentation(state_or_nil, now, opts)
 		segments = { { text = "Network Settings" .. ELLIPSIS, role = "action" } },
 		action = "network_settings",
 	})
+	table.insert(menu, {
+		kind = "action",
+		segments = { { text = "Copy Diagnostics", role = "action" } },
+		action = "copy_diagnostics",
+	})
 
 	return {
 		tier = tier,
@@ -679,6 +684,47 @@ function M.presentation(state_or_nil, now, opts)
 		segments = segments,
 		tooltip = tooltip,
 		menu = menu,
+	}
+end
+
+-- Ordered walk-through used by the hidden ⌥ Preview All States action. Each
+-- state classifies as the named tier at `now` with the default window size.
+function M.preview_states(now)
+	local window = M.DEFAULT_WINDOW_SIZE
+	local function state(results, extra)
+		extra = extra or {}
+		return {
+			heartbeat = extra.heartbeat or now,
+			producer = "hammerspoon",
+			sampled = extra.sampled or now,
+			results = results,
+			rtt = extra.rtt,
+			web = extra.web,
+			check = extra.check,
+		}
+	end
+	return {
+		{ label = "perfect", state = state(string.rep("1", window)) },
+		{ label = "count", state = state("0" .. string.rep("1", window - 1)) },
+		{ label = "slow", state = state(string.rep("s", 3), { rtt = { 1300, 1400, 1500 } }) },
+		{
+			label = "web",
+			state = state(string.rep("0", window), { web = { verdict = "ok", at = now, ms = 120 } }),
+		},
+		{ label = "lossy", state = state(string.rep("0", 4) .. string.rep("1", window - 4)) },
+		{
+			label = "down/checking",
+			state = state(string.rep("1", window - 1) .. "0", { check = now }),
+		},
+		{ label = "offline", state = state(string.rep("0", window)) },
+		{
+			label = "offline/portal",
+			state = state(string.rep("0", window), { web = { verdict = "portal", at = now, ms = 120 } }),
+		},
+		{
+			label = "stale",
+			state = state(string.rep("1", window), { sampled = now - M.STALE_SECONDS - 1 }),
+		},
 	}
 end
 

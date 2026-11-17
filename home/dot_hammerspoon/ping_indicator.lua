@@ -21,6 +21,10 @@ M.SYSTEM_SETTINGS_BUNDLE_ID = "com.apple.systempreferences"
 M.TMP_SUFFIX = ".tmp.hammerspoon"
 M.TASK_TIMEOUT_TICKS = 3
 M.PROBE_LOG_COOLDOWN_SECONDS = 600
+M.PREVIEW_STEP_SECONDS = 2.5
+M.PREVIEW_ALERT_SECONDS = 2
+M.DIAGNOSTICS_ALERT_SECONDS = 1.5
+M.DIAGNOSTICS_EVENT_LINES = 20
 
 if type(BobPingIndicator) ~= "table" then
 	BobPingIndicator = {}
@@ -288,6 +292,8 @@ local menu_bar_font = hs.styledtext.defaultFonts.menuBar
 
 local label_color = { list = "System", name = "labelColor", alpha = 1 }
 local secondary_label_color = { list = "System", name = "secondaryLabelColor", alpha = 1 }
+local tertiary_label_color = { list = "System", name = "tertiaryLabelColor", alpha = 1 }
+local NBSP = "\194\160" -- U+00A0, stripped from diagnostics titles
 
 local function valid_font(font)
 	if type(font) ~= "table" or type(font.name) ~= "string" or font.name == "" then
@@ -390,12 +396,68 @@ local function compose_title(presentation)
 	return composed
 end
 
+local function apply_title(presentation)
+	local menu = runtime.menu
+	if not menu then
+		return
+	end
+	local ok, composed = pcall(compose_title, presentation)
+	if ok and composed ~= nil then
+		menu:setTitle(composed)
+	else
+		menu:setTitle(presentation.title)
+	end
+end
+
 local function row_text(row)
 	local parts = {}
 	for _, segment in ipairs(row.segments or {}) do
 		table.insert(parts, segment.text)
 	end
 	return table.concat(parts)
+end
+
+-- Dropdown colors: the header glyph matches the title; strip cells are
+-- evidence, so a miss is gray rather than the alert red of a down verdict.
+local function dropdown_attributes(tier, role)
+	if role == "glyph" then
+		return { color = glyph_color(tier), font = menu_bar_font }
+	elseif role == "reply" then
+		return { color = { hex = PingWindow.OK_COLOR, alpha = 1 }, font = menu_bar_font }
+	elseif role == "slow" then
+		return { color = { hex = PingWindow.WARN_COLOR, alpha = 1 }, font = menu_bar_font }
+	elseif role == "miss" or role == "now" then
+		return { color = secondary_label_color, font = menu_bar_font }
+	elseif role == "empty" then
+		return { color = tertiary_label_color, font = menu_bar_font }
+	end
+	return { color = label_color, font = menu_bar_font }
+end
+
+local function compose_row(row, tier)
+	local composed = nil
+	for _, segment in ipairs(row.segments or {}) do
+		local styled = hs.styledtext.new(segment.text, dropdown_attributes(tier, segment.role))
+		if composed == nil then
+			composed = styled
+		else
+			composed = composed .. styled
+		end
+	end
+	if composed == nil then
+		error("empty menu row segments")
+	end
+	return composed
+end
+
+local function styled_row_title(row, tier)
+	local ok, composed = xpcall(function()
+		return compose_row(row, tier)
+	end, debug.traceback)
+	if ok and composed ~= nil then
+		return composed
+	end
+	return row_text(row)
 end
 
 local function open_network_settings()
@@ -415,33 +477,173 @@ local function open_network_settings()
 	return true
 end
 
-local function build_menu_items()
-	local now = runtime.nowFn()
-	local state = read_state_file(runtime.statePath)
-	local presentation = PingWindow.presentation(state, now, {
+local function presentation_opts()
+	return {
 		window_size = runtime.windowSize or PingWindow.DEFAULT_WINDOW_SIZE,
 		web_detail = runtime.webDetail,
-	})
+	}
+end
+
+local function diagnostics_report(now)
+	local state = read_state_file(runtime.statePath)
+	local presentation = PingWindow.presentation(state, now, presentation_opts())
+	local header = ""
+	for _, row in ipairs(presentation.menu) do
+		if row.kind == "header" then
+			header = row_text(row)
+			break
+		end
+	end
+	local raw = "-"
+	local handle = io.open(runtime.statePath, "r")
+	if handle then
+		raw = handle:read("*a") or ""
+		handle:close()
+		raw = raw:gsub("\n$", "")
+		if raw == "" then
+			raw = "-"
+		end
+	end
+	local ping_argv = tostring(runtime.pingPath or PingWindow.PING_PATH)
+	for _, arg in ipairs(PingWindow.PING_ARGS) do
+		ping_argv = ping_argv .. " " .. arg
+	end
+	local last_exit = runtime.lastPingExit == nil and "-" or tostring(runtime.lastPingExit)
+	local last_rtt = runtime.lastPingRtt == nil and "-" or tostring(math.floor(runtime.lastPingRtt + 0.5))
+	local web_line = "-"
+	if state and state.web then
+		web_line = string.format("%s at=%d ms=%s", state.web.verdict, state.web.at, state.web.ms or "-")
+	end
+	local detail = runtime.webDetail
+	local detail_line = "-"
+	if detail then
+		detail_line = string.format(
+			"at=%s reason=%s http=%s exit=%s",
+			detail.at or "-",
+			detail.reason or "-",
+			detail.http_code or "-",
+			detail.exit_code == nil and "-" or tostring(detail.exit_code)
+		)
+	end
+	local lines = {
+		"Ping diagnostics · " .. event_timestamp(now),
+		"tier: " .. presentation.tier,
+		"title: " .. presentation.title:gsub(NBSP, ""),
+		"header: " .. header,
+		"state: " .. raw,
+		"ping: " .. ping_argv,
+		"last ping: exit=" .. last_exit .. " rtt=" .. last_rtt,
+		"web: " .. web_line,
+		"web detail: " .. detail_line,
+		"events:",
+	}
+	local events = select(1, read_event_lines(runtime.eventsPath))
+	if #events == 0 then
+		table.insert(lines, "(none)")
+	else
+		local start_index = math.max(1, #events - M.DIAGNOSTICS_EVENT_LINES + 1)
+		for index = start_index, #events do
+			table.insert(lines, events[index])
+		end
+	end
+	return table.concat(lines, "\n") .. "\n"
+end
+
+local function copy_diagnostics()
+	local ok, result = xpcall(function()
+		local report = diagnostics_report(runtime.nowFn())
+		if type(hs.pasteboard) ~= "table" or type(hs.pasteboard.setContents) ~= "function" then
+			error("pasteboard unavailable")
+		end
+		local written = hs.pasteboard.setContents(report)
+		if written == false then
+			error("pasteboard rejected the report")
+		end
+		hs.alert.show("Ping diagnostics copied", M.DIAGNOSTICS_ALERT_SECONDS)
+	end, debug.traceback)
+	if not ok then
+		log_message("copy diagnostics failed: %s", result)
+		hs.alert.show("Ping diagnostics could not be copied")
+	end
+end
+
+local function alt_held(modifiers)
+	if type(modifiers) == "table" then
+		return modifiers.alt == true
+	end
+	if type(hs.eventtap) == "table" and type(hs.eventtap.checkKeyboardModifiers) == "function" then
+		local ok, held = pcall(hs.eventtap.checkKeyboardModifiers)
+		return ok and type(held) == "table" and held.alt == true
+	end
+	return false
+end
+
+local function cancel_preview()
+	runtime.previewing = false
+	runtime.previewIndex = nil
+	runtime.previewStates = nil
+	stop_runtime_object("preview timer", runtime.previewTimer)
+	runtime.previewTimer = nil
+end
+
+local schedule_preview_step
+
+local function start_preview()
+	cancel_preview()
+	runtime.previewing = true
+	runtime.previewStates = PingWindow.preview_states(runtime.nowFn())
+	runtime.previewIndex = 1
+	schedule_preview_step()
+end
+
+local function handle_menu_action(action)
+	if action == "network_settings" then
+		open_network_settings()
+	elseif action == "copy_diagnostics" then
+		copy_diagnostics()
+	elseif action == "preview_states" then
+		start_preview()
+	end
+end
+
+local function build_menu_items(modifiers)
+	local now = runtime.nowFn()
+	local state = read_state_file(runtime.statePath)
+	local presentation = PingWindow.presentation(state, now, presentation_opts())
 	local items = {}
 	for _, row in ipairs(presentation.menu) do
 		if row.kind == "separator" then
 			table.insert(items, { title = "-" })
 		elseif row.kind == "action" then
+			local action = row.action
 			table.insert(items, {
-				title = row_text(row),
+				title = styled_row_title(row, presentation.tier),
 				fn = function()
-					open_network_settings()
+					handle_menu_action(action)
 				end,
 			})
 		else
-			table.insert(items, { title = row_text(row), disabled = true })
+			table.insert(items, {
+				title = styled_row_title(row, presentation.tier),
+				disabled = true,
+			})
 		end
+	end
+	if alt_held(modifiers) then
+		table.insert(items, {
+			title = "Preview All States",
+			fn = function()
+				handle_menu_action("preview_states")
+			end,
+		})
 	end
 	return items
 end
 
-local function menu_builder()
-	local menu_ok, items = xpcall(build_menu_items, debug.traceback)
+local function menu_builder(modifiers)
+	local menu_ok, items = xpcall(function()
+		return build_menu_items(modifiers)
+	end, debug.traceback)
 	if not menu_ok then
 		log_message("menu failed: %s", items)
 		return {}
@@ -489,16 +691,10 @@ local function render_menu_bar()
 	end
 	local now = runtime.nowFn()
 	local state = read_state_file(runtime.statePath)
-	local presentation = PingWindow.presentation(state, now, {
-		window_size = runtime.windowSize or PingWindow.DEFAULT_WINDOW_SIZE,
-		web_detail = runtime.webDetail,
-	})
+	local presentation = PingWindow.presentation(state, now, presentation_opts())
 	log_tier_transition(state, presentation, now)
-	local ok, composed = pcall(compose_title, presentation)
-	if ok and composed ~= nil then
-		menu:setTitle(composed)
-	else
-		menu:setTitle(presentation.title)
+	if not runtime.previewing then
+		apply_title(presentation)
 	end
 	menu:setTooltip(presentation.tooltip)
 end
@@ -518,6 +714,33 @@ end
 local function guarded_callback(context, callback)
 	return function(...)
 		run_guarded(context, callback, ...)
+	end
+end
+
+schedule_preview_step = function()
+	if not runtime.previewing then
+		return
+	end
+	local states = runtime.previewStates or {}
+	local index = runtime.previewIndex or 1
+	if index > #states then
+		cancel_preview()
+		render_menu_bar()
+		return
+	end
+	local step = states[index]
+	runtime.previewIndex = index + 1
+	local presentation = PingWindow.presentation(step.state, runtime.nowFn(), presentation_opts())
+	apply_title(presentation)
+	hs.alert.show("Preview · " .. step.label, M.PREVIEW_ALERT_SECONDS)
+	local delay = M.PREVIEW_STEP_SECONDS
+	if type(hs.timer) == "table" and type(hs.timer.doAfter) == "function" then
+		runtime.previewTimer = hs.timer.doAfter(delay, guarded_callback("preview step", schedule_preview_step))
+	else
+		runtime.previewTimer = hs.timer.new(delay, guarded_callback("preview step", schedule_preview_step), true)
+		if runtime.previewTimer.start then
+			runtime.previewTimer:start()
+		end
 	end
 end
 
@@ -636,6 +859,8 @@ local function ping_completed(task, sent_at, exit_code, std_out)
 	local fresh = read_state_file(runtime.statePath)
 	local sample, rtt_or_problem = PingWindow.ping_outcome(exit_code, std_out)
 	local now = runtime.nowFn()
+	runtime.lastPingExit = exit_code
+	runtime.lastPingRtt = type(rtt_or_problem) == "number" and rtt_or_problem or nil
 	if sample == nil then
 		log_probe("ping", exit_code, rtt_or_problem, now)
 		if not write_state_file(runtime.statePath, heartbeat_claim(now, fresh)) then
@@ -792,17 +1017,23 @@ function M.start(options)
 	local previous_timer = runtime.timer
 	local previous_ping_task = runtime.task
 	local previous_web_task = runtime.webTask
+	local previous_preview_timer = runtime.previewTimer
 	local previous_web_started_at = runtime.webStartedAt
 	-- Detach first so callbacks caused by stop/terminate cannot write stale data.
 	runtime.timer = nil
 	runtime.task = nil
 	runtime.webTask = nil
+	runtime.previewTimer = nil
+	runtime.previewing = false
+	runtime.previewIndex = nil
+	runtime.previewStates = nil
 	runtime.taskStartedAt = nil
 	runtime.taskSentAt = nil
 	runtime.webTaskStartedAt = nil
 	stop_runtime_object("timer", previous_timer)
 	stop_runtime_object("task", previous_ping_task)
 	stop_runtime_object("web task", previous_web_task)
+	stop_runtime_object("preview timer", previous_preview_timer)
 
 	runtime.statePath = options.state_path or default_state_path()
 	runtime.eventsPath = options.events_path or default_events_path()
@@ -810,6 +1041,8 @@ function M.start(options)
 	runtime.configPath = options.config_path or (os.getenv("HOME") .. "/" .. PingWindow.CONFIG_RELATIVE_PATH)
 	runtime.nowFn = options.now or os.time
 	runtime.webDetail = nil
+	runtime.lastPingExit = nil
+	runtime.lastPingRtt = nil
 	runtime.windowSize = PingWindow.DEFAULT_WINDOW_SIZE
 	runtime.configProblem = nil
 	runtime.probeLoggedAt = runtime.probeLoggedAt or {}
