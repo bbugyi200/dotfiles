@@ -215,9 +215,9 @@ local bold_menu_bar_font = resolve_bold_menu_bar_font()
 local mono_menu_bar_font = resolve_mono_menu_bar_font() or menu_bar_font
 
 local function glyph_color(tier)
-	if tier == "online" then
+	if tier == "online" or tier == "web" then
 		return { hex = PingWindow.OK_COLOR, alpha = 1 }
-	elseif tier == "lossy" then
+	elseif tier == "lossy" or tier == "slow" then
 		return { hex = PingWindow.WARN_COLOR, alpha = 1 }
 	elseif tier == "down" or tier == "offline" then
 		return { hex = PingWindow.ALERT_COLOR, alpha = 1 }
@@ -237,7 +237,10 @@ local function title_attributes(tier, role)
 			backgroundColor = { hex = PingWindow.ALERT_COLOR, alpha = 1 },
 		}
 	end
-	if role == "count" then
+	if role == "note" then
+		return { color = secondary_label_color, font = menu_bar_font }
+	end
+	if role == "count" or role == "latency" then
 		if tier == "down" then
 			return { color = { hex = PingWindow.ALERT_COLOR, alpha = 1 }, font = mono_menu_bar_font }
 		elseif tier == "stale" then

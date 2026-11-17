@@ -86,7 +86,7 @@ describe("Hammerspoon ping window shared constants", function()
 		assert.equals(6, ping_window.STALE_SECONDS)
 		assert.equals(3, ping_window.OFFLINE_AFTER_FAILURES)
 		assert.equals("/sbin/ping", ping_window.PING_PATH)
-		assert.same({ "-n", "-q", "-c", "1", "-t", "1", "8.8.8.8" }, ping_window.PING_ARGS)
+		assert.same({ "-n", "-q", "-c", "1", "-W", "500", "8.8.8.8" }, ping_window.PING_ARGS)
 		assert.equals("tmux_ping_state", ping_window.STATE_BASENAME)
 		assert.equals("#30d158", ping_window.OK_COLOR)
 		assert.equals("#FF9F0A", ping_window.WARN_COLOR)
@@ -185,8 +185,8 @@ describe("Hammerspoon ping window state parsing", function()
 	end)
 
 	it("rejects every invalid form as no state", function()
+		assert.is_nil(ping_window.parse_state(nil))
 		local invalid = {
-			nil,
 			"",
 			"\n",
 			"1759680002 hammerspoon 1759680002",
@@ -268,14 +268,17 @@ end)
 describe("Hammerspoon ping window summarize and classify", function()
 	it("summarizes mixed windows", function()
 		assert.same(
-			{ successes = 2, total = 5, trailing_failures = 2, newest_ok = false },
+			{ successes = 2, total = 5, trailing_failures = 2, trailing = 2, slow = 0, newest_ok = false },
 			ping_window.summarize("01100")
 		)
 		assert.same(
-			{ successes = 4, total = 5, trailing_failures = 0, newest_ok = true },
+			{ successes = 4, total = 5, trailing_failures = 0, trailing = 0, slow = 0, newest_ok = true },
 			ping_window.summarize("01111")
 		)
-		assert.same({ successes = 0, total = 0, trailing_failures = 0, newest_ok = false }, ping_window.summarize(""))
+		assert.same(
+			{ successes = 0, total = 0, trailing_failures = 0, trailing = 0, slow = 0, newest_ok = false },
+			ping_window.summarize("")
+		)
 	end)
 
 	it("splits online and lossy at 90 percent", function()
@@ -392,7 +395,8 @@ describe("Hammerspoon ping window presentation", function()
 		}
 		for _, case in ipairs(cases) do
 			local state = { heartbeat = now, producer = "hammerspoon", sampled = case.sampled, results = case.results }
-			local presentation = ping_window.presentation(state, now, {})
+			local presentation =
+				ping_window.presentation(ping_window.parse_state(ping_window.serialize_state(state)), now, {})
 			assert.equals(case.tier, presentation.tier)
 			assert.equals(case.title, presentation.title)
 			assert.same(case.roles, segment_roles(presentation.segments))
@@ -420,9 +424,10 @@ describe("Hammerspoon ping window presentation", function()
 	it("keeps the tooltip and dropdown for a perfect window", function()
 		local now = 1759680010
 		local state = { heartbeat = now, producer = "hammerspoon", sampled = now, results = string.rep("1", 30) }
-		local presentation = ping_window.presentation(state, now, {})
+		local presentation =
+			ping_window.presentation(ping_window.parse_state(ping_window.serialize_state(state)), now, {})
 		assert.equals(NBSP .. "✓" .. NBSP, presentation.title)
-		assert.equals("Internet: 30 of 30 pings answered (100%)", presentation.tooltip)
+		assert.equals("Internet: online · 30 of 30 pings answered (100%)", presentation.tooltip)
 		local header = find_row(presentation.menu, "header")
 		assert.equals("✓ Online", concat_segments(header.segments))
 		local summary = find_row(presentation.menu, "summary")
@@ -526,12 +531,15 @@ describe("Hammerspoon ping window presentation", function()
 		local state =
 			{ heartbeat = now, producer = "hammerspoon", sampled = now, results = "000" .. string.rep("1", 25) .. "01" }
 		assert.equals(
-			"Internet: 26 of 30 pings answered (87%) · last reply 18 ms",
+			"Internet: packet loss · 26 of 30 pings answered (87%) · last reply 18 ms",
 			ping_window.presentation(state, now, { rtt_ms = 18.345, rtt_sent_at = now }).tooltip
 		)
-		assert.equals("Internet: 26 of 30 pings answered (87%)", ping_window.presentation(state, now, {}).tooltip)
 		assert.equals(
-			"Internet: 26 of 30 pings answered (87%)",
+			"Internet: packet loss · 26 of 30 pings answered (87%)",
+			ping_window.presentation(state, now, {}).tooltip
+		)
+		assert.equals(
+			"Internet: packet loss · 26 of 30 pings answered (87%)",
 			ping_window.presentation(state, now, { rtt_ms = 18.345, rtt_sent_at = now - 2 }).tooltip
 		)
 	end)
@@ -549,9 +557,386 @@ describe("Hammerspoon ping window presentation", function()
 			menu_kinds(ping_window.presentation(nil, now, {}).menu)
 		)
 		local info = find_row(menu, "info")
-		assert.equals("Pinging 8.8.8.8 every 2 s · shared with tmux", concat_segments(info.segments))
+		assert.equals(
+			"Pinging 8.8.8.8 every 2 s · web check when pings fail · shared with tmux",
+			concat_segments(info.segments)
+		)
 		local action = find_row(menu, "action")
 		assert.equals("Network Settings…", concat_segments(action.segments))
 		assert.equals("network_settings", action.action)
+	end)
+end)
+
+describe("ping state v2 contract", function()
+	it("pins the constants consumed by the later tmux and producer phases", function()
+		for key, value in pairs({
+			SLOW_MS = 500,
+			RTT_KEEP = 5,
+			SLOW_MIN_REPLIES = 3,
+			PING_WAIT_MS = 500,
+			WEB_FRESH_SECONDS = 15,
+			WEB_CHECK_GRACE_SECONDS = 10,
+			WEB_TIMEOUT_SECONDS = 8,
+			WEB_CONNECT_TIMEOUT_SECONDS = 6,
+			WEB_RECHECK_SECONDS = 10,
+			WEB_SHOW_SECONDS = 300,
+			EVENTS_MAX_LINES = 2000,
+			EVENTS_KEEP_LINES = 1000,
+		}) do
+			assert.equals(value, ping_window[key], key)
+		end
+		assert.equals(
+			ping_window.WEB_TIMEOUT_SECONDS + ping_window.INTERVAL_SECONDS,
+			ping_window.WEB_CHECK_GRACE_SECONDS
+		)
+		assert.equals("ping_window_events.tsv", ping_window.EVENTS_BASENAME)
+		assert.equals("/usr/bin/curl", ping_window.CURL_PATH)
+		assert.same({
+			"-sS",
+			"--max-time",
+			"8",
+			"--connect-timeout",
+			"6",
+			"--max-redirs",
+			"0",
+			"--noproxy",
+			"*",
+			"-w",
+			"\n__PING_WINDOW__ %{http_code} %{time_namelookup} %{time_connect}",
+			"http://captive.apple.com/hotspot-detect.html",
+		}, ping_window.CURL_ARGS)
+		assert.equals(ping_window.WEB_URL, ping_window.CURL_ARGS[#ping_window.CURL_ARGS])
+	end)
+
+	it("round trips tokens in canonical order and preserves v1 table shapes", function()
+		local state = ping_window.parse_state("1000 tmux 998 1s0 check=999 ignored= rtt=1,1400 web=ok,995,0")
+		assert.same({
+			heartbeat = 1000,
+			producer = "tmux",
+			sampled = 998,
+			results = "1s0",
+			rtt = { 1, 1400 },
+			web = { verdict = "ok", at = 995, ms = 0 },
+			check = 999,
+		}, state)
+		local line = "1000 tmux 998 1s0 rtt=1,1400 web=ok,995,0 check=999\n"
+		assert.equals(line, ping_window.serialize_state(state))
+		assert.same(state, ping_window.parse_state(line))
+		for _, token in ipairs({ "web=fail,995,-", "web=portal,995,120", "rtt=0,1,2,3,999999", "check=0" }) do
+			local raw = "1000 hammerspoon 0 - " .. token .. "\n"
+			assert.equals(raw, ping_window.serialize_state(ping_window.parse_state(raw)))
+		end
+		local v1 = ping_window.parse_state("1000 hammerspoon 998 111")
+		assert.is_nil(v1.rtt)
+		assert.is_nil(v1.web)
+		assert.is_nil(v1.check)
+	end)
+
+	it("ignores malformed known values without invalidating the line", function()
+		local values = {
+			rtt = { "", ",", "1,", ",1", "1,,2", "-1", "1.2", "1000000", "1,2,3,4,5,6", "a" },
+			web = { "", "OK,1,2", "no,1,2", "ok,x,2", "ok,1,x", "ok,-1,2", "ok,1,-2", "ok,1,1.2", "ok,1,", "ok,1,2,3" },
+			check = { "", "-1", "1.2", "x", "1,2" },
+		}
+		for key, invalid in pairs(values) do
+			for _, value in ipairs(invalid) do
+				local state = assert(ping_window.parse_state("1000 hammerspoon 1000 111 " .. key .. "=" .. value))
+				assert.is_nil(state[key], key .. "=" .. value)
+				assert.equals("111", state.results)
+			end
+		end
+	end)
+
+	it("uses the last duplicate including an invalid last value", function()
+		local base = "1000 hammerspoon 1000 s "
+		local state = ping_window.parse_state(base .. "rtt=1 rtt=500 web=fail,1,- web=ok,2,0 check=1 check=2")
+		assert.same({ 500 }, state.rtt)
+		assert.same({ verdict = "ok", at = 2, ms = 0 }, state.web)
+		assert.equals(2, state.check)
+		state = ping_window.parse_state(base .. "rtt=1 rtt= web=ok,1,2 web=bad check=1 check=x")
+		assert.is_nil(state.rtt)
+		assert.is_nil(state.web)
+		assert.is_nil(state.check)
+	end)
+
+	it("rejects malformed extension grammar, whitespace, and base fields", function()
+		local base = "1000 hammerspoon 1000 1s0"
+		for _, suffix in ipairs({
+			" ",
+			"  rtt=1",
+			"\trtt=1",
+			" extra",
+			" 1key=x",
+			" X=x",
+			" _key=x",
+			" foo-bar=x",
+			" foo=x ",
+			" foo=x\tbar=y",
+			" foo=x\nbar=y",
+			" foo=x\r\n",
+		}) do
+			assert.is_nil(ping_window.parse_state(base .. suffix), suffix)
+		end
+		assert.is_nil(ping_window.parse_state("1000 hammerspoon 1000 " .. string.rep("s", 100)))
+		assert.is_not_nil(ping_window.parse_state("1000 hammerspoon 1000 " .. string.rep("s", 99)))
+	end)
+
+	it("appends literal samples and RTTs with the same gap boundary without mutating state", function()
+		local state = { sampled = 100, results = "1s0", rtt = { 10, 20, 30, 40, 50 } }
+		assert.equals("s0s", ping_window.append_sample(state, "s", 106, 3))
+		assert.equals("s00", ping_window.append_sample(state, "0", 106, 3))
+		assert.equals("s01", ping_window.append_sample(state, "1", 106, 3))
+		assert.same({ 20, 30, 40, 50, 501 }, ping_window.append_rtt(state, 500.5, 106, 3))
+		assert.same(state.rtt, ping_window.append_rtt(state, nil, 106, 3))
+		assert.equals("s", ping_window.append_sample(state, "s", 107, 3))
+		assert.same({ 501 }, ping_window.append_rtt(state, 500.5, 107, 3))
+		assert.is_nil(ping_window.append_rtt(state, nil, 107, 3))
+		assert.same({ 10, 20, 30, 40, 50 }, state.rtt)
+		assert.same({ 0 }, ping_window.append_rtt(nil, 0.4, 100))
+		assert.is_nil(ping_window.append_rtt({ results = "", rtt = { 10 } }, nil, 100))
+	end)
+
+	it("counts slow replies and computes the upper median on a copy", function()
+		assert.same(
+			{ successes = 3, slow = 2, total = 6, trailing = 2, trailing_failures = 2, newest_ok = false },
+			ping_window.summarize("01ss00")
+		)
+		assert.is_true(ping_window.summarize("s").newest_ok)
+		local rtts = { 1400, 20, 2000, 21 }
+		assert.equals(1400, ping_window.upper_median(rtts))
+		assert.same({ 1400, 20, 2000, 21 }, rtts)
+		assert.equals(20, ping_window.upper_median({ 30, 10, 20 }))
+		assert.is_nil(ping_window.upper_median({}))
+		assert.is_nil(ping_window.upper_median(nil))
+	end)
+
+	it("formats latency rounding boundaries and RTT seconds", function()
+		for _, case in ipairs({
+			{ 500, "0.5s" },
+			{ 1449, "1.4s" },
+			{ 1450, "1.5s" },
+			{ 9949, "9.9s" },
+			{ 9950, "10s" },
+			{ 10499, "10s" },
+			{ 10500, "11s" },
+			{ 999999, "1000s" },
+		}) do
+			assert.equals(case[2], ping_window.format_latency(case[1]))
+		end
+		assert.equals("999 ms", ping_window.format_rtt(999.4))
+		assert.equals("1.0 s", ping_window.format_rtt(999.5))
+		assert.equals("1.4 s", ping_window.format_rtt(1400))
+		assert.equals("10 s", ping_window.format_rtt(9950))
+		assert.is_nil(ping_window.format_rtt(nil))
+	end)
+
+	it("interprets macOS ping replies, timeouts, and tool failures separately", function()
+		local sample, ms = ping_window.ping_outcome(0, SUCCESS_TRANSCRIPT)
+		assert.equals("1", sample)
+		assert.equals(18.345, ms)
+		local slow_transcript = "PING 8.8.8.8 (8.8.8.8): 56 data bytes\n\n--- 8.8.8.8 ping statistics ---\n"
+			.. "1 packets transmitted, 1 packets received, 0.0% packet loss\n"
+			.. "round-trip min/avg/max/stddev = 1400.123/1400.123/1400.123/0.000 ms\n"
+		sample, ms = ping_window.ping_outcome(0, slow_transcript)
+		assert.equals("s", sample)
+		assert.equals(1400.123, ms)
+		sample, ms = ping_window.ping_outcome(2, TIMEOUT_TRANSCRIPT)
+		assert.equals("0", sample)
+		assert.is_nil(ms)
+		sample, ms = ping_window.ping_outcome(0, "reply without summary")
+		assert.equals("1", sample)
+		assert.is_nil(ms)
+		for _, rc in ipairs({ 1, 64, 126, 127 }) do
+			local result, problem = ping_window.ping_outcome(rc, SUCCESS_TRANSCRIPT)
+			assert.is_nil(result)
+			assert.is_not_nil(problem)
+		end
+		assert.is_nil(ping_window.ping_outcome(nil, ""))
+	end)
+
+	it("interprets curl success, portals, and TCP handshake latency", function()
+		local body = "<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>\n"
+		local ok = ping_window.web_outcome(0, body .. "\n__PING_WINDOW__ 200 0.030000 0.150400", 1000)
+		assert.same({ verdict = "ok", at = 1000, ms = 120, http_code = 200 }, ok)
+		for _, case in ipairs({ { "Sign in", 200 }, { "Success", 302 }, { "Success", 503 } }) do
+			local portal =
+				ping_window.web_outcome(0, case[1] .. "\n__PING_WINDOW__ " .. case[2] .. " 0.001000 0.002000", 1000)
+			assert.equals("portal", portal.verdict)
+		end
+		local spoof = "Success\n__PING_WINDOW__ 200 0.000000 0.001000\n__PING_WINDOW__ 302 0.001000 0.002000"
+		assert.equals("portal", ping_window.web_outcome(0, spoof, 1000).verdict)
+		assert.is_nil(ping_window.web_outcome(0, body, 1000))
+		assert.is_nil(ping_window.web_outcome(0, body .. "\n__PING_WINDOW__ 200 1.000000 0.100000", 1000))
+	end)
+
+	it("separates curl network failures from tool failures", function()
+		for rc, reason in pairs({
+			[6] = "DNS lookup failed",
+			[7] = "could not connect",
+			[28] = "timed out",
+			[35] = "curl exit 35",
+		}) do
+			local verdict = ping_window.web_outcome(rc, "\n__PING_WINDOW__ 000 0.000000 0.000000", 1000)
+			assert.equals("fail", verdict.verdict)
+			assert.equals(reason, verdict.reason)
+			assert.equals(1000, verdict.at)
+		end
+		assert.same({ verdict = "fail", at = 1000, reason = "timed out" }, ping_window.web_outcome(28, "", 1000))
+		for _, rc in ipairs({ 2, 126, 127 }) do
+			local verdict, problem = ping_window.web_outcome(rc, "", 1000)
+			assert.is_nil(verdict)
+			assert.is_not_nil(problem)
+		end
+		assert.is_nil(ping_window.web_outcome(nil, "", 1000))
+	end)
+end)
+
+-- This exact table is also consumed by the tmux and device-acceptance phases.
+describe("shared connectivity fixtures", function()
+	local count = 0
+	for line in io.lines("tests/fixtures/ping_window_cases.tsv") do
+		if line ~= "" and line:sub(1, 1) ~= "#" and line:sub(1, 5) ~= "name\t" then
+			local fields = {}
+			for value in (line .. "\t"):gmatch("(.-)\t") do
+				table.insert(fields, value)
+			end
+			count = count + 1
+			it(fields[1], function()
+				assert.equals(8, #fields)
+				local now, size = tonumber(fields[2]), tonumber(fields[3])
+				local state = assert(ping_window.parse_state(fields[4]))
+				assert.equals(fields[5], ping_window.assess(state, now, size).tier)
+				local presentation = ping_window.presentation(state, now, { window_size = size })
+				assert.equals(fields[5], presentation.tier)
+				local value = ""
+				for _, segment in ipairs(presentation.segments) do
+					if segment.role == "count" or segment.role == "latency" or segment.role == "note" then
+						value = segment.text:gsub(FIGURE_SPACE, "")
+						if segment.role ~= "note" then
+							assert.equals(5, codepoint_length(segment.text))
+						end
+					end
+				end
+				assert.equals(fields[6], value)
+				assert.equals(presentation.title, concat_segments(presentation.segments))
+			end)
+		end
+	end
+	it("contains the full scenario matrix", function()
+		assert.is_true(count >= 40)
+	end)
+end)
+
+describe("v2 connectivity presentation", function()
+	local function present(results, tokens, opts)
+		return ping_window.presentation(
+			ping_window.parse_state("1000 hammerspoon 1000 " .. results .. (tokens and " " .. tokens or "")),
+			1000,
+			opts
+		)
+	end
+	local function row_text(presentation, kind)
+		local row = find_row(presentation.menu, kind)
+		return row and concat_segments(row.segments)
+	end
+
+	it("builds headers from the evidence without claiming an ICMP cause", function()
+		local cases = {
+			{ "sss", "rtt=1300,1400,1500", "✓ Slow · round trips take 1.4 s" },
+			{ "000", "web=ok,1000,120", "✓ Online · pings unanswered" },
+			{ "001", "web=ok,1000,120", "✓ Online · pings unreliable" },
+			{ "000", "check=1000", "✗ Ping failed · checking the web…" },
+			{ "100", "web=fail,1000,-", "✗ Ping failed · web check failed" },
+			{ "100", "web=portal,1000,120", "✗ Ping failed · sign-in required?" },
+			{ "000", "web=fail,1000,-", "✗ Offline · web check failed too" },
+			{ "000", "web=portal,1000,120", "✗ Offline · sign-in required?" },
+			{ "000", nil, "✗ Offline" },
+		}
+		for _, case in ipairs(cases) do
+			assert.equals(case[3], row_text(present(case[1], case[2]), "header"))
+		end
+		assert.equals(
+			"Internet: online · pings unanswered · 0 of 30 pings answered (0%)",
+			present(string.rep("0", 30), "web=ok,1000,120").tooltip
+		)
+		assert.equals(
+			"Internet: slow · round trips take 1.4 s · 3 of 3 pings answered (100%) · last reply 1.5 s",
+			present("sss", "rtt=1300,1400,1500").tooltip
+		)
+	end)
+
+	it("draws slow replies in the strip and counts them as answered", function()
+		local presentation = present("1s0")
+		local history = find_row(presentation.menu, "history")
+		assert.equals("●◐○" .. string.rep("·", 27) .. "  now", concat_segments(history.segments))
+		assert.equals("slow", history.segments[2].role)
+		assert.equals("2 of 3 pings answered (67%) · last 6 s", row_text(presentation, "summary"))
+	end)
+
+	it("shows recent web evidence after last ping and expires the row at 301 seconds", function()
+		local clock = os.date("%H:%M:%S", 1000)
+		local presentation = present("000", "web=ok,1000,120")
+		assert.equals("Web check OK · 120 ms round trip · " .. clock, row_text(presentation, "web"))
+		assert.same(
+			{ "header", "history", "summary", "last", "web", "separator", "info", "separator", "action" },
+			menu_kinds(presentation.menu)
+		)
+		assert.equals("Web check OK · " .. clock, row_text(present("000", "web=ok,1000,-"), "web"))
+		assert.equals(
+			"Web check OK · 1.4 s round trip · " .. clock,
+			row_text(present("000", "web=ok,1000,1400"), "web")
+		)
+		assert.equals(
+			"Web check hit a sign-in page · " .. clock,
+			row_text(present("000", "web=portal,1000,120"), "web")
+		)
+		assert.is_not_nil(row_text(present("000", "web=ok,700,120"), "web"))
+		assert.is_nil(row_text(present("000", "web=ok,699,120"), "web"))
+	end)
+
+	it("uses failure detail only when its timestamp matches the verdict", function()
+		local clock = os.date("%H:%M:%S", 1000)
+		for _, reason in ipairs({ "timed out", "could not connect", "DNS lookup failed", "curl exit 35" }) do
+			local matching = present("000", "web=fail,1000,-", { web_detail = { at = 1000, reason = reason } })
+			assert.equals("Web check failed · " .. reason .. " · " .. clock, row_text(matching, "web"))
+		end
+		local stale_detail = present("000", "web=fail,1000,-", { web_detail = { at = 999, reason = "timed out" } })
+		assert.equals("Web check failed · " .. clock, row_text(stale_detail, "web"))
+		assert.equals("Web check failed · " .. clock, row_text(present("000", "web=fail,1000,-"), "web"))
+	end)
+
+	it("prefers persisted RTTs and never calls a missed ping a last reply", function()
+		local opts = { rtt_ms = 18, rtt_sent_at = 1000 }
+		local clock = os.date("%H:%M:%S", 1000)
+		assert.equals("Last reply 1.4 s · " .. clock, row_text(present("s", "rtt=1400", opts), "last"))
+		assert.equals("Last reply 18 ms · " .. clock, row_text(present("1", nil, opts), "last"))
+		local missed = present("0", "rtt=1400", opts)
+		assert.equals("Last ping failed · " .. clock, row_text(missed, "last"))
+		assert.is_nil(missed.tooltip:find("last reply", 1, true))
+	end)
+
+	it("returns assessment evidence and identifies the latency source", function()
+		local state = ping_window.parse_state("1000 hammerspoon 1000 sss rtt=1200,1400,1600 web=ok,999,2100 check=1000")
+		local assessed = ping_window.assess(state, 1000, 30)
+		assert.equals("slow", assessed.tier)
+		assert.equals(1400, assessed.latency_ms)
+		assert.equals("ping", assessed.latency_source)
+		assert.is_true(assessed.web_ok)
+		assert.is_false(assessed.web_bad)
+		assert.is_true(assessed.checking)
+		assert.same(state.web, assessed.web)
+		state.results = "000"
+		assessed = ping_window.assess(state, 1000, 30)
+		assert.equals(2100, assessed.latency_ms)
+		assert.equals("web", assessed.latency_source)
+	end)
+
+	it("classifies ping replies before rounding their stored RTT", function()
+		local template = "round-trip min/avg/max/stddev = %s/%s/%s/0.000 ms\n"
+		for _, case in ipairs({ { "499.999", "1" }, { "500.000", "s" } }) do
+			local sample, ms = ping_window.ping_outcome(0, string.format(template, case[1], case[1], case[1]))
+			assert.equals(case[2], sample)
+			assert.equals(tonumber(case[1]), ms)
+		end
 	end)
 end)

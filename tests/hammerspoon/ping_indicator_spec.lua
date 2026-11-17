@@ -4,7 +4,7 @@ local PING_INDICATOR_PATH = "home/dot_hammerspoon/ping_indicator.lua"
 local NBSP = "\194\160" -- U+00A0
 local FIGURE_SPACE = "\226\128\135" -- U+2007
 
-local PING_ARGS = { "-n", "-q", "-c", "1", "-t", "1", "8.8.8.8" }
+local PING_ARGS = { "-n", "-q", "-c", "1", "-W", "500", "8.8.8.8" }
 local NETWORK_SETTINGS_URL = "x-apple.systempreferences:com.apple.Network-Settings.extension"
 local SYSTEM_SETTINGS_BUNDLE_ID = "com.apple.systempreferences"
 
@@ -466,7 +466,7 @@ describe("Hammerspoon ping indicator startup", function()
 		assert.equals("Menlo-Regular", count.attributes.font.name)
 		assert.are.same({ list = "System", name = "labelColor", alpha = 1 }, count.attributes.color)
 
-		assert.equals("Internet: 1 of 1 pings answered (100%) · last reply 18 ms", env.menus[1].tooltip)
+		assert.equals("Internet: online · 1 of 1 pings answered (100%) · last reply 18 ms", env.menus[1].tooltip)
 	end)
 
 	it("paints a red failure and escalates to the pill after three misses", function()
@@ -698,7 +698,7 @@ describe("Hammerspoon ping indicator dropdown", function()
 		assert.equals("Last reply 18 ms · " .. os.date("%H:%M:%S", env.now), items[4].title)
 		assert.is_true(items[4].disabled)
 		assert.equals("-", items[5].title)
-		assert.equals("Pinging 8.8.8.8 every 2 s · shared with tmux", items[6].title)
+		assert.equals("Pinging 8.8.8.8 every 2 s · web check when pings fail · shared with tmux", items[6].title)
 		assert.is_true(items[6].disabled)
 		assert.equals("-", items[7].title)
 		assert.equals("Network Settings…", items[8].title)
@@ -916,5 +916,49 @@ describe("Hammerspoon ping indicator dropdown", function()
 		fire_tick(env)
 		complete_latest(env, 0, SUCCESS_TRANSCRIPT)
 		assert.equals(2, count_logs(env, "invalid window_size"))
+	end)
+end)
+
+describe("Hammerspoon slow and web title styles", function()
+	local env
+	after_each(function()
+		if env then
+			env.restore()
+			env = nil
+		end
+	end)
+
+	it("styles a slow glyph amber with a padded Menlo latency", function()
+		local indicator
+		env, indicator = setup({ task_new_nil = true })
+		local state = string.format("%d hammerspoon %d sss rtt=1200,1400,1600\n", env.now, env.now)
+		write_state_file(env, state)
+		start_indicator(env, indicator)
+		local title = env.menus[1].title
+		assert.equals(NBSP .. "✓ " .. FIGURE_SPACE .. "1.4s" .. NBSP, title_text(title))
+		local spans = title_spans(title)
+		assert.same({ hex = "#FF9F0A", alpha = 1 }, span_with_text(spans, "✓").attributes.color)
+		local latency = span_with_text(spans, "1.4s").attributes
+		assert.equals("Menlo-Regular", latency.font.name)
+		assert.same({ list = "System", name = "labelColor", alpha = 1 }, latency.color)
+		assert.is_nil(latency.backgroundColor)
+		assert.equals(state, read_state_file(env))
+	end)
+
+	it("styles web green with an unpadded secondary note in the menu bar font", function()
+		local indicator
+		env, indicator = setup({ task_new_nil = true })
+		local state = string.format("%d hammerspoon %d 000 web=ok,%d,120\n", env.now, env.now, env.now)
+		write_state_file(env, state)
+		start_indicator(env, indicator)
+		local title = env.menus[1].title
+		assert.equals(NBSP .. "✓ web" .. NBSP, title_text(title))
+		local spans = title_spans(title)
+		assert.same({ hex = "#30d158", alpha = 1 }, span_with_text(spans, "✓").attributes.color)
+		local note = span_with_text(spans, "web").attributes
+		assert.equals(".AppleSystemUIFont", note.font.name)
+		assert.same({ list = "System", name = "secondaryLabelColor", alpha = 1 }, note.color)
+		assert.is_nil(note.backgroundColor)
+		assert.equals(state, read_state_file(env))
 	end)
 end)

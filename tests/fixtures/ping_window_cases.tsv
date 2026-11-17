@@ -1,0 +1,45 @@
+name	now	window_size	state	tier	value	tmux	note
+v1-perfect	1000	30	1000 hammerspoon 1000 111111111111111111111111111111	online		#[fg=green]✓#[default] | 	v1-perfect
+v1-count	1000	30	1000 hammerspoon 1000 011111111111111111111111111111	online	29/30	#[fg=green]✓#[default] 29/30 | 	v1-count
+v1-lossy	1000	30	1000 hammerspoon 1000 000111111111111111111111111101	lossy	26/30	#[fg=#ffc777]✓#[default] 26/30 | 	v1-lossy
+v1-down	1000	30	1000 hammerspoon 1000 111111111111111111111111111110	down	29/30	#[fg=red]✗#[default] 29/30 | 	v1-down
+v1-offline-three	1000	30	1000 hammerspoon 1000 111111111111111111111111111000	offline	27/30	#[fg=white,bg=red,bold] ✗ 27/30 #[default] | 	v1-offline-three
+v1-offline-empty-replies	1000	30	1000 hammerspoon 1000 000000000000000000000000000000	offline	0/30	#[fg=white,bg=red,bold] ✗ 0/30 #[default] | 	v1-offline-empty-replies
+v1-stale	1000	30	1000 hammerspoon 993 111111111111111111111111111	stale	27/27	#[fg=#828bb8]◌ 27/27#[default] | 	v1-stale
+v1-waiting	1000	30	1000 hammerspoon 0 -	stale	–	#[fg=#828bb8]◌ –#[default] | 	v1-waiting
+ping-median-499	1000	30	1000 hammerspoon 1000 111 rtt=498,499,500	online	3/3	#[fg=green]✓#[default] 3/3 | 	ping-median-499
+ping-median-500	1000	30	1000 hammerspoon 1000 sss rtt=499,500,501	slow	0.5s	#[fg=#ffc777]✓#[default] 0.5s | 	ping-median-500
+ping-needs-three	1000	30	1000 hammerspoon 1000 ss rtt=1400,1400	online	2/2	#[fg=green]✓#[default] 2/2 | 	ping-needs-three
+ping-upper-median-four	1000	30	1000 hammerspoon 1000 ssss rtt=20,21,1400,2000	slow	1.4s	#[fg=#ffc777]✓#[default] 1.4s | 	ping-upper-median-four
+ping-slow-unhealthy	1000	30	1000 hammerspoon 1000 00sss rtt=1400,1600,1000	slow	1.4s	#[fg=#ffc777]✓#[default] 1.4s | 	ping-slow-unhealthy
+web-incident	1000	30	1000 hammerspoon 1000 000000000000000000000000000000 web=ok,1000,120	web	web	#[fg=green]✓#[default] #[fg=#828bb8]web#[default] | 	web-incident
+web-fresh-15	1000	30	1000 hammerspoon 1000 000 web=ok,985,120	web	web	#[fg=green]✓#[default] #[fg=#828bb8]web#[default] | 	web-fresh-15
+web-expired-16	1000	30	1000 hammerspoon 1000 000 web=ok,984,120	offline	0/3	#[fg=white,bg=red,bold] ✗ 0/3 #[default] | 	web-expired-16
+web-latency-499	1000	30	1000 hammerspoon 1000 000 web=ok,1000,499	web	web	#[fg=green]✓#[default] #[fg=#828bb8]web#[default] | 	web-latency-499
+web-latency-500	1000	30	1000 hammerspoon 1000 000 web=ok,1000,500	slow	0.5s	#[fg=#ffc777]✓#[default] 0.5s | 	web-latency-500
+web-slow-link	1000	30	1000 hammerspoon 1000 000 web=ok,1000,2100	slow	2.1s	#[fg=#ffc777]✓#[default] 2.1s | 	web-slow-link
+web-missing-rtt	1000	30	1000 hammerspoon 1000 000 web=ok,1000,-	web	web	#[fg=green]✓#[default] #[fg=#828bb8]web#[default] | 	web-missing-rtt
+blip-excused	1000	30	1000 hammerspoon 1000 111111111111111111111111111110 web=ok,1000,120	online	29/30	#[fg=green]✓#[default] 29/30 | 	blip-excused
+blip-ping-slow	1000	30	1000 hammerspoon 1000 111111111111111111111111111110 rtt=1000,1400,1500 web=ok,1000,120	slow	1.4s	#[fg=#ffc777]✓#[default] 1.4s | 	blip-ping-slow
+blip-web-slow-first	1000	30	1000 hammerspoon 1000 111111111111111111111111111110 rtt=1000,1400,1500 web=ok,1000,2100	slow	2.1s	#[fg=#ffc777]✓#[default] 2.1s | 	blip-web-slow-first
+lossy-web-ok	1000	30	1000 hammerspoon 1000 001 web=ok,1000,120	web	web	#[fg=green]✓#[default] #[fg=#828bb8]web#[default] | 	lossy-web-ok
+healthy-reply-web-slow	1000	30	1000 hammerspoon 1000 111 web=ok,1000,2100	online	3/3	#[fg=green]✓#[default] 3/3 | 	healthy-reply-web-slow
+web-fail	1000	30	1000 hammerspoon 1000 000 web=fail,1000,-	offline	0/3	#[fg=white,bg=red,bold] ✗ 0/3 #[default] | 	web-fail
+web-portal	1000	30	1000 hammerspoon 1000 000 web=portal,1000,120	offline	0/3	#[fg=white,bg=red,bold] ✗ 0/3 #[default] | 	web-portal
+two-misses-fail	1000	30	1000 hammerspoon 1000 100 web=fail,1000,-	down	1/3	#[fg=red]✗#[default] 1/3 | 	two-misses-fail
+checking-blocks-pill	1000	30	1000 hammerspoon 1000 000 check=1000	down	0/3	#[fg=red]✗#[default] 0/3 | 	checking-blocks-pill
+checking-age-ten	1000	30	1000 hammerspoon 1000 000 check=990	down	0/3	#[fg=red]✗#[default] 0/3 | 	checking-age-ten
+checking-expired-eleven	1000	30	1000 hammerspoon 1000 000 check=989	offline	0/3	#[fg=white,bg=red,bold] ✗ 0/3 #[default] | 	checking-expired-eleven
+checking-future	1000	30	1000 hammerspoon 1000 000 check=1001	offline	0/3	#[fg=white,bg=red,bold] ✗ 0/3 #[default] | 	checking-future
+held-verdict-15	1000	30	1000 hammerspoon 1000 000 web=ok,975,120 check=990	web	web	#[fg=green]✓#[default] #[fg=#828bb8]web#[default] | 	held-verdict-15
+unheld-verdict-16	1000	30	1000 hammerspoon 1000 000 web=ok,974,120 check=990	down	0/3	#[fg=red]✗#[default] 0/3 | 	unheld-verdict-16
+checking-fail-pill	1000	30	1000 hammerspoon 1000 000 web=fail,1000,- check=1000	offline	0/3	#[fg=white,bg=red,bold] ✗ 0/3 #[default] | 	checking-fail-pill
+unknown-token	1000	30	1000 hammerspoon 1000 111 future=anything foo_2=	online	3/3	#[fg=green]✓#[default] 3/3 | 	unknown-token
+malformed-rtt	1000	30	1000 hammerspoon 1000 sss rtt=500,x,600	online	3/3	#[fg=green]✓#[default] 3/3 | 	malformed-rtt
+malformed-web	1000	30	1000 hammerspoon 1000 000 web=unknown,1000,12	offline	0/3	#[fg=white,bg=red,bold] ✗ 0/3 #[default] | 	malformed-web
+malformed-check	1000	30	1000 hammerspoon 1000 000 check=oops	offline	0/3	#[fg=white,bg=red,bold] ✗ 0/3 #[default] | 	malformed-check
+duplicate-invalid-last	1000	30	1000 hammerspoon 1000 000 web=ok,1000,12 web=	offline	0/3	#[fg=white,bg=red,bold] ✗ 0/3 #[default] | 	duplicate-invalid-last
+slow-window-clamp	1000	3	1000 hammerspoon 1000 000sss	online		#[fg=green]✓#[default] | 	slow-window-clamp
+tmux-stale-web	1000	30	1000 tmux 1000 000 web=ok,980,120	offline	0/3	#[fg=white,bg=red,bold] ✗ 0/3 #[default] | 	tmux-stale-web
+stale-beats-web	1000	30	1000 hammerspoon 993 000 web=ok,1000,120	stale	0/3	#[fg=#828bb8]◌ 0/3#[default] | 	stale-beats-web
+slow-rounding	1000	30	1000 hammerspoon 1000 sss rtt=9950,9950,9950	slow	10s	#[fg=#ffc777]✓#[default] 10s | 	slow-rounding
