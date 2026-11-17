@@ -217,6 +217,8 @@ ace:
       sase monitor
     ss: |-
       the $1 screenshot
+    sss: |-
+      the $1 screencast
     st: |-
       the stacktrace below
     tab: |-
