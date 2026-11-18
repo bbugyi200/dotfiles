@@ -51,6 +51,37 @@ describe("keycast filtering and privacy", function()
 		assert.equals("all", model.normalizeMode("unexpected"))
 	end)
 
+	it("shows non-printing special keys in chords mode but never text or space", function()
+		assert.equals("⎋", model.filter("chords", event("escape")).label)
+		assert.equals("↩︎", model.filter("chords", event("return")).label)
+		assert.equals("⇥", model.filter("chords", event("tab")).label)
+		assert.equals("⇧⇥", model.filter("chords", event("tab", { shift = true })).label)
+		assert.equals("←", model.filter("chords", event("left", { fn = true })).label)
+		assert.equals("F5", model.filter("chords", event("f5")).label)
+		assert.equals("F15", model.filter("chords", event("f15")).label)
+		assert.is_nil(model.filter("chords", event("c")))
+		assert.is_nil(model.filter("chords", event("A")))
+		assert.is_nil(model.filter("chords", event("space")))
+		assert.is_nil(model.filter("chords", event(" ")))
+	end)
+
+	it("labels padenter and F13-F20", function()
+		assert.equals("⌤", model.keyToken("padenter").label)
+		for _, key in ipairs({ "f13", "f14", "f15", "f16", "f17", "f18", "f19", "f20" }) do
+			assert.equals(key:upper(), model.keyToken(key).label)
+		end
+	end)
+
+	it("truncates long runs behind a leading ellipsis", function()
+		assert.equals(24, model.MAX_RUN_CHARS)
+		assert.equals("abc", model.displayText("abc", 24))
+		assert.equals("abcdefghijklmnopqrstuvwxyz", model.displayText("abcdefghijklmnopqrstuvwxyz", 26))
+		assert.equals("…rstuvwxyz", model.displayText("abcdefghijklmnopqrstuvwxyz", 10))
+		assert.equals("…", model.displayText("abcdef", 1))
+		assert.equals("←→↑↓", model.displayText("←→↑↓", 4))
+		assert.equals("…↑↓", model.displayText("←→↑↓", 3))
+	end)
+
 	it("excludes both recorder chords and bare modifier presses", function()
 		local recorder_modifiers = { ctrl = true, alt = true, shift = true }
 		assert.is_true(model.isRecorderChord("v", recorder_modifiers))

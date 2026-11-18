@@ -8,6 +8,7 @@ M.ENTRY_TTL = 2
 M.EXPIRE_SECONDS = 2
 M.COALESCE_WINDOW = 0.45
 M.COALESCE_GAP = 0.45
+M.MAX_RUN_CHARS = 24
 M.MIN_REGION_WIDTH = 320
 M.MIN_REGION_HEIGHT = 120
 M.REGION_RIGHT_INSET = 16
@@ -109,6 +110,7 @@ local SPECIAL_LABELS = {
 	help = "Help",
 	capslock = "⇪",
 	grave = string.char(96),
+	padenter = "⌤",
 	f1 = "F1",
 	f2 = "F2",
 	f3 = "F3",
@@ -121,8 +123,55 @@ local SPECIAL_LABELS = {
 	f10 = "F10",
 	f11 = "F11",
 	f12 = "F12",
+	f13 = "F13",
+	f14 = "F14",
+	f15 = "F15",
+	f16 = "F16",
+	f17 = "F17",
+	f18 = "F18",
+	f19 = "F19",
+	f20 = "F20",
 }
 local PRINTABLE_SPECIAL_KEYS = { grave = true }
+
+-- Non-printing special keys shown in chords mode even without ⌃/⌥/⌘.
+-- Space and printable text are never shown in chords mode.
+local CHORD_SPECIAL_KEYS = {
+	escape = true,
+	["return"] = true,
+	padenter = true,
+	tab = true,
+	delete = true,
+	forwarddelete = true,
+	left = true,
+	right = true,
+	up = true,
+	down = true,
+	home = true,
+	["end"] = true,
+	pageup = true,
+	pagedown = true,
+	f1 = true,
+	f2 = true,
+	f3 = true,
+	f4 = true,
+	f5 = true,
+	f6 = true,
+	f7 = true,
+	f8 = true,
+	f9 = true,
+	f10 = true,
+	f11 = true,
+	f12 = true,
+	f13 = true,
+	f14 = true,
+	f15 = true,
+	f16 = true,
+	f17 = true,
+	f18 = true,
+	f19 = true,
+	f20 = true,
+}
 
 -- macOS virtual key codes, kept here so the model does not need hs.keycodes.
 local KEYCODES = {
@@ -278,6 +327,54 @@ local function is_single_utf8_character(value)
 	return true
 end
 
+local function utf8_split(text)
+	local chars = {}
+	local index = 1
+	local length = #text
+	while index <= length do
+		local byte = text:byte(index)
+		local size = 1
+		if byte >= 0xF0 then
+			size = 4
+		elseif byte >= 0xE0 then
+			size = 3
+		elseif byte >= 0xC0 then
+			size = 2
+		end
+		table.insert(chars, text:sub(index, index + size - 1))
+		index = index + size
+	end
+	return chars
+end
+
+-- Pure, UTF-8-aware tail truncation for long runs. Returns the label unchanged
+-- when it fits in max_chars characters, otherwise "…" plus the last
+-- max_chars - 1 characters.
+function M.displayText(label, max_chars)
+	if type(label) ~= "string" or label == "" then
+		return label
+	end
+	if type(max_chars) ~= "number" or max_chars ~= max_chars then
+		return label
+	end
+	max_chars = math.floor(max_chars)
+	if max_chars < 1 then
+		return "…"
+	end
+	local chars = utf8_split(label)
+	if #chars <= max_chars then
+		return label
+	end
+	if max_chars == 1 then
+		return "…"
+	end
+	local tail = {}
+	for index = #chars - (max_chars - 1) + 1, #chars do
+		table.insert(tail, chars[index])
+	end
+	return "…" .. table.concat(tail)
+end
+
 local function format_label(key, modifiers, characters)
 	local base = SPECIAL_LABELS[key]
 	local printable = PRINTABLE_SPECIAL_KEYS[key] == true
@@ -388,7 +485,8 @@ function M.isDeniedApp(name)
 end
 
 -- Return a token only when the selected mode permits it. Chords includes
--- command/control/option combinations; Shift by itself is ordinary typing.
+-- command/control/option combinations plus non-printing special keys; Shift by
+-- itself is ordinary typing, and printable text and space never show in chords.
 function M.filter(mode, event, app_name)
 	mode = M.normalizeMode(mode)
 	if mode == "off" or type(event) ~= "table" then
@@ -404,7 +502,16 @@ function M.filter(mode, event, app_name)
 	if token == nil or M.isRecorderChord(token.key, token.modifiers) then
 		return nil
 	end
-	if mode == "chords" and not has_chord_modifier(token.modifiers) then
+	if mode == "chords" then
+		if has_chord_modifier(token.modifiers) then
+			return token
+		end
+		if token.key == "space" then
+			return nil
+		end
+		if CHORD_SPECIAL_KEYS[token.key] then
+			return token
+		end
 		return nil
 	end
 	return token
@@ -439,28 +546,11 @@ local function update_entry(entry, token, now)
 	entry.printable = token.printable
 end
 
-local function next_entry_id(trail)
-	local max_id = 0
-	for _, entry in ipairs(trail) do
-		if type(entry) == "table" and is_number(entry.id) and entry.id > max_id then
-			max_id = entry.id
-		end
-	end
-	return max_id + 1
-end
-
-local function ensure_entry_id(trail, entry)
-	if type(entry) == "table" and not is_number(entry.id) then
-		entry.id = next_entry_id(trail)
-	end
-end
-
 local function append_token(trail, token, now)
 	local last = trail[#trail]
 	if token.repeat_key and last and last.key == token.key then
 		local repeated_from_text = false
 		if last.kind == "token" and last.label == token.label then
-			ensure_entry_id(trail, last)
 			last.kind = "repeat"
 			last.text = token.label
 			last.count = 2
@@ -478,7 +568,6 @@ local function append_token(trail, token, now)
 			end
 		end
 		if last and last.kind == "repeat" and last.key == token.key then
-			ensure_entry_id(trail, last)
 			last.count = last.count + 1
 			last.label = last.text .. " ×" .. tostring(last.count)
 			update_entry(last, token, now)
@@ -486,7 +575,6 @@ local function append_token(trail, token, now)
 		end
 		local count = (repeated_from_text or (last and last.key == token.key)) and 2 or 1
 		local entry = {
-			id = next_entry_id(trail),
 			kind = "repeat",
 			key = token.key,
 			text = token.label,
@@ -503,7 +591,6 @@ local function append_token(trail, token, now)
 	if token.printable and last and last.kind == "text" and last.count == 1 then
 		local timestamp = entry_timestamp(last)
 		if is_number(timestamp) and now - timestamp <= M.COALESCE_WINDOW then
-			ensure_entry_id(trail, last)
 			last.text = last.text .. token.label
 			last.label = last.text
 			update_entry(last, token, now)
@@ -512,7 +599,6 @@ local function append_token(trail, token, now)
 	end
 
 	table.insert(trail, {
-		id = next_entry_id(trail),
 		kind = token.printable and "text" or "token",
 		key = token.key,
 		text = token.label,

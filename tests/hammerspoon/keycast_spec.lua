@@ -499,6 +499,134 @@ describe("keycast keystroke log", function()
 		os.remove(log_path)
 	end)
 
+	local function log_ids()
+		local ids = {}
+		for _, line in ipairs(_G.BobKeycast.log_buffer) do
+			local id = line:match('"id":(%d+)')
+			table.insert(ids, tonumber(id))
+		end
+		return ids
+	end
+
+	it("uses distinct increasing ids across expiry", function()
+		local log_path = tmp_log()
+		assert.is_true(Keycast.show({
+			session_id = "log-expiry",
+			region = { x = 10, y = 20, w = 800, h = 450 },
+			mode = "all",
+			log_path = log_path,
+		}))
+		local tap = env.taps[1]
+		tap.callback(event(0, "c"))
+		tap.callback(event(8, "i"))
+		assert.same({ 1, 1 }, log_ids())
+		env.now = env.now + 3
+		tap.callback(event(7, "x"))
+		local ids = log_ids()
+		assert.equals(3, #ids)
+		assert.equals(1, ids[1])
+		assert.equals(1, ids[2])
+		assert.equals(2, ids[3])
+		assert.is_true(ids[3] > ids[1])
+		os.remove(log_path)
+	end)
+
+	it("uses distinct increasing ids across a secure-input blank", function()
+		local log_path = tmp_log()
+		assert.is_true(Keycast.show({
+			session_id = "log-secure",
+			region = { x = 10, y = 20, w = 800, h = 450 },
+			mode = "all",
+			log_path = log_path,
+		}))
+		local tap = env.taps[1]
+		tap.callback(event(0, "a"))
+		assert.same({ 1 }, log_ids())
+		env.secure = true
+		tap.callback(event(0, "b"))
+		assert.same({ 1 }, log_ids())
+		env.secure = false
+		tap.callback(event(0, "c"))
+		assert.same({ 1, 2 }, log_ids())
+		os.remove(log_path)
+	end)
+
+	it("uses distinct increasing ids across a mode change", function()
+		local log_path = tmp_log()
+		assert.is_true(Keycast.show({
+			session_id = "log-mode",
+			region = { x = 10, y = 20, w = 800, h = 450 },
+			mode = "all",
+			log_path = log_path,
+		}))
+		local tap = env.taps[1]
+		tap.callback(event(0, "a"))
+		assert.same({ 1 }, log_ids())
+		assert.is_true(Keycast.show({
+			session_id = "log-mode",
+			region = { x = 10, y = 20, w = 800, h = 450 },
+			mode = "chords",
+			log_path = log_path,
+		}))
+		tap.callback(event(53, "escape"))
+		assert.same({ 2 }, log_ids())
+		local lines = read_lines(log_path)
+		assert.equals(1, #lines)
+		assert.is_true(lines[1]:find('"id":1', 1, true) ~= nil)
+		os.remove(log_path)
+	end)
+
+	it("restarts ids at 1 on a new session", function()
+		local log_path = tmp_log()
+		assert.is_true(Keycast.show({
+			session_id = "log-session-one",
+			region = { x = 10, y = 20, w = 800, h = 450 },
+			mode = "all",
+			log_path = log_path,
+		}))
+		env.taps[1].callback(event(0, "a"))
+		assert.same({ 1 }, log_ids())
+		assert.is_true(Keycast.show({
+			session_id = "log-session-two",
+			region = { x = 10, y = 20, w = 800, h = 450 },
+			mode = "all",
+			log_path = log_path,
+		}))
+		env.taps[2].callback(event(0, "b"))
+		assert.same({ 1 }, log_ids())
+		local lines = read_lines(log_path)
+		assert.equals(1, #lines)
+		assert.is_true(lines[1]:find('"id":1', 1, true) ~= nil)
+		assert.is_true(lines[1]:find('"text":"a"', 1, true) ~= nil)
+		assert.is_true(Keycast.hide())
+		os.remove(log_path)
+	end)
+
+	it("renders a long run as an ellipsis plus its tail", function()
+		local log_path = tmp_log()
+		assert.is_true(Keycast.show({
+			session_id = "log-long",
+			region = { x = 10, y = 20, w = 800, h = 450 },
+			mode = "all",
+			log_path = log_path,
+		}))
+		local tap = env.taps[1]
+		for _ = 1, 40 do
+			tap.callback(event(0, "a"))
+		end
+		env.delayed[1]:fire()
+		local texts = canvas_text(env.canvases[1])
+		assert.equals(1, #texts)
+		local shown = texts[1]
+		assert.is_true(shown:sub(1, 3) == "…")
+		assert.equals("…" .. string.rep("a", 23), shown)
+		assert.is_true(
+			_G.BobKeycast.log_buffer[#_G.BobKeycast.log_buffer]:find('"text":"' .. string.rep("a", 40) .. '"', 1, true)
+				~= nil
+		)
+		os.remove(log_path)
+	end)
+
 	it("logs nothing for off, secure, denied, or excluded input", function()
 		local log_path = tmp_log()
 		assert.is_true(Keycast.show({

@@ -106,8 +106,9 @@ Every live, non-probe recording also shows a fading line of the keys you type, i
 the recorded region at the bottom-right. This is an explicit exception to the
 chrome-outside rule: the keycast is content, not chrome. It shows all keys by default,
 with printable runs coalesced, repeats collapsed, and entries expiring after about 2 s.
-The **Show Keys** menu row cycles all → chords → off for the current clip. The recorder
-chords (⌃⌥⇧V, ⌃⌥⇧S) are never shown. Secure input and password apps (1Password, Keychain
+Chords mode shows ⌃/⌥/⌘ combinations and non-printing keys, never typed text. The **Show
+Keys** menu row cycles all → chords → off for the current clip. The recorder chords
+(⌃⌥⇧V, ⌃⌥⇧S) are never shown. Secure input and password apps (1Password, Keychain
 Access, Passwords, Bitwarden) blank the overlay and show a dim `🔒 secure` chip instead.
 
 Privacy warning: shown keys are baked into the video pixels and copied to apollo and

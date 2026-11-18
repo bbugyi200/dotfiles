@@ -619,7 +619,8 @@ function test_keys_vtt_groups_clamps_and_sorts() {
   duration="42.5"
   offset="$(perl -e 'printf "%.3f", $ARGV[0] - $ARGV[1]' "$ended" "$duration")"
   jq -n -c --argjson e "$ended" --argjson o "$offset" \
-    '{t: ($o - 5), id: 9, text: "early"},
+    '{t: ($o + 1), id: 9, text: "first"},
+     {t: ($o - 5), id: 8, text: "early"},
      {t: ($e - 10), id: 1, text: "ciw"},
      {t: ($e - 9.5), id: 1, text: "ciwfoo"},
      {t: ($e - 1), id: 2, text: "⎋"}' | jq -c '.' >"${sdir}/keys.jsonl"
@@ -628,14 +629,21 @@ function test_keys_vtt_groups_clamps_and_sorts() {
   assert_equals "true" "$(sget s1 '.keys_track')"
   vtt="${sdir}/keys.vtt"
   assert_file_exists "$vtt"
-  assert_contains "WEBVTT - Keystrokes" "$(cat "$vtt")"
-  assert_contains "ciwfoo" "$(cat "$vtt")"
-  assert_not_contains "early" "$(cat "$vtt")"
-  first_ciw="$(grep -n 'ciwfoo' "$vtt" | cut -d: -f1)"
-  first_esc="$(grep -n '⎋' "$vtt" | cut -d: -f1)"
-  assert_equals "0" "$([ "${first_ciw}" -lt "${first_esc}" ] && echo 0 || echo 1)"
-  assert_contains "-->" "$(cat "$vtt")"
-  assert_contains "00:" "$(cat "$vtt")"
+  expected="${TEST_TMP}/expected_keys.vtt"
+  printf 'WEBVTT - Keystrokes\n\n00:00:01.000 --> 00:00:03.000\nfirst\n\n00:00:32.500 --> 00:00:35.000\nciwfoo\n\n00:00:41.500 --> 00:00:42.500\n⎋\n\n' >"$expected"
+  assert_equals "" "$(diff -u "$expected" "$vtt")"
+}
+
+function test_keys_single_line_yields_track_and_mux() {
+  make_session s1
+  sdir="${TEST_HOME}/tmp/screencasts/.macrec/sessions/s1"
+  ended="$(jq -r '.ended_at' "${sdir}/session.json")"
+  jq -n -c --argjson e "$ended" '{t: ($e - 5), id: 1, text: "a"}' | jq -c '.' >"${sdir}/keys.jsonl"
+  run_ship --session s1
+  assert_equals "0" "${RUN_RC}"
+  assert_equals "true" "$(sget s1 '.keys_track')"
+  assert_contains "mov_text" "$(cat "${EVENT_LOG}")"
+  assert_contains "title=Keystrokes" "$(cat "${EVENT_LOG}")"
 }
 
 function test_keys_mux_failure_stays_nonfatal() {
@@ -648,6 +656,7 @@ function test_keys_mux_failure_stays_nonfatal() {
   assert_equals "0" "${RUN_RC}"
   assert_equals "done" "$(sget s1 '.status')"
   assert_equals "false" "$(sget s1 '.keys_track')"
+  assert_contains "mov_text" "$(cat "${EVENT_LOG}")"
   assert_file_exists "${TEST_HOME}/tmp/screencasts/20261115_142233.mp4"
 }
 

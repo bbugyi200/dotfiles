@@ -13,6 +13,7 @@ end
 
 local runtime = BobKeycast
 runtime.trail = runtime.trail or {}
+runtime.log_seq = runtime.log_seq or 0
 
 local function traceback(error_message)
 	if debug and type(debug.traceback) == "function" then
@@ -122,7 +123,7 @@ local function append_log(entry, now)
 	if type(entry) ~= "table" then
 		return
 	end
-	local id = entry.id
+	local id = entry.log_id
 	if type(id) ~= "number" then
 		return
 	end
@@ -172,6 +173,7 @@ function M.hide()
 	runtime.denied = false
 	runtime.indicator = false
 	runtime.trail = {}
+	runtime.log_seq = 0
 	runtime.key_names_by_code = nil
 	return true
 end
@@ -255,6 +257,26 @@ local function measure_label(text, font_size)
 	return utf8_length(text) * font_size * 0.62 + 22
 end
 
+local function max_chars_for_width(max_width, font_size)
+	local cap = Model.MAX_RUN_CHARS or 24
+	if type(font_size) ~= "number" or font_size <= 0 then
+		return cap
+	end
+	local available = max_width - 22
+	if available <= 0 then
+		return 1
+	end
+	local per_char = font_size * 0.62
+	local count = math.floor(available / per_char)
+	if count < 1 then
+		count = 1
+	end
+	if count > cap then
+		count = cap
+	end
+	return count
+end
+
 local function entry_alpha(entry, now)
 	local updated = entry.updated_at or entry.at or now
 	local age = math.max(0, now - updated)
@@ -271,15 +293,15 @@ local function visible_pills(max_width, font_size, now)
 	local chosen = {}
 	local width = 0
 	local gap = 6
+	local max_chars = max_chars_for_width(max_width, font_size)
 	for index = #trail, 1, -1 do
 		local entry = trail[index]
 		local label = type(entry.label) == "string" and entry.label or ""
+		if type(Model.displayText) == "function" then
+			label = Model.displayText(label, max_chars)
+		end
 		local pill_width = measure_label(label, font_size)
 		local next_width = width + pill_width + (#chosen > 0 and gap or 0)
-		if #chosen == 0 and pill_width > max_width then
-			pill_width = max_width
-			next_width = max_width
-		end
 		if next_width > max_width then
 			break
 		end
@@ -479,6 +501,10 @@ local function handle_key_event(event)
 	runtime.trail = new_trail
 	if token ~= nil then
 		local touched = runtime.trail[#runtime.trail]
+		if touched ~= nil and type(touched.log_id) ~= "number" then
+			runtime.log_seq = (runtime.log_seq or 0) + 1
+			touched.log_id = runtime.log_seq
+		end
 		pcall(append_log, touched, event_now)
 	end
 	if old_count ~= #runtime.trail or #runtime.trail > 0 then
@@ -564,6 +590,7 @@ local function show_impl(item)
 		release_visuals()
 		runtime.trail = {}
 		runtime.log_buffer = {}
+		runtime.log_seq = 0
 		runtime.secure = false
 		runtime.denied = false
 		runtime.indicator = false
