@@ -540,6 +540,123 @@ function test_ack_retry_and_aliases() {
   assert_contains "macrec_doctor" "$(cat "${STDOUT_FILE}")"
 }
 
+function test_keys_modes_recorded_in_both_files() {
+  for mode in all chords off; do
+    run_macrec start 0,0,80,80 --keys "${mode}"
+    assert_equals "0" "${RUN_RC}"
+    LAST_ID="$(jq -r '.id' "${STDOUT_FILE}")"
+    assert_equals "${mode}" "$(jq -r '.keys' "$(session_path "${LAST_ID}")/session.json")"
+    assert_equals "${mode}" "$(jq -r '.keys' "$(macrec_dir)/active.json")"
+    run_macrec status --json
+    assert_equals "0" "${RUN_RC}"
+    assert_equals "${mode}" "$(jq -r '.active.keys' "${STDOUT_FILE}")"
+    assert_equals "${mode}" "$(jq -r --arg id "${LAST_ID}" '.sessions[] | select(.id==$id) | .keys' "${STDOUT_FILE}")"
+    run_macrec stop --reason chord
+    assert_equals "0" "${RUN_RC}"
+    wait_session_field "${LAST_ID}" status done
+    assert_equals "0" "$?"
+  done
+}
+
+function test_keys_default_is_off() {
+  run_macrec start 0,0,80,80
+  assert_equals "0" "${RUN_RC}"
+  LAST_ID="$(jq -r '.id' "${STDOUT_FILE}")"
+  assert_equals "off" "$(jq -r '.keys' "$(session_path "${LAST_ID}")/session.json")"
+  assert_equals "off" "$(jq -r '.keys' "$(macrec_dir)/active.json")"
+  run_macrec status --json
+  assert_equals "off" "$(jq -r '.active.keys' "${STDOUT_FILE}")"
+  run_macrec stop --reason chord
+  wait_session_field "${LAST_ID}" status done
+  assert_equals "0" "$?"
+}
+
+function test_keys_bogus_exits_2() {
+  run_macrec start 0,0,80,80 --keys bogus
+  assert_equals "2" "${RUN_RC}"
+  run_macrec start 0,0,80,80 --keys
+  assert_equals "2" "${RUN_RC}"
+}
+
+function test_keys_probe_forces_off() {
+  run_macrec start 0,0,80,80 --probe --keys all
+  assert_equals "0" "${RUN_RC}"
+  LAST_ID="$(jq -r '.id' "${STDOUT_FILE}")"
+  assert_equals "off" "$(jq -r '.keys' "$(session_path "${LAST_ID}")/session.json")"
+  assert_equals "off" "$(jq -r '.keys' "$(macrec_dir)/active.json")"
+  run_macrec status --json
+  assert_equals "off" "$(jq -r '.active.keys' "${STDOUT_FILE}")"
+  wait_session_field "${LAST_ID}" status done
+  assert_equals "0" "$?"
+}
+
+function test_keys_legacy_active_without_keys_reports_off() {
+  run_macrec start 0,0,80,80 --keys all
+  assert_equals "0" "${RUN_RC}"
+  LAST_ID="$(jq -r '.id' "${STDOUT_FILE}")"
+  jq 'del(.keys)' "$(macrec_dir)/active.json" >"${TEST_TMP}/legacy-active.json"
+  mv "${TEST_TMP}/legacy-active.json" "$(macrec_dir)/active.json"
+  run_macrec status --json
+  assert_equals "0" "${RUN_RC}"
+  assert_equals "off" "$(jq -r '.active.keys' "${STDOUT_FILE}")"
+  run_macrec stop --reason chord
+  wait_session_field "${LAST_ID}" status done
+  assert_equals "0" "$?"
+}
+
+function test_keys_subcommand_patches_matching_active() {
+  run_macrec start 0,0,80,80
+  assert_equals "0" "${RUN_RC}"
+  LAST_ID="$(jq -r '.id' "${STDOUT_FILE}")"
+  run_macrec keys "${LAST_ID}" chords
+  assert_equals "0" "${RUN_RC}"
+  assert_equals "${LAST_ID}" "$(jq -r '.id' "${STDOUT_FILE}")"
+  assert_equals "chords" "$(jq -r '.keys' "${STDOUT_FILE}")"
+  assert_equals "chords" "$(jq -r '.keys' "$(session_path "${LAST_ID}")/session.json")"
+  assert_equals "chords" "$(jq -r '.keys' "$(macrec_dir)/active.json")"
+  run_macrec status --json
+  assert_equals "chords" "$(jq -r '.active.keys' "${STDOUT_FILE}")"
+  run_macrec stop --reason chord
+  wait_session_field "${LAST_ID}" status done
+  assert_equals "0" "$?"
+}
+
+function test_keys_subcommand_leaves_non_matching_active_untouched() {
+  run_macrec start 0,0,80,80
+  assert_equals "0" "${RUN_RC}"
+  local live_id
+  live_id="$(jq -r '.id' "${STDOUT_FILE}")"
+  local other_dir
+  other_dir="$(session_path other1)"
+  mkdir -p "${other_dir}"
+  jq -n -c '{
+    schema:1,id:"other1",name:"clip",status:"recording",
+    region:{x:0,y:0,w:80,h:80},mic:false,probe:false,keys:"off",
+    started_at:50,cap_seconds:600,hosts:{},host_detail:{},recovered:false
+  }' >"${other_dir}/session.json"
+  run_macrec keys other1 all
+  assert_equals "0" "${RUN_RC}"
+  assert_equals "all" "$(jq -r '.keys' "${other_dir}/session.json")"
+  assert_equals "off" "$(jq -r '.keys' "$(macrec_dir)/active.json")"
+  assert_equals "${live_id}" "$(jq -r '.id' "$(macrec_dir)/active.json")"
+  run_macrec stop --reason chord
+  wait_session_field "${live_id}" status done
+  assert_equals "0" "$?"
+}
+
+function test_keys_subcommand_errors() {
+  run_macrec keys nosuch1 chords
+  assert_equals "1" "${RUN_RC}"
+  run_macrec keys nosuch1 bogus
+  assert_equals "2" "${RUN_RC}"
+  run_macrec keys
+  assert_equals "2" "${RUN_RC}"
+  run_macrec keys onlyid
+  assert_equals "2" "${RUN_RC}"
+  run_macrec keys a b c
+  assert_equals "2" "${RUN_RC}"
+}
+
 function test_lifecycle_probe_round_trip() {
   PATH="${FAKE_BIN}:${PATH}" \
     HOME="${TEST_HOME}" \

@@ -37,10 +37,11 @@ PERMISSION_HINT="Screen Recording is off for Hammerspoon — System Settings ›
 usage() {
 	cat <<'EOF'
 Usage:
-  macrec start X,Y,W,H [--mic] [--max-seconds N] [--probe]
+  macrec start X,Y,W,H [--mic] [--keys all|chords|off] [--max-seconds N] [--probe]
   macrec stop [--reason R]
   macrec discard
   macrec status [--json]
+  macrec keys ID all|chords|off
   macrec retry [ID]
   macrec recover [ID]
   macrec ack ID notified|adopted|dismissed
@@ -488,8 +489,9 @@ write_initial_session() {
 	local region_json="$4"
 	local mic="$5"
 	local probe="$6"
-	local cap="$7"
-	local started="$8"
+	local keys="$7"
+	local cap="$8"
+	local started="$9"
 	"$JQ_BIN" -n -c \
 		--argjson schema 1 \
 		--arg id "$id" \
@@ -497,6 +499,7 @@ write_initial_session() {
 		--argjson region "$region_json" \
 		--argjson mic "$mic" \
 		--argjson probe "$probe" \
+		--arg keys "$keys" \
 		--argjson cap_seconds "$cap" \
 		--argjson started_at "$started" \
 		'{
@@ -506,6 +509,7 @@ write_initial_session() {
 			region:$region,
 			mic:$mic,
 			probe:$probe,
+			keys:$keys,
 			cap_seconds:$cap_seconds,
 			started_at:$started_at,
 			updated_at:$started_at,
@@ -517,12 +521,25 @@ write_initial_session() {
 }
 
 cmd_start() {
-	local region="" mic=0 probe=0 cap="$DEFAULT_CAP_SECONDS"
+	local region="" mic=0 probe=0 keys="off" cap="$DEFAULT_CAP_SECONDS"
 	while [ $# -gt 0 ]; do
 		case "$1" in
 		--mic)
 			mic=1
 			shift
+			;;
+		--keys)
+			case "${2:-}" in
+			all | chords | off)
+				keys="$2"
+				;;
+			*)
+				printf 'macrec: invalid --keys mode (expected all|chords|off)\n' >&2
+				usage >&2
+				exit 2
+				;;
+			esac
+			shift 2
 			;;
 		--probe)
 			probe=1
@@ -577,6 +594,11 @@ cmd_start() {
 		rm -f "$(active_path)"
 	fi
 
+	# Probes are self-tests, never keycast sessions.
+	if [ "$probe" = "1" ]; then
+		keys="off"
+	fi
+
 	local id name sdir started region_json mic_json probe_json log
 	id="$(new_id)"
 	if ! valid_id "$id"; then
@@ -595,13 +617,13 @@ cmd_start() {
 	[ "$probe" = "1" ] && probe_json=true
 	log="${sdir}/log"
 	: >"$log"
-	write_initial_session "$sdir" "$id" "$name" "$region_json" "$mic_json" "$probe_json" "$cap" "$started"
+	write_initial_session "$sdir" "$id" "$name" "$region_json" "$mic_json" "$probe_json" "$keys" "$cap" "$started"
 	"$JQ_BIN" -n -c --arg id "$id" --arg name "$name" --argjson started_at "$started" \
 		--argjson region "$region_json" --argjson mic "$mic_json" --argjson probe "$probe_json" \
-		--argjson cap_seconds "$cap" \
-		'{id:$id,name:$name,started_at:$started_at,region:$region,mic:$mic,probe:$probe,cap_seconds:$cap_seconds}' \
+		--arg keys "$keys" --argjson cap_seconds "$cap" \
+		'{id:$id,name:$name,started_at:$started_at,region:$region,mic:$mic,probe:$probe,keys:$keys,cap_seconds:$cap_seconds}' \
 		| atomic_write "$(active_path)"
-	log_line "start id=${id} name=${name} rect=${region} cap=${cap} mic=${mic} probe=${probe}"
+	log_line "start id=${id} name=${name} rect=${region} cap=${cap} mic=${mic} probe=${probe} keys=${keys}"
 
 	local this bash_bin
 	this="$(self_path)"
@@ -894,7 +916,7 @@ active_state_json() {
 		state="starting"
 	fi
 	"$JQ_BIN" -n -c \
-		--argjson base "$("$JQ_BIN" -c '{id,name,region,mic,probe,started_at,cap_seconds}' "$active")" \
+		--argjson base "$("$JQ_BIN" -c '{id,name,region,mic,probe,started_at,cap_seconds} + {keys:(.keys // "off")}' "$active")" \
 		--arg state "$state" \
 		--argjson recorder_alive "$rec_alive" \
 		'$base + {state:$state,recorder_alive:$recorder_alive}'
@@ -1050,6 +1072,40 @@ cmd_ack() {
 	log_line "ack ${id} ${which}"
 }
 
+cmd_keys() {
+	if [ $# -ne 2 ]; then
+		usage >&2
+		exit 2
+	fi
+	local id="$1"
+	local mode="$2"
+	if [ -z "$id" ] || ! valid_id "$id"; then
+		usage >&2
+		exit 2
+	fi
+	case "$mode" in
+	all | chords | off) ;;
+	*)
+		usage >&2
+		exit 2
+		;;
+	esac
+	ensure_dirs
+	local sdir active
+	sdir="$(session_dir "$id")"
+	if [ ! -f "${sdir}/session.json" ]; then
+		printf 'macrec: no session %s\n' "$id" >&2
+		exit 1
+	fi
+	patch_session "$sdir" "$("$JQ_BIN" -n -c --arg keys "$mode" '{keys:$keys}')"
+	active="$(active_path)"
+	if [ -f "$active" ] && [ "$("$JQ_BIN" -r '.id // empty' "$active")" = "$id" ]; then
+		"$JQ_BIN" -c --arg keys "$mode" '. * {keys:$keys}' "$active" | atomic_write "$active"
+	fi
+	"$JQ_BIN" -n -c --arg id "$id" --arg keys "$mode" '{id:$id,keys:$keys}'
+	printf '\n'
+}
+
 cmd_ship_alias() {
 	local ship
 	ship="$(macrec_ship_bin)"
@@ -1082,6 +1138,7 @@ main() {
 	stop) cmd_stop "$@" ;;
 	discard) cmd_discard "$@" ;;
 	status) cmd_status "$@" ;;
+	keys) cmd_keys "$@" ;;
 	retry) cmd_retry "$@" ;;
 	recover) cmd_recover "$@" ;;
 	ack) cmd_ack "$@" ;;
