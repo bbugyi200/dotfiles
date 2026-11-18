@@ -82,28 +82,12 @@ cron:
       description: Run init-bg at five past every hour
       enabled: false
       command: init-bg
-    # mac: staggered five minutes apart so their vault writes do not collide
-    # with each other or with the 15-second bob-vault-sync LaunchAgent (see
-    # bob-cli docs/vault-git-sync.md, "Mac scheduled maintenance").
-    # bob-gmail-sync runs hourly at :07, two minutes after projects sync and
-    # three before task reconcile, so reconcile tidies the same rows minutes later.
-    - name: bob-highlights-sync
+    # mac: one ordered pass. `bob tick` decides what is due from tick.steps in
+    # ~/.config/bob/config.yml (gcal and gmail hourly; refs, projects, tasks
+    # every 15 minutes; gkeep manual) and runs it gcal → gmail → gkeep → refs →
+    # projects → tasks. See bob-cli docs/tick.md; `bob tick -d` shows the plan.
+    - name: bob-tick
       machines: [mac]
-      schedule: "0,15,30,45 * * * *"
-      description: Bob highlights intake and full annotation scan
-      command: maybe_bob_highlights_sync -w
-    - name: bob-projects-sync
-      machines: [mac]
-      schedule: "5,20,35,50 * * * *"
-      description: Bob project reconciliation
-      command: bob projects sync
-    - name: bob-task-reconcile
-      machines: [mac]
-      schedule: "10,25,40,55 * * * *"
-      description: Bob task-status reconciliation with a 2-minute retry budget
-      command: bob task reconcile --retry-timeout 120
-    - name: bob-gmail-sync
-      machines: [mac]
-      schedule: "7 * * * *"
-      description: File bob-labelled Gmail threads as tasks and watch them for replies
-      command: bob gmail sync -q
+      schedule: "*/5 * * * *"
+      description: Run Bob's due background work in one ordered pass
+      command: bob tick
