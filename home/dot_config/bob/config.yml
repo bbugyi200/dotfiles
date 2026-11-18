@@ -87,7 +87,8 @@ gkeep:
 # `bob gcal login` once and `bob gcal doctor` to diagnose
 # the setup. Only the host named by `writer` may sync; the Mac syncs when
 # you run `bob gcal sync`, and Ledger Tools runs it once when today's note
-# is created.
+# is created. `bob tick` runs it at most hourly on the Mac (`tick.steps.gcal`);
+# manual runs count toward the hour.
 # GUI-launched bob has no login-shell PATH or keyring password.
 gcal:
   gog: ~/bin/gog
@@ -119,6 +120,23 @@ gmail:
     # `bob gmail login -s modify` grant (the Mac) can archive; receipt label
     # bob/closed and archive_max 10 stay at their defaults. Undo: bob gmail unarchive.
     archive: on
+
+# `bob tick` runs Bob's frequent background work in one fixed order:
+# gcal → gmail → gkeep → refs → projects → tasks. Mac cron (bob-tick) calls it
+# every 5 minutes; a step runs only when its interval has passed since it last
+# ran on this host (projects and tasks also follow any intake step that ran).
+# Values: an interval (15m, 1h, 1d), manual (only `bob tick -a` or
+# `bob tick <step>`), or off. `bob tick -d` shows what is due and why; see
+# docs/tick.md in bob-cli. Older bob builds ignore this block.
+tick:
+  # writer: <label from `bob gcal doctor`>  # set once bob-cli-ew pins the Mac's label
+  steps:
+    gcal: 1h # never more often: each run rewrites today's ↻ synced line
+    gmail: 1h # stays inside Gmail's two-hour staleness warning
+    gkeep: manual # clips web pages; runs with the morning `bob tick -a`
+    refs: 15m # scans only when lib/ or xlib/ changed (full scan ≥ every 6h)
+    projects: 15m
+    tasks: 15m
 
 # Daily review cadence (`bob freshness list`, ledger-tools walk tiers, nav
 # refresh row); see `docs/freshness.md` §2 in bob-cli. The block is optional:
