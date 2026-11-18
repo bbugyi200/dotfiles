@@ -402,10 +402,11 @@ local function format_label(key, modifiers, characters)
 	end
 
 	local prefix = {}
+	local shift_is_visible_in_case = printable and #base == 1 and base:match("%a") and not has_chord_modifier(modifiers)
 	for _, item in ipairs(MODIFIER_ORDER) do
 		if modifiers[item.name] then
-			-- Shift is already visible in the case of a printable letter.
-			if item.name ~= "shift" or not (printable and #base == 1 and base:match("%a")) then
+			-- Shift is visible in case for plain typing, but stays explicit on chords.
+			if item.name ~= "shift" or not shift_is_visible_in_case then
 				table.insert(prefix, item.label)
 			end
 		end
