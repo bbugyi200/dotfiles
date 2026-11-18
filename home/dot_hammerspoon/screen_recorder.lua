@@ -10,6 +10,7 @@
 local Model = require("screen_recording_model")
 local ScreenshotRegion = require("screenshot_region")
 local MacNotify = require("mac_notify")
+local Keycast
 
 local M = {}
 
@@ -63,6 +64,46 @@ local redraw_chrome
 
 local function log_message(format, ...)
 	hs.printf("Bob screen recorder " .. format, ...)
+end
+
+-- The keycast overlay must never endanger the recorder: a failing require or a
+-- throwing overlay call degrades to "recording without keys".
+local function keycast_stub()
+	return {
+		show = function()
+			return false
+		end,
+		hide = function()
+			return true
+		end,
+		setMode = function()
+			return false
+		end,
+		check = function()
+			return false
+		end,
+		isActive = function()
+			return false
+		end,
+	}
+end
+
+do
+	local ok, loaded = pcall(require, "keycast")
+	if ok and type(loaded) == "table" then
+		Keycast = loaded
+	else
+		Keycast = keycast_stub()
+		pcall(log_message, "keycast unavailable, recording without keys: %s", tostring(loaded))
+	end
+end
+
+function M._keycast()
+	return Keycast
+end
+
+function M._setKeycastForTests(stub)
+	Keycast = stub or keycast_stub()
 end
 
 local function stop_runtime_object(name, object)
@@ -912,6 +953,29 @@ local function event_is_m(event)
 	return false
 end
 
+local function event_is_k(event)
+	if not is_event_object(event) then
+		return false
+	end
+	if type(event.getCharacters) == "function" then
+		local ok, chars = pcall(function()
+			return event:getCharacters()
+		end)
+		if ok and type(chars) == "string" and chars:lower() == "k" then
+			return true
+		end
+	end
+	if type(event.getKeyCode) == "function" and hs.keycodes and hs.keycodes.map then
+		local ok, code = pcall(function()
+			return event:getKeyCode()
+		end)
+		if ok and code == hs.keycodes.map.k then
+			return true
+		end
+	end
+	return false
+end
+
 local function close_selector()
 	local handle = runtime.pickerHandle
 	runtime.pickerHandle = nil
@@ -921,17 +985,18 @@ local function close_selector()
 end
 
 local function open_selector()
-	runtime.pickerState = { mic = false }
+	runtime.pickerState = { mic = false, keys = Model.KEYS_DEFAULT }
 	local handle = ScreenshotRegion.pick(function(region)
 		dispatch({
 			type = "enter",
 			region = copy_rect(region),
 			mic = runtime.pickerState and runtime.pickerState.mic == true,
+			keys = runtime.pickerState and runtime.pickerState.keys or Model.KEYS_DEFAULT,
 		})
 	end, {
 		accent = { hex = Model.ACCENT, alpha = 1 },
 		badge = function(state)
-			return (state and state.mic == true) and "● REC · MIC" or "● REC"
+			return Model.selectorBadgeText(state)
 		end,
 		hint = function(state)
 			return Model.selectorHint(state)
@@ -943,6 +1008,11 @@ local function open_selector()
 		onKey = function(event, ctx)
 			if event_is_m(event) then
 				ctx.state.mic = not ctx.state.mic
+				ctx.redraw()
+				return true
+			end
+			if event_is_k(event) then
+				ctx.state.keys = Model.nextKeysMode(ctx.state.keys)
 				ctx.redraw()
 				return true
 			end
@@ -1264,6 +1334,7 @@ ensure_tick = function()
 		if not runtime.tickTimer then
 			runtime.tickTimer = hs.timer.new(1, function()
 				dispatch({ type = "tick", change_count = pasteboard_count() })
+				pcall(Keycast.check)
 				redraw_chrome()
 			end, true)
 			runtime.tickTimer:start()
@@ -1445,6 +1516,8 @@ end
 local function handle_menu_action(action)
 	if action == "stop_upload" then
 		dispatch({ type = "stop", reason = "menu", change_count = pasteboard_count() })
+	elseif action == "cycle_keys" then
+		dispatch({ type = "cycle_keys" })
 	elseif action == "discard" then
 		confirm_discard()
 	elseif action == "cancel" then
@@ -1557,10 +1630,13 @@ end
 
 local function start_recorder(item)
 	local region = item.region or {}
+	local keys_mode = Model.normalizeKeysMode(item.keys, Model.KEYS_DEFAULT)
 	local args = { "start", M.rectArg(region) }
 	if item.mic == true then
 		table.insert(args, "--mic")
 	end
+	table.insert(args, "--keys")
+	table.insert(args, keys_mode)
 	table.insert(args, "--max-seconds")
 	table.insert(args, tostring(item.max_seconds or Model.CAP_SECONDS))
 	local display = screen_name(screen_for_region(region))
@@ -1572,6 +1648,9 @@ local function start_recorder(item)
 			decoded.mic = decoded.mic
 			if decoded.mic == nil then
 				decoded.mic = item.mic == true
+			end
+			if decoded.keys == nil then
+				decoded.keys = keys_mode
 			end
 			decoded.display_name = display
 			dispatch({ type = "start_ok", session = decoded, id = decoded.id })
@@ -1619,6 +1698,14 @@ apply_effects = function(effects)
 			run_macrec({ "discard" })
 		elseif kind == "show_chrome" then
 			show_recording_chrome(item.session)
+		elseif kind == "show_keys" then
+			pcall(Keycast.show, item)
+		elseif kind == "hide_keys" then
+			pcall(Keycast.hide)
+		elseif kind == "persist_keys" then
+			if item.session_id and item.mode then
+				pcall(run_macrec, { "keys", item.session_id, item.mode })
+			end
 		elseif kind == "notify" then
 			show_session_notification(item)
 		elseif kind == "copy_path" then
@@ -1798,6 +1885,7 @@ local function teardown_runtime()
 		stop_runtime_object("macrec task", task)
 	end
 	hide_recording_chrome()
+	pcall(Keycast.hide)
 	hide_card()
 	runtime.watcher = nil
 	runtime.statusWatcher = nil
@@ -1836,7 +1924,7 @@ end
 
 function M.startRegion(region)
 	M.onChord()
-	dispatch({ type = "enter", region = copy_rect(region), mic = false })
+	dispatch({ type = "enter", region = copy_rect(region), mic = false, keys = Model.KEYS_DEFAULT })
 end
 
 function M.start(options)
@@ -1853,7 +1941,7 @@ function M.start(options)
 	teardown_runtime()
 	runtime.model = { state = Model.STATES.idle, session = {} }
 	runtime.adoptedIds = {}
-	runtime.pickerState = { mic = false }
+	runtime.pickerState = { mic = false, keys = Model.KEYS_DEFAULT }
 	runtime.menuFont = nil
 	runtime.reduceMotion = false
 	runtime.spinnerIndex = 1

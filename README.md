@@ -79,18 +79,19 @@ again while recording to stop and upload.
 
 Selector keys:
 
-| Key     | Action                                         |
-| ------- | ---------------------------------------------- |
-| Drag    | Draw a new box                                 |
-| ⌘-drag  | Move the box                                   |
-| Corners | Resize                                         |
-| F       | Select the whole screen                        |
-| W       | Snap to the frontmost window under the pointer |
-| ⏎       | Start recording                                |
-| ⌘⏎      | Start and save this rectangle as the default   |
-| M       | Toggle microphone for this clip                |
-| Esc     | Cancel                                         |
-| ⌃⌥⇧V    | Cancel (same chord)                            |
+| Key     | Action                                            |
+| ------- | ------------------------------------------------- |
+| Drag    | Draw a new box                                    |
+| ⌘-drag  | Move the box                                      |
+| Corners | Resize                                            |
+| F       | Select the whole screen                           |
+| W       | Snap to the frontmost window under the pointer    |
+| ⏎       | Start recording                                   |
+| ⌘⏎      | Start and save this rectangle as the default      |
+| M       | Toggle microphone for this clip                   |
+| K       | Cycle key overlay: all → chords → off (this clip) |
+| Esc     | Cancel                                            |
+| ⌃⌥⇧V    | Cancel (same chord)                               |
 
 While the screenshot picker is open, ⌃⌥⇧V starts a recording of that exact region. While
 the recording picker is open, ⌃⌥⇧S captures a still of that exact region.
@@ -100,6 +101,19 @@ recorded pixels. Cursor and click flashes are on; system audio is not captured. 
 10-minute cap stops the clip automatically, with an orange warning from 9:00. The menu
 bar shows the timer, a spinner while the clip encodes and uploads, then a green check
 for 3 seconds.
+
+Every live, non-probe recording also shows a fading line of the keys you type, inside
+the recorded region at the bottom-right. This is an explicit exception to the
+chrome-outside rule: the keycast is content, not chrome. It shows all keys by default,
+with printable runs coalesced, repeats collapsed, and entries expiring after about 2 s.
+The **Show Keys** menu row cycles all → chords → off for the current clip. The recorder
+chords (⌃⌥⇧V, ⌃⌥⇧S) are never shown. Secure input and password apps (1Password, Keychain
+Access, Passwords, Bitwarden) blank the overlay and show a dim `🔒 secure` chip instead.
+
+Privacy warning: shown keys are baked into the video pixels and copied to apollo and
+athena with the clip. Use K → off, the **Show Keys** menu row, or Discard for sensitive
+clips. If passwords are routinely typed in clips, flip `KEYS_DEFAULT` to `"chords"` in
+`screen_recording_model.lua`.
 
 Clips land at `~/tmp/screencasts/YYYYMMDD_HHMMSS.mp4` on the Mac, apollo, and athena.
 Apollo is skipped below 5 GiB free and pruned to at most 2 GiB of clips. Agents fetch

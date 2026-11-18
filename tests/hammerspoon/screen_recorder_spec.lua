@@ -1174,8 +1174,9 @@ describe("screen recorder runtime", function()
 		assert.equals("macscrotLastRegion", env.picks[1].opts.fallbackSettingsKey)
 		assert.equals(0.15, env.picks[1].opts.captureDelay)
 		assert.equals("#E3413B", env.picks[1].opts.accent.hex)
-		assert.equals("● REC", env.picks[1].opts.badge({ mic = false }))
+		assert.equals("● REC · KEYS", env.picks[1].opts.badge({ mic = false }))
 		assert.is_true(env.picks[1].opts.hint({ mic = false }):find("M: mic off", 1, true) ~= nil)
+		assert.is_true(env.picks[1].opts.hint({ mic = false }):find("K: keys all", 1, true) ~= nil)
 
 		confirm_region()
 		assert.equals("starting", _G.BobScreenRecorder.model.state)
@@ -1185,6 +1186,8 @@ describe("screen recorder runtime", function()
 		assert.same({
 			"start",
 			"100,80,640,360",
+			"--keys",
+			"all",
 			"--max-seconds",
 			"600",
 		}, start_tasks[1].args)
@@ -1283,7 +1286,10 @@ describe("screen recorder runtime", function()
 		boot()
 		recorder.startRegion({ x = 25, y = 35, w = 250, h = 160 })
 		assert.equals("starting", _G.BobScreenRecorder.model.state)
-		assert.same({ "start", "25,35,250,160", "--max-seconds", "600" }, tasks_with_arg(env, "start")[1].args)
+		assert.same(
+			{ "start", "25,35,250,160", "--keys", "all", "--max-seconds", "600" },
+			tasks_with_arg(env, "start")[1].args
+		)
 	end)
 
 	it("discards when the chord is pressed during starting", function()
@@ -1577,12 +1583,14 @@ describe("screen recorder runtime", function()
 		})
 		assert.is_true(pick.opts.state.mic)
 		assert.equals(1, redraws)
-		assert.equals("● REC · MIC", pick.opts.badge(pick.opts.state))
+		assert.equals("● REC · MIC · KEYS", pick.opts.badge(pick.opts.state))
 		confirm_region()
 		assert.same({
 			"start",
 			"100,80,640,360",
 			"--mic",
+			"--keys",
+			"all",
 			"--max-seconds",
 			"600",
 		}, tasks_with_arg(env, "start")[1].args)
@@ -1655,5 +1663,299 @@ describe("screen recorder runtime", function()
 			},
 		})
 		assert.equals("idle", _G.BobScreenRecorder.model.state)
+	end)
+
+	local function make_keycast_fake(options)
+		options = options or {}
+		local fake = {
+			show_calls = {},
+			hide_calls = 0,
+			check_calls = 0,
+			active = false,
+			should_throw_on_show = options.throw_on_show == true,
+		}
+		function fake.show(item)
+			if fake.should_throw_on_show then
+				error("boom keycast")
+			end
+			local entry = { session_id = item.session_id, mode = item.mode, region = item.region }
+			table.insert(fake.show_calls, entry)
+			if item.mode == "off" then
+				fake.active = false
+			else
+				fake.active = true
+			end
+			return true
+		end
+		function fake.hide()
+			fake.hide_calls = fake.hide_calls + 1
+			fake.active = false
+			return true
+		end
+		function fake.check()
+			fake.check_calls = fake.check_calls + 1
+			return fake.active
+		end
+		function fake.isActive()
+			return fake.active
+		end
+		function fake.setMode(_mode)
+			return true
+		end
+		return fake
+	end
+
+	local function start_live_recording(with_fake)
+		local fake = with_fake
+		env, recorder = setup({ now = 1000, pasteboard_count = 7 })
+		if fake then
+			recorder._setKeycastForTests(fake)
+		end
+		start_recorder(env, recorder)
+		complete_status(env)
+		recorder.onChord()
+		local pick = env.picks[#env.picks]
+		assert.is_not_nil(pick)
+		pick.onConfirm(REGION)
+		complete_start(env)
+		assert.equals("recording", _G.BobScreenRecorder.model.state)
+		return fake
+	end
+
+	local function fire_interval_timers()
+		for _, timer in ipairs(env.timers) do
+			if timer.interval == 1 and timer.started and timer.callback then
+				timer.callback()
+			end
+		end
+	end
+
+	it("cycles keys from the selector and passes --keys to start", function()
+		env, recorder = setup({ now = 1000 })
+		start_recorder(env, recorder)
+		complete_status(env)
+		recorder.onChord()
+		local pick = env.picks[1]
+		assert.same({ mic = false, keys = "all" }, pick.opts.state)
+		assert.equals("● REC · KEYS", pick.opts.badge(pick.opts.state))
+		assert.is_true(pick.opts.hint(pick.opts.state):find("K: keys all", 1, true) ~= nil)
+		local redraws = 0
+		local ctx = {
+			state = pick.opts.state,
+			redraw = function()
+				redraws = redraws + 1
+			end,
+		}
+		assert.is_true(pick.opts.onKey(make_key_event("k", {}, nil), ctx))
+		assert.equals("chords", pick.opts.state.keys)
+		assert.equals(1, redraws)
+		assert.equals("● REC · CHORDS", pick.opts.badge(pick.opts.state))
+		assert.is_true(pick.opts.hint(pick.opts.state):find("K: keys chords", 1, true) ~= nil)
+		assert.is_true(pick.opts.onKey(make_key_event("K", {}, nil), ctx))
+		assert.equals("off", pick.opts.state.keys)
+		assert.equals("● REC", pick.opts.badge(pick.opts.state))
+		assert.is_true(pick.opts.onKey(make_key_event("k", {}, nil), ctx))
+		assert.equals("all", pick.opts.state.keys)
+		-- Two more presses land on off for the argv check.
+		pick.opts.onKey(make_key_event("k", {}, nil), ctx)
+		pick.opts.onKey(make_key_event("k", {}, nil), ctx)
+		assert.equals("off", pick.opts.state.keys)
+		pick.onConfirm(REGION)
+		assert.equals("off", _G.BobScreenRecorder.model.selection.keys)
+		local args = tasks_with_arg(env, "start")[1].args
+		assert.same({ "start", "100,80,640,360", "--keys", "off", "--max-seconds", "600" }, args)
+	end)
+
+	it("shows the keycast once across repeated status refreshes", function()
+		local fake = make_keycast_fake()
+		start_live_recording(fake)
+		assert.equals(1, #fake.show_calls)
+		assert.equals("all", fake.show_calls[1].mode)
+		assert.equals("sess1", fake.show_calls[1].session_id)
+		assert.is_true(fake.active)
+		for _ = 1, 5 do
+			fire_interval_timers()
+			complete_status(env, { active = active_fields({ started_at = 1000 }) })
+		end
+		assert.equals(1, #fake.show_calls)
+		assert.is_true(fake.active)
+	end)
+
+	it("hides the keycast on chord, menu, discard, cap, display, sleep, and lock stops", function()
+		local function stop_with(action)
+			local fake = make_keycast_fake()
+			start_live_recording(fake)
+			assert.is_true(fake.active)
+			env.now = env.now + 0.2
+			action()
+			assert.is_false(fake.active)
+			assert.is_true(fake.hide_calls >= 1)
+			env.restore()
+		end
+
+		stop_with(function()
+			recorder.onChord()
+		end)
+
+		stop_with(function()
+			for _, item in ipairs(menu_items(env)) do
+				if item.title:find("Stop & Upload", 1, true) then
+					item.fn()
+				end
+			end
+		end)
+
+		stop_with(function()
+			env.alert_result = "Discard"
+			for _, item in ipairs(menu_items(env)) do
+				if item.title:find("Discard", 1, true) then
+					item.fn()
+				end
+			end
+		end)
+
+		stop_with(function()
+			env.now = 1600
+			fire_interval_timers()
+		end)
+
+		stop_with(function()
+			env.frame = { x = 0, y = 0, w = 800, h = 600 }
+			env.screen_watchers[#env.screen_watchers].callback()
+		end)
+
+		stop_with(function()
+			env.caffeine_watchers[1].callback(hs.caffeinate.watcher.systemWillSleep)
+		end)
+
+		stop_with(function()
+			env.caffeine_watchers[1].callback(hs.caffeinate.watcher.screensDidLock)
+		end)
+	end)
+
+	it("hides the keycast when the recorder task finishes and on teardown", function()
+		local fake = make_keycast_fake()
+		start_live_recording(fake)
+		env.now = env.now + 0.2
+		recorder.onChord()
+		assert.is_false(fake.active)
+		local stops = tasks_with_arg(env, "stop")
+		assert.is_true(#stops >= 1)
+		stops[#stops]:complete(0, '{"id":"sess1","stopped_by":"chord"}', "")
+		assert.is_false(fake.active)
+		assert.is_true(fake.hide_calls >= 1)
+
+		env.restore()
+		fake = make_keycast_fake()
+		start_live_recording(fake)
+		assert.is_true(fake.active)
+		complete_status(env)
+		assert.is_false(fake.active)
+		assert.is_true(fake.hide_calls >= 1)
+
+		env.restore()
+		fake = make_keycast_fake()
+		start_live_recording(fake)
+		assert.is_true(fake.active)
+		start_recorder(env, recorder)
+		assert.is_false(fake.active)
+		assert.is_true(fake.hide_calls >= 1)
+	end)
+
+	it("never shows the keycast for probe-only sessions", function()
+		local fake = make_keycast_fake()
+		env, recorder = setup({ now = 1001 })
+		recorder._setKeycastForTests(fake)
+		start_recorder(env, recorder)
+		complete_status(env, { active = active_fields({ probe = true, started_at = 1000, cap_seconds = 8 }) })
+		assert.equals("idle", _G.BobScreenRecorder.model.state)
+		assert.equals(0, #fake.show_calls)
+		assert.is_false(fake.active)
+	end)
+
+	it("persists a mid-clip keys change with macrec keys", function()
+		local fake = make_keycast_fake()
+		start_live_recording(fake)
+		assert.equals(1, #fake.show_calls)
+		local target
+		for _, item in ipairs(menu_items(env)) do
+			if item.title == "Show Keys: All" then
+				target = item
+			end
+		end
+		assert.is_not_nil(target)
+		target.fn()
+		assert.equals(2, #fake.show_calls)
+		assert.equals("chords", fake.show_calls[2].mode)
+		local keys_tasks = tasks_with_arg(env, "keys")
+		assert.equals(1, #keys_tasks)
+		assert.same({ "keys", "sess1", "chords" }, keys_tasks[1].args)
+	end)
+
+	it("re-adopts with keys off without activating the overlay", function()
+		local fake = make_keycast_fake()
+		env, recorder = setup({ now = 1042 })
+		recorder._setKeycastForTests(fake)
+		start_recorder(env, recorder)
+		complete_status(env, { active = active_fields({ started_at = 1000, keys = "off" }) })
+		assert.equals("recording", _G.BobScreenRecorder.model.state)
+		assert.equals(1, #fake.show_calls)
+		assert.equals("off", fake.show_calls[1].mode)
+		assert.is_false(fake.active)
+	end)
+
+	it("keeps recording when the keycast require fails", function()
+		env, recorder = setup({ now = 1000 })
+		start_recorder(env, recorder)
+		complete_status(env)
+		assert.is_not_nil(recorder._keycast())
+		recorder.onChord()
+		local pick = env.picks[#env.picks]
+		pick.onConfirm(REGION)
+		complete_start(env)
+		assert.equals("recording", _G.BobScreenRecorder.model.state)
+		assert.is_true(#env.canvases >= 5)
+		env.now = env.now + 0.2
+		recorder.onChord()
+		assert.equals("stopping", _G.BobScreenRecorder.model.state)
+	end)
+
+	it("keeps recording when Keycast.show throws", function()
+		local fake = make_keycast_fake({ throw_on_show = true })
+		env, recorder = setup({ now = 1000 })
+		recorder._setKeycastForTests(fake)
+		start_recorder(env, recorder)
+		complete_status(env)
+		recorder.onChord()
+		local pick = env.picks[#env.picks]
+		pick.onConfirm(REGION)
+		complete_start(env)
+		assert.equals("recording", _G.BobScreenRecorder.model.state)
+		assert.is_true(#env.canvases >= 5)
+		env.now = env.now + 0.2
+		recorder.onChord()
+		assert.equals("stopping", _G.BobScreenRecorder.model.state)
+	end)
+
+	it("calls Keycast.check on the recording tick", function()
+		local fake = make_keycast_fake()
+		start_live_recording(fake)
+		assert.equals(0, fake.check_calls)
+		fire_interval_timers()
+		assert.is_true(fake.check_calls >= 1)
+	end)
+
+	it("agrees with keycast_model on the three mode names", function()
+		local model = assert(loadfile(MODEL_PATH))()
+		local keycast_model = assert(loadfile("home/dot_hammerspoon/keycast_model.lua"))()
+		assert.equals(keycast_model.DEFAULT_MODE, model.KEYS_DEFAULT)
+		for _, mode in ipairs(model.KEYS_MODES) do
+			assert.is_true(keycast_model.MODES[mode] == true)
+		end
+		local count = 0
+		for _ in pairs(keycast_model.MODES) do
+			count = count + 1
+		end
+		assert.equals(#model.KEYS_MODES, count)
 	end)
 end)
