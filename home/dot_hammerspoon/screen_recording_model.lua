@@ -15,6 +15,8 @@ M.SETTINGS_KEY = "macrecLastRegion"
 M.FALLBACK_SETTINGS_KEY = "macscrotLastRegion"
 M.PILL_WIDTH = 190
 M.PILL_HEIGHT = 30
+M.KEYS_DEFAULT = "all"
+M.KEYS_MODES = { "all", "chords", "off" }
 M.BRACKET_LENGTH = 20
 M.BRACKET_THICKNESS = 3
 
@@ -49,6 +51,10 @@ local function copy_table(value)
 	return result
 end
 
+local function is_valid_keys_mode(value)
+	return value == "all" or value == "chords" or value == "off"
+end
+
 local function copy_model(model)
 	local result = copy_table(model)
 	result.session = copy_table(model and model.session)
@@ -61,6 +67,13 @@ local function effect(effects, kind, fields)
 	local item = copy_table(fields)
 	item.type = kind
 	table.insert(effects, item)
+end
+
+-- Every chrome teardown also drops the keycast overlay first, so no path
+-- can leave keys on screen without brackets (or vice versa).
+local function hide_overlays(effects)
+	effect(effects, "hide_keys", {})
+	effect(effects, "hide_chrome")
 end
 
 local function event_type(event)
@@ -97,7 +110,7 @@ local function stop_recording(model, effects, reason, event)
 			model.clipboardBaselines[model.session.id] = event.change_count
 		end
 	end
-	effect(effects, "hide_chrome")
+	hide_overlays(effects)
 	if reason == "chord" or reason == "menu" then
 		effect(effects, "flash_shutter")
 	end
@@ -152,14 +165,14 @@ local function apply_terminal_session(model, effects, session, event)
 	if session.status == "discarded" then
 		model.state = M.STATES.idle
 		model.discardPending = false
-		effect(effects, "hide_chrome")
+		hide_overlays(effects)
 		effect(effects, "update_menu")
 		return
 	end
 
 	local is_failed = session.status == "failed"
 	model.state = is_failed and M.STATES.failed or M.STATES.done
-	effect(effects, "hide_chrome")
+	hide_overlays(effects)
 	notify_terminal_session(model, effects, session, event)
 	effect(effects, "update_menu")
 end
@@ -198,7 +211,7 @@ local function refresh_from_status(model, effects, event)
 		model.state = M.STATES.idle
 		model.session = {}
 		model.reason = status.reason
-		effect(effects, "hide_chrome")
+		hide_overlays(effects)
 		effect(effects, "update_menu")
 		return
 	end
@@ -210,12 +223,32 @@ local function refresh_from_status(model, effects, event)
 	end
 	model.reason = nil
 	if type(status.active) == "table" then
+		local was_recording = model.state == M.STATES.recording
+		local prior_id = model.session and model.session.id
+		local prior_keys = model.session and model.session.keys
 		model.session = copy_table(status.active)
+		-- The operator's mid-clip choice (persisted via cycle_keys) wins over
+		-- a stale status value for the same session. A fresh model adopts
+		-- whatever macrec reports.
+		if prior_id ~= nil and prior_id == model.session.id and is_valid_keys_mode(prior_keys) then
+			model.session.keys = prior_keys
+		else
+			model.session.keys = M.normalizeKeysMode(status.active.keys, "off")
+		end
 		model.state = session_state_from_status(status.active)
 		if model.state == M.STATES.recording then
-			effect(effects, "show_chrome", { session = copy_table(model.session) })
+			-- Rebuilt chrome every refresh churns the overlay, so only show
+			-- on a transition: a new recording state or a new session id.
+			if not (was_recording and prior_id == model.session.id) then
+				effect(effects, "show_chrome", { session = copy_table(model.session) })
+				effect(effects, "show_keys", {
+					session_id = model.session.id,
+					region = copy_table(model.session.region),
+					mode = model.session.keys,
+				})
+			end
 		else
-			effect(effects, "hide_chrome")
+			hide_overlays(effects)
 		end
 		effect(effects, "update_menu")
 		return
@@ -244,7 +277,7 @@ local function refresh_from_status(model, effects, event)
 			effect(effects, "recover", { session_id = found.id })
 			model.recoverRequestedId = found.id
 		end
-		effect(effects, "hide_chrome")
+		hide_overlays(effects)
 		effect(effects, "update_menu")
 		return
 	end
@@ -253,7 +286,7 @@ local function refresh_from_status(model, effects, event)
 			model.state = M.STATES.idle
 			model.session = copy_table(found)
 			model.discardPending = false
-			effect(effects, "hide_chrome")
+			hide_overlays(effects)
 			effect(effects, "update_menu")
 		else
 			apply_terminal_session(model, effects, found, event)
@@ -263,14 +296,14 @@ local function refresh_from_status(model, effects, event)
 	if found and (found.status == "finalizing" or found.status == "encoding" or found.status == "uploading") then
 		model.session = copy_table(found)
 		model.state = M.STATES.shipping
-		effect(effects, "hide_chrome")
+		hide_overlays(effects)
 		effect(effects, "update_menu")
 		return
 	end
 
 	model.state = M.STATES.idle
 	model.session = {}
-	effect(effects, "hide_chrome")
+	hide_overlays(effects)
 	effect(effects, "update_menu")
 end
 
@@ -339,13 +372,18 @@ function M.reduce(previous, event, now)
 		end
 		model.state = M.STATES.starting
 		model.clipboardBaseline = nil
-		model.selection = { region = copy_table(event.region), mic = event.mic == true }
+		model.selection = {
+			region = copy_table(event.region),
+			mic = event.mic == true,
+			keys = M.normalizeKeysMode(event.keys, M.KEYS_DEFAULT),
+		}
 		model.cancelPending = false
 		model.discardPending = false
 		effect(effects, "close_selector")
 		effect(effects, "start_recorder", {
 			region = copy_table(event.region),
 			mic = event.mic == true,
+			keys = model.selection.keys,
 			save_default = event.save_default == true or event.command_enter == true,
 			max_seconds = M.CAP_SECONDS,
 		})
@@ -367,6 +405,9 @@ function M.reduce(previous, event, now)
 		local selection = model.selection or {}
 		session.region = session.region or copy_table(selection.region)
 		session.mic = session.mic == nil and selection.mic == true or session.mic == true
+		if not is_valid_keys_mode(session.keys) then
+			session.keys = M.normalizeKeysMode(selection.keys, M.KEYS_DEFAULT)
+		end
 		session.started_at = session.started_at or now
 		model.session = session
 		model.selection = nil
@@ -375,11 +416,16 @@ function M.reduce(previous, event, now)
 			model.discardPending = true
 			model.cancelPending = false
 			effect(effects, "discard", { session_id = session.id })
-			effect(effects, "hide_chrome")
+			hide_overlays(effects)
 			effect(effects, "update_menu")
 		else
 			model.state = M.STATES.recording
 			effect(effects, "show_chrome", { session = copy_table(session) })
+			effect(effects, "show_keys", {
+				session_id = session.id,
+				region = copy_table(session.region),
+				mode = session.keys,
+			})
 			effect(effects, "update_menu")
 		end
 	elseif kind == "start_fail" then
@@ -414,7 +460,7 @@ function M.reduce(previous, event, now)
 			if is_number(event.change_count) then
 				model.clipboardBaseline = event.change_count
 			end
-			effect(effects, "hide_chrome")
+			hide_overlays(effects)
 			effect(effects, "flash_shutter")
 			effect(effects, "discard", { session_id = model.session.id })
 			effect(effects, "update_menu")
@@ -430,12 +476,26 @@ function M.reduce(previous, event, now)
 		if model.state == M.STATES.stopping then
 			model.state = model.discardPending and M.STATES.idle or M.STATES.shipping
 			model.discardPending = false
-			effect(effects, "hide_chrome")
+			hide_overlays(effects)
 			effect(effects, "update_menu")
 		elseif model.state == M.STATES.recording then
 			model.state = M.STATES.shipping
 			model.stopReason = event.reason or model.stopReason or "system"
-			effect(effects, "hide_chrome")
+			hide_overlays(effects)
+			effect(effects, "update_menu")
+		end
+	elseif kind == "cycle_keys" then
+		if model.state == M.STATES.recording and model.session and model.session.id then
+			model.session.keys = M.nextKeysMode(M.normalizeKeysMode(model.session.keys, "off"))
+			effect(effects, "show_keys", {
+				session_id = model.session.id,
+				region = copy_table(model.session.region),
+				mode = model.session.keys,
+			})
+			effect(effects, "persist_keys", {
+				session_id = model.session.id,
+				mode = model.session.keys,
+			})
 			effect(effects, "update_menu")
 		end
 	elseif kind == "status_refresh" then
@@ -648,9 +708,13 @@ function M.menuItems(value, now)
 			or "Region"
 		local display = session.display_name or session.display or "Display"
 		local mic = session.mic == true and "Mic on" or "Mic off"
+		local keys = M.normalizeKeysMode(session.keys, "off")
+		local keys_label = keys == "all" and "Show Keys: All"
+			or (keys == "chords" and "Show Keys: Chords Only" or "Show Keys: Off")
 		return {
 			row("header", "● Recording · " .. M.formatElapsed(elapsed), "accent", nil, false),
 			row("info", size .. " · " .. display .. " · " .. mic, "info", nil, false),
+			row("action", keys_label, "action", "cycle_keys", true),
 			row("action", "Stop & Upload  " .. M.CHORD_LABEL, "action", "stop_upload", true),
 			row("action", "Discard Recording…", "action", "discard", true),
 		}
@@ -677,20 +741,60 @@ function M.menuItems(value, now)
 	return {}
 end
 
+-- Normalize a keys mode. Selectors and `enter` fall back to KEYS_DEFAULT;
+-- anything read back from macrec falls back to "off".
+function M.normalizeKeysMode(value, fallback)
+	if is_valid_keys_mode(value) then
+		return value
+	end
+	if is_valid_keys_mode(fallback) then
+		return fallback
+	end
+	return M.KEYS_DEFAULT
+end
+
+-- Cycle order: all → chords → off → all. Anything unknown restarts at all.
+function M.nextKeysMode(mode)
+	if mode == "all" then
+		return "chords"
+	elseif mode == "chords" then
+		return "off"
+	end
+	return "all"
+end
+
+local function selector_keys(state, selection)
+	local keys = state.keys ~= nil and state.keys or selection.keys
+	return M.normalizeKeysMode(keys, M.KEYS_DEFAULT)
+end
+
+-- Badge base without the region size, which the picker appends.
+function M.selectorBadgeText(state)
+	state = type(state) == "table" and state or {}
+	local selection = type(state.selection) == "table" and state.selection or {}
+	local mic = state.mic == true or selection.mic == true
+	local keys = selector_keys(state, selection)
+	local suffix = keys == "all" and " · KEYS" or (keys == "chords" and " · CHORDS" or "")
+	return "● REC" .. (mic and " · MIC" or "") .. suffix
+end
+
 function M.selectorBadge(state)
 	state = type(state) == "table" and state or {}
 	local region = state.region or (state.selection and state.selection.region) or {}
 	local size = is_number(region.w) and is_number(region.h) and string.format("%.0f × %.0f", region.w, region.h)
 		or "Select region"
-	local mic = state.mic == true or (state.selection and state.selection.mic == true)
-	return "● REC" .. (mic and " · MIC" or "") .. " · " .. size
+	return M.selectorBadgeText(state) .. " · " .. size
 end
 
 function M.selectorHint(state)
 	state = type(state) == "table" and state or {}
-	local mic = state.mic == true or (state.selection and state.selection.mic == true)
+	local selection = type(state.selection) == "table" and state.selection or {}
+	local mic = state.mic == true or selection.mic == true
+	local keys = selector_keys(state, selection)
 	return "Drag: new box · ⌘-drag: move · Corners: resize · F: full screen · W: window\n⏎: record · ⌘⏎: record + save default · M: mic "
 		.. (mic and "on" or "off")
+		.. " · K: keys "
+		.. keys
 		.. " · Esc or "
 		.. M.CHORD_LABEL
 		.. ": cancel"
@@ -1020,10 +1124,21 @@ function M.parseStatus(decoded)
 	if active == nil or is_null_sentinel(active) then
 		active = nil
 	end
+	local parsed_active = nil
+	if active ~= nil then
+		parsed_active = copy_table(active)
+		parsed_active.keys = M.normalizeKeysMode(active.keys, "off")
+	end
+	local parsed_sessions = {}
+	for index, session in ipairs(sessions) do
+		local parsed_session = copy_table(session)
+		parsed_session.keys = M.normalizeKeysMode(session.keys, "off")
+		parsed_sessions[index] = parsed_session
+	end
 	return {
 		state = active and active.state or M.STATES.idle,
-		active = active and copy_table(active) or nil,
-		sessions = sessions,
+		active = parsed_active,
+		sessions = parsed_sessions,
 	}
 end
 

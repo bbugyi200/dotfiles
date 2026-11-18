@@ -106,6 +106,7 @@ describe("screen recording reducer", function()
 		local start = assert(effect_of(effects, "start_recorder"))
 		assert.same(rect(20, 30, 800, 450), start.region)
 		assert.is_true(start.mic)
+		assert.equals("all", start.keys)
 		assert.is_true(start.save_default)
 		assert.equals(600, start.max_seconds)
 
@@ -116,8 +117,13 @@ describe("screen recording reducer", function()
 		assert.equals("recording", recording.state)
 		assert.equals("abc", recording.session.id)
 		assert.is_true(recording.session.mic)
+		assert.equals("all", recording.session.keys)
 		assert.same(rect(20, 30, 800, 450), recording.session.region)
 		assert.is_truthy(effect_of(start_effects, "show_chrome"))
+		local shown = assert(effect_of(start_effects, "show_keys"))
+		assert.equals("abc", shown.session_id)
+		assert.equals("all", shown.mode)
+		assert.same(rect(20, 30, 800, 450), shown.region)
 	end)
 
 	it("returns idle and notifies when the recorder fails to start", function()
@@ -137,6 +143,8 @@ describe("screen recording reducer", function()
 		assert.equals("stopping", stopping.state)
 		assert.is_truthy(effect_of(effects, "discard"))
 		assert.is_nil(effect_of(effects, "show_chrome"))
+		assert.is_nil(effect_of(effects, "show_keys"))
+		assert.is_truthy(effect_of(effects, "hide_keys"))
 	end)
 
 	it("stops on chord and ignores another chord while stopping", function()
@@ -344,6 +352,7 @@ describe("screen recording reducer", function()
 		}, 11)
 		assert.equals("idle", live.state)
 		assert.is_nil(effect_of(live_effects, "show_chrome"))
+		assert.is_nil(effect_of(live_effects, "show_keys"))
 
 		local terminal_probes = {
 			status_session({ id = "probe-done", probe = true }),
@@ -395,6 +404,256 @@ describe("screen recording reducer", function()
 		}, 2)
 		assert.equals("idle", resolved.state)
 		assert.is_nil(effect_of(effects, "notify"))
+	end)
+end)
+
+describe("screen recording keys mode", function()
+	local function effect_index(effects, kind, from)
+		for index = from or 1, #effects do
+			if effects[index].type == kind then
+				return index
+			end
+		end
+		return nil
+	end
+
+	local function recording_active(overrides)
+		local active = {
+			id = "live",
+			name = "clip",
+			state = "recording",
+			region = rect(10, 20, 300, 200),
+			mic = false,
+			probe = false,
+			started_at = 10,
+			cap_seconds = 600,
+			recorder_alive = true,
+		}
+		for key, value in pairs(overrides or {}) do
+			active[key] = value
+		end
+		return active
+	end
+
+	local function live_refresh(active)
+		return { type = "status_refresh", status = { state = "recording", active = active, sessions = {} } }
+	end
+
+	it("normalizes modes and cycles all → chords → off → all", function()
+		assert.equals("all", model.KEYS_DEFAULT)
+		assert.equals("all", model.normalizeKeysMode(nil, model.KEYS_DEFAULT))
+		assert.equals("all", model.normalizeKeysMode("bogus", model.KEYS_DEFAULT))
+		assert.equals("chords", model.normalizeKeysMode("chords", model.KEYS_DEFAULT))
+		assert.equals("off", model.normalizeKeysMode(nil, "off"))
+		assert.equals("off", model.normalizeKeysMode("bogus", "off"))
+		assert.equals("off", model.normalizeKeysMode("off", model.KEYS_DEFAULT))
+		assert.equals("chords", model.nextKeysMode("all"))
+		assert.equals("off", model.nextKeysMode("chords"))
+		assert.equals("all", model.nextKeysMode("off"))
+		assert.equals("all", model.nextKeysMode("bogus"))
+	end)
+
+	it("carries the selection mode into start_recorder and prefers the decoded mode on start_ok", function()
+		local selecting = state("selecting")
+		local starting, enter_effects = model.reduce(selecting, {
+			type = "enter",
+			region = rect(20, 30, 800, 450),
+			keys = "chords",
+		}, 100)
+		assert.equals("chords", starting.selection.keys)
+		assert.equals("chords", assert(effect_of(enter_effects, "start_recorder")).keys)
+
+		local recording, start_effects = model.reduce(starting, {
+			type = "start_ok",
+			session = { id = "abc", started_at = 101, keys = "off" },
+		}, 101)
+		assert.equals("off", recording.session.keys)
+		local shown = assert(effect_of(start_effects, "show_keys"))
+		assert.equals("abc", shown.session_id)
+		assert.equals("off", shown.mode)
+		assert.same(rect(20, 30, 800, 450), shown.region)
+		assert.is_true(effect_index(start_effects, "show_chrome") < effect_index(start_effects, "show_keys"))
+	end)
+
+	it("drops hide_keys before hide_chrome on every stop path", function()
+		local clips = {
+			chord = { type = "chord" },
+			menu = { type = "stop", reason = "menu" },
+			sleep = { type = "sleep" },
+			lock = { type = "lock" },
+			display = { type = "display_loss" },
+			discard = { type = "discard_confirmed" },
+		}
+		for _, event in pairs(clips) do
+			local recording = state("recording", {
+				session = { id = "one", region = rect(0, 0, 10, 10), keys = "all", started_at = 1 },
+			})
+			local _, effects = model.reduce(recording, event, 5)
+			local hide_keys = assert(effect_index(effects, "hide_keys"), event.type)
+			local hide_chrome = assert(effect_index(effects, "hide_chrome"), event.type)
+			assert.is_true(hide_keys < hide_chrome)
+		end
+
+		local capping = state("recording", {
+			session = { id = "one", region = rect(0, 0, 10, 10), keys = "all", started_at = 100 },
+		})
+		local _, cap_effects = model.reduce(capping, { type = "tick" }, 700)
+		assert.equals("cap", assert(effect_of(cap_effects, "stop_recorder")).reason)
+		assert.is_true(effect_index(cap_effects, "hide_keys") < effect_index(cap_effects, "hide_chrome"))
+
+		local stopping, chord_effects = model.reduce(
+			state("recording", { session = { id = "one", keys = "all", started_at = 1 } }),
+			{ type = "chord" },
+			6
+		)
+		assert.equals("stopping", stopping.state)
+		assert.is_true(effect_index(chord_effects, "hide_keys") < effect_index(chord_effects, "hide_chrome"))
+		assert.is_true(effect_index(chord_effects, "hide_chrome") < effect_index(chord_effects, "flash_shutter"))
+		assert.is_true(effect_index(chord_effects, "flash_shutter") < effect_index(chord_effects, "stop_recorder"))
+
+		local _, gone_effects = model.reduce(
+			state("recording", { session = { id = "two", keys = "all", started_at = 1 } }),
+			{ type = "recorder_gone", id = "two", reason = "cap" },
+			7
+		)
+		assert.is_true(effect_index(gone_effects, "hide_keys") < effect_index(gone_effects, "hide_chrome"))
+
+		local _, done_effects = model.reduce(
+			state("stopping", { session = { id = "two", keys = "all", started_at = 1 } }),
+			{ type = "stop_done", id = "two" },
+			8
+		)
+		assert.is_true(effect_index(done_effects, "hide_keys") < effect_index(done_effects, "hide_chrome"))
+	end)
+
+	it("hides keys on terminal and idle status refreshes", function()
+		local done_session = status_session({ id = "one", mp4 = "/tmp/clip.mp4", duration_s = 42, bytes = 10 })
+		local done, done_effects = model.reduce(
+			state("recording", { session = { id = "one", keys = "all", started_at = 1 } }),
+			{ type = "status_refresh", status = { state = "idle", sessions = { done_session } } },
+			9
+		)
+		assert.equals("done", done.state)
+		assert.is_true(effect_index(done_effects, "hide_keys") < effect_index(done_effects, "hide_chrome"))
+
+		local idle, idle_effects = model.reduce(
+			state("recording", { session = { id = "one", keys = "all", started_at = 1 } }),
+			{ type = "status_refresh", status = { state = "idle", sessions = {} } },
+			10
+		)
+		assert.equals("idle", idle.state)
+		assert.is_true(effect_index(idle_effects, "hide_keys") < effect_index(idle_effects, "hide_chrome"))
+	end)
+
+	it("shows keys on adoption and only on transitions afterwards", function()
+		local recording, first = model.reduce(state("idle"), live_refresh(recording_active({ keys = "all" })), 11)
+		assert.equals("recording", recording.state)
+		assert.equals("all", recording.session.keys)
+		assert.is_truthy(effect_of(first, "show_chrome"))
+		assert.equals("all", assert(effect_of(first, "show_keys")).mode)
+
+		local same, second = model.reduce(recording, live_refresh(recording_active({ keys = "all" })), 12)
+		assert.equals("recording", same.state)
+		assert.is_nil(effect_of(second, "show_chrome"))
+		assert.is_nil(effect_of(second, "show_keys"))
+		assert.is_truthy(effect_of(second, "update_menu"))
+
+		local moved, third = model.reduce(same, live_refresh(recording_active({ id = "live2", keys = "chords" })), 13)
+		assert.equals("live2", moved.session.id)
+		assert.equals("chords", moved.session.keys)
+		assert.is_truthy(effect_of(third, "show_chrome"))
+		assert.equals("live2", assert(effect_of(third, "show_keys")).session_id)
+
+		local off, off_effects = model.reduce(state("idle"), live_refresh(recording_active({ keys = "off" })), 14)
+		assert.equals("off", off.session.keys)
+		assert.equals("off", assert(effect_of(off_effects, "show_keys")).mode)
+	end)
+
+	it("prefers the model keys over a stale status value for the same session", function()
+		local held = state("recording", {
+			session = { id = "sess1", region = rect(0, 0, 10, 10), keys = "chords", started_at = 1 },
+		})
+		local kept, effects = model.reduce(held, live_refresh(recording_active({ id = "sess1", keys = "all" })), 2)
+		assert.equals("chords", kept.session.keys)
+		assert.is_nil(effect_of(effects, "show_chrome"))
+		assert.is_nil(effect_of(effects, "show_keys"))
+	end)
+
+	it("cycles the mode mid-clip, persists it, and ignores cycle_keys elsewhere", function()
+		local recording = state("recording", {
+			session = { id = "s1", region = rect(1, 2, 30, 40), keys = "all", started_at = 1 },
+		})
+		local chords, chord_effects = model.reduce(recording, { type = "cycle_keys" }, 2)
+		assert.equals("chords", chords.session.keys)
+		local shown = assert(effect_of(chord_effects, "show_keys"))
+		assert.equals("s1", shown.session_id)
+		assert.equals("chords", shown.mode)
+		assert.same(rect(1, 2, 30, 40), shown.region)
+		local persisted = assert(effect_of(chord_effects, "persist_keys"))
+		assert.equals("s1", persisted.session_id)
+		assert.equals("chords", persisted.mode)
+		assert.is_true(effect_index(chord_effects, "show_keys") < effect_index(chord_effects, "persist_keys"))
+		assert.is_true(effect_index(chord_effects, "persist_keys") < effect_index(chord_effects, "update_menu"))
+
+		local off = model.reduce(chords, { type = "cycle_keys" }, 3)
+		assert.equals("off", off.session.keys)
+		local all, _ = model.reduce(off, { type = "cycle_keys" }, 4)
+		assert.equals("all", all.session.keys)
+
+		local broken = state("recording", {
+			session = { id = "s1", region = rect(1, 2, 30, 40), keys = "bogus", started_at = 1 },
+		})
+		local reset = model.reduce(broken, { type = "cycle_keys" }, 5)
+		assert.equals("all", reset.session.keys)
+
+		for _, name in ipairs({ "idle", "selecting", "starting", "stopping", "shipping", "done", "failed" }) do
+			local unchanged, ignored =
+				model.reduce(state(name, { session = { id = "s1", keys = "all" } }), { type = "cycle_keys" }, 6)
+			assert.equals(name, unchanged.state)
+			assert.equals(0, #ignored)
+		end
+	end)
+
+	it("tolerates missing and bogus keys in status parsing", function()
+		local missing = model.parseStatus({ schema = 1, active = recording_active(), sessions = {} })
+		assert.is_nil(missing.reason)
+		assert.equals("off", missing.active.keys)
+
+		local bogus = model.parseStatus({
+			schema = 1,
+			active = recording_active({ keys = "yelling" }),
+			sessions = { status_session({ id = "s", keys = "yelling" }) },
+		})
+		assert.is_nil(bogus.reason)
+		assert.equals("off", bogus.active.keys)
+		assert.equals("off", bogus.sessions[1].keys)
+
+		local kept = model.parseStatus({
+			schema = 1,
+			active = recording_active({ keys = "chords" }),
+			sessions = { status_session({ id = "s", keys = "all" }) },
+		})
+		assert.equals("chords", kept.active.keys)
+		assert.equals("all", kept.sessions[1].keys)
+	end)
+
+	it("renders the keys menu row, badge, and hint for every mode", function()
+		local labels = { all = "Show Keys: All", chords = "Show Keys: Chords Only", off = "Show Keys: Off" }
+		for _, mode in ipairs({ "all", "chords", "off" }) do
+			local items = model.menuItems(state("recording", {
+				session = { region = rect(0, 0, 1280, 720), keys = mode },
+			}))
+			assert.equals("info", items[2].kind)
+			assert.equals(labels[mode], items[3].segments[1].text)
+			assert.equals("cycle_keys", items[3].action)
+		end
+		assert.equals("● REC · KEYS · 1280 × 720", model.selectorBadge({ region = rect(0, 0, 1280, 720) }))
+		assert.equals(
+			"● REC · MIC · CHORDS · 1280 × 720",
+			model.selectorBadge({ region = rect(0, 0, 1280, 720), mic = true, keys = "chords" })
+		)
+		assert.equals("● REC", model.selectorBadgeText({ keys = "off" }))
+		assert.is_truthy(model.selectorHint({ keys = "off" }):find("K: keys off", 1, true))
 	end)
 end)
 
@@ -501,9 +760,11 @@ describe("screen recording presentation helpers", function()
 			142
 		)
 		assert.equals("header", items[1].kind)
-		assert.equals("Stop & Upload  " .. model.CHORD_LABEL, items[3].segments[1].text)
-		assert.equals("stop_upload", items[3].action)
-		assert.equals("discard", items[4].action)
+		assert.equals("Show Keys: Off", items[3].segments[1].text)
+		assert.equals("cycle_keys", items[3].action)
+		assert.equals("Stop & Upload  " .. model.CHORD_LABEL, items[4].segments[1].text)
+		assert.equals("stop_upload", items[4].action)
+		assert.equals("discard", items[5].action)
 		local failed = model.menuItems("failed")
 		assert.same({ "retry", "reveal", "show_log", "dismiss" }, {
 			failed[2].action,
@@ -514,13 +775,17 @@ describe("screen recording presentation helpers", function()
 	end)
 
 	it("builds mic-aware selector badge and hint", function()
-		assert.equals("● REC · 1280 × 720", model.selectorBadge({ region = rect(0, 0, 1280, 720) }))
+		assert.equals("● REC · KEYS · 1280 × 720", model.selectorBadge({ region = rect(0, 0, 1280, 720) }))
 		assert.equals(
-			"● REC · MIC · 1280 × 720",
+			"● REC · MIC · KEYS · 1280 × 720",
 			model.selectorBadge({ region = rect(0, 0, 1280, 720), mic = true })
 		)
+		assert.equals("● REC · MIC · CHORDS", model.selectorBadgeText({ mic = true, keys = "chords" }))
+		assert.equals("● REC", model.selectorBadgeText({ keys = "off" }))
 		assert.is_truthy(model.selectorHint({ mic = false }):find("M: mic off", 1, true))
 		assert.is_truthy(model.selectorHint({ mic = true }):find("M: mic on", 1, true))
+		assert.is_truthy(model.selectorHint({}):find("K: keys all", 1, true))
+		assert.is_truthy(model.selectorHint({ keys = "chords" }):find("K: keys chords", 1, true))
 		assert.is_truthy(model.selectorHint({}):find("F: full screen · W: window", 1, true))
 		assert.is_truthy(model.selectorHint({}):find("Esc or " .. model.CHORD_LABEL .. ": cancel", 1, true))
 	end)
@@ -623,7 +888,11 @@ describe("screen recording status parser", function()
 	it("accepts schema 1 active and session data", function()
 		local parsed = model.parseStatus({ schema = 1, active = valid_active, sessions = {} })
 		assert.equals("recording", parsed.state)
-		assert.same(valid_active, parsed.active)
+		local expected = { keys = "off" }
+		for key, value in pairs(valid_active) do
+			expected[key] = value
+		end
+		assert.same(expected, parsed.active)
 		assert.equals(0, #parsed.sessions)
 		local no_active = model.parseStatus({ schema = 1, sessions = {} })
 		assert.equals("idle", no_active.state)
