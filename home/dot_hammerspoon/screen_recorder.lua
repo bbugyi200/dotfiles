@@ -1699,7 +1699,15 @@ apply_effects = function(effects)
 		elseif kind == "show_chrome" then
 			show_recording_chrome(item.session)
 		elseif kind == "show_keys" then
-			pcall(Keycast.show, item)
+			local show_item = item
+			if item.session_id and M.isValidId(item.session_id) and runtime.macrecDir then
+				show_item = {}
+				for key, value in pairs(item) do
+					show_item[key] = value
+				end
+				show_item.log_path = runtime.macrecDir .. "/sessions/" .. item.session_id .. "/keys.jsonl"
+			end
+			pcall(Keycast.show, show_item)
 		elseif kind == "hide_keys" then
 			pcall(Keycast.hide)
 		elseif kind == "persist_keys" then

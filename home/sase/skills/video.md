@@ -97,7 +97,18 @@ ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1 in
 Mac screen recordings land in `~/tmp/screencasts` as `YYYYMMDD_HHMMSS.mp4`. Fetch the
 nth newest with `svid_fetch N` (or `#svid` in an agent prompt); add `--sheet` for a
 cached timestamped contact sheet plus a one-line summary. Clips are silent unless the
-mic was on for that clip.
+mic was on for that clip. `#svid --sheet` also prints a `Keystrokes:` WebVTT file of the
+exact keys shown on screen, or `none`. Read the Keystrokes subtitle stream before OCR:
+
+```bash
+ffmpeg -v error -i CLIP -map 0:s:m:title:Keystrokes -f webvtt -
+```
+
+If that matches no streams on older ffmpeg, fall back to the first subtitle track:
+
+```bash
+ffmpeg -v error -i CLIP -map 0:s:0 -f webvtt -
+```
 
 ## Host notes
 

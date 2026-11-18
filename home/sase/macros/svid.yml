@@ -14,10 +14,12 @@ steps:
     bash: |
       n="{{ n }}"
       svid_fetch "$n" --sheet
-    output: { local_path: path, sheet_path: path, summary: line }
+    output: { local_path: path, sheet_path: path, summary: line, keys: path }
 
   - name: inject
     prompt_part: |
       @file:{{ fetch.sheet_path }}
       Clip: {{ fetch.local_path }} ({{ fetch.summary }})
+      Keystrokes: {{ fetch.keys }}
+      It is a WebVTT file of the exact keys shown on screen, or none.
       For frames, OCR, or a transcript of this clip, use the /video skill (ffmpeg contact sheets, tesseract, whisper_run). Recordings are silent unless the mic was on.

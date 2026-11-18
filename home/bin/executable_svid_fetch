@@ -178,6 +178,31 @@ fi
 
 echo "sheet_path=${sheet_path}"
 
+keys_stem="${basename%.mp4}"
+keys_path="${sheet_dir}/${keys_stem}.keys.vtt"
+keys_value="none"
+if [[ -s "$keys_path" && "$keys_path" -nt "$local_path" ]]; then
+	keys_value="$keys_path"
+else
+	tmp_keys="$(mktemp "${sheet_dir}/.keys.XXXXXX.vtt")"
+	if "$FFMPEG_BIN" -hide_banner -loglevel error -y -i "$local_path" \
+		-map '0:s:m:title:Keystrokes' -f webvtt "$tmp_keys" 2>/dev/null && [[ -s "$tmp_keys" ]]; then
+		mv -f "$tmp_keys" "$keys_path"
+		chmod 600 "$keys_path" 2>/dev/null || true
+		keys_value="$keys_path"
+	elif "$FFMPEG_BIN" -hide_banner -loglevel error -y -i "$local_path" \
+		-map '0:s:0' -f webvtt "$tmp_keys" 2>/dev/null && [[ -s "$tmp_keys" ]] \
+		&& grep -q '^WEBVTT' "$tmp_keys" 2>/dev/null; then
+		mv -f "$tmp_keys" "$keys_path"
+		chmod 600 "$keys_path" 2>/dev/null || true
+		keys_value="$keys_path"
+	else
+		rm -f "$tmp_keys" "$keys_path"
+		keys_value="none"
+	fi
+fi
+echo "keys=${keys_value}"
+
 duration="$("$FFPROBE_BIN" -v error -show_entries format=duration \
 	-of default=nw=1:nk=1 "$local_path" 2>/dev/null || true)"
 dims="$("$FFPROBE_BIN" -v error -select_streams v:0 \
@@ -215,4 +240,8 @@ if [[ "$has_audio" -eq 1 ]]; then
 	audio_human="mic"
 fi
 
-echo "summary=${elapsed} · ${size_human} · ${dims_human} · ${audio_human}"
+if [[ "$keys_value" != "none" ]]; then
+	echo "summary=${elapsed} · ${size_human} · ${dims_human} · ${audio_human} · keys"
+else
+	echo "summary=${elapsed} · ${size_human} · ${dims_human} · ${audio_human}"
+fi

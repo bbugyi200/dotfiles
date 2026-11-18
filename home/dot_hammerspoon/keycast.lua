@@ -56,6 +56,85 @@ local function log_failure(error_message)
 	end
 end
 
+local function json_escape(text)
+	return tostring(text or ""):gsub('[%z\1-\31\\"]', function(char)
+		if char == "\\" then
+			return "\\\\"
+		elseif char == '"' then
+			return '\\"'
+		elseif char == "\n" then
+			return "\\n"
+		elseif char == "\r" then
+			return "\\r"
+		elseif char == "\t" then
+			return "\\t"
+		else
+			return string.format("\\u%04x", string.byte(char))
+		end
+	end)
+end
+
+local function flush_log()
+	local path = runtime.log_path
+	local buffer = runtime.log_buffer
+	if type(path) ~= "string" or path == "" then
+		return true
+	end
+	if type(buffer) ~= "table" or #buffer == 0 then
+		return true
+	end
+	if runtime.log_disabled_session == runtime.session_id and runtime.session_id ~= nil then
+		runtime.log_buffer = {}
+		return true
+	end
+	local lines = {}
+	for index, line in ipairs(buffer) do
+		lines[index] = line
+	end
+	local ok, open_error = pcall(function()
+		local handle = io.open(path, "a")
+		if not handle then
+			error("could not open log file")
+		end
+		for _, line in ipairs(lines) do
+			handle:write(line .. "\n")
+		end
+		handle:close()
+	end)
+	if not ok then
+		runtime.log_buffer = {}
+		runtime.log_disabled_session = runtime.session_id
+		runtime.log_path = nil
+		log_failure("keystroke log failed: " .. tostring(open_error))
+		return false
+	end
+	runtime.log_buffer = {}
+	return true
+end
+
+local function append_log(entry, now)
+	if type(runtime.log_path) ~= "string" or runtime.log_path == "" then
+		return
+	end
+	if runtime.log_disabled_session == runtime.session_id and runtime.session_id ~= nil then
+		return
+	end
+	if type(entry) ~= "table" then
+		return
+	end
+	local id = entry.id
+	if type(id) ~= "number" then
+		return
+	end
+	local label = entry.label
+	if type(label) ~= "string" or label == "" then
+		return
+	end
+	runtime.log_buffer = runtime.log_buffer or {}
+	local line = string.format('{"t":%.3f,"id":%d,"text":"%s"}', tonumber(now) or 0, id, json_escape(label))
+	table.insert(runtime.log_buffer, line)
+end
+
 local function stop_object(object, method)
 	if object then
 		pcall(function()
@@ -82,10 +161,13 @@ local function release_visuals()
 end
 
 function M.hide()
+	pcall(flush_log)
 	release_visuals()
 	runtime.session_id = nil
 	runtime.region = nil
 	runtime.mode = nil
+	runtime.log_path = nil
+	runtime.log_buffer = {}
 	runtime.secure = false
 	runtime.denied = false
 	runtime.indicator = false
@@ -314,6 +396,7 @@ local function start_expiry_timer()
 			local old_count = #runtime.trail
 			runtime.trail = Model.expire(runtime.trail, now_seconds())
 			local privacy_changed = poll_secure_input()
+			pcall(flush_log)
 			if privacy_changed or old_count ~= #runtime.trail or #runtime.trail > 0 then
 				redraw()
 			end
@@ -391,7 +474,13 @@ local function handle_key_event(event)
 		["repeat"] = event_is_repeat(event),
 	}
 	local old_count = #runtime.trail
-	runtime.trail = Model.update(runtime.trail, info, now_seconds(), runtime.mode)
+	local event_now = now_seconds()
+	local new_trail, token = Model.update(runtime.trail, info, event_now, runtime.mode)
+	runtime.trail = new_trail
+	if token ~= nil then
+		local touched = runtime.trail[#runtime.trail]
+		pcall(append_log, touched, event_now)
+	end
 	if old_count ~= #runtime.trail or #runtime.trail > 0 then
 		request_redraw()
 	end
@@ -457,32 +546,53 @@ local function show_impl(item)
 
 	local region = copy_region(item.region)
 	local mode = Model.normalizeMode(item.mode)
+	local new_log_path
+	if type(item.log_path) == "string" and item.log_path ~= "" then
+		new_log_path = item.log_path
+	end
 	local changed_session = runtime.session_id ~= session_id
 	local changed_region = not same_region(runtime.region, region)
 	local changed_mode = runtime.mode ~= mode
-	local identical = not changed_session and not changed_region and not changed_mode
+	local changed_log_path = runtime.log_path ~= new_log_path
+	local identical = not changed_session and not changed_region and not changed_mode and not changed_log_path
 	if identical and (mode == "off" or runtime.active) then
 		return true
 	end
 
 	if changed_session then
+		pcall(flush_log)
 		release_visuals()
 		runtime.trail = {}
+		runtime.log_buffer = {}
 		runtime.secure = false
 		runtime.denied = false
 		runtime.indicator = false
 		runtime.failed_session_id = nil
 		runtime.failure_logged = false
-	elseif changed_mode then
+	elseif changed_mode or changed_log_path then
+		pcall(flush_log)
 		runtime.trail = {}
+		if mode == "off" then
+			runtime.log_buffer = {}
+		end
 	end
 
 	runtime.session_id = session_id
 	runtime.region = region
 	runtime.mode = mode
+	if mode == "off" or new_log_path == nil then
+		runtime.log_path = nil
+		if mode == "off" then
+			runtime.log_buffer = runtime.log_buffer or {}
+		end
+	else
+		runtime.log_path = new_log_path
+		runtime.log_buffer = runtime.log_buffer or {}
+	end
 
 	local layout = Model.layout(region)
 	if mode == "off" or not layout.visible then
+		pcall(flush_log)
 		release_visuals()
 		runtime.trail = {}
 		return true
@@ -518,7 +628,12 @@ function M.setMode(mode)
 	if type(runtime.session_id) ~= "string" or type(runtime.region) ~= "table" then
 		return false
 	end
-	return M.show({ session_id = runtime.session_id, region = runtime.region, mode = mode })
+	return M.show({
+		session_id = runtime.session_id,
+		region = runtime.region,
+		mode = mode,
+		log_path = runtime.log_path,
+	})
 end
 
 function M.check()

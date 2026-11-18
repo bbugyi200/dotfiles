@@ -22,6 +22,7 @@ function set_up() {
   SCP_FAIL_HOST=""
   FFMPEG_HAS_DRAWTEXT="1"
   FFMPEG_FAIL="0"
+  FFMPEG_HAS_KEYS="0"
   FFPROBE_DURATION="42.5"
   FFPROBE_DIMS="2560,1600"
   FFPROBE_AUDIO="0"
@@ -127,6 +128,20 @@ if [[ "${DRAIN_STDIN:-}" == ffmpeg ]]; then
   cat >/dev/null
   printf 'stdin-drained|ffmpeg\n' >>"${EVENT_LOG}"
 fi
+joined=" $* "
+if [[ "${joined}" == *"Keystrokes"* || "${joined}" == *"webvtt"* ]]; then
+  printf 'ffmpeg|keys\n' >>"${EVENT_LOG}"
+  last=""
+  for a in "$@"; do
+    last="$a"
+  done
+  if [[ "${FFMPEG_HAS_KEYS:-0}" == "1" ]]; then
+    mkdir -p "$(dirname "${last}")"
+    printf 'WEBVTT - Keystrokes\n\n00:00:00.000 --> 00:00:02.000\nciwfoo\n\n' >"${last}"
+    exit 0
+  fi
+  exit 1
+fi
 has_filters=0
 vf=""
 last=""
@@ -192,6 +207,7 @@ function run_fetch() {
     SCP_FAIL_HOST="${SCP_FAIL_HOST}" \
     FFMPEG_HAS_DRAWTEXT="${FFMPEG_HAS_DRAWTEXT}" \
     FFMPEG_FAIL="${FFMPEG_FAIL}" \
+    FFMPEG_HAS_KEYS="${FFMPEG_HAS_KEYS}" \
     FFPROBE_DURATION="${FFPROBE_DURATION}" \
     FFPROBE_DIMS="${FFPROBE_DIMS}" \
     FFPROBE_AUDIO="${FFPROBE_AUDIO}" \
@@ -248,9 +264,41 @@ function test_sheet_builds_sheet_and_summary() {
   assert_contains "local_path=${TEST_HOME}/tmp/screencasts/20260919_150000.mp4" "$(cat "${STDOUT_FILE}")"
   assert_contains "sheet_path=${TEST_HOME}/tmp/screencasts/.sheets/20260919_150000.jpg" "$(cat "${STDOUT_FILE}")"
   assert_contains "summary=0:42 · 5.0 MB · 2560×1600 · silent" "$(cat "${STDOUT_FILE}")"
+  assert_contains "keys=none" "$(cat "${STDOUT_FILE}")"
   assert_contains "drawtext" "$(cat "${EVENT_LOG}")"
   [ -s "${TEST_HOME}/tmp/screencasts/.sheets/20260919_150000.jpg" ]
   assert_equals "0" "$?"
+}
+
+function test_sheet_reports_none_without_keystroke_track() {
+  printf 'clip\n' >"${TEST_HOME}/tmp/screencasts/20260919_150000.mp4"
+  run_fetch 1 --sheet
+  assert_equals "0" "${RUN_RC}"
+  assert_contains "keys=none" "$(cat "${STDOUT_FILE}")"
+  assert_not_contains "· keys" "$(cat "${STDOUT_FILE}")"
+}
+
+function test_sheet_reports_keys_with_track_and_summary_suffix() {
+  FFMPEG_HAS_KEYS="1"
+  printf 'clip\n' >"${TEST_HOME}/tmp/screencasts/20260919_150000.mp4"
+  run_fetch 1 --sheet
+  assert_equals "0" "${RUN_RC}"
+  assert_contains "keys=${TEST_HOME}/tmp/screencasts/.sheets/20260919_150000.keys.vtt" "$(cat "${STDOUT_FILE}")"
+  assert_contains "· silent · keys" "$(cat "${STDOUT_FILE}")"
+  [ -s "${TEST_HOME}/tmp/screencasts/.sheets/20260919_150000.keys.vtt" ]
+  assert_equals "0" "$?"
+}
+
+function test_keys_vtt_is_cached_on_second_run() {
+  FFMPEG_HAS_KEYS="1"
+  printf 'clip\n' >"${TEST_HOME}/tmp/screencasts/20260919_150000.mp4"
+  touch -t 200101010000 "${TEST_HOME}/tmp/screencasts/20260919_150000.mp4"
+  run_fetch 1 --sheet
+  assert_equals "0" "${RUN_RC}"
+  run_fetch 1 --sheet
+  assert_equals "0" "${RUN_RC}"
+  assert_equals "1" "$(grep -c '^ffmpeg|keys$' "${EVENT_LOG}")"
+  assert_contains "keys=${TEST_HOME}/tmp/screencasts/.sheets/20260919_150000.keys.vtt" "$(cat "${STDOUT_FILE}")"
 }
 
 function test_sheet_uses_ten_frame_contact_sheet_filter() {

@@ -727,3 +727,15 @@ function test_lifecycle_probe_rejects_failed_session() {
   assert_equals "failed" "$(jq -r '.probes[0].metrics.session_status' "${STDOUT_FILE}")"
   assert_contains "probe capture was not a valid video" "$(jq -r '.probes[0].detail' "${STDOUT_FILE}")"
 }
+
+function test_discard_removes_keys_log() {
+  run_macrec start 0,0,80,80
+  LAST_ID="$(jq -r '.id' "${STDOUT_FILE}")"
+  printf '{"t":1.0,"id":1,"text":"a"}\n' >"$(session_path "${LAST_ID}")/keys.jsonl"
+  printf 'WEBVTT\n' >"$(session_path "${LAST_ID}")/keys.vtt"
+  run_macrec discard
+  assert_equals "0" "${RUN_RC}"
+  wait_session_field "${LAST_ID}" status discarded
+  assert_file_not_exists "$(session_path "${LAST_ID}")/keys.jsonl"
+  assert_file_not_exists "$(session_path "${LAST_ID}")/keys.vtt"
+}

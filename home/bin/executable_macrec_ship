@@ -34,6 +34,7 @@ RETRY_DELAY="${MACREC_SHIP_RETRY_DELAY:-5}"
 ACK_WAIT="${MACREC_SHIP_ACK_WAIT:-8}"
 POLL_INTERVAL="${MACREC_SHIP_POLL_INTERVAL:-0.1}"
 LOG_MAX_BYTES=1048576
+KEYS_EXPIRE_SECONDS=2
 
 usage() {
 	cat <<'EOF'
@@ -341,6 +342,117 @@ make_poster() {
 	return 1
 }
 
+# Format seconds as WebVTT HH:MM:SS.mmm.
+vtt_time() {
+	awk -v s="$1" 'BEGIN {
+		if (s + 0 < 0) s = 0
+		total_ms = int(s * 1000 + 0.5)
+		h = int(total_ms / 3600000)
+		m = int((total_ms % 3600000) / 60000)
+		sec = int((total_ms % 60000) / 1000)
+		ms = total_ms % 1000
+		printf "%02d:%02d:%02d.%03d", h, m, sec, ms
+	}'
+}
+
+# Build keys.vtt from keys.jsonl and mux it as a mov_text Keystrokes track.
+# Non-fatal: any failure logs, sets .keys_track=false, and keeps the
+# un-muxed clip.
+keys_track_stage() {
+	dir="$1"
+	keys_jsonl="${dir}/keys.jsonl"
+	keys_vtt="${dir}/keys.vtt"
+	if [ ! -s "$keys_jsonl" ]; then
+		session_set "$dir" '.keys_track = false'
+		return 0
+	fi
+	mp4="$(session_get "$dir" '.mp4 // ""')"
+	if [ -z "$mp4" ] || [ "$mp4" = "null" ] || [ ! -s "$mp4" ]; then
+		session_set "$dir" '.keys_track = false'
+		log_line "keys ${dir}: no local MP4 for keys track"
+		return 0
+	fi
+	ended="$(session_get "$dir" '.ended_at // empty')"
+	duration="$(session_get "$dir" '.duration_s // 0')"
+	case "$ended" in
+	'' | null | *[!0-9.]*) ended="" ;;
+	esac
+	case "$duration" in
+	'' | null | *[!0-9.]*) duration="0" ;;
+	esac
+	if [ -z "$ended" ]; then
+		session_set "$dir" '.keys_track = false'
+		log_line "keys ${dir}: missing ended_at for keys track"
+		return 0
+	fi
+	if ! perl_ge "$duration" "0.001"; then
+		session_set "$dir" '.keys_track = false'
+		log_line "keys ${dir}: missing duration for keys track"
+		return 0
+	fi
+	offset="$(perl_sub "$ended" "$duration")"
+	cues_json="$(mktemp "${dir}/keys.cues.XXXXXX")"
+	if ! "$JQ_BIN" -c --argjson offset "$offset" --argjson duration "$duration" \
+		--argjson expire "$KEYS_EXPIRE_SECONDS" '
+		[inputs | select(.t != null and .id != null and .text != null)]
+		| group_by(.id)
+		| map({
+			start: (map(.t) | min),
+			end_base: (map(.t) | max),
+			text: (sort_by(.t) | last | .text)
+		})
+		| map(.start = (.start - $offset) | .end = (.end_base + $expire - $offset) | {start, end: .end, text})
+		| map(select(.end > 0 and .start < $duration))
+		| map(.start = (if .start < 0 then 0 else .start end) | .end = (if .end > $duration then $duration else .end end))
+		| map(select(.end > .start))
+		| sort_by(.start)
+	' "$keys_jsonl" >"$cues_json" 2>/dev/null; then
+		rm -f "$cues_json"
+		session_set "$dir" '.keys_track = false'
+		log_line "keys ${dir}: could not build cues from keys.jsonl"
+		return 0
+	fi
+	if [ "$(JQ_BIN_TMP="$JQ_BIN" "$JQ_BIN" -r 'length' "$cues_json" 2>/dev/null || printf '0')" = "0" ]; then
+		rm -f "$cues_json"
+		session_set "$dir" '.keys_track = false'
+		log_line "keys ${dir}: no cues from keys.jsonl"
+		return 0
+	fi
+	{
+		printf 'WEBVTT - Keystrokes\n\n'
+		"$JQ_BIN" -r '.[] | "\(.start)\t\(.end)\t\(.text)"' "$cues_json" 2>/dev/null | while IFS="$(printf '\t')" read -r start end text; do
+			printf '%s --> %s\n%s\n\n' "$(vtt_time "$start")" "$(vtt_time "$end")" "$text"
+		done
+	} >"$keys_vtt" 2>/dev/null
+	rm -f "$cues_json"
+	if [ ! -s "$keys_vtt" ]; then
+		session_set "$dir" '.keys_track = false'
+		log_line "keys ${dir}: could not write keys.vtt"
+		return 0
+	fi
+	final_ext="${mp4##*.}"
+	tmp_muxed="${mp4}.keys_tmp.${final_ext}"
+	if ! "$FFMPEG_BIN" -y -hide_banner -loglevel error -i "$mp4" -i "$keys_vtt" \
+		-c copy -c:s mov_text -metadata:s:s:0 title=Keystrokes -metadata:s:s:0 language=eng \
+		"$tmp_muxed" 2>/dev/null; then
+		rm -f "$tmp_muxed"
+		session_set "$dir" '.keys_track = false'
+		log_line "keys ${dir}: subtitle mux failed, shipping without Keystrokes track"
+		return 0
+	fi
+	if ! mv -f "$tmp_muxed" "$mp4"; then
+		rm -f "$tmp_muxed"
+		session_set "$dir" '.keys_track = false'
+		log_line "keys ${dir}: could not replace final with muxed file"
+		return 0
+	fi
+	chmod 600 "$mp4" 2>/dev/null || true
+	bytes="$(file_bytes "$mp4")"
+	session_set "$dir" '.mp4 = $p | .bytes = $b | .keys_track = true' --arg p "$mp4" --argjson b "$bytes"
+	log_line "keys ${dir}: muxed Keystrokes track"
+	return 0
+}
+
 # One SSH probe per host: make the cast dir and report free KB.
 remote_free_kb() {
 	"$SSH_BIN" "${SSH_OPTS[@]}" "$1" \
@@ -645,6 +757,7 @@ encode_stage() {
 		session_set "$dir" '.poster = ""'
 		log_line "encode ${dir}: poster failed, continuing"
 	fi
+	keys_track_stage "$dir"
 	log_line "encode ${dir}: ${final} duration=${duration} ${width}x${height} audio=${has_audio} bytes=${bytes}"
 	return 0
 }
@@ -738,7 +851,7 @@ upload_stage() {
 	if [ "$ok_count" -gt 0 ]; then
 		set_status "$dir" "done"
 		session_set "$dir" '.error = ""'
-		rm -f "${dir}/raw.mov"
+		rm -f "${dir}/raw.mov" "${dir}/keys.jsonl" "${dir}/keys.vtt"
 		return 0
 	fi
 	set_status "$dir" failed

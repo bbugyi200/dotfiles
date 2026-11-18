@@ -115,6 +115,10 @@ athena with the clip. Use K → off, the **Show Keys** menu row, or Discard for 
 clips. If passwords are routinely typed in clips, flip `KEYS_DEFAULT` to `"chords"` in
 `screen_recording_model.lua`.
 
+The exact keys that were shown also ship inside the MP4 as a `Keystrokes` subtitle
+track. It contains only what the overlay showed, and `#svid` surfaces it as a
+`Keystrokes:` WebVTT file.
+
 Clips land at `~/tmp/screencasts/YYYYMMDD_HHMMSS.mp4` on the Mac, apollo, and athena.
 Apollo is skipped below 5 GiB free and pruned to at most 2 GiB of clips. Agents fetch
 clips with `svid_fetch` or the `#svid` macro.

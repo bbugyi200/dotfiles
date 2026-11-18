@@ -5,7 +5,9 @@ local M = {}
 M.DEFAULT_MODE = "all"
 M.MODES = { all = true, chords = true, off = true }
 M.ENTRY_TTL = 2
+M.EXPIRE_SECONDS = 2
 M.COALESCE_WINDOW = 0.45
+M.COALESCE_GAP = 0.45
 M.MIN_REGION_WIDTH = 320
 M.MIN_REGION_HEIGHT = 120
 M.REGION_RIGHT_INSET = 16
@@ -437,11 +439,28 @@ local function update_entry(entry, token, now)
 	entry.printable = token.printable
 end
 
+local function next_entry_id(trail)
+	local max_id = 0
+	for _, entry in ipairs(trail) do
+		if type(entry) == "table" and is_number(entry.id) and entry.id > max_id then
+			max_id = entry.id
+		end
+	end
+	return max_id + 1
+end
+
+local function ensure_entry_id(trail, entry)
+	if type(entry) == "table" and not is_number(entry.id) then
+		entry.id = next_entry_id(trail)
+	end
+end
+
 local function append_token(trail, token, now)
 	local last = trail[#trail]
 	if token.repeat_key and last and last.key == token.key then
 		local repeated_from_text = false
 		if last.kind == "token" and last.label == token.label then
+			ensure_entry_id(trail, last)
 			last.kind = "repeat"
 			last.text = token.label
 			last.count = 2
@@ -459,6 +478,7 @@ local function append_token(trail, token, now)
 			end
 		end
 		if last and last.kind == "repeat" and last.key == token.key then
+			ensure_entry_id(trail, last)
 			last.count = last.count + 1
 			last.label = last.text .. " ×" .. tostring(last.count)
 			update_entry(last, token, now)
@@ -466,6 +486,7 @@ local function append_token(trail, token, now)
 		end
 		local count = (repeated_from_text or (last and last.key == token.key)) and 2 or 1
 		local entry = {
+			id = next_entry_id(trail),
 			kind = "repeat",
 			key = token.key,
 			text = token.label,
@@ -482,6 +503,7 @@ local function append_token(trail, token, now)
 	if token.printable and last and last.kind == "text" and last.count == 1 then
 		local timestamp = entry_timestamp(last)
 		if is_number(timestamp) and now - timestamp <= M.COALESCE_WINDOW then
+			ensure_entry_id(trail, last)
 			last.text = last.text .. token.label
 			last.label = last.text
 			update_entry(last, token, now)
@@ -490,6 +512,7 @@ local function append_token(trail, token, now)
 	end
 
 	table.insert(trail, {
+		id = next_entry_id(trail),
 		kind = token.printable and "text" or "token",
 		key = token.key,
 		text = token.label,

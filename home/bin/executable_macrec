@@ -725,7 +725,7 @@ cmd_wrapper() {
 	rm -f "$(active_path)"
 
 	if [ "$reason" = "discard" ]; then
-		rm -f "$raw"
+		rm -f "$raw" "${sdir}/keys.jsonl" "${sdir}/keys.vtt"
 		patch_session "$sdir" "$("$JQ_BIN" -n -c --arg reason "$reason" --argjson ended "$ended" \
 			'{status:"discarded",stop_reason:$reason,ended_at:$ended}')"
 		exit 0

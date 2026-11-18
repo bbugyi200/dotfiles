@@ -427,3 +427,139 @@ describe("keycast runtime", function()
 		assert.equals(1, tap.enable_calls)
 	end)
 end)
+
+describe("keycast keystroke log", function()
+	local prior_hs
+	local prior_global_hs
+	local env
+	local Keycast
+
+	local function setup()
+		env = new_environment()
+		local hs_api
+		hs_api, _ = make_hs(env)
+		hs = hs_api
+		_G.hs = hs_api
+		_G.BobKeycast = nil
+		package.loaded.keycast_model = assert(loadfile(MODEL_PATH))()
+		package.loaded.keycast = nil
+		Keycast = assert(loadfile(KEYCAST_PATH))()
+	end
+
+	before_each(function()
+		prior_hs = hs
+		prior_global_hs = _G.hs
+		setup()
+	end)
+
+	after_each(function()
+		hs = prior_hs
+		_G.hs = prior_global_hs
+		_G.BobKeycast = nil
+		package.loaded.keycast = nil
+	end)
+
+	local function tmp_log()
+		local path = os.tmpname()
+		os.remove(path)
+		return path
+	end
+
+	local function read_lines(path)
+		local handle = io.open(path, "r")
+		if not handle then
+			return {}
+		end
+		local lines = {}
+		for line in handle:lines() do
+			table.insert(lines, line)
+		end
+		handle:close()
+		return lines
+	end
+
+	it("logs only shown entries with id and text", function()
+		local log_path = tmp_log()
+		assert.is_true(Keycast.show({
+			session_id = "log-one",
+			region = { x = 10, y = 20, w = 800, h = 450 },
+			mode = "all",
+			log_path = log_path,
+		}))
+		local tap = env.taps[1]
+		tap.callback(event(0, "a"))
+		tap.callback(event(0, "b"))
+		assert.equals(2, #_G.BobKeycast.log_buffer)
+		assert.is_true(_G.BobKeycast.log_buffer[1]:find('"id":1', 1, true) ~= nil)
+		assert.is_true(_G.BobKeycast.log_buffer[2]:find('"id":1', 1, true) ~= nil)
+		assert.is_true(_G.BobKeycast.log_buffer[2]:find('"text":"ab"', 1, true) ~= nil)
+		env.timers[1]:fire()
+		local lines = read_lines(log_path)
+		assert.equals(2, #lines)
+		os.remove(log_path)
+	end)
+
+	it("logs nothing for off, secure, denied, or excluded input", function()
+		local log_path = tmp_log()
+		assert.is_true(Keycast.show({
+			session_id = "log-two",
+			region = { x = 10, y = 20, w = 800, h = 450 },
+			mode = "all",
+			log_path = log_path,
+		}))
+		local tap = env.taps[1]
+		tap.callback(event(9, "v", { ctrl = true, alt = true, shift = true }))
+		assert.equals(0, #(_G.BobKeycast.log_buffer or {}))
+		env.secure = true
+		tap.callback(event(0, "a"))
+		assert.equals(0, #(_G.BobKeycast.log_buffer or {}))
+		env.secure = false
+		_G.BobKeycast.denied = true
+		_G.BobKeycast.indicator = true
+		tap.callback(event(0, "a"))
+		assert.equals(0, #(_G.BobKeycast.log_buffer or {}))
+		assert.is_true(Keycast.show({
+			session_id = "log-two",
+			region = { x = 10, y = 20, w = 800, h = 450 },
+			mode = "off",
+			log_path = log_path,
+		}))
+		assert.is_nil(_G.BobKeycast.log_path)
+		os.remove(log_path)
+	end)
+
+	it("hide flushes the buffer to the log file", function()
+		local log_path = tmp_log()
+		assert.is_true(Keycast.show({
+			session_id = "log-three",
+			region = { x = 10, y = 20, w = 800, h = 450 },
+			mode = "all",
+			log_path = log_path,
+		}))
+		env.taps[1].callback(event(0, "a"))
+		assert.equals(1, #_G.BobKeycast.log_buffer)
+		assert.is_true(Keycast.hide())
+		assert.equals(0, #_G.BobKeycast.log_buffer)
+		local lines = read_lines(log_path)
+		assert.equals(1, #lines)
+		os.remove(log_path)
+	end)
+
+	it("a write failure leaves the overlay working", function()
+		local log_path = os.tmpname()
+		os.remove(log_path)
+		assert.is_true(os.execute(string.format("mkdir -p %q", log_path)) == 0 or true)
+		assert.is_true(Keycast.show({
+			session_id = "log-four",
+			region = { x = 10, y = 20, w = 800, h = 450 },
+			mode = "all",
+			log_path = log_path,
+		}))
+		env.taps[1].callback(event(0, "a"))
+		env.timers[1]:fire()
+		assert.is_true(Keycast.isActive())
+		assert.equals(1, #_G.BobKeycast.trail)
+		assert.is_nil(_G.BobKeycast.log_path)
+		os.execute(string.format("rm -rf %q", log_path))
+	end)
+end)

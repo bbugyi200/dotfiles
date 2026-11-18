@@ -22,6 +22,7 @@ function set_up() {
   FFMPEG_FAIL_LIBX264="0"
   FFMPEG_FAIL_VT="0"
   FFMPEG_FAIL_COPY="0"
+  FFMPEG_FAIL_KEYS="0"
   SSH_FAIL_HOST=""
   SCP_FAIL_HOST=""
   DF_FREE_APOLLO_KB="20000000"
@@ -95,6 +96,14 @@ joined=" $* "
 if [[ "${joined}" == *"scale=640"* ]]; then
   mkdir -p "$(dirname "${last}")"
   printf 'fake-poster\n' >"${last}"
+  exit 0
+fi
+if [[ "${joined}" == *"mov_text"* || "${joined}" == *"Keystrokes"* ]]; then
+  if [[ "${FFMPEG_FAIL_KEYS:-0}" == "1" ]]; then
+    exit 1
+  fi
+  mkdir -p "$(dirname "${last}")"
+  printf 'fake-muxed-mp4-bytes\n' >"${last}"
   exit 0
 fi
 if [[ "${joined}" == *"libx264"* && "${FFMPEG_FAIL_LIBX264:-0}" == "1" ]]; then
@@ -248,6 +257,7 @@ function run_ship() {
     FFMPEG_FAIL_LIBX264="${FFMPEG_FAIL_LIBX264}" \
     FFMPEG_FAIL_VT="${FFMPEG_FAIL_VT}" \
     FFMPEG_FAIL_COPY="${FFMPEG_FAIL_COPY}" \
+    FFMPEG_FAIL_KEYS="${FFMPEG_FAIL_KEYS}" \
     SSH_FAIL_HOST="${SSH_FAIL_HOST}" \
     SCP_FAIL_HOST="${SCP_FAIL_HOST}" \
     DF_FREE_APOLLO_KB="${DF_FREE_APOLLO_KB}" \
@@ -565,4 +575,91 @@ function test_usage_errors_exit_two() {
   assert_equals "2" "${RUN_RC}"
   run_ship --session 'bad id!'
   assert_equals "2" "${RUN_RC}"
+}
+
+function test_keys_expire_matches_model() {
+  model_expire="$(grep -E 'M\.EXPIRE_SECONDS *= *[0-9]+' home/dot_hammerspoon/keycast_model.lua | grep -o '[0-9]\+' | head -n 1)"
+  script_expire="$(grep -E '^KEYS_EXPIRE_SECONDS=[0-9]+' home/bin/executable_macrec_ship | grep -o '[0-9]\+' | head -n 1)"
+  assert_equals "${model_expire}" "${script_expire}"
+  assert_equals "2" "${script_expire}"
+}
+
+function test_no_keys_log_skips_mux() {
+  make_session s1
+  run_ship --session s1
+  assert_equals "0" "${RUN_RC}"
+  assert_equals "false" "$(sget s1 '.keys_track')"
+  assert_not_contains "mov_text" "$(cat "${EVENT_LOG}")"
+  assert_not_contains "Keystrokes" "$(cat "${EVENT_LOG}")"
+}
+
+function test_keys_track_muxes_with_title_metadata() {
+  make_session s1
+  sdir="${TEST_HOME}/tmp/screencasts/.macrec/sessions/s1"
+  ended="$(jq -r '.ended_at' "${sdir}/session.json")"
+  jq -n -c --argjson e "$ended" \
+    '{t: ($e - 10), id: 1, text: "ciw"},
+     {t: ($e - 9.5), id: 1, text: "ciwfoo"},
+     {t: ($e - 5), id: 2, text: "⎋"}' | jq -c '.' >"${sdir}/keys.jsonl"
+  run_ship --session s1
+  assert_equals "0" "${RUN_RC}"
+  assert_equals "true" "$(sget s1 '.keys_track')"
+  assert_contains "mov_text" "$(cat "${EVENT_LOG}")"
+  assert_contains "title=Keystrokes" "$(cat "${EVENT_LOG}")"
+  assert_contains "language=eng" "$(cat "${EVENT_LOG}")"
+  assert_file_not_exists "${sdir}/keys.jsonl"
+  assert_file_not_exists "${sdir}/keys.vtt"
+}
+
+function test_keys_vtt_groups_clamps_and_sorts() {
+  make_session s1
+  SSH_FAIL_HOST="both"
+  sdir="${TEST_HOME}/tmp/screencasts/.macrec/sessions/s1"
+  ended="$(jq -r '.ended_at' "${sdir}/session.json")"
+  duration="42.5"
+  offset="$(perl -e 'printf "%.3f", $ARGV[0] - $ARGV[1]' "$ended" "$duration")"
+  jq -n -c --argjson e "$ended" --argjson o "$offset" \
+    '{t: ($o - 5), id: 9, text: "early"},
+     {t: ($e - 10), id: 1, text: "ciw"},
+     {t: ($e - 9.5), id: 1, text: "ciwfoo"},
+     {t: ($e - 1), id: 2, text: "⎋"}' | jq -c '.' >"${sdir}/keys.jsonl"
+  run_ship --session s1
+  assert_equals "1" "${RUN_RC}"
+  assert_equals "true" "$(sget s1 '.keys_track')"
+  vtt="${sdir}/keys.vtt"
+  assert_file_exists "$vtt"
+  assert_contains "WEBVTT - Keystrokes" "$(cat "$vtt")"
+  assert_contains "ciwfoo" "$(cat "$vtt")"
+  assert_not_contains "early" "$(cat "$vtt")"
+  first_ciw="$(grep -n 'ciwfoo' "$vtt" | cut -d: -f1)"
+  first_esc="$(grep -n '⎋' "$vtt" | cut -d: -f1)"
+  assert_equals "0" "$([ "${first_ciw}" -lt "${first_esc}" ] && echo 0 || echo 1)"
+  assert_contains "-->" "$(cat "$vtt")"
+  assert_contains "00:" "$(cat "$vtt")"
+}
+
+function test_keys_mux_failure_stays_nonfatal() {
+  FFMPEG_FAIL_KEYS="1"
+  make_session s1
+  sdir="${TEST_HOME}/tmp/screencasts/.macrec/sessions/s1"
+  ended="$(jq -r '.ended_at' "${sdir}/session.json")"
+  jq -n -c --argjson e "$ended" '{t: ($e - 5), id: 1, text: "a"}' | jq -c '.' >"${sdir}/keys.jsonl"
+  run_ship --session s1
+  assert_equals "0" "${RUN_RC}"
+  assert_equals "done" "$(sget s1 '.status')"
+  assert_equals "false" "$(sget s1 '.keys_track')"
+  assert_file_exists "${TEST_HOME}/tmp/screencasts/20261115_142233.mp4"
+}
+
+function test_keys_files_cleaned_on_success() {
+  make_session s1
+  sdir="${TEST_HOME}/tmp/screencasts/.macrec/sessions/s1"
+  ended="$(jq -r '.ended_at' "${sdir}/session.json")"
+  jq -n -c --argjson e "$ended" '{t: ($e - 5), id: 1, text: "a"}' | jq -c '.' >"${sdir}/keys.jsonl"
+  printf 'stale\n' >"${sdir}/keys.vtt"
+  run_ship --session s1
+  assert_equals "0" "${RUN_RC}"
+  assert_file_not_exists "${sdir}/keys.jsonl"
+  assert_file_not_exists "${sdir}/keys.vtt"
+  assert_file_not_exists "${sdir}/raw.mov"
 }

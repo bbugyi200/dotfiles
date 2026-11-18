@@ -1678,7 +1678,8 @@ describe("screen recorder runtime", function()
 			if fake.should_throw_on_show then
 				error("boom keycast")
 			end
-			local entry = { session_id = item.session_id, mode = item.mode, region = item.region }
+			local entry =
+				{ session_id = item.session_id, mode = item.mode, region = item.region, log_path = item.log_path }
 			table.insert(fake.show_calls, entry)
 			if item.mode == "off" then
 				fake.active = false
@@ -1943,6 +1944,16 @@ describe("screen recorder runtime", function()
 		assert.equals(0, fake.check_calls)
 		fire_interval_timers()
 		assert.is_true(fake.check_calls >= 1)
+	end)
+
+	it("passes log_path for the session keys log", function()
+		local fake = make_keycast_fake()
+		start_live_recording(fake)
+		assert.equals(1, #fake.show_calls)
+		local call = fake.show_calls[1]
+		assert.equals("sess1", call.session_id)
+		assert.is_truthy(call.log_path)
+		assert.is_true(call.log_path:find("sess1/keys.jsonl", 1, true) ~= nil)
 	end)
 
 	it("agrees with keycast_model on the three mode names", function()
