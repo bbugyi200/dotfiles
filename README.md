@@ -268,6 +268,12 @@ reopens only the last batch (in memory only; a reload forgets it). Hammerspoon o
 binding instead of Bob Mac Capture because the leader needs an active event tap, and
 because a full apply restarts Hammerspoon while the app would need a signed rebuild.
 
+`⌃⇥` selects the next tab and `⌃⇧⇥` selects the previous one, in the focused window,
+wrapping at the ends. Holding the chord keeps cycling. Hammerspoon performs the switch,
+so it works wherever focus is inside Highlights. A Bob Capture or Refs panel keeps its
+own `⌃⇥` panel switch. With the tab bar hidden, the Window menu's Show Next/Previous Tab
+is used instead.
+
 ## Highlights page keys
 
 While the PDF view in Highlights has focus, use these keys to move between physical PDF
@@ -291,8 +297,8 @@ walking back through earlier jumps; when there are no earlier jumps it shows
 `No earlier page`. `⌃I` goes forward again through the pages `⌃O` walked back over; when
 there are no later pages it shows `No later page`. A new `gg`, `G`, or `<N>g` jump
 clears the pages ahead. The history is per PDF, records only jumps made with these keys,
-and lives in memory, so a Hammerspoon reload or restart may forget it. `⌃I` is
-Control-I, so Highlights' `⌃⇥` tab switching still works.
+and lives in memory, so a Hammerspoon reload or restart may forget it. `⌃I` is Control-I
+and does not interfere with `⌃⇥` tab switching.
 
 These keys type normally in text fields, the Bob Refs panel, and windows without a PDF.
 Keep Bob Mac Capture's “In Highlights, open Bob Refs with” setting at Command-O or Off;

@@ -293,6 +293,72 @@ local function focused_pid_and_role(H)
 	return pid, role, true
 end
 
+local function focus_owned_by_highlights(H)
+	local ax = H.axuielement
+	if ax == nil or type(ax.systemWideElement) ~= "function" then
+		return false
+	end
+	local ok_sys, sys = pcall(function()
+		return ax.systemWideElement()
+	end)
+	if not ok_sys or sys == nil then
+		return false
+	end
+	if type(sys.setTimeout) == "function" then
+		pcall(function()
+			sys:setTimeout(AX_FOCUS_TIMEOUT_SECONDS)
+		end)
+	end
+	local focused = nil
+	if type(sys.attributeValue) == "function" then
+		local ok_focus, value = pcall(function()
+			return sys:attributeValue("AXFocusedUIElement")
+		end)
+		if ok_focus then
+			focused = value
+		end
+	end
+	local pid = nil
+	if focused ~= nil then
+		if type(focused.pid) == "function" then
+			local ok_pid, value = pcall(function()
+				return focused:pid()
+			end)
+			if ok_pid and type(value) == "number" then
+				pid = value
+			end
+		elseif type(focused.pid) == "number" then
+			pid = focused.pid
+		end
+	end
+	if pid == nil and type(sys.attributeValue) == "function" then
+		local app_element = nil
+		local ok_app, value = pcall(function()
+			return sys:attributeValue("AXFocusedApplication")
+		end)
+		if ok_app then
+			app_element = value
+		end
+		if app_element ~= nil then
+			if type(app_element.pid) == "function" then
+				local ok_pid, app_pid = pcall(function()
+					return app_element:pid()
+				end)
+				if ok_pid and type(app_pid) == "number" then
+					pid = app_pid
+				end
+			elseif type(app_element.pid) == "number" then
+				pid = app_element.pid
+			end
+		end
+	end
+	if type(pid) ~= "number" then
+		return false
+	end
+	local hpid = highlights_pid(H)
+	return type(hpid) == "number" and pid == hpid
+end
+
 local function make_can_arm(H)
 	return function()
 		local ok, result = pcall(function()
@@ -673,6 +739,24 @@ local function make_real_adapter(H)
 		return covers_midpoint or entirely_visible
 	end
 
+	local function menu_step(direction)
+		local path = HighlightsTabs.CYCLE_MENU_PATHS[direction]
+		if path == nil then
+			return false
+		end
+		local app = highlights_app(H)
+		if app == nil or type(app.selectMenuItem) ~= "function" then
+			return false
+		end
+		local ok, result = pcall(function()
+			return app:selectMenuItem(path)
+		end)
+		if not ok then
+			return false
+		end
+		return result ~= nil
+	end
+
 	return {
 		read = read,
 		select = select,
@@ -687,6 +771,7 @@ local function make_real_adapter(H)
 		set_scroll_value = set_scroll_value,
 		scroll_to_visible = scroll_to_visible,
 		landed = landed,
+		menu_step = menu_step,
 	}
 end
 
@@ -730,8 +815,12 @@ local function build_key(H, event)
 		keycode = event.keycode
 	end
 	local escape_code = nil
+	local tab_code = 48
 	if H.keycodes ~= nil and H.keycodes.map ~= nil then
 		escape_code = H.keycodes.map.escape
+		if type(H.keycodes.map.tab) == "number" then
+			tab_code = H.keycodes.map.tab
+		end
 	end
 	local flags = {}
 	if type(event.getFlags) == "function" then
@@ -769,6 +858,7 @@ local function build_key(H, event)
 		ctrl = flags.ctrl == true or flags.control == true,
 		shift = flags.shift == true,
 		autorepeat = autorepeat,
+		tab = keycode ~= nil and keycode == tab_code,
 	}
 end
 
@@ -825,6 +915,13 @@ function M.stop()
 			runtime.page_keys:cancel()
 		end)
 	end
+	if runtime.cycler ~= nil and type(runtime.cycler.cancel) == "function" then
+		pcall(function()
+			runtime.cycler:cancel()
+		end)
+	end
+	runtime.cycler = nil
+	runtime._cycler_for_tests = nil
 end
 
 --- Start (or restart) the Highlights tab and page key tap. Test overrides are supported.
@@ -934,63 +1031,120 @@ function M.start(options)
 		end)
 	end
 
-	local function dispatch_page(command)
-		if runtime.running then
-			show(HighlightsTabs.BUSY_MESSAGE)
-			return
+	local function cycler_busy()
+		local cycler = runtime.cycler
+		if cycler == nil or type(cycler.is_busy) ~= "function" then
+			return false
 		end
-		if runtime.page_running then
-			show(HighlightsPages.BUSY_MESSAGE)
-			return
-		end
-		runtime.page_running = true
-		local page_deps = {
-			page_info = adapter.page_info,
-			scroll_to = adapter.scroll_to,
-			scroll_to_visible = adapter.scroll_to_visible,
-			landed = adapter.landed,
-			after = after_fn,
-			now = now_fn,
-			same_document = function(path_a, path_b)
-				local fs = H.fs
-				local attributes = fs
-						and type(fs.attributes) == "function"
-						and function(path)
-							return fs.attributes(path)
-						end
-					or nil
-				return HighlightsPages.same_file(path_a, path_b, attributes)
-			end,
-			log = function(message)
-				H.printf("%s", message)
-			end,
-		}
-		local ok, err = pcall(function()
-			HighlightsPages.run(command, runtime.history, page_deps, function(result)
-				runtime.page_running = false
-				local message = HighlightsPages.message(result)
-				if message ~= nil then
-					show(message)
-				end
-				if type(result) == "table" and result.status == "failed" then
-					pcall(function()
-						H.printf(
-							"Bob Highlights page keys %s failed: %s",
-							tostring(result.kind),
-							tostring(result.reason)
-						)
-					end)
-				end
-			end)
+		local ok, result = pcall(function()
+			return cycler:is_busy()
 		end)
-		if not ok then
-			runtime.page_running = false
-			local result = { status = "failed", kind = command and command.kind, reason = "couldn't find the PDF view" }
-			show(HighlightsPages.message(result))
-			pcall(function()
-				H.printf("Bob Highlights page keys %s failed: %s", tostring(result.kind), tostring(err))
-			end)
+		return ok and result == true
+	end
+
+	local menu_step_fn = adapter.menu_step
+	if type(menu_step_fn) ~= "function" then
+		menu_step_fn = function()
+			return false
 		end
+	end
+	local function on_cycle_result(result)
+		if type(result) ~= "table" or result.status ~= "failed" then
+			return
+		end
+		pcall(function()
+			H.printf("Bob Highlights tab cycle failed: %s", tostring(result.reason))
+		end)
+		if result.fresh then
+			local message = HighlightsTabs.cycle_message(result)
+			if message ~= nil then
+				show(message)
+			end
+		end
+	end
+	runtime.cycler = HighlightsTabs.new_cycler({
+		read = adapter.read,
+		select = adapter.select,
+		menu_step = menu_step_fn,
+		after = after_fn,
+		now = now_fn,
+	}, on_cycle_result)
+	runtime._cycler_for_tests = runtime.cycler
+
+	local function dispatch_page(command)
+		local function run()
+			if runtime.running then
+				show(HighlightsTabs.BUSY_MESSAGE)
+				return
+			end
+			if runtime.page_running then
+				show(HighlightsPages.BUSY_MESSAGE)
+				return
+			end
+			if cycler_busy() then
+				show(HighlightsPages.BUSY_MESSAGE)
+				return
+			end
+			runtime.page_running = true
+			local page_deps = {
+				page_info = adapter.page_info,
+				scroll_to = adapter.scroll_to,
+				scroll_to_visible = adapter.scroll_to_visible,
+				landed = adapter.landed,
+				after = after_fn,
+				now = now_fn,
+				same_document = function(path_a, path_b)
+					local fs = H.fs
+					local attributes = fs
+							and type(fs.attributes) == "function"
+							and function(path)
+								return fs.attributes(path)
+							end
+						or nil
+					return HighlightsPages.same_file(path_a, path_b, attributes)
+				end,
+				log = function(message)
+					H.printf("%s", message)
+				end,
+			}
+			local ok, err = pcall(function()
+				HighlightsPages.run(command, runtime.history, page_deps, function(result)
+					runtime.page_running = false
+					local message = HighlightsPages.message(result)
+					if message ~= nil then
+						show(message)
+					end
+					if type(result) == "table" and result.status == "failed" then
+						pcall(function()
+							H.printf(
+								"Bob Highlights page keys %s failed: %s",
+								tostring(result.kind),
+								tostring(result.reason)
+							)
+						end)
+					end
+				end)
+			end)
+			if not ok then
+				runtime.page_running = false
+				local result =
+					{ status = "failed", kind = command and command.kind, reason = "couldn't find the PDF view" }
+				show(HighlightsPages.message(result))
+				pcall(function()
+					H.printf("Bob Highlights page keys %s failed: %s", tostring(result.kind), tostring(err))
+				end)
+			end
+		end
+		local cycler = runtime.cycler
+		if cycler ~= nil and type(cycler.when_idle) == "function" then
+			local ok_idle = pcall(function()
+				cycler:when_idle(run)
+			end)
+			if ok_idle then
+				return
+			end
+		end
+		run()
 	end
 
 	local scroll_deps = {
@@ -1002,7 +1156,7 @@ function M.start(options)
 		runtime.scroll_scheduled = false
 		local batch = runtime.scroll_batch
 		runtime.scroll_batch = nil
-		if batch == nil or runtime.running or runtime.page_running then
+		if batch == nil or runtime.running or runtime.page_running or cycler_busy() then
 			return
 		end
 		local ok, result = pcall(HighlightsPages.scroll, batch, scroll_deps)
@@ -1020,7 +1174,7 @@ function M.start(options)
 	end
 
 	local function queue_scroll(command)
-		if runtime.running or runtime.page_running then
+		if runtime.running or runtime.page_running or cycler_busy() then
 			return
 		end
 		runtime.scroll_batch = HighlightsPages.add_scroll(runtime.scroll_batch, command)
@@ -1097,7 +1251,7 @@ function M.start(options)
 			local frontmost = frontmost_bundle_id(H) == M.BUNDLE_ID
 			local observation = {
 				frontmost = frontmost,
-				busy = runtime.running == true or runtime.page_running == true,
+				busy = runtime.running == true or runtime.page_running == true or cycler_busy(),
 				same_document = false,
 				has_pdf_view = false,
 				title_valid = false,
@@ -1177,59 +1331,75 @@ function M.start(options)
 	end
 
 	local function dispatch(command)
-		if runtime.page_running then
-			show(HighlightsPages.BUSY_MESSAGE)
-			return
-		end
-		if runtime.running then
-			show(HighlightsTabs.BUSY_MESSAGE)
-			return
-		end
-		if command == "reopen" then
-			local batch = runtime.lastBatch
-			if type(batch) ~= "table" or #batch == 0 then
-				show(HighlightsTabs.message("reopen", { status = "empty" }))
+		local function run()
+			if runtime.page_running then
+				show(HighlightsPages.BUSY_MESSAGE)
 				return
 			end
-			local count = #batch
-			local paths = batch
-			runtime.lastBatch = {}
-			pcall(function()
-				open_fn(paths)
+			if runtime.running then
+				show(HighlightsTabs.BUSY_MESSAGE)
+				return
+			end
+			if cycler_busy() then
+				show(HighlightsTabs.BUSY_MESSAGE)
+				return
+			end
+			if command == "reopen" then
+				local batch = runtime.lastBatch
+				if type(batch) ~= "table" or #batch == 0 then
+					show(HighlightsTabs.message("reopen", { status = "empty" }))
+					return
+				end
+				local count = #batch
+				local paths = batch
+				runtime.lastBatch = {}
+				pcall(function()
+					open_fn(paths)
+				end)
+				show(HighlightsTabs.message("reopen", { status = "reopened", count = count, closed = count }))
+				return
+			end
+			runtime.running = true
+			local ok, err = pcall(function()
+				HighlightsTabs.run_close(command, deps, function(result)
+					runtime.running = false
+					if
+						type(result) == "table"
+						and (result.status == "done" or result.status == "needs_attention" or result.status == "failed")
+						and tonumber(result.closed or 0) > 0
+						and type(result.paths) == "table"
+						and #result.paths > 0
+					then
+						runtime.lastBatch = result.paths
+					elseif type(result) == "table" and result.status == "done" and tonumber(result.closed or 0) > 0 then
+						-- A run that closed tabs but recorded no paths clears the batch.
+						runtime.lastBatch = {}
+					end
+					show(HighlightsTabs.message(command, result or {}))
+					if type(result) == "table" and result.status == "failed" then
+						pcall(function()
+							H.printf("Bob Highlights tab keys %s failed: %s", command, tostring(result.reason))
+						end)
+					end
+				end)
 			end)
-			show(HighlightsTabs.message("reopen", { status = "reopened", count = count, closed = count }))
-			return
-		end
-		runtime.running = true
-		local ok, err = pcall(function()
-			HighlightsTabs.run_close(command, deps, function(result)
+			if not ok then
 				runtime.running = false
-				if
-					type(result) == "table"
-					and (result.status == "done" or result.status == "needs_attention" or result.status == "failed")
-					and tonumber(result.closed or 0) > 0
-					and type(result.paths) == "table"
-					and #result.paths > 0
-				then
-					runtime.lastBatch = result.paths
-				elseif type(result) == "table" and result.status == "done" and tonumber(result.closed or 0) > 0 then
-					-- A run that closed tabs but recorded no paths clears the batch.
-					runtime.lastBatch = {}
-				end
-				show(HighlightsTabs.message(command, result or {}))
-				if type(result) == "table" and result.status == "failed" then
-					pcall(function()
-						H.printf("Bob Highlights tab keys %s failed: %s", command, tostring(result.reason))
-					end)
-				end
-			end)
-		end)
-		if not ok then
-			runtime.running = false
-			pcall(function()
-				H.printf("Bob Highlights tab keys run failed: %s", tostring(err))
-			end)
+				pcall(function()
+					H.printf("Bob Highlights tab keys run failed: %s", tostring(err))
+				end)
+			end
 		end
+		local cycler = runtime.cycler
+		if cycler ~= nil and type(cycler.when_idle) == "function" then
+			local ok_idle = pcall(function()
+				cycler:when_idle(run)
+			end)
+			if ok_idle then
+				return
+			end
+		end
+		run()
 	end
 
 	local function handle_key(event)
@@ -1248,6 +1418,40 @@ function M.start(options)
 		end
 		local key = build_key(H, event)
 		local now = now_fn()
+		local cycle_step = HighlightsTabs.cycle_step(key)
+		if cycle_step ~= nil then
+			if runtime.leader ~= nil and type(runtime.leader.cancel) == "function" then
+				pcall(function()
+					runtime.leader:cancel()
+				end)
+			end
+			if runtime.page_keys ~= nil and type(runtime.page_keys.cancel) == "function" then
+				pcall(function()
+					runtime.page_keys:cancel()
+				end)
+			end
+			if not focus_owned_by_highlights(H) then
+				return false
+			end
+			if runtime.running or runtime.page_running then
+				if not key.autorepeat then
+					local busy_message = HighlightsTabs.BUSY_MESSAGE
+					if not runtime.running and runtime.page_running then
+						busy_message = HighlightsPages.BUSY_MESSAGE
+					end
+					after_fn(0, function()
+						show(busy_message)
+					end)
+				end
+				return true
+			end
+			if runtime.cycler ~= nil and type(runtime.cycler.push) == "function" then
+				pcall(function()
+					runtime.cycler:push(cycle_step, not key.autorepeat)
+				end)
+			end
+			return true
+		end
 		local leader_was_offered = runtime.leader:is_pending()
 		if leader_was_offered then
 			local leader_outcome = runtime.leader:on_key(key, now, can_arm)
@@ -1360,6 +1564,11 @@ function M.start(options)
 				if runtime.page_keys ~= nil and type(runtime.page_keys.cancel) == "function" then
 					pcall(function()
 						runtime.page_keys:cancel()
+					end)
+				end
+				if runtime.cycler ~= nil and type(runtime.cycler.cancel) == "function" then
+					pcall(function()
+						runtime.cycler:cancel()
 					end)
 				end
 			end

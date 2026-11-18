@@ -10,6 +10,8 @@ M.SELECT_TIMEOUT_SECONDS = 1.0
 M.CLOSE_TIMEOUT_SECONDS = 2.0
 
 M.BUSY_MESSAGE = "Still closing Highlights tabs"
+M.CYCLE_CONFIRM_TIMEOUT_SECONDS = 0.5
+M.CYCLE_MENU_PATHS = { [1] = { "Window", "Show Next Tab" }, [-1] = { "Window", "Show Previous Tab" } }
 
 local function is_bare_backslash(key)
 	return type(key) == "table"
@@ -438,6 +440,278 @@ function M.run_close(mode, deps, on_done)
 	_ = poll_select
 
 	step()
+end
+
+--- Tab-cycle helpers. `key.tab` is a keycode match set by the runtime, never
+--- characters, because ⌃I and ⌃⇥ both produce `"\t"`.
+function M.cycle_step(key)
+	if type(key) ~= "table" then
+		return nil
+	end
+	if key.tab ~= true then
+		return nil
+	end
+	if key.ctrl ~= true then
+		return nil
+	end
+	if key.cmd == true or key.alt == true then
+		return nil
+	end
+	if key.shift == true then
+		return -1
+	end
+	return 1
+end
+
+--- 1-based wraparound target for `steps` signed moves from `selected`.
+function M.cycle_target(count, selected, steps)
+	if type(count) ~= "number" or type(selected) ~= "number" or type(steps) ~= "number" then
+		return nil
+	end
+	if count < 1 or count % 1 ~= 0 then
+		return nil
+	end
+	if selected < 1 or selected > count or selected % 1 ~= 0 then
+		return nil
+	end
+	if steps % 1 ~= 0 then
+		return nil
+	end
+	return ((selected - 1 + steps) % count) + 1
+end
+
+--- Alert copy for a finished cycle batch.
+function M.cycle_message(result)
+	if type(result) ~= "table" then
+		return nil
+	end
+	if result.status == "failed" then
+		return "Couldn't switch Highlights tabs: " .. tostring(result.reason or "unknown")
+	end
+	return nil
+end
+
+--- Serialized, coalescing tab-cycle runner.
+--- `deps` is `{ read, select, menu_step(direction) -> bool, after, now }`.
+--- `on_result` receives `{ status, reason?, fresh }` after each batch.
+function M.new_cycler(deps, on_result)
+	deps = type(deps) == "table" and deps or {}
+	local handle_result = type(on_result) == "function" and on_result or function() end
+	local self = {
+		_pending_steps = 0,
+		_pending_fresh = false,
+		_in_flight = false,
+		_scheduled = false,
+		_idle_q = {},
+	}
+
+	local function safe_after(seconds, fn)
+		if type(deps.after) ~= "function" then
+			return nil
+		end
+		local ok, timer = pcall(deps.after, seconds, fn)
+		if not ok then
+			return nil
+		end
+		return timer
+	end
+
+	local function safe_now()
+		if type(deps.now) == "function" then
+			local ok, value = pcall(deps.now)
+			if ok and type(value) == "number" then
+				return value
+			end
+		end
+		return os.clock()
+	end
+
+	local function safe_read()
+		if type(deps.read) ~= "function" then
+			return nil, "couldn't read Highlights' tabs"
+		end
+		local ok, res, err = pcall(deps.read)
+		if not ok then
+			return nil, tostring(res or "unknown")
+		end
+		if res == nil then
+			return nil, tostring(err or "couldn't read Highlights' tabs")
+		end
+		return res, nil
+	end
+
+	local function safe_select(index)
+		if type(deps.select) ~= "function" then
+			return false
+		end
+		local ok, res = pcall(deps.select, index)
+		if not ok then
+			return false
+		end
+		return res
+	end
+
+	local function safe_menu(direction)
+		if type(deps.menu_step) ~= "function" then
+			return false
+		end
+		local ok, res = pcall(deps.menu_step, direction)
+		if not ok then
+			return false
+		end
+		return res
+	end
+
+	local run_batch
+	local function complete_batch(result)
+		pcall(handle_result, result)
+		if self._pending_steps ~= 0 then
+			local steps = self._pending_steps
+			local fresh = self._pending_fresh
+			self._pending_steps = 0
+			self._pending_fresh = false
+			run_batch(steps, fresh)
+		else
+			self._in_flight = false
+			local queued = self._idle_q
+			self._idle_q = {}
+			for _, fn in ipairs(queued) do
+				pcall(fn)
+			end
+		end
+	end
+
+	run_batch = function(steps, fresh)
+		local snapshot, read_err = safe_read()
+		if snapshot == nil then
+			complete_batch({ status = "failed", reason = read_err, fresh = fresh })
+			return
+		end
+		if snapshot.tabs == nil then
+			local sign = 0
+			if steps > 0 then
+				sign = 1
+			elseif steps < 0 then
+				sign = -1
+			end
+			local any_ok = false
+			if sign ~= 0 then
+				for _ = 1, math.abs(steps) do
+					if safe_menu(sign) then
+						any_ok = true
+					end
+				end
+			end
+			if any_ok then
+				complete_batch({ status = "done", fresh = fresh })
+			else
+				complete_batch({ status = "nothing", fresh = fresh })
+			end
+			return
+		end
+		if type(snapshot.tabs) ~= "table" then
+			complete_batch({ status = "failed", reason = "couldn't read Highlights' tabs", fresh = fresh })
+			return
+		end
+		local count = #snapshot.tabs
+		local selected = nil
+		for index, tab in ipairs(snapshot.tabs) do
+			if type(tab) == "table" and tab.selected then
+				selected = index
+				break
+			end
+		end
+		if selected == nil then
+			complete_batch({ status = "failed", reason = "couldn't tell which tab is selected", fresh = fresh })
+			return
+		end
+		local target = M.cycle_target(count, selected, steps)
+		if target == nil then
+			complete_batch({ status = "failed", reason = "couldn't read Highlights' tabs", fresh = fresh })
+			return
+		end
+		if target == selected then
+			complete_batch({ status = "done", fresh = fresh })
+			return
+		end
+		safe_select(target)
+		local deadline = safe_now() + M.CYCLE_CONFIRM_TIMEOUT_SECONDS
+		local function poll()
+			local fresh_snapshot, fresh_err = safe_read()
+			if fresh_snapshot == nil then
+				complete_batch({ status = "failed", reason = fresh_err, fresh = fresh })
+				return
+			end
+			if type(fresh_snapshot.tabs) == "table" then
+				local candidate = fresh_snapshot.tabs[target]
+				if type(candidate) == "table" and candidate.selected then
+					complete_batch({ status = "done", fresh = fresh })
+					return
+				end
+			end
+			if safe_now() >= deadline then
+				self._pending_steps = 0
+				self._pending_fresh = false
+				complete_batch({ status = "failed", reason = "didn't switch to that tab", fresh = fresh })
+				return
+			end
+			safe_after(M.POLL_SECONDS, poll)
+		end
+		safe_after(M.POLL_SECONDS, poll)
+	end
+
+	local function flush()
+		if self._in_flight then
+			return
+		end
+		if self._pending_steps == 0 then
+			self._scheduled = false
+			return
+		end
+		local steps = self._pending_steps
+		local fresh = self._pending_fresh
+		self._pending_steps = 0
+		self._pending_fresh = false
+		self._scheduled = false
+		self._in_flight = true
+		run_batch(steps, fresh)
+	end
+
+	function self:push(step, fresh)
+		if type(step) ~= "number" or step % 1 ~= 0 then
+			return
+		end
+		self._pending_steps = self._pending_steps + step
+		if fresh then
+			self._pending_fresh = true
+		end
+		if not self._in_flight and not self._scheduled then
+			self._scheduled = true
+			safe_after(0, flush)
+		end
+	end
+
+	function self:is_busy()
+		return self._in_flight == true or self._pending_steps ~= 0
+	end
+
+	function self:when_idle(fn)
+		if type(fn) ~= "function" then
+			return
+		end
+		if not self:is_busy() then
+			pcall(fn)
+		else
+			table.insert(self._idle_q, fn)
+		end
+	end
+
+	function self:cancel()
+		self._pending_steps = 0
+		self._pending_fresh = false
+	end
+
+	return self
 end
 
 return M

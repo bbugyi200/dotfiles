@@ -516,3 +516,289 @@ describe("Highlights alert copy", function()
 		assert.equals("Nothing to reopen", M.message("reopen", { status = "empty" }))
 	end)
 end)
+
+describe("Highlights tab cycle step", function()
+	local M = nil
+
+	before_each(function()
+		M = load_pure()
+		package.loaded.highlights_tabs = nil
+	end)
+
+	it("returns 1 for Ctrl-Tab and -1 for Ctrl-Shift-Tab", function()
+		assert.equals(1, M.cycle_step({ tab = true, ctrl = true }))
+		assert.equals(-1, M.cycle_step({ tab = true, ctrl = true, shift = true }))
+	end)
+
+	it("still returns a step on autorepeat", function()
+		assert.equals(1, M.cycle_step({ tab = true, ctrl = true, autorepeat = true }))
+		assert.equals(-1, M.cycle_step({ tab = true, ctrl = true, shift = true, autorepeat = true }))
+	end)
+
+	it("returns nil without the tab keycode", function()
+		assert.is_nil(M.cycle_step({ tab = false, ctrl = true, chars = "\9" }))
+		assert.is_nil(M.cycle_step({ ctrl = true, chars = "\9" }))
+		assert.is_nil(M.cycle_step({ tab = true, ctrl = false }))
+		assert.is_nil(M.cycle_step({ tab = true }))
+	end)
+
+	it("returns nil for other modifiers and bare or shifted tab", function()
+		assert.is_nil(M.cycle_step({ tab = true, shift = true }))
+		assert.is_nil(M.cycle_step({ tab = true, ctrl = true, alt = true }))
+		assert.is_nil(M.cycle_step({ tab = true, ctrl = true, cmd = true }))
+		assert.is_nil(M.cycle_step({ tab = true, ctrl = true, alt = true, shift = true }))
+	end)
+
+	it("returns nil for Ctrl-I which shares the tab character", function()
+		assert.is_nil(M.cycle_step({ tab = false, ctrl = true, chars = "\9", plain = "i" }))
+	end)
+end)
+
+describe("Highlights tab cycle target", function()
+	local M = nil
+
+	before_each(function()
+		M = load_pure()
+		package.loaded.highlights_tabs = nil
+	end)
+
+	it("moves one step with wraparound in both directions", function()
+		assert.equals(2, M.cycle_target(3, 1, 1))
+		assert.equals(3, M.cycle_target(3, 1, -1))
+		assert.equals(1, M.cycle_target(3, 3, 1))
+		assert.equals(2, M.cycle_target(3, 3, -1))
+	end)
+
+	it("handles multi-step moves", function()
+		assert.equals(3, M.cycle_target(4, 1, 2))
+		assert.equals(2, M.cycle_target(4, 4, 2))
+		assert.equals(4, M.cycle_target(5, 2, -3))
+	end)
+
+	it("treats a multiple of the count as staying put", function()
+		assert.equals(2, M.cycle_target(3, 2, 3))
+		assert.equals(2, M.cycle_target(3, 2, -3))
+	end)
+
+	it("returns nil for a bad count or selection", function()
+		assert.is_nil(M.cycle_target(0, 1, 1))
+		assert.is_nil(M.cycle_target(3, 0, 1))
+		assert.is_nil(M.cycle_target(3, 4, 1))
+		assert.is_nil(M.cycle_target(nil, 1, 1))
+		assert.is_nil(M.cycle_target(3, nil, 1))
+	end)
+end)
+
+describe("Highlights tab cycler", function()
+	local M = nil
+
+	before_each(function()
+		M = load_pure()
+		package.loaded.highlights_tabs = nil
+	end)
+
+	local function make_cycle_deps(state)
+		local queue = {}
+		local now = 1000
+		local deps = {}
+		deps.now = function()
+			return now
+		end
+		deps.after = function(seconds, fn)
+			table.insert(queue, { seconds = seconds, fn = fn })
+		end
+		deps.read = function()
+			state.read_calls = (state.read_calls or 0) + 1
+			if state.unreadable then
+				return nil, state.read_reason or "boom"
+			end
+			if state.no_group then
+				return { tabs = nil }
+			end
+			local tabs = {}
+			for index, title in ipairs(state.titles) do
+				table.insert(tabs, { title = title, selected = index == state.selected })
+			end
+			return { tabs = tabs }
+		end
+		deps.select = function(index)
+			state.select_calls = (state.select_calls or 0) + 1
+			if state.fail_select then
+				return false
+			end
+			if type(index) == "number" and index >= 1 and index <= #state.titles then
+				state.selected = index
+			end
+			return true
+		end
+		deps.menu_step = function(direction)
+			state.menu_calls = state.menu_calls or {}
+			table.insert(state.menu_calls, direction)
+			if state.menu_result == nil then
+				return true
+			end
+			return state.menu_result
+		end
+		local function advance(seconds)
+			now = now + (tonumber(seconds) or 0)
+		end
+		local function drain(limit)
+			limit = limit or 500
+			local ticks = 0
+			while #queue > 0 and ticks < limit do
+				ticks = ticks + 1
+				local item = table.remove(queue, 1)
+				advance(item.seconds)
+				item.fn()
+			end
+			return ticks
+		end
+		return deps, queue, drain, function()
+			return now
+		end
+	end
+
+	it("selects the neighbour and confirms", function()
+		local state = { titles = { "a.pdf", "b.pdf", "c.pdf" }, selected = 1 }
+		local deps, _, drain = make_cycle_deps(state)
+		local finished = nil
+		local cycler = M.new_cycler(deps, function(result)
+			finished = result
+		end)
+		cycler:push(1, true)
+		drain()
+		assert.equals("done", finished.status)
+		assert.is_true(finished.fresh)
+		assert.equals(2, state.selected)
+		assert.equals(1, state.select_calls)
+	end)
+
+	it("moves two tabs whether pushes coalesce or split", function()
+		local state = { titles = { "a.pdf", "b.pdf", "c.pdf" }, selected = 1 }
+		local deps, queue, drain = make_cycle_deps(state)
+		local results = {}
+		local cycler = M.new_cycler(deps, function(result)
+			table.insert(results, result)
+		end)
+		cycler:push(1, true)
+		cycler:push(1, false)
+		drain()
+		assert.equals(3, state.selected)
+		assert.is_true(#results >= 1)
+
+		state = { titles = { "a.pdf", "b.pdf", "c.pdf" }, selected = 1 }
+		deps, queue, drain = make_cycle_deps(state)
+		results = {}
+		cycler = M.new_cycler(deps, function(result)
+			table.insert(results, result)
+		end)
+		cycler:push(1, true)
+		drain(1)
+		cycler:push(1, false)
+		drain()
+		assert.equals(3, state.selected)
+		assert.equals(2, #results)
+	end)
+
+	it("falls back to the menu without a tab group", function()
+		local state = { titles = { "only.pdf" }, selected = 1, no_group = true }
+		local deps, _, drain = make_cycle_deps(state)
+		local finished = nil
+		local cycler = M.new_cycler(deps, function(result)
+			finished = result
+		end)
+		cycler:push(-1, true)
+		drain()
+		assert.equals("done", finished.status)
+		assert.same({ -1 }, state.menu_calls)
+
+		state = { titles = { "only.pdf" }, selected = 1, no_group = true, menu_result = false }
+		deps, _, drain = make_cycle_deps(state)
+		finished = nil
+		cycler = M.new_cycler(deps, function(result)
+			finished = result
+		end)
+		cycler:push(1, true)
+		drain()
+		assert.equals("nothing", finished.status)
+		assert.same({ 1 }, state.menu_calls)
+	end)
+
+	it("fails on a confirm timeout and drops steps pushed meanwhile", function()
+		local state = { titles = { "a.pdf", "b.pdf" }, selected = 1, fail_select = true }
+		local deps, _, drain = make_cycle_deps(state)
+		local results = {}
+		local cycler = M.new_cycler(deps, function(result)
+			table.insert(results, result)
+		end)
+		cycler:push(1, true)
+		drain(2)
+		cycler:push(1, true)
+		drain()
+		assert.equals("failed", results[1].status)
+		assert.equals("didn't switch to that tab", results[1].reason)
+		assert.equals(1, #results)
+		assert.is_false(cycler:is_busy())
+	end)
+
+	it("reports fresh as false for an autorepeat-only batch", function()
+		local state = { titles = { "a.pdf", "b.pdf" }, selected = 1 }
+		local deps, _, drain = make_cycle_deps(state)
+		local finished = nil
+		local cycler = M.new_cycler(deps, function(result)
+			finished = result
+		end)
+		cycler:push(1, false)
+		drain()
+		assert.equals("done", finished.status)
+		assert.is_false(finished.fresh)
+	end)
+
+	it("runs when_idle immediately when idle and after the batch otherwise", function()
+		local state = { titles = { "a.pdf", "b.pdf" }, selected = 1 }
+		local deps, _, drain = make_cycle_deps(state)
+		local cycler = M.new_cycler(deps, function() end)
+		local ran = 0
+		cycler:when_idle(function()
+			ran = ran + 1
+		end)
+		assert.equals(1, ran)
+		cycler:push(1, true)
+		cycler:when_idle(function()
+			ran = ran + 1
+		end)
+		assert.equals(1, ran)
+		drain()
+		assert.equals(2, ran)
+	end)
+
+	it("cancel drops the pending steps", function()
+		local state = { titles = { "a.pdf", "b.pdf", "c.pdf" }, selected = 1 }
+		local deps, _, drain = make_cycle_deps(state)
+		local finished = nil
+		local cycler = M.new_cycler(deps, function(result)
+			finished = result
+		end)
+		cycler:push(1, true)
+		cycler:cancel()
+		drain()
+		assert.is_nil(finished)
+		assert.equals(1, state.selected)
+		assert.is_false(cycler:is_busy())
+	end)
+
+	it("push makes no read or select call synchronously", function()
+		local state = { titles = { "a.pdf", "b.pdf" }, selected = 1 }
+		local deps = make_cycle_deps(state)
+		local cycler = M.new_cycler(deps, function() end)
+		cycler:push(1, true)
+		assert.equals(0, state.read_calls or 0)
+		assert.equals(0, state.select_calls or 0)
+	end)
+
+	it("covers cycle alert copy", function()
+		assert.equals("Couldn't switch Highlights tabs: boom", M.cycle_message({ status = "failed", reason = "boom" }))
+		assert.is_nil(M.cycle_message({ status = "done" }))
+		assert.is_nil(M.cycle_message({ status = "nothing" }))
+	end)
+end)

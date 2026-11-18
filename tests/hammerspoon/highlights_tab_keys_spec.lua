@@ -86,11 +86,19 @@ local function setup(options)
 
 	local highlights_app = make_app(BUNDLE_ID, env.highlights_pid)
 	local other_app = make_app("com.other.app", 222)
+	highlights_app.menu_calls = {}
+	function highlights_app:selectMenuItem(path)
+		table.insert(self.menu_calls, path)
+		if options.menu_result ~= nil then
+			return options.menu_result
+		end
+		return { fake = true }
+	end
 	env.highlights_app = highlights_app
 	env.other_app = other_app
 
 	local hs = {}
-	hs.keycodes = { map = { escape = 53 } }
+	hs.keycodes = { map = { escape = 53, tab = 48 } }
 	hs.eventtap = {
 		event = { types = { keyDown = 10 }, properties = { keyboardEventAutorepeat = "autorepeat" } },
 	}
@@ -1108,11 +1116,224 @@ describe("Highlights tab keys runtime", function()
 		assert.is_true(alert_saw(env, "No earlier page"))
 	end)
 
-	it("leaves Ctrl-Tab alone so Highlights still switches tabs", function()
+	it("cycles tabs with Ctrl-Tab and Ctrl-Shift-Tab through the real adapter", function()
 		env = setup({ focused = make_focused(111, "AXUnknown") })
-		make_pdf_view(env, { page = 10, count = 44 })
+		local state = make_native_tabs(env, { "a.pdf", "b.pdf", "c.pdf" }, 1)
+		start_with_real_adapter(env)
+		assert.is_true(env.tap_key({ chars = "\9", plain = "\9", flags = { ctrl = true }, keycode = 48 }))
+		env.drain()
+		assert.equals(2, state.selected)
+		assert.is_true(env.tap_key({
+			chars = "\9",
+			plain = "\9",
+			flags = { ctrl = true, shift = true },
+			keycode = 48,
+		}))
+		env.drain()
+		assert.equals(1, state.selected)
+	end)
+
+	it("wraps tab cycling at the ends", function()
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		local state = make_native_tabs(env, { "a.pdf", "b.pdf" }, 2)
+		start_with_real_adapter(env)
+		assert.is_true(env.tap_key({ chars = "\9", plain = "\9", flags = { ctrl = true }, keycode = 48 }))
+		env.drain()
+		assert.equals(1, state.selected)
+		assert.is_true(env.tap_key({
+			chars = "\9",
+			plain = "\9",
+			flags = { ctrl = true, shift = true },
+			keycode = 48,
+		}))
+		env.drain()
+		assert.equals(2, state.selected)
+	end)
+
+	it("passes Ctrl-Tab through for another pid and when focus is unreadable", function()
+		env = setup({ focused = make_focused(222, "AXUnknown") })
+		local state = make_native_tabs(env, { "a.pdf", "b.pdf" }, 1)
 		start_with_real_adapter(env)
 		assert.is_false(env.tap_key({ chars = "\9", plain = "\9", flags = { ctrl = true }, keycode = 48 }))
+		env.drain()
+		assert.equals(1, state.selected)
+		env.restore()
+		env = nil
+
+		env = setup({ focused = nil })
+		state = make_native_tabs(env, { "a.pdf", "b.pdf" }, 1)
+		start_with_real_adapter(env)
+		assert.is_false(env.tap_key({ chars = "\9", plain = "\9", flags = { ctrl = true }, keycode = 48 }))
+		env.drain()
+		assert.equals(1, state.selected)
+		env.restore()
+		env = nil
+
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		state = make_native_tabs(env, { "a.pdf", "b.pdf" }, 1)
+		start_with_real_adapter(env)
+		env.system_wide_error = "ax failure"
+		assert.is_false(env.tap_key({ chars = "\9", plain = "\9", flags = { ctrl = true }, keycode = 48 }))
+		env.drain()
+		assert.equals(1, state.selected)
+	end)
+
+	it("swallows Ctrl-Tab in a Highlights text field", function()
+		env = setup({ focused = make_focused(111, "AXTextField") })
+		local state = make_native_tabs(env, { "a.pdf", "b.pdf" }, 1)
+		start_with_real_adapter(env)
+		assert.is_true(env.tap_key({ chars = "\9", plain = "\9", flags = { ctrl = true }, keycode = 48 }))
+		env.drain()
+		assert.equals(2, state.selected)
+	end)
+
+	it("keeps Ctrl-I on the page-forward jump, not a tab switch", function()
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		make_native_tabs(env, { "a.pdf", "b.pdf" }, 1)
+		start_with_real_adapter(env)
+		assert.is_true(tap_ctrl_i(env))
+		env.drain()
+		assert.equals(1, env.native_state.selected)
+		assert.is_false(_G.BobHighlightsTabKeys.cycler:is_busy())
+	end)
+
+	it("cancels a pending backslash leader and a pending g on Ctrl-Tab", function()
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		make_native_tabs(env, { "a.pdf", "b.pdf" }, 1)
+		start_with_real_adapter(env)
+		assert.is_true(env.tap_key({ chars = "\\", plain = "\\", flags = {}, keycode = 0 }))
+		assert.is_true(_G.BobHighlightsTabKeys.leader:is_pending())
+		assert.is_true(env.tap_key({ chars = "\9", plain = "\9", flags = { ctrl = true }, keycode = 48 }))
+		assert.is_false(_G.BobHighlightsTabKeys.leader:is_pending())
+		env.drain()
+		env.restore()
+		env = nil
+
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		make_native_tabs(env, { "a.pdf", "b.pdf" }, 1)
+		make_pdf_view(env, { page = 10, count = 44 })
+		start_with_real_adapter(env)
+		assert.is_true(env.tap_key({ chars = "g", plain = "g", flags = {}, keycode = 0 }))
+		assert.is_true(_G.BobHighlightsTabKeys.page_keys:is_pending())
+		assert.is_true(env.tap_key({ chars = "\9", plain = "\9", flags = { ctrl = true }, keycode = 48 }))
+		assert.is_false(_G.BobHighlightsTabKeys.page_keys:is_pending())
+		env.drain()
+	end)
+
+	it("shows the busy alert when a close or page jump is running", function()
+		for _, field in ipairs({ "running", "page_running" }) do
+			env = setup({ focused = make_focused(111, "AXUnknown") })
+			local state = make_native_tabs(env, { "a.pdf", "b.pdf" }, 1)
+			start_with_real_adapter(env)
+			_G.BobHighlightsTabKeys[field] = true
+			assert.is_true(env.tap_key({ chars = "\9", plain = "\9", flags = { ctrl = true }, keycode = 48 }))
+			env.drain()
+			assert.equals(1, state.selected)
+			local needle = "Still closing Highlights tabs"
+			if field == "page_running" then
+				needle = "Still jumping pages"
+			end
+			assert.is_true(alert_saw(env, needle))
+			_G.BobHighlightsTabKeys[field] = false
+			env.restore()
+			env = nil
+		end
+	end)
+
+	it("skips the busy alert on an autorepeat Ctrl-Tab", function()
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		make_native_tabs(env, { "a.pdf", "b.pdf" }, 1)
+		start_with_real_adapter(env)
+		_G.BobHighlightsTabKeys.running = true
+		assert.is_true(env.tap_key({
+			chars = "\9",
+			plain = "\9",
+			flags = { ctrl = true },
+			keycode = 48,
+			autorepeat = true,
+		}))
+		env.drain()
+		assert.equals(0, #env.alerts)
+		_G.BobHighlightsTabKeys.running = false
+	end)
+
+	it("waits for the tab switch before a backslash close", function()
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		local state = make_native_tabs(env, { "a.pdf", "b.pdf", "c.pdf" }, 1)
+		start_with_real_adapter(env)
+		assert.is_true(env.tap_key({ chars = "\9", plain = "\9", flags = { ctrl = true }, keycode = 48 }))
+		assert.is_true(env.tap_key({ chars = "\\", plain = "\\", flags = {}, keycode = 0 }))
+		assert.is_true(env.tap_key({ chars = "\\", plain = "\\", flags = {}, keycode = 0 }))
+		env.drain()
+		assert.same({ "b.pdf" }, state.titles)
+		assert.equals(1, state.selected)
+	end)
+
+	it("uses the Window menu with no tab group", function()
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		make_native_tabs(env, { "only.pdf" }, 1)
+		env.focused_window._attrs["AXChildren"] = function()
+			return {}
+		end
+		start_with_real_adapter(env)
+		assert.is_true(env.tap_key({ chars = "\9", plain = "\9", flags = { ctrl = true }, keycode = 48 }))
+		env.drain()
+		assert.same({ { "Window", "Show Next Tab" } }, env.highlights_app.menu_calls)
+	end)
+
+	it("alerts and logs a fresh cycle failure but only logs an autorepeat one", function()
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		start_with_adapter(env, {
+			read = function()
+				return nil, "boom"
+			end,
+			select = function()
+				return false
+			end,
+		})
+		assert.is_true(env.tap_key({ chars = "\9", plain = "\9", flags = { ctrl = true }, keycode = 48 }))
+		env.drain()
+		assert.is_true(alert_saw(env, "Couldn't switch Highlights tabs: boom"))
+		assert.equals(1, #env.logs)
+		env.restore()
+		env = nil
+
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		start_with_adapter(env, {
+			read = function()
+				return nil, "boom"
+			end,
+			select = function()
+				return false
+			end,
+		})
+		assert.is_true(env.tap_key({
+			chars = "\9",
+			plain = "\9",
+			flags = { ctrl = true },
+			keycode = 48,
+			autorepeat = true,
+		}))
+		env.drain()
+		assert.equals(0, #env.alerts)
+		assert.equals(1, #env.logs)
+	end)
+
+	it("cancels pending cycle steps on deactivation and discards the cycler on stop", function()
+		env = setup({ focused = make_focused(111, "AXUnknown") })
+		local state = make_native_tabs(env, { "a.pdf", "b.pdf" }, 1)
+		start_with_real_adapter(env)
+		local cycler = _G.BobHighlightsTabKeys.cycler
+		assert.is_not_nil(cycler)
+		cycler:push(1, true)
+		assert.is_true(cycler:is_busy())
+		env.watcher_callback("x", "deactivated", env.highlights_app)
+		assert.is_false(cycler:is_busy())
+		env.drain()
+		assert.equals(1, state.selected)
+		env.keys.stop()
+		assert.is_nil(_G.BobHighlightsTabKeys.cycler)
+		assert.is_nil(_G.BobHighlightsTabKeys._cycler_for_tests)
 	end)
 
 	it("jumps to the first and last pages and rejects out-of-range counts", function()
