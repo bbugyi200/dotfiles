@@ -232,6 +232,7 @@ plugins:
     - block-id-prompt
     - bob-articles
     - bob-command-mode
+    - bob-copy-chips
     - bob-emoji
     - bob-ledger-tools
     - bob-mail
