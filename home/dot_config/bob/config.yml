@@ -92,8 +92,8 @@ gkeep:
 # GUI-launched bob has no login-shell PATH or keyring password.
 gcal:
   gog: ~/bin/gog
-#   account: bryanbugyi34@gmail.com # optional when gog holds exactly one account
-#   writer: kellys-macbook-pro # the one host label allowed to sync
+  #   account: bryanbugyi34@gmail.com # optional when gog holds exactly one account
+  #   writer: kellys-macbook-pro # the one host label allowed to sync
   root: meet_inbox # default [root::] for Event Tasks
   calendars: # default: [primary]; every other calendar needs a unique mark
     - id: primary # unmarked: your own calendar
@@ -146,7 +146,7 @@ freshness:
   # PRE/POST checklist stages (bob-cli docs/freshness.md §4). A stage is a tag written
   # right after #pre/#post (`#task #gtd #pre #browser`). Stages walk in list order, ahead
   # of unstaged rows; inside a stage, rows keep file order. Names omit '#'.
-  pre_stages: [init, terminal, periods, browser, sync]
+  pre_stages: [init, periods, terminal, browser, sync]
   post_stages: [periods, headline]
   interval: 3 # Ready backlog review cadence
   pending_interval: 1 # [/] lane daily review; false = not walked
