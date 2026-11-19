@@ -179,7 +179,7 @@ ace:
     rctx: |-
       Review $1 for context and inspiration$2.
     rctxp: |-
-      Review the $1.md file in the research sidecar repo for context and inspiration before planning. I agree with all of the requirements recommended in that research file (but keep in mind that you are responsible for planning and splitting up this work appropriately).
+      Review the $1.md file in the research sidecar repo for context and inspiration before planning. I agree with all of the requirements recommended in that research file (except for any sase memory file changes, which should only be implemented if I approve them or explicitly asked for them in this prompt), but keep in mind that you are responsible for planning and splitting up this work appropriately.
     rep: "the ../sase-$1 repo"
     repic: |-
       Make sure you review #[epic] for related work first and leave notes on the appropriate epic/phase bead(s) if necessary.
