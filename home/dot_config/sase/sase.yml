@@ -266,37 +266,6 @@ ace:
       toast: false
       sound: none
 
-axe:
-  routines:
-    telegram:
-      description: |-
-        Fast lane that delivers unread SASE notifications to Telegram every few seconds
-
-        Runs every five seconds because outbound notifications are useful only when they feel near-real-time. Inbound
-        Telegram long-polling is the `telegram_receiver` service proc on athena, not a job in this lane. Broader
-        notification maintenance belongs elsewhere so bot network calls do not delay unrelated work.
-
-        The routine supplies the bot username, chat id, and token environment to the outbound job. It intentionally
-        avoids `run_every` delays so acknowledgements are checked on every tick.
-      interval: 5
-      env:
-        # Mirrored in `service.procs.telegram_receiver.env` in sase_athena.yml;
-        # keep the two in sync (the service host does not inherit routine env).
-        SASE_TELEGRAM_BOT_USERNAME: sase_athena2_bot
-        SASE_TELEGRAM_BOT_CHAT_ID: "8990449281"
-        # token now read from ~/.sase/telegram_bot_token (mode 600) so the 5s tick never touches gpg-agent
-      jobs:
-        tg_outbound:
-          script: sase_job_tg_outbound
-          description: |-
-            Send unread notifications to Telegram
-
-            Reads the same SASE notification store used by sase's TUI, formats unread non-silent notifications for Telegram,
-            and sends messages, PDFs, or generated images to the configured chat.
-
-            The fast cadence keeps approval requests and completion notices visible without a daemon. Delivery state and
-            rate-limit checks stay in the Telegram plugin, so repeated AXE ticks do not resend handled notifications.
-
 llm_provider:
   default_effort: xhigh
   model_aliases:
