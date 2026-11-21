@@ -5,8 +5,7 @@ description:
   stitches, hooks, comments, mentors, or `.sase` project files.
 ---
 
-Before doing anything else, run this command to record that you
-are using this skill:
+Before doing anything else, run this command to record that you are using this skill:
 
 ```bash
 sase skill use sase_patches --reason "<one-line reason for using this skill>"

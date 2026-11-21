@@ -22,6 +22,7 @@ tags
 .config/sccache/config
 .config/systemd/user/poseidon-cache-watch.service
 .config/systemd/user/poseidon-cache-watch.timer
+.config/systemd/user/sase.slice
 bin/doctl_login
 bin/poseidon-cache-watch
 bin/sase-rustc-wrapper

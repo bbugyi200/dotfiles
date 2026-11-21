@@ -6,8 +6,7 @@ description: >-
   and republish, ask the user first, or file a memory task bead.
 ---
 
-Before doing anything else, run this command to record that you
-are using this skill:
+Before doing anything else, run this command to record that you are using this skill:
 
 ```bash
 sase skill use sase_memory_write --reason "<one-line reason for using this skill>"

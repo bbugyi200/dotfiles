@@ -2,6 +2,7 @@
 [build]
 build-dir = "{{ .chezmoi.homeDir }}/.cache/sase/tmp/build-targets/cargo-{workspace-path-hash}"
 rustc-wrapper = "{{ .chezmoi.homeDir }}/bin/sase-rustc-wrapper"
+jobs = 16
 {{- end }}
 {{- if eq .chezmoi.hostname "Kellys-MacBook-Pro" -}}
 # Mac disk guard (tailnet): keep file:line backtraces, drop variable-level debug

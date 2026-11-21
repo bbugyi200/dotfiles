@@ -7,8 +7,7 @@ description: >-
   readable project data — e.g. to fan out one agent per enabled project.
 ---
 
-Before doing anything else, run this command to record that you
-are using this skill:
+Before doing anything else, run this command to record that you are using this skill:
 
 ```bash
 sase skill use sase_project --reason "<one-line reason for using this skill>"

@@ -6,8 +6,7 @@ description:
   question notifications, or "the notification I just got".
 ---
 
-Before doing anything else, run this command to record that you
-are using this skill:
+Before doing anything else, run this command to record that you are using this skill:
 
 ```bash
 sase skill use sase_notify --reason "<one-line reason for using this skill>"

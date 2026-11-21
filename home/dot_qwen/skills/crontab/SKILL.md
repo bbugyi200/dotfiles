@@ -6,8 +6,7 @@ description:
   changes, removes, or debugs a cron job.
 ---
 
-Before doing anything else, run this command to record that you
-are using this skill:
+Before doing anything else, run this command to record that you are using this skill:
 
 ```bash
 sase skill use crontab --reason "<one-line reason for using this skill>"

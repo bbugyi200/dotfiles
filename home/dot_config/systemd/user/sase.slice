@@ -1,0 +1,6 @@
+[Unit]
+Description=SASE agent, monitor, and proc workloads
+
+[Slice]
+CPUWeight=50
+MemoryHigh=40G
