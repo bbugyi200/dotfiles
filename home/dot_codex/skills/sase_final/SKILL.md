@@ -55,11 +55,15 @@ through this skill, including handoff turns: stage the handoff first, then finis
 ## Handoff Commands
 
 Turn-ending commands stage their handoff and return. If a command reports **Staged**,
-finish the turn through `/sase_final` and submit a declaration only when its context
-requires one. Stage before declaring, do not mutate files after a successful
-declaration, and never wait for your own staged handoff. If it does not report
-**Staged**, the command did not hand off — read the output and continue or retry. Native
-helpers return to the root agent and never declare.
+finish the turn through `/sase_final`. Submit a declaration when the context requires
+one. When it does not, omitting the declaration lets the host carry dirty repositories
+uncommitted into an inheriting successor or gate. Read
+`commit_declaration.omitted_submission_default`; when it is `carry`, the manifest
+template still supports an explicit `commit` declaration. Submit that declaration when
+staged gate commands or the successor need committed source. Stage before declaring, do
+not mutate files after a successful declaration, and never wait for your own staged
+handoff. If it does not report **Staged**, the command did not hand off — read the
+output and continue or retry. Native helpers return to the root agent and never declare.
 
 ## Prepared Monitor Completion
 
@@ -150,7 +154,14 @@ authorized them and `unverified` otherwise.
    sase final context -f json
    ```
 
-2. If `submission_required` is false, stop here and return.
+2. If `unscanned_writes` is non-empty, follow each entry's `instruction`, then repeat
+   step 1. When `submission_required` is false and `unscanned_writes` is empty, no
+   declaration is required. For an inheriting handoff, read
+   `commit_declaration.omitted_submission_default`: if it is `carry`, omission carries
+   dirty repositories uncommitted. You may still submit an explicit `commit` declaration
+   from `manifest_template` when the staged gate's commands or successor need committed
+   source. If an entry must stay where it is (for example, the user asked for that
+   location), say so in the final response.
 
 3. Build one manifest from `manifest_template`. For a `commit` payload, every repository
    in `context.obligations` with `kind: repository` needs exactly one repository

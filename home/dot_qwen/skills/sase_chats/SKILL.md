@@ -7,7 +7,8 @@ description:
   or response.
 ---
 
-Before doing anything else, run this command to record that you are using this skill:
+Before doing anything else, run this command to record that you
+are using this skill:
 
 ```bash
 sase skill use sase_chats --reason "<one-line reason for using this skill>"

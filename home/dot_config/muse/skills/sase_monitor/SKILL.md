@@ -99,6 +99,7 @@ sase monitor start -J <run-id> -p verify -n '<what the follow-up should do with 
 
 Use the exact run id and join command from the escalation block. The run keeps going
 under that id; the follow-up reads it with `sase tool show RUN` or `sase tool wait RUN`.
+If `-J` is refused, do not retry the same join; follow the recovery the refusal prints.
 
 A `verify` monitor bound to a prepared intent with `accept: no-new` may complete host
 finalization even when the named verification exits nonzero, but only when every failure

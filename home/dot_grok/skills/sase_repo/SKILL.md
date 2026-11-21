@@ -40,6 +40,11 @@ SASE project, or unlinked GitHub repo another way. Pass `-w <workspace_num>` onl
 running outside the workspace whose repo clone you need. When the opened repo has an
 `AGENTS.md`, the command names it on stderr; read it before editing in that repo.
 
+When a prompt or other instruction names a path inside a different checkout of a repo
+you opened (its primary checkout or another workspace's clone), use the same
+repo-relative path under the printed path. The host commits only your workspace and the
+checkouts you opened.
+
 Use `sase repo open` when you need to modify a repository or explore a repo tree. Use
 `sase artifact read <ref> "<reason>"` when you need one artifact as recorded context;
 that path prints the artifact content, strips managed link tables, and records the read

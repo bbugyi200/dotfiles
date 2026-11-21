@@ -6,7 +6,8 @@ description:
   commands or commands the user asked to confirm before use.
 ---
 
-Before doing anything else, run this command to record that you are using this skill:
+Before doing anything else, run this command to record that you
+are using this skill:
 
 ```bash
 sase skill use sase_gate --reason "<one-line reason for using this skill>"
@@ -274,11 +275,15 @@ follow-up runner — not in the creating agent's environment. So bake absolute p
 pinned artifacts into the command at creation time, and never depend on agent-only
 variables such as `CARGO_TARGET_DIR`, `SASE_ARTIFACTS_DIR`, or the agent's workspace
 path. Commands of an `inherit` gate turn receive `SASE_GATE_WORKSPACE_DIR`, and
-`sase bead close` uses it automatically. Commands also run without a terminal. Stdin
-carries the gate input JSON, and a remote `ssh host sh <<'EOF'` reads its own heredoc,
-so anything that would prompt for confirmation must get its non-interactive flag (for
-example `SASE_GLOBAL_INSTALL_BYPASS='<reason>' just install-dev -y`). Otherwise it
-refuses or hangs after the reviewer has already approved.
+`sase bead close` uses it automatically. An `inherit` gate turn receives the creator's
+dirty repositories uncommitted when the creator omits a final declaration (host carry).
+Commands that deploy, sync, publish, or land committed source need the creator to submit
+an explicit `commit` declaration through `/sase_final`. Commands also run without a
+terminal. Stdin carries the gate input JSON, and a remote `ssh host sh <<'EOF'` reads
+its own heredoc, so anything that would prompt for confirmation must get its
+non-interactive flag (for example
+`SASE_GLOBAL_INSTALL_BYPASS='<reason>' just install-dev -y`). Otherwise it refuses or
+hangs after the reviewer has already approved.
 
 ## Declare The `turn` Block
 
