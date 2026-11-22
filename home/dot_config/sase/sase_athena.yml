@@ -165,14 +165,15 @@ axe:
     # sase.yml: every machine loading it would spawn tg_outbound ticks.
     telegram:
       description: |-
-        Fast lane that delivers unread SASE notifications to Telegram every few seconds
+        Fast lane that delivers unread SASE notifications to Telegram within seconds of a store change
 
-        Runs every five seconds because outbound notifications are useful only when they feel near-real-time. Inbound
-        Telegram long-polling is the `telegram_receiver` service proc on athena, not a job in this lane. Broader
+        Ticks every five seconds because outbound notifications are useful only when they feel near-real-time, but the
+        outbound job spawns only when the notification store changes (a new notification, or a read or acknowledgement
+        write), plus a 60-second backstop for time-based inputs such as snooze expiry and stale pending-action cleanup.
+        Inbound Telegram long-polling is the `telegram_receiver` service proc on athena, not a job in this lane. Broader
         notification maintenance belongs elsewhere so bot network calls do not delay unrelated work.
 
-        The routine supplies the bot username, chat id, and token environment to the outbound job. It intentionally
-        avoids `run_every` delays so acknowledgements are checked on every tick.
+        The routine supplies the bot username, chat id, and token environment to the outbound job.
       interval: 5
       env:
         # Mirrored in `service.procs.telegram_receiver.env` below in this
@@ -184,14 +185,25 @@ axe:
       jobs:
         tg_outbound:
           script: sase_job_tg_outbound
+          # Every delivery decision reads notifications/notifications.jsonl: new
+          # rows, read/mute flags, and acknowledgements all rewrite it. The job's
+          # own state (last_sent_ts, rate_limit.json, partial delivery) needs no
+          # watch, and its time-based inputs (snooze expiry, stale pending-action
+          # cleanup, a retry after a failed send) ride the max_quiet backstop.
+          trigger:
+            provider: fs
+            max_quiet: "60s"
+            paths:
+              - notifications/notifications.jsonl
           description: |-
             Send unread notifications to Telegram
 
             Reads the same SASE notification store used by sase's TUI, formats unread non-silent notifications for Telegram,
             and sends messages, PDFs, or generated images to the configured chat.
 
-            The fast cadence keeps approval requests and completion notices visible without a daemon. Delivery state and
-            rate-limit checks stay in the Telegram plugin, so repeated AXE ticks do not resend handled notifications.
+            Runs on the first five-second tick after the notification store changes, and at least once a minute, so approval
+            requests and completion notices stay visible without a daemon or a spawn every tick. Delivery state and
+            rate-limit checks stay in the Telegram plugin, so repeated runs do not resend handled notifications.
 dispatch:
   machines:
     apollo:
