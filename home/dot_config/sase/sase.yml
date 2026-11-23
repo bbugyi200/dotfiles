@@ -148,7 +148,7 @@ ace:
     iow: |-
       in other words
     isfix: |-
-      Is this something we can/should fix?
+      Is this something we can/should fix? $1
     jya: "Justify your answer."
     key: "the `$1` keymap"
     keys: |-
