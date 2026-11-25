@@ -1,5 +1,5 @@
 {
-  "deployed_at": "2026-11-21T15:49:44.201617Z",
+  "deployed_at": "2026-11-25T23:03:01.980831Z",
   "macro_set_sha256": "5528d69c94b28b0e6e1c27ca4939199393b10587baacdadf7a18c852108a1086",
   "managed_files": [
     {
@@ -1501,5 +1501,5 @@
       "state": "active"
     }
   ],
-  "source_commit": "07411341e330e09b7a1e6843ae6dc16dc8b88ca8"
+  "source_commit": "e489558571a747220f7912156f1ebed7fb95e7b5"
 }

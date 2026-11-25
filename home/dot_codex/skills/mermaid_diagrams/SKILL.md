@@ -5,7 +5,8 @@ description:
   research PDFs and on GitHub, and answer a named reader question.
 ---
 
-Before doing anything else, run this command to record that you are using this skill:
+Before doing anything else, run this command to record that you
+are using this skill:
 
 ```bash
 sase skill use mermaid_diagrams --reason "<one-line reason for using this skill>"
@@ -13,119 +14,74 @@ sase skill use mermaid_diagrams --reason "<one-line reason for using this skill>
 
 # Mermaid diagram craft
 
-Use these rules to decide whether to draw, choose a diagram type, and check a render. A
-figure earns space by making a relationship easier to see than prose.
+Use these rules to decide whether to draw, choose a diagram type, and check a render.
+A figure earns space by making a relationship easier to see than prose.
 
 ## Know the one thing the figure says
 
-- Write the reader question first, because a figure without a question has no test of
-  usefulness.
+- Write the reader question first, because a figure without a question has no test of usefulness.
 - Write one sentence that answers it, because that becomes the caption.
-- Gather source passages for every node and relation, because a tidy picture can still
-  invent a claim.
-- Draw when the answer depends on order, branching, state, ownership, or before and
-  after, because those relationships benefit from spatial form.
-- Use prose when one sentence answers the question fully, because a diagram should earn
-  its reading time.
-- Rank candidates by how much the report's conclusion depends on each answer, because
-  the central reasoning matters more than a detailed side path.
-- Keep a candidate list before choosing figures, because comparing alternatives improves
-  selection.
-- Let a survey report have zero figures when no reader question needs a picture, because
-  the cap is not a quota.
+- Gather source passages for every node and relation, because a tidy picture can still invent a claim.
+- Draw when the answer depends on order, branching, state, ownership, or before and after, because those relationships benefit from spatial form.
+- Use prose when one sentence answers the question fully, because a diagram should earn its reading time.
+- Rank candidates by how much the report's conclusion depends on each answer, because the central reasoning matters more than a detailed side path.
+- Keep a candidate list before choosing figures, because comparing alternatives improves selection.
+- Let a survey report have zero figures when no reader question needs a picture, because the cap is not a quota.
 
 ## Choose the type from the content's shape
 
-- Use `flowchart TD` for a decision or routing rule, because labelled answers show the
-  branches directly.
-- Draw decision questions as short hexagons and put each answer on its edge, because the
-  branch meaning stays close to the choice.
-- Use `stateDiagram-v2` with `state "Readable name" as ID` for modes or lifecycle,
-  because readable labels should not depend on CamelCase identifiers.
-- Use one flowchart subgraph per mode when each mode contains meaningful internal
-  layouts, because grouping makes membership visible.
-- Give real mode, owner, and phase subgraphs `fill:none` and a stroke that matches their
-  class, because a transparent boundary groups content without hiding it.
-- Use `sequenceDiagram` with at most four participants and `autonumber` for actors over
-  time, because a small cast keeps handoffs trackable.
-- Use two subgraphs with reused node names for today's design versus a proposal, because
-  shared names make changed relationships easy to compare.
-- Use `flowchart TB` with one subgraph per owner for ownership or layers, because the
-  boundary is part of the claim.
-- Use `classDiagram` and `erDiagram` when the source describes real structure, because
-  their notation implies more than a casual association.
-- Use `quadrantChart` only when the source itself supplies two axes and item
-  coordinates, because invented coordinates imply unsupported measurements.
-- Prefer a list or table when it answers the question, because a picture should add a
-  visible relationship.
-- Stay with established flowchart, state, sequence, class, ER, and quadrant families
-  while GitHub's Mermaid version is unverified. Do not use timeline, pie, mindmap, or
-  newer shape syntax, because those families or syntax are outside the tested menu.
-- Do not invent structure or add mandatory start and end nodes, because every visible
-  relationship must come from the source.
+- Use `flowchart TD` for a decision or routing rule, because labelled answers show the branches directly.
+- Draw decision questions as short hexagons and put each answer on its edge, because the branch meaning stays close to the choice.
+- Use `stateDiagram-v2` with `state "Readable name" as ID` for modes or lifecycle, because readable labels should not depend on CamelCase identifiers.
+- Use one flowchart subgraph per mode when each mode contains meaningful internal layouts, because grouping makes membership visible.
+- Give real mode, owner, and phase subgraphs `fill:none` and a stroke that matches their class, because a transparent boundary groups content without hiding it.
+- Use `sequenceDiagram` with at most four participants and `autonumber` for actors over time, because a small cast keeps handoffs trackable.
+- Use two subgraphs with reused node names for today's design versus a proposal, because shared names make changed relationships easy to compare.
+- Use `flowchart TB` with one subgraph per owner for ownership or layers, because the boundary is part of the claim.
+- Use `classDiagram` and `erDiagram` when the source describes real structure, because their notation implies more than a casual association.
+- Use `quadrantChart` only when the source itself supplies two axes and item coordinates, because invented coordinates imply unsupported measurements.
+- Prefer a list or table when it answers the question, because a picture should add a visible relationship.
+- Stay with established flowchart, state, sequence, class, ER, and quadrant families while GitHub's Mermaid version is unverified. Do not use timeline, pie, mindmap, or newer shape syntax, because those families or syntax are outside the tested menu.
+- Do not invent structure or add mandatory start and end nodes, because every visible relationship must come from the source.
 
 ## Make the figure stand alone
 
-- Treat the figure, its in-figure title, and its caption as one unit, because readers
-  may encounter it away from surrounding paragraphs.
-- Add frontmatter `title:` as a question or claim, because the title names the subject
-  at the point of use.
-- Add optional invisible `accTitle:` and `accDescr:` frontmatter when they improve
-  screen-reader context, because accessible names can add context without adding visible
-  clutter.
-- Quote node labels, because punctuation and reserved words should not change the
-  diagram grammar.
-- Make labels a bold name plus a short gloss in a backtick Markdown string, because the
-  name scans quickly and the gloss supplies context.
+- Treat the figure, its in-figure title, and its caption as one unit, because readers may encounter it away from surrounding paragraphs.
+- Add frontmatter `title:` as a question or claim, because the title names the subject at the point of use.
+- Add optional invisible `accTitle:` and `accDescr:` frontmatter when they improve screen-reader context, because accessible names can add context without adding visible clutter.
+- Quote node labels, because punctuation and reserved words should not change the diagram grammar.
+- Make labels a bold name plus a short gloss in a backtick Markdown string, because the name scans quickly and the gloss supplies context.
 - Aim for eight words or fewer per node label, because long labels enlarge the diagram.
-- Keep decision questions to about five words, because compact questions fit hexagons
-  cleanly.
+- Keep decision questions to about five words, because compact questions fit hexagons cleanly.
 - Avoid `end` as a node ID, because Mermaid treats it as syntax in some flowcharts.
-- Label every non-obvious edge with a verb or condition, because an unlabelled arrow can
-  mean order, dependency, or data flow.
-- Use one arrow meaning throughout and state whether converging arrows mean “all” or
-  “any”, because readers need a consistent way to follow the logic.
-- Expand abbreviations and project terms in a label or caption, because the diagram
-  should not require insider knowledge.
-- Give the caption the one-sentence takeaway, because the title names the subject while
-  the caption states what the reader should learn.
-- Mark proposed, optional, and failure paths in words and with a compatible line style,
-  because colour or shape alone may not carry the distinction.
-- Name only entities and relationships supported by source passages, because visual
-  structure can make an inference look like a fact.
-- Keep each box useful to the reader's question, because empty chooser and sink nodes
-  add steps without adding meaning.
+- Label every non-obvious edge with a verb or condition, because an unlabelled arrow can mean order, dependency, or data flow.
+- Use one arrow meaning throughout and state whether converging arrows mean “all” or “any”, because readers need a consistent way to follow the logic.
+- Expand abbreviations and project terms in a label or caption, because the diagram should not require insider knowledge.
+- Give the caption the one-sentence takeaway, because the title names the subject while the caption states what the reader should learn.
+- Mark proposed, optional, and failure paths in words and with a compatible line style, because colour or shape alone may not carry the distinction.
+- Name only entities and relationships supported by source passages, because visual structure can make an inference look like a fact.
+- Keep each box useful to the reader's question, because empty chooser and sink nodes add steps without adding meaning.
 
 ## Fit the PDF page
 
-- Aim for a natural SVG size near 650 × 700 px, because that leaves room around a figure
-  at full size.
-- Keep the fit scale at or above 75%, because smaller labels become hard to read in the
-  Highlights PDF.
-- Measure the root SVG and calculate `min(1, 652.8 / width, 892.8 / height)`, because
-  the PDF fits a 652.8 × 892.8 px text box.
-- Tighten `flowchart.rankSpacing`, `flowchart.nodeSpacing`, and optionally
-  `wrappingWidth: 260` before removing supported content, because spacing can improve
-  fit without losing the claim.
-- Keep decision text short, because long text inside a hexagon or diamond wraps at the
-  200 px default and makes the shape grow quickly.
-- Split two distinct reader questions into two figures rather than shrinking labels,
-  because readable type matters more than a one-page count.
-- Try Mermaid's default layout first and `layout: dagre` when routing adds awkward jogs,
-  because neither layout is best for every graph.
+- Aim for a natural SVG size near 650 × 700 px, because that leaves room around a figure at full size.
+- Keep the fit scale at or above 75%, because smaller labels become hard to read in the Highlights PDF.
+- Measure the root SVG and calculate `min(1, 652.8 / width, 892.8 / height)`, because the PDF fits a 652.8 × 892.8 px text box.
+- Tighten `flowchart.rankSpacing`, `flowchart.nodeSpacing`, and optionally `wrappingWidth: 260` before removing supported content, because spacing can improve fit without losing the claim.
+- Keep decision text short, because long text inside a hexagon or diamond wraps at the 200 px default and makes the shape grow quickly.
+- Split two distinct reader questions into two figures rather than shrinking labels, because readable type matters more than a one-page count.
+- Try Mermaid's default layout first and `layout: dagre` when routing adds awkward jogs, because neither layout is best for every graph.
 
-Use the Python measurement command at the end of the render recipe on each SVG. It reads
-only root width and height, falls back to the root `viewBox` when either is missing or
-nonnumeric, rejects unusable dimensions, and exits unsuccessfully below the 75% floor.
+Use the Python measurement command at the end of the render recipe on each SVG. It
+reads only root width and height, falls back to the root `viewBox` when either is
+missing or nonnumeric, rejects unusable dimensions, and exits unsuccessfully below the
+75% floor.
 
 ## Style with the tested palette
 
-- Use `classDef`, `class`, and `style` for fills, strokes, and text colour, because
-  those are honored by the research PDF render.
-- Choose no more than three semantic colour classes in one figure, because a small
-  palette keeps colour meaningful.
-- Copy these fixed fill / stroke / text triples, because they were checked with the PDF
-  theme and remain legible in light and dark GitHub themes.
+- Use `classDef`, `class`, and `style` for fills, strokes, and text colour, because those are honored by the research PDF render.
+- Choose no more than three semantic colour classes in one figure, because a small palette keeps colour meaningful.
+- Copy these fixed fill / stroke / text triples, because they were checked with the PDF theme and remain legible in light and dark GitHub themes.
 
 ```text
 classDef focus fill:#E8F1FB,stroke:#3B78C2,stroke-width:1.5px,color:#0F2E52
@@ -144,44 +100,26 @@ class NODE muted
 class NODE proposed
 ```
 
-- Apply at most three semantic colour classes per figure, because unused hues weaken the
-  meaning of the palette.
-- Stack a palette class and `proposed` with two `class` lines, because comma-separated
-  classes silently apply nothing and chained `:::` classes do not parse.
-- Use `-.->` for proposed or optional paths and at most one `==>` for the main path,
-  because line weight should reinforce reading order.
-- Let labels and line styles carry essential meaning as well as colour, because readers
-  should not have to distinguish hues alone.
-- Use `<br/>` for a deliberate line break and backtick Markdown labels for bold names,
-  because both render correctly in the strict PDF configuration.
-- Keep theme directives, `click`, icons, emoji, and index-based `linkStyle` out of
-  figures, because the PDF locks theme settings and edge indices can shift with
-  subgraphs.
-- Use plain HTML-free labels apart from `<br/>`, because strict rendering sanitizes
-  other markup.
+- Apply at most three semantic colour classes per figure, because unused hues weaken the meaning of the palette.
+- Stack a palette class and `proposed` with two `class` lines, because comma-separated classes silently apply nothing and chained `:::` classes do not parse.
+- Use `-.->` for proposed or optional paths and at most one `==>` for the main path, because line weight should reinforce reading order.
+- Let labels and line styles carry essential meaning as well as colour, because readers should not have to distinguish hues alone.
+- Use `<br/>` for a deliberate line break and backtick Markdown labels for bold names, because both render correctly in the strict PDF configuration.
+- Keep theme directives, `click`, icons, emoji, and index-based `linkStyle` out of figures, because the PDF locks theme settings and edge indices can shift with subgraphs.
+- Use plain HTML-free labels apart from `<br/>`, because strict rendering sanitizes other markup.
 
 ## Render, look, and revise
 
-- Render SVG and PNG with the PDF-mirroring configuration below, because Mermaid
-  defaults can differ from the document readers see.
-- Use a short scratch path as `TMPDIR`, because browser socket paths can exceed platform
-  limits.
-- Select and smoke-test the CLI once, then keep the successful command and flags,
-  because switching renderers mid-review changes the evidence.
+- Render SVG and PNG with the PDF-mirroring configuration below, because Mermaid defaults can differ from the document readers see.
+- Use a short scratch path as `TMPDIR`, because browser socket paths can exceed platform limits.
+- Select and smoke-test the CLI once, then keep the successful command and flags, because switching renderers mid-review changes the evidence.
 - Record the selected Mermaid CLI version, because the renderer affects output.
-- Render both formats with the same PDF config, because the image being reviewed must
-  match the measured SVG.
-- Treat a browser-start failure as an environment failure, because it says nothing about
-  diagram quality.
-- Open the PNG and answer the reader question from the image alone. Check labels,
-  arrowheads, crossings, reading direction, and measured fit, then trace every entity
-  and relation to a source passage.
-- If the runtime cannot view images, disclose that limit and rely on measured dimensions
-  and source checks, because parsing alone does not prove visual quality.
-- Revise at most twice and then drop a figure that still fails, because extra rounds
-  often polish a picture that should not be there.
-- Bound PNG export and retry once only after a Puppeteer connection failure, because
-  that export can stall without a diagram defect.
+- Render both formats with the same PDF config, because the image being reviewed must match the measured SVG.
+- Treat a browser-start failure as an environment failure, because it says nothing about diagram quality.
+- Open the PNG and answer the reader question from the image alone. Check labels, arrowheads, crossings, reading direction, and measured fit, then trace every entity and relation to a source passage.
+- If the runtime cannot view images, disclose that limit and rely on measured dimensions and source checks, because parsing alone does not prove visual quality.
+- Revise at most twice and then drop a figure that still fails, because extra rounds often polish a picture that should not be there.
+- Bound PNG export and retry once only after a Puppeteer connection failure, because that export can stall without a diagram defect.
 
 Run this recipe from a directory containing `figure.mmd`. It writes the PDF-mirroring
 config inline, tries the pinned CLI before a global install, and retries a browser
@@ -301,9 +239,9 @@ print(result)
 PY
 ```
 
-The secure list, neutral theme, DejaVu Sans font, and `useMaxWidth: false` options
-mirror the Highlights renderer. A frontmatter theme override should remain neutral under
-this config. A deliberately broken diagram must still make the chosen CLI exit nonzero.
+The secure list, neutral theme, DejaVu Sans font, and `useMaxWidth: false` options mirror
+the Highlights renderer. A frontmatter theme override should remain neutral under this
+config. A deliberately broken diagram must still make the chosen CLI exit nonzero.
 
 ```mermaid
 flowchart TD
@@ -323,8 +261,8 @@ result; the measured dimensions and fit scale make each example checkable.
 **Reader question:** Where should a documentation change live?
 
 **Source statement:** Behavior changes go to Reference; new capabilities get a Reference
-entry and a guide candidate; design choices get a decision record; internals and
-runbooks belong in Contribute.
+entry and a guide candidate; design choices get a decision record; internals and runbooks
+belong in Contribute.
 
 **Caption:** Route documentation by the kind of change so user behavior, design choices,
 and implementation guidance each have a clear home.
@@ -369,8 +307,8 @@ flowchart TD
 
 **Reader question:** What changes when a layout is locked?
 
-**Source statement:** Automatic mode switches from spread to paged above 1.65 screens; P
-can choose a wider layout and lock it; the palette returns either locked layout to
+**Source statement:** Automatic mode switches from spread to paged above 1.65 screens;
+P can choose a wider layout and lock it; the palette returns either locked layout to
 automatic mode. A proposed toggle would hold the automatic layout currently selected.
 
 **Caption:** Automatic mode follows content height; P can lock a wider layout, and the

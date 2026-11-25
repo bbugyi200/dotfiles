@@ -4,14 +4,14 @@ description:
   Ask the user questions. Use instead of request_user_input (which is disabled).
 ---
 
-Before doing anything else, run this command to record that you are using this skill:
+Before doing anything else, run this command to record that you
+are using this skill:
 
 ```bash
 sase skill use sase_questions --reason "<one-line reason for using this skill>"
 ```
 
-Use this skill when you need user input. This replaces Muse Code's native
-request_user_input tool.
+Use this skill when you need user input. This replaces Muse Code's native request_user_input tool.
 
 ## Usage
 

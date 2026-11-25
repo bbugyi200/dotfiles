@@ -3,7 +3,8 @@ name: sase_var
 description: Attach named JSON-shaped output variables to the current SASE agent run.
 ---
 
-Before doing anything else, run this command to record that you are using this skill:
+Before doing anything else, run this command to record that you
+are using this skill:
 
 ```bash
 sase skill use sase_var --reason "<one-line reason for using this skill>"
@@ -75,10 +76,11 @@ stores `a=b=c`. `--json` composes with assignment, `--value`, and `--value-file`
 - Give the producer a stable name (`%id:<producer>` or `%id:build-@`). Wait with
   `%wait:<producer>` before reading its variables.
 - Every producer's variables live under `agents` keyed by agent name. `%id:build-@` is
-  `{{ agents["build"].result_path }}`, not `build-0`. Dotted, hyphenated, and
-  digit-leading names use bracket access: `{{ agents["research.final"].report_path }}`,
-  `{{ agents["0n.cld"].report_path }}`. Identifier-safe keys also support
-  `{{ agents.build.result_path }}`.
+  `{{ agents["build"].result_path }}`, not `build-0`. Dotted,
+  hyphenated, and digit-leading names use bracket access:
+  `{{ agents["research.final"].report_path }}`,
+  `{{ agents["0n.cld"].report_path }}`. Identifier-safe keys also
+  support `{{ agents.build.result_path }}`.
 - Structured values reach Jinja as real containers. Implicitly rendering a whole
   container produces compact JSON. Map keys are stored and displayed in sorted order;
   list order is preserved.
