@@ -169,7 +169,7 @@ ace:
     ob: "Obsidian"
     pan: |-
       the "$1" panel
-    piw: "prompt input widget"
+    piw: "prompt composer"
     prp: "plan review panel"
     q: |-
       %q:

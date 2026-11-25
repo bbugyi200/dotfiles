@@ -318,7 +318,7 @@ function M.get_markdown_snippets()
 			{ t("I've pinned some other "), i(1), t(" files to help you figure this out.") }
 		),
 		-- SNIPPET: piw
-		s({ trig = "piw", desc = "prompt input widget" }, { t("prompt input widget") }),
+		s({ trig = "piw", desc = "prompt composer" }, { t("prompt composer") }),
 		-- SNIPPET: rep
 		s({ trig = "rep", desc = "sase repo" }, { t("in the ../sase-"), i(1), t(" repo") }),
 		-- SNIPPET: try
