@@ -29,10 +29,32 @@ sase questions '<json>'
     "options": [
       { "label": "Option label (required)", "description": "Details (optional)" }
     ],
-    "multiSelect": false
+    "multiSelect": false,
+    "copy": [{ "label": "Chrome settings", "text": "chrome://settings/performance" }]
   }
 ]
 ```
+
+`copy` is optional. Each item can be a string or an object with required `text` and an
+optional `label`. For example, a question about Spotlight Search Privacy can declare:
+
+```bash
+sase questions '[{"header":"Mac GUI","question":"In Spotlight Search Privacy, add /Users/bryan/.sase and /Users/bryan/Library/Application Support/sase, then tell me when both are added.","copy":[{"label":".sase","text":"/Users/bryan/.sase"},{"label":"App Support/sase","text":"/Users/bryan/Library/Application Support/sase"}]}]'
+```
+
+### Authoring copy items
+
+- Declare `copy` for every path, URL, command, ID, or other exact value the user must
+  paste, in the order the user should paste them.
+- Label long or opaque values; labels are limited to 48 characters.
+- Keep the question readable on its own. Short values should also appear in the prose;
+  long multi-line commands may live only in `copy`.
+- Prefer one runnable command over asking the user to perform many manual GUI steps.
+- Do not split one decision into several questions to create more copy targets.
+- `copy` accepts at most 20 unique items, each up to 4 KiB. Items cannot contain control
+  characters other than newline and tab. Trailing newlines are removed, while all other
+  accepted text is copied exactly. `sase questions` rejects invalid items with an
+  indexed error before staging the question.
 
 ### Examples
 
