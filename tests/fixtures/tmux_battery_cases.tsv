@@ -1,0 +1,25 @@
+# name<TAB>pmset<TAB>expected: end-to-end battery cases.
+# pmset holds the full stdout with \n and 	 escapes, decoded with
+# printf '%b'. expected is the exact markup with literal UTF-8 glyphs;
+# an empty expected means the script prints nothing.
+charged-100-ac	Now drawing from 'AC Power'\n -InternalBattery-0 (id=24248419)\t100%; charged; 0:00 remaining present: true\n	 #[fg=#828bb8]󰚥 #[default]100%#[default]
+ac-attached-80	Now drawing from 'AC Power'\n -InternalBattery-0 (id=24248419)\t80%; AC attached; not charging\n	 #[fg=#828bb8]󰚥 #[default]80%#[default]
+charging-64	Now drawing from 'Battery Power'\n -InternalBattery-0 (id=24248419)\t64%; charging; 1:02 remaining present: true\n	 #[fg=green]󰂉 #[default]64%#[default]
+charging-7-no-estimate	Now drawing from 'Battery Power'\n -InternalBattery-0 (id=24248419)\t7%; charging; (no estimate) present: true\n	 #[fg=green]󰢜 #[default]7%#[default]
+finishing-charge-98	Now drawing from 'Battery Power'\n -InternalBattery-0 (id=24248419)\t98%; finishing charge present: true\n	 #[fg=green]󰂅 #[default]98%#[default]
+discharging-72	Now drawing from 'Battery Power'\n -InternalBattery-0 (id=24248419)\t72%; discharging; 5:12 remaining present: true\n	 #[fg=#828bb8]󰂀 #[default]72%#[default]
+discharging-21	Now drawing from 'Battery Power'\n -InternalBattery-0 (id=24248419)\t21%; discharging; 1:02 remaining present: true\n	 #[fg=#828bb8]󰁻 #[default]21%#[default]
+discharging-20	Now drawing from 'Battery Power'\n -InternalBattery-0 (id=24248419)\t20%; discharging; 1:02 remaining present: true\n	 #[fg=#ffc777]󰁻 20%#[default]
+discharging-11	Now drawing from 'Battery Power'\n -InternalBattery-0 (id=24248419)\t11%; discharging; 0:40 remaining present: true\n	 #[fg=#ffc777]󰁺 11%#[default]
+discharging-10	Now drawing from 'Battery Power'\n -InternalBattery-0 (id=24248419)\t10%; discharging; 0:30 remaining present: true\n	 #[fg=white,bg=red,bold] 󰂃 10% #[default]
+discharging-0	Now drawing from 'Battery Power'\n -InternalBattery-0 (id=24248419)\t0%; discharging; 0:00 remaining present: true\n	 #[fg=white,bg=red,bold] 󰂃 0% #[default]
+token-wins-over-ac-header	Now drawing from 'AC Power'\n -InternalBattery-0 (id=24248419)\t72%; discharging; 5:12 remaining present: true\n	 #[fg=#828bb8]󰂀 #[default]72%#[default]
+unknown-token-battery-header	Now drawing from 'Battery Power'\n -InternalBattery-0 (id=24248419)\t50%; calibrating; 1:00 remaining present: true\n	 #[fg=#828bb8]󰁾 #[default]50%#[default]
+unknown-token-ac-header	Now drawing from 'AC Power'\n -InternalBattery-0 (id=24248419)\t50%; calibrating; 1:00 remaining present: true\n	 #[fg=#828bb8]󰚥 #[default]50%#[default]
+unknown-token-ups-header	Now drawing from 'UPS Power'\n -InternalBattery-0 (id=24248419)\t50%; calibrating; 1:00 remaining present: true\n	 #[fg=#828bb8]󰁾 #[default]50%#[default]
+ups-line-ignored	Now drawing from 'Battery Power'\n -UPS-0 (id=99)\t90%; charging; 0:10 remaining\n -InternalBattery-0 (id=24248419)\t72%; discharging; 5:12 remaining present: true\n	 #[fg=#828bb8]󰂀 #[default]72%#[default]
+desktop-header-only	Now drawing from 'AC Power'\n	
+present-false	Now drawing from 'Battery Power'\n -InternalBattery-0 (id=24248419)\t50%; discharging; 1:00 remaining present: false\n	
+percent-101	Now drawing from 'Battery Power'\n -InternalBattery-0 (id=24248419)\t101%; discharging; 1:00 remaining present: true\n	
+garbage	not a battery report\n	
+empty		

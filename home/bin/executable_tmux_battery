@@ -1,0 +1,277 @@
+#!/bin/bash
+
+##############################################################################
+#  Print the MacBook battery state, formatted for the tmux status line.      #
+#                                                                            #
+#  The output carries its own leading space and tmux style markup --         #
+#  " #[fg=#828bb8]<glyph> #[default]72%#[default]" -- so tmux.conf can        #
+#  append `#(tmux_battery)` directly after `#(tmux_load_avg)` and render     #
+#  `cpu 54% mem 86% <glyph> 72%` with the label dimmed. On hosts without a    #
+#  battery (athena, apollo), on desktop Macs, and on any non-macOS host      #
+#  this prints nothing, so their bars stay exactly as they are.              #
+#                                                                            #
+#  Five states, decided by one rule: color means something is happening or    #
+#  needs attention; calm states stay dim. Warnings apply only while the      #
+#  battery is draining:                                                      #
+#    draining above 20%  dim level glyph,  e.g. dim `<glyph> 72%`            #
+#    draining 11-20%     amber level glyph, e.g. amber `<glyph> 18%`         #
+#    draining 10% or less red pill,         e.g. ` <alert> 7% `              #
+#    charging            green charging glyph, e.g. green `<glyph> 64%`      #
+#    plugged in          dim plug glyph,    e.g. dim `<plug> 100%`           #
+#  Percentages always show, including `100%` on AC. Thresholds are           #
+#  `WARN_AT=20` (amber at 20% or less) and `CRIT_AT=10` (red pill at 10% or  #
+#  less), both inclusive and only while discharging.                         #
+#                                                                            #
+#  Level glyphs bucket the charge as `bucket = (percent + 5) / 10`: 0-4%     #
+#  maps to the empty glyph, 5-14% to the 10% glyph, and 95-100% to the full   #
+#  glyph. The same bucket picks the charging glyph. In the pill the alert    #
+#  glyph replaces the level glyph; the number already gives the level.       #
+#                                                                            #
+#  tmux runs this every `status-interval` (2s), so it forks exactly one      #
+#  `pmset` per run and deliberately does not source ~/lib/bugyi.sh. A       #
+#  `pmset` call costs about 10-20 ms.                                        #
+#                                                                            #
+#  This must also run under the Mac's `/bin/bash` 3.2, so it avoids          #
+#  `\u`/`\U` escapes, associative arrays, `mapfile`/`readarray`,            #
+#  `${x,,}`/`${x^^}`, `local -n`, `EPOCHSECONDS`, `printf '%(...)T'`,        #
+#  `;&`/`;;&`, and negative array subscripts. Glyph constants use `\x` byte  #
+#  escapes because Bash 3.2 expands `$'\xf3\xb0\x82\x80'` to the right four  #
+#  bytes but leaves `$'\U000F0080'` as literal text.                         #
+#                                                                            #
+#  Sample `pmset` line (note the TAB before the percent):                    #
+#    Now drawing from 'AC Power'                                              #
+#     -InternalBattery-0 (id=24248419)<TAB>100%; charged; 0:00 remaining     #
+#    present: true                                                            #
+##############################################################################
+
+set -e
+
+readonly STYLE_LABEL='fg=#828bb8'
+readonly STYLE_WARN='fg=#ffc777'
+readonly STYLE_CHARGING='fg=green'
+readonly STYLE_PILL='fg=white,bg=red,bold'
+
+readonly WARN_AT=20
+readonly CRIT_AT=10
+
+# Level glyphs indexed by bucket = (percent + 5) / 10, so index 0 is 0-4%,
+# index 1 is 5-14%, ..., index 10 is 95-100%.
+BATTERY_GLYPHS=(
+  $'\xf3\xb0\x82\x8e'
+  $'\xf3\xb0\x81\xba'
+  $'\xf3\xb0\x81\xbb'
+  $'\xf3\xb0\x81\xbc'
+  $'\xf3\xb0\x81\xbd'
+  $'\xf3\xb0\x81\xbe'
+  $'\xf3\xb0\x81\xbf'
+  $'\xf3\xb0\x82\x80'
+  $'\xf3\xb0\x82\x81'
+  $'\xf3\xb0\x82\x82'
+  $'\xf3\xb0\x81\xb9'
+)
+
+# Charging glyphs, same bucket index as the level glyphs.
+CHARGING_GLYPHS=(
+  $'\xf3\xb0\xa2\x9f'
+  $'\xf3\xb0\xa2\x9c'
+  $'\xf3\xb0\x82\x86'
+  $'\xf3\xb0\x82\x87'
+  $'\xf3\xb0\x82\x88'
+  $'\xf3\xb0\xa2\x9d'
+  $'\xf3\xb0\x82\x89'
+  $'\xf3\xb0\xa2\x9e'
+  $'\xf3\xb0\x82\x8a'
+  $'\xf3\xb0\x82\x8b'
+  $'\xf3\xb0\x82\x85'
+)
+
+readonly PLUG=$'\xf3\xb0\x9a\xa5'
+readonly ALERT=$'\xf3\xb0\x82\x83'
+
+function usage() {
+  cat <<EOM
+usage: $(basename "$0") [-h]
+
+Print the MacBook battery state, decorated for the tmux status line as tmux
+style markup: " #[fg=#828bb8]<glyph> #[default]72%#[default]". The segment is
+the last item of the status bar, after \`cpu\`/\`mem\`. It prints nothing when
+no battery can be read (non-macOS hosts, desktop Macs, missing batteries, or
+any parse failure), so those bars stay unchanged. Healthy values use the
+status line's dim label color; only draining low charge warns.
+
+States
+-------
+draining, above 20%   dim level glyph, e.g. " <glyph> 72%"
+draining, 11-20%      amber level glyph, e.g. amber " <glyph> 18%"
+draining, 10% or less red pill, e.g. " <alert> 7% "
+charging              green charging glyph, e.g. green " <glyph> 64%"
+plugged in            dim plug glyph, e.g. dim " <plug> 100%"
+
+Warnings apply only while draining: at 7% and charging the segment shows a
+green charging glyph and a default-colored "7%". Percentages always show,
+including "100%" on AC.
+
+Optional Arguments
+------------------
+-h | --help
+    View this help message.
+
+Examples
+--------
+tmux_battery     # ' #[fg=#828bb8]<glyph> #[default]72%#[default]'
+tmux_battery     # '' on hosts without a battery
+EOM
+}
+
+function run() {
+  if [[ -n "$1" ]]; then
+    case "$1" in
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    *)
+      printf 'error: unrecognized argument: %s\n\n' "$1" >&2
+      usage >&2
+      exit 2
+      ;;
+    esac
+  fi
+
+  case "${OSTYPE:-}" in
+  darwin*)
+    ;;
+  *)
+    return 0
+    ;;
+  esac
+
+  local pmset_out=''
+  pmset_out="$(LC_ALL=C pmset -g batt 2> /dev/null)" || return 0
+
+  local class='' percent=''
+  collect_battery "${pmset_out}" || return 0
+  [[ -n "${percent}" ]] || return 0
+
+  render_segment "${class}" "${percent}"
+}
+
+# Populate the `class` and `percent` variables from the caller's scope
+# (`run`'s locals), since command substitution would drop assignments made in
+# a subshell. Prints nothing and returns non-zero when no battery can be
+# read. `class` is one of `draining`, `charging`, or `plugged`.
+function collect_battery() {
+  local pmset_out="$1"
+
+  local line='' header_source='' battery_line='' found_battery=0
+  local header_pattern="^Now drawing from '([^']+)'"
+  local battery_pattern='-InternalBattery-[0-9]+'
+
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    if [[ "${line}" =~ ${header_pattern} ]]; then
+      header_source="${BASH_REMATCH[1]}"
+    fi
+    if ((found_battery == 0)) && [[ "${line}" =~ ${battery_pattern} ]]; then
+      battery_line="${line}"
+      found_battery=1
+    fi
+  done <<< "${pmset_out}"
+
+  ((found_battery == 1)) || return 1
+
+  [[ "${battery_line}" != *'present: false'* ]] || return 1
+
+  local percent_pattern='([0-9]+)%;'
+  [[ "${battery_line}" =~ ${percent_pattern} ]] || return 1
+
+  parse_uint "${BASH_REMATCH[1]}" || return 1
+  local pct="${REPLY}"
+  ((pct >= 0 && pct <= 100)) || return 1
+
+  local rest="${battery_line#*%;}"
+  local token=''
+  case "${rest}" in
+  *';'*)
+    token="${rest%%;*}"
+    ;;
+  *'present:'*)
+    token="${rest%%present:*}"
+    ;;
+  *)
+    token="${rest}"
+    ;;
+  esac
+  token="${token#"${token%%[![:space:]]*}"}"
+  token="${token%"${token##*[![:space:]]}"}"
+
+  if [[ "${token}" == 'discharging' ]]; then
+    class='draining'
+  elif [[ "${token}" == 'charging' || "${token}" == 'finishing charge' ]]; then
+    class='charging'
+  elif [[ "${token}" == 'charged' || "${token}" == 'AC attached'* ]]; then
+    class='plugged'
+  else
+    case "${header_source}" in
+    'Battery Power')
+      class='draining'
+      ;;
+    'AC Power')
+      class='plugged'
+      ;;
+    *)
+      class='draining'
+      ;;
+    esac
+  fi
+
+  percent="${pct}"
+  return 0
+}
+
+# Sets REPLY to the parsed value rather than printing it, since this is
+# called many times per run and printing would fork a subshell per call.
+function parse_uint() {
+  local raw="$1"
+
+  [[ "${raw}" =~ ^[[:space:]]*([0-9]+)[[:space:]]*$ ]] || return 1
+
+  REPLY="$((10#${BASH_REMATCH[1]}))"
+}
+
+# Pure formatter: given the class (`draining`, `charging`, `plugged`) and
+# the integer percent, render the tmux status markup. Prints nothing for an
+# empty class or percent.
+function render_segment() {
+  local class="$1" percent="$2"
+
+  [[ -n "${class}" && -n "${percent}" ]] || return 0
+
+  parse_uint "${percent}" || return 0
+  local pct="${REPLY}"
+  ((pct >= 0 && pct <= 100)) || return 0
+
+  local bucket=$(( (pct + 5) / 10 ))
+  ((bucket >= 0 && bucket <= 10)) || return 0
+
+  case "${class}" in
+  draining)
+    if ((pct <= CRIT_AT)); then
+      printf ' #[%s] %s %s%% #[default]' "${STYLE_PILL}" "${ALERT}" "${pct}"
+    elif ((pct <= WARN_AT)); then
+      printf ' #[%s]%s %s%%#[default]' "${STYLE_WARN}" "${BATTERY_GLYPHS[${bucket}]}" "${pct}"
+    else
+      printf ' #[%s]%s #[default]%s%%#[default]' "${STYLE_LABEL}" "${BATTERY_GLYPHS[${bucket}]}" "${pct}"
+    fi
+    ;;
+  charging)
+    printf ' #[%s]%s #[default]%s%%#[default]' "${STYLE_CHARGING}" "${CHARGING_GLYPHS[${bucket}]}" "${pct}"
+    ;;
+  plugged)
+    printf ' #[%s]%s #[default]%s%%#[default]' "${STYLE_LABEL}" "${PLUG}" "${pct}"
+    ;;
+  esac
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  run "$@"
+fi

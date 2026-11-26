@@ -493,6 +493,48 @@ Then Copy Diagnostics and keep `~/tmp/ping_window_events.tsv`.
 - The cause of ICMP silence (late replies versus a path that drops ICMP) cannot be
   determined from here.
 
+## tmux battery
+
+The Mac's tmux status bar ends with a battery segment after `cpu`/`mem`, so the right
+side reads `… cpu 54% mem 86% 󰂀 72%`. The segment is one Nerd Font glyph plus the charge
+percent: the glyph fill tracks the level, and the same rule as the rest of the bar
+applies — color means something is happening or needs attention, and calm states stay
+dim. The palette matches the bar (dim `#828bb8`, amber `#ffc777`, green activity, and
+the white-on-red pill).
+
+| State                 | Meaning                    | tmux (exact)                                     |
+| --------------------- | -------------------------- | ------------------------------------------------ |
+| dim level glyph + `%` | on battery, above 20%      | ` #[fg=#828bb8]<g> #[default]72%#[default]`      |
+| amber level glyph+`%` | draining at 20% or less    | ` #[fg=#ffc777]<g> 18%#[default]`                |
+| red pill              | draining at 10% or less    | ` #[fg=white,bg=red,bold] <alert> 7% #[default]` |
+| green charging glyph  | charging, finishing charge | ` #[fg=green]<chg> #[default]64%#[default]`      |
+| dim plug glyph + `%`  | plugged in, not charging   | ` #[fg=#828bb8]<plug> #[default]100%#[default]`  |
+
+The thresholds are `WARN_AT=20` (amber at 20% or less) and `CRIT_AT=10` (red pill at 10%
+or less), both inclusive, and warnings apply only while draining: at 7% and charging the
+segment shows a green charging glyph and a default-colored `7%`. Percentages always
+show, including `100%` on AC, so the segment never appears and vanishes at random.
+
+The data source is one `LC_ALL=C pmset -g batt` fork per 2 s tick, costing about 10–20
+ms. On non-macOS hosts, desktop Macs, and whenever no battery line parses (missing
+battery, `present: false`, or a bad percent), the script prints nothing and those bars
+stay exactly as they are.
+
+Fonts: kitty 0.36 and later bundles the glyphs (`SymbolsNerdFontMono`), so nothing needs
+installing on the Mac; any other terminal needs a Nerd Font v3.
+
+### Troubleshooting
+
+Run the segment and its data source by hand, then reload tmux from a login shell (the
+live Mac server uses `TMUX_TMPDIR=$HOME/tmp/tmux`, which only a login shell sets, so a
+bare `ssh mac tmux …` cannot reach it):
+
+```sh
+~/bin/tmux_battery
+LC_ALL=C pmset -g batt
+tmux source-file ~/.config/tmux/tmux.conf
+```
+
 ## Deleting things under `/tmp`
 
 On `athena`, `/tmp` is a **32G tmpfs** — RAM-backed, shared by every numbered sase
