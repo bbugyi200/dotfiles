@@ -7,7 +7,8 @@ description:
   when a genuinely new task is warranted.
 ---
 
-Before doing anything else, run this command to record that you are using this skill:
+Before doing anything else, run this command to record that you
+are using this skill:
 
 ```bash
 sase skill use sase_new_task --reason "<one-line reason for using this skill>"

@@ -4,7 +4,8 @@ description:
   Run read-only Obsidian Dataview queries against Bryan's Bob vault via `bob query`.
 ---
 
-Before doing anything else, run this command to record that you are using this skill:
+Before doing anything else, run this command to record that you
+are using this skill:
 
 ```bash
 sase skill use bob_query --reason "<one-line reason for using this skill>"

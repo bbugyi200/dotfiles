@@ -5,7 +5,8 @@ description:
   sheets, Whisper, and ffmpeg. Use whenever a task involves a video or audio file.
 ---
 
-Before doing anything else, run this command to record that you are using this skill:
+Before doing anything else, run this command to record that you
+are using this skill:
 
 ```bash
 sase skill use video --reason "<one-line reason for using this skill>"
