@@ -19,6 +19,10 @@ SASE derives your plan's links from the artifacts you read this turn; use
    sase memory read sase_sizes.md --reason "Need SASE size guidance before authoring a plan"
    ```
 
+   If your instructions' Memory Webs section says a web's roster MUST be read before
+   writing a plan, add those `roster:<web>` selectors to that same `sase memory read`
+   command, and follow any citation rule the pointer states.
+
 2. **Choose the plan tier** before writing:
    - Use `tale` for work that one follow-up coding agent can implement as a single plan.
    - Use `epic` when the work should be split into phases that distinct agents can
