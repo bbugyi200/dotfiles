@@ -4,8 +4,7 @@ description:
   Request a SASE agent launch through LaunchApproval instead of spawning directly.
 ---
 
-Before doing anything else, run this command to record that you
-are using this skill:
+Before doing anything else, run this command to record that you are using this skill:
 
 ```bash
 sase skill use sase_run --reason "<one-line reason for using this skill>"

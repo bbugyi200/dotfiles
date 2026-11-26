@@ -100,6 +100,8 @@ gcal:
     - id: kjs04hafl3btrilujllivid3s8@group.calendar.google.com # Birthdays
       mark: 🎂
       # root: love # optional; affects only timed events on this calendar
+    - id: "en.usa#holiday@group.v.calendar.google.com" # Holidays in United States (subscribed, read-only)
+      mark: 🇺🇸 # all-day context rows; root is unused for all-day events
 #   colors: {} # e.g. {tomato: job, sage: body}
 #   tentative: context # context | task
 #   timeout_secs: 60 # optional gog request timeout

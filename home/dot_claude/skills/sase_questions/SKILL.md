@@ -3,8 +3,7 @@ name: sase_questions
 description: Ask the user questions. Use instead of AskUserQuestion (which is disabled).
 ---
 
-Before doing anything else, run this command to record that you
-are using this skill:
+Before doing anything else, run this command to record that you are using this skill:
 
 ```bash
 sase skill use sase_questions --reason "<one-line reason for using this skill>"

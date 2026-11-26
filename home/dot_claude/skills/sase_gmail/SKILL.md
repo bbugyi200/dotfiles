@@ -4,8 +4,7 @@ description:
   Personal Gmail read-only through gog, plus Bob drafts on the Mac on request.
 ---
 
-Before doing anything else, run this command to record that you
-are using this skill:
+Before doing anything else, run this command to record that you are using this skill:
 
 ```bash
 sase skill use sase_gmail --reason "<one-line reason for using this skill>"

@@ -6,8 +6,7 @@ description:
   commands or commands the user asked to confirm before use.
 ---
 
-Before doing anything else, run this command to record that you
-are using this skill:
+Before doing anything else, run this command to record that you are using this skill:
 
 ```bash
 sase skill use sase_gate --reason "<one-line reason for using this skill>"
