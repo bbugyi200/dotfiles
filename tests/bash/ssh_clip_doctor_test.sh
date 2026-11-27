@@ -262,7 +262,17 @@ function tear_down() {
 
 function run_doctor() {
   OUT_FILE="${TEST_TMP}/out.txt"
-  bash "${DOCTOR}" "$@" >"${OUT_FILE}" 2>&1
+  # An ignored SIGINT disposition survives exec, and Bash cannot trap it when
+  # it starts that way. Reset the child disposition before replacing this
+  # wrapper with the doctor. `command -p` bypasses the python3 test stub above.
+  command -p python3 -c '
+import os
+import signal
+import sys
+
+signal.signal(signal.SIGINT, signal.SIG_DFL)
+os.execvpe("bash", ["bash", sys.argv[1], *sys.argv[2:]], os.environ)
+' "${DOCTOR}" "$@" >"${OUT_FILE}" 2>&1
   DOCTOR_RC=$?
   DOCTOR_OUT="$(cat "${OUT_FILE}")"
 }
