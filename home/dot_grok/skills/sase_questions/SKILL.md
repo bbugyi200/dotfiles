@@ -4,14 +4,14 @@ description:
   Ask the user questions. Use instead of ask_user_question (which is disabled).
 ---
 
-Before doing anything else, run this command to record that you
-are using this skill:
+Before doing anything else, run this command to record that you are using this skill:
 
 ```bash
 sase skill use sase_questions --reason "<one-line reason for using this skill>"
 ```
 
-Use this skill when you need user input. This replaces Grok's native ask_user_question tool.
+Use this skill when you need user input. This replaces Grok's native ask_user_question
+tool.
 
 ## Usage
 

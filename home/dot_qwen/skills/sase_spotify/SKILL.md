@@ -5,17 +5,16 @@ description:
   playlist changes, through `sase spotify`.
 ---
 
-Before doing anything else, run this command to record that you
-are using this skill:
+Before doing anything else, run this command to record that you are using this skill:
 
 ```bash
 sase skill use sase_spotify --reason "<one-line reason for using this skill>"
 ```
 
-Use `sase spotify` for questions about Bryan's music or podcasts (what is in a
-playlist, which podcasts he follows, what a show released recently) and for playlist
-changes he asks for. Never control playback, and never use another Spotify tool, MCP
-connector, or direct Web API call.
+Use `sase spotify` for questions about Bryan's music or podcasts (what is in a playlist,
+which podcasts he follows, what a show released recently) and for playlist changes he
+asks for. Never control playback, and never use another Spotify tool, MCP connector, or
+direct Web API call.
 
 ## Privacy comes first
 
@@ -39,13 +38,13 @@ sase spotify search "midnight run" -j -t track -n 5    # catalog search (URIs)
 
 - A reference is a name (exact, case-insensitive, else a unique prefix), an ID, a
   `spotify:` URI, an `open.spotify.com` link, or `liked`.
-- `complete: false` or `truncated: true` means you saw part of it; say so, or read
-  more with a larger `-n` (`-a` lists everything, so use it sparingly).
-- Followed playlists (`relation: followed`) are metadata only: `items` is `null`,
-  never empty. Spotify does not share their songs.
-- Summarize. Never paste whole playlists or libraries into replies; name a few
-  examples and give counts. Credit what you show as "Content from Spotify", and link
-  with the `external_url` values.
+- `complete: false` or `truncated: true` means you saw part of it; say so, or read more
+  with a larger `-n` (`-a` lists everything, so use it sparingly).
+- Followed playlists (`relation: followed`) are metadata only: `items` is `null`, never
+  empty. Spotify does not share their songs.
+- Summarize. Never paste whole playlists or libraries into replies; name a few examples
+  and give counts. Credit what you show as "Content from Spotify", and link with the
+  `external_url` values.
 - **Never** write library data anywhere durable: repos, research, plans, artifacts,
   beads, memory, notes, or files (not even scratch files). Build no taste profiles,
   listening summaries, or rollups.
@@ -96,12 +95,12 @@ YAML
 
 Every failure is one JSON object with `error.code`, `error.message`, and `error.hint`.
 
-| Exit | Do this                                                                          |
-| ---- | -------------------------------------------------------------------------------- |
-| 3    | Not set up or no write access: tell Bryan the exact command from `error.hint`.   |
-| 4    | The login expired: tell Bryan a renewal request or reminder is on its way.       |
-| 5    | Rate limit, quota, or request budget: stop and report; do not retry in a loop.   |
-| 6    | Fix the reference or the changeset from the error's candidates and details.      |
-| 7    | That command is not for agents; do not retry it.                                 |
-| 8    | Not readable: a followed playlist's songs are not shared (or it kept changing).  |
-| 9    | Wrong project for Spotify data: stop and ask for a relaunch in `+spotify`.       |
+| Exit | Do this                                                                         |
+| ---- | ------------------------------------------------------------------------------- |
+| 3    | Not set up or no write access: tell Bryan the exact command from `error.hint`.  |
+| 4    | The login expired: tell Bryan a renewal request or reminder is on its way.      |
+| 5    | Rate limit, quota, or request budget: stop and report; do not retry in a loop.  |
+| 6    | Fix the reference or the changeset from the error's candidates and details.     |
+| 7    | That command is not for agents; do not retry it.                                |
+| 8    | Not readable: a followed playlist's songs are not shared (or it kept changing). |
+| 9    | Wrong project for Spotify data: stop and ask for a relaunch in `+spotify`.      |

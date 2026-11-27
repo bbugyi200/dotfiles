@@ -28,8 +28,10 @@ function test_apollo_ignores_poseidon_files() {
 function test_mac_ignores_poseidon_files() {
   local rendered
   rendered="$(render_ignore Kellys-MacBook-Pro)"
-  assert_contains ".cargo/config.toml" "${rendered}"
+  assert_not_contains ".cargo/config.toml" "${rendered}"
   assert_contains "bin/poseidon-cache-watch" "${rendered}"
+  assert_contains "sccache" "${rendered}"
+  assert_contains "poseidon-cache-watch.timer" "${rendered}"
 }
 
 function test_athena_does_not_ignore_poseidon_files() {
@@ -39,7 +41,7 @@ function test_athena_does_not_ignore_poseidon_files() {
   assert_not_contains "bin/sase-rustc-wrapper" "${rendered}"
 }
 
-function test_cargo_config_renders_only_on_athena() {
+function test_cargo_config_renders_athena_and_mac_configs() {
   local athena apollo mac
   athena="$(render_cargo athena)"
   apollo="$(render_cargo apollo)"
@@ -49,5 +51,7 @@ function test_cargo_config_renders_only_on_athena() {
   assert_contains "sase-rustc-wrapper" "${athena}"
   assert_not_contains "target-dir" "${athena}"
   assert_equals "" "${apollo}"
-  assert_equals "" "${mac}"
+  assert_contains "line-tables-only" "${mac}"
+  assert_not_contains "build-dir" "${mac}"
+  assert_not_contains "sase-rustc-wrapper" "${mac}"
 }

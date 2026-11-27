@@ -6,8 +6,7 @@ description:
   or other reading to Bryan, and whenever you need his notes on a reference.
 ---
 
-Before doing anything else, run this command to record that you
-are using this skill:
+Before doing anything else, run this command to record that you are using this skill:
 
 ```bash
 sase skill use bob_ref --reason "<one-line reason for using this skill>"
