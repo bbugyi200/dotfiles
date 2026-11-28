@@ -211,6 +211,16 @@ relations:
 # builds ignore unknown `capture` keys, so this is safe on every host.
 capture:
   clipboard_history: alfred
+  # Type leads: accepting one of these types from the Capture panel's # menu
+  # at the start of an empty new task also types its lead, so `#f` ⇥ gives
+  # `#fix Fix ▌`. Backspace or ⌘Z right away removes just the lead; ⌃↩
+  # never adds it. Older bob builds ignore this key (bob-cli docs/capture.md).
+  type_leads:
+    BUILD: Build
+    FIX: Fix
+    PLAN: Plan
+    READ: Read
+    WRITE: Write
 
 # Obsidian Cmd+Y Copy card (bob-navigation-hotkeys; docs/copy-card.md in
 # bob-plugins). bob-cli ignores this block. Variables are the card's row labels:
